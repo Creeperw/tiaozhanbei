@@ -1,0 +1,38 @@
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+
+import PersonalizationHubPage from './PersonalizationHubPage';
+
+vi.mock('./PersonalizationPage', () => ({
+  default: ({ view }) => <div data-testid="personalization-task">{view}</div>,
+}));
+vi.mock('./PlanningPage', () => ({ default: () => <div>planning-task</div> }));
+vi.mock('./ReportsPage', () => ({ default: () => <div>reports-task</div> }));
+vi.mock('./OnboardingSurveyPanel', () => ({ default: () => <div>survey-task</div> }));
+vi.mock('./ProfileConflictList', () => ({ default: () => <div>conflicts-task</div> }));
+
+describe('PersonalizationHubPage task routing', () => {
+  it('opens the profile as the default single-task view', () => {
+    render(<PersonalizationHubPage navigationContext={{}} onNavigate={vi.fn()} />);
+
+    expect(screen.getByTestId('personalization-task')).toHaveTextContent('profile');
+    expect(screen.getByRole('button', { name: '学习画像' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByText('survey-task')).not.toBeInTheDocument();
+  });
+
+  it('restores a memory route and keeps profile and memory as independent views', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    render(<PersonalizationHubPage navigationContext={{ view: 'memory' }} onNavigate={onNavigate} />);
+
+    expect(screen.getByTestId('personalization-task')).toHaveTextContent('memory');
+    expect(screen.getByRole('button', { name: '学习记忆' })).toHaveAttribute('aria-current', 'page');
+
+    await user.click(screen.getByRole('button', { name: '学习画像' }));
+
+    expect(screen.getByTestId('personalization-task')).toHaveTextContent('profile');
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'personalization', params: { view: 'profile' } });
+  });
+});
