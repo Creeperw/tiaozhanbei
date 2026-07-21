@@ -1,0 +1,90 @@
+{
+  "catalog_version": "1.0.0",
+  "project_import_metadata": {
+    "imported_from": "competition/zhongyi-learning-planning/references/tcm-credential-default-routes.json",
+    "imported_at": "2026-07-17",
+    "import_policy": "Application-owned normalized copy; source Skill JSON is reference-only."
+  },
+  "route_match_metadata": {
+    "tcm_physician_standard_degree": {"aliases": ["中医执业医师", "中医执业助理医师", "中西医结合执业医师", "中西医结合执业助理医师"]},
+    "tcm_formula_course": {"aliases": ["方剂学", "系统掌握方剂学", "方剂学课程"]},
+    "tcm_special_expertise_physician": {"aliases": ["中医（专长）医师"]},
+    "traditional_medicine_apprenticeship": {"aliases": ["传统医学师承", "传统医学确有专长"]},
+    "licensed_pharmacist_tcm": {"aliases": ["中药执业药师"]},
+    "health_technical_title_tcm_clinical": {"aliases": ["中医临床职称", "针灸职称", "推拿职称", "中医骨伤职称", "骨伤职称", "中西医结合职称"]},
+    "health_technical_title_tcm_pharmacy": {"aliases": ["中药职称", "中药学专业职称", "主管中药师"]},
+    "occupational_skill_tcm_healthcare": {"aliases": ["保健艾灸师"]}
+  },
+  "runtime_checks": ["当前年度考试大纲/目录", "报名资格或申报条件", "省级考核细则", "目标院校招生文件", "职业技能评价机构资格"],
+  "route_governance_metadata": {
+    "tcm_physician_standard_degree": {"planning_label": "synthesized_default_route", "personalization_rules": ["用户已掌握某阶段时可压缩，但不得跳过其对后续模块的关键能力验收。", "中西医结合类别在中医主线基础上增加并绑定西医基础、诊断与临床模块；以当前类别大纲为准。", "实践技能从 phase 2/3 起低频进入，phase 4 强化。"], "refresh_rule": "每个考试年度重新核验大纲版本、指导用书和报名条件。", "phase_source_refs": {"phase-0": ["src-physician-eligibility-2014", "src-nmec-tcm-outline-2026"], "phase-1": ["src-tcm-undergrad-standard-2012", "src-tcm-education-policy-2020", "src-shutcm-plan-2025"], "phase-2": ["src-tcm-undergrad-standard-2012", "src-tcm-education-policy-2020", "src-shutcm-plan-2025"], "phase-3": ["src-nmec-tcm-outline-2026", "src-tcm-undergrad-standard-2012", "src-shutcm-plan-2025"], "phase-4": ["src-nmec-tcm-outline-2026", "src-tcm-undergrad-standard-2012", "src-tcm-education-policy-2020"]}},
+    "tcm_formula_course": {"planning_label": "synthesized_default_route", "personalization_rules": ["基础与诊断证据达标时可压缩第一阶段，但不得跳过前置能力验收。", "《中药学》与《方剂学》可部分并行，具体节奏按用户基础调整。", "临床应用只用于教学案例，不能替代导师或正式评价。"], "refresh_rule": "教材版本或培养方案更新时复核书目、顺序与验收证据。", "phase_source_refs": {"phase-1": ["src-tcm-undergrad-standard-2012", "src-tcm-education-policy-2020", "src-shutcm-plan-2025"], "phase-2": ["src-tcm-undergrad-standard-2012", "src-shutcm-plan-2025"], "phase-3": ["src-tcm-undergrad-standard-2012", "src-tcm-education-policy-2020", "src-shutcm-plan-2025"], "phase-4": ["src-tcm-undergrad-standard-2012", "src-tcm-education-policy-2020"]}},
+    "tcm_special_expertise_physician": {"planning_label": "declared_specialty_route", "personalization_rules": ["必须按申报专长构建独立图谱，不用执业医师全科教材路线直接替代。", "每个省的细则、病种范围、专家评议方式和材料要求都应作为当前版本数据。"], "refresh_rule": "每次省级考核公告发布后重建本路径。", "phase_source_refs": {"phase-0": ["src-special-expertise-physician-2017"], "phase-1": ["src-special-expertise-physician-2017", "src-tcm-education-policy-2020"], "phase-2": ["src-special-expertise-physician-2017"], "phase-3": ["src-special-expertise-physician-2017"]}},
+    "traditional_medicine_apprenticeship": {"planning_label": "master_apprentice_route", "personalization_rules": ["必须保留老师专长、跟师病例和地方细则，不把师承路径改造成普通教材刷题路径。"], "refresh_rule": "每次地方考核公告与师承材料要求更新时复核。", "phase_source_refs": {"phase-0": ["src-traditional-medicine-apprenticeship-2006", "src-traditional-apprenticeship-detailed-rule"], "phase-1": ["src-traditional-medicine-apprenticeship-2006", "src-traditional-apprenticeship-detailed-rule", "src-tcm-undergrad-standard-2012"], "phase-2": ["src-traditional-apprenticeship-detailed-rule", "src-tcm-education-policy-2020"], "phase-3": ["src-traditional-apprenticeship-detailed-rule"]}},
+    "licensed_pharmacist_tcm": {"planning_label": "subject_and_application_route", "personalization_rules": ["药学基础强者可压缩 phase 1，但不得跳过综合知识与法规更新。", "不得将中药学类执业药师与中医医师执业资格混为同一条路径。"], "refresh_rule": "每年考试大纲、法规和考试公告发布后重新绑定。", "phase_source_refs": {"phase-0": ["src-licensed-pharmacist-system-2019", "src-licensed-pharmacist-outline-2025"], "phase-1": ["src-licensed-pharmacist-system-2019", "src-licensed-pharmacist-outline-2025"], "phase-2": ["src-licensed-pharmacist-outline-2025"], "phase-3": ["src-licensed-pharmacist-system-2019", "src-licensed-pharmacist-outline-2025"]}},
+    "health_technical_title_tcm_clinical": {"planning_label": "specialty_and_clinical_evidence_route", "personalization_rules": ["中医内科、针灸、推拿、中医外妇儿等必须建立独立专科子图。", "持有医师资格并不自动等于满足某年度职称申报条件，须核验当地政策。"], "refresh_rule": "年度专业目录、报考条件、指南/规范更新时复核。", "phase_source_refs": {"phase-0": ["src-health-title-reform-2021", "src-health-title-2026-catalog"], "phase-1": ["src-health-title-reform-2021", "src-tcm-residency-standard-2023"], "phase-2": ["src-health-title-2026-catalog", "src-tcm-residency-standard-2023"], "phase-3": ["src-health-title-reform-2021", "src-health-title-2026-catalog"]}},
+    "health_technical_title_tcm_pharmacy": {"planning_label": "pharmacy_specialty_route", "personalization_rules": ["中药职称路径与中药学类执业药师有交集但不相同，分别维护大纲和资格条件。"], "refresh_rule": "年度目录、考试通知和岗位规范更新时复核。", "phase_source_refs": {"phase-0": ["src-health-title-2026-catalog", "src-health-title-reform-2021"], "phase-1": ["src-health-title-2026-catalog", "src-licensed-pharmacist-system-2019"], "phase-2": ["src-health-title-reform-2021", "src-health-title-2026-catalog"], "phase-3": ["src-health-title-2026-catalog"]}},
+    "occupational_skill_tcm_healthcare": {"planning_label": "vocational_skill_boundary_route", "personalization_rules": ["不把职业技能等级证书宣传为中医医师资格或医疗执业许可。", "名称类似“中医康复理疗师”的培训证书，在未核验职业编码、标准和评价机构前不进入默认国家资格路线。"], "refresh_rule": "职业标准、评价机构或地方实施要求变更时复核。", "phase_source_refs": {"phase-0": ["src-national-occupation-catalog-2021", "src-health-moxibustion-standard-2024"], "phase-1": ["src-national-occupation-catalog-2021", "src-health-moxibustion-standard-2024"], "phase-2": ["src-health-moxibustion-standard-2024"], "phase-3": ["src-health-moxibustion-standard-2024"]}}
+  },
+  "routes": [
+    {
+      "route_id": "tcm_physician_standard_degree", "route_version": 1, "route_status": "approved", "status": "approved", "goal_type": "credential", "goal_name": "中医类别执业医师 / 执业助理医师（规定学历路径）",
+      "phases": [
+        {"phase_id": "phase-0", "name": "资格与大纲绑定", "objective": "确认报考类别、学历或试用期路径，并绑定当年大纲与指导用书。", "books": ["《国家医师资格考试大纲（中医类别，当前年度版）》", "《国家医师资格考试指导用书（中医类别，当前年度版）》"], "learning_focus": ["报考类别", "资格条件", "考试范围和版本"], "sequence_basis": "资格和当前年度大纲是长期计划的硬约束。", "exit_evidence": ["已确认报考资格", "已记录当前大纲版本"]},
+        {"phase_id": "phase-1", "name": "中医基础语言与诊断框架", "objective": "建立中医基础理论、中医诊断、四诊和辨证基础。", "books": ["《中医基础理论》", "《中医诊断学》", "《内经选读》"], "learning_focus": ["藏象气血津液", "病因病机", "四诊", "八纲与辨证基础"], "sequence_basis": "基础理论与诊断语言是后续方药和临床病证学习的前置主线。", "exit_evidence": ["完成基础辨证练习"]},
+        {"phase_id": "phase-2", "name": "中药、方剂与治法体系", "objective": "建立治法、方药与证候的连接能力。", "books": ["《中药学》", "《方剂学》"], "learning_focus": ["中药性能功效", "方剂组成与配伍", "治法—方药—证候连接"], "sequence_basis": "在基础理论与辨证框架上学习中药和方剂；二者可部分并行。", "exit_evidence": ["完成方药辨证案例"]},
+        {"phase_id": "phase-3", "name": "临床病证与专科整合", "objective": "将基础、诊断和方药迁移到病证及专科场景。", "books": ["《中医内科学》", "《针灸学》", "《中医外科学》", "《中医妇科学》", "《中医儿科学》"], "learning_focus": ["病证辨治", "专科模块", "病例辨证论治"], "sequence_basis": "将诊断和方药能力迁移到当前大纲规定的临床病证与专科。", "exit_evidence": ["完成病证病例分析"]},
+        {"phase_id": "phase-4", "name": "实践技能贯穿训练与综合模拟", "objective": "训练病史采集、病例分析、操作、答辩、医学综合和法规沟通。", "books": ["《中医执业医师实践技能考试指导用书（当前年度版）》", "《卫生法规》"], "learning_focus": ["病史采集", "病例分析", "基本操作", "综合模拟"], "sequence_basis": "实践技能从中期低频进入，后期按站点和综合模拟强化。", "exit_evidence": ["完成综合模拟"]}
+      ],
+      "sources": [{"source_id": "src-physician-eligibility-2014", "source_type": "official_policy", "title": "医师资格考试报名资格规定（2014版）"}, {"source_id": "src-nmec-tcm-outline-2026", "source_type": "official_exam_reference", "title": "2026年中医中西医结合医师资格考试指导用书发布"}],
+      "review_metadata": {"reviewed_by": "competition_app_route_governance", "reviewed_at": "2026-07-17T00:00:00Z", "review_note": "Imported approved default route; yearly eligibility and outline checks remain required."}
+    },
+    {
+      "route_id": "tcm_formula_course", "route_version": 1, "route_status": "approved", "status": "approved", "goal_type": "course", "goal_name": "系统掌握方剂学",
+      "phases": [
+        {"phase_id": "phase-1", "name": "基础语言与前置能力", "objective": "建立理解方剂治法、病机、药性和辨证所需的前置知识。", "books": ["《中医基础理论》", "《中医诊断学》", "《中药学》"], "learning_focus": ["病因病机", "辨证基础", "中药性能与功效"], "sequence_basis": "先建立中医理论与诊断语言；《中药学》为理解方剂组成与配伍提供直接前置。", "exit_evidence": ["完成基础概念测评", "能解释常用药物的性能与功效"]},
+        {"phase_id": "phase-2", "name": "方剂分类与代表方建构", "objective": "按治法与类别掌握代表方的组成、功用、主治和配伍结构。", "books": ["《方剂学》"], "learning_focus": ["治法与分类", "代表方", "君臣佐使", "组成—功用—主治连接"], "sequence_basis": "以教材类别顺序建立 L1 教材和 L2 章节主线，并用代表方形成知识骨架。", "exit_evidence": ["提交各类别代表方结构化笔记", "代表方基础测评达到既定标准"]},
+        {"phase_id": "phase-3", "name": "类方辨析与病证连接", "objective": "比较相近方剂并将方剂与病机、证候及治法建立连接。", "books": ["《方剂学》", "《中医内科学》"], "learning_focus": ["类方比较", "病机与证候", "方证对应", "教学病例辨析"], "sequence_basis": "在代表方掌握后进入 L3 知识点关系和病证迁移，避免只背孤立方名。", "exit_evidence": ["完成类方对比表", "完成教学病例辨析任务"]},
+        {"phase_id": "phase-4", "name": "综合应用与持续复习", "objective": "通过综合题、病例分析和间隔复习形成稳定的方剂辨析能力。", "books": ["《方剂学》", "《中医内科学》"], "learning_focus": ["综合应用", "错题归因", "间隔复习", "病例分析"], "sequence_basis": "用多次、多来源证据决定推进或补弱；高级临床能力保留导师或正式评价边界。", "exit_evidence": ["完成综合测评", "提交错题与病例分析记录"]}
+      ],
+      "sources": [{"source_id": "src-tcm-undergrad-standard-2012", "source_type": "official_education_standard", "title": "本科医学教育标准—中医学专业（暂行）"}, {"source_id": "src-shutcm-plan-2025", "source_type": "official_university_plan", "title": "上海中医药大学中医学专业培养方案及教学计划目录"}],
+      "review_metadata": {"reviewed_by": "competition_app_route_governance", "reviewed_at": "2026-07-18T00:00:00Z", "review_note": "Book-level course route integrated from zhongyi-learning-planning Skill design; textbook editions require local confirmation."}
+    },
+    {
+      "route_id": "tcm_special_expertise_physician", "route_version": 1, "route_status": "approved", "status": "approved", "goal_type": "credential", "goal_name": "中医（专长）医师资格考核",
+      "phases": [{"phase_id": "phase-0", "name": "申报范围与省级细则绑定", "objective": "明确专长范围并核验本省当期细则和材料。", "exit_evidence": ["已确认省级申报规则"]}, {"phase_id": "phase-1", "name": "专长相关的中医理论、诊断与安全基础", "objective": "建立申报专长所需理论、诊断和安全边界。", "exit_evidence": ["完成安全边界核验"]}, {"phase_id": "phase-2", "name": "专长技术/方药体系与病例证据", "objective": "形成可答辩和追溯的实践证据。", "exit_evidence": ["已整理病例证据"]}, {"phase_id": "phase-3", "name": "考核模拟与边界训练", "objective": "训练陈述、操作或辨证答辩及转诊边界。", "exit_evidence": ["完成省级规则模拟"]}],
+      "sources": [{"source_id": "src-special-expertise-physician-2017", "source_type": "official_policy", "title": "中医医术确有专长人员医师资格考核注册管理暂行办法"}],
+      "review_metadata": {"reviewed_by": "competition_app_route_governance", "reviewed_at": "2026-07-17T00:00:00Z", "review_note": "Imported approved route; provincial rules are mandatory runtime checks."}
+    },
+    {
+      "route_id": "traditional_medicine_apprenticeship", "route_version": 1, "route_status": "approved", "status": "approved", "goal_type": "credential", "goal_name": "传统医学师承和确有专长人员医师资格考核",
+      "phases": [{"phase_id": "phase-0", "name": "师承关系、地方实施与考核目标核验", "objective": "核验师承关系、材料及地方大纲。", "exit_evidence": ["师承材料已核验"]}, {"phase_id": "phase-1", "name": "指导老师学术经验与中医基础", "objective": "将老师经验与通用理论、诊断语言结合。", "exit_evidence": ["完成基础能力核验"]}, {"phase_id": "phase-2", "name": "跟师临床、病案与专长表达", "objective": "将跟师经验转化为可验证病案。", "exit_evidence": ["已整理病案"]}, {"phase_id": "phase-3", "name": "地方考核模拟", "objective": "根据地方细则训练技能、答辩和材料核验。", "exit_evidence": ["完成地方模拟"]}],
+      "sources": [{"source_id": "src-traditional-medicine-apprenticeship-2006", "source_type": "official_policy", "title": "传统医学师承和确有专长人员医师资格考核考试办法"}, {"source_id": "src-traditional-apprenticeship-detailed-rule", "source_type": "official_policy", "title": "传统医学师承和确有专长人员医师资格考核考试办法实施细则"}],
+      "review_metadata": {"reviewed_by": "competition_app_route_governance", "reviewed_at": "2026-07-17T00:00:00Z", "review_note": "Imported approved route; local announcements require refresh."}
+    },
+    {
+      "route_id": "licensed_pharmacist_tcm", "route_version": 1, "route_status": "approved", "status": "approved", "goal_type": "credential", "goal_name": "执业药师职业资格考试（中药学类）",
+      "phases": [{"phase_id": "phase-0", "name": "资格、大纲与科目版本绑定", "objective": "核验报考条件、当前大纲、科目和机考政策。", "exit_evidence": ["已绑定考试版本"]}, {"phase_id": "phase-1", "name": "中药学专业知识基础", "objective": "建立术语、分类、性能与质量基础。", "exit_evidence": ["完成专业基础评估"]}, {"phase_id": "phase-2", "name": "专业知识扩展与综合服务", "objective": "训练综合判断、处方审核和用药服务。", "exit_evidence": ["完成综合案例"]}, {"phase_id": "phase-3", "name": "法规持续学习与全科模拟", "objective": "根据最新法规进行跨科目模拟。", "exit_evidence": ["完成全科模拟"]}],
+      "sources": [{"source_id": "src-licensed-pharmacist-system-2019", "source_type": "official_policy", "title": "执业药师职业资格制度规定"}, {"source_id": "src-licensed-pharmacist-outline-2025", "source_type": "official_exam_reference", "title": "第九版执业药师职业资格考试大纲（2025年）"}],
+      "review_metadata": {"reviewed_by": "competition_app_route_governance", "reviewed_at": "2026-07-17T00:00:00Z", "review_note": "Imported approved route; annual outline and policy refresh required."}
+    },
+    {
+      "route_id": "health_technical_title_tcm_clinical", "route_version": 1, "route_status": "approved", "status": "approved", "goal_type": "professional_title", "goal_name": "卫生专业技术资格考试/职称路径（中医临床、针灸、推拿等）",
+      "phases": [{"phase_id": "phase-0", "name": "专业代码与资格条件绑定", "objective": "确认专业代码、目录和申报条件。", "exit_evidence": ["专业代码已确认"]}, {"phase_id": "phase-1", "name": "中医共性临床框架复核", "objective": "复核中医理论、诊断、经典和辨证框架。", "exit_evidence": ["完成共性框架复核"]}, {"phase_id": "phase-2", "name": "专科知识与临床任务", "objective": "围绕所选专科训练病例、技术和规范。", "exit_evidence": ["完成专科临床任务"]}, {"phase_id": "phase-3", "name": "专业模拟与临床证据整理", "objective": "整理能力证据并训练专业题型。", "exit_evidence": ["完成专业模拟"]}],
+      "sources": [{"source_id": "src-health-title-reform-2021", "source_type": "official_policy", "title": "关于深化卫生专业技术人员职称制度改革的指导意见"}, {"source_id": "src-health-title-2026-catalog", "source_type": "official_catalog", "title": "2026年度卫生专业技术资格考试有关工作通知及专业目录"}],
+      "review_metadata": {"reviewed_by": "competition_app_route_governance", "reviewed_at": "2026-07-17T00:00:00Z", "review_note": "Imported approved route; specialty and local conditions require refresh."}
+    },
+    {
+      "route_id": "health_technical_title_tcm_pharmacy", "route_version": 1, "route_status": "approved", "status": "approved", "goal_type": "professional_title", "goal_name": "卫生专业技术资格考试/职称路径（中药学）",
+      "phases": [{"phase_id": "phase-0", "name": "专业代码、岗位与当年目录绑定", "objective": "确认目标级别、专业代码及资格条件。", "exit_evidence": ["岗位条件已确认"]}, {"phase_id": "phase-1", "name": "中药基础与质量安全", "objective": "建立中药岗位基础与质量安全框架。", "exit_evidence": ["完成质量安全核验"]}, {"phase_id": "phase-2", "name": "岗位综合与法规规范", "objective": "训练调剂、服务、法规和案例判断。", "exit_evidence": ["完成岗位案例"]}, {"phase_id": "phase-3", "name": "年度模拟与更新核验", "objective": "按当前规范模拟并回补薄弱点。", "exit_evidence": ["完成年度模拟"]}],
+      "sources": [{"source_id": "src-health-title-2026-catalog", "source_type": "official_catalog", "title": "2026年度卫生专业技术资格考试有关工作通知及专业目录"}, {"source_id": "src-health-title-reform-2021", "source_type": "official_policy", "title": "关于深化卫生专业技术人员职称制度改革的指导意见"}],
+      "review_metadata": {"reviewed_by": "competition_app_route_governance", "reviewed_at": "2026-07-17T00:00:00Z", "review_note": "Imported approved route; annual directory and role policy refresh required."}
+    },
+    {
+      "route_id": "occupational_skill_tcm_healthcare", "route_version": 1, "route_status": "approved", "status": "approved", "goal_type": "vocational_skill", "goal_name": "中医药健康服务相关职业技能等级（以保健艾灸师等为例）",
+      "phases": [{"phase_id": "phase-0", "name": "职业标准与评价机构核验", "objective": "确认职业名称、编码、评价机构、等级与当地要求。", "exit_evidence": ["评价机构已核验"]}, {"phase_id": "phase-1", "name": "保健服务基础与安全边界", "objective": "明确沟通、禁忌和不得医疗诊疗的边界。", "exit_evidence": ["完成安全边界评估"]}, {"phase_id": "phase-2", "name": "职业标准中的技术模块", "objective": "按职业标准训练任务、流程、操作和质量要求。", "exit_evidence": ["完成技术模块训练"]}, {"phase_id": "phase-3", "name": "实操评价与服务复盘", "objective": "根据评价机构要求完成操作、沟通和安全复盘。", "exit_evidence": ["完成实操评价"]}],
+      "sources": [{"source_id": "src-national-occupation-catalog-2021", "source_type": "official_catalog", "title": "国家职业资格目录（2021年版）"}, {"source_id": "src-health-moxibustion-standard-2024", "source_type": "official_standard", "title": "保健艾灸师国家职业技能标准（2024年版）"}],
+      "review_metadata": {"reviewed_by": "competition_app_route_governance", "reviewed_at": "2026-07-17T00:00:00Z", "review_note": "Imported approved route; it is not physician licensure and evaluation institutions require checks."}
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+﻿interface:
+  display_name: "中医药试卷出卷"
+  short_description: "基于大纲和样卷设计原创中医药考试试卷、答案与评分细则。"
+  default_prompt: "Use $zhongyi-exam-paper-authoring to analyze these TCM exam samples and draft an original exam blueprint and paper."
+

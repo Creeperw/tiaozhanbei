@@ -1,0 +1,439 @@
+import asyncio
+
+import pytest
+from pydantic import BaseModel
+
+from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
+from competition_app.contracts.resource import AuditResult
+from competition_app.contracts.learning_plan import LearningPlanClarificationResult
+from competition_app.contracts.default_route import ResolvedPlanningRoute
+from competition_app.agents.common import envelope
+from competition_app.application.container import ApplicationContainer
+from competition_app.config import Settings
+from competition_app.runtime.agent_registry import AgentRegistry
+from competition_app.runtime.langgraph_orchestrator import LangGraphOrchestrator
+from competition_app.runtime.orchestrator import Orchestrator
+
+
+class RecordingAgent:
+    def __init__(self, name: str, events: list[str], fail_once: bool = False) -> None:
+        self.name = name
+        self.events = events
+        self.fail_once = fail_once
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        self.events.append(f"start:{self.name}")
+        await asyncio.sleep(0.01)
+        if self.fail_once and self.calls == 1:
+            raise RuntimeError("temporary")
+        self.events.append(f"end:{self.name}")
+        return {
+            "agent": self.name,
+            "inputs": sorted(context.get("dependency_outputs", {})),
+        }
+
+
+class FailingAgent:
+    async def run(self, context):
+        raise LookupError("knowledge point could not be resolved")
+
+
+class CountingAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        return {"draft": self.calls}
+
+
+class AuditSequenceAgent:
+    def __init__(self, decisions: list[str]) -> None:
+        self.decisions = decisions
+        self.calls = 0
+
+    async def run(self, context):
+        decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
+        self.calls += 1
+        return AuditOutput(
+            payload=AuditResult(
+                audit_result_id=f"AUDIT_{self.calls}", decision=decision
+            )
+        )
+
+
+class AuditOutput(BaseModel):
+    payload: AuditResult
+
+
+class ClarifyingAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        if "用户补充的具体变化" not in context.get("user_request", ""):
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "learning_plan_clarification",
+                LearningPlanClarificationResult(
+                    clarification_questions=["新的目标和期限是什么？"],
+                    reason="重规划信息不足。",
+                    requested_scope="long_term",
+                ),
+            )
+        return {
+            "resolved_request": context["user_request"],
+            "plan_scope": context.get("plan_scope"),
+        }
+
+
+class DependencyAwareClarifyingAgent(ClarifyingAgent):
+    async def run(self, context):
+        result = await super().run(context)
+        if isinstance(result, dict):
+            dependencies = context.get("dependency_outputs", {})
+            result["dependency_keys"] = sorted(dependencies)
+            route = dependencies.get("route")
+            result["route_payload_type"] = type(
+                getattr(route, "payload", None)
+            ).__name__
+        return result
+
+
+class RouteEnvelopeAgent:
+    async def run(self, context):
+        return envelope(
+            context,
+            "default_route_resolver",
+            "resolved_planning_route",
+            ResolvedPlanningRoute(
+                goal_type="credential",
+                goal_name="中医执业医师",
+                planning_status="provisional",
+                match_reason="test",
+                assumptions=["test"],
+            ),
+        )
+
+
+class RefreshingRouteAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        is_resumed = "用户补充的具体变化" in context.get("user_request", "")
+        return envelope(
+            context,
+            "default_route_resolver",
+            "resolved_planning_route",
+            ResolvedPlanningRoute(
+                goal_type="credential",
+                goal_name=("中医执业医师" if is_resumed else "未提供学习目标"),
+                planning_status=("approved_route" if is_resumed else "provisional"),
+                route_id=("tcm_physician_standard_degree" if is_resumed else None),
+                route_version=(1 if is_resumed else None),
+                route_status=("approved" if is_resumed else None),
+                match_reason=(
+                    "agent_selected" if is_resumed else "agent_requires_clarification"
+                ),
+                unknowns_to_confirm=([] if is_resumed else ["准备参加什么考试？"]),
+            ),
+        )
+
+
+class RouteDependentDiagnosisAgent:
+    async def run(self, context):
+        route = context["dependency_outputs"]["route_resolution"].payload
+        if route.planning_status != "approved_route":
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "learning_plan_clarification",
+                LearningPlanClarificationResult(
+                    clarification_questions=list(route.unknowns_to_confirm),
+                    reason="学习目标尚未匹配到正式路线。",
+                    requested_scope="long_term",
+                ),
+            )
+        return {"route_id": route.route_id, "goal_name": route.goal_name}
+
+
+@pytest.mark.asyncio
+async def test_langgraph_executes_parallel_dependencies_and_retries() -> None:
+    events: list[str] = []
+    registry = AgentRegistry()
+    memory = RecordingAgent("memory", events)
+    knowledge = RecordingAgent("knowledge", events, fail_once=True)
+    diagnosis = RecordingAgent("diagnosis", events)
+    registry.register("memory_agent", memory)
+    registry.register("knowledge_agent", knowledge)
+    registry.register("diagnosis_agent", diagnosis)
+    plan = ExecutionPlan(
+        plan_id="P_GRAPH",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="memory", agent="memory_agent"),
+            ExecutionStep(step_id="knowledge", agent="knowledge_agent"),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["memory", "knowledge"],
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "success"
+    assert knowledge.calls == 2
+    assert result.outputs["diagnosis"]["inputs"] == ["knowledge", "memory"]
+    assert events.index("start:diagnosis") > events.index("end:memory")
+    assert events.index("start:diagnosis") > events.index("end:knowledge")
+
+
+@pytest.mark.asyncio
+async def test_langgraph_preserves_step_failure_and_blocks_dependents() -> None:
+    registry = AgentRegistry()
+    dependent = CountingAgent()
+    registry.register("knowledge_agent", FailingAgent())
+    registry.register("expert_agent", dependent)
+    plan = ExecutionPlan(
+        plan_id="P_FAIL",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="knowledge", agent="knowledge_agent"),
+            ExecutionStep(
+                step_id="expert",
+                agent="expert_agent",
+                depends_on=["knowledge"],
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "failed"
+    assert result.error_type == "LookupError"
+    assert "knowledge point could not be resolved" in result.error_message
+    assert dependent.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_langgraph_preserves_single_audit_revision() -> None:
+    registry = AgentRegistry()
+    expert = CountingAgent()
+    audit = AuditSequenceAgent(["revise", "pass"])
+    registry.register("expert_agent", expert)
+    registry.register("audit_agent", audit)
+    plan = ExecutionPlan(
+        plan_id="P_REVISE",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="expert", agent="expert_agent"),
+            ExecutionStep(
+                step_id="audit", agent="audit_agent", depends_on=["expert"]
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "success"
+    assert expert.calls == 2
+    assert audit.calls == 2
+
+
+def test_langgraph_compiles_existing_execution_plan_for_visualization() -> None:
+    registry = AgentRegistry()
+    registry.register("memory_agent", CountingAgent())
+    registry.register("expert_agent", CountingAgent())
+    plan = ExecutionPlan(
+        plan_id="P_VISUAL",
+        task_type="personalized_review_card",
+        steps=[
+            ExecutionStep(step_id="memory", agent="memory_agent"),
+            ExecutionStep(
+                step_id="expert", agent="expert_agent", depends_on=["memory"]
+            ),
+        ],
+    )
+
+    graph = LangGraphOrchestrator(registry).compile_plan(plan, {})
+    mermaid = graph.get_graph().draw_mermaid()
+
+    assert "memory" in mermaid
+    assert "expert" in mermaid
+
+
+def test_container_uses_langgraph_by_default_and_keeps_legacy_fallback() -> None:
+    default_container = ApplicationContainer.build(Settings(mode="stub"))
+    legacy_container = ApplicationContainer.build(
+        Settings(mode="stub", execution_engine="legacy")
+    )
+
+    assert isinstance(
+        default_container.review_card_use_case.orchestrator,
+        LangGraphOrchestrator,
+    )
+    assert type(legacy_container.review_card_use_case.orchestrator) is Orchestrator
+
+
+@pytest.mark.asyncio
+async def test_langgraph_interrupts_and_resumes_same_thread_from_checkpoint() -> None:
+    registry = AgentRegistry()
+    agent = ClarifyingAgent()
+    registry.register("diagnosis_agent", agent)
+    plan = ExecutionPlan(
+        plan_id="P_INTERRUPT",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="diagnosis", agent="diagnosis_agent")],
+    )
+    context = {
+        "case_id": "CASE_INTERRUPT",
+        "trace_id": "TRACE_INTERRUPT",
+        "request_id": "REQ_INTERRUPT",
+        "execution_id": "EXE_INTERRUPT",
+        "learner_id": "LEARNER_INTERRUPT",
+        "task_type": "learning_plan",
+        "user_request": "这个长期规划我不满意，重新计划一下",
+        "original_user_request": "这个长期规划我不满意，重新计划一下",
+        "messages": [],
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_INTERRUPT_001"
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.thread_id == "THREAD_INTERRUPT_001"
+    assert interrupted.interrupt["step_id"] == "diagnosis"
+    assert orchestrator.pending_interrupt("THREAD_INTERRUPT_001") is not None
+
+    resumed = await orchestrator.resume(
+        "THREAD_INTERRUPT_001",
+        {
+            "answer": "改为半年内完成方剂学，按教材章节推进。",
+            "plan_scope": "long_term",
+        },
+    )
+
+    assert resumed.status == "success"
+    assert "半年内完成方剂学" in resumed.outputs["diagnosis"]["resolved_request"]
+    assert resumed.outputs["diagnosis"]["plan_scope"] == "long_term"
+    assert agent.calls == 3
+    assert orchestrator.pending_interrupt("THREAD_INTERRUPT_001") is None
+
+
+@pytest.mark.asyncio
+async def test_langgraph_resume_preserves_completed_upstream_outputs() -> None:
+    registry = AgentRegistry()
+    registry.register("route_agent", RouteEnvelopeAgent())
+    registry.register("diagnosis_agent", DependencyAwareClarifyingAgent())
+    plan = ExecutionPlan(
+        plan_id="P_INTERRUPT_WITH_PARENT",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(step_id="route", agent="route_agent"),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["route"],
+            ),
+        ],
+    )
+    context = {
+        "case_id": "CASE_INTERRUPT_PARENT",
+        "trace_id": "TRACE_INTERRUPT_PARENT",
+        "request_id": "REQ_INTERRUPT_PARENT",
+        "execution_id": "EXE_INTERRUPT_PARENT",
+        "learner_id": "LEARNER_INTERRUPT_PARENT",
+        "task_type": "learning_plan",
+        "user_request": "重新制定计划",
+        "original_user_request": "重新制定计划",
+        "messages": [],
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_INTERRUPT_PARENT"
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_INTERRUPT_PARENT",
+        {"answer": "一年内完成", "plan_scope": "long_term"},
+    )
+
+    assert interrupted.status == "interrupted"
+    assert "route" in interrupted.outputs
+    assert resumed.status == "success"
+    assert set(resumed.outputs) == {"route", "diagnosis"}
+    assert resumed.outputs["diagnosis"]["dependency_keys"] == ["route"]
+    assert resumed.outputs["diagnosis"]["route_payload_type"] == "ResolvedPlanningRoute"
+
+
+@pytest.mark.asyncio
+async def test_langgraph_resume_refreshes_route_resolution_before_diagnosis() -> None:
+    registry = AgentRegistry()
+    route_agent = RefreshingRouteAgent()
+    registry.register("default_route_resolver", route_agent)
+    registry.register("diagnosis_agent", RouteDependentDiagnosisAgent())
+    plan = ExecutionPlan(
+        plan_id="P_INTERRUPT_REFRESH_ROUTE",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(
+                step_id="route_resolution",
+                agent="default_route_resolver",
+            ),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["route_resolution"],
+            ),
+        ],
+    )
+    context = {
+        "case_id": "CASE_INTERRUPT_REFRESH_ROUTE",
+        "trace_id": "TRACE_INTERRUPT_REFRESH_ROUTE",
+        "request_id": "REQ_INTERRUPT_REFRESH_ROUTE",
+        "execution_id": "EXE_INTERRUPT_REFRESH_ROUTE",
+        "learner_id": "LEARNER_INTERRUPT_REFRESH_ROUTE",
+        "task_type": "learning_plan",
+        "user_request": "请结合我的学习状态，给我制定一份长期学习计划。",
+        "original_user_request": "请结合我的学习状态，给我制定一份长期学习计划。",
+        "messages": [],
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan,
+        context,
+        thread_id="THREAD_INTERRUPT_REFRESH_ROUTE",
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_INTERRUPT_REFRESH_ROUTE",
+        {
+            "answer": "我想考中医执业医师资格考试",
+            "plan_scope": "long_term",
+        },
+    )
+
+    assert interrupted.status == "interrupted"
+    assert resumed.status == "success"
+    assert route_agent.calls == 2
+    assert resumed.outputs["route_resolution"].payload.planning_status == "approved_route"
+    assert resumed.outputs["diagnosis"] == {
+        "route_id": "tcm_physician_standard_degree",
+        "goal_name": "中医执业医师",
+    }
