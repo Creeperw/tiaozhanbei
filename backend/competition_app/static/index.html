@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="时珍智训多智能体运行观测台，实时查看模型调用、知识检索、复习调度与审核过程。">
+  <meta name="theme-color" content="#173f32">
+  <title>时珍智训 · 多智能体运行台</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23173f32'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='38' fill='white'%3E%E6%97%B6%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/demo/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#run-form">跳到运行配置</a>
+  <a class="skip-link" href="#execution-stage">跳到执行链路</a>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">时</div>
+      <div class="brand-copy">
+        <p class="eyebrow">多智能体学习实验台</p>
+        <h1>时珍智训 · 运行观测台</h1>
+      </div>
+      <div id="environment-status" class="status" role="status" aria-live="polite"><span></span> 正在读取运行环境</div>
+      <div id="auth-user" class="auth-user" hidden>
+        <span data-auth-name>当前用户</span>
+        <button type="button" data-auth-logout>退出</button>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero">
+        <div>
+          <p class="eyebrow accent">LangGraph · 真实模型 · 正式知识库</p>
+          <h2>看见智能体如何<br>选择、汇合与返修</h2>
+          <p class="lead">Planner 每次按诉求编译一张不同的执行图。节点依赖、可并行分支、失败重试和审核返修都会在下方实时留下状态，而不只是按顺序打印日志。</p>
+        </div>
+        <div class="principle-card">
+          <p>为什么使用 LangGraph</p>
+          <strong>路径按任务生长</strong>
+          <span>简单讲解只走必要节点；完整复习会并行准备证据与路线，在 Audit 发现问题时只返修受影响的专家产物。</span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="control-panel">
+          <div class="panel-title">
+            <span>01</span>
+            <div><small>INPUT</small><h3>发起学习请求</h3></div>
+          </div>
+          <form id="run-form" novalidate>
+            <section class="preset-section" aria-labelledby="preset-title">
+              <div class="preset-heading">
+                <div><small>ONE-CLICK FIXTURES</small><strong id="preset-title">一键测试数据</strong></div>
+                <span id="preset-status" role="status" aria-live="polite">点击后自动填入</span>
+              </div>
+              <div class="preset-grid">
+                <button class="preset-button active" type="button" data-preset="review_due"><b>到期复习</b><span>真实状态 + 遗忘曲线</span></button>
+                <button class="preset-button" type="button" data-preset="initial_recall"><b>首次复习</b><span>无历史知识状态</span></button>
+                <button class="preset-button" type="button" data-preset="learning_plan"><b>学习计划</b><span>只规划，不生成资源</span></button>
+                <button class="preset-button" type="button" data-preset="explanation"><b>知识讲解</b><span>Knowledge → Expert → Audit</span></button>
+                <button class="preset-button" type="button" data-preset="paper"><b>模拟组卷</b><span>蓝图 → 候选池 → 整卷</span></button>
+              </div>
+            </section>
+            <label for="learner-id">学习者 ID <small>由当前登录账号确定</small><input id="learner-id" name="learner_id" value="" autocomplete="off" readonly required></label>
+            <label>可用时间
+              <small>只表示本次任务可用上限，不要求安排满；不修改画像中的日常学习时间</small>
+              <div class="range-row"><input id="minutes" name="available_minutes" type="range" min="5" max="1440" step="5" value="15"><output id="minutes-output" for="minutes">15 分钟</output></div>
+            </label>
+            <label for="user-request">用户本次诉求 <small id="request-help">Planner 决定参与 Agent；Knowledge Agent 负责解析检索意图</small><textarea id="user-request" name="user_request" rows="4" aria-describedby="request-help" required>请结合我的学习状态，为四君子汤制定一份本周复习计划，不需要生成复习卡。</textarea></label>
+            <section class="plan-inputs" aria-labelledby="plan-inputs-title">
+              <div class="plan-inputs-heading">
+                <div><small>CURRENT PLANS</small><strong id="plan-inputs-title">当前长短期计划</strong></div>
+                <span>独立测试输入 · 随预设切换</span>
+              </div>
+              <label for="long-term-plan">长期规划
+                <small>作为当前有效长期规划发送；留空表示暂无长期规划。</small>
+                <textarea id="long-term-plan" name="long_term_plan" rows="5"></textarea>
+              </label>
+              <label for="short-term-plan">短期计划
+                <small>作为当前有效短期计划发送；留空表示暂无短期计划。</small>
+                <textarea id="short-term-plan" name="short_term_plan" rows="5"></textarea>
+              </label>
+            </section>
+            <details class="advanced-input" open>
+              <summary><span>用户学习数据包</span><small>JSON · 高级输入</small></summary>
+              <label for="learning-packet"><small id="packet-help">可选；仅白名单字段会发送，组卷时可加入 exam_constraints</small><textarea id="learning-packet" name="learning_packet" rows="11" aria-describedby="packet-help" spellcheck="false">{
+  "user_profile": {"goals": {"long_term_goal": "建立中医基础理论体系", "short_term_goal": "本周掌握当前主题"}, "daily_available_minutes": 15},
+  "learning_profile": {"current_status": {"status_code": "T0", "status_name": "Stable Learning", "confidence": 0.8, "evidence": []}},
+  "system_data": {},
+  "user_knowledge_state": [],
+  "question_attempt": []
+}</textarea></label>
+              <p id="packet-error" class="field-error" role="alert"></p>
+            </details>
+            <button id="run-button" type="submit"><span>▶</span> 运行多智能体框架</button>
+            <button id="review-queue-button" class="secondary-action" type="button">查看此学习者复习队列</button>
+          </form>
+          <div class="legend">
+            <p><i class="dot agent"></i> 智能体判断</p>
+            <p><i class="dot system"></i> 系统确定性处理</p>
+            <p><i class="dot audit"></i> 审核与输出</p>
+          </div>
+        </aside>
+
+        <section id="execution-stage" class="stage-panel" aria-busy="false">
+          <div class="panel-title">
+            <span>02</span>
+            <div><small>ORCHESTRATION</small><h3>实时执行链路</h3></div>
+            <div id="run-state" class="run-state idle" role="status" aria-live="polite">等待运行</div>
+          </div>
+          <section id="graph-monitor" class="graph-monitor" aria-labelledby="graph-title">
+            <header class="graph-heading">
+              <div>
+                <small>COMPILED STATE GRAPH</small>
+                <h4 id="graph-title">本次动态执行图</h4>
+                <p id="graph-description">运行后展示 Planner 实际选择的节点与依赖，不使用固定流程模板。</p>
+              </div>
+              <span id="graph-engine" class="engine-badge">等待编译</span>
+            </header>
+            <dl class="graph-metrics" aria-label="执行图指标">
+              <div><dt>节点</dt><dd id="metric-nodes">—</dd></div>
+              <div><dt>依赖边</dt><dd id="metric-edges">—</dd></div>
+              <div><dt>并行宽度</dt><dd id="metric-parallel">—</dd></div>
+              <div><dt>重试</dt><dd id="metric-retries">0</dd></div>
+              <div><dt>返修</dt><dd id="metric-revisions">0</dd></div>
+              <div><dt>耗时</dt><dd id="metric-elapsed">0s</dd></div>
+            </dl>
+            <div id="graph-canvas" class="graph-canvas graph-empty" role="img" aria-label="等待生成执行图">
+              <div class="graph-placeholder"><span>◇</span><p>Planner 完成路由后，LangGraph 会在这里编译本次 DAG</p></div>
+            </div>
+            <div class="graph-key" aria-label="图例">
+              <span><i class="key-line"></i>依赖流</span>
+              <span><i class="key-line revision"></i>审核返修</span>
+              <span><i class="key-node running"></i>运行中</span>
+              <span><i class="key-node complete"></i>已完成</span>
+            </div>
+            <ol id="graph-event-log" class="graph-event-log" aria-live="polite"></ol>
+          </section>
+          <div class="pipeline-heading"><small>NODE EVENTS</small><strong>节点事件与系统产物</strong></div>
+          <div id="pipeline" class="pipeline" aria-live="polite" aria-relevant="additions text"></div>
+          <section id="model-io-section" class="model-io hidden">
+            <div class="io-heading">
+              <div><small>模型调用边界 · 凭据字段已脱敏</small><h4>模型原始输入 / 输出</h4><p>可能包含学习者业务数据，请按内部资料管理。</p></div>
+              <span id="model-io-count" aria-live="polite"></span>
+            </div>
+            <div id="model-io-list" class="model-io-list"></div>
+          </section>
+          <div id="empty-state" class="empty-state">
+            <div class="pulse-ring"></div>
+            <p>已载入“到期复习”测试场景</p>
+            <span>可直接运行，或先修改学习者数据</span>
+          </div>
+        </section>
+      </section>
+
+      <section id="result-section" class="results hidden">
+        <div class="result-heading">
+          <div><p class="eyebrow accent">系统输出</p><h2 tabindex="-1">正式计划与学习产物</h2></div>
+          <div id="audit-badge" class="audit-badge" role="status">等待审核</div>
+        </div>
+        <section id="plan-clarification" class="plan-clarification hidden" aria-labelledby="clarification-title">
+          <div class="clarification-heading">
+            <div><small id="clarification-mode">LANGGRAPH INTERRUPT</small><h3 id="clarification-title">流程已暂停，等待你的回答</h3></div>
+            <p id="clarification-reason"></p>
+          </div>
+          <div id="clarification-checkpoint" class="clarification-checkpoint hidden" role="status">
+            <span></span><strong>检查点已保存在当前服务进程</strong><small>刷新页面或短暂断线后可继续；服务重启后失效。</small>
+          </div>
+          <ul id="clarification-questions"></ul>
+          <form id="clarification-form">
+            <label for="clarification-target">调整范围
+              <select id="clarification-target" required>
+                <option value="long_term">长期规划</option>
+                <option value="short_term">短期计划</option>
+                <option value="daily_task">当日任务</option>
+              </select>
+            </label>
+            <label for="clarification-change-details">具体希望怎样调整
+              <textarea id="clarification-change-details" rows="3" required placeholder="例如：希望按基础、代表方、类方辨析和综合应用分阶段学习。"></textarea>
+            </label>
+            <label for="clarification-available-time">当前可用时间
+              <input id="clarification-available-time" placeholder="例如：每天 25 分钟，每周 5 天">
+            </label>
+            <label for="clarification-keep-items">希望保留的内容
+              <input id="clarification-keep-items" placeholder="可选">
+            </label>
+            <label for="clarification-drop-items">希望放弃的内容
+              <input id="clarification-drop-items" placeholder="可选">
+            </label>
+            <label for="clarification-expected-outcome">期望结果
+              <input id="clarification-expected-outcome" placeholder="例如：每个阶段都有明确验收标准">
+            </label>
+            <button id="clarification-submit" type="submit">回答并从中断节点继续</button>
+          </form>
+        </section>
+        <section class="processed-output" aria-labelledby="processed-output-title">
+          <div class="processed-heading">
+            <div><small>DEBUG DETAILS · SYSTEM PROCESSED DATA</small><h3 id="processed-output-title">调试详情 · 系统处理后的数据</h3><p>路线、来源、协议与校验等内部信息仅保留在这里，不进入下方正式计划正文。</p></div>
+            <span id="processed-output-count"></span>
+          </div>
+          <div id="processed-output-tree" class="processed-output-tree"></div>
+        </section>
+        <div class="result-grid">
+          <article class="result-card long-plan" data-result-layer="long-term"><small>LONG-TERM PLAN</small><h3>长期学习计划</h3><p id="long-plan"></p></article>
+          <article class="result-card short-plan" data-result-layer="short-term"><small>SHORT-TERM PLAN</small><h3>短期计划</h3><div id="short-plan-focus" class="plan-meta" hidden></div><p id="short-plan"></p></article>
+          <article class="result-card task-card" data-result-layer="daily"><small>DAILY LEARNING TASK</small><h3>今日学习任务</h3><p id="task-content"></p><dl><div><dt>预计时长</dt><dd id="task-minutes"></dd></div><div><dt>完成标准</dt><dd id="task-criteria"></dd></div></dl></article>
+          <article id="resource-card" class="result-card resource-card" data-result-layer="resource" hidden><small>LEARNING RESOURCE</small><h3 id="resource-title">学习产物</h3><div id="resource-content"></div></article>
+        </div>
+        <section id="review-queue-panel" class="review-queue-panel" aria-labelledby="review-queue-title">
+          <header>
+            <div><small>PERSISTED REVIEW LOOP</small><h3 id="review-queue-title">复习知识点队列</h3><p>按到期时间与记忆保持率排序；已审核资源会自动绑定并显示在对应任务中。</p></div>
+            <div class="review-queue-actions">
+              <span id="review-queue-summary" role="status">等待读取</span>
+              <button id="review-dispatch-button" type="button">推送下一个到期资源</button>
+            </div>
+          </header>
+          <div id="review-queue-list" class="review-queue-list" aria-live="polite">
+            <p class="review-queue-empty">完成一次复习资源生成后，这里会显示持久化队列。</p>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script src="/chat/plan_scope.js?v=20260720.1"></script>
+  <script src="/auth/session.js"></script>
+  <script src="/demo/app.js"></script>
+</body>
+</html>

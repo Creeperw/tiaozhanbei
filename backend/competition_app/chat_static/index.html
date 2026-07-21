@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="岐黄学伴是一款面向中医药学习的个性化对话助手。">
+  <meta name="theme-color" content="#f3efe5">
+  <title>岐黄学伴 · 中医药学习助手</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232c5545'/%3E%3Cpath d='M18 19h28M23 30h18M18 41h28M31.5 13v38' stroke='%23f3efe5' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/chat/chat.css?v=20260721.1">
+</head>
+<body>
+  <a class="skip-link" href="#conversation">跳到对话内容</a>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/chat/" aria-label="岐黄学伴首页">
+        <span class="brand-mark" aria-hidden="true">岐</span>
+        <span class="brand-copy">
+          <strong>岐黄学伴</strong>
+          <small>中医药学习助手</small>
+        </span>
+      </a>
+
+      <div class="topbar-actions">
+        <span id="connection-status" class="connection-status" role="status">
+          <i aria-hidden="true"></i>正在连接
+        </span>
+        <button id="learning-toggle" class="learning-toggle" type="button" aria-controls="learning-panel" aria-expanded="false">
+          <span class="learning-toggle-mark" aria-hidden="true">习</span>
+          <span>学习状态</span><i id="learning-activity" aria-hidden="true"></i>
+        </button>
+        <button id="execution-toggle" class="execution-toggle" type="button" aria-controls="execution-panel" aria-expanded="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"></circle><circle cx="18" cy="6" r="2"></circle><circle cx="12" cy="18" r="2"></circle><path d="M7.7 7.2 10.8 16M16.3 7.2 13.2 16M8 6h8"></path></svg>
+          <span>执行链路</span><i id="execution-activity" aria-hidden="true"></i>
+        </button>
+        <button id="new-conversation" class="quiet-button" type="button">新对话</button>
+        <div id="auth-user" class="auth-user" hidden>
+          <span data-auth-name>当前用户</span>
+          <button type="button" data-auth-logout>退出</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="chat-workspace">
+      <aside id="learning-panel" class="learning-panel" aria-labelledby="learning-panel-title" aria-hidden="true">
+        <header class="learning-panel-heading">
+          <div><p>学习驾驶舱</p><h2 id="learning-panel-title">你的学习状态</h2></div>
+          <button id="learning-close" type="button" aria-label="关闭学习状态">×</button>
+        </header>
+        <div class="learning-sync-line">
+          <span id="learning-sync-status">等待同步</span>
+          <button id="learning-refresh" type="button">刷新</button>
+        </div>
+
+        <section class="learning-status-block" aria-labelledby="learning-status-title">
+          <div class="section-caption"><h3 id="learning-status-title">当前节奏</h3><span id="learning-status-code">—</span></div>
+          <strong id="learning-status-name">正在读取学习画像</strong>
+          <p id="learning-status-evidence">系统会结合任务、答题与复习记录判断学习重点。</p>
+        </section>
+
+        <dl class="learning-metrics" aria-label="学习行为指标">
+          <div><dt>任务完成</dt><dd id="metric-completion">—</dd></div>
+          <div><dt>答题正确</dt><dd id="metric-accuracy">—</dd></div>
+          <div><dt>资源使用</dt><dd id="metric-click">—</dd></div>
+          <div><dt>本周专注</dt><dd id="metric-focus">—</dd></div>
+        </dl>
+
+        <section class="focus-card" aria-labelledby="focus-title">
+          <div class="section-caption"><h3 id="focus-title">专注学习</h3><span id="focus-clock">00:00</span></div>
+          <p id="focus-description">开始后仅累计页面可见且有交互的有效时间。</p>
+          <div class="focus-actions">
+            <button id="focus-start" type="button">开始专注</button>
+            <button id="focus-end" type="button" disabled>结束并记录</button>
+          </div>
+        </section>
+
+        <section class="current-task-card" aria-labelledby="current-task-title">
+          <div class="section-caption"><h3 id="current-task-title">当前任务</h3><span id="current-task-status">未安排</span></div>
+          <strong id="current-task-content">对话生成当日任务后会显示在这里</strong>
+          <p id="current-task-criteria">完成标准会与任务一起保存。</p>
+          <button id="current-task-complete" type="button" disabled>标记为已完成</button>
+        </section>
+
+        <section class="trend-card" aria-labelledby="trend-title">
+          <div class="section-caption"><h3 id="trend-title">近 7 天</h3><span>有效专注分钟</span></div>
+          <div id="learning-trend" class="learning-trend" aria-label="近七天学习趋势">
+            <p class="panel-empty">完成一次专注学习后生成趋势。</p>
+          </div>
+        </section>
+
+        <section class="weak-points-card" aria-labelledby="weak-points-title">
+          <div class="section-caption"><h3 id="weak-points-title">当前薄弱点</h3><span id="weak-point-count">0 项</span></div>
+          <div id="weak-point-list" class="weak-point-list"><p class="panel-empty">暂未识别明确薄弱点。</p></div>
+        </section>
+
+        <section class="review-queue-card" aria-labelledby="review-queue-title">
+          <div class="section-caption"><h3 id="review-queue-title">到期复习</h3><span id="review-due-count">0 项</span></div>
+          <ol id="learning-review-list"><li class="panel-empty">当前没有到期复习任务。</li></ol>
+        </section>
+
+        <footer class="learning-data-note">
+          <span aria-hidden="true">数</span>
+          <p><strong>已接入本次对话</strong><br><span id="learning-data-source">服务端将自动提供可信行为数据。</span></p>
+        </footer>
+      </aside>
+      <button id="learning-overlay" class="learning-overlay" type="button" aria-label="关闭学习状态"></button>
+
+      <section class="conversation-column" aria-label="学习对话">
+        <main id="conversation" class="conversation" tabindex="-1">
+          <section id="welcome" class="welcome" aria-labelledby="welcome-title">
+            <div class="welcome-kicker"><span aria-hidden="true">岐</span><p>你的中医药学习搭档</p></div>
+            <h1 id="welcome-title">今天想从哪里<br>继续学起？</h1>
+            <p class="welcome-copy">说出目标、进度或卡住的地方。我会先理解你的真实状态，需要时追问，再给出能落地的学习安排。</p>
+
+            <div class="suggestions" aria-label="示例问题">
+              <button type="button" data-prompt="请结合我的学习状态，为四君子汤制定本周学习计划。"><small>制定计划</small><span>结合当前状态安排本周学习</span></button>
+              <button type="button" data-prompt="我总是混淆四君子汤和理中丸，请帮我梳理区别。"><small>知识辨析</small><span>梳理四君子汤与理中丸</span></button>
+              <button type="button" data-prompt="根据我的薄弱知识点，安排一次针对性复习。"><small>针对复习</small><span>根据薄弱点生成复习任务</span></button>
+            </div>
+          </section>
+
+          <section id="message-list" class="message-list" aria-label="对话记录" aria-live="polite"></section>
+        </main>
+
+        <footer class="composer-region">
+          <form id="message-form" class="composer">
+            <label class="sr-only" for="message-input">输入学习需求</label>
+            <textarea id="message-input" name="message" rows="1" maxlength="4000" required
+              placeholder="说说你想学什么，或哪里需要调整……"></textarea>
+
+            <div class="composer-footer">
+              <details class="preferences">
+                <summary>学习设置</summary>
+                <div class="preferences-panel">
+                  <label for="available-minutes">本次可用时间上限</label>
+                  <div class="minute-field">
+                    <input id="available-minutes" type="number" min="1" max="1440" value="60" inputmode="numeric">
+                    <span>分钟</span>
+                  </div>
+                  <p>这是可用上限，不会强制安排满。</p>
+                </div>
+              </details>
+
+              <span class="keyboard-hint">Enter 发送 · Shift + Enter 换行</span>
+              <button id="send-button" class="send-button" type="submit" aria-label="发送消息">
+                <span>发送</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m5 12 13-7-4 14-3-5-6-2Z"></path>
+                  <path d="m11 14 7-9"></path>
+                </svg>
+              </button>
+            </div>
+          </form>
+          <p class="disclaimer">内容用于辅助学习，请以教材、课程要求与专业指导为准。</p>
+        </footer>
+      </section>
+
+      <aside id="execution-panel" class="execution-panel" aria-labelledby="execution-title">
+        <header class="execution-heading">
+          <div><p>LangGraph</p><h2 id="execution-title">实时执行链路</h2></div>
+          <div class="execution-heading-actions"><span id="execution-engine">等待请求</span><button id="execution-close" type="button" aria-label="收起执行链路">×</button></div>
+        </header>
+        <p id="execution-description" class="execution-description">发起对话后，这里会显示本次实际参与的智能体、依赖关系、重试与审核返修。</p>
+        <dl class="execution-metrics" aria-label="执行指标">
+          <div><dt>节点</dt><dd id="execution-node-count">—</dd></div>
+          <div><dt>重试</dt><dd id="execution-retry-count">0</dd></div>
+          <div><dt>返修</dt><dd id="execution-revision-count">0</dd></div>
+          <div><dt>耗时</dt><dd id="execution-elapsed">0s</dd></div>
+        </dl>
+        <div id="execution-graph" class="execution-graph is-empty" role="img" aria-label="等待生成执行图">
+          <div class="execution-empty"><span aria-hidden="true">◇</span><strong>等待 Planner 编译</strong><p>每次对话都会生成一张不同的执行图。</p></div>
+        </div>
+        <section class="execution-events" aria-labelledby="execution-events-title">
+          <div><h3 id="execution-events-title">运行记录</h3><span id="execution-status">空闲</span></div>
+          <ol id="execution-event-list" aria-live="polite"></ol>
+        </section>
+      </aside>
+      <button id="execution-overlay" class="execution-overlay" type="button" aria-label="关闭执行链路"></button>
+    </div>
+  </div>
+
+  <template id="loading-template">
+    <article class="message message--assistant message--loading" aria-label="岐黄学伴正在回复">
+      <div class="assistant-seal" aria-hidden="true">岐</div>
+      <div class="message-body">
+        <p class="thinking-label">正在梳理你的学习需求</p>
+        <div class="skeleton"><span></span><span></span><span></span></div>
+      </div>
+    </article>
+  </template>
+
+  <script src="/chat/plan_scope.js?v=20260720.1" defer></script>
+  <script src="/auth/session.js" defer></script>
+  <script src="/chat/chat.js?v=20260721.1" defer></script>
+</body>
+</html>

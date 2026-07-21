@@ -194,6 +194,22 @@ cython_debug/
 #   Learn more at https://abstra.io/docs
 .abstra/
 
+# Shizhen backend local configuration and runtime artifacts
+.env.local
+.env.*.local
+backend/competition_app/snapshots/
+backend/competition_app/runtime/frontend_backend/
+backend/competition/backend-handoff-20260720/APP/backend/runtime/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Large knowledge assets are mounted outside Git
+backend/competition/vdb_store/
+backend/competition/题库与知识点库（原始）/
+backend/competition/知识星球视频知识库_前端交接包_*/
+
 # Visual Studio Code
 #   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
 #   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore

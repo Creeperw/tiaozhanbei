@@ -1,0 +1,444 @@
+from __future__ import annotations
+
+import importlib
+import os
+import sys
+import threading
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from typing import Any
+from urllib.parse import quote_plus
+
+from fastapi import FastAPI
+
+from competition_app.config import Settings
+
+
+_IMPORT_LOCK = threading.RLock()
+
+
+@contextmanager
+def _temporary_environment(values: dict[str, str]):
+    previous = {name: os.environ.get(name) for name in values}
+    os.environ.update(values)
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+@dataclass
+class BackendHandoffRuntime:
+    """Loaded frontend-backend contract hosted inside the main ASGI process."""
+
+    app: FastAPI
+    root: Path
+    runtime_root: Path
+    database_backend: str
+    _started: bool = False
+    _lifespan: object | None = field(default=None, init=False, repr=False)
+
+    @property
+    def route_count(self) -> int:
+        return len(self.app.routes)
+
+    def status(self) -> dict[str, object]:
+        return {
+            "enabled": True,
+            "mounted": True,
+            "source": str(self.root),
+            "runtime_root": str(self.runtime_root),
+            "database_backend": self.database_backend,
+            "route_count": self.route_count,
+            "started": self._started,
+        }
+
+    async def startup(self) -> None:
+        if self._started:
+            return
+        self._lifespan = self.app.router.lifespan_context(self.app)
+        await self._lifespan.__aenter__()
+        self._started = True
+
+    async def shutdown(self) -> None:
+        if not self._started:
+            return
+        if self._lifespan is not None:
+            await self._lifespan.__aexit__(None, None, None)
+        self._lifespan = None
+        self._started = False
+
+    def load_learning_context(self, external_user_id: str) -> dict[str, Any]:
+        """Build a server-owned behavior context for the host application's user."""
+
+        database = importlib.import_module("APP.backend.database")
+        auth = importlib.import_module("APP.backend.auth")
+        diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        memory = importlib.import_module("APP.backend.memory_agent_service")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        db = database.SessionLocal()
+        try:
+            user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+                db, SimpleNamespace(user_id=external_user_id)
+            )
+            snapshot = system_data.rebuild_system_data(db, user_id=user.id)
+            profile = diagnosis.build_learning_profile(db, user.id)
+            behavior_window = diagnosis.build_l3_behavior_window(db, user.id)
+            diagnosis_report = diagnosis.build_diagnosis_snapshot(
+                db, user.id, persist=False
+            )
+            learner_brief = memory.build_learner_context_brief(db, user.id)
+            trends = system_data.build_learning_trends(db, user_id=user.id, days=7)
+
+            mastery_rows = (
+                db.query(database.LearnerKnowledgeMastery)
+                .filter(database.LearnerKnowledgeMastery.user_id == user.id)
+                .order_by(database.LearnerKnowledgeMastery.updated_at.desc())
+                .limit(100)
+                .all()
+            )
+            completed_attempts = self._load_completed_question_attempts(
+                database, db, user.id, external_user_id
+            )
+            system_payload = system_data.system_data_payload(snapshot)
+            system_payload.update(
+                {
+                    "behavior_window": behavior_window,
+                    "question_accuracy": {
+                        "value": profile.get("question_accuracy", 0.0),
+                        "unit": "ratio",
+                    },
+                    "review_stability": {
+                        "value": profile.get("review_stability", 0.0),
+                        "unit": "ratio",
+                    },
+                }
+            )
+            brief_payload = learner_brief.model_dump(mode="json")
+            report_payload = diagnosis_report.model_dump(mode="json")
+            db.commit()
+            return {
+                "source": "frontend_backend",
+                "calculated_at": system_payload.get("calculated_at"),
+                "user_profile": brief_payload.get("profile", {}),
+                "learning_profile": {
+                    **profile,
+                    "current_status": {
+                        "status_code": diagnosis_report.stage_id or "T0",
+                        "status_name": diagnosis_report.stage_name or "稳定学习",
+                        "confidence": diagnosis_report.confidence or 0.0,
+                        "evidence": [diagnosis_report.summary]
+                        if diagnosis_report.summary
+                        else [],
+                    },
+                    "behavior_metrics": behavior_window,
+                },
+                "system_data": system_payload,
+                "question_attempt": completed_attempts,
+                "mastery": [
+                    {
+                        "kp_id": row.kp_id,
+                        "mastery": float(row.mastery or 0.0),
+                        "confidence": float(row.confidence or 0.0),
+                        "wrong_count": int(row.wrong_count or 0),
+                        "review_count": int(row.review_count or 0),
+                        "mastery_status": row.mastery_status,
+                        "last_review_at": row.last_review_at.isoformat()
+                        if row.last_review_at
+                        else None,
+                        "next_review_at": row.next_review_at.isoformat()
+                        if row.next_review_at
+                        else None,
+                    }
+                    for row in mastery_rows
+                ],
+                "learning_trends": trends,
+                "diagnosis": report_payload,
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    @staticmethod
+    def _json_list(value: str | None) -> list[str]:
+        import json
+
+        try:
+            payload = json.loads(value or "[]")
+        except (TypeError, ValueError):
+            return []
+        return [str(item) for item in payload] if isinstance(payload, list) else []
+
+    @classmethod
+    def _load_completed_question_attempts(
+        cls,
+        database,
+        db,
+        user_id: int,
+        external_user_id: str,
+    ) -> list[dict[str, Any]]:
+        """Read only graded question submissions; generated resources are not attempts."""
+
+        attempts: list[dict[str, Any]] = []
+        seen_attempt_ids: set[str] = set()
+        seen_request_ids: set[str] = set()
+
+        graded_rows = (
+            db.query(
+                database.LearningAttemptRecord,
+                database.LearningAttemptItemRecord,
+                database.GradingResultRecord,
+            )
+            .join(
+                database.LearningAttemptItemRecord,
+                database.LearningAttemptItemRecord.attempt_id
+                == database.LearningAttemptRecord.attempt_id,
+            )
+            .join(
+                database.GradingResultRecord,
+                database.GradingResultRecord.attempt_item_id
+                == database.LearningAttemptItemRecord.attempt_item_id,
+            )
+            .filter(
+                database.LearningAttemptRecord.learner_id == user_id,
+                database.GradingResultRecord.status == "reviewed",
+            )
+            .order_by(
+                database.LearningAttemptItemRecord.created_at.desc(),
+                database.GradingResultRecord.version.desc(),
+            )
+            .limit(200)
+            .all()
+        )
+        for attempt, item, grading in graded_rows:
+            source_id = f"HANDOFF_ITEM_{item.attempt_item_id}"
+            if source_id in seen_attempt_ids:
+                continue
+            seen_attempt_ids.add(source_id)
+            if attempt.request_id:
+                seen_request_ids.add(str(attempt.request_id))
+            kp_ids = cls._json_list(grading.kp_ids_json)
+            if not kp_ids:
+                kp_ids = cls._kp_snapshot_ids(item.kp_snapshot_json)
+            if not kp_ids:
+                continue
+            answered_at = attempt.submitted_at or item.created_at
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": item.question_version_id,
+                    "submitted_answer": item.submitted_answer,
+                    "is_correct": bool(grading.is_correct),
+                    "score": grading.score,
+                    "max_score": grading.max_score,
+                    "answered_at": answered_at.isoformat() if answered_at else None,
+                    "kp_ids": kp_ids,
+                    "hint_used": bool(item.hint_used),
+                    "feedback": grading.error_reason,
+                }
+            )
+
+        core_rows = (
+            db.query(database.LearningQuestionAttempt, database.LearningQuestion)
+            .join(
+                database.LearningQuestion,
+                database.LearningQuestion.question_id
+                == database.LearningQuestionAttempt.question_id,
+            )
+            .filter(database.LearningQuestionAttempt.user_id == user_id)
+            .order_by(database.LearningQuestionAttempt.answered_at.desc())
+            .limit(100)
+            .all()
+        )
+        for row, question in core_rows:
+            if row.request_id and str(row.request_id) in seen_request_ids:
+                continue
+            source_id = f"HANDOFF_CORE_{row.attempt_id}"
+            kp_ids = cls._json_list(question.kp_ids_json)
+            if source_id in seen_attempt_ids or not kp_ids:
+                continue
+            seen_attempt_ids.add(source_id)
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": row.question_id,
+                    "submitted_answer": cls._json_list(row.submitted_answer_json),
+                    "is_correct": bool(row.is_correct),
+                    "score": row.score,
+                    "answered_at": row.answered_at.isoformat()
+                    if row.answered_at
+                    else None,
+                    "kp_ids": kp_ids,
+                    "feedback": row.reason_for_mistake,
+                }
+            )
+
+        legacy_rows = (
+            db.query(database.QuestionAttempt)
+            .filter(database.QuestionAttempt.user_id == user_id)
+            .order_by(database.QuestionAttempt.created_at.desc())
+            .limit(100)
+            .all()
+        )
+        for row in legacy_rows:
+            source_id = f"HANDOFF_ATTEMPT_{row.id}"
+            kp_ids = cls._json_list(row.kp_ids_json)
+            if source_id in seen_attempt_ids or not kp_ids:
+                continue
+            seen_attempt_ids.add(source_id)
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": row.question_id,
+                    "submitted_answer": row.answer,
+                    "is_correct": bool(row.is_correct),
+                    "score": row.score,
+                    "answered_at": row.created_at.isoformat()
+                    if row.created_at
+                    else None,
+                    "kp_ids": kp_ids,
+                    "feedback": row.feedback,
+                }
+            )
+
+        attempts.sort(key=lambda item: str(item.get("answered_at") or ""), reverse=True)
+        return attempts[:100]
+
+    @staticmethod
+    def _kp_snapshot_ids(value: str | None) -> list[str]:
+        import json
+
+        try:
+            payload = json.loads(value or "[]")
+        except (TypeError, ValueError):
+            return []
+        if not isinstance(payload, list):
+            return []
+        values = []
+        for item in payload:
+            kp_id = item.get("kp_id") if isinstance(item, dict) else item
+            if kp_id is not None and str(kp_id).strip():
+                values.append(str(kp_id).strip())
+        return list(dict.fromkeys(values))
+
+
+def _validate_handoff_root(root: Path) -> None:
+    required = (
+        root / "APP" / "__init__.py",
+        root / "APP" / "backend" / "main.py",
+        root / "APP" / "backend" / "database.py",
+        root / "APP" / "backend" / "routers" / "vl_chat_routes.py",
+    )
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        raise FileNotFoundError("前端后端交接包不完整：" + "; ".join(missing))
+
+
+def _database_environment(settings: Settings, runtime_root: Path) -> tuple[dict[str, str], str]:
+    if settings.mysql_password:
+        password = quote_plus(settings.mysql_password)
+        username = quote_plus(settings.mysql_user)
+        database = settings.backend_handoff_mysql_database
+        url = (
+            f"mysql+pymysql://{username}:{password}@{settings.mysql_host}:"
+            f"{settings.mysql_port}/{database}?charset=utf8mb4"
+        )
+        return (
+            {
+                "USE_SQLITE": "false",
+                "DATABASE_URL": url,
+                "MYSQL_HOST": settings.mysql_host,
+                "MYSQL_PORT": str(settings.mysql_port),
+                "MYSQL_USER": settings.mysql_user,
+                "MYSQL_PASSWORD": settings.mysql_password,
+                "MYSQL_DATABASE": database,
+            },
+            f"mysql:{database}",
+        )
+    sqlite_path = (runtime_root / "frontend_backend.sqlite3").resolve()
+    return (
+        {
+            "USE_SQLITE": "true",
+            "SQLITE_PATH": str(sqlite_path),
+            "DATABASE_URL": f"sqlite:///{sqlite_path}",
+        },
+        "sqlite",
+    )
+
+
+def _assert_app_package(root: Path, module: ModuleType) -> None:
+    module_path = Path(getattr(module, "__file__", "")).resolve()
+    expected = (root / "APP").resolve()
+    if expected not in module_path.parents and module_path != expected:
+        raise RuntimeError(
+            f"Python 包 APP 已由其他路径占用：{module_path}；期望路径：{expected}"
+        )
+
+
+def load_backend_handoff(settings: Settings) -> BackendHandoffRuntime | None:
+    """Load the delivered backend once, with isolated persistence and runtime paths."""
+
+    if not settings.backend_handoff_enabled:
+        return None
+    root = settings.backend_handoff_root.resolve()
+    runtime_root = settings.backend_handoff_runtime_root.resolve()
+    _validate_handoff_root(root)
+    runtime_root.mkdir(parents=True, exist_ok=True)
+
+    knowledge_paths_root = settings.knowledge_handoff_root.resolve()
+    knowledge_component = knowledge_paths_root / "知识库管理组件"
+    database_env, database_backend = _database_environment(settings, runtime_root)
+    environment = {
+        **database_env,
+        "BACKEND_RUNTIME_ROOT": str(runtime_root),
+        "SECRET_KEY": settings.backend_handoff_secret_key,
+        "LLM_MODE": "local",
+        "LLM_API_KEY": settings.dashscope_api_key or "",
+        "PLANNER_EXECUTOR_BASE_URL": settings.chat_base_url,
+        "PLANNER_EXECUTOR_MODEL": settings.chat_model,
+        "MANAGER_REVIEWER_BASE_URL": settings.chat_base_url,
+        "MANAGER_REVIEWER_MODEL": settings.chat_model,
+        "EMBEDDING_MODE": "disabled",
+        "VOICE_MODE": "disabled",
+        "EXA_API_KEY": settings.exa_api_key or "",
+        "KNOWLEDGE_ATLAS_DATA_ROOT": str(
+            knowledge_component / "data" / "backend_delivery"
+        ),
+        "KNOWLEDGE_ATLAS_VIDEO_ROOT": str(
+            knowledge_paths_root / "bilibili_video_page" / "runtime"
+        ),
+        "OFFICIAL_EXAM_DATA_DIR": str(
+            knowledge_component / "data" / "backend_delivery" / "08_exam_learning_path_2025"
+        ),
+        "KNOWLEDGE_DATA_SOURCE_PATH": str(knowledge_component / "data"),
+        "VDB_STORE_ROOT": str(settings.question_vector_store_root.resolve()),
+    }
+
+    with _IMPORT_LOCK:
+        root_text = str(root)
+        if root_text not in sys.path:
+            sys.path.insert(0, root_text)
+        with _temporary_environment(environment):
+            package = importlib.import_module("APP")
+            _assert_app_package(root, package)
+            module = importlib.import_module("APP.backend.main")
+        delivered_app = getattr(module, "app", None)
+        if not isinstance(delivered_app, FastAPI):
+            raise TypeError("交接包 APP.backend.main 未导出 FastAPI app")
+    return BackendHandoffRuntime(
+        app=delivered_app,
+        root=root,
+        runtime_root=runtime_root,
+        database_backend=database_backend,
+    )
