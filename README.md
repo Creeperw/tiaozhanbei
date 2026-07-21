@@ -29,6 +29,8 @@ tiaozhanbei/
 后端完整环境、数据库、接口、SSE、中断恢复和测试说明见
 [backend/competition_app/README.md](backend/competition_app/README.md)。
 
+前端开发和联调请优先阅读 [前端接口参考](docs/frontend-api-reference.md)。文档明确区分正式 `/api/v1` 与迁移期 `/api` 接口，并包含认证、SSE、中断恢复、学习路径、学习工坊、知识库、复习队列和错误处理契约。
+
 ## 快速启动
 
 项目不要求 Docker，统一使用 Python 3.10 与已有 Conda `torch` 环境：
