@@ -99,7 +99,7 @@ function Write-Pid($pidVal, $path) {
 function Start-Backend {
     Write-Host "==> starting backend (uvicorn APP.backend.main:app)"
     $proc = Start-Process -FilePath "python" `
-        -ArgumentList @("-m","uvicorn","APP.backend.main:app","--host","0.0.0.0","--port","8000") `
+        -ArgumentList @("-m","uvicorn","APP.backend.main:app","--host","0.0.0.0","--port","7860") `
         -WorkingDirectory $Script:Root `
         -RedirectStandardOutput (Join-Path $Script:LogDir "backend.log") `
         -RedirectStandardError  (Join-Path $Script:LogDir "backend.err") `
@@ -167,7 +167,7 @@ Start-Frontend
 
 @"
 启动完成：
-  - 后端 Swagger UI : http://127.0.0.1:8000/docs
+  - 后端 Swagger UI : http://127.0.0.1:7860/docs
   - 前端界面        : http://127.0.0.1:5173
   - 默认管理员账号  : admin / Admin@123456
 
