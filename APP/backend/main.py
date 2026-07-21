@@ -5,10 +5,12 @@ from APP.backend.config import API_PORT
 from APP.backend.auth import ensure_default_admin
 from APP.backend.database import SessionLocal
 from APP.backend.question_ingestion_worker import QuestionIngestionWorker
+from APP.backend.api_errors import install_api_error_handlers
 # 导入路由
 from APP.backend.routers import auth_routes, file_routes, voice_routes, knowledge_routes, knowledge_atlas_routes, vl_chat_routes, personalization_routes, feedback_routes, dashboard_routes, training_routes, training_workspace_routes, case_training_routes, deep_training_routes, agent_routes, learning_activity_routes, exam_learning_routes, question_workspace_routes
 
 app = FastAPI(title="Health Multi-Agent API", version="3.0")
+install_api_error_handlers(app)
 
 # CORS 配置
 app.add_middleware(

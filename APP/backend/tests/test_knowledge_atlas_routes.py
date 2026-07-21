@@ -118,16 +118,17 @@ class KnowledgeAtlasRoutesTests(unittest.TestCase):
                 params={"q": "question", "mode": "semantic"},
             )
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["detail"]["state"], "misconfigured")
+        self.assertEqual(response.json()["code"], "misconfigured")
+        self.assertEqual(response.json()["detail"], "model path required")
 
     def test_bad_node_request_and_unknown_detail_are_local_errors(self):
         response = self.client.get("/knowledge/atlas/nodes", params={"level": 4})
         self.assertEqual(response.status_code, 400)
-        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.json()["code"], "invalid_atlas_request")
 
         response = self.client.get("/knowledge/atlas/detail/missing")
         self.assertEqual(response.status_code, 404)
-        self.assertFalse(response.json()["ok"])
+        self.assertEqual(response.json()["code"], "knowledge_point_not_found")
 
     def test_image_route_blocks_directory_traversal_and_serves_known_image(self):
         image = self.client.get("/knowledge/atlas/images/reentry.png")

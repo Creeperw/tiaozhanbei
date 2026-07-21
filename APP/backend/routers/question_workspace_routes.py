@@ -3,10 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from APP.backend.auth import get_current_user
+from APP.backend.contracts.common import page_meta
+from APP.backend.contracts.question import (
+    QuestionImportCollection,
+    QuestionImportCreated,
+    QuestionImportDetail,
+    QuestionIndexResponse,
+    QuestionRevisionRequest,
+    QuestionStateResponse,
+    QuestionWorkspaceCollection,
+)
 from APP.backend.database import UserModel, get_db
 from APP.backend.question_workspace_service import (
     QuestionWorkspaceError,
@@ -35,20 +44,15 @@ def question_index_sync(db: Session, *, owner_user_id: int) -> dict:
     )
 
 
-class QuestionRevisionRequest(BaseModel):
-    question_type: str | None = Field(default=None, max_length=80)
-    stem: str | None = Field(default=None, max_length=10000)
-    answer: str | None = Field(default=None, max_length=10000)
-    analysis: str | None = Field(default=None, max_length=20000)
-    options: list[str] | None = None
-    kp_ids: list[str] | None = None
-
-
 def _raise_workspace_error(exc: QuestionWorkspaceError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
-@router.post("/imports", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/imports",
+    status_code=status.HTTP_201_CREATED,
+    response_model=QuestionImportCreated,
+)
 async def upload_questions(
     file: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_user),
@@ -65,7 +69,7 @@ async def upload_questions(
         _raise_workspace_error(exc)
 
 
-@router.get("/imports")
+@router.get("/imports", response_model=QuestionImportCollection)
 def read_import_history(
     status_filter: str | None = Query(default=None, alias="status"),
     current_user: UserModel = Depends(get_current_user),
@@ -84,10 +88,10 @@ def read_import_history(
         owner_user_id=current_user.id,
         status=status_filter,
     )
-    return {"items": items, "total": len(items)}
+    return {"items": items, "page": page_meta(item_count=len(items))}
 
 
-@router.get("/imports/{job_id}")
+@router.get("/imports/{job_id}", response_model=QuestionImportDetail)
 def read_import(
     job_id: str,
     current_user: UserModel = Depends(get_current_user),
@@ -105,7 +109,7 @@ def read_import(
     }
 
 
-@router.get("/imports/{job_id}/items")
+@router.get("/imports/{job_id}/items", response_model=QuestionWorkspaceCollection)
 def read_import_items(
     job_id: str,
     current_user: UserModel = Depends(get_current_user),
@@ -113,10 +117,11 @@ def read_import_items(
 ):
     if get_import(db, owner_user_id=current_user.id, job_id=job_id) is None:
         raise HTTPException(status_code=404, detail="question import was not found")
-    return {"items": list_job_items(db, owner_user_id=current_user.id, job_id=job_id)}
+    items = list_job_items(db, owner_user_id=current_user.id, job_id=job_id)
+    return {"items": items, "page": page_meta(item_count=len(items))}
 
 
-@router.patch("/items/{question_id}")
+@router.patch("/items/{question_id}", response_model=QuestionStateResponse)
 def revise_question(
     question_id: str,
     req: QuestionRevisionRequest,
@@ -124,11 +129,14 @@ def revise_question(
     db: Session = Depends(get_db),
 ):
     try:
+        changes = req.model_dump(exclude_unset=True)
+        if "explanation" in changes:
+            changes["analysis"] = changes.pop("explanation")
         item = revise_item(
             db,
             owner_user_id=current_user.id,
             question_id=question_id,
-            changes=req.model_dump(exclude_unset=True),
+            changes=changes,
         )
     except QuestionWorkspaceError as exc:
         _raise_workspace_error(exc)
@@ -137,7 +145,7 @@ def revise_question(
     return {"question_id": item.question_id, "status": item.status}
 
 
-@router.post("/items/{question_id}/reject")
+@router.post("/items/{question_id}/reject", response_model=QuestionStateResponse)
 def reject_question(
     question_id: str,
     current_user: UserModel = Depends(get_current_user),
@@ -152,7 +160,7 @@ def reject_question(
     return {"question_id": item.question_id, "status": item.status}
 
 
-@router.post("/items/{question_id}/confirm")
+@router.post("/items/{question_id}/confirm", response_model=QuestionStateResponse)
 def confirm_question(
     question_id: str,
     current_user: UserModel = Depends(get_current_user),
@@ -180,7 +188,7 @@ def confirm_question(
     }
 
 
-@router.post("/questions/{question_id}/deactivate")
+@router.post("/questions/{question_id}/deactivate", response_model=QuestionStateResponse)
 def deactivate_question(
     question_id: str,
     current_user: UserModel = Depends(get_current_user),
@@ -208,7 +216,7 @@ def deactivate_question(
     }
 
 
-@router.post("/index/rebuild")
+@router.post("/index/rebuild", response_model=QuestionIndexResponse)
 def rebuild_personal_index(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -225,9 +233,10 @@ def rebuild_personal_index(
     return {"vector_index": vector_index}
 
 
-@router.get("/questions")
+@router.get("/questions", response_model=QuestionWorkspaceCollection)
 def read_active_questions(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return {"items": list_active_questions(db, owner_user_id=current_user.id)}
+    items = list_active_questions(db, owner_user_id=current_user.id)
+    return {"items": items, "page": page_meta(item_count=len(items))}

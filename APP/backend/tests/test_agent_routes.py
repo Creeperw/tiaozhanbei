@@ -421,8 +421,8 @@ class AgentRoutesBehaviorTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 422)
-        self.assertEqual(response.json()["detail"]["code"], "unknown_agent")
-        self.assertIn("Unknown agent", response.json()["detail"]["message"])
+        self.assertEqual(response.json()["code"], "unknown_agent")
+        self.assertIn("Unknown agent", response.json()["detail"])
 
     def test_orchestrate_returns_422_for_high_risk_plan_without_audit(self):
         with patch(
@@ -435,8 +435,8 @@ class AgentRoutesBehaviorTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 422)
-        self.assertEqual(response.json()["detail"]["code"], "missing_required_audit")
-        self.assertIn("audit_agent", response.json()["detail"]["message"])
+        self.assertEqual(response.json()["code"], "missing_required_audit")
+        self.assertIn("audit_agent", response.json()["detail"])
 
     def test_orchestrate_maps_runtime_failure_to_http_error(self):
         with patch(
@@ -456,8 +456,8 @@ class AgentRoutesBehaviorTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json()["detail"]["code"], "planner_execution_failed")
-        self.assertIn("planner execution failed", response.json()["detail"]["message"])
+        self.assertEqual(response.json()["code"], "planner_execution_failed")
+        self.assertIn("planner execution failed", response.json()["detail"])
 
     def test_orchestrate_normalizes_unhandled_runtime_exception(self):
         error_client = TestClient(self.app, raise_server_exceptions=False)
@@ -471,8 +471,8 @@ class AgentRoutesBehaviorTests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json()["detail"]["code"], "orchestration_failed")
-        self.assertEqual(response.json()["detail"]["message"], "Agent orchestration failed")
+        self.assertEqual(response.json()["code"], "orchestration_failed")
+        self.assertEqual(response.json()["detail"], "Agent orchestration failed")
         self.assertNotIn("secret planner failure", response.text)
 
     def test_cross_validate_returns_review_decision_and_summary(self):

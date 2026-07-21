@@ -252,7 +252,7 @@ def _upsert_questions(
         mirror.question_type = question.question_type
         mirror.question_content = question.stem
         mirror.answer_json = json.dumps([question.answer], ensure_ascii=False)
-        mirror.explaination = question.analysis
+        mirror.explanation = question.analysis
         mirror.difficulty = question.difficulty
         mirror.kp_ids_json = question.kp_ids_json
 

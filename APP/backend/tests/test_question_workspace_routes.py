@@ -210,7 +210,7 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
 
         history = self.client.get("/question-workspace/imports")
         self.assertEqual(history.status_code, 200)
-        self.assertEqual(history.json()["total"], 2)
+        self.assertEqual(history.json()["page"]["total"], 2)
         self.assertEqual(
             {item["status"] for item in history.json()["items"]},
             {"preview_ready", "failed"},
@@ -222,7 +222,7 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
             params={"status": "failed"},
         )
         self.assertEqual(failed_only.status_code, 200)
-        self.assertEqual(failed_only.json()["total"], 1)
+        self.assertEqual(failed_only.json()["page"]["total"], 1)
         self.assertEqual(failed_only.json()["items"][0]["error_message"], "PDF 解析失败")
         self.assertEqual(
             self.client.get(
@@ -366,11 +366,16 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
 
         revised = self.client.patch(
             f"/question-workspace/items/{question_id}",
-            json={"answer": "阴阳是对立统一的两个方面。", "analysis": "人工补充答案。"},
+            json={"answer": "阴阳是对立统一的两个方面。", "explanation": "人工补充答案。"},
         )
 
         self.assertEqual(revised.status_code, 200)
         self.assertEqual(revised.json()["status"], "preview_ready")
+        restored = self.client.get(
+            f"/question-workspace/imports/{uploaded.json()['job_id']}/items"
+        ).json()["items"][0]
+        self.assertEqual(restored["explanation"], "人工补充答案。")
+        self.assertNotIn("analysis", restored)
         self.assertEqual(
             self.client.post(f"/question-workspace/items/{question_id}/confirm").status_code,
             200,

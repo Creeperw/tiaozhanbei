@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 
 from APP.backend.auth import get_current_user
 from APP.backend.database import UserModel
@@ -57,10 +57,10 @@ def get_atlas_nodes(
     except AtlasUnavailableError as exc:
         raise _unavailable(exc) from exc
     except (KeyError, ValueError) as exc:
-        return JSONResponse(
-            {"ok": False, "error": str(exc).strip("'\"")},
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-        )
+            detail={"code": "invalid_atlas_request", "message": str(exc).strip("'\"")},
+        ) from exc
 
 
 @router.get("/detail/{kp_id}")
@@ -78,10 +78,10 @@ def get_atlas_detail(
     except AtlasUnavailableError as exc:
         raise _unavailable(exc) from exc
     except KeyError as exc:
-        return JSONResponse(
-            {"ok": False, "error": str(exc).strip("'\"")},
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-        )
+            detail={"code": "knowledge_point_not_found", "message": str(exc).strip("'\"")},
+        ) from exc
 
 
 @router.get("/images/{filename}")

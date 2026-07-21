@@ -133,7 +133,7 @@ def _public_item(item: UserQuestionItem) -> dict[str, Any]:
         "question_type": item.question_type,
         "stem": item.stem,
         "answer": item.answer,
-        "analysis": item.analysis,
+        "explanation": item.analysis,
         "options": json.loads(item.options_json or "[]"),
         "kp_ids": json.loads(item.kp_ids_json or "[]"),
         "status": item.status,
@@ -267,7 +267,7 @@ def list_imports(
             "status": job.status,
             "item_count": job.item_count,
             "original_filename": job.original_filename,
-            "error_message": job.error_message,
+            "error_message": job.error_message or "",
             "created_at": job.created_at,
             "updated_at": job.updated_at,
         }

@@ -443,7 +443,8 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         response = self.client.post("/training/workspace/tasks", json=[])
 
         self.assertEqual(response.status_code, 422)
-        self.assertIsInstance(response.json()["detail"], list)
+        self.assertEqual(response.json()["code"], "validation_error")
+        self.assertIsInstance(response.json()["field_errors"], list)
 
     def test_training_task_limiter_enforces_concurrency_window_and_reset(self):
         now = [100.0]

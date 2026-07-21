@@ -891,7 +891,9 @@ class LearningQuestion(Base):
     question_content = Column(Text, default="")
     options_json = Column(Text, default="[]")
     answer_json = Column(Text, default="[]")
-    explaination = Column(Text, default="")
+    # Keep the existing database column name during the compatibility window,
+    # while exposing the correctly spelled Python attribute everywhere else.
+    explanation = Column("explaination", Text, default="")
     difficulty = Column(Float, default=0.0, index=True)
     kp_ids_json = Column(Text, default="[]")
     tokenized_content_json = Column(Text, default="[]")
