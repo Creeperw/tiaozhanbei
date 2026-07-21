@@ -257,6 +257,11 @@ body::before {
 .resource-section h4 { margin:0 0 8px;color:var(--jade-deep);font-size:14px; }
 .resource-section .resource-section { margin:10px 0 0 14px;padding:12px 0 0 14px;border-left:2px solid var(--jade-soft);border-top:0; }
 .result-card dl div { grid-template-columns:100px minmax(0,1fr);font-variant-numeric:tabular-nums; }
+.result-actions { display:flex;flex-wrap:wrap;gap:10px;margin-top:18px; }
+.result-actions:empty { display:none; }
+.result-actions button { min-height:42px;padding:0 18px;border:1px solid var(--jade);background:var(--jade);color:#fff;font-weight:750;cursor:pointer; }
+.result-actions button:hover { filter:brightness(.96); }
+.result-actions button:focus-visible { outline:3px solid rgba(31,111,85,.24);outline-offset:2px; }
 
 @media (max-width: 1120px) {
   .hero { grid-template-columns:1fr;gap:20px; }

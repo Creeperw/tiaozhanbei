@@ -76,20 +76,20 @@ LLM_TIMEOUT_SECONDS = 120
 # Planner 最多工具规划/调用轮数。
 PLANNER_MAX_STEPS = 3
 # 上下文管理器最大输出 token 数。
-MAX_TOKENS = 8192 / 2
-CONTEXT_MANAGER_MAX_TOKENS = MAX_TOKENS / 2
+MAX_TOKENS = 8192 // 2
+CONTEXT_MANAGER_MAX_TOKENS = MAX_TOKENS // 2
 # 会话压缩器最大输出 token 数；需足够容纳 thinking 模型的最终 JSON。
-COMPRESSION_MAX_TOKENS = MAX_TOKENS / 2
+COMPRESSION_MAX_TOKENS = MAX_TOKENS // 2
 # 参考信息整理器最大输出 token 数。
-INFO_REFINER_MAX_TOKENS = MAX_TOKENS / 2
+INFO_REFINER_MAX_TOKENS = MAX_TOKENS // 2
 # Planner 单次最大输出 token 数。
-PLANNER_MAX_TOKENS = MAX_TOKENS / 2
+PLANNER_MAX_TOKENS = MAX_TOKENS // 2
 # Executor 最终回答最大输出 token 数。
-EXECUTOR_MAX_TOKENS = MAX_TOKENS / 2
+EXECUTOR_MAX_TOKENS = MAX_TOKENS // 2
 # Reviewer 审查/反馈最大输出 token 数；完整上下文审核时需给 thinking 模型留出最终 JSON 空间。
-REVIEWER_MAX_TOKENS = MAX_TOKENS / 2
+REVIEWER_MAX_TOKENS = MAX_TOKENS // 2
 # 会话标题生成最大输出 token 数。
-SESSION_TITLE_MAX_TOKENS = MAX_TOKENS / 2
+SESSION_TITLE_MAX_TOKENS = MAX_TOKENS // 2
 
 # --- 模型采样温度配置 ---
 # 温度越低，输出越稳定；温度越高，输出越发散。可通过同名环境变量覆盖。

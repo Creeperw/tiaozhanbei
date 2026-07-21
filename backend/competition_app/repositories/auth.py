@@ -87,9 +87,9 @@ class SqlAuthRepository:
                     text(
                         "INSERT INTO app_users "
                         "(user_id, username, normalized_username, display_name, "
-                        "password_hash, password_salt, password_iterations, status, created_at) "
+                        "password_hash, password_salt, password_iterations, role, status, created_at) "
                         "VALUES (:user_id, :username, :normalized_username, :display_name, "
-                        ":password_hash, :password_salt, :password_iterations, :status, :created_at)"
+                        ":password_hash, :password_salt, :password_iterations, :role, :status, :created_at)"
                     ),
                     values,
                 )
@@ -118,7 +118,7 @@ class SqlAuthRepository:
             row = connection.execute(
                 text(
                     "SELECT user_id, username, normalized_username, display_name, "
-                    "password_hash, password_salt, password_iterations, status, created_at "
+                    "password_hash, password_salt, password_iterations, role, status, created_at "
                     f"FROM app_users WHERE {where}"
                 ),
                 {"identity": identity},
@@ -168,4 +168,3 @@ class SqlAuthRepository:
                 ),
                 {"token_hash": token_hash, "revoked_at": revoked_at},
             )
-

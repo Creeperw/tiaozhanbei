@@ -164,6 +164,7 @@ def generate_and_publish_paper(
         orchestration_run_id=orchestration_result.get("orchestration_run_id", ""),
         learner_id=user_id,
         title=orchestration_result.get("title", ""),
+        duration_minutes=max(1, min(24 * 60, int(blueprint.get("expected_duration_min") or 60))),
         blueprint_json=json.dumps(blueprint, ensure_ascii=False),
         evidence_pack_json=json.dumps(orchestration_result.get("evidence_pack") or {}, ensure_ascii=False),
     ))
@@ -174,10 +175,12 @@ def generate_and_publish_paper(
             paper_item_id=f"PI_{uuid4().hex}", paper_id=paper_id, position=position,
             question_id=question.question_id, question_version_id=question.question_version_id,
             question_type=question.question_type, stem_snapshot=question.stem,
+            options_snapshot_json="[]",
             standard_answer_snapshot=question.answer,
             kp_snapshot_json=json.dumps(list(question.kp_ids), ensure_ascii=False),
             evidence_refs_json=json.dumps(refs, ensure_ascii=False), source_kind=question.source_kind,
             standard_difficulty=question.standard_difficulty,
+            max_score_snapshot=100.0,
         ))
         learner_items.append({
             "position": position, "question_id": question.question_id,

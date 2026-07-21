@@ -1,7 +1,26 @@
-import { API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
+import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
+import { createWorkflowRunId, streamWorkflowTurn } from './workflowChatClient';
+
+const PENDING_RUNS_STORAGE_KEY = 'assistantPendingWorkflowRuns';
+
+function readPendingRuns() {
+  try {
+    const value = JSON.parse(localStorage.getItem(PENDING_RUNS_STORAGE_KEY) || '{}');
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function rememberPendingRun(sessionId, runId) {
+  const runs = readPendingRuns();
+  if (runId) runs[sessionId] = runId;
+  else delete runs[sessionId];
+  localStorage.setItem(PENDING_RUNS_STORAGE_KEY, JSON.stringify(runs));
+}
 
 async function jsonRequest(path, options) {
-  const response = await fetchWithAuth(`${API_BASE}${path}`, options);
+  const response = await fetchWithAuth(`${MAIN_API_BASE}${path}`, options);
   const payload = await readJsonResponse(response, {});
   if (!response.ok) throw new Error(payload.detail || '智能助教暂时不可用');
   return payload;
@@ -25,55 +44,43 @@ export function resolveAssistantSessionId(sessions, preferredId, savedId) {
 }
 
 export function listAssistantSessions() {
-  return jsonRequest('/sessions');
+  return jsonRequest('/conversations');
 }
 
 export function createAssistantSession(title = '新对话') {
-  return jsonRequest('/sessions', {
+  return jsonRequest('/conversations', {
     method: 'POST',
     body: JSON.stringify({ title }),
   });
 }
 
 export function loadAssistantMessages(sessionId) {
-  return jsonRequest(`/sessions/${encodeURIComponent(sessionId)}/messages`);
+  return jsonRequest(`/conversations/${encodeURIComponent(sessionId)}/messages`);
 }
 
 export async function streamAssistantMessage(sessionId, content, {
   onUpdate,
   signal,
-  toolsEnabled = false,
 } = {}) {
-  const response = await fetchWithAuth(`${API_BASE}/chat/${encodeURIComponent(sessionId)}`, {
-    method: 'POST',
-    body: JSON.stringify({
-      role: 'user',
-      content,
-      files: [],
-      tools_enabled: toolsEnabled,
-      web_search: toolsEnabled,
-      rag_search: toolsEnabled,
-    }),
+  const pending = readPendingRuns()[sessionId] || null;
+  const runId = pending || createWorkflowRunId();
+  rememberPendingRun(sessionId, runId);
+  const progress = [];
+  const outcome = await streamWorkflowTurn({
+    conversationId: sessionId,
+    runId,
+    answer: content,
     signal,
+    resume: Boolean(pending),
+    onEvent: (_event, traceEvent) => {
+      const text = String(traceEvent?.text || '').trim();
+      if (!text || progress.at(-1) === text) return;
+      progress.push(text);
+      onUpdate?.(text);
+    },
   });
-  if (!response.ok) throw new Error('智能助教回复失败');
-  if (!response.body?.getReader) {
-    const raw = await response.text();
-    const visible = compactAssistantContent(raw);
-    onUpdate?.(visible);
-    return visible;
-  }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let raw = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    raw += decoder.decode(value, { stream: true });
-    onUpdate?.(compactAssistantContent(raw));
-  }
-  raw += decoder.decode();
-  const visible = compactAssistantContent(raw);
+  if (outcome.status === 'completed') rememberPendingRun(sessionId, null);
+  const visible = compactAssistantContent(outcome.message);
   onUpdate?.(visible);
   return visible;
 }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { cwd } from 'node:process';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CompactAssistant from './CompactAssistant';
@@ -62,7 +63,7 @@ describe('CompactAssistant', () => {
 
     const shell = screen.getByLabelText('常驻智能助教');
     const restore = screen.getByRole('button', { name: '展开智能助教' });
-    const stylesheet = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
     const collapsedShellRule = stylesheet.match(/\.compact-assistant\.is-collapsed\[data-floating="true"\]\s*\{([^}]+)\}/)?.[1] || '';
 
     expect(shell).toContainElement(restore);
@@ -93,7 +94,7 @@ describe('CompactAssistant', () => {
     images.forEach((image) => {
       expect(image.getAttribute('src')).toMatch(/-cutout\.png$/);
 
-      const asset = readFileSync(resolve(process.cwd(), 'public', image.getAttribute('src').slice(1)));
+      const asset = readFileSync(resolve(cwd(), 'public', image.getAttribute('src').slice(1)));
       expect(asset.readUInt32BE(16)).toBeLessThanOrEqual(240);
       expect(asset.readUInt32BE(20)).toBeLessThanOrEqual(470);
       expect(asset[25]).toBe(6);
@@ -101,7 +102,7 @@ describe('CompactAssistant', () => {
   });
 
   it('keeps the collapsed pointer target close to the visible character body', () => {
-    const stylesheet = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
     const restoreRule = stylesheet.match(/\.compact-assistant\.is-collapsed\[data-floating="true"\] \.compact-assistant__restore\s*\{([^}]+)\}/)?.[1] || '';
 
     expect(restoreRule).toContain('width: 58px;');
@@ -153,7 +154,7 @@ describe('CompactAssistant', () => {
   });
 
   it('defines idle, interactive, dragging, and reduced-motion character states', () => {
-    const stylesheet = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
 
     expect(stylesheet).toContain('@keyframes assistant-character-idle');
     expect(stylesheet).toContain('.compact-assistant__restore:hover .compact-assistant__character-figure');

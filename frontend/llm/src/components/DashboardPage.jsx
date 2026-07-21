@@ -18,6 +18,10 @@ import LearningPlanRail from './learning-tree/LearningPlanRail';
 import LearningPathTrainingModules from './learning-tree/LearningPathTrainingModules';
 import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
 import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
+import {
+  adaptPlannedPathNode,
+  loadPlannedLearningPath,
+} from './learning-tree/learningPathApi';
 
 const EMPTY_DASHBOARD = {
   hero: {
@@ -91,6 +95,8 @@ export default function DashboardPage({
   const [assistantCollapsed, setAssistantCollapsed] = useState(false);
   const [assistantDocked, setAssistantDocked] = useState(true);
   const [legacyDrilldown, setLegacyDrilldown] = useState(null);
+  const [plannedPath, setPlannedPath] = useState(null);
+  const [pathParent, setPathParent] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,10 +123,30 @@ export default function DashboardPage({
     let cancelled = false;
     const loadPath = async () => {
       try {
-        const [targetResult, tracksResult] = await Promise.all([loadLearningTarget(), loadExamTracks()]);
+        const [targetRequest, tracksRequest] = await Promise.allSettled([
+          loadLearningTarget(),
+          loadExamTracks(),
+        ]);
+        const targetResult = targetRequest.status === 'fulfilled' ? targetRequest.value : {};
+        const tracksResult = tracksRequest.status === 'fulfilled' ? tracksRequest.value : {};
         const tracks = Array.isArray(tracksResult?.items) ? tracksResult.items : [];
         const target = targetResult?.target || {};
         const trackId = getTrackId(target, tracks, navigationContext.trackId);
+        try {
+          const planned = await loadPlannedLearningPath();
+          if (cancelled) return;
+          setTrack({ id: trackId, label: getTrackLabel(target, tracks, trackId) });
+          setNodes(planned.nodes.map(adaptPlannedPathNode));
+          setPlannedPath(planned);
+          setPathParent(null);
+          setSelectedNode(null);
+          setLegacyDrilldown(null);
+          onKnowledgeContextChange?.({ trackId, planId: planned.plan_ref?.plan_id });
+          return;
+        } catch {
+          // Existing exam-tree data remains a compatibility fallback for users
+          // who have not generated a long-term plan yet.
+        }
         if (!trackId) return;
         const rootResult = await loadExamNodes(trackId);
         const roots = Array.isArray(rootResult?.items) ? rootResult.items : [];
@@ -132,6 +158,8 @@ export default function DashboardPage({
         if (cancelled) return;
         setTrack({ id: trackId, label: getTrackLabel(target, tracks, trackId) });
         setNodes(buildPathNodes(children, summaries));
+        setPlannedPath(null);
+        setPathParent(null);
         setSelectedNode(null);
         setLegacyDrilldown(null);
         onKnowledgeContextChange?.({ trackId });
@@ -153,6 +181,31 @@ export default function DashboardPage({
   const greeting = dashboard.hero?.greeting || EMPTY_DASHBOARD.hero.greeting;
 
   const openKnowledgePlanet = async (node) => {
+    if (plannedPath && node.node_type === 'stage') {
+      try {
+        const childPage = await loadPlannedLearningPath(node.node_id);
+        setNodes(childPage.nodes.map(adaptPlannedPathNode));
+        setPlannedPath(childPage);
+        setPathParent(node);
+        setSelectedNode(null);
+      } catch (loadError) {
+        setError(loadError.message || '教材路径加载失败');
+      }
+      return;
+    }
+    if (plannedPath && node.node_type === 'book') {
+      const navigation = node.navigation || {};
+      onNavigate?.({
+        page: 'knowledge',
+        params: {
+          view: 'atlas',
+          route: navigation.route_id || 'textbook_14_5',
+          lv1: navigation.book || node.title.replace(/[《》]/g, ''),
+          source: 'learning-plan',
+        },
+      });
+      return;
+    }
     if (!track.id) return;
     if (await resolveKnowledgeAtlasEnabled()) {
       onNavigate?.({
@@ -167,6 +220,14 @@ export default function DashboardPage({
       return;
     }
     setLegacyDrilldown(node);
+  };
+
+  const selectPathNode = (node) => {
+    if (plannedPath && ['stage', 'book'].includes(node.node_type)) {
+      openKnowledgePlanet(node);
+      return;
+    }
+    setSelectedNode(node);
   };
 
   if (legacyDrilldown) {
@@ -193,18 +254,52 @@ export default function DashboardPage({
         assistantCollapsed={assistantCollapsed}
         assistantDocked={assistantDocked}
         pathTopContent={<LearningPathTrainingModules trackId={track.id} onNavigate={onNavigate} />}
+        pathHint={plannedPath ? '阶段 → 教材 → 知识点，单击继续' : undefined}
         pathContent={(
           <>
             <div className="learning-path-content">
+              {pathParent && (
+                <button
+                  type="button"
+                  className="learning-path-content__back"
+                  onClick={async () => {
+                    try {
+                      const rootPage = await loadPlannedLearningPath();
+                      setNodes(rootPage.nodes.map(adaptPlannedPathNode));
+                      setPlannedPath(rootPage);
+                      setPathParent(null);
+                      setSelectedNode(null);
+                    } catch (loadError) {
+                      setError(loadError.message || '阶段路径加载失败');
+                    }
+                  }}
+                >
+                  返回阶段
+                </button>
+              )}
               {nodes.length > 0 ? (
                 <LearningPathOverview
                   nodes={nodes}
                   edges={pathEdges}
                   selectedId={selectedNode?.membership_id}
-                  onSelect={setSelectedNode}
+                  onSelect={selectPathNode}
                   onClearSelection={() => setSelectedNode(null)}
                   onDrill={openKnowledgePlanet}
+                  directDrill={Boolean(plannedPath)}
                 />
+              ) : plannedPath?.availability === 'requires_long_term_plan' ? (
+                <div className="dashboard-daily__path-empty" data-state="requires-long-term-plan">
+                  <p>{plannedPath.message || '请先完成长期学习规划，再生成阶段、教材和知识点路径。'}</p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.({
+                      page: 'assistant',
+                      params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' },
+                    })}
+                  >
+                    去制定长期规划
+                  </button>
+                </div>
               ) : <div className="dashboard-daily__path-empty">知识路径正在准备中</div>}
               {selectedNode && (
                 <LearningPlanRail

@@ -387,6 +387,52 @@ async def test_long_plan_continues_after_user_supplies_exact_exam_goal(tmp_path)
 
 
 @pytest.mark.asyncio
+async def test_integrated_long_plan_collects_and_writes_required_profile_fields(tmp_path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+    writes: list[dict] = []
+    container.review_card_use_case.behavior_context_loader = lambda _: {
+        "source": "frontend_backend",
+        "user_profile": {"learning_goal": "中医执业医师资格考试"},
+        "learning_target": {"exam_name": "中医执业医师资格考试"},
+    }
+
+    def write_profile(_learner_id: str, updates: dict, _execution_id: str | None) -> dict:
+        writes.append(dict(updates))
+        return updates
+
+    container.review_card_use_case.profile_update_writer = write_profile
+    thread_id = "THREAD_PROFILE_GATE"
+    first = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            thread_id=thread_id,
+            learner_id="LEARNER_PROFILE_GATE",
+            user_request="请结合我的学习状态，给我制定一份长期学习计划。",
+            plan_scope="long_term",
+        )
+    )
+    second = await container.review_card_use_case.resume(
+        thread_id,
+        WorkflowResumeRequest(answer="零基础", plan_scope="long_term"),
+    )
+    completed = await container.review_card_use_case.resume(
+        thread_id,
+        WorkflowResumeRequest(answer="每周学习5天，每天2小时", plan_scope="long_term"),
+    )
+
+    assert first.status == "interrupted"
+    assert first.interrupt["profile_fields"] == ["learning_background"]
+    assert second.status == "interrupted"
+    assert second.interrupt["profile_fields"] == ["time_constraints"]
+    assert completed.status == "success"
+    assert writes == [
+        {"learning_background": "零基础"},
+        {"time_constraints": "每周学习5天，每天2小时"},
+    ]
+
+
+@pytest.mark.asyncio
 async def test_stub_formula_course_plan_uses_book_level_approved_route(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     plan = await build_layered_plan(

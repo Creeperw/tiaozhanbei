@@ -226,6 +226,24 @@ class TrainingTaskRecord(Base):
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
+
+class KnowledgeCardRecord(Base):
+    __tablename__ = "knowledge_card_records"
+    id = Column(Integer, primary_key=True, index=True)
+    card_id = Column(String(120), unique=True, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    kp_id = Column(String(120), nullable=False, index=True)
+    title = Column(String(200), nullable=False, default="")
+    learning_status = Column(String(40), nullable=False, default="learned", index=True)
+    resource_bundle_json = Column(Text, nullable=False, default="{}")
+    source_execution_id = Column(String(120), nullable=False, default="", index=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("user_id", "kp_id", name="uq_knowledge_card_user_kp"),
+        Index("ix_knowledge_card_user_updated", "user_id", "updated_at"),
+    )
+
 class PaperInstanceRecord(Base):
     __tablename__ = "paper_instances"
     id = Column(Integer, primary_key=True, index=True)
@@ -235,6 +253,9 @@ class PaperInstanceRecord(Base):
     learner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(200), default="")
     status = Column(String(50), default="published", index=True)
+    duration_minutes = Column(Integer, default=60)
+    started_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True, index=True)
     blueprint_json = Column(Text, default="{}")
     evidence_pack_json = Column(Text, default="{}")
     created_at = Column(DateTime, default=utc_now)
@@ -250,11 +271,13 @@ class PaperItemRecord(Base):
     question_version_id = Column(String(120), nullable=False, index=True)
     question_type = Column(String(50), default="")
     stem_snapshot = Column(Text, default="")
+    options_snapshot_json = Column(Text, default="[]")
     standard_answer_snapshot = Column(Text, default="")
     kp_snapshot_json = Column(Text, default="[]")
     evidence_refs_json = Column(Text, default="[]")
     source_kind = Column(String(120), default="")
     standard_difficulty = Column(Integer, default=2)
+    max_score_snapshot = Column(Float, nullable=False, default=100.0)
     created_at = Column(DateTime, default=utc_now)
     __table_args__ = (UniqueConstraint("paper_id", "position", name="uq_paper_item_position"),)
 
@@ -2749,6 +2772,42 @@ def _ensure_paper_item_snapshot_column(bind):
         )
 
 
+def _ensure_learning_workshop_schema(bind):
+    """Create the card library and apply additive paper-session columns."""
+
+    KnowledgeCardRecord.__table__.create(bind=bind, checkfirst=True)
+    inspector = inspect(bind)
+    options_definition = (
+        "TEXT NULL"
+        if bind.dialect.name == "mysql"
+        else "TEXT NOT NULL DEFAULT '[]'"
+    )
+    additions = {
+        "paper_instances": {
+            "duration_minutes": "INTEGER NOT NULL DEFAULT 60",
+            "started_at": "DATETIME NULL",
+            "expires_at": "DATETIME NULL",
+        },
+        "paper_items": {
+            "options_snapshot_json": options_definition,
+            "max_score_snapshot": "FLOAT NOT NULL DEFAULT 100",
+        },
+    }
+    for table_name, columns_to_add in additions.items():
+        if table_name not in inspector.get_table_names():
+            continue
+        columns = {column["name"] for column in inspector.get_columns(table_name)}
+        with bind.begin() as connection:
+            for column_name, definition in columns_to_add.items():
+                if column_name not in columns:
+                    _add_column_if_missing_after_race(
+                        connection,
+                        table_name,
+                        column_name,
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}",
+                    )
+
+
 def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
     """Apply small additive schema updates that create_all will not add to existing tables."""
     if bind.dialect.name == "mysql":
@@ -2764,6 +2823,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 _ensure_case_training_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
                 _ensure_formal_content_tables(bind)
+                _ensure_learning_workshop_schema(bind)
                 return
             if inspector.has_table("external_identity_links"):
                 # Databases bootstrapped by the integrated application already
@@ -2773,6 +2833,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 _ensure_case_training_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
                 _ensure_formal_content_tables(bind)
+                _ensure_learning_workshop_schema(bind)
                 return
             inventory = _preflight_mysql_phase_three_schema(inspector)
             _repair_mysql_phase_three_schema(bind, inventory)
@@ -2780,12 +2841,13 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 _ensure_case_training_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
                 _ensure_formal_content_tables(bind)
+                _ensure_learning_workshop_schema(bind)
         except RuntimeError as exc:
             if str(exc) == "phase3_mysql_schema_migration_failed":
                 raise
-            raise RuntimeError("phase3_mysql_schema_migration_failed") from None
-        except Exception:
-            raise RuntimeError("phase3_mysql_schema_migration_failed") from None
+            raise RuntimeError("phase3_mysql_schema_migration_failed") from exc
+        except Exception as exc:
+            raise RuntimeError("phase3_mysql_schema_migration_failed") from exc
         return
     if bind.dialect.name != "sqlite":
         return
@@ -2950,6 +3012,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
             if previous_id:
                 conn.execute(text("UPDATE sessions SET active_leaf_message_id = COALESCE(active_leaf_message_id, :mid) WHERE id = :sid"), {"mid": previous_id, "sid": sid})
     _ensure_paper_item_snapshot_column(bind)
+    _ensure_learning_workshop_schema(bind)
     _ensure_core_learning_contract_tables(bind)
     _ensure_formal_content_tables(bind)
 

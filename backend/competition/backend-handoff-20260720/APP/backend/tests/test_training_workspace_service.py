@@ -2306,20 +2306,17 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
 
 
 class TrainingWorkspaceModuleTests(unittest.TestCase):
-    def test_returns_six_ordered_modules_with_mvp_statuses(self):
+    def test_returns_three_ordered_product_modules(self):
         response = get_training_workspace_modules()
         modules = response["modules"]
 
-        self.assertEqual(response["default_task_type"], "practice_grading")
+        self.assertEqual(response["default_task_type"], "question_training")
         self.assertEqual(
             [module["key"] for module in modules],
             [
-                "practice_grading",
-                "handout_generation",
-                "knowledge_card_generation",
-                "paper_generation",
-                "case_training",
-                "mistake_variation",
+                "question_training",
+                "knowledge_cards",
+                "paper_workspace",
             ],
         )
         required_fields = {
@@ -2331,11 +2328,16 @@ class TrainingWorkspaceModuleTests(unittest.TestCase):
             "recommended",
         }
         self.assertTrue(all(required_fields <= set(module) for module in modules))
-        case_training = next(module for module in modules if module["key"] == "case_training")
-        self.assertEqual(case_training["capability_url"], "/training/case-sessions")
+        question_training = next(
+            module for module in modules if module["key"] == "question_training"
+        )
+        self.assertEqual(
+            question_training["capabilities"],
+            ["practice_grading", "case_training", "mistake_variation"],
+        )
         self.assertEqual(
             [module["enabled"] for module in modules],
-            [True, True, True, True, True, True],
+            [True, True, True],
         )
 
     def test_returns_a_copy_that_cannot_mutate_future_responses(self):
@@ -2345,8 +2347,8 @@ class TrainingWorkspaceModuleTests(unittest.TestCase):
 
         second_response = get_training_workspace_modules()
 
-        self.assertEqual(second_response["modules"][0]["label"], "练习批改")
-        self.assertEqual(len(second_response["modules"]), 6)
+        self.assertEqual(second_response["modules"][0]["label"], "题目训练")
+        self.assertEqual(len(second_response["modules"]), 3)
 
 
 if __name__ == "__main__":

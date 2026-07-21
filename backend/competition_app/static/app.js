@@ -875,6 +875,7 @@ function renderResults(body) {
     displayPlanLayer('.task-card', planOutput.learning_task);
   }
   renderResourceResult(body);
+  renderResultActions(body);
   const clarificationPanel = document.querySelector('#plan-clarification');
   if (needsClarification) {
     renderPlanClarification(planOutput);
@@ -967,6 +968,39 @@ function renderResults(body) {
   resultSection.classList.remove('hidden');
   resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   loadReviewQueue(document.querySelector('#learner-id').value.trim());
+}
+
+function renderResultActions(body) {
+  const container = document.querySelector('#result-actions');
+  if (!container) return;
+  container.replaceChildren();
+  const actions = Array.isArray(body?.ui_actions) ? body.ui_actions : [];
+  actions.forEach(action => {
+    if (action?.action_type !== 'navigate' || !action?.destination) return;
+    const actionButton = document.createElement('button');
+    actionButton.type = 'button';
+    actionButton.textContent = action.label || '继续';
+    actionButton.addEventListener('click', () => {
+      const params = action.params && typeof action.params === 'object' ? action.params : {};
+      const navigation = {
+        page: 'practice',
+        params: { view: 'workspace', taskType: 'question_training' },
+      };
+      if (action.destination === 'workshop.paper' && params.paper_id) {
+        sessionStorage.setItem('training-paper-id', String(params.paper_id));
+        navigation.params.taskType = 'paper_workspace';
+        navigation.params.paperId = String(params.paper_id);
+      }
+      if (action.destination === 'workshop.knowledge_card' && params.card_id) {
+        sessionStorage.setItem('training-knowledge-card-id', String(params.card_id));
+        navigation.params.taskType = 'knowledge_cards';
+        navigation.params.cardId = String(params.card_id);
+      }
+      sessionStorage.setItem('competition.pending-navigation', JSON.stringify(navigation));
+      window.location.assign('/');
+    });
+    container.appendChild(actionButton);
+  });
 }
 
 function reviewOutcomeLabel(outcome) {

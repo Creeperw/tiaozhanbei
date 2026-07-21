@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, UploadCloud } from 'lucide-react';
-import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import {
   EMPTY_HOME_PAYLOAD,
   HOME_ACTIONS,
@@ -45,7 +45,7 @@ function HomeIllustration({ action, className = '' }) {
   );
 }
 
-export default function HomePage({ currentUser, onNavigate }) {
+export default function HomePage({ onNavigate }) {
   const [payload, setPayload] = useState(EMPTY_HOME_PAYLOAD);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,7 +62,7 @@ export default function HomePage({ currentUser, onNavigate }) {
       setLoading(true);
       setError('');
       try {
-        const response = await fetchWithAuth(`${API_BASE}/dashboard/home`);
+        const response = await fetchWithAuth(`${MAIN_API_BASE}/dashboard/home`);
         const result = await readJsonResponse(response, {});
         if (!response.ok) throw new Error(result.detail || '首页数据暂不可用');
         if (!result || typeof result !== 'object' || Array.isArray(result)) {

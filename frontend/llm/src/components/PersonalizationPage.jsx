@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Trash2, Save, Search, Edit2, X, RotateCcw, Download, RefreshCw, Database, Clock, Sparkles, UploadCloud, ArrowUpCircle, ChevronDown, LineChart } from 'lucide-react';
 import LearningTrendChart from './LearningTrendChart';
 import { buildLearningTrendCharts } from '../learningTrendDisplay.js';
-import { API_BASE, fetchWithAuth } from '../utils/api';
+import { API_BASE, MAIN_API_BASE, fetchWithAuth } from '../utils/api';
 
 const emptyProfile = {
   display_name: '', constitution: '', health_goals: '', diet_restrictions: '',
@@ -216,19 +216,42 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   const load = async () => {
     setIsLoading(true);
     try {
-      const [overviewRes, memoriesRes, learnerRes] = await Promise.all([
+      const [overviewRes, memoriesRes, learnerRes, learningContextRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/personalization/overview`),
         fetchWithAuth(`${API_BASE}/personalization/memories${queryString ? `?${queryString}` : ''}`),
         fetchWithAuth(`${API_BASE}/personalization/learner-profile`),
+        fetchWithAuth(`${MAIN_API_BASE}/learning-context`),
       ]);
       const candidateRes = await fetchWithAuth(`${API_BASE}/personalization/candidates?status=${candidateStatus}`);
       const overviewData = await overviewRes.json();
       const memoryData = await memoriesRes.json();
       const learnerData = await learnerRes.json();
+      const learningContextData = learningContextRes.ok ? await learningContextRes.json() : {};
+      const confirmedProfile = learningContextData.user_profile || {};
+      const confirmedGoal = confirmedProfile.learning_goal
+        || learningContextData.long_term_plan?.planning_route?.goal_name
+        || learningContextData.long_term_plan?.goal_contract?.goal_name
+        || '';
       const candidateData = await candidateRes.json();
       setOverview(overviewData);
-      setProfile({ ...emptyProfile, ...(overviewData.profile || {}) });
-      setLearnerProfile({ locked_fields: [], survey: {}, lock_reason: {}, ...(learnerData || {}) });
+      setProfile({
+        ...emptyProfile,
+        ...(overviewData.profile || {}),
+        health_goals: overviewData.profile?.health_goals
+          || confirmedGoal
+          || confirmedProfile.goals?.goal_name
+          || '',
+        diet_restrictions: overviewData.profile?.diet_restrictions
+          || confirmedProfile.time_constraints
+          || '',
+      });
+      setLearnerProfile({
+        locked_fields: [],
+        survey: {},
+        lock_reason: {},
+        ...(learnerData || {}),
+        learning_background: confirmedProfile.learning_background || '',
+      });
       setMemories(Array.isArray(memoryData) ? memoryData : []);
       setCandidates(Array.isArray(candidateData) ? candidateData : []);
     } catch (e) {
@@ -497,6 +520,16 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
           {isProfileView && <section className="bg-white/86 rounded-[32px] border border-white/80 shadow-lg shadow-emerald-100/45 p-6 h-fit backdrop-blur-sm">
             <h2 className="text-xl font-bold mb-4">学习者画像</h2>
             <div className="space-y-3">
+              {learnerProfile.learning_background && (
+                <label className="block">
+                  <span className="text-sm text-gray-500">学习基础（智能体已确认）</span>
+                  <textarea
+                    value={learnerProfile.learning_background}
+                    readOnly
+                    className={`${softTextareaClass} mt-1 min-h-[58px] bg-emerald-50/60`}
+                  />
+                </label>
+              )}
               {profileFields.map(([key, label]) => (
                 <label key={key} className="block">
                   <span className="text-sm text-gray-500">{label}</span>

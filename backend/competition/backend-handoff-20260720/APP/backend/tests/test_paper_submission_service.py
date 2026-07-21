@@ -76,6 +76,18 @@ class PaperSubmissionServiceTests(unittest.TestCase):
             self.assertEqual(db.query(database.PaperSubmissionRecord).count(), 1)
             self.assertEqual(db.query(database.LearningAttemptRecord).count(), 1)
 
+    def test_submit_scales_grading_result_to_blueprint_item_score(self):
+        with self.Session() as db:
+            db.query(database.PaperItemRecord).filter_by(paper_item_id="PI_1").update({
+                database.PaperItemRecord.max_score_snapshot: 25,
+            })
+            db.commit()
+            save_paper_answers(db, 1, "PAPER_1", {"PI_1": "脾胃气虚证"})
+            result = submit_paper(db, 1, "PAPER_1", "weighted-1", runner=self.runner)
+
+        self.assertEqual(result["score"], 25)
+        self.assertEqual(result["max_score"], 25)
+
     def test_submit_writes_a_completed_paper_activity_and_system_snapshot(self):
         with self.Session() as db:
             save_paper_answers(db, 1, "PAPER_1", {"PI_1": "脾胃气虚证"})

@@ -6,9 +6,10 @@ import {
   Paperclip, FileText, Loader2, FileJson, FileType, FileCode, UploadCloud,
   LogOut, Square, Globe, Search, BrainCircuit, Mic, MicOff, ArrowDown,
   Database, BookOpen, ChevronRight, Library, ExternalLink, Layout, ArrowLeft,
-  ImageIcon, Film, Lightbulb, ThumbsUp, ThumbsDown, HeartPulse, RefreshCw, ShieldCheck
+  ImageIcon, Film, Lightbulb, ThumbsUp, ThumbsDown, HeartPulse, RefreshCw, ShieldCheck,
+  CalendarRange
 } from 'lucide-react';
-import { API_BASE, fetchWithAuth } from '../utils/api';
+import { API_BASE, MAIN_API_BASE, fetchWithAuth } from '../utils/api';
 import { getAppShellConfig } from '../appShell';
 import { extractTraceEventsFromContent, hasExecutionDoneEvent, stripAssistantVisibleContent } from '../chatProtocol';
 import HomeButton from './HomeButton';
@@ -20,7 +21,10 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import AgentTimeline from './AgentTimeline';
+import { buildAgentPresentation } from '../agentPresentationModel';
 import { buildTraceFromEvents, useLangGraphStore } from '../stores/useLangGraphStore';
+import { createWorkflowRunId, getWorkflowRun, streamWorkflowTurn } from '../workflowChatClient';
+import { formatMessageTime } from '../chatTime';
 
 const CodeHighlighter = lazy(() => import('./CodeHighlighter'));
 
@@ -32,7 +36,7 @@ const preprocessLaTeX = (content) => {
     .replace(/\\\((.*?)\\\)/g, '$$$1$');       
 };
 
-const getCurrentTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const getCurrentTime = () => formatMessageTime(new Date());
 
 const isImageFile = (filename) => {
   const ext = filename?.split('.').pop().toLowerCase() || '';
@@ -217,7 +221,7 @@ const MarkdownRenderer = React.memo(({ content, className }) => {
   );
 });
 
-const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, messageId, feedbackStatus, branch, onInspectRefs, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
+const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, messageId, feedbackStatus, branch, actions, onAction, onInspectRefs, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
   const isUser = role === 'user';
   const [isCopied, setIsCopied] = useState(false);
   
@@ -248,9 +252,10 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
     }
   }
   const traceNodes = traceEvents.length > 0 ? buildTraceFromEvents(traceEvents, { historical: !isGenerating }) : [];
+  const traceRoles = traceNodes.length > 0 ? buildAgentPresentation(traceNodes) : [];
   const hasRunningTraceNode = traceNodes.some(n => n.status === 'running' || n.status === 'rollingBack');
   const traceStatus = traceNodes.some(n => n.status === 'error' || n.status === 'rollingBack') ? 'failed' : (hasRunningTraceNode ? 'running' : (traceNodes.length ? 'success' : (isGenerating ? 'running' : 'idle')));
-  const currentTraceStep = [...traceNodes].reverse().find(n => n.status === 'running' || n.status === 'rollingBack')?.name || traceNodes.at(-1)?.name || '执行轨迹';
+  const currentTraceStep = traceRoles.find(role => role.status === 'running' || role.status === 'rollingBack')?.label || '协作处理';
   const traceButtonLabel = isReviewing
     ? '回答已完成，审核中'
     : traceStatus === 'running'
@@ -308,7 +313,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
   };
 
   return (
-    <div className={`relative flex gap-4 ${isUser ? 'mb-8 flex-row-reverse' : 'mb-12 flex-row'} group animate-fade-in-up`}>
+    <article aria-label={isUser ? '我的消息' : '智能助教回复'} className={`assistant-message relative flex gap-4 ${isUser ? 'mb-8 flex-row-reverse' : 'mb-12 flex-row'} group animate-fade-in-up`}>
       {/* 🔥 修改头像外框颜色和图标：决策阶段用紫色大脑，正式阶段用蓝色机器人 */}
       <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-1 transition-transform hover:scale-110 ${
         isUser 
@@ -322,8 +327,8 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
 
       <div className={`relative max-w-[90%] sm:max-w-[80%] min-w-0 flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
         <div className={`flex items-center gap-2 mb-1 text-xs text-gray-400 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span className="font-medium opacity-80">{isUser ? 'You' : '助教'}</span>
-          <span>{timestamp}</span>
+          <span className="font-medium opacity-80">{isUser ? '我' : '智能助教'}</span>
+          <span>{formatMessageTime(timestamp)}</span>
         </div>
 
         {files && files.length > 0 && (
@@ -348,7 +353,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
 
         {!isUser && traceNodes.length > 0 && (
           <button
-            onClick={() => onOpenTrace?.({ nodes: traceNodes, refs: references, title: '执行轨迹', live: isGenerating })}
+            onClick={() => onOpenTrace?.({ nodes: traceNodes, refs: references, title: '执行进度', live: isGenerating })}
             className="group mb-2 inline-flex max-w-full items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-[color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-emerald-50/80 hover:text-emerald-900"
           >
             <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-white/85 text-emerald-600 shadow-sm shadow-emerald-100 ring-1 ring-emerald-100/80 transition-transform group-hover:scale-105">
@@ -362,7 +367,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
           </button>
         )}
 
-        <div className={`relative max-w-full px-5 py-4 rounded-2xl shadow-sm transition-shadow hover:shadow-md ${
+        <div className={`assistant-message__surface relative max-w-full px-5 py-4 rounded-2xl transition-shadow ${
           isUser 
             ? 'bg-gradient-to-br from-emerald-600 to-teal-600 text-white rounded-tr-sm shadow-emerald-200/60' 
             : 'bg-white/95 border border-emerald-100 text-slate-800 rounded-tl-sm shadow-emerald-100/70'
@@ -412,6 +417,15 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
                  </div>
                )}
                <VideoLinks videos={videos} />
+               {Array.isArray(actions) && actions.length > 0 && (
+                 <div className="mt-3 flex flex-wrap gap-2 border-t border-emerald-100 pt-3">
+                   {actions.map((action, index) => (
+                     <button key={`${action.destination || 'action'}-${index}`} type="button" onClick={() => onAction?.(action)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
+                       {action.label || '继续'}
+                     </button>
+                   ))}
+                 </div>
+               )}
             </div>
           )}
 
@@ -486,7 +500,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }, (prevProps, nextProps) => {
   return (
@@ -499,7 +513,9 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
     prevProps.feedbackStatus === nextProps.feedbackStatus &&
     prevProps.isReviewing === nextProps.isReviewing &&
     prevProps.onRegenerate === nextProps.onRegenerate &&
+    prevProps.onAction === nextProps.onAction &&
     JSON.stringify(prevProps.branch) === JSON.stringify(nextProps.branch) &&
+    JSON.stringify(prevProps.actions) === JSON.stringify(nextProps.actions) &&
     JSON.stringify(prevProps.files) === JSON.stringify(nextProps.files)
   );
 });
@@ -544,7 +560,7 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query }) => {
                     {selectedRef.type === 'rag' ? <BookOpen size={20} /> : <Globe size={20} />}
                  </div>
                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-800 leading-tight break-words">{selectedRef.title || 'Unknown Source'}</h3>
+                    <h3 className="font-bold text-gray-800 leading-tight break-words">{selectedRef.title || '未命名来源'}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 rounded">{selectedRef.type === 'rag' ? '知识库' : getDomain(selectedRef.url)}</span>
                       {selectedRef.score && <span className="text-xs text-indigo-600 font-medium">相似度: {(selectedRef.score * 100).toFixed(1)}%</span>}
@@ -613,7 +629,7 @@ const RetrievalSidebar = ({ isOpen, onClose, refs, query }) => {
                           <div className="flex-1 min-w-0">
                              <div className="flex items-center justify-between">
                                 <span className={`block text-sm font-semibold text-gray-800 truncate group-hover:text-indigo-600 transition-colors`}>
-                                  {ref.title || 'Unknown Source'}
+                                  {ref.title || '未命名来源'}
                                 </span>
                                 <ChevronRight size={14} className="text-gray-300 group-hover:text-indigo-400 transition-colors transform group-hover:translate-x-0.5" />
                              </div>
@@ -650,8 +666,18 @@ const CHAT_STORAGE_KEYS = {
 const DEFAULT_SESSION_TITLES = new Set(['', '新对话', 'New Chat']);
 
 const isDefaultSessionTitle = (title = '') => DEFAULT_SESSION_TITLES.has(String(title || '').trim());
+const PENDING_RUNS_STORAGE_KEY = 'assistantPendingWorkflowRuns';
 
-const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBackHome, onOpenKnowledge, onOpenPersonalization, onOpenAdminFeedback, preferredSessionId = null, initialContext = '', embedded = false }) => {
+const readPendingRuns = () => {
+  try {
+    const value = JSON.parse(localStorage.getItem(PENDING_RUNS_STORAGE_KEY) || '{}');
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
+};
+
+const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBackHome, onOpenKnowledge, onOpenPersonalization, onOpenAdminFeedback, onNavigate, preferredSessionId = null, initialContext = '', embedded = false }) => {
   const shellConfig = getAppShellConfig({
     currentUser: currentUser ? { username: currentUser, role: currentUserRole } : { role: currentUserRole },
     currentPage: 'assistant',
@@ -660,6 +686,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [pendingRuns, setPendingRuns] = useState(readPendingRuns);
   const [input, setInput] = useState(() => localStorage.getItem(CHAT_STORAGE_KEYS.draftInput) || initialContext || '');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState(null);
@@ -763,6 +790,8 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
         setUploadedFiles([]); 
       }
 
+      if (currentSessionId) void restorePendingRun(currentSessionId);
+
     };
 
     loadCurrentSession();
@@ -781,6 +810,10 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   useEffect(() => {
     localStorage.setItem(CHAT_STORAGE_KEYS.toolsEnabled, String(isToolsEnabled));
   }, [isToolsEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem(PENDING_RUNS_STORAGE_KEY, JSON.stringify(pendingRuns));
+  }, [pendingRuns]);
 
   // Click outside menu
   useEffect(() => {
@@ -826,7 +859,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
 
   const fetchSessions = async () => {
     try {
-      const res = await fetchWithAuth(`${API_BASE}/sessions`);
+      const res = await fetchWithAuth(`${MAIN_API_BASE}/conversations`);
       if (!res.ok) return [];
       const data = await res.json();
       setSessions(data);
@@ -860,7 +893,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
 
   const createSession = async () => {
     try {
-      const res = await fetchWithAuth(`${API_BASE}/sessions`, {
+      const res = await fetchWithAuth(`${MAIN_API_BASE}/conversations`, {
         method: 'POST',
         body: JSON.stringify({ title: "新对话" })
       });
@@ -878,7 +911,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     e.stopPropagation();
     if (!confirm('确定要删除吗？')) return;
     try {
-      const res = await fetchWithAuth(`${API_BASE}/sessions/${id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`${MAIN_API_BASE}/conversations/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('删除失败');
       setSessions(prev => prev.filter(s => s.id !== id));
       if (currentSessionId === id) { 
@@ -895,7 +928,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     e.stopPropagation();
     if (!editTitle.trim()) return;
     try {
-      await fetchWithAuth(`${API_BASE}/sessions/${id}`, {
+      await fetchWithAuth(`${MAIN_API_BASE}/conversations/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ title: editTitle })
       });
@@ -923,7 +956,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       return cachedMessages;
     }
     try {
-      const res = await fetchWithAuth(`${API_BASE}/sessions/${id}/messages`);
+      const res = await fetchWithAuth(`${MAIN_API_BASE}/conversations/${id}/messages`);
       if (!res.ok) return [];
       const data = await res.json();
       const branches = {};
@@ -1191,6 +1224,11 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
 
   const handleRegenerate = async (messageId) => {
     if (!currentSessionId || !messageId || isLoading) return;
+    if (import.meta.env.VITE_USE_LEGACY_CHAT !== 'true') {
+      const question = getTurnQuestionForAssistant(messageId);
+      if (question) await handleMainWorkflowSend(question);
+      return;
+    }
     const sessionId = currentSessionId;
     const targetIndex = messages.findIndex(msg => msg.id === messageId);
     if (targetIndex <= 0) return;
@@ -1363,7 +1401,161 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     }
   };
 
+  const rememberPendingRun = (sessionId, runId) => {
+    setPendingRuns(prev => {
+      const next = { ...prev };
+      if (runId) next[sessionId] = runId;
+      else delete next[sessionId];
+      return next;
+    });
+  };
+
+  async function restorePendingRun(sessionId) {
+    const runId = readPendingRuns()[sessionId];
+    if (!runId) return;
+    try {
+      const run = await getWorkflowRun(runId);
+      if (!run || run.status === 'failed') {
+        rememberPendingRun(sessionId, null);
+        return;
+      }
+      if (run.status === 'completed' || run.status === 'interrupted') {
+        await fetchMessages(sessionId, { force: true });
+      }
+      if (run.status === 'completed') rememberPendingRun(sessionId, null);
+      if (run.status === 'running' && currentSessionIdRef.current === sessionId) {
+        window.setTimeout(() => restorePendingRun(sessionId), 2000);
+      }
+    } catch (error) {
+      console.error('restore workflow run failed', error);
+    }
+  }
+
+  const handleWorkflowAction = (action) => {
+    const params = action?.params || {};
+    const taskTypes = {
+      'workshop.paper': 'paper_workspace',
+      'workshop.knowledge_card': 'knowledge_cards',
+      'workshop.question_training': 'question_training',
+    };
+    const taskType = taskTypes[action?.destination];
+    if (!taskType) return;
+    onNavigate?.({
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType,
+        ...params,
+        paperId: params.paper_id || params.paperId,
+        cardId: params.card_id || params.cardId,
+        kpId: params.kp_id || params.kpId,
+      },
+    });
+  };
+
+  const handleMainWorkflowSend = async (answerOverride = null) => {
+    const answer = String(answerOverride ?? input).trim();
+    if ((!answer && uploadedFiles.length === 0) || isLoading) return;
+    let sessionId = currentSessionId;
+    if (!sessionId) sessionId = await createSession();
+    if (!sessionId) return;
+
+    const resumeRunId = readPendingRuns()[sessionId] || null;
+    const runId = resumeRunId || createWorkflowRunId();
+    rememberPendingRun(sessionId, runId);
+    abortControllerRef.current = new AbortController();
+    setLoadingSessionId(sessionId);
+
+    const filesMetadata = uploadedFiles.map(file => ({ id: file.id, name: file.name }));
+    const requestText = filesMetadata.length
+      ? `${answer}${answer ? '\n\n' : ''}附件：${filesMetadata.map(file => file.name).join('、')}`
+      : answer;
+    const userMessage = {
+      id: `local-user-${Date.now()}`,
+      role: 'user',
+      content: answer,
+      files: filesMetadata,
+      timestamp: getCurrentTime(),
+    };
+    const assistantId = `local-assistant-${Date.now()}`;
+    const baseMessages = [
+      ...(currentSessionIdRef.current === sessionId
+        ? messages
+        : (liveSessionCacheRef.current[sessionId]?.messages || [])),
+      userMessage,
+      {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        timestamp: getCurrentTime(),
+        isPlaceholder: true,
+      },
+    ];
+    liveSessionCacheRef.current[sessionId] = { messages: baseMessages, isRunning: true };
+    if (currentSessionIdRef.current === sessionId) setMessages(baseMessages);
+    setInput('');
+    setUploadedFiles([]);
+    setIsLoading(true);
+    setAutoScroll(true);
+    resetWorkflow();
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+    const traceTags = [];
+    const updateAssistant = (content, placeholder = false, actions = undefined) => {
+      const cache = liveSessionCacheRef.current[sessionId] || { messages: baseMessages };
+      const updated = (cache.messages || []).map(message => (
+        message.id === assistantId
+          ? { ...message, content, isPlaceholder: placeholder, ...(actions === undefined ? {} : { actions }) }
+          : message
+      ));
+      liveSessionCacheRef.current[sessionId] = { ...cache, messages: updated, isRunning: placeholder };
+      if (currentSessionIdRef.current === sessionId) setMessages(updated);
+      return updated;
+    };
+
+    try {
+      const outcome = await streamWorkflowTurn({
+        conversationId: sessionId,
+        runId,
+        answer: requestText,
+        messages: baseMessages.filter(message => !message.isPlaceholder),
+        signal: abortControllerRef.current.signal,
+        resume: Boolean(resumeRunId),
+        onEvent: (_event, traceEvent) => {
+          if (!traceEvent) return;
+          dispatchGraphEvent(traceEvent);
+          const tag = `<<EV:${JSON.stringify(traceEvent)}>>`;
+          traceTags.push(tag);
+          updateAssistant(traceTags.join(''), true);
+        },
+      });
+      const finalContent = `${traceTags.join('')}\n${outcome.message}`.trim();
+      const finalMessages = updateAssistant(finalContent, false, outcome.result?.ui_actions || []);
+      sessionMessageCacheRef.current[sessionId] = finalMessages;
+      if (outcome.status === 'completed') rememberPendingRun(sessionId, null);
+      fetchSessions();
+      void refreshSessionTitleUntilSettled(sessionId, { maxAttempts: 3, initialDelay: 150 });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        updateAssistant(`${traceTags.join('')}\n\n*（连接已中断，后台任务状态将在重连后恢复）*`, false);
+      } else {
+        console.error(error);
+        markNetworkInterrupted(error.message);
+        updateAssistant(`${traceTags.join('')}\n\n*（${error.message || '执行失败'}）*`, false);
+        void restorePendingRun(sessionId);
+      }
+    } finally {
+      setIsLoading(false);
+      setLoadingSessionId(null);
+      abortControllerRef.current = null;
+    }
+  };
+
   const handleSend = async () => {
+    if (import.meta.env.VITE_USE_LEGACY_CHAT !== 'true') {
+      await handleMainWorkflowSend();
+      return;
+    }
     if ((!input.trim() && uploadedFiles.length === 0) || isLoading) return;
     let sessionId = currentSessionId;
     if (!sessionId) sessionId = await createSession();
@@ -1830,7 +2022,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
 
               <div className="relative justify-self-end" ref={menuRef}>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setIsMenuOpen(!isMenuOpen)} className={`text-gray-400 hover:text-gray-600 cursor-pointer transition-colors p-2 rounded-full hover:bg-gray-100 ${isMenuOpen ? 'bg-gray-100 text-gray-600' : ''}`}><MoreHorizontal size={20} /></button>
+                  <button aria-label="更多对话操作" onClick={() => setIsMenuOpen(!isMenuOpen)} className={`text-gray-400 hover:text-gray-600 cursor-pointer transition-colors p-2 rounded-full hover:bg-gray-100 ${isMenuOpen ? 'bg-gray-100 text-gray-600' : ''}`}><MoreHorizontal size={20} /></button>
                 </div>
                 {isMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
@@ -1844,14 +2036,29 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
             <div 
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar scroll-smooth relative"
+              data-scroll-region="messages"
+              className="assistant-messages flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar scroll-smooth relative"
             >
               <div className="max-w-4xl mx-auto pb-4">
                 {messages.length === 0 && (
-                   <div className="flex flex-col items-center justify-center mt-32 animate-fade-in-up">
-                      <div className="w-20 h-20 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl shadow-sm shadow-emerald-100 flex items-center justify-center mb-6 text-emerald-600 border border-emerald-100"><HeartPulse size={40} /></div>
-                      <h2 className="text-2xl font-bold text-emerald-950 mb-2">时珍智训智能助教</h2>
-                      <p className="text-slate-500">用更清晰的学习画像、资料检索与个性化讲解陪伴你的训练过程</p>
+                   <div className="assistant-starters mx-auto mt-14 flex max-w-2xl flex-col items-center text-center animate-fade-in-up sm:mt-24">
+                      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 text-emerald-600 shadow-sm shadow-emerald-100"><HeartPulse size={32} /></div>
+                      <h2 className="mb-2 text-2xl font-bold text-emerald-950">从这里开始</h2>
+                      <p className="max-w-xl text-sm leading-6 text-slate-500 sm:text-base">说说你当前想完成的学习任务。智能助教会结合学习状态，调度六个智能体协同处理。</p>
+                      <div className="mt-6 grid w-full gap-3 sm:grid-cols-3">
+                        <button type="button" onClick={() => setInput('请结合我的学习状态，为我制定一份学习计划。')} className="assistant-starter-card">
+                          <CalendarRange size={18} />
+                          <span>制定学习计划</span>
+                        </button>
+                        <button type="button" onClick={() => setInput('请结合教材证据讲解一个知识点，并给我一道练习题。')} className="assistant-starter-card">
+                          <BookOpen size={18} />
+                          <span>讲解知识点</span>
+                        </button>
+                        <button type="button" onClick={() => setInput('请根据我的学习进度生成一份练习试卷。')} className="assistant-starter-card">
+                          <FileText size={18} />
+                          <span>生成练习试卷</span>
+                        </button>
+                      </div>
                    </div>
                 )}
                 
@@ -1871,12 +2078,14 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                             searchQuery={msg.searchQuery}
                             messageId={msg.id}
                             feedbackStatus={msg.feedback_status || msg.feedbackStatus}
+                            actions={msg.actions}
                           branch={msg.branch || messageBranches[msg.id]}
                             onInspectRefs={handleInspectRefs} 
                             onFeedback={handleFeedback}
                             onRegenerate={handleRegenerate}
                           onSwitchBranch={handleSwitchBranch}
                             onOpenTrace={handleOpenTrace}
+                            onAction={handleWorkflowAction}
                             isGenerating={isGenerating}
                             isReviewing={isReviewing}
                         />
@@ -1889,6 +2098,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
               
               {showScrollButton && (
                 <button 
+                  aria-label="回到最新消息"
                   onClick={() => { setAutoScroll(true); scrollToBottom(); }}
                   className="fixed bottom-32 right-8 p-3 bg-white border border-emerald-100 shadow-lg shadow-emerald-100 rounded-full text-slate-500 hover:text-emerald-700 hover:border-emerald-200 transition-[color,border-color,box-shadow] animate-in fade-in zoom-in z-30"
                 >
@@ -1898,7 +2108,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
             </div>
 
             {/* Input Area */}
-            <div className="p-6">
+            <div className="assistant-composer p-4 sm:p-6">
               <div className="max-w-4xl mx-auto relative group">
                 <div className="absolute inset-0 bg-emerald-500/10 rounded-[28px] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
                 
@@ -1933,11 +2143,13 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                   )}
                   
                   <textarea 
+                    id="assistant-composer-input"
+                    aria-label="向智能助教提问"
                     ref={textareaRef} 
                     value={input} 
                     onChange={(e) => setInput(e.target.value)} 
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())} 
-                    placeholder="问点什么..." 
+                    placeholder="描述你想学习、练习或规划的内容…"
                     className="w-full bg-transparent border-none outline-none focus:ring-0 text-gray-700 placeholder-gray-500 resize-none max-h-[160px] overflow-y-auto input-scrollbar py-4 px-6 min-h-[56px]" 
                     rows="1" 
                   />
@@ -1946,6 +2158,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                     <div className="flex items-center gap-2">
                       <div className="relative" ref={toolMenuRef}>
                         <button
+                          aria-label="工具与文件"
                           onClick={() => setIsToolMenuOpen(v => !v)}
                           disabled={isCurrentSessionLoading}
                           className={`rounded-full border p-2.5 transition-[color,background-color,border-color,box-shadow,transform] active:scale-95 ${isToolMenuOpen || isToolsEnabled || uploadedFiles.length > 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-100' : 'border-transparent text-slate-600 hover:border-emerald-100 hover:bg-emerald-50/70 hover:text-emerald-700'}`}
@@ -1960,7 +2173,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                               <span className="flex items-center gap-2 text-slate-700"><Globe size={16} className={isToolsEnabled ? 'text-emerald-600' : 'text-gray-400'} />启用工具调用</span>
                               <span className={`rounded-full border px-2 py-0.5 text-[10px] ${isToolsEnabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>{isToolsEnabled ? '已开启' : '关闭'}</span>
                             </button>
-                            <div className="px-3 pt-1 pb-2 text-[11px] leading-relaxed text-slate-400">开启后允许规划智能体调用当前注册的所有工具，后续新增工具也会统一受此开关控制。</div>
+                            <div className="px-3 pt-1 pb-2 text-[11px] leading-relaxed text-slate-400">开启后，系统会在需要时调用已授权工具查找资料或处理文件。</div>
                             <div className="my-2 h-px bg-emerald-50" />
                             <div className="px-3 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">文件上传</div>
                             <button onClick={() => { fileInputRef.current?.click(); setIsToolMenuOpen(false); }} disabled={isUploading || isCurrentSessionLoading} className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-sm transition-colors">
@@ -1974,6 +2187,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
 
                     <div className="flex items-center gap-2">
                       <button
+                        aria-label={isRecording ? '停止语音输入' : '开始语音输入'}
                         onClick={toggleRecording}
                         disabled={isCurrentSessionLoading || isProcessingVoice}
                         className={`
@@ -1987,6 +2201,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                       </button>
 
                       <button 
+                        aria-label={isReviewingCurrentSession ? '回答已完成，正在审核' : isAnswerStreamingCurrentSession ? '停止生成' : '发送消息'}
                         onClick={isAnswerStreamingCurrentSession ? handleStop : handleSend}
                         disabled={isReviewingCurrentSession || (!isAnswerStreamingCurrentSession && ((!input.trim() && uploadedFiles.length === 0) || isLoading))} 
                         className={`
@@ -2017,7 +2232,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
             <div className="absolute left-4 right-4 top-4 z-50 flex flex-wrap items-center justify-between gap-2 sm:left-6 sm:right-6 sm:top-6">
               <div className="flex items-center gap-2">
                 {!isSidebarOpen && (
-                  <button onClick={() => setIsSidebarOpen(true)} className="group p-2 rounded-2xl bg-white/90 shadow-sm shadow-emerald-100 border border-emerald-100 text-emerald-600 hover:text-white hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-500 hover:shadow-md hover:shadow-emerald-200/70 transition-[color,background-color,border-color,box-shadow]"><ChevronsRight size={19} className="transition-transform group-hover:translate-x-0.5" /></button>
+                  <button aria-label="展开侧边栏" onClick={() => setIsSidebarOpen(true)} className="group p-2 rounded-2xl bg-white/90 shadow-sm shadow-emerald-100 border border-emerald-100 text-emerald-600 hover:text-white hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-500 hover:shadow-md hover:shadow-emerald-200/70 transition-[color,background-color,border-color,box-shadow]"><ChevronsRight size={19} className="transition-transform group-hover:translate-x-0.5" /></button>
                 )}
                 <div className="flex w-[184px] items-center gap-2 sm:w-[220px]">
                   {!embedded && shellConfig.assistantHomeAction && onBackHome ? (

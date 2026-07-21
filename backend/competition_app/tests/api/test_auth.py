@@ -42,9 +42,41 @@ def test_protected_pages_and_api_require_login(tmp_path: Path) -> None:
     assert client.get("/health").status_code == 200
 
 
+def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
+    tmp_path: Path,
+) -> None:
+    frontend_root = tmp_path / "frontend"
+    assets_root = frontend_root / "assets"
+    assets_root.mkdir(parents=True)
+    (frontend_root / "index.html").write_text(
+        '<div id="root"></div><script src="/assets/app.js"></script>',
+        encoding="utf-8",
+    )
+    (frontend_root / "favicon.ico").write_bytes(b"icon")
+    (assets_root / "app.js").write_text("window.loaded = true", encoding="utf-8")
+    (assets_root / "app.css").write_text("body { color: green; }", encoding="utf-8")
+    container = ApplicationContainer.build(
+        Settings(mode="stub", frontend_dist_root=frontend_root),
+        snapshot_root=tmp_path / "snapshots",
+    )
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        assert client.get("/").status_code == 200
+        assert client.get("/assets/app.js").status_code == 200
+        assert client.get("/assets/app.css").status_code == 200
+        assert client.get("/favicon.ico").status_code == 200
+        protected = client.post(
+            "/api/v1/review-cards",
+            json={"learner_id": "anonymous", "user_request": "生成复习卡"},
+        )
+
+    assert protected.status_code == 401
+
+
 def test_register_login_me_and_logout(tmp_path: Path) -> None:
     client = build_client(tmp_path)
     user = register(client, "LinStudent")
+    assert user["role"] == "user"
 
     current = client.get("/api/v1/auth/me")
     assert current.status_code == 200
@@ -71,6 +103,41 @@ def test_register_login_me_and_logout(tmp_path: Path) -> None:
     )
     assert logged_in.status_code == 200
     assert logged_in.json()["user"]["user_id"] == user["user_id"]
+
+
+def test_configured_admin_is_bootstrapped_with_an_admin_role(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(
+            mode="stub",
+            admin_username="platform-admin",
+            admin_default_password="admin-password-2026",
+        ),
+        snapshot_root=tmp_path,
+    )
+    client = TestClient(create_app(container))
+
+    logged_in = client.post(
+        "/api/v1/auth/login",
+        json={"username": "platform-admin", "password": "admin-password-2026"},
+    )
+
+    assert logged_in.status_code == 200
+    assert logged_in.json()["user"]["role"] == "admin"
+
+
+def test_legacy_bearer_auth_endpoints_cannot_create_a_second_identity(tmp_path: Path) -> None:
+    client = build_client(tmp_path)
+
+    unauthenticated = client.post("/token", data={"username": "x", "password": "y"})
+    assert unauthenticated.status_code == 401
+
+    user = register(client, "cookie-owner")
+    retired = client.post("/register", json={})
+    compatibility_me = client.get("/users/me")
+
+    assert retired.status_code == 410
+    assert compatibility_me.status_code == 200
+    assert compatibility_me.json()["id"] == user["user_id"]
 
 
 def test_authenticated_identity_overrides_payload_and_isolates_users(tmp_path: Path) -> None:

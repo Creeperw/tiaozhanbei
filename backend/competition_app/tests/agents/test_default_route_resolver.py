@@ -495,3 +495,104 @@ async def test_short_term_route_inherits_the_formal_long_term_parent(
     assert result.payload.textbook_route is not None
     assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
     assert result.payload.match_reason == "inherited_long_term_plan"
+
+
+@pytest.mark.asyncio
+async def test_generic_long_term_request_uses_active_learning_target_without_reasking(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    model = RouteDecisionModel(
+        {
+            "decision": "clarify",
+            "selected_route_id": None,
+            "confidence": 0.99,
+            "reason": "不应调用模型重复追问已锁定目标。",
+            "clarification_question": "请再次说明考试目标。",
+        }
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "请结合我的学习状态，给我制定一份长期规划。",
+            "user_profile": {},
+            "learning_target": {
+                "target_type": "certification",
+                "exam_name": "中医执业医师",
+                "is_active": True,
+                "is_locked": True,
+            },
+        }
+    )
+
+    assert result.payload.route_id == "tcm_physician_standard_degree"
+    assert result.payload.match_reason == "active_learning_target"
+    assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
+    assert model.payload is None
+
+
+@pytest.mark.asyncio
+async def test_generic_long_term_request_can_recover_route_from_existing_short_plan(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    approved = repository.resolve(
+        goal_type="credential", goal_name="中医执业医师"
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, RouteDecisionModel({})
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "请结合我的学习状态，给我制定一份长期规划。",
+            "user_profile": {},
+            "current_short_term_plan": {
+                "content": "已有短期计划",
+                "planning_route": approved.model_dump(mode="json"),
+            },
+        }
+    )
+
+    assert result.payload.route_id == "tcm_physician_standard_degree"
+    assert result.payload.match_reason == "inherited_current_plan"
+
+
+@pytest.mark.asyncio
+async def test_inherited_textbook_route_is_not_changed_by_keywords_in_plan_prose(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    parent = await DefaultRouteResolverAgent(
+        repository, textbook_repository
+    ).run(
+        {
+            **agent_context(),
+            "user_request": "制定中医执业医师考试长期规划",
+            "user_profile": {
+                "goals": {"type": "credential", "name": "中医执业医师"}
+            },
+        }
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, RouteDecisionModel({})
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "请结合我的学习状态，给我制定一份长期规划。",
+            "current_long_term_plan": {
+                "content": "训练中西医结合分析能力，但考试目标不变。",
+                "planning_route": parent.payload.model_dump(mode="json"),
+            },
+        }
+    )
+
+    assert result.payload.route_id == "tcm_physician_standard_degree"
+    assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"

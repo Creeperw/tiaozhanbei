@@ -51,11 +51,12 @@ def build_engine():
             "status TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
         ))
         connection.execute(text(
-            "CREATE TABLE conversation_sessions (session_id TEXT PRIMARY KEY, learner_id TEXT)"
+            "CREATE TABLE conversation_sessions (session_id TEXT PRIMARY KEY, learner_id TEXT, "
+            "title TEXT DEFAULT '新对话', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
         ))
         connection.execute(text(
             "CREATE TABLE conversation_messages (message_id TEXT PRIMARY KEY, session_id TEXT, "
-            "role TEXT, content TEXT)"
+            "role TEXT, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
         ))
     return engine
 

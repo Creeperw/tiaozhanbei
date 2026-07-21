@@ -18,21 +18,21 @@ vi.mock('../pageDataLoaders.js', () => ({
   loadTrainingWorkspaceModules: vi.fn(() => Promise.resolve({
     workspace: {
       modules: [{
-        key: 'practice_grading',
-        label: 'Practice grading',
-        description: 'Practice grading',
+        key: 'question_training',
+        label: 'Question training',
+        description: 'Question training',
         enabled: true,
         badge: 'Available',
       }, {
-        key: 'mistake_variation',
-        label: 'Mistake reinforcement',
-        description: 'Mistake reinforcement',
+        key: 'knowledge_cards',
+        label: 'Knowledge cards',
+        description: 'Knowledge cards',
         enabled: true,
         badge: 'Available',
       }, {
-        key: 'case_training',
-        label: 'Case training',
-        description: 'Case training',
+        key: 'paper_workspace',
+        label: 'Paper workspace',
+        description: 'Paper workspace',
         enabled: true,
         badge: 'Available',
       }],
@@ -88,23 +88,23 @@ describe('PracticePage personal question scope', () => {
   it('selects a requested enabled training module from a workspace deep link', async () => {
     render(<PracticePage navigationContext={{ view: 'workspace', taskType: 'mistake_variation' }} />);
 
-    const mistakeButton = await screen.findByRole('button', { name: /Mistake reinforcement/ });
-    await waitFor(() => expect(mistakeButton).toHaveAttribute('aria-current', 'page'));
+    const questionButton = await screen.findByRole('button', { name: /Question training/ });
+    await waitFor(() => expect(questionButton).toHaveAttribute('aria-current', 'page'));
   });
 
   it('keeps an enabled fallback when a deep-linked training module is unavailable', async () => {
     loadTrainingWorkspaceModules.mockResolvedValueOnce({
       workspace: {
         modules: [{
-          key: 'practice_grading',
-          label: 'Practice grading',
-          description: 'Practice grading',
+          key: 'question_training',
+          label: 'Question training',
+          description: 'Question training',
           enabled: true,
           badge: 'Available',
         }, {
-          key: 'case_training',
-          label: 'Case training',
-          description: 'Case training',
+          key: 'knowledge_cards',
+          label: 'Knowledge cards',
+          description: 'Knowledge cards',
           enabled: false,
           badge: 'Unavailable',
         }],
@@ -112,9 +112,9 @@ describe('PracticePage personal question scope', () => {
       error: '',
     });
 
-    render(<PracticePage navigationContext={{ view: 'workspace', taskType: 'case_training' }} />);
+    render(<PracticePage navigationContext={{ view: 'workspace', taskType: 'knowledge_card_generation' }} />);
 
-    const practiceButton = await screen.findByRole('button', { name: /Practice grading/ });
+    const practiceButton = await screen.findByRole('button', { name: /Question training/ });
     await waitFor(() => expect(practiceButton).toHaveAttribute('aria-current', 'page'));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('请求的训练模块暂未开放'));
   });

@@ -9,53 +9,69 @@ import HomePage from './components/HomePage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
 import AppShell from './components/AppShell';
-import { API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
+import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
 
+const pendingNavigationKey = 'competition.pending-navigation';
+
+const initialPageIntent = () => {
+  try {
+    const stored = sessionStorage.getItem(pendingNavigationKey);
+    if (!stored) return createPageIntent('dashboard');
+    sessionStorage.removeItem(pendingNavigationKey);
+    return createPageIntent(JSON.parse(stored));
+  } catch {
+    sessionStorage.removeItem(pendingNavigationKey);
+    return createPageIntent('dashboard');
+  }
+};
+
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'));
   const [currentUser, setCurrentUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [pageIntent, setPageIntent] = useState(() => createPageIntent('dashboard'));
+  const [pageIntent, setPageIntent] = useState(initialPageIntent);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const currentPage = getIntentPage(pageIntent);
   const selectedSessionId = pageIntent.params.sessionId || null;
 
   useEffect(() => {
-    const verifyToken = async () => {
-      if (token) {
-        try {
-          const res = await fetchWithAuth(`${API_BASE}/users/me`);
-          if (res.ok) {
-            const data = await readJsonResponse(res, {});
-            setCurrentUser(data);
-          } else {
-            setToken(null);
-            localStorage.removeItem('token');
-          }
-        } catch {
-          setToken(null);
-          localStorage.removeItem('token');
+    let active = true;
+    const verifySession = async () => {
+      try {
+        const res = await fetchWithAuth(`${AUTH_API_BASE}/me`);
+        const data = await readJsonResponse(res, {});
+        if (active) {
+          setCurrentUser(res.ok ? data.user || null : null);
         }
+      } catch {
+        if (active) setCurrentUser(null);
+      } finally {
+        if (active) setCheckingAuth(false);
       }
-      setCheckingAuth(false);
     };
 
-    verifyToken();
-  }, [token]);
+    const clearSession = () => setCurrentUser(null);
+    window.addEventListener('competition:unauthorized', clearSession);
+    verifySession();
+    return () => {
+      active = false;
+      window.removeEventListener('competition:unauthorized', clearSession);
+    };
+  }, []);
 
-  const handleLogin = (username) => {
-    setToken(localStorage.getItem('token'));
-    setCurrentUser({ username });
+  const handleLogin = (user) => {
+    setCurrentUser(user);
     navigateToPage('dashboard');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setCurrentUser(null);
-    setKnowledgeNavigationContext(null);
+  const handleLogout = async () => {
+    try {
+      await fetchWithAuth(`${AUTH_API_BASE}/logout`, { method: 'POST' });
+    } finally {
+      setCurrentUser(null);
+      setKnowledgeNavigationContext(null);
+    }
   };
 
   const shellConfig = getAppShellConfig({ currentUser, currentPage, selectedSessionId });
@@ -111,7 +127,7 @@ export default function App() {
     return <div className="flex h-screen items-center justify-center bg-[#f8fafc] text-gray-400">Loading...</div>;
   }
 
-  if (!token) {
+  if (!currentUser) {
     return <AuthPage onLogin={handleLogin} />;
   }
 
@@ -130,6 +146,7 @@ export default function App() {
             onOpenKnowledge={() => navigateToPage('knowledge')}
             onOpenPersonalization={() => navigateToPage('personalization')}
             onOpenAdminFeedback={() => navigateToPage('admin-feedback')}
+            onNavigate={navigateToPage}
             preferredSessionId={selectedSessionId}
             initialContext={pageIntent.params.context || ''}
           />

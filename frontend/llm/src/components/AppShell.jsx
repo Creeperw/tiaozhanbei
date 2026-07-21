@@ -145,6 +145,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
   const drawerExitTimerRef = useRef(null);
   const displayName = currentUser?.username || 'User';
   const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice'].includes(shell.currentPage);
+  const scrollRegion = ['assistant', 'knowledge'].includes(shell.currentPage) ? 'contained' : 'page';
 
   useEffect(() => () => window.clearTimeout(drawerExitTimerRef.current), []);
 
@@ -203,7 +204,12 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
           <span className="app-shell__mobile-user">{displayName}</span>
         </header>
 
-        <main className="app-shell__main" data-page={shell.currentPage} data-mode={shell.shellMode}>
+        <main
+          className="app-shell__main"
+          data-page={shell.currentPage}
+          data-mode={shell.shellMode}
+          data-scroll-region={scrollRegion}
+        >
           {shell.currentPage !== 'dashboard' && shell.shellMode !== 'workspace' && (
             <header className="app-shell__page-header">
               {shouldShowHomeButton && <HomeButton onClick={() => onNavigate({ page: shell.homeAction.key, params: {} })} label={shell.homeAction.label} />}

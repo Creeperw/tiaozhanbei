@@ -108,15 +108,21 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertIn("在职碎片化", cross["tags"])
         self.assertIn("default_profile", cross)
 
-    def test_workspace_modules_returns_six_modules_and_default_task_type(self):
+    def test_workspace_modules_returns_three_product_modules_and_default_task_type(self):
         response = self.client.get("/training/workspace/modules")
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(len(body["modules"]), 6)
-        self.assertEqual(body["default_task_type"], "practice_grading")
-        variation = next(module for module in body["modules"] if module["key"] == "mistake_variation")
-        self.assertTrue(variation["enabled"])
+        self.assertEqual(len(body["modules"]), 3)
+        self.assertEqual(body["default_task_type"], "question_training")
+        question_training = next(
+            module for module in body["modules"] if module["key"] == "question_training"
+        )
+        self.assertTrue(question_training["enabled"])
+        self.assertEqual(
+            question_training["capabilities"],
+            ["practice_grading", "case_training", "mistake_variation"],
+        )
 
     def test_workspace_mistake_variation_returns_404_for_missing_or_unowned_source(self):
         for mistake_id in (999, 91):

@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -155,7 +156,7 @@ class DocumentIngestionServiceTests(unittest.TestCase):
         from APP.backend import config
 
         self.assertTrue(config.MARKITDOWN_EXTRACT_TIMEOUT_SECONDS > 0)
-        self.assertEqual(config.MARKITDOWN_OUTPUT_DIR, "./APP/backend/markitdown_output")
+        self.assertEqual(Path(config.MARKITDOWN_OUTPUT_DIR).name, "markitdown_output")
 
 
 if __name__ == "__main__":

@@ -85,6 +85,7 @@ class ApplicationContainer:
     model_trace_recorder: ModelTraceRecorder | None = None
     auth_cookie_secure: bool = False
     backend_handoff_runtime: BackendHandoffRuntime | None = None
+    frontend_dist_root: Path | None = None
 
     @classmethod
     def build(
@@ -129,6 +130,8 @@ class ApplicationContainer:
         authentication_service = AuthenticationService(
             auth_repository,
             session_ttl_hours=settings.auth_session_ttl_hours,
+            admin_username=settings.admin_username,
+            admin_password=settings.admin_default_password,
         )
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
@@ -137,6 +140,7 @@ class ApplicationContainer:
                 settings.chat_base_url,
                 settings.dashscope_api_key,
                 settings.chat_model,
+                timeout_seconds=settings.llm_timeout_seconds,
             )
             embedding_model = SiliconFlowEmbeddingModel(
                 settings.embedding_base_url,
@@ -294,6 +298,12 @@ class ApplicationContainer:
                     if backend_handoff_runtime is not None
                     else None
                 ),
+                profile_update_writer=(
+                    backend_handoff_runtime.update_learning_profile
+                    if backend_handoff_runtime is not None
+                    else None
+                ),
+                workshop_runtime=backend_handoff_runtime,
             ),
             review_service=review_service,
             authentication_service=authentication_service,
@@ -307,6 +317,7 @@ class ApplicationContainer:
             model_trace_recorder=model_trace_recorder,
             auth_cookie_secure=settings.auth_cookie_secure,
             backend_handoff_runtime=backend_handoff_runtime,
+            frontend_dist_root=settings.frontend_dist_root,
         )
 
 

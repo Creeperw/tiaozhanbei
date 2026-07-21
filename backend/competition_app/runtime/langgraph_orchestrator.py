@@ -547,11 +547,23 @@ class LangGraphOrchestrator(Orchestrator):
             "questions": questions,
             "requested_scope": getattr(payload, "requested_scope", None)
             or getattr(payload, "plan_scope", None),
+            "profile_fields": list(getattr(payload, "clarification_fields", []) or []),
+            "interrupt_type": getattr(payload, "interrupt_type", None),
         }
 
     @staticmethod
     def _apply_resume_value(root_context: dict[str, Any], resume_value: Any) -> None:
         value = resume_value if isinstance(resume_value, dict) else {"answer": resume_value}
+        profile_updates = value.get("profile_updates")
+        if isinstance(profile_updates, dict):
+            profile = root_context.setdefault("user_profile", {})
+            profile.update(
+                {
+                    str(key): item
+                    for key, item in profile_updates.items()
+                    if str(key).strip() and item not in (None, "")
+                }
+            )
         change = value.get("plan_change_context")
         if not isinstance(change, dict):
             answer = str(value.get("answer") or "").strip()

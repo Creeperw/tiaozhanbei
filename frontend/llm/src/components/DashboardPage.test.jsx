@@ -1,6 +1,7 @@
 import React from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { cwd } from 'node:process';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardPage from './DashboardPage';
@@ -171,7 +172,7 @@ describe('DashboardPage learning workspace', () => {
     const workspace = await screen.findByRole('region', { name: '今日学习工作区' });
     fireEvent.click(screen.getByRole('button', { name: '折叠智能助教' }));
 
-    const stylesheet = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
     expect(workspace).toHaveAttribute('data-right-column', 'stable');
     expect(stylesheet).not.toMatch(/\.dashboard-daily__workspace:has\(\.compact-assistant\.is-collapsed\)/);
   });
@@ -187,6 +188,103 @@ describe('DashboardPage learning workspace', () => {
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
       params: { view: 'workspace', taskType: 'case_training', trackId: 'track-a' },
+    });
+  });
+
+  it('uses the persisted long-term plan as stage to book navigation', async () => {
+    const onNavigate = vi.fn();
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (url.includes('/learning-path')) {
+        const isBooks = url.includes('parent_id=');
+        const payload = {
+          schema_version: '1.0',
+          learner_id: 'user-a',
+          plan_ref: { plan_id: 'LP_1', plan_version: 1, route_id: 'textbook_tcm_physician' },
+          parent_id: isBooks ? 'stage-1' : null,
+          parent_type: isBooks ? 'stage' : null,
+          current_node_id: isBooks ? 'book-1' : 'stage-1',
+          nodes: isBooks ? [{
+            node_id: 'book-1', node_type: 'book', parent_id: 'stage-1', title: '《中医学基础》',
+            order: 1, status: 'in_progress', progress: 0, mastery: null, has_children: true,
+            child_count: 12, description: '建立基础', source_refs: [],
+            navigation: { action: 'open_knowledge_atlas', route_id: 'tcm_assistant', book: '中医学基础' },
+          }] : [{
+            node_id: 'stage-1', node_type: 'stage', parent_id: null, title: '第一阶段',
+            order: 1, status: 'in_progress', progress: 0, mastery: null, has_children: true,
+            child_count: 2, description: '建立基础', source_refs: [],
+            navigation: { action: 'expand', parent_id: 'stage-1' },
+          }],
+          offset: 0, limit: 100, total: 1, has_more: false,
+        };
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify(payload) });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          hero: { greeting: '你好', goal: '继续学习', focus: '长期主线' },
+          today_tasks: [], yesterday_feedback: { metrics: [] },
+        }),
+      });
+    }));
+
+    render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
+    const stage = await screen.findByRole('button', { name: /进入第一阶段/ });
+    fireEvent.click(stage);
+    const book = await screen.findByRole('button', { name: /进入《中医学基础》/ });
+    expect(screen.getByRole('button', { name: '返回阶段' })).toBeInTheDocument();
+    fireEvent.click(book);
+
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'knowledge',
+      params: {
+        view: 'atlas', route: 'tcm_assistant', lv1: '中医学基础', source: 'learning-plan',
+      },
+    });
+  });
+
+  it('shows an actionable empty path before a learner creates a long-term plan', async () => {
+    const onNavigate = vi.fn();
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (url.includes('/learning-path')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({
+            schema_version: '1.0',
+            learner_id: 'new-user',
+            plan_ref: null,
+            parent_id: null,
+            parent_type: null,
+            current_node_id: null,
+            nodes: [],
+            offset: 0,
+            limit: 100,
+            total: 0,
+            has_more: false,
+            availability: 'requires_long_term_plan',
+            message: '请先完成长期学习规划，再生成阶段、教材和知识点路径。',
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          hero: { greeting: '你好', goal: '先完善学习目标', focus: '开始学习' },
+          today_tasks: [],
+          yesterday_feedback: { metrics: [] },
+        }),
+      });
+    }));
+
+    render(<DashboardPage currentUser={{ username: 'new-user' }} onNavigate={onNavigate} />);
+
+    expect(await screen.findByText('请先完成长期学习规划，再生成阶段、教材和知识点路径。')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '去制定长期规划' }));
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'assistant',
+      params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' },
     });
   });
 

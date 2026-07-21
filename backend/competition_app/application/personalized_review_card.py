@@ -19,10 +19,12 @@ from competition_app.contracts.resource import (
     ResourceVersion,
 )
 from competition_app.contracts.review import ReviewResourceBinding, ReviewSchedule, ReviewTask
+from competition_app.contracts.workshop import UiAction
 from competition_app.runtime.orchestrator import Orchestrator
 from competition_app.runtime.snapshot import SnapshotExporter
 from competition_app.runtime.model_trace import ModelCallTrace, ModelTraceRecorder
 from competition_app.runtime.event_stream import emit_runtime_event
+from competition_app.runtime.data_permissions import AgentDataPermissionGateway
 from competition_app.repositories.learning_plan import (
     InMemoryLearningPlanRepository,
     LearningPlanRepository,
@@ -36,6 +38,7 @@ from competition_app.repositories.runtime import (
 from competition_app.services.writeback import WritebackExecutor
 from competition_app.services.review import ReviewService
 from competition_app.services.plan_scope import infer_plan_scope
+from competition_app.application.workflow_presentation import workflow_result_to_markdown
 
 
 class PlanChangeContext(BaseModel):
@@ -50,6 +53,7 @@ class PlanChangeContext(BaseModel):
 
 class ReviewCardRequest(BaseModel):
     thread_id: str | None = Field(default=None, min_length=8, max_length=128)
+    conversation_id: str | None = Field(default=None, min_length=8, max_length=128)
     learner_id: str
     user_request: str = Field(min_length=1)
     available_minutes: int = Field(default=15, gt=0, le=24 * 60)
@@ -84,12 +88,14 @@ class ReviewCardResult(BaseModel):
     snapshot_path: Path
     writeback_intents: list[WritebackIntent]
     model_trace: list[ModelCallTrace] = Field(default_factory=list)
+    ui_actions: list[UiAction] = Field(default_factory=list)
 
 
 class WorkflowResumeRequest(BaseModel):
     answer: str = Field(min_length=1)
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     plan_change_context: PlanChangeContext | None = None
+    profile_updates: dict[str, str] = Field(default_factory=dict)
 
 
 class WorkflowInterruptedResult(BaseModel):
@@ -127,6 +133,9 @@ class PersonalizedReviewCardUseCase:
         conversation_repository: ConversationRepository | None = None,
         review_service: ReviewService | None = None,
         behavior_context_loader: Callable[[str], dict[str, Any]] | None = None,
+        profile_update_writer: Callable[[str, dict[str, Any], str | None], dict[str, Any]] | None = None,
+        data_permission_gateway: AgentDataPermissionGateway | None = None,
+        workshop_runtime: Any | None = None,
     ) -> None:
         self.orchestrator = orchestrator
         self.snapshot_exporter = snapshot_exporter
@@ -140,6 +149,9 @@ class PersonalizedReviewCardUseCase:
         )
         self.review_service = review_service
         self.behavior_context_loader = behavior_context_loader
+        self.profile_update_writer = profile_update_writer
+        self.data_permission_gateway = data_permission_gateway or AgentDataPermissionGateway()
+        self.workshop_runtime = workshop_runtime
         self._continuations: dict[str, _WorkflowContinuation] = {}
 
     async def execute(
@@ -148,6 +160,7 @@ class PersonalizedReviewCardUseCase:
         if self.model_trace_recorder:
             self.model_trace_recorder.reset()
         thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
+        conversation_id = request.conversation_id or thread_id
         execution_id = f"EXE_{uuid4().hex}"
         case_id = f"CASE_{uuid4().hex}"
         self._remember_run(
@@ -160,15 +173,24 @@ class PersonalizedReviewCardUseCase:
                 "learner_id": request.learner_id,
             },
         )
-        persisted_messages = list(request.messages)
+        existing_messages = self.conversation_repository.get_messages(
+            conversation_id, request.learner_id
+        )
+        persisted_messages = list(request.messages or existing_messages)
         if (
             not persisted_messages
             or persisted_messages[-1].get("content") != request.user_request
         ):
             persisted_messages.append({"role": "user", "content": request.user_request})
         self.conversation_repository.save_messages(
-            thread_id, request.learner_id, persisted_messages
+            conversation_id, request.learner_id, persisted_messages
         )
+        if not existing_messages:
+            self.conversation_repository.rename_session(
+                conversation_id,
+                request.learner_id,
+                request.user_request.strip().replace("\n", " ")[:40] or "新对话",
+            )
         behavior_context = await self._load_behavior_context(request.learner_id)
         effective_user_profile = self._merge_context_dict(
             request.user_profile, behavior_context.get("user_profile", {})
@@ -275,7 +297,9 @@ class PersonalizedReviewCardUseCase:
             "question_attempts": effective_question_attempts,
             "question_learning_stats": effective_question_learning_stats,
             "behavior_context_source": behavior_context.get("source"),
+            "enforce_profile_readiness": self.behavior_context_loader is not None,
             "behavior_context_calculated_at": behavior_context.get("calculated_at"),
+            "learning_target": behavior_context.get("learning_target"),
             "current_long_term_plan": current_long_term_plan,
             "current_short_term_plan": current_short_term_plan,
             "current_learning_task": current_learning_task,
@@ -363,6 +387,9 @@ class PersonalizedReviewCardUseCase:
                     "task_type": interrupted.task_type,
                 },
             )
+            self._save_assistant_message(
+                conversation_id, request.learner_id, persisted_messages, interrupted
+            )
             return interrupted
         if execution.status != "success":
             self.mark_run_failed(thread_id, execution.error_message or execution.status)
@@ -380,6 +407,9 @@ class PersonalizedReviewCardUseCase:
             thread_id,
             {"status": "completed", "thread_id": thread_id, "result": result},
         )
+        self._save_assistant_message(
+            conversation_id, request.learner_id, persisted_messages, result
+        )
         return result
 
     async def resume(
@@ -391,9 +421,45 @@ class PersonalizedReviewCardUseCase:
         if continuation is None:
             raise KeyError(f"没有可恢复的 LangGraph 会话：{thread_id}")
         self._remember_run(thread_id, {"status": "running", "thread_id": thread_id})
+        conversation_id = continuation.request.conversation_id or thread_id
+        persisted_messages = self.conversation_repository.get_messages(
+            conversation_id, continuation.request.learner_id
+        )
+        persisted_messages.append({"role": "user", "content": request.answer})
+        self.conversation_repository.save_messages(
+            conversation_id, continuation.request.learner_id, persisted_messages
+        )
+        resume_payload = request.model_dump(mode="json", exclude_none=True)
+        run_state = self.get_run_state(thread_id) or {}
+        interrupt_payload = run_state.get("interrupt") or {}
+        if interrupt_payload.get("interrupt_type") == "profile_completion":
+            pending_fields = {
+                str(field)
+                for field in interrupt_payload.get("profile_fields") or []
+                if str(field).strip()
+            }
+            profile_updates = dict(request.profile_updates)
+            if not profile_updates and len(pending_fields) == 1:
+                profile_updates[next(iter(pending_fields))] = request.answer.strip()
+            self.data_permission_gateway.authorize(
+                agent="diagnosis_agent",
+                domain="learner_profile",
+                action="write",
+                fields=set(profile_updates),
+                confirmed_fields=pending_fields,
+            )
+            if self.profile_update_writer is None:
+                raise RuntimeError("profile writeback is unavailable for this workflow")
+            await asyncio.to_thread(
+                self.profile_update_writer,
+                continuation.request.learner_id,
+                profile_updates,
+                continuation.execution_id,
+            )
+            resume_payload["profile_updates"] = profile_updates
         execution = await self.orchestrator.resume(
             thread_id,
-            request.model_dump(mode="json", exclude_none=True),
+            resume_payload,
         )
         if execution.status == "interrupted":
             interrupted = WorkflowInterruptedResult(
@@ -423,6 +489,12 @@ class PersonalizedReviewCardUseCase:
                     "task_type": interrupted.task_type,
                 },
             )
+            self._save_assistant_message(
+                conversation_id,
+                continuation.request.learner_id,
+                persisted_messages,
+                interrupted,
+            )
             return interrupted
         if execution.status != "success":
             detail = execution.error_message or self._execution_failure_detail(execution)
@@ -441,7 +513,27 @@ class PersonalizedReviewCardUseCase:
             thread_id,
             {"status": "completed", "thread_id": thread_id, "result": result},
         )
+        self._save_assistant_message(
+            conversation_id,
+            continuation.request.learner_id,
+            persisted_messages,
+            result,
+        )
         return result
+
+    def _save_assistant_message(
+        self,
+        conversation_id: str,
+        learner_id: str,
+        messages: list[dict[str, Any]],
+        result: ReviewCardResult | WorkflowInterruptedResult,
+    ) -> None:
+        content = workflow_result_to_markdown(result)
+        self.conversation_repository.save_messages(
+            conversation_id,
+            learner_id,
+            [*messages, {"role": "assistant", "content": content}],
+        )
 
     def get_run_state(self, thread_id: str) -> dict[str, Any] | None:
         return self.run_state_repository.get(thread_id)
@@ -615,6 +707,27 @@ class PersonalizedReviewCardUseCase:
         paper = execution.outputs["paper_assembly"].payload
         blueprint = execution.outputs["paper_blueprint"].payload
         candidate_pool = execution.outputs["question_pool"].payload
+        paper_publication: dict[str, Any] | None = None
+        if self.workshop_runtime is not None:
+            self.data_permission_gateway.authorize(
+                agent="paper_assembly_agent",
+                domain="paper_workspace",
+                action="write",
+                fields={"paper", "blueprint", "evidence_pack", "execution_id"},
+            )
+            knowledge_output = execution.outputs.get("knowledge")
+            evidence_pack = getattr(knowledge_output, "payload", None)
+            paper_publication = self.workshop_runtime.publish_agent_paper(
+                request.learner_id,
+                execution_id=execution_id,
+                paper=paper.model_dump(mode="json"),
+                blueprint=blueprint.model_dump(mode="json"),
+                evidence_pack=(
+                    evidence_pack.model_dump(mode="json")
+                    if hasattr(evidence_pack, "model_dump")
+                    else {}
+                ),
+            )
         publish_answers = self._paper_answers_requested(request)
         paper_content: dict[str, Any] = {
             "试卷说明": paper.instructions,
@@ -729,6 +842,17 @@ class PersonalizedReviewCardUseCase:
             snapshot_path=snapshot_path,
             writeback_intents=writeback_intents,
             model_trace=self._model_trace(),
+            ui_actions=(
+                [
+                    UiAction(
+                        label="开始答题",
+                        destination="workshop.paper",
+                        params={"paper_id": str(paper_publication["paper_id"])},
+                    )
+                ]
+                if paper_publication and paper_publication.get("paper_id")
+                else []
+            ),
         )
 
     @staticmethod
@@ -770,6 +894,12 @@ class PersonalizedReviewCardUseCase:
             content=resource.content,
             audit_result_id=audit.audit_result_id,
             published_at=datetime.now(timezone.utc),
+        )
+        card_publication = self._publish_knowledge_card(
+            request=request,
+            execution_id=execution_id,
+            execution=execution,
+            resource=resource,
         )
         writeback_intents = [
             WritebackIntent(
@@ -827,6 +957,125 @@ class PersonalizedReviewCardUseCase:
             snapshot_path=snapshot_path,
             writeback_intents=writeback_intents,
             model_trace=self._model_trace(),
+            ui_actions=(
+                [
+                    UiAction(
+                        label="查看知识卡",
+                        destination="workshop.knowledge_card",
+                        params={"card_id": str(card_publication["card_id"])},
+                    )
+                ]
+                if card_publication and card_publication.get("card_id")
+                else []
+            ),
+        )
+
+    def _publish_knowledge_card(
+        self,
+        *,
+        request: ReviewCardRequest,
+        execution_id: str,
+        execution,
+        resource: ResourceDraft,
+    ) -> dict[str, Any] | None:
+        if self.workshop_runtime is None:
+            return None
+        knowledge_output = execution.outputs.get("knowledge")
+        evidence_pack = getattr(knowledge_output, "payload", None)
+        kp_ids = list(getattr(evidence_pack, "resolved_kp_ids", []) or [])
+        if not kp_ids:
+            return None
+        self.data_permission_gateway.authorize(
+            agent="expert_agent",
+            domain="knowledge_card",
+            action="write",
+            fields={"kp_id", "title", "resource_bundle", "source_execution_id"},
+        )
+        evidence_items = list(getattr(evidence_pack, "evidence_items", []) or [])
+        textbook_slices: list[dict[str, Any]] = []
+        videos: list[dict[str, Any]] = []
+        questions: list[dict[str, Any]] = []
+        provenance: list[dict[str, Any]] = []
+        for item in evidence_items:
+            value = item.model_dump(mode="json") if hasattr(item, "model_dump") else {}
+            resource_type = str(value.get("resource_type") or "")
+            normalized = {
+                "source_id": value.get("source_id"),
+                "summary": value.get("content_summary"),
+                "url": value.get("source_url"),
+                "origin": "web_search" if str(value.get("authority_level", "")).startswith("web_") else "knowledge_repository",
+            }
+            if resource_type == "video":
+                videos.append(normalized)
+            elif resource_type == "question":
+                questions.append(normalized)
+            elif resource_type == "textbook":
+                textbook_slices.append(normalized)
+            provenance.append({
+                "kind": resource_type or "reference",
+                "source_id": value.get("source_id"),
+                "origin": normalized["origin"],
+            })
+        for question in list(getattr(evidence_pack, "_question_details", []) or []):
+            value = (
+                question.model_dump(mode="json")
+                if hasattr(question, "model_dump")
+                else {}
+            )
+            question_id = str(value.get("question_id") or "").strip()
+            if question_id and any(
+                str(item.get("question_id") or item.get("source_id") or "")
+                == question_id
+                for item in questions
+            ):
+                continue
+            questions.append(
+                {
+                    "question_id": question_id,
+                    "question_type": value.get("question_type"),
+                    "stem": value.get("stem"),
+                    "options": value.get("options") or [],
+                    "reference_answer": value.get("reference_answer"),
+                    "analysis": value.get("analysis"),
+                    "tags": value.get("tags") or [],
+                    "origin": (
+                        "web_search"
+                        if value.get("source_tier") == "web_reference"
+                        else "knowledge_repository"
+                    ),
+                }
+            )
+            provenance.append(
+                {
+                    "kind": "question",
+                    "source_id": question_id,
+                    "origin": questions[-1]["origin"],
+                }
+            )
+        bundle = {
+            "schema_version": "1.0",
+            "bundle_id": f"KRB_{execution_id}",
+            "knowledge_point": {"kp_id": kp_ids[0], "title": resource.title},
+            "explanation": {"title": resource.title, "content": resource.content, "source": "expert_agent"},
+            "textbook_slices": textbook_slices,
+            "videos": videos,
+            "questions": questions,
+            "coverage": {
+                "knowledge_point": True,
+                "explanation": True,
+                "textbook_slices": bool(textbook_slices),
+                "videos": bool(videos),
+                "questions": bool(questions),
+                "fallback_used": [],
+            },
+            "provenance": provenance,
+        }
+        return self.workshop_runtime.save_knowledge_card(
+            request.learner_id,
+            kp_id=kp_ids[0],
+            title=resource.title,
+            resource_bundle=bundle,
+            source_execution_id=execution_id,
         )
 
     async def _load_behavior_context(self, learner_id: str) -> dict[str, Any]:

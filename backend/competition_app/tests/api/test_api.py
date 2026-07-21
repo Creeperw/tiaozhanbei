@@ -1,12 +1,14 @@
 from pathlib import Path
 import json
 import re
+from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
 from competition_app.api.app import create_app
 from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings
+from competition_app.contracts.learning_plan import LearningPlanResult, LongTermPlan, LongTermPlanStage
 
 
 def test_review_card_api_runs_shared_use_case(tmp_path: Path) -> None:
@@ -23,6 +25,88 @@ def test_review_card_api_runs_shared_use_case(tmp_path: Path) -> None:
     assert body["status"] == "success"
     assert body["resource_version"]["status"] == "published"
     assert body["review_task"]["primary_kp_id"] == "KP_FJ_018"
+
+
+def test_learning_path_api_projects_only_the_signed_in_users_plan(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+    client = TestClient(create_app(container, auth_required=True))
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "path-owner",
+            "display_name": "路径同学",
+            "password": "correct-horse-2026",
+        },
+    )
+    learner_id = registered.json()["user"]["user_id"]
+    now = datetime.now(timezone.utc)
+    container.review_card_use_case.plan_repository.save_current(
+        learner_id,
+        LearningPlanResult(
+            generated_scope="long_term",
+            long_term_plan=LongTermPlan(
+                plan_id="LP_API_PATH",
+                learner_id=learner_id,
+                content="长期规划",
+                version=1,
+                status="active",
+                created_at=now,
+                updated_at=now,
+                stages=[
+                    LongTermPlanStage(stage=1, book=["《中医学基础》"], goal="建立基础。")
+                ],
+            ),
+        ),
+    )
+
+    root = client.get("/api/v1/learning-path")
+    books = client.get(
+        "/api/v1/learning-path/nodes",
+        params={"parent_id": root.json()["nodes"][0]["node_id"]},
+    )
+
+    assert root.status_code == 200
+    assert root.json()["schema_version"] == "1.0"
+    assert root.json()["nodes"][0]["node_type"] == "stage"
+    assert books.status_code == 200
+    assert books.json()["nodes"][0]["node_type"] == "book"
+    assert books.json()["nodes"][0]["title"] == "《中医学基础》"
+
+
+def test_learning_path_api_returns_an_actionable_empty_state_before_planning(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+    client = TestClient(create_app(container, auth_required=True))
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "path-newcomer",
+            "display_name": "新同学",
+            "password": "correct-horse-2026",
+        },
+    )
+
+    response = client.get("/api/v1/learning-path")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "schema_version": "1.0",
+        "learner_id": response.json()["learner_id"],
+        "plan_ref": None,
+        "parent_id": None,
+        "parent_type": None,
+        "current_node_id": None,
+        "nodes": [],
+        "offset": 0,
+        "limit": 100,
+        "total": 0,
+        "has_more": False,
+        "availability": "requires_long_term_plan",
+        "message": "请先完成长期学习规划，再生成阶段、教材和知识点路径。",
+    }
 
 
 def test_review_queue_starts_only_after_question_completion(tmp_path: Path) -> None:

@@ -1,0 +1,119 @@
+{
+  "theme": "脾胃气虚证 + 四君子汤",
+  "workflow": {
+    "entry": "诊断学习状态",
+    "steps": ["知识点对齐", "教学与练习", "即时批改", "错题沉淀", "复习调度"]
+  },
+  "safety_labels": [
+    {"label_id": "SL_MEDICAL_DISCLAIMER", "name": "非医疗建议"},
+    {"label_id": "SL_EDU_ONLY", "name": "仅供教学"},
+    {"label_id": "SL_SOURCE_REQUIRED", "name": "需要来源"}
+  ],
+  "learner_profiles": [
+    {
+      "learner_id": "L_CROSS_MAJOR",
+      "username": "shizhen_cross_major",
+      "email": "shizhen_cross_major@example.test",
+      "display_name": "跨专业学习者",
+      "group": "跨专业进阶群体",
+      "profile": {
+        "constitution": "跨专业进阶群体",
+        "health_goals": "掌握脾胃气虚证与四君子汤方证对应",
+        "diet_restrictions": "每天30分钟",
+        "exercise_preferences": "知识卡和题目",
+        "medical_history": "方剂配伍基础薄弱"
+      }
+    },
+    {
+      "learner_id": "L_EDUCATION",
+      "username": "shizhen_education",
+      "email": "shizhen_education@example.test",
+      "display_name": "学历教育学习者",
+      "group": "学历教育",
+      "profile": {
+        "constitution": "学历教育",
+        "health_goals": "完成方剂学阶段复习",
+        "diet_restrictions": "每天45分钟",
+        "exercise_preferences": "对比表和真题",
+        "medical_history": "类方辨析不稳定"
+      }
+    },
+    {
+      "learner_id": "L_PUBLIC",
+      "username": "shizhen_public",
+      "email": "shizhen_public@example.test",
+      "display_name": "大众兴趣学习者",
+      "group": "大众兴趣群体",
+      "profile": {
+        "constitution": "大众兴趣群体",
+        "health_goals": "理解常见方剂基础知识",
+        "diet_restrictions": "每天15分钟",
+        "exercise_preferences": "通俗知识卡",
+        "medical_history": "中医术语基础薄弱"
+      }
+    }
+  ],
+  "knowledge_points": [
+    {"kp_id": "KP_ZD_021", "name": "脾胃气虚证", "aliases": ["脾气虚证"], "description": "脾胃气虚的证候特点"},
+    {"kp_id": "KP_FJ_001", "name": "四君子汤", "aliases": ["四君子"], "description": "益气健脾基础方"},
+    {"kp_id": "KP_FJ_002", "name": "四君子汤组成", "aliases": [], "description": "人参、白术、茯苓、炙甘草"},
+    {"kp_id": "KP_FJ_003", "name": "四君子汤功用", "aliases": [], "description": "益气健脾"},
+    {"kp_id": "KP_FJ_004", "name": "四君子汤配伍", "aliases": ["君臣佐使"], "description": "方中药物的配伍角色"},
+    {"kp_id": "KP_ZD_022", "name": "气虚证候", "aliases": [], "description": "面白、少气、乏力等"},
+    {"kp_id": "KP_FJ_018", "name": "理中丸", "aliases": [], "description": "温中祛寒剂"},
+    {"kp_id": "KP_CASE_001", "name": "方证对应", "aliases": [], "description": "由证候推导治法与方剂"},
+    {"kp_id": "KP_SAFE_001", "name": "教学医疗边界", "aliases": [], "description": "教学内容不替代诊疗"},
+    {"kp_id": "KP_TRACE_001", "name": "证据溯源", "aliases": [], "description": "记录知识来源"}
+  ],
+  "question_bank": [
+    {"question_id": "Q_SJZ_001", "stem": "四君子汤由哪些药物组成？", "answer": "人参、白术、茯苓、炙甘草", "analysis": "考查基本组成。", "kp_ids": ["KP_FJ_001", "KP_FJ_002"], "question_type": "fill_blank", "difficulty": 1, "quality_score": 0.95, "safety_label_ids": ["SL_EDU_ONLY", "SL_SOURCE_REQUIRED"]},
+    {"question_id": "Q_SJZ_002", "stem": "四君子汤的功用是什么？", "answer": "益气健脾", "analysis": "功用应与气虚病机对应。", "kp_ids": ["KP_FJ_001", "KP_FJ_003"], "question_type": "fill_blank", "difficulty": 1, "quality_score": 0.95, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_003", "stem": "四君子汤主治何证？", "answer": "脾胃气虚证", "analysis": "基础方证对应。", "kp_ids": ["KP_FJ_001", "KP_ZD_021"], "question_type": "single_choice", "difficulty": 1, "quality_score": 0.95, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_004", "stem": "四君子汤中何药为君？", "answer": "人参", "analysis": "人参甘温益气。", "kp_ids": ["KP_FJ_002", "KP_FJ_004"], "question_type": "single_choice", "difficulty": 2, "quality_score": 0.92, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_005", "stem": "白术在四君子汤中的主要作用是什么？", "answer": "健脾燥湿，助人参益气", "analysis": "考查臣药作用。", "kp_ids": ["KP_FJ_002", "KP_FJ_004"], "question_type": "short_answer", "difficulty": 2, "quality_score": 0.9, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_006", "stem": "茯苓在四君子汤中的配伍意义是什么？", "answer": "健脾渗湿", "analysis": "渗湿使补而不滞。", "kp_ids": ["KP_FJ_002", "KP_FJ_004"], "question_type": "short_answer", "difficulty": 2, "quality_score": 0.9, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_007", "stem": "炙甘草在四君子汤中的作用是什么？", "answer": "益气和中，调和诸药", "analysis": "考查佐使作用。", "kp_ids": ["KP_FJ_002", "KP_FJ_004"], "question_type": "short_answer", "difficulty": 2, "quality_score": 0.9, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_008", "stem": "脾胃气虚常见的全身表现有哪些？", "answer": "面色萎白、少气懒言、四肢乏力", "analysis": "识别气虚共性。", "kp_ids": ["KP_ZD_021", "KP_ZD_022"], "question_type": "multiple_choice", "difficulty": 2, "quality_score": 0.88, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_009", "stem": "脾胃气虚常见的舌脉特点是什么？", "answer": "舌淡苔白，脉虚弱", "analysis": "证候辨析。", "kp_ids": ["KP_ZD_021"], "question_type": "fill_blank", "difficulty": 2, "quality_score": 0.9, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_010", "stem": "由脾胃气虚证应推出什么基本治法？", "answer": "益气健脾", "analysis": "完成证候到治法的推导。", "kp_ids": ["KP_ZD_021", "KP_FJ_003", "KP_CASE_001"], "question_type": "short_answer", "difficulty": 2, "quality_score": 0.92, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_011", "stem": "四君子汤与理中丸的共同点是什么？", "answer": "均可用于中焦脾胃病证", "analysis": "类方比较的起点。", "kp_ids": ["KP_FJ_001", "KP_FJ_018"], "question_type": "short_answer", "difficulty": 3, "quality_score": 0.88, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_012", "stem": "四君子汤与理中丸治法的核心区别是什么？", "answer": "前者益气健脾，后者温中祛寒", "analysis": "辨析气虚与中焦虚寒。", "kp_ids": ["KP_FJ_001", "KP_FJ_018", "KP_CASE_001"], "question_type": "short_answer", "difficulty": 3, "quality_score": 0.93, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_013", "stem": "脘腹疼痛、喜温喜按更提示四君子汤还是理中丸？", "answer": "理中丸", "analysis": "寒象是关键证据。", "kp_ids": ["KP_FJ_018", "KP_CASE_001"], "question_type": "single_choice", "difficulty": 3, "quality_score": 0.9, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_014", "stem": "食少便溏、气短乏力而无明显寒象更适合何方？", "answer": "四君子汤", "analysis": "气虚无寒象时选益气健脾。", "kp_ids": ["KP_ZD_021", "KP_FJ_001", "KP_CASE_001"], "question_type": "single_choice", "difficulty": 3, "quality_score": 0.92, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_015", "stem": "为什么四君子汤的配伍体现补而不滞？", "answer": "茯苓健脾渗湿，与益气药相配", "analysis": "从配伍结构解释。", "kp_ids": ["KP_FJ_004"], "question_type": "short_answer", "difficulty": 3, "quality_score": 0.9, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_016", "stem": "学习方剂知识是否能替代医生诊断和处方？", "answer": "不能", "analysis": "明确教学边界。", "kp_ids": ["KP_SAFE_001"], "question_type": "true_false", "difficulty": 1, "quality_score": 0.98, "safety_label_ids": ["SL_MEDICAL_DISCLAIMER", "SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_017", "stem": "解释方剂结论时为什么要保留来源？", "answer": "便于核验与追溯", "analysis": "培养证据意识。", "kp_ids": ["KP_TRACE_001"], "question_type": "short_answer", "difficulty": 1, "quality_score": 0.9, "safety_label_ids": ["SL_SOURCE_REQUIRED"]},
+    {"question_id": "Q_SJZ_018", "stem": "四君子汤的药物数量是多少？", "answer": "四味", "analysis": "组成基础识记。", "kp_ids": ["KP_FJ_002"], "question_type": "fill_blank", "difficulty": 1, "quality_score": 0.88, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"question_id": "Q_SJZ_019", "stem": "请按病机、治法、方剂三步分析脾胃气虚。", "answer": "脾胃气虚；益气健脾；四君子汤", "analysis": "完整方证链。", "kp_ids": ["KP_ZD_021", "KP_FJ_003", "KP_FJ_001", "KP_CASE_001"], "question_type": "case_analysis", "difficulty": 3, "quality_score": 0.94, "safety_label_ids": ["SL_EDU_ONLY", "SL_SOURCE_REQUIRED"]},
+    {"question_id": "Q_SJZ_020", "stem": "四君子汤方中哪些药物共同健脾？", "answer": "白术、茯苓", "analysis": "理解配伍协同。", "kp_ids": ["KP_FJ_002", "KP_FJ_004"], "question_type": "multiple_choice", "difficulty": 2, "quality_score": 0.9, "safety_label_ids": ["SL_EDU_ONLY"]}
+  ],
+  "mistakes": [
+    {"mistake_id": "M_SJZ_001", "learner_id": "L_CROSS_MAJOR", "question_id": "Q_SJZ_003", "learner_answer": "中焦虚寒证", "kp_ids": ["KP_FJ_001", "KP_ZD_021"], "error_type": "证型-方剂匹配错误", "summary": "混淆脾胃气虚与中焦虚寒", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"mistake_id": "M_SJZ_002", "learner_id": "L_CROSS_MAJOR", "question_id": "Q_SJZ_006", "learner_answer": "温中散寒", "kp_ids": ["KP_FJ_004"], "error_type": "配伍意义错误", "summary": "未掌握茯苓健脾渗湿作用", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"mistake_id": "M_SJZ_003", "learner_id": "L_EDUCATION", "question_id": "Q_SJZ_012", "learner_answer": "二者相同", "kp_ids": ["KP_FJ_001", "KP_FJ_018"], "error_type": "类方辨析错误", "summary": "未区分益气与温中", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"mistake_id": "M_SJZ_004", "learner_id": "L_EDUCATION", "question_id": "Q_SJZ_009", "learner_answer": "舌红脉数", "kp_ids": ["KP_ZD_021"], "error_type": "证候识别错误", "summary": "舌脉判断错误", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"mistake_id": "M_SJZ_005", "learner_id": "L_PUBLIC", "question_id": "Q_SJZ_002", "learner_answer": "清热解毒", "kp_ids": ["KP_FJ_003"], "error_type": "功用识记错误", "summary": "未记住益气健脾", "safety_label_ids": ["SL_EDU_ONLY"]}
+  ],
+  "plans": [
+    {"plan_id": "P_SJZ_001", "learner_id": "L_CROSS_MAJOR", "plan_type": "short_term", "title": "四君子汤基础周计划", "summary": "建立组成、功用、主治与配伍主线", "goal": "掌握四君子汤方证对应", "status": "active", "target_kp_ids": ["KP_FJ_001", "KP_FJ_002", "KP_FJ_003", "KP_FJ_004", "KP_ZD_021"], "daily_tasks": ["阅读知识卡", "完成5道题", "订正错题"], "daily_available_minutes": 30, "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"plan_id": "P_SJZ_002", "learner_id": "L_EDUCATION", "plan_type": "short_term", "title": "四君子汤类方辨析计划", "summary": "比较四君子汤与理中丸", "goal": "稳定完成类方辨析", "status": "active", "target_kp_ids": ["KP_FJ_001", "KP_FJ_018", "KP_CASE_001"], "daily_tasks": ["完成对比表", "完成病例题"], "daily_available_minutes": 45, "safety_label_ids": ["SL_EDU_ONLY", "SL_SOURCE_REQUIRED"]},
+    {"plan_id": "P_SJZ_003", "learner_id": "L_PUBLIC", "plan_type": "short_term", "title": "四君子汤入门计划", "summary": "用通俗方式理解益气健脾", "goal": "认识四君子汤基础知识", "status": "active", "target_kp_ids": ["KP_FJ_001", "KP_FJ_002", "KP_FJ_003", "KP_SAFE_001"], "daily_tasks": ["阅读入门卡", "完成3道题"], "daily_available_minutes": 15, "safety_label_ids": ["SL_EDU_ONLY", "SL_MEDICAL_DISCLAIMER"]}
+  ],
+  "diagnoses": [
+    {"diagnosis_id": "D_SJZ_001", "learner_id": "L_CROSS_MAJOR", "t_stage": "T2", "weak_kp_ids": ["KP_FJ_004", "KP_ZD_021"], "attribution": "知识结构尚未稳定", "intervention": "降低单次任务量并即时反馈", "summary": "组成与证候连接薄弱", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"diagnosis_id": "D_SJZ_002", "learner_id": "L_EDUCATION", "t_stage": "T1", "weak_kp_ids": ["KP_FJ_018", "KP_CASE_001"], "attribution": "类方比较练习不足", "intervention": "增加对比题和病例题", "summary": "类方辨析不稳定", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"diagnosis_id": "D_SJZ_003", "learner_id": "L_PUBLIC", "t_stage": "T5", "weak_kp_ids": ["KP_FJ_002", "KP_FJ_003"], "attribution": "初次接触术语", "intervention": "采用通俗知识卡", "summary": "基础术语需解释", "safety_label_ids": ["SL_EDU_ONLY", "SL_MEDICAL_DISCLAIMER"]}
+  ],
+  "evaluation_tasks": [
+    {"task_id": "E_SJZ_001", "learner_id": "L_CROSS_MAJOR", "task_type": "knowledge", "text": "说明四君子汤组成", "required_kp_ids": ["KP_FJ_002"], "question_ids": ["Q_SJZ_001", "Q_SJZ_018"], "expected_output": "准确列出四味药", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"task_id": "E_SJZ_002", "learner_id": "L_CROSS_MAJOR", "task_type": "knowledge", "text": "说明四君子汤功用", "required_kp_ids": ["KP_FJ_003"], "question_ids": ["Q_SJZ_002"], "expected_output": "答出益气健脾", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"task_id": "E_SJZ_003", "learner_id": "L_CROSS_MAJOR", "task_type": "reasoning", "text": "完成方证对应", "required_kp_ids": ["KP_ZD_021", "KP_CASE_001"], "question_ids": ["Q_SJZ_010", "Q_SJZ_019"], "expected_output": "建立证候治法方剂链", "safety_label_ids": ["SL_EDU_ONLY", "SL_SOURCE_REQUIRED"]},
+    {"task_id": "E_SJZ_004", "learner_id": "L_EDUCATION", "task_type": "comparison", "text": "比较四君子汤与理中丸", "required_kp_ids": ["KP_FJ_001", "KP_FJ_018"], "question_ids": ["Q_SJZ_011", "Q_SJZ_012"], "expected_output": "指出治法与证候差别", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"task_id": "E_SJZ_005", "learner_id": "L_EDUCATION", "task_type": "case", "text": "根据寒象选择方剂", "required_kp_ids": ["KP_FJ_018", "KP_CASE_001"], "question_ids": ["Q_SJZ_013"], "expected_output": "选择理中丸并说明寒象", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"task_id": "E_SJZ_006", "learner_id": "L_EDUCATION", "task_type": "case", "text": "根据气虚证选择方剂", "required_kp_ids": ["KP_FJ_001", "KP_ZD_021"], "question_ids": ["Q_SJZ_014"], "expected_output": "选择四君子汤", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"task_id": "E_SJZ_007", "learner_id": "L_PUBLIC", "task_type": "knowledge", "text": "识别四君子汤组成", "required_kp_ids": ["KP_FJ_002"], "question_ids": ["Q_SJZ_004", "Q_SJZ_020"], "expected_output": "识别主要药物", "safety_label_ids": ["SL_EDU_ONLY"]},
+    {"task_id": "E_SJZ_008", "learner_id": "L_PUBLIC", "task_type": "safety", "text": "说明教学边界", "required_kp_ids": ["KP_SAFE_001"], "question_ids": ["Q_SJZ_016"], "expected_output": "明确不能替代诊疗", "safety_label_ids": ["SL_MEDICAL_DISCLAIMER", "SL_EDU_ONLY"]},
+    {"task_id": "E_SJZ_009", "learner_id": "L_PUBLIC", "task_type": "evidence", "text": "说明证据溯源意义", "required_kp_ids": ["KP_TRACE_001"], "question_ids": ["Q_SJZ_017"], "expected_output": "说明核验和追溯价值", "safety_label_ids": ["SL_SOURCE_REQUIRED"]},
+    {"task_id": "E_SJZ_010", "learner_id": "L_CROSS_MAJOR", "task_type": "comprehensive", "text": "完成四君子汤综合验收", "required_kp_ids": ["KP_FJ_001", "KP_FJ_002", "KP_FJ_003", "KP_FJ_004", "KP_ZD_021"], "question_ids": ["Q_SJZ_001", "Q_SJZ_002", "Q_SJZ_003", "Q_SJZ_015"], "expected_output": "组成、功用、主治和配伍均达标", "safety_label_ids": ["SL_EDU_ONLY", "SL_SOURCE_REQUIRED"]}
+  ]
+}

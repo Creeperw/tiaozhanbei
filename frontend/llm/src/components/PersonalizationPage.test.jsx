@@ -7,6 +7,7 @@ import { fetchWithAuth } from '../utils/api';
 
 vi.mock('../utils/api', () => ({
   API_BASE: 'http://api.test',
+  MAIN_API_BASE: 'http://main-api.test/api/v1',
   fetchWithAuth: vi.fn(),
 }));
 vi.mock('./LearningTrendChart', () => ({ default: () => <div>trend-chart</div> }));
@@ -19,6 +20,12 @@ function responseFor(url) {
     return { locked_fields: [], survey: {}, lock_reason: {} };
   }
   if (url.includes('/personalization/learning-trends')) return { series: [] };
+  if (url.includes('/learning-context')) {
+    return {
+      user_profile: { learning_background: '零基础' },
+      long_term_plan: { planning_route: { goal_name: '中医执业医师资格考试' } },
+    };
+  }
   return [];
 }
 
@@ -36,6 +43,13 @@ describe('PersonalizationPage single-task views', () => {
 
     expect(screen.getByRole('heading', { name: '学习者画像' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '学习记忆数据库' })).not.toBeInTheDocument();
+  });
+
+  it('shows the goal and background confirmed by the planning workflow', async () => {
+    render(<PersonalizationPage embedded view="profile" />);
+
+    expect(await screen.findByLabelText('学习目标')).toHaveValue('中医执业医师资格考试');
+    expect(screen.getByLabelText('学习基础（智能体已确认）')).toHaveValue('零基础');
   });
 
   it('renders the memory workspace without profile controls', () => {

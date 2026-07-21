@@ -39,14 +39,20 @@ def _get_or_create_host_user(db: Session, host_user) -> UserModel:
         ExternalIdentityLink.external_user_id == external_user_id,
     ).first()
     if link is not None:
-        return db.query(UserModel).filter(UserModel.id == link.user_id).one()
+        user = db.query(UserModel).filter(UserModel.id == link.user_id).one()
+        host_role = str(getattr(host_user, "role", "user") or "user")
+        if user.role != host_role:
+            user.role = host_role
+            db.commit()
+            db.refresh(user)
+        return user
 
     identity_hash = hashlib.sha256(external_user_id.encode("utf-8")).hexdigest()[:32]
     user = UserModel(
         username=f"core_{identity_hash}",
         email=f"core_{identity_hash}@local.invalid",
         hashed_password=pwd_context.hash(secrets.token_urlsafe(32)),
-        role="user",
+        role=str(getattr(host_user, "role", "user") or "user"),
     )
     try:
         db.add(user)

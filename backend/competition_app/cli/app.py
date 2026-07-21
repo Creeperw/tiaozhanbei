@@ -73,10 +73,16 @@ def run_review_card(
 
 
 @app.command("serve")
-def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
+def serve(host: str | None = None, port: int | None = None) -> None:
     import uvicorn
 
-    uvicorn.run("competition_app.main:app", host=host, port=port, factory=False)
+    settings = Settings.from_env()
+    uvicorn.run(
+        "competition_app.main:app",
+        host=host or settings.api_host,
+        port=port or settings.api_port,
+        factory=False,
+    )
 
 
 if __name__ == "__main__":

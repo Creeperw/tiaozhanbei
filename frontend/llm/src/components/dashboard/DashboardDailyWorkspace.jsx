@@ -34,6 +34,7 @@ export default function DashboardDailyWorkspace({
   secondaryAction = null,
   pathTopContent,
   pathContent,
+  pathHint = '单击查看计划 · 双击进入知识图谱',
   assistantContent,
   assistantCollapsed = false,
   assistantDocked = true,
@@ -111,7 +112,7 @@ export default function DashboardDailyWorkspace({
                 <span><Route aria-hidden="true" size={15} />Learning path</span>
                 <h2>学习路径</h2>
               </div>
-              <small>单击查看计划 · 双击进入知识图谱</small>
+              <small>{pathHint}</small>
             </header>
             <div className="dashboard-daily__path-stage">{pathContent}</div>
           </section>

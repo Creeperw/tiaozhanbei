@@ -38,6 +38,7 @@ from competition_app.llm.schemas import (
 )
 from competition_app.services.plan_change_gate import PlanChangeGate
 from competition_app.services.planning_validator import PlanningValidator
+from competition_app.services.profile_readiness import ProfileReadinessService
 
 
 class DiagnosisResult(BaseModel):
@@ -55,6 +56,8 @@ class DiagnosisResult(BaseModel):
     requires_clarification: bool = False
     clarification_questions: list[str] = Field(default_factory=list)
     clarification_reason: str | None = None
+    clarification_fields: list[str] = Field(default_factory=list)
+    interrupt_type: str | None = None
     plan_scope: str | None = None
 
 
@@ -120,6 +123,27 @@ class DiagnosisAgent:
                     plan_scope=plan_scope,
                 )
                 return envelope(context, "diagnosis_agent", "diagnosis_result", result)
+            if context.get("enforce_profile_readiness"):
+                readiness = ProfileReadinessService().evaluate(context, plan_scope)
+                if not readiness.can_proceed:
+                    result = DiagnosisResult(
+                        summary="制定长期规划前，需要先补齐最少量的个性化信息。",
+                        stage_id=str(system_data.get("current_stage_id", "T0")),
+                        weak_kp_ids=resolved_kp_ids,
+                        target_difficulty=target_difficulty,
+                        daily_review_policy=DailyReviewPolicy(
+                            capacity=1, target_difficulty=target_difficulty
+                        ),
+                        requires_clarification=True,
+                        clarification_questions=readiness.questions,
+                        clarification_fields=[readiness.next_field]
+                        if readiness.next_field
+                        else [],
+                        clarification_reason="长期阶段和教材选择需要与学习基础、目标和可持续时间预算联动。",
+                        interrupt_type="profile_completion",
+                        plan_scope=plan_scope,
+                    )
+                    return envelope(context, "diagnosis_agent", "diagnosis_result", result)
         textbook_context = route_context.get("textbook_route") or {}
         if route_context.get("match_reason") == "agent_requires_clarification":
             questions = self._string_list(route_context.get("unknowns_to_confirm"))

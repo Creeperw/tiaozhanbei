@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from competition_app.api.app import create_app
 from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings
+from competition_app.integrations.backend_handoff import _model_environment
 
 
 class FakeBackendHandoffRuntime:
@@ -18,6 +19,14 @@ class FakeBackendHandoffRuntime:
         @self.app.get("/handoff-ping")
         async def ping():
             return {"source": "handoff"}
+
+        @self.app.get("/handoff-identity")
+        async def identity(request: Request):
+            user = getattr(request.state, "current_user", None)
+            return {
+                "user_id": user.user_id if user is not None else None,
+                "username": user.username if user is not None else None,
+            }
 
         self.loaded_user_ids = []
         self.question_attempts = question_attempts or []
@@ -66,7 +75,26 @@ def test_settings_parse_backend_handoff_configuration() -> None:
     assert settings.backend_handoff_secret_key == "test-secret"
 
 
-def test_delivered_routes_are_mounted_without_parent_cookie_interception() -> None:
+def test_handoff_uses_only_the_main_model_stack_and_disables_voice() -> None:
+    settings = Settings(
+        chat_base_url="https://main-model.test/v1",
+        chat_model="deepseek-v4-flash",
+        embedding_model="Qwen/Qwen3-Embedding-4B",
+        dashscope_api_key="secret-for-test",
+    )
+
+    environment = _model_environment(settings)
+
+    assert environment["LLM_API_BASE_URL"] == settings.chat_base_url
+    assert environment["LLM_API_MODEL"] == settings.chat_model
+    assert environment["PLANNER_EXECUTOR_MODEL"] == settings.chat_model
+    assert environment["MANAGER_REVIEWER_MODEL"] == settings.chat_model
+    assert environment["EMBEDDING_MODEL_ID"] == settings.embedding_model
+    assert environment["EMBEDDING_MODE"] == "disabled"
+    assert environment["VOICE_MODE"] == "disabled"
+
+
+def test_delivered_routes_require_the_main_cookie_boundary() -> None:
     container = ApplicationContainer.build(Settings())
     runtime = FakeBackendHandoffRuntime()
     container.backend_handoff_runtime = runtime
@@ -76,8 +104,7 @@ def test_delivered_routes_are_mounted_without_parent_cookie_interception() -> No
         handoff_response = client.get("/handoff-ping")
         protected_status = client.get("/api/v1/platform/status")
 
-    assert handoff_response.status_code == 200
-    assert handoff_response.json() == {"source": "handoff"}
+    assert handoff_response.status_code == 401
     assert protected_status.status_code == 401
     assert runtime._started is False
 
@@ -92,6 +119,57 @@ def test_platform_status_exposes_mounted_contract_when_auth_is_disabled() -> Non
         assert response.status_code == 200
         assert response.json()["mounted"] is True
         assert response.json()["started"] is True
+
+
+def test_production_api_prefix_reaches_delivered_business_routes() -> None:
+    container = ApplicationContainer.build(Settings())
+    runtime = FakeBackendHandoffRuntime()
+    container.backend_handoff_runtime = runtime
+
+    with TestClient(create_app(container, auth_required=False)) as client:
+        response = client.get("/api/handoff-ping")
+
+    assert response.status_code == 200
+    assert response.json() == {"source": "handoff"}
+
+
+def test_formal_frontend_assistant_character_assets_are_mounted(tmp_path) -> None:
+    asset_root = tmp_path / "assistant-character"
+    asset_root.mkdir(parents=True)
+    (asset_root / "avatar.png").write_bytes(b"frontend-avatar")
+    container = ApplicationContainer.build(
+        Settings(frontend_dist_root=tmp_path),
+        snapshot_root=tmp_path / "snapshots",
+    )
+
+    with TestClient(create_app(container, auth_required=False)) as client:
+        response = client.get("/assistant-character/avatar.png")
+
+    assert response.status_code == 200
+    assert response.content == b"frontend-avatar"
+
+
+def test_main_cookie_identity_reaches_mounted_business_routes(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    runtime = FakeBackendHandoffRuntime()
+    container.backend_handoff_runtime = runtime
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        registered = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "mounted-owner",
+                "display_name": "集成同学",
+                "password": "correct-horse-2026",
+            },
+        ).json()["user"]
+        response = client.get("/handoff-identity")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "user_id": registered["user_id"],
+        "username": "mounted-owner",
+    }
 
 
 def test_learning_context_uses_authenticated_host_identity(tmp_path) -> None:

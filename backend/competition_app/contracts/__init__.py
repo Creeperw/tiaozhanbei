@@ -9,17 +9,38 @@ from competition_app.contracts.knowledge import (
     to_learner_view,
 )
 
+from competition_app.contracts.workshop import (
+    KnowledgeCardDetail,
+    KnowledgeCardPage,
+    KnowledgeCardSummary,
+    KnowledgeResourceBundle,
+    PaperTiming,
+    ResourceCoverage,
+    UiAction,
+    WorkshopModule,
+    WorkshopOverview,
+)
+
 __all__ = [
     "AgentEnvelope",
     "ArtifactReference",
     "ExecutionPlan",
     "ExecutionStep",
+    "KnowledgeCardDetail",
+    "KnowledgeCardPage",
+    "KnowledgeCardSummary",
+    "KnowledgeResourceBundle",
     "LearnerQuestionView",
+    "PaperTiming",
     "PlanValidationError",
     "QuestionBridge",
     "QuestionDetail",
     "QuestionRetrievalMetadata",
     "QuestionSearchResult",
+    "ResourceCoverage",
+    "UiAction",
     "WritebackIntent",
+    "WorkshopModule",
+    "WorkshopOverview",
     "to_learner_view",
 ]

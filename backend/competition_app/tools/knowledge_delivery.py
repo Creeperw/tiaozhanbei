@@ -245,6 +245,57 @@ class DeliveryKnowledgeMapStore:
             raise ValueError("level 只能是 1、2 或 3")
         return {"level": level, "nodes": rows, "count": len(rows), "stats": stats, "route": route_id}
 
+    def learning_path_book_knowledge_points(
+        self,
+        book: str,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """Flatten a textbook into paged knowledge-point rows for plan projection."""
+
+        self.ensure_hierarchy()
+        normalized = str(book or "").strip().strip("《》")
+        chapters = self.tree.get(normalized)
+        if chapters is None:
+            return {
+                "book": normalized,
+                "items": [],
+                "total": 0,
+                "offset": offset,
+                "limit": limit,
+                "route_ids": [],
+            }
+        rows: list[dict[str, Any]] = []
+        for chapter, knowledge_points in chapters.items():
+            for kp in knowledge_points:
+                kp_id = str(kp.get("kp_id") or "").strip()
+                if not kp_id:
+                    continue
+                rows.append(
+                    {
+                        "kp_id": kp_id,
+                        "name": str(kp.get("kp_lv3") or "未命名知识点"),
+                        "chapter": chapter,
+                        "source_refs": [
+                            str(item)
+                            for item in (kp.get("source_refs") or [])
+                            if str(item).strip()
+                        ],
+                    }
+                )
+        return {
+            "book": normalized,
+            "items": rows[offset : offset + limit],
+            "total": len(rows),
+            "offset": offset,
+            "limit": limit,
+            "route_ids": [
+                str(route["id"])
+                for route in self.route_definitions
+                if normalized in set(route.get("books") or [])
+            ],
+        }
+
     def resolve_topic(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         self.ensure_hierarchy()
         compact = re.sub(r"\s+", "", query).lower()

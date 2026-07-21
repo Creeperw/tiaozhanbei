@@ -5,9 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 vi.mock('./utils/api', () => ({
-  API_BASE: 'http://api.test',
+  AUTH_API_BASE: 'http://api.test/api/v1/auth',
   fetchWithAuth: vi.fn(() => Promise.resolve({ ok: true })),
-  readJsonResponse: vi.fn(() => Promise.resolve({ username: 'admin', role: 'admin' })),
+  readJsonResponse: vi.fn(() => Promise.resolve({ user: { username: 'admin', role: 'admin' } })),
 }));
 
 vi.mock('./components/AuthPage', () => ({ default: () => <div>Auth</div> }));
@@ -33,7 +33,7 @@ vi.mock('./components/KnowledgePage', () => ({
   ),
 }));
 vi.mock('./components/PracticePage', () => ({
-  default: ({ navigationContext = {} }) => <div data-testid="practice-page" data-view={navigationContext.view || ''}>Practice workspace</div>,
+  default: ({ navigationContext = {} }) => <div data-testid="practice-page" data-view={navigationContext.view || ''} data-task-type={navigationContext.taskType || ''} data-paper-id={navigationContext.paperId || ''}>Practice workspace</div>,
 }));
 vi.mock('./components/PersonalizationHubPage', () => ({
   default: ({ navigationContext = {} }) => (
@@ -62,7 +62,21 @@ vi.mock('./components/AppShell', () => ({
 describe('authenticated application shell', () => {
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('token', 'token');
+    sessionStorage.clear();
+  });
+
+  it('consumes a one-time external navigation intent for an audited paper', async () => {
+    sessionStorage.setItem('competition.pending-navigation', JSON.stringify({
+      page: 'practice',
+      params: { view: 'workspace', taskType: 'paper_workspace', paperId: 'PAPER_1' },
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByText('Practice workspace')).toBeInTheDocument();
+    expect(screen.getByTestId('practice-page')).toHaveAttribute('data-task-type', 'paper_workspace');
+    expect(screen.getByTestId('practice-page')).toHaveAttribute('data-paper-id', 'PAPER_1');
+    expect(sessionStorage.getItem('competition.pending-navigation')).toBeNull();
   });
 
   it('routes the portal, training overview, training workspace, assistant, knowledge, and administration inside one AppShell', async () => {

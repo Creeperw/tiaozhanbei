@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import os
 import sys
 import threading
@@ -80,6 +81,7 @@ class BackendHandoffRuntime:
         database = importlib.import_module("APP.backend.database")
         auth = importlib.import_module("APP.backend.auth")
         diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        learning_targets = importlib.import_module("APP.backend.learning_target_service")
         memory = importlib.import_module("APP.backend.memory_agent_service")
         system_data = importlib.import_module("APP.backend.system_data_service")
         db = database.SessionLocal()
@@ -87,6 +89,7 @@ class BackendHandoffRuntime:
             user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
                 db, SimpleNamespace(user_id=external_user_id)
             )
+            stored_profile = diagnosis.get_or_create_profile(db, user.id, commit=False)
             snapshot = system_data.rebuild_system_data(db, user_id=user.id)
             profile = diagnosis.build_learning_profile(db, user.id)
             behavior_window = diagnosis.build_l3_behavior_window(db, user.id)
@@ -94,6 +97,9 @@ class BackendHandoffRuntime:
                 db, user.id, persist=False
             )
             learner_brief = memory.build_learner_context_brief(db, user.id)
+            learning_target = learning_targets.serialize_learning_target(
+                learning_targets.get_active_learning_target(db, user.id)
+            )
             trends = system_data.build_learning_trends(db, user_id=user.id, days=7)
 
             mastery_rows = (
@@ -121,12 +127,45 @@ class BackendHandoffRuntime:
                 }
             )
             brief_payload = learner_brief.model_dump(mode="json")
+            user_profile = dict(brief_payload.get("profile", {}))
+            try:
+                survey = json.loads(stored_profile.survey_json or "{}")
+            except (TypeError, ValueError):
+                survey = {}
+            confirmed_profile = survey.get("agent_confirmed_profile") if isinstance(survey, dict) else {}
+            if isinstance(confirmed_profile, dict):
+                user_profile.update(
+                    {
+                        str(key): value
+                        for key, value in confirmed_profile.items()
+                        if str(key).strip() and value not in (None, "")
+                    }
+                )
+            if learning_target:
+                goal_name = str(learning_target.get("exam_name") or "").strip()
+                target_type = str(learning_target.get("target_type") or "").strip()
+                goal_type = (
+                    "credential"
+                    if target_type == "certification"
+                    else "admission"
+                    if target_type == "graduate_entrance_exam"
+                    else target_type
+                )
+                if goal_name:
+                    # The active target is an explicit, persisted user choice and is
+                    # more reliable than the legacy free-text profile placeholder.
+                    user_profile["learning_goal"] = goal_name
+                    user_profile["goals"] = {
+                        "goal_type": goal_type or "learning",
+                        "goal_name": goal_name,
+                    }
             report_payload = diagnosis_report.model_dump(mode="json")
             db.commit()
             return {
                 "source": "frontend_backend",
                 "calculated_at": system_payload.get("calculated_at"),
-                "user_profile": brief_payload.get("profile", {}),
+                "user_profile": user_profile,
+                "learning_target": learning_target,
                 "learning_profile": {
                     **profile,
                     "current_status": {
@@ -164,6 +203,243 @@ class BackendHandoffRuntime:
         except Exception:
             db.rollback()
             raise
+        finally:
+            db.close()
+
+    def update_learning_profile(
+        self,
+        external_user_id: str,
+        updates: dict[str, Any],
+        execution_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Persist user-confirmed planning context with an auditable boundary."""
+
+        allowed_fields = {"learning_goal", "learning_background", "time_constraints"}
+        normalized = {
+            str(key): value
+            for key, value in updates.items()
+            if key in allowed_fields and value not in (None, "")
+        }
+        if set(updates) - allowed_fields:
+            raise PermissionError("profile update contains unsupported fields")
+        if not normalized:
+            return self.load_learning_context(external_user_id).get("user_profile", {})
+
+        database = importlib.import_module("APP.backend.database")
+        auth = importlib.import_module("APP.backend.auth")
+        diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        profile_service = importlib.import_module("APP.backend.learner_profile_service")
+        db = database.SessionLocal()
+        try:
+            user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+                db, SimpleNamespace(user_id=external_user_id)
+            )
+            profile = diagnosis.get_or_create_profile(db, user.id, commit=False)
+            locked_fields = profile_service.get_locked_profile_fields(profile)
+            confirmed = {
+                key: value for key, value in normalized.items() if key not in locked_fields
+            }
+            mapped = {
+                key: value
+                for key, value in confirmed.items()
+                if key in {"learning_goal", "time_constraints"}
+            }
+            if mapped:
+                profile_service.apply_learner_profile_update(
+                    profile, mapped, source="diagnosis_agent"
+                )
+            try:
+                survey = json.loads(profile.survey_json or "{}")
+            except (TypeError, ValueError):
+                survey = {}
+            if not isinstance(survey, dict):
+                survey = {}
+            stored = survey.get("agent_confirmed_profile")
+            if not isinstance(stored, dict):
+                stored = {}
+            stored.update(confirmed)
+            survey["agent_confirmed_profile"] = stored
+            profile.survey_json = json.dumps(survey, ensure_ascii=False)
+            db.add(
+                database.AgentEvent(
+                    user_id=user.id,
+                    agent_name="diagnosis_agent",
+                    event_type="profile_confirmed_writeback",
+                    input_summary="用户在规划追问中确认画像信息",
+                    output_summary="已写入：" + "、".join(sorted(confirmed)),
+                    payload=json.dumps(
+                        {
+                            "execution_id": execution_id,
+                            "fields": sorted(confirmed),
+                            "skipped_locked_fields": sorted(set(normalized) - set(confirmed)),
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            )
+            db.commit()
+            payload = profile_service.build_learner_profile_payload(profile)
+            payload.update(stored)
+            return payload
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    @staticmethod
+    def workshop_overview() -> dict[str, Any]:
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        return service.workshop_overview()
+
+    def _workshop_user(self, db, external_user_id: str):
+        auth = importlib.import_module("APP.backend.auth")
+        return auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+            db, SimpleNamespace(user_id=external_user_id)
+        )
+
+    def list_knowledge_cards(
+        self, external_user_id: str, *, offset: int = 0, limit: int = 50
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.list_knowledge_cards(
+                db, user_id=user.id, offset=offset, limit=limit
+            )
+        finally:
+            db.close()
+
+    def get_knowledge_card(
+        self, external_user_id: str, card_id: str
+    ) -> dict[str, Any] | None:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.get_knowledge_card(db, user_id=user.id, card_id=card_id)
+        finally:
+            db.close()
+
+    def save_knowledge_card(
+        self,
+        external_user_id: str,
+        *,
+        kp_id: str,
+        title: str,
+        resource_bundle: dict[str, Any],
+        source_execution_id: str = "",
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.upsert_knowledge_card(
+                db,
+                user_id=user.id,
+                kp_id=kp_id,
+                title=title,
+                resource_bundle=resource_bundle,
+                source_execution_id=source_execution_id,
+            )
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def publish_agent_paper(
+        self,
+        external_user_id: str,
+        *,
+        execution_id: str,
+        paper: dict[str, Any],
+        blueprint: dict[str, Any],
+        evidence_pack: dict[str, Any],
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.learning_workshop_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.publish_agent_paper(
+                db,
+                user_id=user.id,
+                execution_id=execution_id,
+                paper=paper,
+                blueprint=blueprint,
+                evidence_pack=evidence_pack,
+            )
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_papers(
+        self, external_user_id: str, *, offset: int = 0, limit: int = 50
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            query = db.query(database.PaperInstanceRecord).filter_by(learner_id=user.id)
+            total = query.count()
+            rows = query.order_by(database.PaperInstanceRecord.created_at.desc()).offset(offset).limit(limit).all()
+            return {
+                "schema_version": "1.0",
+                "items": [
+                    {
+                        "paper_id": row.paper_id,
+                        "title": row.title,
+                        "status": row.status,
+                        "duration_minutes": int(row.duration_minutes or 60),
+                        "created_at": row.created_at.isoformat() if row.created_at else None,
+                    }
+                    for row in rows
+                ],
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+            }
+        finally:
+            db.close()
+
+    def get_paper(self, external_user_id: str, paper_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.paper_submission_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.get_owned_paper(db, user.id, paper_id)
+        finally:
+            db.close()
+
+    def save_paper_answers(
+        self, external_user_id: str, paper_id: str, answers: dict[str, str]
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.paper_submission_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.save_paper_answers(db, user.id, paper_id, answers)
+        finally:
+            db.close()
+
+    def submit_paper(
+        self, external_user_id: str, paper_id: str, request_id: str
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.paper_submission_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.submit_paper(db, user.id, paper_id, request_id)
         finally:
             db.close()
 
@@ -377,6 +653,27 @@ def _database_environment(settings: Settings, runtime_root: Path) -> tuple[dict[
     )
 
 
+def _model_environment(settings: Settings) -> dict[str, str]:
+    """Project only the authoritative main model stack into legacy modules."""
+
+    return {
+        "LLM_MODE": "local",
+        "LLM_API_KEY": settings.dashscope_api_key or "",
+        "LLM_API_BASE_URL": settings.chat_base_url,
+        "LLM_API_MODEL": settings.chat_model,
+        "PLANNER_EXECUTOR_BASE_URL": settings.chat_base_url,
+        "PLANNER_EXECUTOR_MODEL": settings.chat_model,
+        "MANAGER_REVIEWER_BASE_URL": settings.chat_base_url,
+        "MANAGER_REVIEWER_MODEL": settings.chat_model,
+        # The delivered RAG implementation only supports a local model path.
+        # Main knowledge tools own remote embeddings, so duplicate loading stays off.
+        "EMBEDDING_MODE": "disabled",
+        "EMBEDDING_MODEL_ID": settings.embedding_model,
+        # Voice migration is intentionally out of scope for this integration phase.
+        "VOICE_MODE": "disabled",
+    }
+
+
 def _assert_app_package(root: Path, module: ModuleType) -> None:
     module_path = Path(getattr(module, "__file__", "")).resolve()
     expected = (root / "APP").resolve()
@@ -401,16 +698,9 @@ def load_backend_handoff(settings: Settings) -> BackendHandoffRuntime | None:
     database_env, database_backend = _database_environment(settings, runtime_root)
     environment = {
         **database_env,
+        **_model_environment(settings),
         "BACKEND_RUNTIME_ROOT": str(runtime_root),
         "SECRET_KEY": settings.backend_handoff_secret_key,
-        "LLM_MODE": "local",
-        "LLM_API_KEY": settings.dashscope_api_key or "",
-        "PLANNER_EXECUTOR_BASE_URL": settings.chat_base_url,
-        "PLANNER_EXECUTOR_MODEL": settings.chat_model,
-        "MANAGER_REVIEWER_BASE_URL": settings.chat_base_url,
-        "MANAGER_REVIEWER_MODEL": settings.chat_model,
-        "EMBEDDING_MODE": "disabled",
-        "VOICE_MODE": "disabled",
         "EXA_API_KEY": settings.exa_api_key or "",
         "KNOWLEDGE_ATLAS_DATA_ROOT": str(
             knowledge_component / "data" / "backend_delivery"

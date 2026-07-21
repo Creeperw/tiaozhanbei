@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from competition_app.application.container import ApplicationContainer
@@ -24,6 +24,10 @@ from competition_app.contracts.review import ReviewAttemptSubmission
 from competition_app.contracts.auth import AuthUser, LoginRequest, RegisterRequest
 from competition_app.repositories.auth import UsernameTakenError
 from competition_app.services.auth import InvalidCredentialsError
+from competition_app.services.learning_path_projection import LearningPathProjectionService
+from competition_app.services.profile_readiness import ProfileReadinessService
+from competition_app.services.workshop import WorkshopKnowledgeService
+from competition_app.application.workflow_presentation import workflow_result_to_markdown
 
 
 SESSION_COOKIE = "competition_session"
@@ -58,6 +62,28 @@ class KnowledgeTextImportRequest(MarkdownImportRequest):
     apply: bool = True
 
 
+class ConversationCreateRequest(BaseModel):
+    title: str = Field(default="新对话", min_length=1, max_length=120)
+
+
+class ConversationUpdateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+
+
+class KnowledgeCardResolveRequest(BaseModel):
+    kp_id: str = Field(min_length=1, max_length=120)
+    question_limit: int = Field(default=10, ge=1, le=50)
+    source_execution_id: str = Field(default="", max_length=120)
+
+
+class WorkshopPaperAnswersRequest(BaseModel):
+    answers: dict[str, str] = Field(default_factory=dict)
+
+
+class WorkshopPaperSubmitRequest(BaseModel):
+    request_id: str = Field(min_length=1, max_length=120)
+
+
 def create_app(container: ApplicationContainer, *, auth_required: bool = True) -> FastAPI:
     backend_handoff = container.backend_handoff_runtime
 
@@ -75,6 +101,26 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     static_root = Path(__file__).parents[1] / "static"
     chat_root = Path(__file__).parents[1] / "chat_static"
     auth_root = Path(__file__).parents[1] / "auth_static"
+    frontend_root = container.frontend_dist_root
+    frontend_index = frontend_root / "index.html" if frontend_root else None
+    if frontend_root and (frontend_root / "assets").is_dir():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=frontend_root / "assets"),
+            name="frontend_assets",
+        )
+    if frontend_root and (frontend_root / "design-images").is_dir():
+        app.mount(
+            "/design-images",
+            StaticFiles(directory=frontend_root / "design-images"),
+            name="frontend_design_images",
+        )
+    if frontend_root and (frontend_root / "assistant-character").is_dir():
+        app.mount(
+            "/assistant-character",
+            StaticFiles(directory=frontend_root / "assistant-character"),
+            name="frontend_assistant_character",
+        )
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
@@ -85,31 +131,16 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         current_user = container.authentication_service.authenticate(raw_token)
         request.state.current_user = current_user
         path = request.url.path
-        current_app_path = (
+        # Mounted business routes share the main cookie identity. Their internal
+        # dependency maps request.state.current_user to a domain-local user row.
+        public_path = (
             path == "/"
-            or path == "/demo-app"
+            or path == "/favicon.ico"
             or path == "/health"
             or path == "/openapi.json"
-            or path.startswith(
-                (
-                    "/api/v1/",
-                    "/auth",
-                    "/demo",
-                    "/chat",
-                    "/docs",
-                    "/redoc",
-                )
-            )
-        )
-        # The delivered frontend backend owns authentication for its own routes
-        # (JWT bearer).  The parent cookie boundary must not pre-empt it.
-        handoff_path = backend_handoff is not None and not current_app_path
-        public_path = (
-            path == "/health"
-            or path == "/openapi.json"
+            or path.startswith(("/assets/", "/design-images/", "/assistant-character/"))
             or path.startswith(("/auth", "/docs", "/redoc"))
             or path.startswith("/api/v1/auth/")
-            or handoff_path
         )
         if auth_required and current_user is None and not public_path:
             if request.method == "GET" and (
@@ -304,9 +335,94 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=401, detail="请先登录后继续")
         return {"user": user}
 
+    @app.get("/users/me", include_in_schema=False)
+    async def legacy_current_user(request: Request) -> dict:
+        user = current_user(request)
+        return {
+            "id": user.user_id,
+            "username": user.username,
+            "display_name": user.display_name,
+            "role": user.role,
+        }
+
+    @app.api_route("/token", methods=["POST"], include_in_schema=False)
+    @app.api_route("/register", methods=["POST"], include_in_schema=False)
+    @app.api_route("/send-code", methods=["POST"], include_in_schema=False)
+    @app.api_route("/reset-password", methods=["POST"], include_in_schema=False)
+    async def retired_legacy_auth() -> JSONResponse:
+        return JSONResponse(
+            status_code=410,
+            content={"detail": "旧认证接口已停用，请使用 /api/v1/auth"},
+        )
+
+    @app.get("/api/v1/conversations")
+    async def list_conversations(request: Request) -> list[dict]:
+        user = current_user(request)
+        repository = container.review_card_use_case.conversation_repository
+        return repository.list_sessions(user.user_id)
+
+    @app.post("/api/v1/conversations", status_code=201)
+    async def create_conversation(
+        payload: ConversationCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        session_id = f"CONV_{uuid4().hex}"
+        repository = container.review_card_use_case.conversation_repository
+        repository.create_session(session_id, user.user_id, payload.title.strip())
+        return {"id": session_id, "title": payload.title.strip()}
+
+    @app.get("/api/v1/conversations/{session_id}/messages")
+    async def conversation_messages(session_id: str, request: Request) -> list[dict]:
+        user = current_user(request)
+        repository = container.review_card_use_case.conversation_repository
+        rows = repository.get_messages(session_id, user.user_id)
+        return [
+            {
+                "id": row.get("message_id"),
+                "role": row.get("role"),
+                "content": row.get("content"),
+                "timestamp": row.get("created_at"),
+            }
+            for row in rows
+        ]
+
+    @app.patch("/api/v1/conversations/{session_id}")
+    async def rename_conversation(
+        session_id: str, payload: ConversationUpdateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        repository = container.review_card_use_case.conversation_repository
+        if not repository.rename_session(session_id, user.user_id, payload.title.strip()):
+            raise HTTPException(status_code=404, detail="会话不存在")
+        return {"id": session_id, "title": payload.title.strip()}
+
+    @app.delete("/api/v1/conversations/{session_id}")
+    async def delete_conversation(session_id: str, request: Request) -> dict:
+        user = current_user(request)
+        repository = container.review_card_use_case.conversation_repository
+        if not repository.delete_session(session_id, user.user_id):
+            raise HTTPException(status_code=404, detail="会话不存在")
+        return {"status": "deleted", "id": session_id}
+
     @app.get("/", include_in_schema=False)
-    async def root() -> RedirectResponse:
-        return RedirectResponse(url="/demo/")
+    async def root():
+        if frontend_index is not None and frontend_index.is_file():
+            return FileResponse(frontend_index)
+        return HTMLResponse(
+            "<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'>"
+            "<title>时珍智训</title></head><body><main>"
+            "<h1>正式前端尚未构建</h1>"
+            "<p>请先在 frontend/llm 执行 npm run build。</p>"
+            "</main></body></html>",
+            status_code=200,
+        )
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon():
+        favicon_path = frontend_root / "favicon.ico" if frontend_root else None
+        if favicon_path is None or not favicon_path.is_file():
+            return Response(status_code=204)
+        return FileResponse(favicon_path)
 
     @app.get("/demo-app", include_in_schema=False)
     async def demo_app() -> FileResponse:
@@ -362,6 +478,19 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         )
         plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
         queue = container.review_service.get_queue(user.user_id, limit=12)
+        long_term_payload = (
+            plans.long_term_plan.model_dump(mode="json")
+            if plans is not None and plans.long_term_plan is not None
+            else None
+        )
+        profile_readiness = ProfileReadinessService().evaluate(
+            {
+                "user_profile": behavior.get("user_profile") or {},
+                "learning_target": behavior.get("learning_target") or {},
+                "current_long_term_plan": long_term_payload or {},
+            },
+            "long_term",
+        )
         return {
             **behavior,
             "learner_id": user.user_id,
@@ -370,12 +499,22 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 if plans is not None and plans.learning_task is not None
                 else None
             ),
+            "long_term_plan": (
+                long_term_payload
+            ),
             "short_term_plan": (
                 plans.short_term_plan.model_dump(mode="json")
                 if plans is not None and plans.short_term_plan is not None
                 else None
             ),
             "review_queue": queue.model_dump(mode="json"),
+            "profile_readiness": profile_readiness.model_dump(mode="json"),
+            "learning_path": {
+                "available": long_term_payload is not None,
+                "root_endpoint": "/api/v1/learning-path",
+                "children_endpoint": "/api/v1/learning-path/nodes?parent_id={node_id}",
+                "schema_version": "1.0",
+            },
             "capabilities": {
                 "behavior_context": backend_handoff is not None,
                 "focus_tracking": backend_handoff is not None,
@@ -384,6 +523,253 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "review_feedback": True,
                 "execution_graph": True,
             },
+        }
+
+    async def learning_path_page(
+        request: Request,
+        parent_id: str | None,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
+        if plans is None or plans.long_term_plan is None:
+            return {
+                "schema_version": "1.0",
+                "learner_id": user.user_id,
+                "plan_ref": None,
+                "parent_id": parent_id,
+                "parent_type": None,
+                "current_node_id": None,
+                "nodes": [],
+                "offset": offset,
+                "limit": limit,
+                "total": 0,
+                "has_more": False,
+                "availability": "requires_long_term_plan",
+                "message": "请先完成长期学习规划，再生成阶段、教材和知识点路径。",
+            }
+        behavior = (
+            await asyncio.to_thread(backend_handoff.load_learning_context, user.user_id)
+            if backend_handoff is not None
+            else {}
+        )
+        loader = (
+            container.knowledge_backend.map.learning_path_book_knowledge_points
+            if container.knowledge_backend is not None
+            else None
+        )
+        try:
+            page = await asyncio.to_thread(
+                LearningPathProjectionService(loader).page,
+                learner_id=user.user_id,
+                plan=plans.long_term_plan,
+                parent_id=parent_id,
+                mastery_rows=behavior.get("mastery") or [],
+                offset=offset,
+                limit=limit,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return page.model_dump(mode="json")
+
+    @app.get("/api/v1/learning-path")
+    async def get_learning_path(
+        request: Request,
+        parent_id: str | None = None,
+        offset: int = Query(default=0, ge=0),
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> dict:
+        return await learning_path_page(request, parent_id, offset, limit)
+
+    @app.get("/api/v1/learning-path/nodes")
+    async def get_learning_path_nodes(
+        request: Request,
+        parent_id: str = Query(min_length=1),
+        offset: int = Query(default=0, ge=0),
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> dict:
+        return await learning_path_page(request, parent_id, offset, limit)
+
+    def require_workshop_runtime():
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学习工坊持久化服务未启用")
+        return backend_handoff
+
+    @app.get("/api/v1/workshop")
+    async def workshop_overview(request: Request) -> dict:
+        current_user(request)
+        return require_workshop_runtime().workshop_overview()
+
+    @app.get("/api/v1/workshop/knowledge-cards")
+    async def list_workshop_knowledge_cards(
+        request: Request,
+        offset: int = Query(default=0, ge=0),
+        limit: int = Query(default=50, ge=1, le=200),
+    ) -> dict:
+        user = current_user(request)
+        return await asyncio.to_thread(
+            require_workshop_runtime().list_knowledge_cards,
+            user.user_id,
+            offset=offset,
+            limit=limit,
+        )
+
+    @app.get("/api/v1/workshop/knowledge-cards/{card_id}")
+    async def get_workshop_knowledge_card(card_id: str, request: Request) -> dict:
+        user = current_user(request)
+        card = await asyncio.to_thread(
+            require_workshop_runtime().get_knowledge_card,
+            user.user_id,
+            card_id,
+        )
+        if card is None:
+            raise HTTPException(status_code=404, detail="知识卡不存在")
+        return card
+
+    @app.post("/api/v1/workshop/knowledge-cards/resolve")
+    async def resolve_workshop_knowledge_card(
+        payload: KnowledgeCardResolveRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if container.knowledge_backend is None or container.question_retrieval_tool is None:
+            raise HTTPException(status_code=503, detail="正式知识仓库未启用")
+        try:
+            bundle = await WorkshopKnowledgeService(
+                container.knowledge_backend,
+                container.question_retrieval_tool,
+            ).resolve(payload.kp_id, question_limit=payload.question_limit)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        card = await asyncio.to_thread(
+            require_workshop_runtime().save_knowledge_card,
+            user.user_id,
+            kp_id=str(bundle.knowledge_point.get("kp_id") or payload.kp_id),
+            title=str(bundle.knowledge_point.get("title") or payload.kp_id),
+            resource_bundle=bundle.model_dump(mode="json"),
+            source_execution_id=payload.source_execution_id,
+        )
+        return card
+
+    @app.get("/api/v1/workshop/papers")
+    async def list_workshop_papers(
+        request: Request,
+        offset: int = Query(default=0, ge=0),
+        limit: int = Query(default=50, ge=1, le=200),
+    ) -> dict:
+        user = current_user(request)
+        return await asyncio.to_thread(
+            require_workshop_runtime().list_papers,
+            user.user_id,
+            offset=offset,
+            limit=limit,
+        )
+
+    @app.get("/api/v1/workshop/papers/{paper_id}")
+    async def get_workshop_paper(paper_id: str, request: Request) -> dict:
+        user = current_user(request)
+        try:
+            return await asyncio.to_thread(
+                require_workshop_runtime().get_paper, user.user_id, paper_id
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="试卷不存在") from exc
+
+    @app.put("/api/v1/workshop/papers/{paper_id}/answers")
+    async def save_workshop_paper_answers(
+        paper_id: str, payload: WorkshopPaperAnswersRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            return await asyncio.to_thread(
+                require_workshop_runtime().save_paper_answers,
+                user.user_id,
+                paper_id,
+                payload.answers,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/workshop/papers/{paper_id}/submit")
+    async def submit_workshop_paper(
+        paper_id: str, payload: WorkshopPaperSubmitRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            return await asyncio.to_thread(
+                require_workshop_runtime().submit_paper,
+                user.user_id,
+                paper_id,
+                payload.request_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/agent-data-capabilities")
+    async def agent_data_capabilities(request: Request) -> dict:
+        current_user(request)
+        return container.review_card_use_case.data_permission_gateway.manifest()
+
+    @app.get("/api/v1/dashboard/home")
+    async def dashboard_home(request: Request) -> dict:
+        user = current_user(request)
+        behavior = {}
+        if backend_handoff is not None:
+            try:
+                behavior = await asyncio.to_thread(
+                    backend_handoff.load_learning_context, user.user_id
+                )
+            except Exception:
+                # The home portal remains usable while optional behavior metrics recover.
+                behavior = {}
+        plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
+        queue = container.review_service.get_queue(user.user_id, limit=12)
+        sessions = container.review_card_use_case.conversation_repository.list_sessions(
+            user.user_id
+        )
+        today_tasks: list[dict] = []
+        if plans is not None and plans.learning_task is not None:
+            task = plans.learning_task
+            if task.status != "completed":
+                today_tasks.append(
+                    {
+                        "task_id": task.task_id,
+                        "title": task.task_content,
+                        "duration": f"{task.estimated_minutes} 分钟",
+                        "status": task.status,
+                        "source": "daily_task",
+                    }
+                )
+        for entry in queue.entries:
+            if entry.task is None:
+                continue
+            today_tasks.append(
+                {
+                    "task_id": entry.task.review_task_id,
+                    "title": entry.memory_unit.prompt_abstract,
+                    "duration": f"{entry.task.estimated_minutes} 分钟",
+                    "status": entry.task.status,
+                    "source": "review_queue",
+                }
+            )
+        learning_profile = behavior.get("learning_profile") or {}
+        accuracy = learning_profile.get("question_accuracy", 0)
+        completion = (
+            behavior.get("system_data", {})
+            .get("task_completion_rate", {})
+            .get("value", 0)
+        )
+        return {
+            "continue_learning": sessions[:5],
+            "today_tasks": today_tasks,
+            "status_cards": [
+                {"key": "accuracy", "value": f"{round(float(accuracy or 0) * 100)}%"},
+                {"key": "completion", "value": f"{round(float(completion or 0) * 100)}%"},
+            ],
+            "announcements": [],
+            "review_queue": queue.model_dump(mode="json"),
         }
 
     @app.post("/api/v1/learning-tasks/current/complete")
@@ -792,7 +1178,13 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     if getattr(result, "status", None) == "interrupted"
                     else "run_completed"
                 )
-                await queue.put({"event": event_name, "result": _sanitize(result)})
+                await queue.put(
+                    {
+                        "event": event_name,
+                        "result": _sanitize(result),
+                        "assistant_message": workflow_result_to_markdown(result),
+                    }
+                )
             except Exception as exc:
                 container.review_card_use_case.mark_run_failed(thread_id, str(exc))
                 await queue.put(
@@ -827,9 +1219,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         )
 
     if backend_handoff is not None:
-        # Keep this catch-all mount last. Existing /api/v1, /demo and /chat
-        # routes remain authoritative; every unmatched frontend contract route
-        # is served by the delivered backend on the same host and port.
+        # The production build calls the transitional business API through
+        # `/api/*`. Vite removes that prefix in development, so the same mapping
+        # must exist when FastAPI serves the built frontend directly. Main
+        # `/api/v1/*` routes were registered above and remain authoritative.
+        app.mount("/api", backend_handoff.app, name="frontend_backend_api")
+        # Keep this catch-all mount last for legacy direct business routes.
         app.mount("/", backend_handoff.app, name="frontend_backend")
 
     return app

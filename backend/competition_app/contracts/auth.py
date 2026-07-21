@@ -40,6 +40,7 @@ class AuthUser(ContractModel):
     user_id: str
     username: str
     display_name: str
+    role: str = "user"
     status: str = "active"
     created_at: datetime
 
@@ -64,4 +65,3 @@ class AuthSession(ContractModel):
 class AuthResponse(ContractModel):
     user: AuthUser
     expires_at: datetime
-

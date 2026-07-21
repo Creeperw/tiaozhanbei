@@ -32,7 +32,8 @@ def test_chat_page_is_a_separate_product_surface_from_demo() -> None:
 
     assert demo.status_code == 200
     assert "时珍智训 · 运行观测台" in demo.text
-    assert root.headers["location"] == "/demo/"
+    assert root.status_code == 200
+    assert "时珍智训" in root.text
 
 
 def test_chat_page_has_accessible_conversation_and_composer_landmarks() -> None:

@@ -17,8 +17,8 @@ vi.mock('../exam-atlas/examAtlasApi', () => ({
 vi.mock('./KnowledgePlanetScene', () => ({
   default: ({ nodes, positions, edges, onNodeClick, onNodeDoubleClick }) => (
     <section aria-label="三维知识星球" data-renderer="webgl">
-      {edges.map((edge) => (
-        <i key={`${edge.from}-${edge.to}`} data-testid="drilldown-tree-edge" />
+      {edges.map((edge, index) => (
+        <i key={`${edge.kind}-${edge.from}-${edge.to}-${index}`} data-testid="drilldown-tree-edge" />
       ))}
       {nodes.map((node) => (
         <button

@@ -1,18 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   BookOpen,
   BrainCircuit,
   Cpu,
-  KeyRound,
   Library,
   LineChart,
   Loader2,
   Lock,
-  Mail,
   Target,
   User as UserIcon,
 } from 'lucide-react';
-import { API_BASE, readJsonResponse } from '../utils/api';
+import { AUTH_API_BASE, readJsonResponse } from '../utils/api';
 
 const capabilityCards = [
   { icon: BrainCircuit, title: '培训助手', description: '围绕中医药学习问答、知识拆解与过程追踪展开。' },
@@ -28,49 +26,12 @@ const AuthPage = ({ onLogin }) => {
   const [successMsg, setSuccessMsg] = useState('');
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
+    displayName: '',
     password: '',
-    code: '',
-    newPassword: '',
   });
-  const [countdown, setCountdown] = useState(0);
-
-  useEffect(() => {
-    let timer;
-    if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [countdown]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSendCode = async (purpose) => {
-    if (!formData.email) {
-      setError('请输入邮箱地址');
-      return;
-    }
-    setLoading(true);
-    setError('');
-
-    try {
-      const res = await fetch(`${API_BASE}/send-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email, purpose }),
-      });
-      const data = await readJsonResponse(res, {});
-      if (!res.ok) throw new Error(data.detail);
-
-      setSuccessMsg(`验证码已发送至 ${formData.email}`);
-      setCountdown(60);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -80,49 +41,24 @@ const AuthPage = ({ onLogin }) => {
     setSuccessMsg('');
 
     try {
-      if (mode === 'login') {
-        const formBody = new FormData();
-        formBody.append('username', formData.username);
-        formBody.append('password', formData.password);
-
-        const res = await fetch(`${API_BASE}/token`, { method: 'POST', body: formBody });
-        const data = await readJsonResponse(res, {});
-        if (!res.ok) throw new Error(data.detail || '登录失败');
-
-        localStorage.setItem('token', data.access_token);
-        onLogin(formData.username);
-      } else if (mode === 'register') {
-        const res = await fetch(`${API_BASE}/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: formData.username,
-            email: formData.email,
-            password: formData.password,
-            verification_code: formData.code,
-          }),
-        });
-        const data = await readJsonResponse(res, {});
-        if (!res.ok) throw new Error(data.detail);
-
-        localStorage.setItem('token', data.access_token);
-        onLogin(formData.username);
-      } else if (mode === 'reset') {
-        const res = await fetch(`${API_BASE}/reset-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: formData.email,
-            verification_code: formData.code,
-            new_password: formData.newPassword,
-          }),
-        });
-        const data = await readJsonResponse(res, {});
-        if (!res.ok) throw new Error(data.detail);
-
-        setSuccessMsg('密码重置成功，请重新登录。');
-        setTimeout(() => setMode('login'), 1500);
-      }
+      const endpoint = mode === 'login' ? 'login' : 'register';
+      const payload = {
+        username: formData.username,
+        password: formData.password,
+        ...(mode === 'register' && formData.displayName.trim()
+          ? { display_name: formData.displayName.trim() }
+          : {}),
+      };
+      const res = await fetch(`${AUTH_API_BASE}/${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await readJsonResponse(res, {});
+      if (!res.ok) throw new Error(data.detail || (mode === 'login' ? '登录失败' : '注册失败'));
+      if (!data.user) throw new Error('登录响应缺少用户信息');
+      onLogin(data.user);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -130,13 +66,11 @@ const AuthPage = ({ onLogin }) => {
     }
   };
 
-  const title = mode === 'login' ? '进入学习工作台' : mode === 'register' ? '创建学习账号' : '重置登录密码';
+  const title = mode === 'login' ? '进入学习工作台' : '创建学习账号';
   const description =
     mode === 'login'
       ? '登录后进入时珍智训首页，继续使用培训助手、知识库溯源、练习批改与学情规划。'
-      : mode === 'register'
-        ? '注册后即可建立学习画像，开始沉淀知识来源、练习记录与阶段任务。'
-        : '通过邮箱验证码重置密码，恢复你的学习进度与个人工作台。';
+      : '注册后即可建立学习画像，开始沉淀知识来源、练习记录与阶段任务。';
 
   return (
     <div className="auth-page min-h-screen bg-[linear-gradient(180deg,#f7faf8_0%,#eef7f2_52%,#f5f7f2_100%)] px-4 py-8 text-slate-900 lg:px-8">
@@ -232,9 +166,6 @@ const AuthPage = ({ onLogin }) => {
                 <div>
                   <div className="mb-1 flex justify-between">
                     <label htmlFor="auth-login-password" className="block text-sm font-medium text-slate-700">密码</label>
-                    <button type="button" onClick={() => setMode('reset')} className="text-xs font-medium text-emerald-700 hover:text-emerald-800">
-                      忘记密码
-                    </button>
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
@@ -254,75 +185,54 @@ const AuthPage = ({ onLogin }) => {
               </>
             )}
 
-            {(mode === 'register' || mode === 'reset') && (
+            {mode === 'register' && (
               <>
-                {mode === 'register' && (
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">用户名</label>
-                    <div className="relative">
-                      <UserIcon className="absolute left-3 top-3 text-slate-400" size={18} />
-                      <input
-                        name="username"
-                        value={formData.username}
-                        onChange={handleChange}
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                        placeholder="设置学习账号名称"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">邮箱</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3 top-3 text-slate-400" size={18} />
-                      <input
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                        placeholder="用于接收验证码"
-                        required
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleSendCode(mode)}
-                      disabled={countdown > 0 || loading}
-                      className="min-w-[104px] rounded-2xl border border-emerald-100 bg-emerald-50 px-3 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-50"
-                    >
-                      {countdown > 0 ? `${countdown}s` : '发送验证码'}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">验证码</label>
+                  <label htmlFor="auth-register-username" className="mb-1 block text-sm font-medium text-slate-700">用户名</label>
                   <div className="relative">
-                    <KeyRound className="absolute left-3 top-3 text-slate-400" size={18} />
+                    <UserIcon className="absolute left-3 top-3 text-slate-400" size={18} />
                     <input
-                      name="code"
-                      value={formData.code}
+                      id="auth-register-username"
+                      name="username"
+                      autoComplete="username"
+                      minLength={3}
+                      value={formData.username}
                       onChange={handleChange}
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                      placeholder="输入 6 位验证码"
+                      placeholder="设置学习账号名称"
                       required
-                      maxLength={6}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">{mode === 'reset' ? '新密码' : '密码'}</label>
+                  <label htmlFor="auth-display-name" className="mb-1 block text-sm font-medium text-slate-700">显示名（可选）</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-3 text-slate-400" size={18} />
+                    <input
+                      id="auth-display-name"
+                      name="displayName"
+                      autoComplete="name"
+                      value={formData.displayName}
+                      onChange={handleChange}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                      placeholder="例如：林同学"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="auth-register-password" className="mb-1 block text-sm font-medium text-slate-700">密码</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
                     <input
-                      name={mode === 'reset' ? 'newPassword' : 'password'}
+                      id="auth-register-password"
+                      name="password"
                       type="password"
-                      value={mode === 'reset' ? formData.newPassword : formData.password}
+                      autoComplete="new-password"
+                      minLength={8}
+                      value={formData.password}
                       onChange={handleChange}
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                      placeholder={mode === 'reset' ? '设置新密码' : '设置登录密码'}
+                      placeholder="至少 8 位"
                       required
                     />
                   </div>

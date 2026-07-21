@@ -142,6 +142,7 @@ describe('AppShell', () => {
     );
 
     expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
+    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'contained');
     expect(screen.queryByRole('heading', { name: '智能助教' })).not.toBeInTheDocument();
 
     rerender(
@@ -155,7 +156,24 @@ describe('AppShell', () => {
       </AppShell>,
     );
     expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
+    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'contained');
     expect(screen.queryByRole('heading', { name: '知识库' })).not.toBeInTheDocument();
+  });
+
+  it('gives dashboard and training workshop an independently scrollable page region', () => {
+    const { rerender } = render(
+      <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="dashboard" onNavigate={vi.fn()} onLogout={vi.fn()}>
+        <div style={{ height: 2000 }}>Long dashboard</div>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'page');
+    rerender(
+      <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="practice" onNavigate={vi.fn()} onLogout={vi.fn()}>
+        <div style={{ height: 2000 }}>Long workshop</div>
+      </AppShell>,
+    );
+    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'page');
   });
 
   it('keeps the mobile drawer mounted for its exit motion before removing it', async () => {

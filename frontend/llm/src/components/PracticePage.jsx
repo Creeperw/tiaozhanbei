@@ -2,21 +2,19 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ClipboardCheck,
   FileText,
-  Loader2,
 } from 'lucide-react';
 import { formatSystemDataMetrics } from '../systemDataDisplay.js';
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
 import { fetchJsonWithAuthFallback } from '../utils/api';
-import CaseTrainingPanel from './CaseTrainingPanel';
-import MistakeVariationPanel from './MistakeVariationPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
+import QuestionTrainingPanel from './QuestionTrainingPanel';
+import KnowledgeCardLibrary from './KnowledgeCardLibrary';
 import {
   loadPracticeAgentContext,
   loadTrainingWorkspaceModules,
   isTrainingTaskResultApproved,
   submitTrainingWorkspaceTask,
 } from '../pageDataLoaders.js';
-import AtlasPracticePanel from './exam-atlas/AtlasPracticePanel';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
 
 const demoQuestion = {
@@ -30,9 +28,9 @@ const demoQuestion = {
 };
 
 const fallbackPracticeModule = {
-  key: 'practice_grading',
-  label: '练习批改',
-  description: '提交练习并获得批改与复盘建议。',
+  key: 'question_training',
+  label: '题目训练',
+  description: '集中完成练习批改、案例训练和错题变式。',
   enabled: true,
   badge: '可用',
   recommended: true,
@@ -43,6 +41,13 @@ const inspectorTabs = [
   { key: 'audit', label: '审核' },
   { key: 'trace', label: '轨迹' },
 ];
+
+const workshopModuleKey = (value) => {
+  if (['practice_grading', 'case_training', 'mistake_variation', 'question_training'].includes(value)) return 'question_training';
+  if (['paper_generation', 'paper_workspace'].includes(value)) return 'paper_workspace';
+  if (['knowledge_card_generation', 'knowledge_cards'].includes(value)) return 'knowledge_cards';
+  return value || 'question_training';
+};
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -235,9 +240,8 @@ function TracePanel({ trace }) {
 export default function PracticePage({ navigationContext = {} }) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
   const [modules, setModules] = useState([]);
-  const [activeTaskType, setActiveTaskType] = useState(() => navigationContext.taskType || 'practice_grading');
+  const [activeTaskType, setActiveTaskType] = useState(() => workshopModuleKey(navigationContext.taskType));
   const [answer, setAnswer] = useState('中焦虚寒证');
-  const [topic, setTopic] = useState('围绕四君子汤与脾胃气虚证完成 15 分钟复习');
   const [taskResult, setTaskResult] = useState(null);
   const [systemData, setSystemData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -265,8 +269,7 @@ export default function PracticePage({ navigationContext = {} }) {
     [activeTaskType, visibleModules],
   );
   const activeTaskReady = !modulesLoading && activeModule.key === activeTaskType && activeModule.enabled;
-  const generationTask = activeTaskType === 'handout_generation' || activeTaskType === 'knowledge_card_generation';
-  const requestedTaskType = navigationContext.taskType || '';
+  const requestedTaskType = workshopModuleKey(navigationContext.taskType || '');
 
   useEffect(() => {
     const request = async (path, body) => {
@@ -332,7 +335,7 @@ export default function PracticePage({ navigationContext = {} }) {
       setRecentTrace(contextResult.recentTrace);
       setStatusMessage(requestedModuleUnavailable
         ? '请求的训练模块暂未开放，已切换到可用训练模块。'
-        : moduleResult.error ? '训练模块加载失败，已保留练习批改入口。' : '训练模块加载完成。');
+        : moduleResult.error ? '训练模块加载失败，已保留题目训练入口。' : '训练模块加载完成。');
     };
 
     loadWorkspace();
@@ -341,7 +344,7 @@ export default function PracticePage({ navigationContext = {} }) {
       mountedRef.current = false;
       requestSequenceRef.current += 1;
     };
-  }, []);
+  }, [requestedTaskType]);
 
   const selectModule = (taskType) => {
     if (loading || submittingRef.current) return;
@@ -354,33 +357,15 @@ export default function PracticePage({ navigationContext = {} }) {
 
   const submitTask = async () => {
     if (loading || submittingRef.current || !activeModule.enabled) return;
-    const normalizedTopic = topic.trim();
-    if (generationTask && !normalizedTopic) {
-      setError('请填写生成主题后再提交。');
-      return;
-    }
-
-    const submittedTaskType = activeTaskType;
+    const submittedTaskType = 'question_training';
     const requestSequence = requestSequenceRef.current + 1;
     requestSequenceRef.current = requestSequence;
     submittingRef.current = true;
-    const task = submittedTaskType === 'practice_grading'
-      ? {
+    const task = {
         task_type: 'practice_grading',
         title: '四君子汤练习批改',
         query: demoQuestion.stem,
         inputs: { ...demoQuestion, student_answer: answer },
-        options: { save_activity: true, need_audit: true },
-      }
-      : {
-        task_type: submittedTaskType,
-        title: submittedTaskType === 'handout_generation' ? '个性化讲义' : '知识卡片',
-        query: normalizedTopic,
-        inputs: {
-          knowledge_points: demoQuestion.knowledge_points,
-          difficulty: 2,
-          duration_minutes: 15,
-        },
         options: { save_activity: true, need_audit: true },
       };
 
@@ -427,7 +412,7 @@ export default function PracticePage({ navigationContext = {} }) {
 
   const handleNextAction = (action) => {
     if (loading || submittingRef.current) return;
-    const targetModule = visibleModules.find((module) => module.key === action?.task_type);
+    const targetModule = visibleModules.find((module) => module.key === workshopModuleKey(action?.task_type));
     if (!targetModule?.enabled) return;
     selectModule(targetModule.key);
   };
@@ -508,7 +493,7 @@ export default function PracticePage({ navigationContext = {} }) {
 
       {moduleError && (
         <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-          {moduleError}。已保留练习批改入口。
+          {moduleError}。已保留题目训练入口。
         </div>
       )}
 
@@ -555,82 +540,28 @@ export default function PracticePage({ navigationContext = {} }) {
               <div className="mt-5 rounded-xl bg-slate-50 px-4 py-6 text-sm text-slate-600" role="status">
                 正在准备可用训练模块。
               </div>
-            ) : activeTaskType === 'case_training' ? (
-              <CaseTrainingPanel enabled={activeModule.enabled} />
-            ) : activeTaskType === 'mistake_variation' ? (
-              <MistakeVariationPanel enabled={activeModule.enabled} />
-            ) : activeTaskType === 'paper_generation' ? (
-              <PaperGenerationPanel enabled={activeModule.enabled} />
-            ) : activeTaskType === 'practice_grading' ? (
-              selectedKnowledgePoint ? (
-                <div className="mt-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-xs font-semibold text-slate-600">题目范围</span>
-                    <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1" role="group" aria-label="题目范围">
-                      {[
-                        ['public', '正式题库'],
-                        ['user', '我的题目'],
-                        ['all', '全部题目'],
-                      ].map(([value, label]) => (
-                        <button
-                          key={value}
-                          type="button"
-                          aria-pressed={practiceScope === value}
-                          className={`min-h-10 rounded-md px-3 text-xs font-semibold transition ${practiceScope === value ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                          onClick={() => setPracticeScope(value)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <AtlasPracticePanel knowledgePoint={selectedKnowledgePoint} scope={practiceScope} />
-                </div>
-              ) : (
-                <div className="mt-5">
-                  <p className="text-sm font-medium leading-6 text-slate-900">{demoQuestion.stem}</p>
-                  <p className="mt-2 text-sm text-slate-500">知识点：{demoQuestion.knowledge_points.join('、')}</p>
-                  <label htmlFor="practice-answer" className="mt-5 block text-sm font-medium text-slate-700">你的答案</label>
-                  <textarea
-                    id="practice-answer"
-                    value={answer}
-                    onChange={(event) => setAnswer(event.target.value)}
-                    className="mt-2 min-h-32 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-800 outline-none transition focus:border-emerald-400 focus:bg-white focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
-                    disabled={loading}
-                  />
-                </div>
-              )
-            ) : generationTask ? (
-              <div className="mt-5">
-                <label htmlFor="training-topic" className="block text-sm font-medium text-slate-700">训练主题</label>
-                <textarea
-                  id="training-topic"
-                  value={topic}
-                  onChange={(event) => setTopic(event.target.value)}
-                  placeholder="例如：围绕四君子汤的辨证要点进行复习"
-                  className="mt-2 min-h-32 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-800 outline-none transition focus:border-emerald-400 focus:bg-white focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
-                  disabled={loading}
-                />
-                <p className="mt-2 text-xs leading-5 text-slate-500">将按 15 分钟、难度 2 生成；当前示例知识点仅作为兼容上下文，不代表正式知识点 ID。</p>
-              </div>
+            ) : activeTaskType === 'paper_workspace' ? (
+              <PaperGenerationPanel enabled={activeModule.enabled} paperId={navigationContext.paperId || navigationContext.paper_id || ''} />
+            ) : activeTaskType === 'knowledge_cards' ? (
+              <KnowledgeCardLibrary cardId={navigationContext.cardId || navigationContext.card_id || ''} kpId={navigationContext.kpId || navigationContext.kp_id || ''} />
+            ) : activeTaskType === 'question_training' ? (
+              <QuestionTrainingPanel
+                enabled={activeModule.enabled}
+                selectedKnowledgePoint={selectedKnowledgePoint}
+                practiceScope={practiceScope}
+                onPracticeScopeChange={setPracticeScope}
+                question={demoQuestion}
+                answer={answer}
+                onAnswerChange={setAnswer}
+                onSubmit={submitTask}
+                loading={loading}
+              />
             ) : (
               <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
                 此模块正在准备中，暂不支持提交任务。
               </div>
             )}
 
-            {activeTaskType !== 'case_training' && activeTaskType !== 'mistake_variation' && activeTaskType !== 'paper_generation' && !(selectedKnowledgePoint && activeTaskType === 'practice_grading') && <div className="mt-5 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={submitTask}
-                disabled={loading || !activeModule.enabled}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55"
-              >
-                {loading && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
-                {loading ? '正在处理…' : activeModule.enabled ? '提交训练任务' : '模块暂未开放'}
-              </button>
-              {!activeModule.enabled && <span className="text-sm text-slate-500">当前模块不可提交。</span>}
-            </div>}
             {error && <div role="alert" className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">{error}</div>}
           </section>
 
@@ -671,7 +602,7 @@ export default function PracticePage({ navigationContext = {} }) {
                 <h3 className="text-sm font-semibold text-slate-900">下一步</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {taskResult.next_actions.slice(0, 6).map((action, index) => {
-                    const targetModule = visibleModules.find((module) => module.key === action?.task_type);
+                    const targetModule = visibleModules.find((module) => module.key === workshopModuleKey(action?.task_type));
                     const enabled = Boolean(targetModule?.enabled);
                     return (
                       <button

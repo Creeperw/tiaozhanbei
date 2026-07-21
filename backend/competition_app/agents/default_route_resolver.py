@@ -44,6 +44,14 @@ class DefaultRouteResolverAgent:
     async def run(
         self, context: dict[str, Any]
     ) -> AgentEnvelope[ResolvedPlanningRoute]:
+        trusted_target_resolution = self._trusted_learning_target_resolution(context)
+        if trusted_target_resolution is not None:
+            return envelope(
+                context,
+                "default_route_resolver",
+                "resolved_planning_route",
+                trusted_target_resolution,
+            )
         inherited_resolution = self._inherited_parent_resolution(context)
         if inherited_resolution is not None:
             return envelope(
@@ -103,7 +111,19 @@ class DefaultRouteResolverAgent:
         self, context: dict[str, Any]
     ) -> ResolvedPlanningRoute | None:
         plan_scope = context.get("plan_scope")
-        if plan_scope == "short_term":
+        if plan_scope == "long_term":
+            # A generic request such as “结合我的状态制定长期规划” should
+            # continue the user's approved goal instead of asking them to repeat
+            # it. An explicit goal in this turn still takes precedence.
+            if self._classify_goal(self._optional_text(context.get("user_request"))):
+                return None
+            parent = (
+                context.get("current_long_term_plan")
+                or context.get("current_short_term_plan")
+                or {}
+            )
+            inherited_reason = "inherited_current_plan"
+        elif plan_scope == "short_term":
             parent = context.get("current_long_term_plan") or {}
             inherited_reason = "inherited_long_term_plan"
         elif plan_scope == "daily_task":
@@ -149,17 +169,49 @@ class DefaultRouteResolverAgent:
             if inherited_textbook is not None and inherited_textbook.route is not None
             else ""
         )
-        parent_content = (
-            parent.get("content", "")
-            if isinstance(parent, dict)
-            else getattr(parent, "content", "")
-        )
+        # The inherited textbook route was already selected and persisted by
+        # the system. Revalidate it against the approved exam-route binding,
+        # but never reinterpret free-form plan prose: a plan can legitimately
+        # mention “中西医结合” without changing the user's exam identity.
         textbook_route = self._textbook_repository.resolve(
             exam_route_id=trusted.route_id,
-            goal_text=(
-                f"{inherited_textbook_name} {parent_content} "
-                f"{context.get('user_request', '')}"
-            ).strip(),
+            goal_text=inherited_textbook_name,
+        )
+        return trusted.model_copy(update={"textbook_route": textbook_route})
+
+    def _trusted_learning_target_resolution(
+        self, context: dict[str, Any]
+    ) -> ResolvedPlanningRoute | None:
+        """Resolve a persisted explicit target before asking the user again."""
+
+        if self._classify_goal(self._optional_text(context.get("user_request"))):
+            return None
+        target = context.get("learning_target")
+        if not isinstance(target, dict) or not target.get("is_active", True):
+            return None
+        goal_name = self._optional_text(target.get("exam_name"))
+        target_type = self._optional_text(target.get("target_type"))
+        if goal_name is None:
+            return None
+        goal_type = {
+            "certification": "credential",
+            "graduate_entrance_exam": "admission",
+        }.get(
+            target_type or "",
+            target_type or self._classify_goal(goal_name) or "learning",
+        )
+        trusted = self._repository.resolve(
+            goal_type=goal_type,
+            goal_name=goal_name,
+        )
+        if trusted.planning_status != "approved_route":
+            return None
+        trusted = trusted.model_copy(update={"match_reason": "active_learning_target"})
+        if self._textbook_repository is None:
+            return trusted
+        textbook_route = self._textbook_repository.resolve(
+            exam_route_id=trusted.route_id,
+            goal_text=f"{goal_name} {context.get('user_request', '')}".strip(),
         )
         return trusted.model_copy(update={"textbook_route": textbook_route})
 

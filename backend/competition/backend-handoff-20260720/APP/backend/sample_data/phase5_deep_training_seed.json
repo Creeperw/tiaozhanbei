@@ -1,0 +1,24 @@
+{
+  "tasks": [
+    {
+      "task_id": "TASK_PHASE5_001",
+      "text": "四君子汤主治脾胃气虚证，并比较其与理中丸的适用证候。"
+    }
+  ],
+  "knowledge_points": [
+    {"kp_id": "KP_FJ_001", "name": "四君子汤", "aliases": ["补气剂四君子汤"], "difficulty": 2},
+    {"kp_id": "KP_ZD_021", "name": "脾胃气虚证", "aliases": ["脾气虚证"], "difficulty": 2},
+    {"kp_id": "KP_FJ_018", "name": "理中丸", "aliases": [], "difficulty": 3}
+  ],
+  "question_bank": [
+    {"question_id": "Q_PHASE5_001", "stem": "四君子汤主治什么证？", "answer": "脾胃气虚证", "kp_ids": ["KP_FJ_001", "KP_ZD_021"], "difficulty": 2, "quality_score": 0.95},
+    {"question_id": "Q_PHASE5_002", "stem": "理中丸与四君子汤的治法有何不同？", "answer": "理中丸温中祛寒，四君子汤益气健脾", "kp_ids": ["KP_FJ_018", "KP_FJ_001"], "difficulty": 3, "quality_score": 0.9}
+  ],
+  "mistakes": [
+    {"question_id": "Q_PHASE5_001", "kp_ids": ["KP_FJ_001", "KP_ZD_021"], "error_type": "证型-方剂匹配错误", "wrong_count": 2}
+  ],
+  "analytics": {
+    "l0_baseline": {"daily_available_minutes": 30, "default_daily_tasks": 2, "preferred_time_slot": "20:00-21:00"},
+    "l3_behavior": {"login_weekly_change": -0.2, "focus_time_change": -0.25, "task_completion_rate": 0.55, "retry_count": 1}
+  }
+}

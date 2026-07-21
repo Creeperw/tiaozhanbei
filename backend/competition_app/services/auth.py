@@ -25,27 +25,73 @@ class InvalidCredentialsError(ValueError):
 class AuthenticationService:
     password_iterations = 310_000
 
-    def __init__(self, repository: AuthRepository, session_ttl_hours: int = 24 * 30) -> None:
+    def __init__(
+        self,
+        repository: AuthRepository,
+        session_ttl_hours: int = 24 * 30,
+        *,
+        admin_username: str | None = None,
+        admin_password: str | None = None,
+    ) -> None:
         self.repository = repository
         self.session_ttl = timedelta(hours=session_ttl_hours)
+        if admin_username and admin_password:
+            self._ensure_admin(admin_username, admin_password)
 
     def register(self, request: RegisterRequest) -> tuple[AuthResponse, str]:
         now = datetime.now(timezone.utc)
+        user = self._build_user(
+            request.username,
+            request.password,
+            request.display_name or request.username,
+            role="user",
+            now=now,
+        )
+        self.repository.create_user(user)
+        return self._start_session(user, now)
+
+    def _build_user(
+        self,
+        username: str,
+        password: str,
+        display_name: str,
+        *,
+        role: str,
+        now: datetime,
+    ) -> StoredAuthUser:
         salt = secrets.token_bytes(16)
-        user = StoredAuthUser(
+        return StoredAuthUser(
             user_id=f"USER_{uuid4().hex}",
-            username=request.username,
-            normalized_username=self.normalize_username(request.username),
-            display_name=request.display_name or request.username,
+            username=username,
+            normalized_username=self.normalize_username(username),
+            display_name=display_name,
+            role=role,
             password_hash=self._derive_password(
-                request.password, salt, self.password_iterations
+                password, salt, self.password_iterations
             ).hex(),
             password_salt=salt.hex(),
             password_iterations=self.password_iterations,
             created_at=now,
         )
-        self.repository.create_user(user)
-        return self._start_session(user, now)
+
+    def _ensure_admin(self, username: str, password: str) -> None:
+        existing = self.repository.get_user_by_normalized_username(
+            self.normalize_username(username)
+        )
+        if existing is not None:
+            if existing.role != "admin":
+                raise RuntimeError("管理员用户名已被普通账号占用")
+            return
+        now = datetime.now(timezone.utc)
+        self.repository.create_user(
+            self._build_user(
+                username,
+                password,
+                username,
+                role="admin",
+                now=now,
+            )
+        )
 
     def login(self, request: LoginRequest) -> tuple[AuthResponse, str]:
         user = self.repository.get_user_by_normalized_username(
@@ -120,11 +166,10 @@ class AuthenticationService:
     def _public_user(user: StoredAuthUser) -> AuthUser:
         return AuthUser.model_validate(
             user.model_dump(
-                include={"user_id", "username", "display_name", "status", "created_at"}
+                include={"user_id", "username", "display_name", "role", "status", "created_at"}
             )
         )
 
     @staticmethod
     def _as_utc(value: datetime) -> datetime:
         return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-

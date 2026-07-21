@@ -189,9 +189,11 @@ class ExamLearningRoutesTests(unittest.TestCase):
         self.assertEqual(body["status"], "completed")
 
     def test_returns_batched_visible_node_learning_states_with_real_recency(self):
-        from datetime import datetime, timedelta
+        from datetime import timedelta
 
-        assessed_at = datetime(2026, 7, 18, 8, 0, 0)
+        from APP.backend.time_utils import utc_now
+
+        assessed_at = utc_now().replace(microsecond=0)
         with self.Session() as db:
             db.add(database.KnowledgeMasteryState(
                 mastery_state_id="mastery-visible",
@@ -223,7 +225,7 @@ class ExamLearningRoutesTests(unittest.TestCase):
         ])
         self.assertEqual(body["items"][0]["status"], "completed")
         self.assertEqual(body["items"][0]["mastery_score"], 86.0)
-        self.assertEqual(body["items"][0]["last_assessed_at"], "2026-07-18T08:00:00")
+        self.assertEqual(body["items"][0]["last_assessed_at"], assessed_at.isoformat())
         self.assertFalse(body["items"][0]["review_due"])
         self.assertIn("display_order", body["items"][0])
         self.assertIn("order_path", body["items"][0])

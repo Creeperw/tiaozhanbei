@@ -12,6 +12,7 @@ import {
   loadCaseSession,
   loadCaseTypes,
   loadPaper,
+  loadPapers,
   loadVariationSources,
   requestCaseHelp,
   savePaperAnswers,
@@ -290,12 +291,14 @@ const validPaper = {
   paper_id: 'PAPER_1',
   title: '训练试卷',
   status: 'published',
+  timing: null,
   items: [{
     paper_item_id: 'PI_1',
     position: 1,
     question_version_id: 'QV_1',
     question_type: 'short_answer',
     stem: '四君子汤主治什么证型？',
+    options: [],
     kp_ids: ['KP_1'],
     difficulty: 2,
     answer: '',
@@ -342,10 +345,10 @@ test('loadTrainingWorkspaceModules requests and returns validated workspace modu
     },
   });
 
-  assert.deepEqual(received.paths, ['/training/workspace/modules']);
+  assert.deepEqual(received.paths, ['/v1/workshop', '/training/workspace/modules']);
   assert.deepEqual(result.workspace, { ...emptyTrainingWorkspace, ...validTrainingModules, future_field: true });
   assert.equal(result.error, '');
-  assert.equal(result.source, '/training/workspace/modules');
+  assert.equal(result.source, '/v1/workshop');
 });
 
 test('isTrainingModulesPayloadValid accepts the six-module fixture and an additional valid module', () => {
@@ -423,6 +426,33 @@ test('paper loaders use owned read, answer save, and idempotent submit contracts
   assert.deepEqual(requests[1].options, { method: 'PUT', body: JSON.stringify({ answers: { PI_1: '脾胃气虚证' } }) });
   assert.deepEqual(requests[2].options, { method: 'POST', body: JSON.stringify({ request_id: 'submit-1' }) });
   assert.doesNotMatch(JSON.stringify(requests), /standard_answer/);
+});
+
+test('paper library loader uses the stable user-scoped workshop contract', async () => {
+  let received;
+  const payload = {
+    schema_version: '1.0',
+    items: [{
+      paper_id: 'PAPER_1',
+      title: '四君子汤训练卷',
+      status: 'published',
+      duration_minutes: 45,
+      created_at: null,
+    }],
+    total: 1,
+    offset: 0,
+    limit: 50,
+  };
+  const result = await loadPapers({
+    fetcher: async (request) => {
+      received = request;
+      return { data: payload, source: request.paths[0] };
+    },
+  });
+
+  assert.deepEqual(received.paths, ['/v1/workshop/papers?offset=0&limit=50']);
+  assert.deepEqual(result.papers, payload);
+  assert.equal(result.error, '');
 });
 
 test('paper submission loader rejects a malformed successful response', async () => {
@@ -648,7 +678,12 @@ test('training workspace fallbacks return deep independent empty states', async 
   assert.deepEqual(moduleFallbacks[2].workspace, emptyTrainingWorkspace);
   assert.notStrictEqual(moduleFallbacks[0].workspace, moduleFallbacks[1].workspace);
   assert.notStrictEqual(moduleFallbacks[0].workspace.modules, moduleFallbacks[1].workspace.modules);
-  assert.deepEqual(emptyTrainingWorkspace, { default_task_type: '', modules: [] });
+  assert.deepEqual(emptyTrainingWorkspace, {
+    schema_version: '1.0',
+    default_module: '',
+    default_task_type: '',
+    modules: [],
+  });
 
   assert.deepEqual(submitFallbacks[1].taskResult, emptyTrainingTaskResult);
   assert.notStrictEqual(submitFallbacks[0].taskResult, submitFallbacks[1].taskResult);
@@ -703,7 +738,8 @@ test('submitTrainingWorkspaceTask sends the POST contract through fetchJsonWithA
     assert.equal(receivedOptions.method, 'POST');
     assert.equal(receivedOptions.body, JSON.stringify(task));
     assert.equal(receivedOptions.headers['Content-Type'], 'application/json');
-    assert.equal(receivedOptions.headers.Authorization, 'Bearer training-token');
+    assert.equal(receivedOptions.headers.Authorization, undefined);
+    assert.equal(receivedOptions.credentials, 'include');
     assert.equal(result.error, '');
   }, { token: 'training-token' });
 });

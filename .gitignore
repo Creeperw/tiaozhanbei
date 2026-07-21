@@ -210,9 +210,13 @@ backend/competition/backend-handoff-20260720/APP/backend/runtime/
 *.sqlite3
 
 # Large knowledge assets are mounted outside Git
+backend/competition/vdb_store
 backend/competition/vdb_store/
 backend/competition/题库与知识点库（原始）/
+backend/competition/知识星球视频知识库_前端交接包_*
 backend/competition/知识星球视频知识库_前端交接包_*/
+backend/competition/zhongyi-learning-planning
+backend/competition/zhongyi-learning-planning/
 
 # Visual Studio Code
 #   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 

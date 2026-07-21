@@ -192,7 +192,7 @@ class LLMClient:
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_tokens": int(max_tokens),
         }
         if extra_body:
             payload.update(extra_body)
@@ -210,7 +210,7 @@ class LLMClient:
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_tokens": int(max_tokens),
             "stream": True,
         }
         if extra_body:

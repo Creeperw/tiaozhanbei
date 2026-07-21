@@ -2,7 +2,7 @@ from __future__ import annotations
 from APP.backend.time_utils import utc_now
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Callable
 
 from sqlalchemy.orm import Session
@@ -50,8 +50,37 @@ def _decode_list(value: str) -> list[str]:
     return parsed if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed) else []
 
 
+def _decode_options(value: str) -> list[Any]:
+    try:
+        parsed = json.loads(value or "[]")
+    except (TypeError, ValueError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _timing(paper: PaperInstanceRecord) -> dict[str, Any]:
+    duration = max(1, int(paper.duration_minutes or 60))
+    if paper.started_at is None and paper.status == "published":
+        paper.started_at = utc_now()
+        paper.expires_at = paper.started_at + timedelta(minutes=duration)
+    remaining = None
+    expired = False
+    if paper.expires_at is not None:
+        remaining = max(0, int((paper.expires_at - utc_now()).total_seconds()))
+        expired = remaining == 0
+    return {
+        "duration_minutes": duration,
+        "started_at": paper.started_at.isoformat() if paper.started_at else None,
+        "expires_at": paper.expires_at.isoformat() if paper.expires_at else None,
+        "remaining_seconds": remaining,
+        "expired": expired,
+    }
+
+
 def get_owned_paper(db: Session, learner_id: int, paper_id: str) -> dict[str, Any]:
     paper = _paper(db, learner_id, paper_id)
+    timing = _timing(paper)
+    db.commit()
     answers = {
         answer.paper_item_id: answer.answer
         for answer in db.query(PaperAnswerRecord).filter_by(paper_id=paper.paper_id, learner_id=learner_id).all()
@@ -64,6 +93,7 @@ def get_owned_paper(db: Session, learner_id: int, paper_id: str) -> dict[str, An
         "paper_id": paper.paper_id,
         "title": paper.title,
         "status": paper.status,
+        "timing": timing,
         "result": result,
         "items": [{
             "paper_item_id": item.paper_item_id,
@@ -71,8 +101,10 @@ def get_owned_paper(db: Session, learner_id: int, paper_id: str) -> dict[str, An
             "question_version_id": item.question_version_id,
             "question_type": item.question_type,
             "stem": item.stem_snapshot,
+            "options": _decode_options(item.options_snapshot_json),
             "kp_ids": _decode_list(item.kp_snapshot_json),
             "difficulty": item.standard_difficulty,
+            "max_score": float(item.max_score_snapshot or 100.0),
             "answer": answers.get(item.paper_item_id, ""),
         } for item in _items(db, paper.paper_id)],
     }
@@ -177,10 +209,18 @@ def submit_paper(
                 attempt_type="paper",
             )
             graded = apply_practice_grading(db, command, runner=runner, atomic=True, require_audit=True)
+            raw_score = float(graded.grading_payload["score"] or 0.0)
+            raw_maximum = float(graded.grading_payload["max_score"] or 0.0)
+            item_maximum = float(item.max_score_snapshot or 100.0)
+            weighted_score = (
+                item_maximum * max(0.0, min(1.0, raw_score / raw_maximum))
+                if raw_maximum > 0
+                else 0.0
+            )
             results.append({
                 "paper_item_id": item.paper_item_id,
-                "score": graded.grading_payload["score"],
-                "max_score": graded.grading_payload["max_score"],
+                "score": round(weighted_score, 2),
+                "max_score": round(item_maximum, 2),
                 "audit": graded.audit,
                 "writeback": graded.writeback.status if graded.writeback else "skipped",
             })

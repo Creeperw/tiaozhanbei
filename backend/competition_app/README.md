@@ -30,20 +30,19 @@ backend/
 cd backend
 conda activate torch
 python -m pip install -r competition_app/requirements.txt
-COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve \
-  --host 127.0.0.1 --port 8878
+COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve
 ```
 
 健康检查：
 
 ```bash
-curl http://127.0.0.1:8878/health
+curl http://127.0.0.1:7860/health
 ```
 
 Stub 模式不调用外部模型和向量服务，适合前端联调、接口契约检查和自动化测试。
 
-> 当前配置读取系统环境变量；`.env.example` 只展示变量名，不包含任何有效密钥。
-> 团队可在启动脚本中自行加载 `.env.local`，但不得提交该文件。
+> 当前配置按 `.env`、`.env.local`、系统环境变量的顺序覆盖读取；`.env.example`
+> 只展示可用变量，不包含任何有效密钥。
 
 ## 2. Live 模式
 
@@ -61,7 +60,7 @@ export COMPETITION_EXECUTION_ENGINE=langgraph
 export DASHSCOPE_API_KEY='...'
 export SILICONFLOW_API_KEY='...'
 export EXA_API_KEY='...'                 # 仅网络资源检索需要
-python -m competition_app.cli.app serve --host 127.0.0.1 --port 8878
+python -m competition_app.cli.app serve
 ```
 
 Live 模式还需要团队共享盘中的正式知识资产。大体积题库、FAISS 索引、视频知识库和运行时
@@ -73,6 +72,10 @@ export KNOWLEDGE_VECTOR_STORE_ROOT='/absolute/path/to/vdb_store'
 export KNOWLEDGE_HANDOFF_ROOT='/absolute/path/to/知识星球视频知识库_前端交接包_2026-07-18'
 export KNOWLEDGE_RUNTIME_ROOT='/absolute/path/to/知识库管理组件/runtime'
 ```
+
+如已有旧项目资产，可直接使用上述绝对路径；也可将 `vdb_store` 和知识库交付包软链接到
+`backend/competition/` 下。不要复制或提交 FAISS 索引，后端会把解析后的本地路径投影给
+交接业务模块。
 
 缺少正式资产时请使用 Stub 模式；Live 模式不会用伪数据静默降级。
 
@@ -104,11 +107,12 @@ export AUTH_COOKIE_SECURE=true            # HTTPS 环境
 
 ## 4. 前端整合约定
 
-推荐生产环境让前端和 API 同源；开发环境由 Vite/Nginx 将以下路径代理到 `8878`：
+生产环境先在 `frontend/llm` 执行 `npm run build`，主 FastAPI 会在 `/` 同源托管构建结果。
+开发环境由 Vite 将以下路径代理到 `7860`：
 
 ```text
-/api/*
-/token
+/api/v1/*       # 主 API，不改写路径
+/api/*          # 尚未迁移的兼容业务接口，去掉 /api 前缀
 /health
 /docs
 ```
@@ -128,6 +132,9 @@ fetch('/api/v1/auth/me', {
 | 健康检查 | `GET /health` |
 | 注册/登录/退出 | `POST /api/v1/auth/register`、`/login`、`/logout` |
 | 当前用户 | `GET /api/v1/auth/me` |
+| 对话会话 | `GET/POST /api/v1/conversations` |
+| 会话消息 | `GET /api/v1/conversations/{conversation_id}/messages` |
+| 首页摘要 | `GET /api/v1/dashboard/home` |
 | 普通执行 | `POST /api/v1/review-cards` |
 | 流式执行 | `POST /api/v1/review-cards/stream` |
 | 查询运行状态 | `GET /api/v1/review-cards/runs/{thread_id}` |
@@ -136,6 +143,9 @@ fetch('/api/v1/auth/me', {
 | 平台装配状态 | `GET /api/v1/platform/status` |
 | 完整交接接口契约 | `GET /api/v1/platform/openapi.json` |
 | FastAPI 文档 | `GET /docs` |
+
+每个 `conversation_id` 表示一个可包含多轮消息的正式会话；每次 LangGraph 执行使用独立
+`thread_id`。中断恢复复用该次 `thread_id`，不能把会话 ID 当作所有轮次共用的检查点 ID。
 
 流式接口返回 `text/event-stream`。前端应按 `event` 字段处理节点开始、模型增量、执行图、
 中断、完成和失败事件，不要依赖日志文本。收到 `run_interrupted` 后保存 `thread_id`，使用
@@ -175,7 +185,7 @@ conda run -n torch python -m pytest -q competition_app/tests \
 
 ```bash
 python -m pytest -q competition_app/tests/services/test_plan_scope.py
-curl http://127.0.0.1:8878/health
+curl http://127.0.0.1:7860/health
 ```
 
 ## 7. 禁止提交

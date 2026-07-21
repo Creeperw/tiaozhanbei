@@ -79,6 +79,7 @@ export default function LearningPathOverview({
   onSelect,
   onDrill,
   onClearSelection,
+  directDrill = false,
 }) {
   const spineCount = Math.max(1, edges.filter((edge) => edge.kind !== 'rib').length + 1);
   const defaultSemanticScale = clampSemanticScale(Math.max(
@@ -268,7 +269,7 @@ export default function LearningPathOverview({
             <button
               key={id}
               type="button"
-              aria-label={`选择${node.title}，双击进入知识星球`}
+              aria-label={directDrill ? `进入${node.title}` : `选择${node.title}，双击进入知识星球`}
               aria-pressed={selected}
               data-current={String(current)}
               data-stage={stage}
@@ -304,7 +305,7 @@ export default function LearningPathOverview({
         <span><i className="is-progress" />进行中</span>
         <span><i />即将解锁</span>
         <span><i className="is-locked" />待解锁</span>
-        <em>单击查看规划 · 双击进入知识星球</em>
+        <em>{directDrill ? '单击进入下一级学习路径' : '单击查看规划 · 双击进入知识星球'}</em>
       </div>
     </div>
   );

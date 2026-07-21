@@ -25,8 +25,12 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api/v1': {
+        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:7860',
+        changeOrigin: true,
+      },
       '/api': {
-        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:8878',
+        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:7860',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

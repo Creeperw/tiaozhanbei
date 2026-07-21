@@ -1,0 +1,32 @@
+{
+  "users": [
+    {
+      "username": "training_cross_major",
+      "profile": {
+        "constitution": "跨专业进阶群体",
+        "health_goals": "掌握方剂学核心方剂",
+        "diet_restrictions": "每天30分钟",
+        "exercise_preferences": "知识卡和短练",
+        "medical_history": "方证对应容易混淆"
+      },
+      "memories": [],
+      "practice_submissions": [
+        {
+          "question_id": "Q_PHASE4_001",
+          "stem": "四君子汤的功用是什么？",
+          "student_answer": "温中祛寒",
+          "standard_answer": "益气健脾",
+          "rubric": "答出益气健脾",
+          "knowledge_points": ["四君子汤", "功用"]
+        }
+      ],
+      "agent_events": [
+        {
+          "agent_name": "practice_agent",
+          "event_type": "grading",
+          "output_summary": "完成四君子汤练习批改"
+        }
+      ]
+    }
+  ]
+}

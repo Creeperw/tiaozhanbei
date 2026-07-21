@@ -152,6 +152,16 @@ class SqlRunStateRepository:
 
 
 class ConversationRepository(Protocol):
+    def create_session(self, session_id: str, learner_id: str, title: str) -> None: ...
+
+    def list_sessions(self, learner_id: str) -> list[dict[str, Any]]: ...
+
+    def get_messages(self, session_id: str, learner_id: str) -> list[dict[str, Any]]: ...
+
+    def rename_session(self, session_id: str, learner_id: str, title: str) -> bool: ...
+
+    def delete_session(self, session_id: str, learner_id: str) -> bool: ...
+
     def save_messages(
         self,
         session_id: str,
@@ -165,6 +175,60 @@ class InMemoryConversationRepository:
         self.sessions: dict[str, dict[str, Any]] = {}
         self._lock = RLock()
 
+    def create_session(self, session_id: str, learner_id: str, title: str) -> None:
+        with self._lock:
+            existing = self.sessions.get(session_id)
+            if existing is not None and existing["learner_id"] != learner_id:
+                raise ValueError("conversation session belongs to another learner")
+            self.sessions.setdefault(
+                session_id,
+                {
+                    "learner_id": learner_id,
+                    "title": title,
+                    "messages": {},
+                    "created_at": datetime.utcnow().isoformat(),
+                },
+            )
+
+    def list_sessions(self, learner_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = [
+                {
+                    "id": session_id,
+                    "title": session.get("title") or "新对话",
+                    "created_at": session.get("created_at"),
+                }
+                for session_id, session in self.sessions.items()
+                if session["learner_id"] == learner_id
+            ]
+        return list(reversed(rows))
+
+    def get_messages(self, session_id: str, learner_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            session = self.sessions.get(session_id)
+            if session is None or session["learner_id"] != learner_id:
+                return []
+            return [
+                {"message_id": message_id, **_copy_json(message)}
+                for message_id, message in session["messages"].items()
+            ]
+
+    def rename_session(self, session_id: str, learner_id: str, title: str) -> bool:
+        with self._lock:
+            session = self.sessions.get(session_id)
+            if session is None or session["learner_id"] != learner_id:
+                return False
+            session["title"] = title
+            return True
+
+    def delete_session(self, session_id: str, learner_id: str) -> bool:
+        with self._lock:
+            session = self.sessions.get(session_id)
+            if session is None or session["learner_id"] != learner_id:
+                return False
+            del self.sessions[session_id]
+            return True
+
     def save_messages(
         self,
         session_id: str,
@@ -173,7 +237,13 @@ class InMemoryConversationRepository:
     ) -> None:
         with self._lock:
             session = self.sessions.setdefault(
-                session_id, {"learner_id": learner_id, "messages": {}}
+                session_id,
+                {
+                    "learner_id": learner_id,
+                    "title": "新对话",
+                    "messages": {},
+                    "created_at": datetime.utcnow().isoformat(),
+                },
             )
             if session["learner_id"] != learner_id:
                 raise ValueError("conversation session belongs to another learner")
@@ -185,6 +255,95 @@ class InMemoryConversationRepository:
 class SqlConversationRepository:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
+
+    def create_session(self, session_id: str, learner_id: str, title: str) -> None:
+        with self.engine.begin() as connection:
+            owner = connection.execute(
+                text("SELECT learner_id FROM conversation_sessions WHERE session_id=:session_id"),
+                {"session_id": session_id},
+            ).scalar_one_or_none()
+            if owner is not None:
+                if owner != learner_id:
+                    raise ValueError("conversation session belongs to another learner")
+                return
+            connection.execute(
+                text(
+                    "INSERT INTO conversation_sessions (session_id, learner_id, title) "
+                    "VALUES (:session_id, :learner_id, :title)"
+                ),
+                {"session_id": session_id, "learner_id": learner_id, "title": title},
+            )
+
+    def list_sessions(self, learner_id: str) -> list[dict[str, Any]]:
+        with self.engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT session_id, title, created_at FROM conversation_sessions "
+                    "WHERE learner_id=:learner_id ORDER BY created_at DESC"
+                ),
+                {"learner_id": learner_id},
+            ).mappings().all()
+        return [
+            {"id": row["session_id"], "title": row["title"] or "新对话", "created_at": row["created_at"]}
+            for row in rows
+        ]
+
+    def get_messages(self, session_id: str, learner_id: str) -> list[dict[str, Any]]:
+        with self.engine.connect() as connection:
+            owner = connection.execute(
+                text("SELECT learner_id FROM conversation_sessions WHERE session_id=:session_id"),
+                {"session_id": session_id},
+            ).scalar_one_or_none()
+            if owner != learner_id:
+                return []
+            rows = connection.execute(
+                text(
+                    "SELECT message_id, role, content, created_at FROM conversation_messages "
+                    "WHERE session_id=:session_id ORDER BY created_at, message_id"
+                ),
+                {"session_id": session_id},
+            ).mappings().all()
+        return [
+            {
+                "message_id": row["message_id"],
+                "role": row["role"],
+                "content": row["content"],
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
+    def rename_session(self, session_id: str, learner_id: str, title: str) -> bool:
+        with self.engine.begin() as connection:
+            result = connection.execute(
+                text(
+                    "UPDATE conversation_sessions SET title=:title "
+                    "WHERE session_id=:session_id AND learner_id=:learner_id"
+                ),
+                {"session_id": session_id, "learner_id": learner_id, "title": title},
+            )
+        return bool(result.rowcount)
+
+    def delete_session(self, session_id: str, learner_id: str) -> bool:
+        with self.engine.begin() as connection:
+            owner = connection.execute(
+                text(
+                    "SELECT learner_id FROM conversation_sessions "
+                    "WHERE session_id=:session_id"
+                ),
+                {"session_id": session_id},
+            ).scalar_one_or_none()
+            if owner != learner_id:
+                return False
+            connection.execute(
+                text("DELETE FROM conversation_messages WHERE session_id=:session_id"),
+                {"session_id": session_id},
+            )
+            connection.execute(
+                text("DELETE FROM conversation_sessions WHERE session_id=:session_id"),
+                {"session_id": session_id},
+            )
+        return True
 
     def save_messages(
         self,
@@ -203,10 +362,10 @@ class SqlConversationRepository:
             if owner is None:
                 connection.execute(
                     text(
-                        "INSERT INTO conversation_sessions (session_id, learner_id) "
-                        "VALUES (:session_id, :learner_id)"
+                        "INSERT INTO conversation_sessions (session_id, learner_id, title) "
+                        "VALUES (:session_id, :learner_id, :title)"
                     ),
-                    {"session_id": session_id, "learner_id": learner_id},
+                    {"session_id": session_id, "learner_id": learner_id, "title": "新对话"},
                 )
             elif owner != learner_id:
                 raise ValueError("conversation session belongs to another learner")

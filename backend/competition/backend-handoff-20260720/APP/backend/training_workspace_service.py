@@ -73,53 +73,31 @@ TRAINING_TASK_OPTIONS = {
 
 TRAINING_MODULES = [
     {
-        "key": "practice_grading",
-        "label": "练习批改",
-        "description": "提交练习并获得批改与复盘建议。",
+        "key": "question_training",
+        "label": "题目训练",
+        "description": "集中完成练习批改、案例训练和错题变式。",
         "enabled": True,
-        "badge": "MVP",
+        "badge": "可用",
         "recommended": True,
+        "capabilities": ["practice_grading", "case_training", "mistake_variation"],
     },
     {
-        "key": "handout_generation",
-        "label": "讲义生成",
-        "description": "根据学习目标生成培训讲义。",
+        "key": "knowledge_cards",
+        "label": "知识卡片",
+        "description": "保存已学习知识点的讲解、教材切片、视频和题目。",
         "enabled": True,
-        "badge": "MVP",
+        "badge": "可用",
         "recommended": False,
+        "capabilities": ["knowledge_card_generation", "resource_bundle"],
     },
     {
-        "key": "knowledge_card_generation",
-        "label": "知识卡生成",
-        "description": "根据知识点生成便于复习的知识卡。",
-        "enabled": True,
-        "badge": "MVP",
-        "recommended": False,
-    },
-    {
-        "key": "paper_generation",
+        "key": "paper_workspace",
         "label": "试卷生成",
-        "description": "按训练目标生成综合试卷。",
+        "description": "按要求组卷并进入计时答题界面。",
         "enabled": True,
-        "badge": "增强功能",
+        "badge": "可用",
         "recommended": False,
-    },
-    {
-        "key": "case_training",
-        "label": "案例训练",
-        "description": "围绕案例开展情境化训练。",
-        "enabled": True,
-        "badge": "增强功能",
-        "recommended": False,
-        "capability_url": "/training/case-sessions",
-    },
-    {
-        "key": "mistake_variation",
-        "label": "错题变式",
-        "description": "根据错题生成变式练习。",
-        "enabled": True,
-        "badge": "增强功能",
-        "recommended": False,
+        "capabilities": ["paper_generation", "timed_session", "paper_submission"],
     },
 ]
 
@@ -1304,6 +1282,7 @@ def get_training_task_result(
 
 def get_training_workspace_modules() -> dict[str, object]:
     return {
-        "default_task_type": "practice_grading",
+        "schema_version": "1.0",
+        "default_task_type": "question_training",
         "modules": deepcopy(TRAINING_MODULES),
     }
