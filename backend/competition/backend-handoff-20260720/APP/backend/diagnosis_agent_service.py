@@ -532,11 +532,11 @@ def build_learning_profile(db: Session, user_id: int) -> dict[str, Any]:
         key = _text(row.error_type, "知识点掌握不牢")
         error_patterns[key] = error_patterns.get(key, 0) + 1
     correct_count = sum(1 for row in attempt_rows if row.is_correct)
-    question_accuracy = round(correct_count / len(attempt_rows), 4) if attempt_rows else 1.0
+    question_accuracy = round(correct_count / len(attempt_rows), 4) if attempt_rows else 0.0
     review_stability = round(
         sum(1 for row in mastery_rows if float(row.mastery or 0.0) >= 0.6) / len(mastery_rows),
         4,
-    ) if mastery_rows else 1.0
+    ) if mastery_rows else 0.0
     if question_accuracy >= 0.8:
         case_reasoning_level = "stable"
     elif question_accuracy >= 0.55:
@@ -558,6 +558,11 @@ def build_learning_profile(db: Session, user_id: int) -> dict[str, Any]:
         "question_accuracy": question_accuracy,
         "review_stability": review_stability,
         "preferred_difficulty": preferred_difficulty or "D2",
+        "sample_counts": {
+            "question_attempts": len(attempt_rows),
+            "mastery_records": len(mastery_rows),
+            "active_mistakes": len(mistake_rows),
+        },
     }
 
 
@@ -586,7 +591,7 @@ def build_l3_behavior_window(db: Session, user_id: int) -> dict[str, Any]:
     completion_rate = round(
         sum(1 for row in last_week if row.completion_status == "completed") / last_count,
         4,
-    ) if last_count else 1.0
+    ) if last_count else 0.0
     last_focus = sum(row.duration_minutes or 0 for row in last_week)
     prev_focus = sum(row.duration_minutes or 0 for row in previous_week)
     login_change = round((last_count - prev_count) / prev_count, 4) if prev_count else (0.0 if last_count else -1.0)
@@ -608,6 +613,16 @@ def build_l3_behavior_window(db: Session, user_id: int) -> dict[str, Any]:
         "focus_time_change": focus_change,
         "retry_count": retry_count,
         "path_deviation": 0.0,
+        "sample_counts": {
+            "activities_current_window": last_count,
+            "activities_previous_window": prev_count,
+            "question_attempts_current_window": len(attempts),
+        },
+        "evidence_status": (
+            "sufficient"
+            if last_count or attempts
+            else "insufficient"
+        ),
     }
 
 
@@ -648,12 +663,30 @@ def generate_diagnosis_report(
     else:
         context_payload = dict(learner_context)
 
+    sample_counts = l3_behavior.get("sample_counts") or {}
+    evidence_count = int(sample_counts.get("activities_current_window") or 0) + int(
+        sample_counts.get("question_attempts_current_window") or 0
+    )
     diagnosis_payload = diagnose_learning_state(
         l0_baseline=l0_baseline,
         l3_behavior=l3_behavior,
         mistakes=mistakes,
     )
     stage = diagnosis_payload["t_stage"]
+    evidence_insufficient = l3_behavior.get("evidence_status") == "insufficient"
+    if evidence_insufficient:
+        stage = {
+            "stage_id": "T0",
+            "stage_name": "证据积累中",
+            "severity": "unknown",
+            "evidence": ["当前观察窗口内没有已完成的学习活动或题目作答"],
+            "suggested_action": "collect_learning_evidence",
+        }
+        diagnosis_payload["t_stage"] = stage
+        diagnosis_payload["attribution"] = {
+            "primary": "证据不足",
+            "evidence_count": 0,
+        }
     weak_count = len(learning_profile.get("weak_kp_ids", []))
     error_patterns = learning_profile.get("error_patterns", {})
     primary_error = next(iter(error_patterns.keys()), "暂无明显错因")
@@ -663,6 +696,8 @@ def generate_diagnosis_report(
     summary = (
         f"当前处于{stage['stage_name']}，共识别 {weak_count} 个薄弱知识点，"
         f"主要错因是{primary_error}。"
+        if evidence_count and not evidence_insufficient
+        else "当前学习监控样本不足，暂不对学习节奏和薄弱点作确定性判断。"
     )
     return DiagnosisReport(
         diagnosis_id=f"diag-{uuid.uuid4().hex[:10]}",
@@ -673,8 +708,12 @@ def generate_diagnosis_report(
         source_id=_text(context_payload.get("learner_id"), "unknown-learner"),
         kp_ids=list(learning_profile.get("weak_kp_ids", [])),
         risk_notes=[],
-        confidence=0.86,
-        interventions=interventions,
+        confidence=0.86 if evidence_count and not evidence_insufficient else 0.25,
+        interventions=(
+            interventions
+            if evidence_count and not evidence_insufficient
+            else ["完成至少一道知识点题目后再更新学情分析"]
+        ),
         t_stage=stage,
         l0_baseline=l0_baseline,
         l3_window=l3_behavior,

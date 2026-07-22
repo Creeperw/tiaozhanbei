@@ -573,6 +573,8 @@ class LangGraphOrchestrator(Orchestrator):
                 "change_details": answer,
             }
         details = str(change.get("change_details") or value.get("answer") or "").strip()
+        if details:
+            root_context["latest_resume_answer"] = details
         original_request = str(
             change.get("original_request")
             or root_context.get("original_user_request")

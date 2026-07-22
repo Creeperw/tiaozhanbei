@@ -834,6 +834,9 @@ class BackendHandoffRuntime:
                     "kp_ids": kp_ids,
                     "hint_used": bool(item.hint_used),
                     "feedback": grading.error_reason,
+                    "completion_status": "completed",
+                    "grading_status": "reviewed",
+                    "audit_decision": "pass",
                 }
             )
 
@@ -870,6 +873,9 @@ class BackendHandoffRuntime:
                     else None,
                     "kp_ids": kp_ids,
                     "feedback": row.reason_for_mistake,
+                    "completion_status": "completed",
+                    "grading_status": "accepted",
+                    "audit_decision": "pass",
                 }
             )
 
@@ -899,6 +905,9 @@ class BackendHandoffRuntime:
                     else None,
                     "kp_ids": kp_ids,
                     "feedback": row.feedback,
+                    "completion_status": "completed",
+                    "grading_status": "accepted",
+                    "audit_decision": "pass",
                 }
             )
 

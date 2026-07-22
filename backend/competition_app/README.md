@@ -1,12 +1,14 @@
 # 时珍智训后端
 
 本目录是时珍智训的主后端包 `competition_app`。后端采用 FastAPI、LangGraph、
-MySQL/SQLite、DeepSeek 与 FAISS，负责用户认证、学习行为汇总、三层学习规划、知识讲解、
+MySQL/SQLite、Qwen 与 FAISS，负责用户认证、学习行为汇总、三层学习规划、知识讲解、
 个性化学习资源、试卷生成、复习队列以及知识库管理接口。
 
 长期规划、短期计划和当日任务是三个独立层级：下层只能基于已生效的上层生成，修改上层
 会使相关下层失效。自然语言请求的层级由 Planner 模型判断；前后端规则仅提供可覆盖的
 `plan_scope_hint`。
+
+中医类别报考路径按单选处理。“规定学历路径”“中医（专长）医师资格考核”和“传统医学师承/确有专长人员考核”不能合并成一条长期规划；一次输入命中多条路线时工作流会中断追问。历史版本错误选择、但原始目标仍含多条互斥路线的规划也不会继续继承，未绑定批准路线的临时规划同样不能在重规划时继续沿用“待确认教材”。仅规定学历路径绑定 `textbook_tcm_physician` 教材路线，并同步写入长期规划的结构化阶段与学习路径投影。
 
 ## 目录与运行位置
 
@@ -48,7 +50,7 @@ Stub 模式不调用外部模型和向量服务，适合前端联调、接口契
 
 Live 模式默认使用：
 
-- 对话模型：`deepseek-v4-flash`（阿里云兼容接口）
+- 对话模型：`qwen3.7-max-2026-05-20`（阿里云兼容接口）
 - Embedding：`Qwen/Qwen3-Embedding-4B`（SiliconFlow）
 - 编排：LangGraph
 
@@ -96,6 +98,10 @@ python -m competition_app.cli.app init-db
 
 主框架与交接业务域使用同一 MySQL 实例中的两个数据库，避免同名表冲突。迁移位于
 `competition_app/migrations/`，由 `init-db` 按顺序和校验和执行。
+
+启用交接业务域后，`competition_frontend` 会在模块装载时完成建库、缺失表初始化和增量结构修复。生产部署、最小授权、迁移约束、备份与恢复流程见
+[部署与升级指南](../../docs/deployment.md) 和
+[数据库运维指南](../../docs/database-operations.md)。
 
 服务端始终以登录会话中的用户 ID 作为数据权限边界；请求体中的 `learner_id` 不能覆盖
 登录身份。生产环境还需设置：

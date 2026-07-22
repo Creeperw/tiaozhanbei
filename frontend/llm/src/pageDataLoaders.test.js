@@ -230,7 +230,10 @@ test('loadPlanningData merges persisted long and short plan narratives', async (
       if (paths[0] === '/v1/learning-context') {
         return {
           data: {
-            long_term_plan: { content: '【最终目标】掌握中医辨证。' },
+            long_term_plan: {
+              content: '【最终目标】掌握中医辨证。',
+              stages: [{ stage: 1, book: ['《中医学基础》'], goal: '建立辨证基础。' }],
+            },
             short_term_plan: { content: '【阶段安排】本周学习感冒辨证。' },
           },
           source: paths[0],
@@ -247,6 +250,9 @@ test('loadPlanningData merges persisted long and short plan narratives', async (
     },
   });
   assert.equal(result.plan.long_term_plan_content, '【最终目标】掌握中医辨证。');
+  assert.deepEqual(result.plan.long_term_plan_stages, [
+    { stage: 1, book: ['《中医学基础》'], goal: '建立辨证基础。' },
+  ]);
   assert.equal(result.plan.short_term_plan_content, '【阶段安排】本周学习感冒辨证。');
 });
 

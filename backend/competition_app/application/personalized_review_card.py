@@ -37,7 +37,11 @@ from competition_app.repositories.runtime import (
 )
 from competition_app.services.writeback import WritebackExecutor
 from competition_app.services.review import ReviewService
-from competition_app.services.plan_scope import infer_plan_scope
+from competition_app.services.plan_scope import (
+    infer_continued_plan_scope,
+    infer_plan_scope,
+)
+from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 
 
@@ -229,6 +233,17 @@ class PersonalizedReviewCardUseCase:
             behavior_context.get("question_learning_stats")
             or request.question_learning_stats
         )
+        learning_monitoring = LearningMonitoringService().build_snapshot(
+            request.learner_id,
+            {
+                **behavior_context,
+                "learning_profile": effective_learning_profile,
+                "system_data": effective_system_data,
+                "question_attempt": effective_question_attempts,
+                "mastery": effective_knowledge_states,
+            },
+            window_days=7,
+        )
         if self.review_service is not None and effective_question_attempts:
             self.review_service.ingest_question_attempts(
                 learner_id=request.learner_id,
@@ -293,6 +308,10 @@ class PersonalizedReviewCardUseCase:
         plan_scope_hint = request.plan_scope_hint or infer_plan_scope(
             effective_user_request
         )
+        continued_plan_scope = infer_continued_plan_scope(
+            effective_user_request,
+            persisted_messages,
+        )
         context_messages = [
             {
                 **item,
@@ -321,8 +340,16 @@ class PersonalizedReviewCardUseCase:
             "question_attempts": effective_question_attempts,
             "question_learning_stats": effective_question_learning_stats,
             "behavior_context_source": behavior_context.get("source"),
-            "enforce_profile_readiness": self.behavior_context_loader is not None,
+            # Every product entry point follows the same backend-owned planning
+            # prerequisite policy. Tests that call agents directly remain able to
+            # opt in explicitly without manufacturing persistence dependencies.
+            "enforce_profile_readiness": (
+                self.behavior_context_loader is not None
+                and not self._has_meaningful_profile(request.user_profile)
+            ),
+            "enforce_planning_readiness": True,
             "behavior_context_calculated_at": behavior_context.get("calculated_at"),
+            "learning_monitoring": learning_monitoring.model_dump(mode="json"),
             "learning_target": behavior_context.get("learning_target"),
             "current_long_term_plan": current_long_term_plan,
             "current_short_term_plan": current_short_term_plan,
@@ -333,6 +360,7 @@ class PersonalizedReviewCardUseCase:
             ),
             "plan_scope": explicit_plan_scope,
             "plan_scope_hint": plan_scope_hint,
+            "continued_plan_scope": continued_plan_scope,
             "explicit_long_term_change": bool(
                 plan_change and "long_term" in plan_change.target_layers
             ),
@@ -1138,6 +1166,16 @@ class PersonalizedReviewCardUseCase:
             elif value not in (None, "", [], {}):
                 merged[key] = value
         return merged
+
+    @staticmethod
+    def _has_meaningful_profile(profile: dict[str, Any]) -> bool:
+        """Distinguish an actual learner profile from an empty database shell."""
+
+        ignored = {"user_id", "learner_id", "created_at", "updated_at"}
+        return any(
+            key not in ignored and value not in (None, "", [], {})
+            for key, value in (profile or {}).items()
+        )
 
     def _emit_compiled_graph(self, plan: ExecutionPlan) -> None:
         """Expose the actual runtime DAG without leaking graph state or payloads."""

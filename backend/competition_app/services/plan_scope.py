@@ -24,6 +24,16 @@ _LONG_TERM_TARGET = re.compile(
     r"[^，。；！？?]{0,18}(?:长期(?:学习)?(?:规划|计划)|教材路线|阶段路线)"
 )
 
+_NON_PLANNING_TASK = re.compile(
+    r"(?:讲解|解释|介绍|为什么|是什么|组卷|试卷|模拟卷|测试卷|"
+    r"知识卡|学习卡|复习卡|出题|练习题|案例训练)"
+)
+_PLAN_CLARIFICATION_ANSWER = re.compile(
+    r"(?:不对|更正|改成|其实|补充|目标(?:是|改为)?|"
+    r"我(?:想|要|准备)考|零基础|学习基础|学过|专业|"
+    r"每周|每天|一周|一天|小时|分钟|上午|下午|晚上|早晨)"
+)
+
 
 def infer_plan_scope(user_request: str) -> PlanScope | None:
     """Return a high-confidence scope hint without making the routing decision.
@@ -65,4 +75,46 @@ def infer_plan_scope(user_request: str) -> PlanScope | None:
         return "short_term"
     if _LONG_TERM_TARGET.search(request):
         return "long_term"
+    return None
+
+
+def infer_continued_plan_scope(
+    user_request: str,
+    messages: list[dict[str, str]],
+) -> PlanScope | None:
+    """Recover a plan scope for a terse clarification or correction turn.
+
+    This is conversation-state recovery, not a general keyword router.  It is
+    deliberately limited to profile/goal/time answers that follow an explicit
+    planning turn.  A new explanation, paper, resource, or practice request is
+    allowed to switch away from planning normally.
+    """
+
+    request = str(user_request or "").strip()
+    if not request or infer_plan_scope(request) is not None:
+        return None
+    if _NON_PLANNING_TASK.search(request):
+        return None
+    if not _PLAN_CLARIFICATION_ANSWER.search(request):
+        return None
+
+    prior_messages = list(messages)
+    if (
+        prior_messages
+        and str(prior_messages[-1].get("role", "")) == "user"
+        and str(prior_messages[-1].get("content", "")).strip() == request
+    ):
+        prior_messages = prior_messages[:-1]
+
+    for item in reversed(prior_messages[-10:]):
+        content = str(item.get("content", "") or "").strip()
+        scope = infer_plan_scope(content)
+        if scope in {"long_term", "short_term", "daily_task"}:
+            return scope
+        if "长期规划已经" in content or "长期计划已经" in content:
+            return "long_term"
+        if "短期规划已经" in content or "短期计划已经" in content:
+            return "short_term"
+        if "当日任务已经" in content or "今日任务已经" in content:
+            return "daily_task"
     return None

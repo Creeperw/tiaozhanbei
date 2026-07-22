@@ -39,6 +39,30 @@ def _markdown_value(value: Any, depth: int = 0) -> str:
     return json.dumps(value, ensure_ascii=False, default=str)
 
 
+def _structured_stage_block(long_term: dict[str, Any]) -> str:
+    stages = long_term.get("stages") or []
+    if not isinstance(stages, list) or not stages:
+        return ""
+    compact_stages = []
+    for item in stages:
+        stage = _plain(item)
+        if not isinstance(stage, dict):
+            continue
+        compact_stages.append(
+            {
+                "stage": stage.get("stage"),
+                "book": list(stage.get("book") or []),
+                "goal": stage.get("goal"),
+            }
+        )
+    if not compact_stages:
+        return ""
+    payload = {"long_term_plan_stages": compact_stages}
+    return "【阶段路线数据】\n```json\n" + json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":")
+    ) + "\n```"
+
+
 def workflow_result_to_markdown(result: Any) -> str:
     """Build the natural-language chat projection; structured data stays in the result."""
 
@@ -84,6 +108,9 @@ def workflow_result_to_markdown(result: Any) -> str:
         learning_task = _plain(plan.get("learning_task")) or {}
         if long_term.get("content"):
             parts.append(str(long_term["content"]))
+            stage_block = _structured_stage_block(long_term)
+            if stage_block:
+                parts.append(stage_block)
         if short_term.get("content"):
             parts.append(str(short_term["content"]))
         if learning_task:

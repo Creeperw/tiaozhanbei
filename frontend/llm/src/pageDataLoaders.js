@@ -10,6 +10,7 @@ export const emptyPlan = {
   constraints: {},
   agent_trace: [],
   long_term_plan_content: '',
+  long_term_plan_stages: [],
   short_term_plan_content: '',
 };
 
@@ -373,6 +374,9 @@ export async function loadPlanningData({ fetcher }) {
       ...emptyPlan,
       ...summary.data,
       long_term_plan_content: String(learningContext.long_term_plan?.content || ''),
+      long_term_plan_stages: Array.isArray(learningContext.long_term_plan?.stages)
+        ? learningContext.long_term_plan.stages
+        : [],
       short_term_plan_content: String(learningContext.short_term_plan?.content || ''),
     };
     return {

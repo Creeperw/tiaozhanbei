@@ -140,6 +140,49 @@ async def test_follow_up_today_request_is_model_routed_to_daily_task(tmp_path: P
 
 
 @pytest.mark.asyncio
+async def test_goal_correction_keeps_the_active_long_term_planning_scope(
+    tmp_path: Path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    user_request = "不对，我要考执业医师资格证"
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="FOLLOW_UP_LONG_TERM_GOAL",
+            conversation_id="FOLLOW_UP_LONG_TERM_GOAL_CONVERSATION",
+            user_request=user_request,
+            messages=[
+                {
+                    "role": "user",
+                    "content": "请结合我的学习状态，为我制定一份学习计划。",
+                },
+                {"role": "assistant", "content": "请确认需要哪一层计划。"},
+                {"role": "user", "content": "长期计划吧"},
+                {
+                    "role": "user",
+                    "content": "目前是零基础，我是计算机专业的",
+                },
+                {"role": "user", "content": "每周大概4天，一天4小时"},
+                {"role": "user", "content": user_request},
+            ],
+            user_profile={
+                "goals": {"type": "credential", "name": "中医执业医师"},
+                "background": "零基础，计算机专业",
+                "time_constraints": "每周4天，每天4小时",
+            },
+        )
+    )
+
+    planner_output = next(
+        item for item in result.agent_outputs if item.producer == "planner_agent"
+    )
+    assert planner_output.payload.task_type == "learning_plan"
+    assert planner_output.payload.plan_scope == "long_term"
+    assert "knowledge_base_agent" not in planner_output.payload.selected_agents
+    assert result.learning_plan.generated_scope == "long_term"
+
+
+@pytest.mark.asyncio
 async def test_short_plan_inherits_physician_route_despite_stale_profile_goal(
     tmp_path: Path,
 ) -> None:

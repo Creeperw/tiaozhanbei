@@ -150,6 +150,8 @@ class ReviewMemoryUnit(ContractModel):
     )
     source_calculated_at: datetime | None = None
     source_attempt_id: str | None = None
+    activation_source: Literal["graded_question_attempt"] | None = None
+    activated_at: datetime | None = None
     version: int = Field(default=1, ge=1)
     created_at: datetime
     updated_at: datetime
@@ -191,8 +193,13 @@ class ReviewQueueEntry(ContractModel):
 
 
 class ReviewQueue(ContractModel):
+    schema_version: Literal["1.1"] = "1.1"
     learner_id: str
     calculated_at: datetime
+    admission_policy: Literal["completed_graded_kp_question_v1"] = (
+        "completed_graded_kp_question_v1"
+    )
+    projection_source: Literal["canonical_review_memory"] = "canonical_review_memory"
     entries: list[ReviewQueueEntry] = Field(default_factory=list)
     due_count: int = Field(default=0, ge=0)
     active_task_count: int = Field(default=0, ge=0)

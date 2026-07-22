@@ -38,7 +38,7 @@ from competition_app.llm.schemas import (
 )
 from competition_app.services.plan_change_gate import PlanChangeGate
 from competition_app.services.planning_validator import PlanningValidator
-from competition_app.services.profile_readiness import ProfileReadinessService
+from competition_app.services.planning_readiness import PlanningReadinessService
 
 
 class DiagnosisResult(BaseModel):
@@ -89,6 +89,22 @@ class DiagnosisAgent:
         learning_goals = user_profile.get("goals") or user_profile.get("learning_goals", [])
         current_status = learning_profile.get("current_status", {})
         behavior_metrics = system_data or learning_profile.get("behavior_metrics", {})
+        monitoring_snapshot = context.get("learning_monitoring") or {}
+        if monitoring_snapshot:
+            behavior_metrics = {
+                **behavior_metrics,
+                "monitoring_evidence_status": monitoring_snapshot.get("evidence_status"),
+                "monitoring_freshness_status": monitoring_snapshot.get("freshness_status"),
+                "sample_counts": monitoring_snapshot.get("sample_counts") or {},
+                "observed_metrics": monitoring_snapshot.get("metrics") or {},
+            }
+            if monitoring_snapshot.get("evidence_status") in {"insufficient", "unavailable"}:
+                current_status = {
+                    "status_code": "T0",
+                    "status_name": "证据积累中",
+                    "confidence": 0.25,
+                    "evidence": ["当前没有足够的学习行为样本，暂不作确定性学情判断。"],
+                }
         confirmed_prerequisite_courses = self._confirmed_prerequisite_courses(
             context, route_context
         )
@@ -123,11 +139,23 @@ class DiagnosisAgent:
                     plan_scope=plan_scope,
                 )
                 return envelope(context, "diagnosis_agent", "diagnosis_result", result)
-            if context.get("enforce_profile_readiness"):
-                readiness = ProfileReadinessService().evaluate(context, plan_scope)
-                if not readiness.can_proceed:
+            enforce_scope_readiness = context.get("enforce_planning_readiness") and (
+                plan_scope != "long_term" or context.get("enforce_profile_readiness")
+            )
+            if enforce_scope_readiness and plan_scope in {
+                "long_term", "short_term", "daily_task"
+            }:
+                planning_readiness = PlanningReadinessService().evaluate(
+                    context, plan_scope, learner_id=context.get("learner_id")
+                )
+                if not planning_readiness.can_generate:
                     result = DiagnosisResult(
-                        summary="制定长期规划前，需要先补齐最少量的个性化信息。",
+                        summary={
+                            "needs_profile": "制定长期规划前，需要先补齐最少量的个性化信息。",
+                            "needs_long_term_plan": "制定短期计划前，需要先建立长期规划。",
+                            "needs_short_term_plan": "制定当日任务前，需要先建立短期计划。",
+                            "stale_parent_plan": "上层规划已失效，需要先恢复当前有效版本。",
+                        }.get(planning_readiness.status, "当前规划前置条件尚未满足。"),
                         stage_id=str(system_data.get("current_stage_id", "T0")),
                         weak_kp_ids=resolved_kp_ids,
                         target_difficulty=target_difficulty,
@@ -135,12 +163,16 @@ class DiagnosisAgent:
                             capacity=1, target_difficulty=target_difficulty
                         ),
                         requires_clarification=True,
-                        clarification_questions=readiness.questions,
-                        clarification_fields=[readiness.next_field]
-                        if readiness.next_field
+                        clarification_questions=planning_readiness.questions,
+                        clarification_fields=[planning_readiness.next_profile_field]
+                        if planning_readiness.next_profile_field
                         else [],
-                        clarification_reason="长期阶段和教材选择需要与学习基础、目标和可持续时间预算联动。",
-                        interrupt_type="profile_completion",
+                        clarification_reason="；".join(planning_readiness.reason_codes),
+                        interrupt_type=(
+                            "profile_completion"
+                            if planning_readiness.status == "needs_profile"
+                            else "planning_prerequisite"
+                        ),
                         plan_scope=plan_scope,
                     )
                     return envelope(context, "diagnosis_agent", "diagnosis_result", result)

@@ -59,6 +59,28 @@ export default function PlanningPage() {
         </article>
       </section>
 
+      {plan.long_term_plan_stages.length > 0 && (
+        <section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-sm shadow-emerald-100/60 sm:p-6" aria-label="长期规划阶段路线">
+          <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-950">
+            <BookOpen size={16} />
+            长期规划阶段路线
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {plan.long_term_plan_stages.map((stage) => (
+              <article key={stage.stage} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-semibold text-emerald-900">第 {stage.stage} 阶段</div>
+                <div className="mt-2 text-sm leading-6 text-slate-700">{stage.goal}</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(stage.book || []).map((book) => (
+                    <span key={book} className="rounded-full border border-emerald-100 bg-white px-2.5 py-1 text-xs text-emerald-800">{book}</span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">
           <div className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-500">

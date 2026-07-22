@@ -15,7 +15,7 @@ REPOSITORY_ROOT = BACKEND_ROOT.parent
 CHAT_BASE_URL = (
     "https://llm-1nvjq1o5rj1bf5yi.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
-CHAT_MODEL = "deepseek-v4-flash"
+CHAT_MODEL = "qwen3.7-max-2026-05-20"
 EMBEDDING_BASE_URL = "https://api.siliconflow.cn/v1"
 EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-4B"
 

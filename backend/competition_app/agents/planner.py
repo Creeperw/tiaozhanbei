@@ -105,6 +105,7 @@ class PlannerAgent:
                             "user_request": context.get("user_request", ""),
                             "plan_scope": context.get("plan_scope"),
                             "plan_scope_hint": context.get("plan_scope_hint"),
+                            "continued_plan_scope": context.get("continued_plan_scope"),
                             "available_minutes": context.get("available_minutes"),
                             "existing_plan_state": {
                                 "has_long_term_plan": bool(
@@ -138,6 +139,7 @@ class PlannerAgent:
                                 "仅制定学习或复习计划、且用户没有要求学习卡片或教学资源时，不需要review_scheduler、expert_agent、audit_agent。",
                                 "plan_scope 是明确指定，有值时必须原样保留并路由为 learning_plan。",
                                 "plan_scope_hint 只是规则提示，必须结合用户本轮语义和最近对话独立判断，可以改写。",
+                                "continued_plan_scope 表示当前话语是上一轮规划调研的补充或纠正；有值时必须延续 learning_plan 和该层级。",
                                 "制定或修改计划时必须输出 long_term、short_term、daily_task 或 unspecified 之一；纯学情查询可返回 null。",
                                 "用户同时要求学习计划和学习卡片、复习卡或可直接学习资源时，交付物属于资源生成链路；该链路仍会先生成并落地学习计划。",
                                 "用户要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用paper_generation；该链路只需要Knowledge、Expert、Audit，不强制生成学习计划或复习调度任务。",
@@ -243,13 +245,21 @@ class PlannerAgent:
             phrase in request
             for phrase in ("制定", "调整", "修改", "重做", "重新", "计划", "规划", "安排任务")
         )
-        scoped_planning_request = context.get("plan_scope") in {
+        explicit_planning_scope = context.get("plan_scope") in {
             "long_term", "short_term", "daily_task", "unspecified"
         }
         valid_scopes = {"long_term", "short_term", "daily_task", "unspecified"}
+        continued_plan_scope = context.get("continued_plan_scope")
+        continued_planning_request = continued_plan_scope in valid_scopes
+        scoped_planning_request = explicit_planning_scope or continued_planning_request
+        authoritative_plan_scope = (
+            context.get("plan_scope")
+            if explicit_planning_scope
+            else continued_plan_scope
+        )
         model_plan_scope = raw.get("plan_scope")
         plan_scope = (
-            context.get("plan_scope")
+            authoritative_plan_scope
             if scoped_planning_request
             else model_plan_scope
         )
@@ -271,7 +281,7 @@ class PlannerAgent:
             if status_only_request and not scoped_planning_request:
                 plan_scope = None
             elif scoped_planning_request:
-                plan_scope = context.get("plan_scope")
+                plan_scope = authoritative_plan_scope
             elif model_plan_scope in valid_scopes:
                 plan_scope = model_plan_scope
             elif context.get("plan_scope_hint") in valid_scopes:

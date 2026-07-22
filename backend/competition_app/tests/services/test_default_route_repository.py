@@ -71,6 +71,19 @@ def test_repository_resolves_physician_alias_to_approved_route(
     assert result.match_reason == "alias"
 
 
+def test_repository_treats_multiple_named_credential_routes_as_ambiguous(
+    repository: DefaultRouteRepository,
+) -> None:
+    result = repository.resolve(
+        goal_type="credential",
+        goal_name="规定学历、中医（专长）医师考核",
+    )
+
+    assert result.planning_status == "provisional"
+    assert result.route_id is None
+    assert result.match_reason == "ambiguous_embedded_alias"
+
+
 def test_approved_resolution_carries_trusted_route_context(
     repository: DefaultRouteRepository,
 ) -> None:

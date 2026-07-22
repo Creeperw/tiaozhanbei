@@ -22,6 +22,7 @@ class AgentDataPermissionGateway:
     _capabilities = (
         AgentDataCapability(agent="planner_agent", domain="learning_context", actions=["read"]),
         AgentDataCapability(agent="diagnosis_agent", domain="learning_context", actions=["read"]),
+        AgentDataCapability(agent="diagnosis_agent", domain="learning_monitoring", actions=["read"]),
         AgentDataCapability(agent="learning_plan_service", domain="learning_plan", actions=["read", "write"]),
         AgentDataCapability(
             agent="diagnosis_agent",

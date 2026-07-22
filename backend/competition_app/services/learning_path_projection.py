@@ -132,10 +132,38 @@ class LearningPathProjectionService:
             return None, None, [], [], []
         textbook = planning_route.textbook_route
         if textbook is None:
-            return planning_route.route_id, planning_route.route_version, [], [], []
+            phases = list(planning_route.phases)
+            return (
+                planning_route.route_id,
+                planning_route.route_version,
+                [phase.phase_id for phase in phases],
+                [phase.name for phase in phases],
+                sorted(
+                    {
+                        ref
+                        for phase in phases
+                        for ref in phase.source_refs
+                        if str(ref).strip()
+                    }
+                ),
+            )
         route = textbook.route
         if route is None:
-            return planning_route.route_id, planning_route.route_version, [], [], []
+            phases = list(planning_route.phases)
+            return (
+                planning_route.route_id,
+                planning_route.route_version,
+                [phase.phase_id for phase in phases],
+                [phase.name for phase in phases],
+                sorted(
+                    {
+                        ref
+                        for phase in phases
+                        for ref in phase.source_refs
+                        if str(ref).strip()
+                    }
+                ),
+            )
         source_refs = sorted(
             {
                 ref

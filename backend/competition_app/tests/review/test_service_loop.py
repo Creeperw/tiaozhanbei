@@ -129,7 +129,30 @@ def test_question_completion_without_prior_card_is_idempotently_admitted() -> No
     assert replay == first
     assert first.prompt_abstract == "四君子汤"
     assert first.source_attempt_id == "QUESTION_ATTEMPT_DIRECT_1"
+    assert first.activation_source == "graded_question_attempt"
+    assert first.activated_at == NOW
     assert first.next_review_at == NOW + timedelta(minutes=20)
+
+
+def test_unfinished_or_rejected_grading_never_enters_review_queue() -> None:
+    service = ReviewService(InMemoryReviewRepository())
+    base = {
+        "kp_ids": ["KP_FJ_001"],
+        "is_correct": False,
+        "answered_at": NOW.isoformat(),
+    }
+
+    admitted = service.ingest_question_attempts(
+        learner_id="L1",
+        attempts=[
+            {**base, "attempt_id": "A1", "completion_status": "draft"},
+            {**base, "attempt_id": "A2", "grading_status": "pending"},
+            {**base, "attempt_id": "A3", "audit_decision": "reject"},
+        ],
+    )
+
+    assert admitted == 0
+    assert service.get_queue("L1", now=NOW).entries == []
 
 
 def test_feedback_updates_memory_stage_and_is_idempotent() -> None:

@@ -97,6 +97,8 @@ class ReviewService:
                 requires_remediation=(current.requires_remediation if current else False),
                 source_calculated_at=calculated_at,
                 source_attempt_id=(current.source_attempt_id if current else None),
+                activation_source=(current.activation_source if current else None),
+                activated_at=(current.activated_at if current else None),
                 version=(current.version + 1 if current else 1),
                 created_at=created_at,
                 updated_at=now,
@@ -113,6 +115,12 @@ class ReviewService:
 
         activated = 0
         for raw in attempts:
+            if raw.get("completion_status") not in (None, "completed", "submitted"):
+                continue
+            if raw.get("grading_status") not in (None, "reviewed", "accepted"):
+                continue
+            if raw.get("audit_decision") not in (None, "pass"):
+                continue
             attempt_id = str(raw.get("attempt_id") or "").strip()
             kp_ids = [
                 str(item).strip()
@@ -195,6 +203,12 @@ class ReviewService:
                     requires_remediation=not is_correct,
                     source_calculated_at=answered_at,
                     source_attempt_id=attempt_id,
+                    activation_source="graded_question_attempt",
+                    activated_at=(
+                        current.activated_at
+                        if current is not None and current.activated_at is not None
+                        else answered_at
+                    ),
                     version=(current.version + 1 if current else 1),
                     created_at=current.created_at if current else answered_at,
                     updated_at=answered_at,

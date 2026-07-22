@@ -17,7 +17,7 @@ def test_stub_mode_does_not_require_external_secrets(monkeypatch: pytest.MonkeyP
     settings = Settings.from_env()
 
     assert settings.mode == "stub"
-    assert settings.chat_model == "deepseek-v4-flash"
+    assert settings.chat_model == "qwen3.7-max-2026-05-20"
     assert settings.embedding_model == "Qwen/Qwen3-Embedding-4B"
     assert settings.execution_engine == "langgraph"
 
@@ -130,7 +130,7 @@ def test_incoming_model_configuration_cannot_replace_main_model_stack() -> None:
     )
 
     assert settings.chat_base_url == CHAT_BASE_URL
-    assert settings.chat_model == "deepseek-v4-flash"
+    assert settings.chat_model == "qwen3.7-max-2026-05-20"
     assert not hasattr(settings, "voice_model_path")
 
 

@@ -223,6 +223,30 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
                 self.assertEqual(report.attribution["primary"], report.attribution["primary"])
                 self.assertTrue(report.summary)
 
+    def test_zero_behavior_samples_do_not_label_new_learner_as_idle(self):
+        report = self._service().generate_diagnosis_report(
+            learner_context={"learner_id": "new-learner"},
+            l0_baseline={"daily_available_minutes": 30},
+            l3_behavior={
+                "task_completion_rate": 0.0,
+                "login_weekly_change": -1.0,
+                "focus_time_change": -1.0,
+                "retry_count": 0,
+                "evidence_status": "insufficient",
+                "sample_counts": {
+                    "activities_current_window": 0,
+                    "question_attempts_current_window": 0,
+                },
+            },
+            learning_profile={"weak_kp_ids": [], "error_patterns": {}},
+            mistakes=[],
+        )
+
+        self.assertEqual(report.stage_id, "T0")
+        self.assertEqual(report.stage_name, "证据积累中")
+        self.assertEqual(report.attribution["primary"], "证据不足")
+        self.assertEqual(report.t_stage["evidence"], ["当前观察窗口内没有已完成的学习活动或题目作答"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -355,6 +355,67 @@ async def test_vague_nursing_exam_requests_route_clarification(tmp_path) -> None
 
 
 @pytest.mark.asyncio
+async def test_long_plan_requires_one_route_when_user_selects_two(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="LEARNER_MULTIPLE_PHYSICIAN_ROUTES",
+            user_request="规定学历、中医（专长）医师考核",
+            available_minutes=60,
+            plan_scope="long_term",
+        )
+    )
+
+    assert result.learning_plan.requires_clarification
+    assert result.learning_plan.requested_scope == "long_term"
+    assert result.learning_plan.clarification_questions == [
+        "你同时选择了多个不同的报考路径，它们不能合并为同一条长期规划。"
+        "请只确认一项：规定学历路径、中医（专长）医师资格考核，"
+        "或传统医学师承/确有专长人员考核。"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_long_plan_resumes_with_one_route_and_updates_structured_stages(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    thread_id = "THREAD_MULTIPLE_PHYSICIAN_ROUTES"
+    interrupted = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            thread_id=thread_id,
+            learner_id="LEARNER_MULTIPLE_PHYSICIAN_ROUTES_RESUME",
+            user_request="规定学历、中医（专长）医师考核",
+            available_minutes=60,
+            plan_scope="long_term",
+        )
+    )
+
+    resumed = await container.review_card_use_case.resume(
+        thread_id,
+        WorkflowResumeRequest(answer="规定学历路径。", plan_scope="long_term"),
+    )
+
+    assert interrupted.status == "interrupted"
+    assert resumed.status == "success"
+    long_term = resumed.learning_plan.long_term_plan
+    assert long_term.planning_route.route_id == "tcm_physician_standard_degree"
+    assert (
+        long_term.planning_route.textbook_route.route.route_id
+        == "textbook_tcm_physician"
+    )
+    trusted_stages = long_term.planning_route.textbook_route.route.stages
+    assert len(long_term.stages) == len(trusted_stages)
+    assert [stage.stage for stage in long_term.stages] == list(
+        range(1, len(trusted_stages) + 1)
+    )
+    assert [stage.book for stage in long_term.stages] == [
+        stage.books for stage in trusted_stages
+    ]
+
+
+@pytest.mark.asyncio
 async def test_long_plan_continues_after_user_supplies_exact_exam_goal(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     thread_id = "THREAD_LONG_PLAN_EXAM_FOLLOWUP"

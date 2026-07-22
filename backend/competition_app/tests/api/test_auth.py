@@ -26,6 +26,28 @@ def register(client: TestClient, username: str) -> dict:
     return response.json()["user"]
 
 
+def test_current_user_readiness_monitoring_and_review_contracts(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    client = TestClient(create_app(container))
+    user = register(client, "ContractStudent")
+
+    readiness = client.get("/api/v1/planning/readiness?scope=long_term")
+    monitoring = client.get("/api/v1/learning-monitoring/snapshot?days=7")
+    queue = client.get("/api/v1/review-queue")
+
+    assert readiness.status_code == 200
+    assert readiness.json()["status"] == "needs_profile"
+    assert monitoring.status_code == 200
+    assert monitoring.json()["evidence_status"] == "insufficient"
+    assert queue.status_code == 200
+    assert queue.json()["learner_id"] == user["user_id"]
+    assert queue.json()["admission_policy"] == "completed_graded_kp_question_v1"
+
+
 def test_protected_pages_and_api_require_login(tmp_path: Path) -> None:
     client = build_client(tmp_path)
 

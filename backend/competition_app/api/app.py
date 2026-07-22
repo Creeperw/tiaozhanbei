@@ -26,6 +26,8 @@ from competition_app.repositories.auth import UsernameTakenError
 from competition_app.services.auth import InvalidCredentialsError
 from competition_app.services.learning_path_projection import LearningPathProjectionService
 from competition_app.services.profile_readiness import ProfileReadinessService
+from competition_app.services.planning_readiness import PlanningReadinessService
+from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.workshop import WorkshopKnowledgeService
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 
@@ -738,6 +740,61 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             },
         }
 
+    @app.get("/api/v1/planning/readiness")
+    async def planning_readiness(
+        request: Request,
+        scope: str = Query(pattern="^(long_term|short_term|daily_task)$"),
+    ) -> dict:
+        """Return the same prerequisite decision enforced by the agent workflow."""
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        behavior = (
+            await asyncio.to_thread(backend_handoff.load_learning_context, user.user_id)
+            if backend_handoff is not None
+            else {}
+        )
+        plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
+        long_plan = (
+            plans.long_term_plan.model_dump(mode="json")
+            if plans is not None and plans.long_term_plan is not None
+            else {}
+        )
+        short_plan = (
+            plans.short_term_plan.model_dump(mode="json")
+            if plans is not None and plans.short_term_plan is not None
+            else {}
+        )
+        readiness = PlanningReadinessService().evaluate(
+            {
+                "user_profile": behavior.get("user_profile") or {},
+                "learning_target": behavior.get("learning_target") or {},
+                "current_long_term_plan": long_plan,
+                "current_short_term_plan": short_plan,
+            },
+            scope,
+            learner_id=user.user_id,
+        )
+        return readiness.model_dump(mode="json")
+
+    @app.get("/api/v1/learning-monitoring/snapshot")
+    async def learning_monitoring_snapshot(
+        request: Request,
+        days: int = Query(default=7, ge=1, le=90),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        behavior = (
+            await asyncio.to_thread(backend_handoff.load_learning_context, user.user_id)
+            if backend_handoff is not None
+            else {}
+        )
+        return LearningMonitoringService().build_snapshot(
+            user.user_id, behavior, window_days=days
+        ).model_dump(mode="json")
+
     async def learning_path_page(
         request: Request,
         parent_id: str | None,
@@ -1449,6 +1506,26 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 attempts=behavior.get("question_attempt", []),
             )
         return container.review_service.get_queue(learner_id, limit=limit)
+
+    @app.get("/api/v1/review-queue")
+    async def get_current_user_review_queue(
+        request: Request,
+        limit: int = Query(default=50, ge=1, le=200),
+    ):
+        """Stable current-user queue; the learner-id route remains compatible."""
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is not None:
+            behavior = await asyncio.to_thread(
+                backend_handoff.load_learning_context, user.user_id
+            )
+            container.review_service.ingest_question_attempts(
+                learner_id=user.user_id,
+                attempts=behavior.get("question_attempt", []),
+            )
+        return container.review_service.get_queue(user.user_id, limit=limit)
 
     @app.post("/api/v1/review-tasks/{review_task_id}/attempts")
     async def submit_review_attempt(

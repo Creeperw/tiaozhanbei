@@ -1,6 +1,9 @@
 import pytest
 
-from competition_app.services.plan_scope import infer_plan_scope
+from competition_app.services.plan_scope import (
+    infer_continued_plan_scope,
+    infer_plan_scope,
+)
 
 
 @pytest.mark.parametrize(
@@ -22,3 +25,31 @@ def test_infer_plan_scope_preserves_explicit_layers_and_ambiguity(
     user_text: str, expected: str | None
 ) -> None:
     assert infer_plan_scope(user_text) == expected
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "目前是零基础，我是计算机专业的",
+        "每周大概4天，一天4小时",
+        "不对，我要考执业医师资格证",
+    ],
+)
+def test_infer_continued_long_term_scope_for_profile_answers(answer: str) -> None:
+    messages = [
+        {"role": "user", "content": "请结合我的学习状态，为我制定一份学习计划。"},
+        {"role": "assistant", "content": "请确认需要哪一层计划。"},
+        {"role": "user", "content": "长期计划吧"},
+        {"role": "user", "content": answer},
+    ]
+
+    assert infer_continued_plan_scope(answer, messages) == "long_term"
+
+
+def test_explicit_non_planning_request_can_switch_away_from_plan_context() -> None:
+    messages = [
+        {"role": "user", "content": "长期计划吧"},
+        {"role": "user", "content": "请解释阴阳是什么"},
+    ]
+
+    assert infer_continued_plan_scope("请解释阴阳是什么", messages) is None

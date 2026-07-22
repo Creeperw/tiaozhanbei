@@ -356,6 +356,115 @@ async def test_route_agent_selects_only_an_approved_catalog_route(
 
 
 @pytest.mark.asyncio
+async def test_route_agent_never_chooses_between_multiple_explicit_routes(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    model = RouteDecisionModel(
+        {
+            "decision": "select",
+            "selected_route_id": "tcm_special_expertise_physician",
+            "confidence": 0.99,
+            "reason": "错误地替用户选择了专长路线。",
+            "clarification_question": None,
+        }
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "规定学历、中医（专长）医师考核",
+            "user_profile": {},
+        }
+    )
+
+    assert result.payload.planning_status == "provisional"
+    assert result.payload.route_id is None
+    assert result.payload.match_reason == "agent_requires_clarification"
+    assert result.payload.unknowns_to_confirm == [
+        "你同时选择了多个不同的报考路径，它们不能合并为同一条长期规划。"
+        "请只确认一项：规定学历路径、中医（专长）医师资格考核，"
+        "或传统医学师承/确有专长人员考核。"
+    ]
+    assert result.payload.textbook_route is None
+    assert model.payload is None
+
+
+@pytest.mark.asyncio
+async def test_route_agent_binds_standard_degree_to_physician_textbook_route(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    model = RouteDecisionModel(
+        {
+            "decision": "clarify",
+            "selected_route_id": None,
+            "confidence": 0.9,
+            "reason": "模型不应阻断明确的规定学历路径。",
+            "clarification_question": "请说明具体路线。",
+        }
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "我选择规定学历路径",
+            "user_profile": {},
+        }
+    )
+
+    assert result.payload.planning_status == "approved_route"
+    assert result.payload.route_id == "tcm_physician_standard_degree"
+    assert result.payload.textbook_route is not None
+    assert result.payload.textbook_route.route is not None
+    assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
+
+
+@pytest.mark.asyncio
+async def test_route_agent_uses_unique_resume_answer_to_resolve_previous_ambiguity(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    model = RouteDecisionModel(
+        {
+            "decision": "select",
+            "selected_route_id": "tcm_special_expertise_physician",
+            "confidence": 0.99,
+            "reason": "不应覆盖用户刚确认的单一路线。",
+            "clarification_question": None,
+        }
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": (
+                "规定学历、中医（专长）医师考核\n"
+                "用户补充的具体变化：规定学历路径。"
+            ),
+            "latest_resume_answer": "规定学历路径。",
+            "user_profile": {},
+        }
+    )
+
+    assert result.payload.route_id == "tcm_physician_standard_degree"
+    assert result.payload.match_reason == "clarification_answer"
+    assert result.payload.textbook_route is not None
+    assert result.payload.textbook_route.route is not None
+    assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
+    assert model.payload is None
+
+
+@pytest.mark.asyncio
 async def test_route_agent_uses_catalog_when_model_over_clarifies_exact_exam_alias(
     repository: DefaultRouteRepository,
     textbook_repository: TextbookRouteRepository,
@@ -495,6 +604,123 @@ async def test_short_term_route_inherits_the_formal_long_term_parent(
     assert result.payload.textbook_route is not None
     assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
     assert result.payload.match_reason == "inherited_long_term_plan"
+
+
+@pytest.mark.asyncio
+async def test_generic_replan_rejects_a_legacy_route_chosen_from_multiple_options(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    contaminated = repository.resolve(
+        goal_type="credential",
+        goal_name="中医（专长）医师",
+    ).model_copy(
+        update={
+            "goal_name": (
+                "不对，我要考执业医师资格证\n"
+                "用户补充的具体变化：规定学历、中医（专长）医师考核"
+            )
+        }
+    )
+    model = RouteDecisionModel({})
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "重新规划一下我的学习路线",
+            "current_long_term_plan": {
+                "content": "旧版本错误生成的中医专长长期规划",
+                "planning_route": contaminated.model_dump(mode="json"),
+            },
+        }
+    )
+
+    assert result.payload.planning_status == "provisional"
+    assert result.payload.route_id is None
+    assert result.payload.match_reason == "agent_requires_clarification"
+    assert "现有长期规划来自一次多选报考路径" in result.payload.unknowns_to_confirm[0]
+    assert model.payload is None
+
+
+@pytest.mark.asyncio
+async def test_generic_replan_never_reuses_a_provisional_parent_route(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    provisional = repository.resolve(
+        goal_type="literacy",
+        goal_name="请结合我的学习状态，为我制定一份学习计划。",
+    )
+    model = RouteDecisionModel({})
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "重新规划一下我的学习路线",
+            "current_long_term_plan": {
+                "content": "旧版本生成的临时长期规划",
+                "planning_route": provisional.model_dump(mode="json"),
+            },
+        }
+    )
+
+    assert result.payload.planning_status == "provisional"
+    assert result.payload.route_id is None
+    assert result.payload.match_reason == "agent_requires_clarification"
+    assert "不能继续沿用临时教材" in result.payload.unknowns_to_confirm[0]
+    assert result.payload.textbook_route is None
+    assert model.payload is None
+
+
+@pytest.mark.asyncio
+async def test_legacy_ambiguous_plan_is_replaced_after_one_route_is_confirmed(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    contaminated = repository.resolve(
+        goal_type="credential",
+        goal_name="中医（专长）医师",
+    ).model_copy(
+        update={
+            "goal_name": (
+                "不对，我要考执业医师资格证\n"
+                "用户补充的具体变化：规定学历、中医（专长）医师考核"
+            )
+        }
+    )
+    model = RouteDecisionModel({})
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": (
+                "重新规划一下我的学习路线\n"
+                "用户补充的具体变化：规定学历路径。"
+            ),
+            "latest_resume_answer": "规定学历路径。",
+            "current_long_term_plan": {
+                "content": "旧版本错误生成的中医专长长期规划",
+                "planning_route": contaminated.model_dump(mode="json"),
+            },
+        }
+    )
+
+    assert result.payload.planning_status == "approved_route"
+    assert result.payload.route_id == "tcm_physician_standard_degree"
+    assert result.payload.match_reason == "agent_catalog_fallback"
+    assert result.payload.textbook_route is not None
+    assert result.payload.textbook_route.route is not None
+    assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
+    assert model.payload is not None
 
 
 @pytest.mark.asyncio

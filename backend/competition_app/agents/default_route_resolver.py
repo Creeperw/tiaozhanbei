@@ -22,7 +22,21 @@ class DefaultRouteResolverAgent:
     _STRUCTURED_NAME_KEYS = ("goal_name", "name", "title")
     _GOAL_TYPE_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
         ("professional_title", ("职称", "主管中药师")),
-        ("credential", ("资格证", "资格考试", "执业医师", "执业药师", "考证", "证书")),
+        (
+            "credential",
+            (
+                "资格证",
+                "资格考试",
+                "执业医师",
+                "执业药师",
+                "考证",
+                "证书",
+                "规定学历",
+                "中医（专长）医师",
+                "传统医学师承",
+                "确有专长",
+            ),
+        ),
         ("admission", ("入学", "考研", "研究生", "招生", "录取")),
         ("research", ("课题研究", "开展研究", "研究", "课题", "论文", "文献")),
         ("course", ("课程", "学期", "方剂学", "中药学", "中医基础理论", "中医诊断学")),
@@ -62,6 +76,20 @@ class DefaultRouteResolverAgent:
             )
         goal_type, goal_name, uncertain = self._extract_goal(context)
         explicit_route_id = self._optional_text(context.get("route_id"))
+        clarified_request = (
+            None
+            if explicit_route_id
+            else self._clarified_explicit_request_resolution(
+                context, fallback_goal_type=goal_type
+            )
+        )
+        ambiguous_request = (
+            None
+            if explicit_route_id or clarified_request is not None
+            else self._ambiguous_explicit_request_resolution(
+                context, fallback_goal_type=goal_type
+            )
+        )
         model_selects_route = (
             self._chat_model is not None
             and (
@@ -69,7 +97,11 @@ class DefaultRouteResolverAgent:
                 or self._needs_inline_parent_route(context)
             )
         )
-        if explicit_route_id or not model_selects_route:
+        if clarified_request is not None:
+            resolution = clarified_request
+        elif ambiguous_request is not None:
+            resolution = ambiguous_request
+        elif explicit_route_id or not model_selects_route:
             resolution = self._repository.resolve(
                 goal_type=goal_type,
                 goal_name=goal_name,
@@ -79,7 +111,7 @@ class DefaultRouteResolverAgent:
             resolution = await self._resolve_with_agent(
                 context, goal_type=goal_type, goal_name=goal_name
             )
-        if self._textbook_repository is not None:
+        if self._textbook_repository is not None and ambiguous_request is None:
             request = self._optional_text(context.get("user_request")) or ""
             textbook_route = self._textbook_repository.resolve(
                 exam_route_id=(
@@ -148,7 +180,57 @@ class DefaultRouteResolverAgent:
         except ValueError:
             return None
         if inherited.planning_status != "approved_route":
+            if plan_scope == "long_term":
+                return self._clarification_resolution(
+                    inherited.goal_type,
+                    inherited.goal_name,
+                    (
+                        "现有长期规划尚未绑定已批准的学习路线，不能继续沿用临时教材。"
+                        "请明确具体考试、升学或课程目标；如为中医类别执业医师，"
+                        "请确认报考路径。"
+                    ),
+                )
             return inherited.model_copy(update={"match_reason": inherited_reason})
+
+        # Plans created before competing-route clarification was enforced may
+        # persist one selected route while their goal text still names two or
+        # more mutually exclusive routes. Never perpetuate that contaminated
+        # choice during a generic replan. A unique resume answer can repair it.
+        inherited_goal = self._repository.resolve(
+            goal_type=inherited.goal_type,
+            goal_name=inherited.goal_name,
+        )
+        if inherited_goal.match_reason in {
+            "ambiguous_canonical_name",
+            "ambiguous_alias",
+            "ambiguous_embedded_alias",
+        }:
+            answer = self._optional_text(context.get("latest_resume_answer"))
+            answer_resolution = (
+                self._repository.resolve(
+                    goal_type=self._classify_goal(answer) or inherited.goal_type,
+                    goal_name=answer,
+                )
+                if answer is not None
+                else None
+            )
+            if (
+                answer_resolution is None
+                or answer_resolution.planning_status != "approved_route"
+                or answer_resolution.match_reason
+                not in {"canonical_name", "alias", "embedded_alias"}
+            ):
+                return self._clarification_resolution(
+                    inherited.goal_type,
+                    inherited.goal_name,
+                    (
+                        "现有长期规划来自一次多选报考路径，不能继续沿用。"
+                        "请只确认一项：规定学历路径、中医（专长）医师资格考核，"
+                        "或传统医学师承/确有专长人员考核。"
+                    ),
+                )
+            inherited = answer_resolution
+            inherited_reason = "clarification_answer"
 
         approved = self._repository.get(
             str(inherited.route_id), str(inherited.route_version)
@@ -309,6 +391,72 @@ class DefaultRouteResolverAgent:
         ):
             return None
         return resolution.model_copy(update={"match_reason": "agent_catalog_fallback"})
+
+    def _ambiguous_explicit_request_resolution(
+        self,
+        context: dict[str, Any],
+        *,
+        fallback_goal_type: str,
+    ) -> ResolvedPlanningRoute | None:
+        """Stop before model selection when one turn names competing routes."""
+        request = self._optional_text(context.get("user_request"))
+        if request is None:
+            return None
+        request_goal_type = self._classify_goal(request) or fallback_goal_type
+        candidate = self._repository.resolve(
+            goal_type=request_goal_type,
+            goal_name=request,
+        )
+        if candidate.match_reason not in {
+            "ambiguous_canonical_name",
+            "ambiguous_alias",
+            "ambiguous_embedded_alias",
+        }:
+            return None
+        return self._clarification_resolution(
+            request_goal_type,
+            request,
+            (
+                "你同时选择了多个不同的报考路径，它们不能合并为同一条长期规划。"
+                "请只确认一项：规定学历路径、中医（专长）医师资格考核，"
+                "或传统医学师承/确有专长人员考核。"
+            ),
+        )
+
+    def _clarified_explicit_request_resolution(
+        self,
+        context: dict[str, Any],
+        *,
+        fallback_goal_type: str,
+    ) -> ResolvedPlanningRoute | None:
+        """Use a unique resume answer to settle a previously ambiguous request."""
+        request = self._optional_text(context.get("user_request"))
+        answer = self._optional_text(context.get("latest_resume_answer"))
+        if request is None or answer is None:
+            return None
+        request_goal_type = self._classify_goal(request) or fallback_goal_type
+        previous = self._repository.resolve(
+            goal_type=request_goal_type,
+            goal_name=request,
+        )
+        if previous.match_reason not in {
+            "ambiguous_canonical_name",
+            "ambiguous_alias",
+            "ambiguous_embedded_alias",
+        }:
+            return None
+        answer_goal_type = self._classify_goal(answer) or request_goal_type
+        selected = self._repository.resolve(
+            goal_type=answer_goal_type,
+            goal_name=answer,
+        )
+        if (
+            selected.planning_status != "approved_route"
+            or selected.match_reason
+            not in {"canonical_name", "alias", "embedded_alias"}
+        ):
+            return None
+        return selected.model_copy(update={"match_reason": "clarification_answer"})
 
     @staticmethod
     def _needs_inline_parent_route(context: dict[str, Any]) -> bool:
