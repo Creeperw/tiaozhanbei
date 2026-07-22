@@ -18,6 +18,7 @@
 - Verify keyboard activation, touch behavior, transition double-click protection, and `prefers-reduced-motion` fallback in addition to the tests below.
 - Add a content-density contract: every card exposes its normalized progress, cards in the first half use a compact one-line resource treatment, later cards use full resource tags, and the redundant action label is removed from layout flow.
 - Raise the responsive base height while reducing the total height range so all core tasks fit and 4–6 cards retain equal visual steps. Verify in the browser that every card has `scrollHeight <= clientHeight` and that resource blocks do not overlap task blocks.
+- Copy the six supplied PNG line drawings into `frontend/llm/public/learning-stage/`, add optional illustration metadata to the stage model, and render decorative `<img alt="" aria-hidden="true">` watermarks below the text layer. Use low-opacity multiply blending because the supplied files contain baked checkerboard backgrounds; give the duplicate classics/mastery artwork different object positions.
 
 ---
 
