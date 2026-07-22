@@ -21,6 +21,8 @@ describe('AuthPage main-backend cookie contract', () => {
     vi.stubGlobal('fetch', request);
     render(<AuthPage onLogin={onLogin} />);
 
+    expect(screen.queryByLabelText('账号')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '登录' }));
     fireEvent.change(screen.getByLabelText('账号'), { target: { value: 'lin' } });
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'correct-horse-2026' } });
     fireEvent.click(screen.getByRole('button', { name: '进入时珍智训' }));
@@ -41,7 +43,7 @@ describe('AuthPage main-backend cookie contract', () => {
     vi.stubGlobal('fetch', request);
     render(<AuthPage onLogin={onLogin} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '创建学习账号' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
     fireEvent.change(screen.getByLabelText('用户名'), { target: { value: 'newlearner' } });
     fireEvent.change(screen.getByLabelText('显示名（可选）'), { target: { value: '新同学' } });
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'strong-password' } });
@@ -55,5 +57,20 @@ describe('AuthPage main-backend cookie contract', () => {
       display_name: '新同学',
       password: 'strong-password',
     });
+  });
+
+  it('keeps the authentication card out of the showcase until login is selected', () => {
+    render(<AuthPage onLogin={vi.fn()} />);
+
+    expect(screen.queryByRole('dialog', { name: '进入学习工作台' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('账号')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+
+    expect(screen.getByRole('dialog', { name: '进入学习工作台' })).toBeInTheDocument();
+    expect(screen.getByLabelText('账号')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '返回展示页' }));
+    expect(screen.queryByLabelText('账号')).not.toBeInTheDocument();
   });
 });

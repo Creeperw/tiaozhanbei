@@ -1,29 +1,52 @@
 import React, { useState } from 'react';
 import {
+  ArrowRight,
   BookOpen,
   BrainCircuit,
-  Cpu,
+  CheckCircle2,
   Library,
   LineChart,
   Loader2,
   Lock,
+  Sparkles,
   Target,
   User as UserIcon,
 } from 'lucide-react';
 import { AUTH_API_BASE, readJsonResponse } from '../utils/api';
+import './AuthPage.css';
 
 const capabilityCards = [
-  { icon: BrainCircuit, title: '培训助手', description: '围绕中医药学习问答、知识拆解与过程追踪展开。' },
-  { icon: Library, title: '知识库溯源', description: '管理公共与个人资料，保留检索来源与学习线索。' },
-  { icon: Target, title: '练习批改', description: '把练习、错因和复盘建议沉淀到后续学习路径。' },
-  { icon: LineChart, title: '学情规划', description: '结合学习画像与阶段信号生成任务卡和报告。' },
+  { icon: BrainCircuit, title: 'AI 学习规划', description: '结合学习画像与阶段信号，生成清晰、可执行的进阶路径。' },
+  { icon: Library, title: '本草知识溯源', description: '连接经典教材与个人资料，保留每一次学习检索的来源线索。' },
+  { icon: Target, title: '训练反馈闭环', description: '把练习、错因和复盘建议沉淀到后续任务，持续看见进步。' },
 ];
+
+const AuthVisual = () => (
+  <div className="auth-visual relative mx-auto flex aspect-square w-full max-w-[460px] items-center justify-center">
+    <div className="auth-visual__orb" />
+    <div className="auth-visual__ring auth-visual__ring--outer" />
+    <div className="auth-visual__ring auth-visual__ring--inner" />
+    <div className="auth-visual__core relative flex h-48 w-48 items-center justify-center overflow-hidden rounded-[3.25rem] border border-white/90 bg-white/72 text-emerald-600 shadow-2xl shadow-emerald-200/80 backdrop-blur-xl sm:h-60 sm:w-60">
+      <img src="/design-images/login-hero.png" alt="中医药在线学习场景" className="h-full w-full object-cover" />
+      <div className="auth-visual__image-shade absolute inset-0" />
+      <div className="absolute inset-x-4 bottom-5 text-center text-xs font-bold tracking-[0.2em] text-white">本草 · 智学</div>
+    </div>
+    <div className="auth-float-card auth-float-card--top rounded-2xl border border-white/90 bg-white/88 px-4 py-3 shadow-xl shadow-emerald-200/50 backdrop-blur-xl">
+      <div className="flex items-center gap-2 text-sm font-bold text-emerald-950"><Sparkles size={16} className="text-amber-500" /> 智能拆解知识</div>
+      <div className="mt-1 text-xs text-slate-500">从经典到重点，一目了然</div>
+    </div>
+    <div className="auth-float-card auth-float-card--bottom rounded-2xl border border-white/90 bg-white/88 px-4 py-3 shadow-xl shadow-emerald-200/50 backdrop-blur-xl">
+      <div className="flex items-center gap-2 text-sm font-bold text-emerald-950"><LineChart size={16} className="text-emerald-600" /> 进步持续可见</div>
+      <div className="mt-1 text-xs text-slate-500">任务、练习与反馈形成闭环</div>
+    </div>
+  </div>
+);
 
 const AuthPage = ({ onLogin }) => {
   const [mode, setMode] = useState('login');
+  const [showAuth, setShowAuth] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     displayName: '',
@@ -34,11 +57,22 @@ const AuthPage = ({ onLogin }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const openAuth = (nextMode) => {
+    setMode(nextMode);
+    setError('');
+    setShowAuth(true);
+  };
+
+  const closeAuth = () => {
+    setError('');
+    setMode('login');
+    setShowAuth(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccessMsg('');
 
     try {
       const endpoint = mode === 'login' ? 'login' : 'register';
@@ -73,138 +107,87 @@ const AuthPage = ({ onLogin }) => {
       : '注册后即可建立学习画像，开始沉淀知识来源、练习记录与阶段任务。';
 
   return (
-    <div className="auth-page min-h-screen bg-[linear-gradient(180deg,#f7faf8_0%,#eef7f2_52%,#f5f7f2_100%)] px-4 py-8 text-slate-900 lg:px-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <section className="order-2 overflow-hidden rounded-[32px] border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/70 to-teal-50/70 p-6 shadow-xl shadow-emerald-100/60 lg:order-1 lg:p-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/90 px-3 py-1 text-sm font-medium text-emerald-800">
-            <Cpu size={16} /> 时珍智训
-          </div>
-          <div className="mt-6 max-w-2xl space-y-4">
-            <h1 className="text-4xl font-semibold tracking-tight text-slate-950 lg:text-5xl">中医药学习与培训助手平台</h1>
-            <p className="text-base leading-7 text-slate-700 lg:text-lg">
-              围绕培训助手、中医药学习路径、学习画像、知识库溯源、练习批改与学情规划，
-              为不同阶段的学习者提供结构化、可追踪的进阶工作台。
-            </p>
-            <p className="text-sm leading-6 text-slate-600">
-              登录后默认进入首页，查看今日任务、近期监测摘要、推荐资源和继续学习入口。
-            </p>
-          </div>
-          <div className="mt-8 overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-lg shadow-emerald-100/60">
-            <div className="relative aspect-[16/7] min-h-[220px]">
-              <img
-                src="/design-images/login-hero.png"
-                alt="中医药在线学习场景"
-                className="h-full w-full object-cover object-center"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-white/82 via-white/28 to-transparent" />
-              <div className="absolute bottom-4 left-4 rounded-2xl border border-white/80 bg-white/86 px-4 py-3 shadow-sm shadow-emerald-950/10 backdrop-blur">
-                <div className="text-sm font-semibold text-emerald-950">循证学习场景</div>
-                <div className="mt-1 text-xs leading-5 text-emerald-800">从学习路径、知识卡到训练反馈，形成可追踪的进阶闭环。</div>
-              </div>
+    <div className="auth-page min-h-screen overflow-hidden bg-[#f4fbf7] text-slate-900">
+      <div className="auth-page__glow auth-page__glow--top" />
+      <div className="auth-page__glow auth-page__glow--bottom" />
+      <header className="auth-nav border-b border-emerald-100/80 bg-white/72 px-5 py-4 backdrop-blur-xl sm:px-8 lg:px-12">
+        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-5">
+          <div className="flex items-center gap-3">
+            <div className="auth-brand-mark flex h-11 w-11 items-center justify-center rounded-2xl text-white shadow-lg shadow-emerald-200/80"><BookOpen size={23} strokeWidth={2.25} /></div>
+            <div className="leading-none">
+              <div className="auth-brand-name text-xl font-black tracking-tight sm:text-2xl">时珍智训</div>
+              <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-emerald-600">Shizhen AI · TCM</div>
             </div>
           </div>
+          <nav className="hidden items-center gap-8 text-sm font-semibold text-emerald-950/65 lg:flex">
+            <a href="#capabilities" className="auth-nav-link">学习路径</a>
+            <a href="#capabilities" className="auth-nav-link">本草知识库</a>
+            <a href="#capabilities" className="auth-nav-link">AI 学习助手</a>
+          </nav>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => openAuth('login')} className="text-sm font-bold text-emerald-900/65 transition hover:text-emerald-700">登录</button>
+            <button type="button" onClick={() => openAuth('register')} className="auth-cta rounded-full px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200/80 transition hover:-translate-y-0.5 sm:px-6">开始学习</button>
+          </div>
+        </div>
+      </header>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {capabilityCards.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.title} className="rounded-[24px] border border-white/80 bg-white/85 p-4 shadow-sm shadow-emerald-100/40">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-                    <Icon size={20} />
-                  </div>
-                  <h2 className="mt-4 text-lg font-semibold text-slate-900">{item.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
-                </div>
-              );
-            })}
+      <main className="relative mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
+        <section className="auth-showcase mx-auto flex min-h-[calc(100vh-76px)] max-w-4xl flex-col items-center justify-center py-16 text-center lg:py-24">
+          <div className="auth-kicker inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/75 px-4 py-2 text-xs font-bold tracking-[0.12em] text-emerald-700 shadow-sm shadow-emerald-100">
+            <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>
+            AI 赋能 · 时珍精粹
           </div>
-          <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-600">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/80 px-3 py-2">
-              <BookOpen size={15} className="text-emerald-700" /> 学习画像驱动推荐
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/80 px-3 py-2">
-              <Library size={15} className="text-emerald-700" /> 资料来源可追踪
-            </div>
+          <h1 className="mt-7 text-5xl font-black leading-[1.08] tracking-[-0.055em] text-emerald-950 sm:text-6xl lg:text-8xl">承时珍医脉<br /><span className="auth-title-gradient">启智慧学习</span></h1>
+          <p className="mt-7 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg lg:text-xl">融合中医药经典智慧与智能学习技术，构建可理解、可追踪、可持续的个性化学习工作台，陪伴每一位学习者循证精进。</p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm font-semibold text-emerald-950/70">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-2.5 shadow-sm shadow-emerald-100/60"><CheckCircle2 size={16} className="text-emerald-600" /> 学习画像驱动推荐</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-2.5 shadow-sm shadow-emerald-100/60"><Library size={16} className="text-emerald-600" /> 资料来源可追踪</span>
+          </div>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <button type="button" onClick={() => openAuth('register')} className="auth-primary-button group inline-flex items-center gap-3 rounded-2xl px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-200/80 transition hover:-translate-y-0.5">开启智训之旅 <ArrowRight size={18} className="transition group-hover:translate-x-1" /></button>
+            <button type="button" onClick={() => openAuth('login')} className="rounded-2xl border border-emerald-200 bg-white/75 px-6 py-3.5 text-sm font-bold text-emerald-800 shadow-sm shadow-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-white">登录已有账号</button>
           </div>
         </section>
 
-        <section className="order-1 rounded-[32px] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 lg:order-2 lg:p-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-sm shadow-emerald-200">
-              <BrainCircuit size={24} />
-            </div>
-            <div>
-              <div className="text-sm font-medium text-emerald-700">时珍智训</div>
-              <div className="text-sm text-slate-500">培训助手平台登录</div>
-            </div>
+        <section id="capabilities" className="pb-16 pt-4 lg:pb-24">
+          <div className="mx-auto max-w-3xl text-center"><div className="text-xs font-bold tracking-[0.18em] text-emerald-600">ONE PLATFORM · COMPLETE LEARNING LOOP</div><h2 className="mt-3 text-3xl font-black tracking-tight text-emerald-950 sm:text-4xl">以智能重塑<span className="auth-title-gradient">本草学习</span></h2><p className="mt-4 text-base leading-7 text-slate-600">让经典知识更易理解，让每一次练习都成为下一步成长的依据。</p></div>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {capabilityCards.map((item) => {
+              const Icon = item.icon;
+              return <article key={item.title} className="auth-capability-card rounded-[2rem] border border-white/90 bg-white/72 p-6 shadow-lg shadow-emerald-100/55 backdrop-blur-sm"><div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600"><Icon size={26} /></div><h2 className="mt-5 text-xl font-bold text-emerald-950">{item.title}</h2><p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p><div className="mt-5 border-t border-emerald-100 pt-4 text-xs font-bold text-emerald-600">探索时珍智训 <ArrowRight size={14} className="ml-1 inline" /></div></article>;
+            })}
           </div>
+        </section>
+      </main>
 
-          <div className="mt-6">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{title}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-          </div>
+      {showAuth && (
+        <section className="auth-login-view fixed inset-0 z-[70] overflow-y-auto bg-[#f4fbf7]/96 px-4 py-6 backdrop-blur-md sm:px-8 sm:py-10" role="dialog" aria-modal="true" aria-label={title}>
+          <div className="mx-auto grid min-h-full max-w-6xl items-center gap-8 lg:grid-cols-[minmax(290px,0.9fr)_minmax(400px,1fr)] lg:gap-12">
+            <AuthVisual />
+            <div className="auth-login-card relative w-full rounded-[2rem] border border-white/95 bg-white/92 p-6 shadow-2xl shadow-emerald-200/70 sm:p-8">
+              <button type="button" onClick={closeAuth} className="auth-login-back absolute right-5 top-5 text-sm font-semibold text-emerald-700 transition hover:text-emerald-900">返回展示页</button>
+              <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200"><BrainCircuit size={24} /></div><div><div className="text-sm font-bold text-emerald-700">时珍智训</div><div className="text-xs text-slate-500">进入你的学习工作台</div></div></div>
+              <div className="mt-6"><h2 className="text-2xl font-bold tracking-tight text-emerald-950">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-600">{description}</p></div>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            {mode === 'login' && (
-              <>
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div>
-                  <label htmlFor="auth-login-username" className="mb-1 block text-sm font-medium text-slate-700">账号</label>
+                  <label htmlFor="auth-username" className="mb-1 block text-sm font-medium text-slate-700">{mode === 'login' ? '账号' : '用户名'}</label>
                   <div className="relative">
                     <UserIcon className="absolute left-3 top-3 text-slate-400" size={18} />
                     <input
-                      id="auth-login-username"
+                      id="auth-username"
                       name="username"
                       autoComplete="username"
+                      minLength={mode === 'register' ? 3 : undefined}
                       value={formData.username}
                       onChange={handleChange}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                      placeholder="用户名或邮箱"
+                      className="w-full rounded-2xl border border-emerald-100 bg-emerald-50/45 py-3 pl-10 pr-4 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                      placeholder={mode === 'login' ? '用户名或邮箱' : '设置学习账号名称'}
                       required
                     />
                   </div>
                 </div>
-                <div>
-                  <div className="mb-1 flex justify-between">
-                    <label htmlFor="auth-login-password" className="block text-sm font-medium text-slate-700">密码</label>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
-                    <input
-                      id="auth-login-password"
-                      name="password"
-                      type="password"
-                      autoComplete="current-password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                      placeholder="输入登录密码"
-                      required
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {mode === 'register' && (
-              <>
-                <div>
-                  <label htmlFor="auth-register-username" className="mb-1 block text-sm font-medium text-slate-700">用户名</label>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3 top-3 text-slate-400" size={18} />
-                    <input
-                      id="auth-register-username"
-                      name="username"
-                      autoComplete="username"
-                      minLength={3}
-                      value={formData.username}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                      placeholder="设置学习账号名称"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
+                {mode === 'register' && <div>
                   <label htmlFor="auth-display-name" className="mb-1 block text-sm font-medium text-slate-700">显示名（可选）</label>
                   <div className="relative">
                     <UserIcon className="absolute left-3 top-3 text-slate-400" size={18} />
@@ -214,63 +197,41 @@ const AuthPage = ({ onLogin }) => {
                       autoComplete="name"
                       value={formData.displayName}
                       onChange={handleChange}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                      className="w-full rounded-2xl border border-emerald-100 bg-emerald-50/45 py-3 pl-10 pr-4 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
                       placeholder="例如：林同学"
                     />
                   </div>
-                </div>
+                </div>}
                 <div>
-                  <label htmlFor="auth-register-password" className="mb-1 block text-sm font-medium text-slate-700">密码</label>
+                  <label htmlFor="auth-password" className="mb-1 block text-sm font-medium text-slate-700">密码</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
                     <input
-                      id="auth-register-password"
+                      id="auth-password"
                       name="password"
                       type="password"
-                      autoComplete="new-password"
-                      minLength={8}
+                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                      minLength={mode === 'register' ? 8 : undefined}
                       value={formData.password}
                       onChange={handleChange}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-3 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                      placeholder="至少 8 位"
+                      className="w-full rounded-2xl border border-emerald-100 bg-emerald-50/45 py-3 pl-10 pr-4 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                      placeholder={mode === 'login' ? '输入登录密码' : '至少 8 位'}
                       required
                     />
                   </div>
                 </div>
-              </>
-            )}
-
-            {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
-            {successMsg && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMsg}</div>}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : mode === 'login' ? '进入时珍智训' : '提交'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-slate-600">
-            {mode === 'login' ? (
-              <>
-                还没有账号？{' '}
-                <button onClick={() => { setMode('register'); setError(''); }} className="font-medium text-emerald-700 hover:text-emerald-800">
-                  创建学习账号
-                </button>
-              </>
-            ) : (
-              <>
-                已有账号？{' '}
-                <button onClick={() => { setMode('login'); setError(''); }} className="font-medium text-emerald-700 hover:text-emerald-800">
-                  返回登录
-                </button>
-              </>
-            )}
+                {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+                <button type="submit" disabled={loading} className="auth-primary-button flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-50">{loading ? <Loader2 className="animate-spin" size={20} /> : mode === 'login' ? '进入时珍智训' : '提交'}</button>
+              </form>
+              <div className="mt-6 text-center text-sm text-slate-600">
+                {mode === 'login' ? <>还没有账号？ <button type="button" onClick={() => { setMode('register'); setError(''); }} className="font-medium text-emerald-700 hover:text-emerald-800">创建学习账号</button></> : <>已有账号？ <button type="button" onClick={() => { setMode('login'); setError(''); }} className="font-medium text-emerald-700 hover:text-emerald-800">返回登录</button></>}
+              </div>
+            </div>
           </div>
         </section>
-      </div>
+      )}
+
+      <footer className="border-t border-emerald-100 bg-white/45 px-5 py-8 text-center text-xs text-slate-500 sm:px-8 lg:px-12"><div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-3 sm:flex-row"><span>© 2026 时珍智训 · 让经典智慧在每一次学习中焕新</span><span className="font-semibold text-emerald-700">SHIZHEN AI · TCM LEARNING PLATFORM</span></div></footer>
     </div>
   );
 };
