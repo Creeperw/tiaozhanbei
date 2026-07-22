@@ -127,6 +127,28 @@ def test_register_login_me_and_logout(tmp_path: Path) -> None:
     assert logged_in.json()["user"]["user_id"] == user["user_id"]
 
 
+def test_sqlite_auth_survives_container_rebuild(tmp_path: Path) -> None:
+    settings = Settings(
+        mode="stub",
+        use_sqlite=True,
+        sqlite_path=tmp_path / "competition_app.sqlite3",
+    )
+    first_client = TestClient(
+        create_app(ApplicationContainer.build(settings, snapshot_root=tmp_path / "first"))
+    )
+    user = register(first_client, "persistent-student")
+    session_cookie = first_client.cookies.get(SESSION_COOKIE)
+
+    second_client = TestClient(
+        create_app(ApplicationContainer.build(settings, snapshot_root=tmp_path / "second"))
+    )
+    second_client.cookies.set(SESSION_COOKIE, session_cookie)
+
+    current = second_client.get("/api/v1/auth/me")
+    assert current.status_code == 200
+    assert current.json()["user"]["user_id"] == user["user_id"]
+
+
 def test_configured_admin_is_bootstrapped_with_an_admin_role(tmp_path: Path) -> None:
     container = ApplicationContainer.build(
         Settings(
