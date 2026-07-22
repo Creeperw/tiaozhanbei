@@ -2,74 +2,132 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
   Circle,
+  Compass,
   Flame,
   Lock,
   PlayCircle,
 } from 'lucide-react';
-import {
-  clampSemanticScale,
-  getSemanticFishboneMetrics,
-  layoutDependencyTree,
-  panViewport,
-} from './learningTreeModel';
+import { clampSemanticScale } from './learningTreeModel';
 
-const WIDTH = 960;
-const HEIGHT = 640;
-const NODE_WIDTH = 152;
-const NODE_HEIGHT = 62;
-const SCALE_STORAGE_KEY = 'learning-path-semantic-scale';
-
-function storedSemanticScale(fallback) {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const raw = window.localStorage.getItem(SCALE_STORAGE_KEY);
-    if (raw == null) return fallback;
-    const stored = Number(raw);
-    return Number.isFinite(stored) ? clampSemanticScale(stored) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function persistSemanticScale(scale) {
-  try {
-    window.localStorage.setItem(SCALE_STORAGE_KEY, String(scale));
-  } catch {
-    // Keep the canvas usable when browser storage is unavailable.
-  }
-}
+const ORBIT_WIDTH = 1000;
+const ORBIT_HEIGHT = 760;
+const ORBIT_ASPECT_RATIO = ORBIT_WIDTH / ORBIT_HEIGHT;
+const TARGET_RENDERED_ORBIT_RATIO = 1.35;
 
 const statusMeta = {
-  completed: { label: '已完成', Icon: CheckCircle2 },
-  in_progress: { label: '进行中', Icon: Flame },
-  next: { label: '即将开始', Icon: PlayCircle },
-  locked: { label: '待解锁', Icon: Lock },
-  unassessed: { label: '尚未评估', Icon: Circle },
+  completed: { label: '已完成', Icon: CheckCircle2, tone: 'completed' },
+  in_progress: { label: '学习中', Icon: Flame, tone: 'in-progress' },
+  next: { label: '下一阶段', Icon: PlayCircle, tone: 'next' },
+  locked: { label: '待解锁', Icon: Lock, tone: 'locked' },
+  unassessed: { label: '尚未评估', Icon: Circle, tone: 'unassessed' },
 };
 
-function edgePath(from, to, kind) {
-  if (kind === 'rib') {
-    const direction = to.y < from.y ? -1 : 1;
-    return `M ${from.x} ${from.y + direction * NODE_HEIGHT / 2} L ${to.x} ${to.y - direction * NODE_HEIGHT / 2}`;
-  }
-  const startX = from.x;
-  const endX = to.x;
-  const axisY = from.axisY ?? to.axisY ?? HEIGHT / 2;
-  const middleX = (startX + endX) / 2;
-  return `M ${startX} ${axisY} C ${middleX} ${axisY - 3}, ${middleX} ${axisY + 3}, ${endX} ${axisY}`;
+function nodeId(node) {
+  return String(node?.membership_id || node?.node_id || node?.id || '');
 }
 
-function ribbonPath(startX, endX, axisY, strand) {
-  const span = Math.max(1, endX - startX);
-  const amplitude = [13, 18, 10][strand] || 13;
-  const phase = [-1, 1, 0.35][strand] || 0;
-  return [
-    `M ${startX} ${axisY + amplitude * phase}`,
-    `C ${startX + span * 0.14} ${axisY - amplitude}`,
-    `${startX + span * 0.27} ${axisY + amplitude} ${startX + span * 0.4} ${axisY}`,
-    `S ${startX + span * 0.64} ${axisY - amplitude * phase} ${startX + span * 0.76} ${axisY}`,
-    `S ${startX + span * 0.92} ${axisY + amplitude} ${endX} ${axisY - amplitude * phase}`,
-  ].join(' ');
+function sequenceRank(node, index) {
+  const order = Number(node?.order);
+  return Number.isFinite(order) && order > 0 ? order : index + 1;
+}
+
+function orderLearningNodes(nodes, edges) {
+  const indexedNodes = nodes.map((node, index) => ({ node, index, id: nodeId(node) }));
+  const byId = new Map(indexedNodes.map((item) => [item.id, item]));
+  const compareItems = (left, right) => (
+    sequenceRank(left.node, left.index) - sequenceRank(right.node, right.index)
+    || left.index - right.index
+  );
+  const sequenceEdges = edges.filter((edge) => (
+    edge?.kind !== 'rib' && byId.has(String(edge?.from || '')) && byId.has(String(edge?.to || ''))
+  ));
+  const targets = new Set(sequenceEdges.map((edge) => String(edge.to)));
+  const outgoing = new Map();
+  sequenceEdges.forEach((edge) => {
+    const from = String(edge.from);
+    const to = String(edge.to);
+    outgoing.set(from, [...(outgoing.get(from) || []), to]);
+  });
+  outgoing.forEach((ids, from) => {
+    outgoing.set(from, ids.sort((left, right) => compareItems(byId.get(left), byId.get(right))));
+  });
+
+  const roots = indexedNodes.filter((item) => !targets.has(item.id)).sort(compareItems);
+  const ordered = [];
+  const visited = new Set();
+  let current = roots[0] || indexedNodes.slice().sort(compareItems)[0];
+  while (current && !visited.has(current.id)) {
+    ordered.push(current.node);
+    visited.add(current.id);
+    const nextId = (outgoing.get(current.id) || []).find((id) => !visited.has(id));
+    current = nextId ? byId.get(nextId) : null;
+  }
+
+  indexedNodes
+    .filter((item) => !visited.has(item.id))
+    .sort(compareItems)
+    .forEach((item) => ordered.push(item.node));
+  return ordered;
+}
+
+function getOrbitMetrics(nodeCount, stageAspectRatio) {
+  const compact = nodeCount >= 8;
+  const radiusY = compact ? 276 : nodeCount <= 4 ? 254 : 278;
+  const desiredRadiusX = radiusY
+    * TARGET_RENDERED_ORBIT_RATIO
+    * ORBIT_ASPECT_RATIO
+    / Math.max(1, stageAspectRatio);
+  return {
+    width: ORBIT_WIDTH,
+    height: ORBIT_HEIGHT,
+    centerX: ORBIT_WIDTH / 2,
+    centerY: ORBIT_HEIGHT / 2 + 4,
+    radiusX: Math.max(168, Math.min(compact ? 286 : 320, desiredRadiusX)),
+    radiusY,
+    nodeWidth: compact ? 148 : nodeCount >= 7 ? 164 : 180,
+    nodeHeight: compact ? 70 : 82,
+  };
+}
+
+function getOrbitPosition(index, total, metrics) {
+  const angle = total <= 1 ? -Math.PI / 2 : -Math.PI / 2 + (Math.PI * 2 * index) / total;
+  return {
+    x: metrics.centerX + Math.cos(angle) * metrics.radiusX,
+    y: metrics.centerY + Math.sin(angle) * metrics.radiusY,
+    angle,
+  };
+}
+
+function orbitArc(from, to, metrics) {
+  return `M ${from.x} ${from.y} A ${metrics.radiusX} ${metrics.radiusY} 0 0 1 ${to.x} ${to.y}`;
+}
+
+function connectorEnd(position, metrics) {
+  const nodeHalfWidth = metrics.nodeWidth / 2;
+  const nodeHalfHeight = metrics.nodeHeight / 2;
+  const directionX = position.x - metrics.centerX;
+  const directionY = position.y - metrics.centerY;
+  const distance = Math.max(1, Math.hypot(directionX, directionY));
+  const horizontalRatio = Math.abs(directionX) / distance;
+  const verticalRatio = Math.abs(directionY) / distance;
+  const inset = Math.max(nodeHalfWidth * horizontalRatio, nodeHalfHeight * verticalRatio) + 16;
+  return {
+    x: position.x - (directionX / distance) * inset,
+    y: position.y - (directionY / distance) * inset,
+  };
+}
+
+function stageFor(index, currentIndex) {
+  if (index === currentIndex) return 'current';
+  return index < currentIndex ? 'past' : 'future';
+}
+
+function progressFor(nodes, currentIndex) {
+  if (!nodes.length) return 0;
+  const completed = nodes.filter((node) => node.status === 'completed').length;
+  const activeBonus = nodes.some((node) => node.status === 'in_progress') ? 0.45 : 0;
+  const nextBonus = !activeBonus && currentIndex > completed ? 0.12 : 0;
+  return Math.max(0, Math.min(100, Math.round(((completed + activeBonus + nextBonus) / nodes.length) * 100)));
 }
 
 export default function LearningPathOverview({
@@ -81,187 +139,167 @@ export default function LearningPathOverview({
   onClearSelection,
   directDrill = false,
 }) {
-  const spineCount = Math.max(1, edges.filter((edge) => edge.kind !== 'rib').length + 1);
-  const defaultSemanticScale = clampSemanticScale(Math.max(
-    0.68,
-    Math.min(1, WIDTH / (210 + (spineCount - 1) * 184)),
-  ));
-  const [semanticScale, setSemanticScale] = useState(() => storedSemanticScale(defaultSemanticScale));
-  const [viewMode, setViewMode] = useState('start');
-  const [viewport, setViewport] = useState({ scale: 1, x: 0, y: 0 });
-  const [stageSize, setStageSize] = useState({ width: WIDTH, height: HEIGHT });
-  const dragRef = useRef(null);
   const stageRef = useRef(null);
-  const metrics = useMemo(() => getSemanticFishboneMetrics(semanticScale), [semanticScale]);
-  const canvasWidth = Math.max(WIDTH, 210 + (spineCount - 1) * metrics.axisGap);
-  const positions = useMemo(
-    () => layoutDependencyTree(nodes, edges, {
-      width: canvasWidth,
-      height: HEIGHT,
-      ...metrics,
-    }),
-    [canvasWidth, edges, metrics, nodes],
+  const [stageAspectRatio, setStageAspectRatio] = useState(2);
+  const orderedNodes = useMemo(() => orderLearningNodes(nodes, edges), [edges, nodes]);
+  const metrics = useMemo(
+    () => getOrbitMetrics(orderedNodes.length, stageAspectRatio),
+    [orderedNodes.length, stageAspectRatio],
   );
-  const nodeMap = useMemo(
-    () => Object.fromEntries(nodes.map((node) => [node.membership_id, node])),
-    [nodes],
-  );
-  const spineNodes = useMemo(() => {
-    const ribTargets = new Set(edges.filter((edge) => edge.kind === 'rib').map((edge) => edge.to));
-    return nodes.filter((node) => !ribTargets.has(node.membership_id));
-  }, [edges, nodes]);
-  const effectiveCurrentId = nodes.find((node) => node.status === 'in_progress')?.membership_id
-    || nodes.find((node) => node.status === 'next')?.membership_id
-    || nodes.find((node) => !['completed', 'locked'].includes(node.status))?.membership_id
-    || nodes.find((node) => node.status === 'completed')?.membership_id
-    || spineNodes[0]?.membership_id;
-  const currentDepth = positions[effectiveCurrentId]?.depth ?? 0;
-  const positionValues = Object.values(positions);
-  const leftmostNodeEdge = positionValues.length
-    ? Math.min(...positionValues.map((position) => position.x - NODE_WIDTH / 2))
-    : 20;
-  const startViewport = {
-    scale: 1,
-    x: 20 - leftmostNodeEdge,
-    y: (stageSize.height - HEIGHT) / 2,
-  };
-  const activeViewport = viewMode === 'start' ? startViewport : viewport;
-  const axisY = positions[spineNodes[0]?.membership_id]?.axisY ?? HEIGHT / 2;
-  const axisStart = (positions[spineNodes[0]?.membership_id]?.x ?? canvasWidth / 2) - 84;
-  const axisEnd = (positions[spineNodes.at(-1)?.membership_id]?.x ?? canvasWidth / 2) + 84;
-  const stageFor = (position) => {
-    if ((position?.depth ?? 0) === currentDepth) return 'current';
-    return (position?.depth ?? 0) < currentDepth ? 'past' : 'future';
-  };
-
-  const changeSemanticScale = (nextScale, { persist = false } = {}) => {
-    const scale = clampSemanticScale(nextScale);
-    setSemanticScale(scale);
-    setViewMode('start');
-    if (persist) persistSemanticScale(scale);
-  };
+  const positions = useMemo(() => Object.fromEntries(
+    orderedNodes.map((node, index) => [nodeId(node), getOrbitPosition(index, orderedNodes.length, metrics)]),
+  ), [metrics, orderedNodes]);
+  const effectiveCurrentId = orderedNodes.find((node) => node.status === 'in_progress') && nodeId(orderedNodes.find((node) => node.status === 'in_progress'))
+    || orderedNodes.find((node) => node.status === 'next') && nodeId(orderedNodes.find((node) => node.status === 'next'))
+    || orderedNodes.find((node) => !['completed', 'locked'].includes(node.status)) && nodeId(orderedNodes.find((node) => !['completed', 'locked'].includes(node.status)))
+    || nodeId(orderedNodes.at(-1));
+  const currentIndex = Math.max(0, orderedNodes.findIndex((node) => nodeId(node) === effectiveCurrentId));
+  const progress = progressFor(orderedNodes, currentIndex);
+  const currentNode = orderedNodes[currentIndex];
+  const displayScale = clampSemanticScale(1);
 
   useEffect(() => {
-    const element = stageRef.current;
-    if (!element || typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(([entry]) => {
-      const width = Math.round(entry.contentRect.width);
-      const height = Math.round(entry.contentRect.height);
-      if (!width || !height) return;
-      setStageSize((current) => (
-        current.width === width && current.height === height ? current : { width, height }
-      ));
-    });
-    observer.observe(element);
+    const stage = stageRef.current;
+    if (!stage) return undefined;
+
+    const updateAspectRatio = () => {
+      const { width, height } = stage.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        setStageAspectRatio((current) => {
+          const next = width / height;
+          return Math.abs(current - next) > 0.01 ? next : current;
+        });
+      }
+    };
+
+    updateAspectRatio();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateAspectRatio);
+      return () => window.removeEventListener('resize', updateAspectRatio);
+    }
+
+    const observer = new ResizeObserver(updateAspectRatio);
+    observer.observe(stage);
     return () => observer.disconnect();
   }, []);
 
-  const finishPan = (event) => {
-    if (!dragRef.current) return;
-    dragRef.current = null;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-  };
-
   return (
     <div
-      className="learning-path-overview"
+      className="learning-path-overview learning-path-orbit"
       aria-label="一级知识学习路径"
-      data-scale={Number(semanticScale.toFixed(2))}
-      data-semantic-scale={Number(semanticScale.toFixed(2))}
-      data-viewport-scale={Number(activeViewport.scale.toFixed(2))}
-      data-layout="settled"
-      data-view={viewMode}
+      data-scale={displayScale}
+      data-layout="orbit"
+      data-node-count={orderedNodes.length}
+      data-current-order={currentIndex + 1}
     >
+      <header className="learning-path-orbit__summary">
+        <div>
+          <span><Compass aria-hidden="true" size={16} />顺序学习路径</span>
+          <strong>中医药知识体系</strong>
+          <p>{directDrill ? '按阶段依次进入教材与知识点' : '沿导引环逐步掌握中医核心知识'}</p>
+        </div>
+        <div className="learning-path-orbit__current" aria-label={`当前学习阶段：${currentNode?.title || '待开始'}`}>
+          <span>当前进度</span>
+          <strong>{currentNode ? `第 ${String(currentIndex + 1).padStart(2, '0')} 阶段` : '待开始'}</strong>
+        </div>
+      </header>
       <div
-        className="learning-path-overview__stage"
         ref={stageRef}
-        style={{ width: '100%', height: '100%' }}
+        className="learning-path-overview__stage learning-path-orbit__stage"
+        style={{
+          '--orbit-node-width': `${metrics.nodeWidth}px`,
+          '--orbit-node-height': `${metrics.nodeHeight}px`,
+        }}
         onClick={(event) => {
-          if (event.target.closest?.('button')) return;
+          if (event.target.closest?.('.learning-path-orbit__node')) return;
           onClearSelection?.();
         }}
-        onWheel={(event) => {
-          event.preventDefault();
-          changeSemanticScale(semanticScale * Math.exp(-event.deltaY * 0.001), { persist: true });
-        }}
-        onPointerDown={(event) => {
-          if (event.button !== 0 || event.target.closest?.('button')) return;
-          setViewport(activeViewport);
-          setViewMode('manual');
-          dragRef.current = { x: event.clientX, y: event.clientY };
-          event.currentTarget.setPointerCapture?.(event.pointerId);
-        }}
-        onPointerMove={(event) => {
-          const previous = dragRef.current;
-          if (!previous) return;
-          setViewport((current) => panViewport(
-            current,
-            event.clientX - previous.x,
-            event.clientY - previous.y,
-          ));
-          dragRef.current = { x: event.clientX, y: event.clientY };
-        }}
-        onPointerUp={finishPan}
-        onPointerCancel={finishPan}
       >
-        <div
-          className="learning-path-overview__viewport"
-          style={{
-            width: canvasWidth,
-            height: HEIGHT,
-            transform: `translate3d(${activeViewport.x}px, ${activeViewport.y}px, 0) scale(${activeViewport.scale})`,
-            transformOrigin: '0 0',
-          }}
-        >
         <svg
           aria-hidden="true"
-          className="learning-path-overview__edges"
-          viewBox={`0 0 ${canvasWidth} ${HEIGHT}`}
+          className="learning-path-orbit__canvas"
+          viewBox={`0 0 ${metrics.width} ${metrics.height}`}
+          preserveAspectRatio="none"
         >
-          {[0, 1, 2].map((strand) => (
-            <path
-              key={`ribbon-${strand}`}
-              className={`learning-path-overview__ribbon-line is-${strand + 1}`}
-              d={ribbonPath(axisStart, axisEnd, axisY, strand)}
+          <defs>
+            <radialGradient id="learning-path-orbit-core" cx="50%" cy="42%" r="65%">
+              <stop offset="0%" stopColor="#f5fff9" />
+              <stop offset="100%" stopColor="#dff6ea" />
+            </radialGradient>
+            <linearGradient id="learning-path-orbit-progress" x1="0%" x2="100%" y1="0%" y2="100%">
+              <stop offset="0%" stopColor="#118b68" />
+              <stop offset="100%" stopColor="#5ecaa5" />
+            </linearGradient>
+          </defs>
+          <ellipse
+            className="learning-path-orbit__track"
+            cx={metrics.centerX}
+            cy={metrics.centerY}
+            rx={metrics.radiusX}
+            ry={metrics.radiusY}
+          />
+          {orderedNodes.map((node) => {
+            const position = positions[nodeId(node)];
+            const end = connectorEnd(position, metrics);
+            return (
+              <line
+                key={`spoke-${nodeId(node)}`}
+                className={`learning-path-orbit__spoke is-${stageFor(orderedNodes.indexOf(node), currentIndex)}`}
+                x1={metrics.centerX}
+                x2={end.x}
+                y1={metrics.centerY}
+                y2={end.y}
+              />
+            );
+          })}
+          {orderedNodes.length > 1 && orderedNodes.map((node, index) => {
+            const nextNode = orderedNodes[(index + 1) % orderedNodes.length];
+            const from = positions[nodeId(node)];
+            const to = positions[nodeId(nextNode)];
+            const state = index < currentIndex ? 'completed' : index === currentIndex ? 'current' : 'upcoming';
+            return (
+              <path
+                key={`sequence-${nodeId(node)}-${nodeId(nextNode)}`}
+                data-testid="learning-path-orbit-segment"
+                data-state={state}
+                className="learning-path-orbit__sequence"
+                d={orbitArc(from, to, metrics)}
+              />
+            );
+          })}
+          {orderedNodes.length > 0 && (
+            <circle
+              className="learning-path-orbit__start-dot"
+              cx={positions[nodeId(orderedNodes[0])]?.x}
+              cy={positions[nodeId(orderedNodes[0])]?.y}
+              r="6"
             />
-          ))}
-          {spineNodes.map((node) => {
-            const position = positions[node.membership_id];
-            if (!position) return null;
-            const direction = position.y < axisY ? -1 : 1;
-            return (
-              <path
-                key={`stem-${node.membership_id}`}
-                data-testid="learning-path-stem"
-                data-stage={stageFor(position)}
-                className="learning-path-overview__stem"
-                d={`M ${position.x} ${axisY} L ${position.x} ${position.y - direction * NODE_HEIGHT / 2}`}
-              />
-            );
-          })}
-          {edges.map((edge) => {
-            const from = positions[edge.from];
-            const to = positions[edge.to];
-            if (!from || !to) return null;
-            const active = ['completed', 'in_progress'].includes(nodeMap[edge.from]?.status);
-            return (
-              <path
-                key={`${edge.from}-${edge.to}`}
-                data-testid="learning-tree-edge"
-                d={edgePath(from, to, edge.kind)}
-                data-kind={edge.kind || 'spine'}
-                className={`${edge.kind === 'rib' ? 'is-rib' : 'is-spine'}${active ? ' is-active' : ''}`}
-              />
-            );
-          })}
+          )}
         </svg>
 
-        {nodes.map((node) => {
-          const id = node.membership_id;
+        <div className="learning-path-orbit__core" aria-label={`总体学习进度 ${progress}%`}>
+          <svg aria-hidden="true" viewBox="0 0 120 120">
+            <circle className="learning-path-orbit__core-track" cx="60" cy="60" r="49" pathLength="100" />
+            <circle
+              className="learning-path-orbit__core-progress"
+              cx="60"
+              cy="60"
+              r="49"
+              pathLength="100"
+              style={{ strokeDasharray: `${progress} ${100 - progress}` }}
+            />
+          </svg>
+          <span>{progress}%</span>
+          <small>总体进度</small>
+          <em>{orderedNodes.filter((node) => node.status === 'completed').length} / {orderedNodes.length || 0} 阶段</em>
+        </div>
+
+        {orderedNodes.map((node, index) => {
+          const id = nodeId(node);
           const position = positions[id];
           const selected = selectedId === id;
           const current = effectiveCurrentId === id;
-          const stage = stageFor(position);
+          const stage = stageFor(index, currentIndex);
           const meta = statusMeta[node.status] || statusMeta.unassessed;
           const Icon = meta.Icon;
           const total = Number(node.total_count ?? node.child_count ?? 0);
@@ -269,16 +307,15 @@ export default function LearningPathOverview({
             <button
               key={id}
               type="button"
-              aria-label={directDrill ? `进入${node.title}` : `选择${node.title}，双击进入知识星球`}
+              aria-label={directDrill ? `进入${node.title}（第 ${index + 1} 阶段）` : `选择${node.title}，第 ${index + 1} 阶段，双击进入知识星球`}
               aria-pressed={selected}
               data-current={String(current)}
               data-stage={stage}
-              className={`learning-path-node learning-path-node--${node.status || 'unassessed'}`}
+              data-order={index + 1}
+              className={`learning-path-orbit__node is-${meta.tone}${selected ? ' is-selected' : ''}`}
               style={{
-                left: position.x - NODE_WIDTH / 2,
-                top: position.y - NODE_HEIGHT / 2,
-                width: NODE_WIDTH,
-                height: NODE_HEIGHT,
+                left: `${(position.x / metrics.width) * 100}%`,
+                top: `${(position.y / metrics.height) * 100}%`,
               }}
               onClick={() => onSelect(node)}
               onDoubleClick={(event) => {
@@ -287,26 +324,26 @@ export default function LearningPathOverview({
               }}
               title={node.title}
             >
-              <span className="learning-path-node__title"><Icon aria-hidden="true" size={13} /><b>{node.title}</b></span>
+              <span className="learning-path-orbit__order">{String(index + 1).padStart(2, '0')}</span>
+              <span className="learning-path-orbit__title"><Icon aria-hidden="true" size={16} /><b>{node.title}</b></span>
               <small>{meta.label}{total ? ` · ${total}项` : ''}</small>
               {node.status === 'in_progress' && node.average_mastery != null && (
-                <span className="learning-path-node__progress" aria-label={`掌握度 ${node.average_mastery}%`}>
+                <span className="learning-path-orbit__progress" aria-label={`掌握度 ${node.average_mastery}%`}>
                   <i style={{ width: `${Math.max(0, Math.min(100, node.average_mastery))}%` }} />
                 </span>
               )}
             </button>
           );
         })}
-        </div>
       </div>
 
-      <div className="learning-path-overview__legend" aria-label="知识点状态说明">
+      <footer className="learning-path-orbit__legend" aria-label="知识点状态说明">
         <span><i className="is-completed" />已完成</span>
-        <span><i className="is-progress" />进行中</span>
-        <span><i />即将解锁</span>
+        <span><i className="is-progress" />学习中</span>
+        <span><i className="is-next" />下一阶段</span>
         <span><i className="is-locked" />待解锁</span>
-        <em>{directDrill ? '单击进入下一级学习路径' : '单击查看规划 · 双击进入知识星球'}</em>
-      </div>
+        <em>{directDrill ? '按序选择阶段，进入下一层教材' : '单击查看规划 · 双击进入知识星球'}</em>
+      </footer>
     </div>
   );
 }

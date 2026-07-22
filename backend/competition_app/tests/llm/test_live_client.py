@@ -472,6 +472,83 @@ async def test_chat_client_error_never_exposes_api_key() -> None:
 
 
 @pytest.mark.asyncio
+async def test_chat_client_retries_one_transient_http_status() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(503, json={"message": "temporary unavailable"})
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": '{"status":"ok"}'}}]},
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen3.7-max-2026-05-20",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert await client.complete_json("planner_agent", {}) == {"status": "ok"}
+    assert calls == 2
+
+
+@pytest.mark.asyncio
+async def test_chat_client_does_not_retry_non_transient_http_status() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(400, json={"message": "invalid request"})
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen3.7-max-2026-05-20",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ModelResponseError, match="HTTP 400"):
+        await client.complete_json("planner_agent", {})
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_chat_client_uses_bounded_backoff_for_rate_limit(monkeypatch) -> None:
+    calls = 0
+    delays: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            return httpx.Response(429, json={"message": "rate limited"})
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": '{"status":"ok"}'}}]},
+        )
+
+    async def fake_sleep(delay: float) -> None:
+        delays.append(delay)
+
+    monkeypatch.setattr("competition_app.llm.openai_compatible.asyncio.sleep", fake_sleep)
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen3.7-max-2026-05-20",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert await client.complete_json("planner_agent", {}) == {"status": "ok"}
+    assert calls == 3
+    assert delays == [2.0, 4.0]
+
+
+@pytest.mark.asyncio
 async def test_chat_client_streams_incremental_content() -> None:
     observed: list[str] = []
 

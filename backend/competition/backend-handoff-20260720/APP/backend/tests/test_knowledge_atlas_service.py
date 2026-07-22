@@ -242,6 +242,19 @@ class KnowledgeAtlasServiceTests(unittest.TestCase):
         self.assertEqual(result["kp_id"], "kp-reentry")
         self.assertEqual(result["lv1"], "药理学")
 
+    def test_context_resolver_treats_track_only_navigation_as_route_level_success(self):
+        store = self.make_store()
+
+        result = store.resolve_context(
+            track_id="EXAM_2025_TCM_PHYSICIAN",
+            membership_id="",
+            exam_repository=None,
+        )
+
+        self.assertTrue(result["resolved"])
+        self.assertEqual(result["match_level"], "track")
+        self.assertNotIn("notice", result)
+
     def test_context_resolver_never_returns_a_book_outside_the_selected_route(self):
         store = self.make_store()
         store.ensure_hierarchy()

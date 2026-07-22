@@ -288,6 +288,8 @@ class StubChatModel:
                         if daily_action == "reuse"
                         else generated_daily
                     ),
+                    "learning_chapter": "短期计划当前教材章节",
+                    "focus_knowledge_points": [topic],
                     "estimated_minutes": task_minutes,
                     "expected_output": "一份闭卷回忆与遗漏纠错记录。",
                     "completion_criteria": "完成回忆并逐项标记遗漏。",
@@ -342,6 +344,8 @@ class StubChatModel:
                         key: response[key]
                         for key in (
                             "daily_task_content",
+                            "learning_chapter",
+                            "focus_knowledge_points",
                             "estimated_minutes",
                             "expected_output",
                             "completion_criteria",
@@ -464,6 +468,8 @@ class StubChatModel:
                 "learning_task": {
                     "task_type": "active_recall",
                     "task_content": "围绕当前主题完成一次主动回忆。",
+                    "learning_chapter": "短期计划当前教材章节",
+                    "focus_knowledge_points": [str(business_payload.get("topic") or "当前主题")],
                     "estimated_minutes": task_minutes,
                     "expected_output": "一份不查看资料完成的口述或书面回忆。",
                     "completion_criteria": "完成回忆并对照证据标记遗漏。",

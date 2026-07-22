@@ -709,6 +709,17 @@ class KnowledgeAtlasStore:
     ) -> dict[str, Any]:
         self.ensure_hierarchy()
         route_id = self._route_for_track(track_id)
+        if track_id and not membership_id:
+            return {
+                **self._context_payload(
+                    None,
+                    route_id=route_id,
+                    track_id=track_id,
+                    membership_id="",
+                    match_level="track",
+                ),
+                "resolved": True,
+            }
         titles: list[str] = []
         if exam_repository is not None and track_id and membership_id:
             try:

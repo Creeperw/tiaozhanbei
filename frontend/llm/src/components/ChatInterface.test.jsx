@@ -124,6 +124,46 @@ describe('ChatInterface session workspace', () => {
     expect(screen.queryByText('You')).not.toBeInTheDocument();
   });
 
+  it('restores persisted workflow actions and keeps them navigable after reopening a session', async () => {
+    const onNavigate = vi.fn();
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.endsWith('/conversations')) {
+        return Promise.resolve(jsonResponse([{ id: 'session-paper', title: '组卷' }]));
+      }
+      if (url.endsWith('/conversations/session-paper/messages')) {
+        return Promise.resolve(jsonResponse([{
+          id: 8,
+          role: 'assistant',
+          content: '试卷已经生成。',
+          actions: [{
+            label: '开始答题',
+            destination: 'workshop.paper',
+            params: { paper_id: 'PAPER_1' },
+          }],
+        }]));
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    render(
+      <ChatInterface
+        currentUser="alice"
+        preferredSessionId="session-paper"
+        embedded
+        onNavigate={onNavigate}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '开始答题' }));
+    expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({
+      page: 'practice',
+      params: expect.objectContaining({
+        taskType: 'paper_workspace',
+        paperId: 'PAPER_1',
+      }),
+    }));
+  });
+
   it('formats persisted ISO timestamps for people instead of exposing transport data', () => {
     expect(formatMessageTime('2026-07-20T12:34:00+08:00', new Date('2026-07-21T09:00:00+08:00')))
       .toBe('07月20日 12:34');

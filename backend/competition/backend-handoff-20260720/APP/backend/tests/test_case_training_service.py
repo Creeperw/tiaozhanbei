@@ -228,7 +228,18 @@ class CaseTrainingServiceTests(unittest.TestCase):
     def test_submit_with_production_shape_runner_persists_strict_scores(self):
         service = self.build_service(
             grading_runner=lambda **kwargs: {
-                "grading": {"standard_answer": "脾胃气虚", "analysis": "包含隐藏答案"},
+                "grading": {
+                    "score": 100,
+                    "max_score": 100,
+                    "is_correct": True,
+                    "error_types": [],
+                    "error_reason": "",
+                    "feedback": "辨证与问诊要点完整。",
+                    "dimension_scores": {
+                        "syndrome": {"score": 70, "reason": "辨证准确"},
+                        "inquiry": {"score": 30, "reason": "问诊完整"},
+                    },
+                },
                 "audit": {"decision": "pass", "confidence": 0.9},
                 "remediation": {"reference": "四君子汤"},
             },
@@ -255,6 +266,13 @@ class CaseTrainingServiceTests(unittest.TestCase):
             with self.subTest(decision=decision):
                 service = self.build_service(
                     grading_runner=lambda **kwargs: {
+                        "grading": {
+                            "score": 0,
+                            "max_score": 100,
+                            "is_correct": False,
+                            "error_types": ["case_dimension_incomplete"],
+                            "error_reason": "回答不完整",
+                        },
                         "audit": {"decision": decision, "confidence": 0.9},
                     },
                 )
@@ -358,7 +376,16 @@ class CaseTrainingServiceTests(unittest.TestCase):
             self.assertEqual(db.query(database.AuditResultRecord).count(), 1)
 
     def test_incomplete_case_submission_enters_mistake_history(self):
-        service = self.build_service(grading_runner=lambda **kwargs: valid_case_grading())
+        service = self.build_service(grading_runner=lambda **kwargs: {
+            "score": 50,
+            "max_score": 100,
+            "is_correct": False,
+            "error_types": ["case_dimension_incomplete"],
+            "error_reason": "方剂与问诊维度尚未作答",
+            "confidence": 0.9,
+            "dimension_scores": {"syndrome": {"score": 50, "reason": "辨证正确"}},
+            "audit": {"decision": "pass", "confidence": 0.9},
+        })
         started = service.start_session(1, case_version_id="CASEV_001", mode="full")
 
         result = service.submit(1, started["session_id"], {"syndrome": "脾胃气虚"})

@@ -43,6 +43,7 @@ export default function CompactAssistant({
   initialContext = '',
   contextLabel = '当前学习任务',
   initiallyCollapsed = false,
+  floating = true,
   quickActions = defaultQuickActions,
   onCollapsedChange,
   onFloatingDockChange,
@@ -303,15 +304,15 @@ export default function CompactAssistant({
         className={`compact-assistant is-collapsed${dragging ? ' is-dragging' : ''} ${className}`.trim()}
         aria-label="常驻智能助教"
         data-state="collapsed"
-        data-floating="true"
-        style={floatingStyle}
+        data-floating={String(floating)}
+        style={floating ? floatingStyle : undefined}
       >
         <button
           type="button"
           className="compact-assistant__restore"
           aria-label="展开智能助教"
           title="拖拽移动，点击展开智能助教"
-          onPointerDown={(event) => startFloatingDrag(event, true)}
+          onPointerDown={floating ? (event) => startFloatingDrag(event, true) : undefined}
           onClick={restoreAssistant}
         >
           {!characterFailed ? (
@@ -353,14 +354,14 @@ export default function CompactAssistant({
       className={`compact-assistant${dragging ? ' is-dragging' : ''} ${className}`.trim()}
       aria-label="常驻智能助教"
       data-state="workspace"
-      data-floating="true"
+      data-floating={String(floating)}
       data-history-open={String(historyOpen)}
-      style={floatingStyle}
+      style={floating ? floatingStyle : undefined}
     >
       <header
         className="compact-assistant__header"
         data-drag-handle="true"
-        onPointerDown={startFloatingDrag}
+        onPointerDown={floating ? startFloatingDrag : undefined}
       >
         <div className="compact-assistant__identity">
           <span className="compact-assistant__avatar">

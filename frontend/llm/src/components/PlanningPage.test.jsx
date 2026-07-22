@@ -45,5 +45,6 @@ describe('PlanningPage structured long-term route', () => {
     expect(screen.getByText('第 1 阶段')).toBeInTheDocument();
     expect(screen.getByText('《中医学基础》')).toBeInTheDocument();
     expect(screen.getByText('建立中医基础。')).toBeInTheDocument();
+    expect(screen.queryByText('本周计划卡')).not.toBeInTheDocument();
   });
 });

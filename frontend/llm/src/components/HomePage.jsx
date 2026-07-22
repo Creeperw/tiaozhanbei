@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, UploadCloud } from 'lucide-react';
+import { ArrowRight, CalendarCheck2, UploadCloud } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import {
   EMPTY_HOME_PAYLOAD,
@@ -49,6 +49,8 @@ export default function HomePage({ onNavigate }) {
   const [payload, setPayload] = useState(EMPTY_HOME_PAYLOAD);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [checkinLoading, setCheckinLoading] = useState(false);
+  const [checkinMessage, setCheckinMessage] = useState('');
   const homeState = useMemo(() => buildHomePortalState(payload), [payload]);
   const highlights = useMemo(() => (
     ['continue-learning', 'pending-tasks', 'ai-qa'].map(actionFor)
@@ -84,6 +86,24 @@ export default function HomePage({ onNavigate }) {
     onNavigate?.(getHomeActionIntent(key, payload));
   };
 
+  const checkinStatus = payload.checkin_status || EMPTY_HOME_PAYLOAD.checkin_status;
+  const submitCheckin = async () => {
+    if (checkinStatus.checked_in_today || checkinLoading) return;
+    setCheckinLoading(true);
+    setCheckinMessage('');
+    try {
+      const response = await fetchWithAuth(`${MAIN_API_BASE}/checkin`, { method: 'POST' });
+      const result = await readJsonResponse(response, {});
+      if (!response.ok) throw new Error(result.detail || '签到失败');
+      setPayload((current) => ({ ...current, checkin_status: result.status || current.checkin_status }));
+      setCheckinMessage(result.message || '今日签到成功');
+    } catch (requestError) {
+      setCheckinMessage(requestError.message || '签到失败');
+    } finally {
+      setCheckinLoading(false);
+    }
+  };
+
   const highlightDetail = (key) => {
     if (key === 'continue-learning') return homeState.continueLearning.title;
     if (key === 'pending-tasks') {
@@ -99,6 +119,9 @@ export default function HomePage({ onNavigate }) {
       <section className="home-portal__hero" aria-labelledby="home-portal-title">
         <img className="home-portal__hero-ribbon" src="/design-images/home/hero-ribbon.png" alt="" aria-hidden="true" width="1672" height="941" />
         <div className="home-portal__hero-actions">
+          <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
+            <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 · ${checkinStatus.streak || 0}天` : checkinLoading ? '签到中…' : '签到'}
+          </button>
           <button type="button" className="home-portal__upload" onClick={() => onNavigate?.({ page: 'knowledge', params: { view: 'personal' } })}>
             <UploadCloud aria-hidden="true" size={19} />上传资料
           </button>
@@ -114,6 +137,7 @@ export default function HomePage({ onNavigate }) {
       </section>
 
       {error && <div className="home-portal__notice" role="alert">{error}</div>}
+      {checkinMessage && <div className="home-portal__notice" role="status">{checkinMessage}</div>}
       {!error && homeState.announcements[0] && (
         <div className="home-portal__notice" role="status">{homeState.announcements[0]}</div>
       )}

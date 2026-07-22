@@ -59,7 +59,7 @@ def build_engine():
         ))
         connection.execute(text(
             "CREATE TABLE conversation_messages (message_id TEXT PRIMARY KEY, session_id TEXT, "
-            "role TEXT, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+            "role TEXT, content TEXT, metadata_json TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
         ))
     return engine
 
@@ -173,13 +173,23 @@ def test_sql_run_state_repository_merges_updates_and_survives_recreation() -> No
 def test_sql_conversation_repository_is_idempotent_and_checks_owner() -> None:
     engine = build_engine()
     repository = SqlConversationRepository(engine)
-    messages = [{"message_id": "M1", "role": "user", "content": "制定长期规划"}]
+    messages = [{
+        "message_id": "M1",
+        "role": "assistant",
+        "content": "试卷已经生成。",
+        "actions": [{
+            "label": "开始答题",
+            "destination": "workshop.paper",
+            "params": {"paper_id": "PAPER_1"},
+        }],
+    }]
     repository.save_messages("THREAD_1", "L1", messages)
     repository.save_messages("THREAD_1", "L1", messages)
 
     with engine.connect() as connection:
         assert connection.execute(text("SELECT COUNT(*) FROM conversation_sessions")).scalar_one() == 1
         assert connection.execute(text("SELECT COUNT(*) FROM conversation_messages")).scalar_one() == 1
+    assert repository.get_messages("THREAD_1", "L1")[0]["actions"][0]["label"] == "开始答题"
 
 
 def test_formal_sqlite_database_preserves_runtime_repositories(tmp_path: Path) -> None:

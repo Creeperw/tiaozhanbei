@@ -228,21 +228,20 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
       const learnerData = await learnerRes.json();
       const learningContextData = learningContextRes.ok ? await learningContextRes.json() : {};
       const confirmedProfile = learningContextData.user_profile || {};
-      const confirmedGoal = confirmedProfile.learning_goal
-        || learningContextData.long_term_plan?.planning_route?.goal_name
-        || learningContextData.long_term_plan?.goal_contract?.goal_name
-        || '';
+      const confirmedGoal = confirmedProfile.learning_goal || '';
       const candidateData = await candidateRes.json();
       setOverview(overviewData);
       setProfile({
         ...emptyProfile,
         ...(overviewData.profile || {}),
-        health_goals: overviewData.profile?.health_goals
-          || confirmedGoal
+        display_name: confirmedProfile.display_name || '',
+        constitution: confirmedProfile.learner_group === '未选择用户群体'
+          ? ''
+          : (confirmedProfile.learner_group || ''),
+        health_goals: confirmedGoal
           || confirmedProfile.goals?.goal_name
           || '',
-        diet_restrictions: overviewData.profile?.diet_restrictions
-          || confirmedProfile.time_constraints
+        diet_restrictions: confirmedProfile.time_constraints
           || '',
       });
       setLearnerProfile({
@@ -522,7 +521,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
             <div className="space-y-3">
               {learnerProfile.learning_background && (
                 <label className="block">
-                  <span className="text-sm text-gray-500">学习基础（智能体已确认）</span>
+                  <span className="text-sm text-gray-500">学习基础（记忆智能体已确认）</span>
                   <textarea
                     value={learnerProfile.learning_background}
                     readOnly
@@ -532,8 +531,13 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
               )}
               {profileFields.map(([key, label]) => (
                 <label key={key} className="block">
-                  <span className="text-sm text-gray-500">{label}</span>
-                  <textarea value={profile[key] || ''} onChange={e => setProfile({ ...profile, [key]: e.target.value })} className={`${softTextareaClass} mt-1 min-h-[58px]`} />
+                  <span className="text-sm text-gray-500">{label}{['display_name', 'constitution', 'health_goals'].includes(key) ? '（记忆智能体已确认）' : ''}</span>
+                  <textarea
+                    value={profile[key] || ''}
+                    readOnly={['display_name', 'constitution', 'health_goals'].includes(key)}
+                    onChange={e => setProfile({ ...profile, [key]: e.target.value })}
+                    className={`${softTextareaClass} mt-1 min-h-[58px] ${['display_name', 'constitution', 'health_goals'].includes(key) ? 'bg-emerald-50/60' : ''}`}
+                  />
                 </label>
               ))}
             </div>

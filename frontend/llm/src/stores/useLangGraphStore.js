@@ -186,6 +186,12 @@ export function reduceLangGraphEvent(state, ev) {
   } else if (ev.type === 'planning_done') {
     const target = eventNode(ev, 'planner', 'planner_agent', NODE_MAP.planning);
     nodes = finishNode(upsertNode(nodes, target.id, target.name, ev.text, 'running', ts, target.agent), target.id, {}, ts);
+    for (const planned of ev.plannedNodes || []) {
+      const stepId = planned?.step_id || planned?.id;
+      const agent = planned?.agent;
+      if (!stepId || !agent || stepId === target.id || agent === 'planner_agent') continue;
+      nodes = upsertNode(nodes, stepId, agent, '已列入本次执行路径。', 'pending', ts, agent);
+    }
   }
   else if (ev.type === 'refine_start') { nodes = upsertNode(nodes, 'refine', NODE_MAP.refine, ev.text, 'running', ts); currentActiveNodeId = 'refine'; }
   else if (ev.type === 'refine_done') { nodes = finishNode(upsertNode(nodes, 'refine', NODE_MAP.refine, ev.text, 'running', ts), 'refine', {}, ts); }
@@ -222,7 +228,7 @@ export function reduceLangGraphEvent(state, ev) {
       isRollingBack = false;
     }
   } else if (ev.type === 'workflow_done') {
-    nodes = nodes.map(n => n.status === 'running' ? { ...n, status: 'done', endTime: ts, tools: n.tools.map(t => t.status === 'running' ? { ...t, status: 'done', endTime: ts } : t), intents: (n.intents || []).map(t => t.status === 'running' ? { ...t, status: 'done', endTime: ts } : t) } : n);
+    nodes = nodes.map(n => ['running', 'pending'].includes(n.status) ? { ...n, status: 'done', endTime: ts, tools: n.tools.map(t => t.status === 'running' ? { ...t, status: 'done', endTime: ts } : t), intents: (n.intents || []).map(t => t.status === 'running' ? { ...t, status: 'done', endTime: ts } : t) } : n);
     currentActiveNodeId = null;
   }
   return { ...state, nodes, currentActiveNodeId, isRollingBack };

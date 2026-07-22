@@ -383,28 +383,24 @@ class CaseTrainingService:
 
         def grade(**kwargs: Any) -> dict[str, Any]:
             runner_payload = runner(**kwargs)
-            submission = kwargs.get("submission")
-            if not isinstance(submission, dict):
-                raise CaseTrainingStateError("invalid case grading dimensions")
-            try:
-                answer = json.loads(str(submission.get("submitted_answer") or "{}"))
-            except (TypeError, ValueError) as exc:
-                raise CaseTrainingStateError("invalid case grading dimensions") from exc
-            if not isinstance(answer, dict):
-                raise CaseTrainingStateError("invalid case grading dimensions")
-            dimension_scores = self._score_case_dimensions(answer, standard, rubric)
-            score = sum(item["score"] for item in dimension_scores.values())
-            maximum = sum(rubric["dimensions"].values())
+            if not isinstance(runner_payload, dict):
+                raise CaseTrainingStateError("case expert grading unavailable")
+            expert_grading = runner_payload.get("grading", runner_payload)
+            if not isinstance(expert_grading, dict):
+                raise CaseTrainingStateError("case expert grading unavailable")
             audit = self._case_audit(runner_payload)
             return {
-                "score": score,
-                "max_score": maximum,
-                "is_correct": score == maximum,
-                "error_types": [] if score == maximum else ["case_dimension_incomplete"],
-                "error_reason": "" if score == maximum else "部分案例评分维度未达标",
-                "confidence": float(audit["confidence"]),
-                "dimension_scores": dimension_scores,
+                "score": expert_grading.get("score"),
+                "max_score": expert_grading.get("max_score", sum(rubric["dimensions"].values())),
+                "is_correct": bool(expert_grading.get("is_correct")),
+                "error_types": list(expert_grading.get("error_types") or []),
+                "error_reason": str(expert_grading.get("error_reason") or ""),
+                "feedback": str(expert_grading.get("feedback") or expert_grading.get("analysis") or ""),
+                "grading_source": expert_grading.get("grading_source", "expert_agent"),
+                "confidence": expert_grading.get("confidence", audit["confidence"]),
+                "dimension_scores": expert_grading.get("dimension_scores") or {},
                 "audit": audit,
+                "agent_trace": runner_payload.get("agent_trace", []),
             }
 
         return grade

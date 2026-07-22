@@ -32,6 +32,7 @@ export default function DashboardDailyWorkspace({
   feedback = [],
   primaryAction = null,
   secondaryAction = null,
+  todayTaskContent = null,
   pathTopContent,
   pathContent,
   pathHint = '单击查看计划 · 双击进入知识图谱',
@@ -73,13 +74,14 @@ export default function DashboardDailyWorkspace({
         data-right-column={!showFocus && fullscreen ? 'stable' : undefined}
       >
         <aside className="dashboard-daily__schedule" aria-label="今日安排">
-          <header>
+          {todayTaskContent}
+          {(schedule.length > 0 || !todayTaskContent) && <header>
             <div className="dashboard-daily__schedule-title">
               <span><CalendarDays aria-hidden="true" size={15} />Today</span>
-              <h2>今日安排</h2>
+              <h2>{todayTaskContent ? '复习安排' : '今日安排'}</h2>
             </div>
             <small>{schedule.length} 项</small>
-          </header>
+          </header>}
           {schedule.length > 0 ? (
             <ol>
               {schedule.map((item, index) => (
@@ -95,13 +97,13 @@ export default function DashboardDailyWorkspace({
                 </li>
               ))}
             </ol>
-          ) : (
+          ) : !todayTaskContent ? (
             <div className="dashboard-daily__schedule-empty">
               <CheckCircle2 aria-hidden="true" size={22} />
               <p>今天还没有待办任务</p>
               <small>你可以从学习路径中选择一个节点开始</small>
             </div>
-          )}
+          ) : null}
         </aside>
 
         <div className="dashboard-daily__learning-column" data-testid="dashboard-learning-column">

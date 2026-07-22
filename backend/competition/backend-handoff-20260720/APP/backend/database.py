@@ -256,6 +256,8 @@ class PaperInstanceRecord(Base):
     duration_minutes = Column(Integer, default=60)
     started_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=True, index=True)
+    paused_at = Column(DateTime, nullable=True)
+    paused_remaining_seconds = Column(Integer, nullable=True)
     blueprint_json = Column(Text, default="{}")
     evidence_pack_json = Column(Text, default="{}")
     created_at = Column(DateTime, default=utc_now)
@@ -2787,6 +2789,8 @@ def _ensure_learning_workshop_schema(bind):
             "duration_minutes": "INTEGER NOT NULL DEFAULT 60",
             "started_at": "DATETIME NULL",
             "expires_at": "DATETIME NULL",
+            "paused_at": "DATETIME NULL",
+            "paused_remaining_seconds": "INTEGER NULL",
         },
         "paper_items": {
             "options_snapshot_json": options_definition,

@@ -298,20 +298,29 @@ class SqlConversationRepository:
                 return []
             rows = connection.execute(
                 text(
-                    "SELECT message_id, role, content, created_at FROM conversation_messages "
+                    "SELECT message_id, role, content, metadata_json, created_at FROM conversation_messages "
                     "WHERE session_id=:session_id ORDER BY created_at, message_id"
                 ),
                 {"session_id": session_id},
             ).mappings().all()
-        return [
-            {
+        messages: list[dict[str, Any]] = []
+        for row in rows:
+            metadata = row.get("metadata_json")
+            if isinstance(metadata, str) and metadata.strip():
+                try:
+                    metadata = json.loads(metadata)
+                except json.JSONDecodeError:
+                    metadata = {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            messages.append({
                 "message_id": row["message_id"],
                 "role": row["role"],
                 "content": row["content"],
                 "created_at": row["created_at"],
-            }
-            for row in rows
-        ]
+                **metadata,
+            })
+        return messages
 
     def rename_session(self, session_id: str, learner_id: str, title: str) -> bool:
         with self.engine.begin() as connection:
@@ -383,14 +392,23 @@ class SqlConversationRepository:
                 connection.execute(
                     text(
                         "INSERT INTO conversation_messages "
-                        "(message_id, session_id, role, content) "
-                        "VALUES (:message_id, :session_id, :role, :content)"
+                        "(message_id, session_id, role, content, metadata_json) "
+                        "VALUES (:message_id, :session_id, :role, :content, :metadata_json)"
                     ),
                     {
                         "message_id": message_id,
                         "session_id": session_id,
                         "role": str(message.get("role", "user")),
                         "content": str(message.get("content", "")),
+                        "metadata_json": json.dumps(
+                            {
+                                key: value
+                                for key, value in message.items()
+                                if key not in {"message_id", "role", "content", "created_at"}
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                        ),
                     },
                 )
 
