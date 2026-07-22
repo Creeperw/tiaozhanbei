@@ -93,7 +93,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
   const [nodes, setNodes] = useState([]);
   const [stats, setStats] = useState({});
   const [query, setQuery] = useState('');
-  const [arrangement, setArrangement] = useState('sphere');
+  const [arrangement, setArrangement] = useState('sequence');
   const [autoRotate, setAutoRotate] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -109,7 +109,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
   const detailControllerRef = useRef(null);
   const closingTimerRef = useRef(null);
   const enterNodeRef = useRef(null);
-  const arrangementRef = useRef('sphere');
+  const arrangementRef = useRef('sequence');
   const viewPresetRef = useRef(() => {});
 
   useEffect(() => {
@@ -192,7 +192,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
           setStats(payload.stats || {});
           if (compact || clustered) {
             setAutoRotate(false);
-            viewPresetRef.current({ yaw: 0, pitch: 0, zoom: compact ? 1.28 : 1.14 });
+            viewPresetRef.current({ yaw: 0, pitch: 0, zoom: compact ? 1.08 : 1 });
           } else {
             viewPresetRef.current({ zoom: 1 });
           }
@@ -313,7 +313,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
     const nextClustered = level === 3 && nodes.length >= 12 && nextArrangement === 'semantic';
     if (nextCompact || nextClustered) {
       setAutoRotate(false);
-      setViewPreset({ yaw: 0, pitch: 0, zoom: nextCompact ? 1.28 : 1.14 });
+      setViewPreset({ yaw: 0, pitch: 0, zoom: nextCompact ? 1.08 : 1 });
     } else {
       setViewPreset({ zoom: 1 });
     }
@@ -396,7 +396,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
         </button>
         <button type="button" className="knowledge-atlas__icon-button" aria-label="放大知识星球" onClick={() => zoomBy(1.16)}><Plus aria-hidden="true" size={15} /></button>
         <button type="button" className="knowledge-atlas__icon-button" aria-label="缩小知识星球" onClick={() => zoomBy(1 / 1.16)}><Minus aria-hidden="true" size={15} /></button>
-        <button type="button" className="knowledge-atlas__icon-button" aria-label="复位知识星球" onClick={() => resetView(clusterSphere ? { yaw: 0, pitch: 0, zoom: compactSphere ? 1.28 : 1.14 } : undefined)}><RotateCcw aria-hidden="true" size={15} /></button>
+        <button type="button" className="knowledge-atlas__icon-button" aria-label="复位知识星球" onClick={() => resetView(clusterSphere ? { yaw: 0, pitch: 0, zoom: compactSphere ? 1.08 : 1 } : undefined)}><RotateCcw aria-hidden="true" size={15} /></button>
       </div>
 
       {notice && <div className="knowledge-atlas__notice" role="status">{notice}<button type="button" aria-label="关闭提示" onClick={() => setNotice('')}>×</button></div>}

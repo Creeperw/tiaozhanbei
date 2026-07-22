@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ChatInterface from './ChatInterface';
@@ -96,9 +96,18 @@ describe('ChatInterface session workspace', () => {
     render(<ChatInterface currentUser="alice" preferredSessionId="session-empty" embedded />);
 
     expect(await screen.findByRole('heading', { name: '从这里开始' })).toBeInTheDocument();
+    const sessionRail = screen.getByLabelText('会话列表');
+    expect(sessionRail).toHaveClass('w-[244px]');
+    expect(within(sessionRail).getByRole('button', { name: '新对话' })).toHaveClass('h-9');
     expect(screen.getByRole('button', { name: '制定学习计划' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '讲解知识点' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '生成练习试卷' })).toBeInTheDocument();
+    expect(screen.queryByTitle('新建对话')).not.toBeInTheDocument();
+    expect(screen.getByRole('banner')).toHaveClass('h-11');
+    expect(document.querySelector('.assistant-composer')).toHaveClass('border-t-0');
+    expect(screen.getByRole('textbox', { name: '向智能助教提问' })).toHaveClass('focus-visible:outline-none');
+    fireEvent.click(screen.getByTitle('收起侧边栏'));
+    expect(screen.getByRole('button', { name: '展开侧边栏' })).toBeInTheDocument();
     const composer = screen.getByRole('textbox', { name: '向智能助教提问' });
     fireEvent.click(screen.getByRole('button', { name: '讲解知识点' }));
     expect(composer).toHaveValue('请结合教材证据讲解一个知识点，并给我一道练习题。');

@@ -13,12 +13,35 @@ vi.mock('./utils/api', () => ({
 vi.mock('./components/AuthPage', () => ({ default: () => <div>Auth</div> }));
 vi.mock('./components/HomePage', () => ({ default: () => <div>Home portal</div> }));
 vi.mock('./components/DashboardPage', () => ({
-  default: ({ onKnowledgeContextChange }) => (
-    <div>
+  default: ({ navigationContext = {}, onKnowledgeContextChange }) => (
+    <div data-testid="training-overview" data-view={navigationContext.view || ''} data-path-mode={navigationContext.pathMode || ''}>
       Training overview
       <button type="button" onClick={() => onKnowledgeContextChange?.({ trackId: 'track-a' })}>Publish target</button>
     </div>
   ),
+}));
+vi.mock('./components/learning-stage/LearningStageLanding', () => ({
+  default: ({ onStageSelect }) => (
+    <button
+      type="button"
+      onClick={() => onStageSelect({
+        stage: { id: 'foundation', title: '基础筑基' },
+        index: 0,
+        sourceRect: { left: 10, top: 20, width: 200, height: 300 },
+      })}
+    >
+      Stage landing
+    </button>
+  ),
+}));
+vi.mock('./components/learning-stage/StagePageTransition', () => ({
+  default: ({ selection, onMidpoint, onComplete }) => selection ? (
+    <div>
+      Stage transition
+      <button type="button" onClick={() => onMidpoint(selection)}>Reach flip midpoint</button>
+      <button type="button" onClick={onComplete}>Finish flip</button>
+    </div>
+  ) : null,
 }));
 vi.mock('./components/ChatInterface', () => ({ default: ({ embedded }) => <div>Assistant page {String(embedded)}</div> }));
 vi.mock('./components/KnowledgePage', () => ({
@@ -86,8 +109,15 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go training overview' }));
-    expect(screen.getByText('Training overview')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stage landing' })).toBeInTheDocument();
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'practice');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stage landing' }));
+    expect(screen.getByText('Stage transition')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reach flip midpoint' }));
+    expect(screen.getByText('Training overview')).toBeInTheDocument();
+    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-view', 'path');
+    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-path-mode', 'classic');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go training workspace' }));
     expect(screen.getByText('Practice workspace')).toBeInTheDocument();
@@ -116,6 +146,8 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-source', 'navigation');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go training overview' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stage landing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reach flip midpoint' }));
     fireEvent.click(screen.getByRole('button', { name: 'Publish target' }));
     fireEvent.click(screen.getByRole('button', { name: 'Go default knowledge' }));
     expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-track-id', 'track-a');

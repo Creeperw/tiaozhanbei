@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import AtlasPracticePanel from './AtlasPracticePanel';
 
@@ -166,5 +166,40 @@ describe('AtlasPracticePanel', () => {
 
     expect(await screen.findByText('当前暂无可用客观题')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '提交并批改' })).not.toBeInTheDocument();
+  });
+
+  it('keeps answer guidance hidden until the learner explicitly requests a hint', async () => {
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (url.includes('/practice/next')) {
+        return jsonResponse({
+          available: true,
+          question: {
+            question_id: 'question-hint',
+            question_type: 'short_answer',
+            stem: '阴阳关系的基本特征是什么？',
+            options: [],
+            kp_ids: ['kp-yinyang'],
+            difficulty: 2,
+            request_id: 'request-hint',
+          },
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+
+    render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-yinyang', kpName: '阴阳学说' }} />);
+
+    expect(await screen.findByText('阴阳关系的基本特征是什么？')).toBeInTheDocument();
+    const hintPanel = screen.getByTestId('practice-hint-panel');
+    const revealButton = screen.getByRole('button', { name: '若暂时没有思路，点我查看提示' });
+    expect(revealButton).toHaveAttribute('aria-expanded', 'false');
+    expect(hintPanel).toHaveTextContent('提示尚未展开');
+    expect(within(hintPanel).queryByText('思路引导')).not.toBeInTheDocument();
+
+    fireEvent.click(revealButton);
+
+    expect(revealButton).toHaveAttribute('aria-expanded', 'true');
+    expect(within(hintPanel).getByText('思路引导')).toBeInTheDocument();
+    expect(within(hintPanel).getByText(/阴阳学说/)).toBeInTheDocument();
   });
 });

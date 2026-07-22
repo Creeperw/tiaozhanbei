@@ -30,11 +30,12 @@ function responseForLevel({ level }) {
 }
 
 describe('KnowledgeAtlas', () => {
-  it('keeps L1/L2 nodes solid and enables four resource outlines only at L3', () => {
-    expect(getAtlasNodeDrawKind(plain, false)).toBe('solid');
-    expect(getAtlasNodeDrawKind(questionOnly, false)).toBe('solid');
-    expect(getAtlasNodeDrawKind(plain, true)).toBe('plain');
-    expect(getAtlasNodeDrawKind(questionOnly, true)).toBe('question');
+  it('keeps every node filled and layers resource markers only at L3', () => {
+    expect(getAtlasNodeDrawKind(plain, false)).toEqual({ kind: 'solid', filled: true, marker: 'none' });
+    expect(getAtlasNodeDrawKind(questionOnly, false)).toEqual({ kind: 'solid', filled: true, marker: 'none' });
+    expect(getAtlasNodeDrawKind(plain, true)).toEqual({ kind: 'plain', filled: true, marker: 'none' });
+    expect(getAtlasNodeDrawKind(questionOnly, true)).toEqual({ kind: 'question', filled: true, marker: 'ring' });
+    expect(getAtlasNodeDrawKind(kp, true)).toEqual({ kind: 'both', filled: true, marker: 'ring-dot' });
   });
 
   it('stops idle drawing while assets are loading or a space transition waits for data', () => {
@@ -87,12 +88,14 @@ describe('KnowledgeAtlas', () => {
     expect(screen.queryByRole('combobox', { name: '学习路线' })).not.toBeInTheDocument();
     expect(screen.getAllByText('教材目录').length).toBeGreaterThan(0);
     expect(api.loadAtlasRoutes).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: '球面布局' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: '顺序列表' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '顺序列表' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '球面布局' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.queryByRole('button', { name: '相关聚类' })).not.toBeInTheDocument();
     await screen.findByRole('button', { name: /进入药理学/ });
+    expect(screen.getByLabelText('当前层节点列表')).toHaveClass('knowledge-atlas__sequence-panel');
     const canvas = screen.getByLabelText('知识星球画布');
     expect(canvas).toHaveAttribute('data-zoom', '1.00');
+    fireEvent.click(screen.getByRole('button', { name: '球面布局' }));
     fireEvent.click(screen.getByRole('button', { name: '放大知识星球' }));
     await waitFor(() => expect(Number(canvas.getAttribute('data-zoom'))).toBeGreaterThan(1));
     fireEvent.click(screen.getByRole('button', { name: '复位知识星球' }));
@@ -109,11 +112,12 @@ describe('KnowledgeAtlas', () => {
     expect(screen.getByRole('toolbar', { name: '知识星球视图工具' })).toBeInTheDocument();
   });
 
-  it('forces compact L3 nodes to zoom 1.28 and enables cluster only for at least 12 L3 nodes', async () => {
+  it('uses restrained L3 zoom and enables cluster only for at least 12 L3 nodes', async () => {
     const { unmount } = render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', lv2: '第一节 心律失常的电生理学基础' }} />);
     const compactCanvas = await screen.findByLabelText('知识星球画布');
     await screen.findByRole('button', { name: /打开折返详情/ });
-    await waitFor(() => expect(compactCanvas).toHaveAttribute('data-zoom', '1.28'));
+    fireEvent.click(screen.getByRole('button', { name: '球面布局' }));
+    await waitFor(() => expect(compactCanvas).toHaveAttribute('data-zoom', '1.08'));
     expect(screen.queryByRole('button', { name: '相关聚类' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /自动旋转/ })).toBeDisabled();
     unmount();
@@ -127,7 +131,7 @@ describe('KnowledgeAtlas', () => {
     const clusterButton = await screen.findByRole('button', { name: '相关聚类' });
     fireEvent.click(clusterButton);
     const clusterCanvas = screen.getByLabelText('知识星球画布');
-    await waitFor(() => expect(clusterCanvas).toHaveAttribute('data-zoom', '1.14'));
+    await waitFor(() => expect(clusterCanvas).toHaveAttribute('data-zoom', '1.00'));
     expect(screen.getByRole('button', { name: /自动旋转/ })).toBeDisabled();
   });
 

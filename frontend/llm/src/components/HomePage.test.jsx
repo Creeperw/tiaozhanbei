@@ -24,13 +24,15 @@ describe('HomePage', () => {
     expect(screen.getByText('循序精进')).toBeInTheDocument();
     expect(await screen.findByText('中医基础理论精要')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: '学习进度' })).toHaveAttribute('aria-valuenow', '65');
+    expect(screen.queryByRole('button', { name: '上传资料' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '开始学习' })).not.toBeInTheDocument();
 
     for (const label of ['继续学习', '待办任务', '智能问答', '资料检索', '知识图谱', '题目工作区', '专项练习', '错题巩固', '案例实训']) {
       expect(screen.getByRole('button', { name: new RegExp(label) })).toBeInTheDocument();
     }
   });
 
-  it('navigates smart Q&A, upload, and mistake reinforcement to their real modules', async () => {
+  it('navigates smart Q&A and mistake reinforcement to their real modules', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(response({}))));
     const onNavigate = vi.fn();
     render(<HomePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
@@ -38,9 +40,6 @@ describe('HomePage', () => {
     await screen.findByRole('button', { name: /智能问答/ });
     fireEvent.click(screen.getByRole('button', { name: /智能问答/ }));
     expect(onNavigate).toHaveBeenLastCalledWith({ page: 'assistant', params: {} });
-
-    fireEvent.click(screen.getByRole('button', { name: '上传资料' }));
-    expect(onNavigate).toHaveBeenLastCalledWith({ page: 'knowledge', params: { view: 'personal' } });
 
     fireEvent.click(screen.getByRole('button', { name: /错题巩固/ }));
     expect(onNavigate).toHaveBeenLastCalledWith({

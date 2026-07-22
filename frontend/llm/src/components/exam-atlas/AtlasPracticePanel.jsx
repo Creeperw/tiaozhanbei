@@ -1,4 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  BookOpenText,
+  ChevronRight,
+  CircleHelp,
+  FileText,
+  Lightbulb,
+  PenLine,
+  Send,
+} from 'lucide-react';
 import { loadPracticeQuestion, submitPracticeAnswer } from '../../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../../utils/api';
 import { Button, EmptyState, InlineError, Skeleton } from '../ui';
@@ -13,6 +22,30 @@ function optionProjection(option, index) {
   return { value: key, label: content ? `${key}. ${content}` : key };
 }
 
+function questionTypeLabel(questionType, mode) {
+  if (mode === 'case') return '案例简答';
+  if (multipleTypes.has(questionType)) return '多项选择';
+  if (questionType === 'true_false' || questionType === '判断题') return '判断题';
+  if (singleTypes.has(questionType)) return '单项选择';
+  return '简答题';
+}
+
+function buildGuidance({ isMultiple, isSingle, mode, kpName }) {
+  const steps = [
+    '先圈出题干中的限定条件，明确题目真正要求回答的对象。',
+    kpName
+      ? `围绕“${kpName}”回忆核心概念，再把概念与题干条件逐一对应。`
+      : '先回忆相关核心概念，再把概念与题干条件逐一对应。',
+  ];
+
+  if (isMultiple) steps.push('逐项判断每个选项，不要因为某一项正确就提前结束。');
+  else if (isSingle) steps.push('先排除与题干条件冲突的选项，再比较剩余选项。');
+  else if (mode === 'case') steps.push('按“关键信息—辨析依据—结论”三个层次组织回答。');
+  else steps.push('按“概念—依据—结论”分层表达，避免只罗列关键词。');
+
+  return steps;
+}
+
 export default function AtlasPracticePanel({
   knowledgePoint = null,
   scope = 'public',
@@ -23,6 +56,7 @@ export default function AtlasPracticePanel({
   const [answer, setAnswer] = useState('');
   const [selectedAnswers, setSelectedAnswers] = useState([]);
   const [result, setResult] = useState(null);
+  const [hintVisible, setHintVisible] = useState(false);
   const [loadingQuestion, setLoadingQuestion] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -42,6 +76,7 @@ export default function AtlasPracticePanel({
       setAnswer('');
       setSelectedAnswers([]);
       setResult(null);
+      setHintVisible(false);
       setSubmitting(false);
       setError('');
       setLoadingQuestion(true);
@@ -59,7 +94,7 @@ export default function AtlasPracticePanel({
     };
     load();
     return () => { cancelled = true; };
-  }, [generation, kpId, mode, scope]);
+  }, [generation, kpId, kpName, mode, scope]);
 
   const questionOptions = useMemo(() => {
     const options = Array.isArray(question?.options) ? question.options : [];
@@ -69,6 +104,9 @@ export default function AtlasPracticePanel({
   const isMultiple = multipleTypes.has(question?.question_type);
   const isSingle = singleTypes.has(question?.question_type);
   const submittedAnswer = isMultiple ? selectedAnswers.join(',') : answer.trim();
+  const typeLabel = questionTypeLabel(question?.question_type, mode);
+  const knowledgeLabels = kpName ? [kpName] : (Array.isArray(question?.kp_ids) ? question.kp_ids.slice(0, 3) : []);
+  const guidance = buildGuidance({ isMultiple, isSingle, mode, kpName });
 
   const toggleMultiple = (value) => {
     setSelectedAnswers((current) => (
@@ -110,80 +148,167 @@ export default function AtlasPracticePanel({
   }
 
   return (
-    <section className="mt-5" aria-labelledby="practice-question">
-      <div className="text-xs font-semibold text-emerald-700">
-        {question.source_scope === 'user' ? '我的题目' : '正式题库'}
-        {kpName ? ` · ${kpName}` : ''}
-        {' · '}{mode === 'case' ? '案例简答' : '客观题'}
-      </div>
-      <p id="practice-question" className="mt-2 text-sm font-medium leading-6 text-slate-950">
-        {question.stem}
-      </p>
-      <p className="mt-2 text-xs text-slate-500">{question.question_type}</p>
+    <section className="practice-question-shell" aria-labelledby="practice-question">
+      <div className="practice-question-grid">
+        <div className="practice-answer-workspace">
+          <header className="practice-section-heading">
+            <span className="practice-section-heading__icon" aria-hidden="true"><PenLine size={20} /></span>
+            <div>
+              <h3>题目内容</h3>
+              <p>认真阅读题目，完成本次训练</p>
+            </div>
+          </header>
 
-      {(isSingle || isMultiple) && questionOptions.length > 0 ? (
-        <fieldset className="mt-5 space-y-2" disabled={submitting || Boolean(result)}>
-          <legend className="mb-2 text-sm font-medium text-slate-700">你的答案</legend>
-          {questionOptions.map((option) => {
-            const checked = isMultiple ? selectedAnswers.includes(option.value) : answer === option.value;
-            return (
-              <label key={option.value} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800">
-                <input
-                  type={isMultiple ? 'checkbox' : 'radio'}
-                  name="practice-answer"
-                  checked={checked}
-                  onChange={() => (isMultiple ? toggleMultiple(option.value) : setAnswer(option.value))}
+          <article className="practice-question-card">
+            <div className="practice-question-meta">
+              <span>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</span>
+              <span>{typeLabel}</span>
+              <span>难度 {question.difficulty || '常规'}</span>
+            </div>
+            <p id="practice-question">{question.stem}</p>
+          </article>
+
+          {knowledgeLabels.length > 0 && (
+            <section className="practice-knowledge-block" aria-label="相关知识点">
+              <div className="practice-subheading"><BookOpenText size={17} aria-hidden="true" />相关知识点</div>
+              <div className="practice-knowledge-chips">
+                {knowledgeLabels.map((label) => <span key={label}>{label}</span>)}
+              </div>
+            </section>
+          )}
+
+          <button
+            type="button"
+            className="practice-hint-trigger"
+            aria-label="若暂时没有思路，点我查看提示"
+            aria-expanded={hintVisible}
+            aria-controls="practice-hint-panel"
+            onClick={() => setHintVisible((visible) => !visible)}
+          >
+            <CircleHelp size={21} aria-hidden="true" />
+            <span>
+              <strong>若暂时没有思路，点我查看提示</strong>
+              <small>提示只提供解题方向，不会直接显示答案</small>
+            </span>
+            <ChevronRight className={hintVisible ? 'is-expanded' : ''} size={19} aria-hidden="true" />
+          </button>
+
+          <section className="practice-answer-block" aria-labelledby="practice-answer-title">
+            <div className="practice-subheading" id="practice-answer-title"><FileText size={17} aria-hidden="true" />我的答案 <span>必填</span></div>
+            {(isSingle || isMultiple) && questionOptions.length > 0 ? (
+              <fieldset className="practice-option-list" disabled={submitting || Boolean(result)}>
+                <legend className="sr-only">你的答案</legend>
+                {questionOptions.map((option) => {
+                  const checked = isMultiple ? selectedAnswers.includes(option.value) : answer === option.value;
+                  return (
+                    <label key={option.value} className="practice-option">
+                      <input
+                        type={isMultiple ? 'checkbox' : 'radio'}
+                        name="practice-answer"
+                        checked={checked}
+                        onChange={() => (isMultiple ? toggleMultiple(option.value) : setAnswer(option.value))}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+            ) : (
+              <>
+                <label htmlFor="practice-answer" className="sr-only">你的答案</label>
+                <textarea
+                  id="practice-answer"
+                  value={answer}
+                  onChange={(event) => setAnswer(event.target.value)}
+                  className="practice-answer-input"
+                  placeholder="请在此输入你的答案，并尽量写出判断依据……"
+                  disabled={submitting || Boolean(result)}
                 />
-                <span>{option.label}</span>
-              </label>
-            );
-          })}
-        </fieldset>
-      ) : (
-        <label htmlFor="practice-answer" className="mt-5 block text-sm font-medium text-slate-700">
-          你的答案
-          <textarea
-            id="practice-answer"
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            className="mt-2 min-h-28 w-full rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-800 outline-none transition focus:border-emerald-400 focus:bg-white focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
-            disabled={submitting || Boolean(result)}
-          />
-        </label>
-      )}
+              </>
+            )}
+          </section>
 
-      {!result && (
-        <Button className="mt-4" onClick={submit} disabled={!submittedAnswer} loading={submitting}>
-          提交并批改
-        </Button>
-      )}
-      {error && question && <div className="mt-4"><InlineError message={error} /></div>}
-      {result && (
-        <div className={`mt-4 border p-4 text-sm ${result.grading?.is_correct ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'border-amber-200 bg-amber-50 text-amber-950'}`} role="status">
-          <div className="font-semibold">
-            {result.audit && result.audit.decision !== 'pass'
-              ? '等待审核，暂不写入学习状态'
-              : result.grading?.is_correct ? '回答正确' : '已记录为错题'}
-            {' · '}得分 {result.grading?.score ?? '待确认'}
-          </div>
-          <p className="mt-2 leading-6">{result.grading?.analysis || '批改已完成。'}</p>
-          {result.grading?.grading_source && (
-            <p className="mt-2 text-xs">批改来源：{result.grading.grading_source === 'expert_agent_model' ? 'Expert Agent 模型' : '规则降级结果'}</p>
+          {!result && (
+            <Button aria-label="提交并批改" className="practice-submit-button" onClick={submit} disabled={!submittedAnswer} loading={submitting}>
+              <Send size={17} aria-hidden="true" />提交训练任务
+            </Button>
           )}
-          {result.audit && (
-            <p className="mt-1 text-xs">Audit：{result.audit.decision} · {result.audit.reason || '无补充说明'}</p>
-          )}
-          {result.grading?.dimension_scores && Object.keys(result.grading.dimension_scores).length > 0 && (
-            <div className="mt-3 grid gap-1 text-xs">
-              {Object.entries(result.grading.dimension_scores).map(([label, value]) => (
-                <span key={label}>{label}：{typeof value === 'object' ? (value.score ?? JSON.stringify(value)) : value}</span>
-              ))}
+          {error && question && <InlineError message={error} />}
+          {result && (
+            <div className={`practice-grading-result ${result.grading?.is_correct ? 'is-correct' : 'is-incorrect'}`} role="status">
+              <div className="font-semibold">
+                {result.audit && result.audit.decision !== 'pass'
+                  ? '等待审核，暂不写入学习状态'
+                  : result.grading?.is_correct ? '回答正确' : '已记录为错题'}
+                {' · '}得分 {result.grading?.score ?? '待确认'}
+              </div>
+              <p>{result.grading?.analysis || '批改已完成。'}</p>
+              {result.grading?.grading_source && (
+                <small>批改来源：{result.grading.grading_source === 'expert_agent_model' ? 'Expert Agent 模型' : '规则降级结果'}</small>
+              )}
+              {result.audit && (
+                <small>Audit：{result.audit.decision} · {result.audit.reason || '无补充说明'}</small>
+              )}
+              {result.grading?.dimension_scores && Object.keys(result.grading.dimension_scores).length > 0 && (
+                <div className="practice-grading-dimensions">
+                  {Object.entries(result.grading.dimension_scores).map(([label, value]) => (
+                    <small key={label}>{label}：{typeof value === 'object' ? (value.score ?? JSON.stringify(value)) : value}</small>
+                  ))}
+                </div>
+              )}
+              <small>学习写回：{result.writeback?.status || '未返回'}</small>
+              <Button variant="secondary" onClick={nextQuestion}>下一题</Button>
             </div>
           )}
-          <p className="mt-2 text-xs">学习写回：{result.writeback?.status || '未返回'}</p>
-          <Button className="mt-4" variant="secondary" onClick={nextQuestion}>下一题</Button>
         </div>
-      )}
+
+        <aside
+          id="practice-hint-panel"
+          data-testid="practice-hint-panel"
+          data-visible={String(hintVisible)}
+          className="practice-hint-panel"
+          aria-live="polite"
+        >
+          <header className="practice-hint-panel__heading">
+            <span aria-hidden="true"><Lightbulb size={21} /></span>
+            <div>
+              <h3>答题提示</h3>
+              <p>需要时再展开，保留独立思考空间</p>
+            </div>
+          </header>
+
+          {!hintVisible ? (
+            <div className="practice-hint-locked">
+              <CircleHelp size={30} aria-hidden="true" />
+              <strong>提示尚未展开</strong>
+              <p>先尝试独立分析题干；遇到卡点时，点击左侧提示按钮。</p>
+            </div>
+          ) : (
+            <div className="practice-hint-content">
+              <section>
+                <h4>思路引导</h4>
+                <ol>
+                  {guidance.map((item, index) => (
+                    <li key={item}><span>{index + 1}</span><p>{item}</p></li>
+                  ))}
+                </ol>
+              </section>
+              <section className="practice-hint-note">
+                <h4>作答建议</h4>
+                <p>先写出你的判断，再补充一至两个关键依据。提交后系统才会展示批改反馈。</p>
+              </section>
+              <section className="practice-question-clues">
+                <h4>题目线索</h4>
+                <dl>
+                  <div><dt>题型</dt><dd>{typeLabel}</dd></div>
+                  <div><dt>难度</dt><dd>{question.difficulty || '常规'}</dd></div>
+                  <div><dt>来源</dt><dd>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</dd></div>
+                </dl>
+              </section>
+            </div>
+          )}
+        </aside>
+      </div>
     </section>
   );
 }

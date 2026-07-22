@@ -34,8 +34,8 @@ export default function QuestionTrainingPanel({
   if (!enabled) return <p className="mt-5 text-sm text-slate-600">题目训练暂未开放。</p>;
 
   return (
-    <div className="mt-5 space-y-5">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="题目训练模式">
+    <div className="question-training-panel">
+      <div className="question-training-mode-tabs" role="tablist" aria-label="题目训练模式">
         {modes.map(([key, label]) => (
           <button
             key={key}
@@ -43,7 +43,7 @@ export default function QuestionTrainingPanel({
             role="tab"
             aria-selected={mode === key}
             onClick={() => setMode(key)}
-            className={`rounded-xl border px-3 py-2 text-sm font-medium ${mode === key ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
+            className={mode === key ? 'is-active' : ''}
           >
             {label}
           </button>
@@ -51,10 +51,10 @@ export default function QuestionTrainingPanel({
       </div>
 
       {(mode === 'objective' || mode === 'case') && (
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs font-semibold text-slate-600">题目范围</span>
-            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1" role="group" aria-label="题目范围">
+        <div className="question-training-content">
+          <div className="question-training-toolbar">
+            <span>题目范围</span>
+            <div className="question-training-scope" role="group" aria-label="题目范围">
               {[
                 ['public', '正式题库'],
                 ['user', '我的题目'],
@@ -64,7 +64,7 @@ export default function QuestionTrainingPanel({
                   key={value}
                   type="button"
                   aria-pressed={practiceScope === value}
-                  className={`min-h-10 rounded-md px-3 text-xs font-semibold ${practiceScope === value ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600'}`}
+                  className={practiceScope === value ? 'is-active' : ''}
                   onClick={() => onPracticeScopeChange(value)}
                 >
                   {label}

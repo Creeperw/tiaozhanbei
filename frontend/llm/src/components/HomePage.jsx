@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CalendarCheck2, UploadCloud } from 'lucide-react';
+import { ArrowRight, CalendarCheck2 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import {
   EMPTY_HOME_PAYLOAD,
@@ -121,12 +121,6 @@ export default function HomePage({ onNavigate }) {
         <div className="home-portal__hero-actions">
           <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
             <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 · ${checkinStatus.streak || 0}天` : checkinLoading ? '签到中…' : '签到'}
-          </button>
-          <button type="button" className="home-portal__upload" onClick={() => onNavigate?.({ page: 'knowledge', params: { view: 'personal' } })}>
-            <UploadCloud aria-hidden="true" size={19} />上传资料
-          </button>
-          <button type="button" className="home-portal__start" onClick={() => navigate('focused-practice')}>
-            开始学习<ArrowRight aria-hidden="true" size={20} />
           </button>
         </div>
         <div className="home-portal__hero-copy">

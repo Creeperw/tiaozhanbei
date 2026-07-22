@@ -19,6 +19,7 @@
 - Add a content-density contract: every card exposes its normalized progress, cards in the first half use a compact one-line resource treatment, later cards use full resource tags, and the redundant action label is removed from layout flow.
 - Raise the responsive base height while reducing the total height range so all core tasks fit and 4–6 cards retain equal visual steps. Verify in the browser that every card has `scrollHeight <= clientHeight` and that resource blocks do not overlap task blocks.
 - Copy the six supplied PNG line drawings into `frontend/llm/public/learning-stage/`, add optional illustration metadata to the stage model, and render decorative `<img alt="" aria-hidden="true">` watermarks below the text layer. Use low-opacity multiply blending because the supplied files contain baked checkerboard backgrounds; give the duplicate classics/mastery artwork different object positions.
+- Replace the rainbow palette with the approved exact stage colors `#3F8F68`, `#347D70`, `#33777B`, `#3B6876`, `#3B586A`, and `#293D4C`. Keep those values as each stage's primary color and pair them with same-hue darker gradient endpoints for small-text contrast; reuse the palette in markers, legend, cards, and the flip overlay.
 
 ---
 
@@ -303,6 +304,7 @@ Start the existing frontend development server and verify:
 - 768px and 320px layouts become vertical without horizontal scrolling.
 - Keyboard Tab visits all six cards in order and Enter opens the path page.
 - The path page starts on classic routes, can switch to the personal route, and can return to stages.
+- Stage artwork remains visible before selection and is carried into both sides of the flip; transition copy wraps inside a bounded translucent panel without overflow.
 - A direct `view=workspace` intent still opens the requested training module.
 
 **Step 4: Inspect the final diff**
