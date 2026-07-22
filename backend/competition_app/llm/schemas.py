@@ -124,6 +124,16 @@ class LearningTaskModelOutput(StrictModelOutput):
         max_length=2_000,
         description="一个可直接执行的原子任务，写清学习对象、动作、顺序和允许使用的材料。",
     )
+    learning_chapter: str = Field(
+        default="",
+        max_length=500,
+        description="今日实际学习的教材章节或小节；必须来自已有短期计划与教材证据。",
+    )
+    focus_knowledge_points: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+        description="今日重点学习的1至5个知识点名称；只写名称，不生成系统ID。",
+    )
     estimated_minutes: int = Field(gt=0, description="完成任务的合理分钟数，不得超过已知可用时间。")
     expected_output: str = Field(
         min_length=1,
@@ -178,6 +188,16 @@ class ShortTermPlanningModelOutput(StrictModelOutput):
 
 class DailyTaskPlanningModelOutput(StrictModelOutput):
     daily_task_content: str = Field(min_length=1, max_length=6_000)
+    learning_chapter: str = Field(
+        default="",
+        max_length=500,
+        description="今日实际学习的教材章节或小节；必须来自已有短期计划与教材证据。",
+    )
+    focus_knowledge_points: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+        description="今日重点学习的1至5个知识点名称；只写名称，不生成系统ID。",
+    )
     estimated_minutes: int = Field(gt=0)
     expected_output: str = Field(min_length=1, max_length=1_000)
     completion_criteria: str = Field(min_length=1, max_length=1_000)
@@ -194,6 +214,8 @@ class ThreeLayerPlanningModelOutput(StrictModelOutput):
     long_term_plan_content: str = Field(min_length=1, max_length=12_000)
     short_term_plan_content: str = Field(min_length=1, max_length=12_000)
     daily_task_content: str = Field(min_length=1, max_length=6_000)
+    learning_chapter: str = Field(default="", max_length=500)
+    focus_knowledge_points: list[str] = Field(default_factory=list, max_length=5)
     estimated_minutes: int = Field(gt=0)
     expected_output: str = Field(min_length=1, max_length=1_000)
     completion_criteria: str = Field(min_length=1, max_length=1_000)

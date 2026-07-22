@@ -25,10 +25,13 @@ class AgentDataPermissionGateway:
         AgentDataCapability(agent="diagnosis_agent", domain="learning_monitoring", actions=["read"]),
         AgentDataCapability(agent="learning_plan_service", domain="learning_plan", actions=["read", "write"]),
         AgentDataCapability(
-            agent="diagnosis_agent",
+            agent="memory_agent",
             domain="learner_profile",
             actions=["read", "write"],
-            writable_fields=["learning_goal", "learning_background", "time_constraints"],
+            writable_fields=[
+                "display_name", "learner_group", "learning_goal",
+                "learning_background", "time_constraints",
+            ],
             requires_user_confirmation=True,
         ),
         AgentDataCapability(agent="review_scheduler", domain="review_queue", actions=["read", "write"]),

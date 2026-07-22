@@ -156,21 +156,24 @@ def _normalize(payload: Any, *, require_audit: bool = False) -> tuple[dict[str, 
             raise ValueError("malformed grading payload")
         raw_grading = {
             "score": legacy["score"],
-            "max_score": 100,
+            "max_score": legacy.get("max_score", 100),
             "is_correct": legacy["is_correct"],
             "error_types": [] if legacy["is_correct"] is True else [legacy["error_type"]],
             "error_reason": "" if legacy["is_correct"] is True else legacy["analysis"],
-            "confidence": 0.91,
+            "confidence": legacy.get("confidence", 0.91),
             "feedback": legacy["analysis"],
             "standard_answer": legacy["standard_answer"],
         }
+        for key in ("dimension_scores", "grading_source"):
+            if key in legacy:
+                raw_grading[key] = legacy[key]
     else:
         required = ("score", "max_score", "is_correct", "error_types", "error_reason", "confidence")
         if any(key not in payload for key in required):
             raise ValueError("malformed grading payload")
         raw_grading = {
             key: payload[key]
-            for key in (*required, "feedback", "mistake_record", "dimension_scores")
+            for key in (*required, "feedback", "mistake_record", "dimension_scores", "grading_source")
             if key in payload
         }
     if not isinstance(raw_grading["is_correct"], bool) or not isinstance(raw_grading["error_types"], list):
@@ -187,7 +190,7 @@ def _normalize(payload: Any, *, require_audit: bool = False) -> tuple[dict[str, 
         "error_reason": str(raw_grading["error_reason"]),
         "confidence": _number(raw_grading["confidence"], "confidence", minimum=0, maximum=1),
     }
-    for key in ("feedback", "mistake_record", "standard_answer", "dimension_scores"):
+    for key in ("feedback", "mistake_record", "standard_answer", "dimension_scores", "grading_source"):
         if key in raw_grading:
             grading[key] = raw_grading[key]
     if supplied_audit is None:

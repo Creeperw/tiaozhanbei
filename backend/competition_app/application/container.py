@@ -107,9 +107,12 @@ class ApplicationContainer:
             / "textbook_routes"
             / "tcm_textbook_routes.v1.json"
         )
+        database_enabled = bool(
+            settings.database_url or settings.use_sqlite or settings.mysql_password
+        )
         database_engine = (
             DatabaseBootstrap(settings).ensure_database()
-            if settings.mysql_password
+            if database_enabled
             else None
         )
         if database_engine is not None:
@@ -301,6 +304,11 @@ class ApplicationContainer:
                 ),
                 profile_update_writer=(
                     backend_handoff_runtime.update_learning_profile
+                    if backend_handoff_runtime is not None
+                    else None
+                ),
+                profile_memory_extractor=(
+                    backend_handoff_runtime.extract_and_update_learning_profile
                     if backend_handoff_runtime is not None
                     else None
                 ),

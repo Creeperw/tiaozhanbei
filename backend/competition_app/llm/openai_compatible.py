@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any, Callable
 
@@ -401,6 +402,7 @@ class OpenAICompatibleChatModel(ChatModel):
         self.last_request_payload: dict[str, Any] | None = None
         self.last_response_text: str | None = None
         self.last_reasoning_text: str | None = None
+        self.last_error_details: dict[str, Any] | None = None
 
     async def complete_json(
         self,
@@ -459,6 +461,7 @@ class OpenAICompatibleChatModel(ChatModel):
         self.last_request_payload = None
         self.last_response_text = None
         self.last_reasoning_text = None
+        self.last_error_details = None
         for attempt in range(2):
             if attempt:
                 messages.append(
@@ -477,6 +480,7 @@ class OpenAICompatibleChatModel(ChatModel):
         self,
         messages: list[dict[str, str]],
         on_delta: Callable[[str], None] | None = None,
+        _retry_count: int = 0,
     ) -> str:
         try:
             async with httpx.AsyncClient(
@@ -545,5 +549,42 @@ class OpenAICompatibleChatModel(ChatModel):
                 self.last_response_text = "".join(parts)
                 self.last_reasoning_text = "".join(reasoning_parts) or None
                 return self.last_response_text
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            self.last_error_details = {
+                "error_type": type(exc).__name__,
+                "status_code": status_code,
+                "retry_count": _retry_count,
+            }
+            max_retries = 3 if status_code == 429 else 1
+            if _retry_count < max_retries and (
+                status_code in {408, 409, 425, 429} or status_code >= 500
+            ):
+                retry_after = exc.response.headers.get("retry-after", "").strip()
+                try:
+                    provider_delay = float(retry_after)
+                except ValueError:
+                    provider_delay = 0.0
+                delay = (
+                    max(1.0, min(provider_delay, 15.0))
+                    if provider_delay > 0
+                    else min(2.0 * (2 ** _retry_count), 10.0)
+                    if status_code == 429
+                    else 0.5
+                )
+                await asyncio.sleep(delay)
+                return await self._request(
+                    messages,
+                    on_delta=on_delta,
+                    _retry_count=_retry_count + 1,
+                )
+            raise ModelResponseError(
+                f"Chat model request failed: HTTP {status_code}"
+            ) from exc
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+            self.last_error_details = {
+                "error_type": type(exc).__name__,
+                "status_code": None,
+                "retry_count": _retry_count,
+            }
             raise ModelResponseError(f"Chat model request failed: {type(exc).__name__}") from exc

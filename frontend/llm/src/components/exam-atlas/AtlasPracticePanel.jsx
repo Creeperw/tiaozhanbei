@@ -119,9 +119,7 @@ export default function AtlasPracticePanel({
       <p id="practice-question" className="mt-2 text-sm font-medium leading-6 text-slate-950">
         {question.stem}
       </p>
-      <p className="mt-2 text-xs text-slate-500">
-        难度 {question.difficulty} · {question.question_type}
-      </p>
+      <p className="mt-2 text-xs text-slate-500">{question.question_type}</p>
 
       {(isSingle || isMultiple) && questionOptions.length > 0 ? (
         <fieldset className="mt-5 space-y-2" disabled={submitting || Boolean(result)}>
@@ -162,8 +160,26 @@ export default function AtlasPracticePanel({
       {error && question && <div className="mt-4"><InlineError message={error} /></div>}
       {result && (
         <div className={`mt-4 border p-4 text-sm ${result.grading?.is_correct ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'border-amber-200 bg-amber-50 text-amber-950'}`} role="status">
-          <div className="font-semibold">{result.grading?.is_correct ? '回答正确' : '已记录为错题'} · 得分 {result.grading?.score ?? '待确认'}</div>
+          <div className="font-semibold">
+            {result.audit && result.audit.decision !== 'pass'
+              ? '等待审核，暂不写入学习状态'
+              : result.grading?.is_correct ? '回答正确' : '已记录为错题'}
+            {' · '}得分 {result.grading?.score ?? '待确认'}
+          </div>
           <p className="mt-2 leading-6">{result.grading?.analysis || '批改已完成。'}</p>
+          {result.grading?.grading_source && (
+            <p className="mt-2 text-xs">批改来源：{result.grading.grading_source === 'expert_agent_model' ? 'Expert Agent 模型' : '规则降级结果'}</p>
+          )}
+          {result.audit && (
+            <p className="mt-1 text-xs">Audit：{result.audit.decision} · {result.audit.reason || '无补充说明'}</p>
+          )}
+          {result.grading?.dimension_scores && Object.keys(result.grading.dimension_scores).length > 0 && (
+            <div className="mt-3 grid gap-1 text-xs">
+              {Object.entries(result.grading.dimension_scores).map(([label, value]) => (
+                <span key={label}>{label}：{typeof value === 'object' ? (value.score ?? JSON.stringify(value)) : value}</span>
+              ))}
+            </div>
+          )}
           <p className="mt-2 text-xs">学习写回：{result.writeback?.status || '未返回'}</p>
           <Button className="mt-4" variant="secondary" onClick={nextQuestion}>下一题</Button>
         </div>

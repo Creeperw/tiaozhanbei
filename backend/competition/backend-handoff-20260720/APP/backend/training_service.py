@@ -207,8 +207,7 @@ def grade_practice_submission(
     knowledge_points = [_text(item) for item in submission.get("knowledge_points", []) if _text(item)]
     knowledge_point_names = [_text(item) for item in submission.get("knowledge_point_names", []) if _text(item)]
     point_text = "、".join(knowledge_point_names) or "当前知识点"
-    expert_artifact = grade_submission(
-        learner_context=LearnerContextBrief(
+    learner_context = LearnerContextBrief(
             learner_id="practice-learner",
             learner_group=_text(profile.get("constitution"), "普通学习者"),
             goal=_text(profile.get("health_goals"), _first_focus(profile, memories)),
@@ -217,8 +216,8 @@ def grade_practice_submission(
             kp_ids=knowledge_points,
             confidence=0.88,
             profile=dict(profile),
-        ),
-        evidence_pack=EvidencePack(
+        )
+    evidence_pack = EvidencePack(
             source_scope="training_service",
             source_id=f"grading:{_text(submission.get('question_id'), 'manual-question')}",
             items=[
@@ -233,8 +232,8 @@ def grade_practice_submission(
             kp_ids=knowledge_points,
             resolved_kp_ids=knowledge_points,
             confidence=0.86,
-        ),
-        diagnosis_report=DiagnosisReport(
+        )
+    diagnosis_report = DiagnosisReport(
             diagnosis_id=f"grading:{_text(submission.get('question_id'), 'manual-question')}",
             stage_id="grading",
             stage_name="practice_grading",
@@ -243,18 +242,41 @@ def grade_practice_submission(
             source_id=_text(submission.get("question_id"), "manual-question"),
             kp_ids=knowledge_points,
             confidence=0.84,
-        ),
-        submission=submission,
-        profile=profile,
-        memories=memories,
-    )
+        )
+    try:
+        expert_artifact = grade_submission(
+            learner_context=learner_context,
+            evidence_pack=evidence_pack,
+            diagnosis_report=diagnosis_report,
+            submission=submission,
+            profile=profile,
+            memories=memories,
+        )
+    except Exception as exc:
+        fallback = _grade_submission_payload(
+            profile=profile, memories=memories, submission=submission
+        )
+        fallback["audit"] = {
+            "decision": "needs_human_review",
+            "reason": "专家智能体或审核智能体暂不可用，规则结果不得写回学习状态。",
+            "confidence": 0.0,
+            "audit_source": "fail_closed",
+        }
+        fallback["grading"]["grading_source"] = "rule_fallback"
+        fallback["agent_trace"] = [
+            {"agent": "planner_agent", "action": "识别为主观题批改", "status": "success"},
+            {"agent": "knowledge_base_agent", "action": f"对齐知识点：{point_text}", "status": "success"},
+            {"agent": "expert_agent", "action": "semantic_subjective_grading", "status": "failed", "reason": type(exc).__name__},
+            {"agent": "audit_agent", "action": "independent_grading_review", "status": "needs_human_review"},
+            {"agent": "memory_agent", "action": "等待审核通过后再沉淀错题", "status": "skipped"},
+        ]
+        return fallback
     payload = dict(expert_artifact.content)
     payload["agent_trace"] = [
-        {"agent": "planner_agent", "action": "识别为练习批改任务", "status": "success"},
+        {"agent": "planner_agent", "action": "识别为主观题批改", "status": "success"},
         {"agent": "knowledge_base_agent", "action": f"对齐知识点：{point_text}", "status": "success"},
-        {"agent": "expert_agent", "action": "通过 expert facade 完成批改与复盘产物", "status": "success"},
-        {"agent": "audit_agent", "action": "检查批改结果与教学边界", "status": "success"},
-        {"agent": "memory_agent", "action": "生成错题沉淀记录", "status": "success" if payload.get("mistake_record") else "skipped"},
+        *list(expert_artifact.agent_trace),
+        {"agent": "memory_agent", "action": "审核通过后生成错题沉淀记录", "status": "success" if payload.get("mistake_record") and payload.get("audit", {}).get("decision") == "pass" else "skipped"},
     ]
     return payload
 

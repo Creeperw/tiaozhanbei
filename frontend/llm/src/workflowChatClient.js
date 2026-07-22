@@ -17,7 +17,11 @@ export function runtimeEventToTrace(event) {
   const name = event?.event || '';
   if (name === 'run_started') return { type: 'planning_start', text: '正在理解你的需求' };
   if (name === 'run_resumed' || name === 'graph_resumed') return { type: 'refine_start', text: '已从检查点恢复' };
-  if (name === 'graph_compiled') return { type: 'planning_done', text: '执行路径已确定' };
+  if (name === 'graph_compiled') return {
+    type: 'planning_done',
+    text: '执行路径已确定',
+    plannedNodes: Array.isArray(event.nodes) ? event.nodes : [],
+  };
   if (name === 'audit_revision_started') return { type: 'feedback_regenerate', text: '审核后正在修订' };
   if (name === 'audit_revision_completed') return {
     type: 'feedback_done', approved: event.status === 'pass', text: '修订复核已完成',

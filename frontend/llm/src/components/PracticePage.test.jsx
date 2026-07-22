@@ -73,7 +73,7 @@ describe('PracticePage personal question scope', () => {
     expect(screen.getByTestId('atlas-practice-scope')).toHaveTextContent('all');
   });
 
-  it('provides task, result, and evidence views for the mobile workspace', async () => {
+  it('provides task and result views without the internal evidence inspector', async () => {
     render(<PracticePage />);
 
     const viewTabs = await screen.findByRole('tablist', { name: '移动端训练视图' });
@@ -84,9 +84,8 @@ describe('PracticePage personal question scope', () => {
     expect(within(viewTabs).getByRole('tab', { name: '结果' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByTestId('practice-result-panel')).toHaveAttribute('data-mobile-active', 'true');
 
-    fireEvent.click(within(viewTabs).getByRole('tab', { name: '证据' }));
-    expect(within(viewTabs).getByRole('tab', { name: '证据' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByTestId('practice-inspector')).toHaveAttribute('data-mobile-active', 'true');
+    expect(within(viewTabs).queryByRole('tab', { name: '证据' })).not.toBeInTheDocument();
+    expect(screen.queryByText('证据检查器')).not.toBeInTheDocument();
   });
 
   it('selects a requested enabled training module from a workspace deep link', async () => {

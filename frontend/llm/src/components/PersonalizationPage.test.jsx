@@ -22,7 +22,10 @@ function responseFor(url) {
   if (url.includes('/personalization/learning-trends')) return { series: [] };
   if (url.includes('/learning-context')) {
     return {
-      user_profile: { learning_background: '零基础' },
+      user_profile: {
+        learning_background: '零基础',
+        learning_goal: '中医执业医师资格考试',
+      },
       long_term_plan: { planning_route: { goal_name: '中医执业医师资格考试' } },
     };
   }
@@ -45,11 +48,11 @@ describe('PersonalizationPage single-task views', () => {
     expect(screen.queryByRole('heading', { name: '学习记忆数据库' })).not.toBeInTheDocument();
   });
 
-  it('shows the goal and background confirmed by the planning workflow', async () => {
+  it('shows the goal and background confirmed by the memory agent', async () => {
     render(<PersonalizationPage embedded view="profile" />);
 
-    expect(await screen.findByLabelText('学习目标')).toHaveValue('中医执业医师资格考试');
-    expect(screen.getByLabelText('学习基础（智能体已确认）')).toHaveValue('零基础');
+    expect(await screen.findByLabelText('学习目标（记忆智能体已确认）')).toHaveValue('中医执业医师资格考试');
+    expect(screen.getByLabelText('学习基础（记忆智能体已确认）')).toHaveValue('零基础');
   });
 
   it('renders the memory workspace without profile controls', () => {

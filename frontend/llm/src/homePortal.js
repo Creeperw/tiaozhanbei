@@ -3,6 +3,7 @@ export const EMPTY_HOME_PAYLOAD = {
   today_tasks: [],
   status_cards: [],
   announcements: [],
+  checkin_status: { checked_in_today: false, streak: 0, total_checkins: 0, calendar_days: [] },
 };
 
 const HOME_IMAGE_BASE = '/design-images/home';

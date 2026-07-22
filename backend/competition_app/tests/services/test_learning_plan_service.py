@@ -201,6 +201,18 @@ def test_service_persists_three_model_bodies_verbatim() -> None:
     assert result.learning_task.task_content == value.daily_task_content
 
 
+def test_service_persists_daily_chapter_and_focus_knowledge_points() -> None:
+    service = LearningPlanService()
+    value = proposal()
+    value.task_proposal.learning_chapter = "《方剂学》补益剂·补气"
+    value.task_proposal.focus_knowledge_points = ["四君子汤", "君臣佐使配伍"]
+
+    result = service.materialize("LEARNER_DAILY_SCOPE", value)
+
+    assert result.learning_task.learning_chapter == "《方剂学》补益剂·补气"
+    assert result.learning_task.focus_knowledge_points == ["四君子汤", "君臣佐使配伍"]
+
+
 def test_service_updates_only_target_layer_versions() -> None:
     service = LearningPlanService()
     first = service.materialize("LEARNER_LAYER_VERSION", proposal())

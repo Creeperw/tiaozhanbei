@@ -2,6 +2,7 @@ import importlib
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 class TrainingServicePhase4Tests(unittest.TestCase):
@@ -66,22 +67,70 @@ class TrainingServicePhase4Tests(unittest.TestCase):
         self.assertIn("感冒辨证", payload["grading"]["analysis"])
         self.assertNotIn("022758", payload["grading"]["analysis"])
 
-    def test_subjective_answer_uses_expert_agent_facade(self):
+    def test_subjective_answer_uses_model_expert_and_independent_audit(self):
         service = self._service()
-        payload = service.grade_practice_submission(
-            profile={},
-            memories=[],
-            submission={
-                "question_id": "q-short",
-                "question_type": "short_answer",
-                "stem": "简述风寒感冒治法",
-                "student_answer": "辛温解表",
-                "standard_answer": "辛温解表，宣肺散寒",
-                "knowledge_points": ["022758"],
-                "knowledge_point_names": ["风寒感冒"],
-            },
-        )
-        self.assertTrue(any(item["agent"] == "expert_agent" for item in payload["agent_trace"]))
+        expert_service = importlib.import_module("APP.backend.expert_agent_service")
+
+        class FakeClient:
+            def __init__(self, role):
+                self.role = role
+
+            def chat(self, *args, **kwargs):
+                if self.role == "executor":
+                    return json.dumps({
+                        "score": 72,
+                        "max_score": 100,
+                        "is_correct": False,
+                        "error_types": ["宣肺散寒要点遗漏"],
+                        "error_reason": "治法表述不完整",
+                        "feedback": "已答出辛温解表，但遗漏宣肺散寒。",
+                        "dimension_scores": {"治法方向": 50, "关键要点": 22},
+                        "confidence": 0.92,
+                    }, ensure_ascii=False)
+                return json.dumps({
+                    "decision": "pass",
+                    "reason": "评分符合参考答案与评分要点",
+                    "confidence": 0.9,
+                }, ensure_ascii=False)
+
+        with patch.object(expert_service, "build_llm_client", side_effect=lambda role: FakeClient(role)):
+            payload = service.grade_practice_submission(
+                profile={},
+                memories=[],
+                submission={
+                    "question_id": "q-short",
+                    "question_type": "short_answer",
+                    "stem": "简述风寒感冒治法",
+                    "student_answer": "辛温解表",
+                    "standard_answer": "辛温解表，宣肺散寒",
+                    "rubric": "治法方向50分，完整说明宣肺散寒50分",
+                    "knowledge_points": ["022758"],
+                    "knowledge_point_names": ["风寒感冒"],
+                },
+            )
+        self.assertEqual(payload["grading"]["grading_source"], "expert_agent_model")
+        self.assertEqual(payload["grading"]["score"], 72)
+        self.assertEqual(payload["audit"]["audit_source"], "audit_agent_model")
+        self.assertEqual(payload["audit"]["decision"], "pass")
+        self.assertTrue(any(item["agent"] == "expert_agent" and item["status"] == "success" for item in payload["agent_trace"]))
+
+    def test_subjective_model_failure_is_visible_and_withholds_audit(self):
+        service = self._service()
+        expert_service = importlib.import_module("APP.backend.expert_agent_service")
+        with patch.object(expert_service, "build_llm_client", side_effect=RuntimeError("offline")):
+            payload = service.grade_practice_submission(
+                profile={}, memories=[], submission={
+                    "question_id": "q-short-fallback",
+                    "question_type": "short_answer",
+                    "stem": "简述治法",
+                    "student_answer": "辛温解表",
+                    "standard_answer": "辛温解表，宣肺散寒",
+                    "knowledge_points": ["022758"],
+                },
+            )
+        self.assertEqual(payload["grading"]["grading_source"], "rule_fallback")
+        self.assertEqual(payload["audit"]["decision"], "needs_human_review")
+        self.assertTrue(any(item["agent"] == "expert_agent" and item["status"] == "failed" for item in payload["agent_trace"]))
 
     def test_builds_learning_plan_summary_with_daily_tasks_from_profile_and_mistakes(self):
         service = self._service()

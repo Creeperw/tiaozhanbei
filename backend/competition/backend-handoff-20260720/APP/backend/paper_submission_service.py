@@ -60,12 +60,13 @@ def _decode_options(value: str) -> list[Any]:
 
 def _timing(paper: PaperInstanceRecord) -> dict[str, Any]:
     duration = max(1, int(paper.duration_minutes or 60))
-    if paper.started_at is None and paper.status == "published":
+    paused = paper.paused_remaining_seconds is not None
+    if paper.started_at is None and paper.status == "published" and not paused:
         paper.started_at = utc_now()
         paper.expires_at = paper.started_at + timedelta(minutes=duration)
-    remaining = None
+    remaining = max(0, int(paper.paused_remaining_seconds)) if paused else None
     expired = False
-    if paper.expires_at is not None:
+    if not paused and paper.expires_at is not None:
         remaining = max(0, int((paper.expires_at - utc_now()).total_seconds()))
         expired = remaining == 0
     return {
@@ -74,7 +75,40 @@ def _timing(paper: PaperInstanceRecord) -> dict[str, Any]:
         "expires_at": paper.expires_at.isoformat() if paper.expires_at else None,
         "remaining_seconds": remaining,
         "expired": expired,
+        "paused": paused,
+        "paused_at": paper.paused_at.isoformat() if paper.paused_at else None,
     }
+
+
+def pause_paper_timer(db: Session, learner_id: int, paper_id: str) -> dict[str, Any]:
+    paper = _paper(db, learner_id, paper_id)
+    if paper.status != "published":
+        raise PaperSubmissionInvalid("paper timer can only be paused before submission")
+    timing = _timing(paper)
+    if timing["expired"]:
+        raise PaperSubmissionInvalid("paper timer has expired")
+    if not timing["paused"]:
+        paper.paused_remaining_seconds = max(0, int(timing["remaining_seconds"] or 0))
+        paper.paused_at = utc_now()
+        paper.expires_at = None
+        db.commit()
+    return get_owned_paper(db, learner_id, paper_id)
+
+
+def resume_paper_timer(db: Session, learner_id: int, paper_id: str) -> dict[str, Any]:
+    paper = _paper(db, learner_id, paper_id)
+    if paper.status != "published":
+        raise PaperSubmissionInvalid("paper timer can only be resumed before submission")
+    if paper.paused_remaining_seconds is not None:
+        remaining = max(0, int(paper.paused_remaining_seconds))
+        if remaining == 0:
+            raise PaperSubmissionInvalid("paper timer has expired")
+        now = utc_now()
+        paper.expires_at = now + timedelta(seconds=remaining)
+        paper.paused_remaining_seconds = None
+        paper.paused_at = None
+        db.commit()
+    return get_owned_paper(db, learner_id, paper_id)
 
 
 def get_owned_paper(db: Session, learner_id: int, paper_id: str) -> dict[str, Any]:

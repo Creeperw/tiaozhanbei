@@ -46,7 +46,7 @@ describe('KnowledgeCardLibrary', () => {
           knowledge_point: { title: '四君子汤', description: '益气健脾基础方。' },
           explanation: { content: JSON.stringify({ 知识讲解: '由人参、白术、茯苓、炙甘草组成。', 配套练习: [{ 题目: '组成是什么？' }] }) },
           textbook_slices: [{ chunk_uid: 'C1', retrieval_text: '主治脾胃气虚证。' }],
-          videos: [{ source_id: 'V1', title: '配伍讲解', url: 'https://example.test/video' }],
+          videos: [{ source_id: 'V1', title: '配伍讲解', url: 'https://www.bilibili.com/video/BV1test?p=2&t=72' }],
           questions: [{ question_id: 'Q1', question_type: '填空题', stem: '四君子汤由哪些药物组成？' }],
           coverage: { fallback_used: ['video'] },
         },
@@ -68,6 +68,7 @@ describe('KnowledgeCardLibrary', () => {
     expect(screen.getByRole('heading', { name: '教材切片 1' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: '视频资源 1' }));
     expect(screen.getByRole('heading', { name: '视频资源 1' })).toBeInTheDocument();
+    expect(screen.getByTitle('配伍讲解')).toHaveAttribute('src', expect.stringContaining('player.bilibili.com'));
     fireEvent.click(screen.getByRole('tab', { name: '配套题目 1' }));
     expect(screen.getByRole('heading', { name: '配套题目 1' })).toBeInTheDocument();
     expect(screen.getByText('含网络补充资源')).toBeInTheDocument();

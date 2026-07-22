@@ -8,7 +8,17 @@ from fastapi.testclient import TestClient
 from competition_app.api.app import create_app
 from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings
-from competition_app.integrations.backend_handoff import _model_environment
+from competition_app.integrations.backend_handoff import (
+    _model_environment,
+    _normalize_profile_memory_value,
+)
+
+
+def test_memory_agent_normalizes_legacy_instruction_shaped_learning_goal():
+    assert _normalize_profile_memory_value(
+        "learning_goal",
+        "请结合我的学习状态，重新给我制定一份长期规划。我要考取中医执业医师资格证。",
+    ) == "中医执业医师资格考试"
 
 
 class FakeBackendHandoffRuntime:
@@ -30,6 +40,7 @@ class FakeBackendHandoffRuntime:
 
         self.loaded_user_ids = []
         self.question_attempts = question_attempts or []
+        self.profile_updates = []
 
     async def startup(self) -> None:
         self._started = True
@@ -54,6 +65,26 @@ class FakeBackendHandoffRuntime:
             "system_data": {"task_completion_rate": {"value": 0.5}},
             "learning_trends": {"days": 7, "series": []},
             "question_attempt": self.question_attempts,
+        }
+
+    def update_learning_profile(self, external_user_id: str, updates: dict, execution_id=None) -> dict:
+        self.profile_updates.append((external_user_id, updates, execution_id))
+        return dict(updates)
+
+    def load_review_dashboard(self, external_user_id: str, *, history_limit: int = 100) -> dict:
+        return {
+            "schema_version": "1.0",
+            "learner_id": external_user_id,
+            "mastery": [{
+                "kp_id": "KP_FJ_001", "kp_name": "四君子汤",
+                "mastery_score": 82.0, "attempt_count": 2,
+            }],
+            "mastery_history": [{
+                "history_id": "H_1", "kp_id": "KP_FJ_001",
+                "kp_name": "四君子汤", "mastery_score": 82.0,
+            }],
+            "review_states": [],
+            "review_tasks": [],
         }
 
 
@@ -223,3 +254,28 @@ def test_learning_context_projects_completed_questions_into_review_queue_once(tm
 
     assert first["review_queue"]["entries"][0]["memory_unit"]["source_attempt_id"] == "SERVER_QUESTION_ATTEMPT_1"
     assert replay["review_queue"]["entries"][0]["memory_unit"]["version"] == version
+
+
+def test_review_dashboard_combines_queue_mastery_and_history_for_current_user(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    runtime = FakeBackendHandoffRuntime()
+    container.backend_handoff_runtime = runtime
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        registered = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "review-dashboard-owner",
+                "display_name": "复习看板同学",
+                "password": "correct-horse-2026",
+            },
+        )
+        user_id = registered.json()["user"]["user_id"]
+        response = client.get("/api/v1/review-dashboard")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["learner_id"] == user_id
+    assert payload["mastery"][0]["kp_name"] == "四君子汤"
+    assert payload["summary"]["average_mastery"] == 82.0
+    assert payload["summary"]["history_count"] == 1

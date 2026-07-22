@@ -85,6 +85,35 @@ class SystemDataServiceTests(unittest.TestCase):
         self.assertEqual(time_data["focus_time_period"]["value"], "00:00-00:59")
         self.assertEqual(time_data["login_frequency"]["window_end"], "2026-07-16T09:00:00+08:00")
 
+    def test_checkin_contributes_to_active_login_days_without_double_counting(self):
+        now = datetime(2026, 7, 16, 1, 0)
+        self.db.add_all((
+            database.LearningActivityRecord(
+                user_id=1,
+                activity_type="login",
+                completion_status="completed",
+                created_at=datetime(2026, 7, 15, 2, 0),
+            ),
+            database.LearningActivityRecord(
+                user_id=1,
+                activity_type="daily_checkin",
+                completion_status="completed",
+                created_at=datetime(2026, 7, 15, 3, 0),
+            ),
+            database.LearningActivityRecord(
+                user_id=1,
+                activity_type="daily_checkin",
+                completion_status="completed",
+                created_at=datetime(2026, 7, 14, 3, 0),
+            ),
+        ))
+        self.db.commit()
+
+        snapshot = rebuild_system_data(self.db, user_id=1, now=now)
+        time_data = json.loads(snapshot.time_data_json)
+
+        self.assertEqual(time_data["login_frequency"]["value"], 2)
+
     def test_builds_beijing_daily_learning_trends_for_selected_window(self):
         from APP.backend.system_data_service import build_learning_trends
 

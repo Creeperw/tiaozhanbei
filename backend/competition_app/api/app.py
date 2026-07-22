@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import asyncio
 import json
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from urllib.parse import quote
@@ -402,6 +403,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         response = JSONResponse(status_code=201, content=result.model_dump(mode="json"))
         set_session_cookie(response, raw_token, result.expires_at)
+        if backend_handoff is not None:
+            try:
+                await asyncio.to_thread(backend_handoff.record_login_activity, result.user.user_id)
+            except Exception:
+                pass
         return response
 
     @app.post("/api/v1/auth/login")
@@ -412,6 +418,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=401, detail=str(exc)) from exc
         response = JSONResponse(content=result.model_dump(mode="json"))
         set_session_cookie(response, raw_token, result.expires_at)
+        if backend_handoff is not None:
+            try:
+                await asyncio.to_thread(backend_handoff.record_login_activity, result.user.user_id)
+            except Exception:
+                pass
         return response
 
     @app.post("/api/v1/auth/logout")
@@ -469,15 +480,29 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         user = current_user(request)
         repository = container.review_card_use_case.conversation_repository
         rows = repository.get_messages(session_id, user.user_id)
-        return [
-            {
+        messages: list[dict] = []
+        for row in rows:
+            message = {
                 "id": row.get("message_id"),
                 "role": row.get("role"),
                 "content": row.get("content"),
                 "timestamp": row.get("created_at"),
             }
-            for row in rows
-        ]
+            if isinstance(row.get("actions"), list):
+                message["actions"] = row["actions"]
+            elif str(row.get("content") or "").startswith(
+                "试卷已经完成组卷并通过审核。试卷正文已保存到学习工坊"
+            ):
+                # Messages saved before action metadata was introduced cannot recover
+                # their exact paper id, but they should still offer a useful route.
+                message["actions"] = [{
+                    "action_type": "navigate",
+                    "label": "前往试卷列表",
+                    "destination": "workshop.paper",
+                    "params": {},
+                }]
+            messages.append(message)
+        return messages
 
     @app.patch("/api/v1/conversations/{session_id}")
     async def rename_conversation(
@@ -692,6 +717,25 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             if plans is not None and plans.long_term_plan is not None
             else None
         )
+        user_profile = behavior.get("user_profile") or {}
+        if (
+            backend_handoff is not None
+            and long_term_payload
+            and not str(user_profile.get("learning_goal") or "").strip()
+        ):
+            planning_route = long_term_payload.get("planning_route") or {}
+            legacy_goal = str(planning_route.get("goal_name") or "").strip()
+            if legacy_goal:
+                migrated_profile = await asyncio.to_thread(
+                    backend_handoff.update_learning_profile,
+                    user.user_id,
+                    {"learning_goal": legacy_goal},
+                    "legacy-plan-profile-memory-migration",
+                )
+                behavior["user_profile"] = {
+                    **user_profile,
+                    **migrated_profile,
+                }
         profile_readiness = ProfileReadinessService().evaluate(
             {
                 "user_profile": behavior.get("user_profile") or {},
@@ -1107,6 +1151,32 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    @app.post("/api/v1/workshop/papers/{paper_id}/timer/pause")
+    async def pause_workshop_paper_timer(paper_id: str, request: Request) -> dict:
+        user = current_user(request)
+        try:
+            return await asyncio.to_thread(
+                require_workshop_runtime().set_paper_timer_paused,
+                user.user_id,
+                paper_id,
+                paused=True,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/workshop/papers/{paper_id}/timer/resume")
+    async def resume_workshop_paper_timer(paper_id: str, request: Request) -> dict:
+        user = current_user(request)
+        try:
+            return await asyncio.to_thread(
+                require_workshop_runtime().set_paper_timer_paused,
+                user.user_id,
+                paper_id,
+                paused=False,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     @app.post("/api/v1/workshop/papers/{paper_id}/submit")
     async def submit_workshop_paper(
         paper_id: str, payload: WorkshopPaperSubmitRequest, request: Request
@@ -1145,18 +1215,106 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             user.user_id
         )
         today_tasks: list[dict] = []
+        current_learning_task: dict | None = None
         if plans is not None and plans.learning_task is not None:
             task = plans.learning_task
             if task.status != "completed":
-                today_tasks.append(
-                    {
-                        "task_id": task.task_id,
-                        "title": task.task_content,
-                        "duration": f"{task.estimated_minutes} 分钟",
-                        "status": task.status,
-                        "source": "daily_task",
-                    }
-                )
+                resolved_points: list[dict] = []
+                seen_kp_ids: set[str] = set()
+                task_chapter_text = str(task.learning_chapter or "").strip()
+                normalized_task_chapter = re.sub(r"[《》\s]", "", task_chapter_text)
+                if container.knowledge_backend is not None:
+                    queries = list(task.focus_knowledge_points) or [task.task_content]
+                    for query in queries[:5]:
+                        try:
+                            matches = container.knowledge_backend.map.resolve_topic(
+                                str(query), limit=10
+                            )
+                        except Exception:
+                            matches = []
+                        def contextual_rank(match: dict) -> tuple[int, int, int, float]:
+                            kp = dict(match.get("kp") or {})
+                            book = re.sub(r"[《》\s]", "", str(kp.get("kp_lv1") or ""))
+                            chapter = re.sub(
+                                r"[《》\s]|第[一二三四五六七八九十百0-9]+[章节篇]",
+                                "",
+                                str(kp.get("kp_lv2") or ""),
+                            )
+                            name = re.sub(r"\s", "", str(match.get("name") or ""))
+                            normalized_query = re.sub(r"\s", "", str(query))
+                            return (
+                                int(bool(book and book in normalized_task_chapter)),
+                                int(bool(chapter and chapter in normalized_task_chapter)),
+                                int(name == normalized_query),
+                                float(match.get("score") or 0),
+                            )
+
+                        ordered_matches = sorted(matches, key=contextual_rank, reverse=True)
+                        selected_matches = ordered_matches[:1] if task.focus_knowledge_points else ordered_matches[:3]
+                        for match in selected_matches:
+                            kp_id = str(match.get("kp_id") or "").strip()
+                            if not kp_id or kp_id in seen_kp_ids:
+                                continue
+                            seen_kp_ids.add(kp_id)
+                            kp = dict(match.get("kp") or {})
+                            resolved_points.append(
+                                {
+                                    "kp_id": kp_id,
+                                    "title": str(match.get("name") or kp_id),
+                                    "book": str(kp.get("kp_lv1") or ""),
+                                    "chapter": str(kp.get("kp_lv2") or ""),
+                                    "action": {
+                                        "action_type": "navigate",
+                                        "label": "学习知识卡",
+                                        "destination": "workshop.knowledge_card",
+                                        "params": {"kp_id": kp_id},
+                                    },
+                                }
+                            )
+                chapter_match = re.match(r"^《([^》]+)》\s*(.*)$", task_chapter_text)
+                if chapter_match:
+                    resolved_book = chapter_match.group(1).strip()
+                    resolved_chapter = chapter_match.group(2).strip()
+                else:
+                    resolved_book = ""
+                    resolved_chapter = task_chapter_text
+                if not resolved_chapter:
+                    resolved_chapter = next(
+                        (item["chapter"] for item in resolved_points if item["chapter"]), ""
+                    )
+                if not resolved_book:
+                    resolved_book = next(
+                        (item["book"] for item in resolved_points if item["book"]), ""
+                    )
+                task_projection = {
+                    "task_id": task.task_id,
+                    "title": task.task_content,
+                    "description": task.completion_criteria,
+                    "duration": f"{task.estimated_minutes} 分钟",
+                    "estimated_minutes": task.estimated_minutes,
+                    "expected_output": task.expected_output,
+                    "completion_criteria": task.completion_criteria,
+                    "status": task.status,
+                    "source": "daily_task",
+                    "learning_chapter": {
+                        "book": resolved_book,
+                        "title": resolved_chapter,
+                        "source": (
+                            "learning_task"
+                            if task_chapter_text
+                            else "knowledge_repository"
+                            if resolved_chapter and resolved_points
+                            else "unresolved"
+                        ),
+                    },
+                    "focus_knowledge_points": (
+                        [item["title"] for item in resolved_points]
+                        or list(task.focus_knowledge_points)
+                    ),
+                    "knowledge_cards": resolved_points,
+                }
+                today_tasks.append(task_projection)
+                current_learning_task = task_projection
         for entry in queue.entries:
             if entry.task is None:
                 continue
@@ -1169,6 +1327,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "source": "review_queue",
                 }
             )
+        checkin_status = {"checked_in_today": False, "streak": 0, "total_checkins": 0, "calendar_days": []}
+        if backend_handoff is not None:
+            try:
+                checkin_status = await asyncio.to_thread(
+                    backend_handoff.get_checkin_status, user.user_id, days=7
+                )
+            except Exception:
+                pass
         learning_profile = behavior.get("learning_profile") or {}
         accuracy = learning_profile.get("question_accuracy", 0)
         completion = (
@@ -1179,13 +1345,29 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return {
             "continue_learning": sessions[:5],
             "today_tasks": today_tasks,
+            "current_learning_task": current_learning_task,
             "status_cards": [
                 {"key": "accuracy", "value": f"{round(float(accuracy or 0) * 100)}%"},
                 {"key": "completion", "value": f"{round(float(completion or 0) * 100)}%"},
             ],
             "announcements": [],
             "review_queue": queue.model_dump(mode="json"),
+            "checkin_status": checkin_status,
         }
+
+    @app.get("/api/v1/checkin")
+    async def get_daily_checkin(request: Request) -> dict:
+        user = current_user(request)
+        if backend_handoff is None:
+            return {"checked_in_today": False, "streak": 0, "total_checkins": 0, "calendar_days": []}
+        return await asyncio.to_thread(backend_handoff.get_checkin_status, user.user_id, days=7)
+
+    @app.post("/api/v1/checkin")
+    async def post_daily_checkin(request: Request) -> dict:
+        user = current_user(request)
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学习行为存储暂未启用")
+        return await asyncio.to_thread(backend_handoff.record_daily_checkin, user.user_id)
 
     @app.post("/api/v1/learning-tasks/current/complete")
     async def complete_current_learning_task(request: Request) -> dict:
@@ -1526,6 +1708,57 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 attempts=behavior.get("question_attempt", []),
             )
         return container.review_service.get_queue(user.user_id, limit=limit)
+
+    @app.get("/api/v1/review-dashboard")
+    async def get_review_dashboard(
+        request: Request,
+        limit: int = Query(default=50, ge=1, le=200),
+        history_limit: int = Query(default=100, ge=1, le=500),
+    ) -> dict:
+        """Current-user review queue, KP mastery and review history."""
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        details: dict[str, Any] = {
+            "schema_version": "1.0",
+            "learner_id": user.user_id,
+            "mastery": [],
+            "mastery_history": [],
+            "review_states": [],
+            "review_tasks": [],
+        }
+        if backend_handoff is not None:
+            behavior = await asyncio.to_thread(
+                backend_handoff.load_learning_context, user.user_id
+            )
+            container.review_service.ingest_question_attempts(
+                learner_id=user.user_id,
+                attempts=behavior.get("question_attempt", []),
+            )
+            details = await asyncio.to_thread(
+                backend_handoff.load_review_dashboard,
+                user.user_id,
+                history_limit=history_limit,
+            )
+        queue = container.review_service.get_queue(user.user_id, limit=limit)
+        mastery = list(details.get("mastery") or [])
+        scores = [
+            float(item["mastery_score"])
+            for item in mastery
+            if isinstance(item, dict) and isinstance(item.get("mastery_score"), (int, float))
+        ]
+        return {
+            **details,
+            "queue": queue.model_dump(mode="json"),
+            "summary": {
+                "knowledge_point_count": len(mastery),
+                "average_mastery": round(sum(scores) / len(scores), 2) if scores else None,
+                "due_count": queue.due_count,
+                "active_task_count": queue.active_task_count,
+                "history_count": len(details.get("mastery_history") or []),
+            },
+        }
 
     @app.post("/api/v1/review-tasks/{review_task_id}/attempts")
     async def submit_review_attempt(

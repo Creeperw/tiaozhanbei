@@ -7,6 +7,7 @@ import {
   emptyReport,
   emptyTrainingTaskResult,
   emptyTrainingWorkspace,
+  generateWorkshopPaperWithAgents,
   isCaseSessionPayloadValid,
   isCaseTypesPayloadValid,
   loadCaseSession,
@@ -15,6 +16,7 @@ import {
   loadPapers,
   loadPracticeQuestion,
   loadMistakes,
+  loadReviewDashboard,
   loadVariationSources,
   requestCaseHelp,
   savePaperAnswers,
@@ -33,6 +35,59 @@ import {
   loadTrainingWorkspaceTask,
   submitTrainingWorkspaceTask,
 } from './pageDataLoaders.js';
+
+test('agent paper generator posts an exact paper request and returns the published paper id', async () => {
+  let received;
+  const result = await generateWorkshopPaperWithAgents({
+    fetcher: async (request) => {
+      received = request;
+      const data = {
+        status: 'success',
+        task_type: 'paper_generation',
+        ui_actions: [{ destination: 'workshop.paper', params: { paper_id: 'PAPER_AGENT_1' } }],
+      };
+      assert.equal(request.validator(data), true);
+      return { data, source: request.paths[0] };
+    },
+    topic: '四君子汤',
+    distribution: { single_choice: 2, fill_blank: 1, short_answer: 0 },
+  });
+
+  assert.deepEqual(received.paths, ['/v1/review-cards']);
+  const payload = JSON.parse(received.options.body);
+  assert.match(payload.user_request, /共3题/);
+  assert.match(payload.user_request, /单选题2题、填空题1题/);
+  assert.deepEqual(payload.exam_constraints.question_type_distribution, {
+    single_choice: 2,
+    fill_blank: 1,
+  });
+  assert.equal(result.paperId, 'PAPER_AGENT_1');
+  assert.equal(result.error, '');
+});
+
+test('review dashboard loader uses the stable current-user endpoint', async () => {
+  let received;
+  const payload = {
+    schema_version: '1.0',
+    summary: { knowledge_point_count: 1, average_mastery: 76, due_count: 1, history_count: 2 },
+    queue: { entries: [], due_count: 1 },
+    mastery: [{ kp_id: 'KP_1', kp_name: '四君子汤', mastery_score: 76 }],
+    mastery_history: [],
+    review_states: [],
+    review_tasks: [],
+  };
+  const result = await loadReviewDashboard({
+    fetcher: async (request) => {
+      received = request;
+      assert.equal(request.validator(payload), true);
+      return { data: payload, source: request.paths[0] };
+    },
+  });
+
+  assert.deepEqual(received.paths, ['/v1/review-dashboard?limit=50&history_limit=100']);
+  assert.equal(result.dashboard.mastery[0].kp_name, '四君子汤');
+  assert.equal(result.error, '');
+});
 
 function makeJsonResponse(status, body) {
   return {
@@ -235,6 +290,14 @@ test('loadPlanningData merges persisted long and short plan narratives', async (
               stages: [{ stage: 1, book: ['《中医学基础》'], goal: '建立辨证基础。' }],
             },
             short_term_plan: { content: '【阶段安排】本周学习感冒辨证。' },
+            learning_task: {
+              task_id: 'TASK_TODAY',
+              task_content: '完成感冒风寒证与风热证辨析练习。',
+              estimated_minutes: 35,
+              expected_output: '一份辨析记录',
+              completion_criteria: '正确率达到 80%',
+              status: 'pending',
+            },
           },
           source: paths[0],
         };
@@ -254,6 +317,15 @@ test('loadPlanningData merges persisted long and short plan narratives', async (
     { stage: 1, book: ['《中医学基础》'], goal: '建立辨证基础。' },
   ]);
   assert.equal(result.plan.short_term_plan_content, '【阶段安排】本周学习感冒辨证。');
+  assert.deepEqual(result.plan.daily_tasks, [{
+    key: 'TASK_TODAY',
+    title: '完成感冒风寒证与风热证辨析练习。',
+    reason: '验收标准：正确率达到 80%',
+    duration_min: 35,
+    expected_output: '一份辨析记录',
+    status: 'pending',
+    source: 'learning_task',
+  }]);
 });
 
 test('loadReportsData returns empty report and error when all sources fail', async () => {

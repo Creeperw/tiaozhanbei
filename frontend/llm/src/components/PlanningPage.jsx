@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, CalendarCheck, Clock, Sparkles } from 'lucide-react';
+import { BookOpen, Clock, Sparkles } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import { emptyPlan, loadPlanningData } from '../pageDataLoaders.js';
 
@@ -81,23 +81,7 @@ export default function PlanningPage() {
         </section>
       )}
 
-      <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">
-          <div className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-500">
-            <CalendarCheck size={16} />
-            本周计划卡
-          </div>
-          <h3 className="text-lg font-semibold text-slate-950">{plan.weekly_plan.focus || '待生成本周重点'}</h3>
-          <p className="mt-3 text-sm leading-6 text-slate-700">{plan.weekly_plan.acceptance || '完成练习与复盘后，将生成更明确的验收标准。'}</p>
-          {plan.weekly_plan.evidence?.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {plan.weekly_plan.evidence.map((item) => (
-                <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">{item}</div>
-              ))}
-            </div>
-          )}
-        </div>
-
+      <section>
         <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">
           <div className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-500">
             <BookOpen size={16} />
@@ -118,7 +102,7 @@ export default function PlanningPage() {
             ))}
             {plan.daily_tasks.length === 0 && (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                {loading ? '正在加载任务卡…' : '暂无任务卡，完成一次练习批改后会自动增强规划。'}
+                {loading ? '正在加载今日任务…' : '尚未制定今日任务，请先完成短期计划，再让智能助教安排今天的任务。'}
               </div>
             )}
           </div>

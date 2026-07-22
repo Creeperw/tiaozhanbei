@@ -74,6 +74,8 @@ class PaperTiming(BaseModel):
     expires_at: datetime | None = None
     remaining_seconds: int | None = Field(default=None, ge=0)
     expired: bool = False
+    paused: bool = False
+    paused_at: datetime | None = None
 
 
 class UiAction(BaseModel):

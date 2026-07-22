@@ -21,6 +21,14 @@ describe('workflow chat event adapter', () => {
     expect(runtimeEventToTrace({ event: 'run_completed' })).toEqual({
       type: 'workflow_done', text: '处理完成',
     });
+    expect(runtimeEventToTrace({
+      event: 'graph_compiled',
+      nodes: [{ step_id: 'audit', agent: 'audit_agent' }],
+    })).toEqual({
+      type: 'planning_done',
+      text: '执行路径已确定',
+      plannedNodes: [{ step_id: 'audit', agent: 'audit_agent' }],
+    });
   });
 
   it('consumes the main LangGraph SSE contract and keeps conversation/run ids separate', async () => {

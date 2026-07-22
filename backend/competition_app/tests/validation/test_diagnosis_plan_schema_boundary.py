@@ -46,6 +46,8 @@ def test_three_layer_model_boundary_is_minimal_and_has_independent_content() -> 
         "long_term_plan_content",
         "short_term_plan_content",
         "daily_task_content",
+        "learning_chapter",
+        "focus_knowledge_points",
         "estimated_minutes",
         "expected_output",
         "completion_criteria",

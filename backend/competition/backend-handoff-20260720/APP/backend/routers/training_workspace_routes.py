@@ -38,7 +38,7 @@ from APP.backend.mistake_context_service import (
     mistake_context_required,
     record_mistake_context,
 )
-from APP.backend.paper_submission_service import PaperSubmissionInvalid, PaperSubmissionNotFound, get_owned_paper, save_paper_answers, submit_paper
+from APP.backend.paper_submission_service import PaperSubmissionInvalid, PaperSubmissionNotFound, get_owned_paper, pause_paper_timer, resume_paper_timer, save_paper_answers, submit_paper
 from APP.backend.system_data_service import system_data_payload
 from APP.backend.training_workspace_service import (
     TRAINING_TASK_MAX_JSON_BYTES,
@@ -446,6 +446,34 @@ def save_paper_answer_draft(
 ):
     try:
         return save_paper_answers(db, current_user.id, paper_id, request.answers)
+    except PaperSubmissionNotFound as exc:
+        raise HTTPException(status_code=404, detail="Paper was not found") from exc
+    except PaperSubmissionInvalid as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/papers/{paper_id}/timer/pause")
+def pause_paper(
+    paper_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return pause_paper_timer(db, current_user.id, paper_id)
+    except PaperSubmissionNotFound as exc:
+        raise HTTPException(status_code=404, detail="Paper was not found") from exc
+    except PaperSubmissionInvalid as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/papers/{paper_id}/timer/resume")
+def resume_paper(
+    paper_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return resume_paper_timer(db, current_user.id, paper_id)
     except PaperSubmissionNotFound as exc:
         raise HTTPException(status_code=404, detail="Paper was not found") from exc
     except PaperSubmissionInvalid as exc:
