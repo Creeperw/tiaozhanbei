@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
   Circle,
@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import { clampSemanticScale } from './learningTreeModel';
 
-const ORBIT_WIDTH = 960;
-const ORBIT_HEIGHT = 600;
+const ORBIT_WIDTH = 1000;
+const ORBIT_HEIGHT = 760;
+const ORBIT_ASPECT_RATIO = ORBIT_WIDTH / ORBIT_HEIGHT;
+const TARGET_RENDERED_ORBIT_RATIO = 1.35;
 
 const statusMeta = {
   completed: { label: '已完成', Icon: CheckCircle2, tone: 'completed' },
@@ -68,17 +70,22 @@ function orderLearningNodes(nodes, edges) {
   return ordered;
 }
 
-function getOrbitMetrics(nodeCount) {
-  const compact = nodeCount >= 9;
+function getOrbitMetrics(nodeCount, stageAspectRatio) {
+  const compact = nodeCount >= 8;
+  const radiusY = compact ? 276 : nodeCount <= 4 ? 254 : 278;
+  const desiredRadiusX = radiusY
+    * TARGET_RENDERED_ORBIT_RATIO
+    * ORBIT_ASPECT_RATIO
+    / Math.max(1, stageAspectRatio);
   return {
     width: ORBIT_WIDTH,
     height: ORBIT_HEIGHT,
     centerX: ORBIT_WIDTH / 2,
-    centerY: ORBIT_HEIGHT / 2 + 10,
-    radiusX: compact ? 330 : nodeCount <= 4 ? 246 : 286,
-    radiusY: compact ? 202 : nodeCount <= 4 ? 174 : 196,
-    nodeWidth: compact ? 136 : nodeCount >= 7 ? 150 : 168,
-    nodeHeight: compact ? 70 : 78,
+    centerY: ORBIT_HEIGHT / 2 + 4,
+    radiusX: Math.max(168, Math.min(compact ? 286 : 320, desiredRadiusX)),
+    radiusY,
+    nodeWidth: compact ? 148 : nodeCount >= 7 ? 164 : 180,
+    nodeHeight: compact ? 70 : 82,
   };
 }
 
@@ -132,8 +139,13 @@ export default function LearningPathOverview({
   onClearSelection,
   directDrill = false,
 }) {
+  const stageRef = useRef(null);
+  const [stageAspectRatio, setStageAspectRatio] = useState(2);
   const orderedNodes = useMemo(() => orderLearningNodes(nodes, edges), [edges, nodes]);
-  const metrics = useMemo(() => getOrbitMetrics(orderedNodes.length), [orderedNodes.length]);
+  const metrics = useMemo(
+    () => getOrbitMetrics(orderedNodes.length, stageAspectRatio),
+    [orderedNodes.length, stageAspectRatio],
+  );
   const positions = useMemo(() => Object.fromEntries(
     orderedNodes.map((node, index) => [nodeId(node), getOrbitPosition(index, orderedNodes.length, metrics)]),
   ), [metrics, orderedNodes]);
@@ -146,6 +158,31 @@ export default function LearningPathOverview({
   const currentNode = orderedNodes[currentIndex];
   const displayScale = clampSemanticScale(1);
 
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return undefined;
+
+    const updateAspectRatio = () => {
+      const { width, height } = stage.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        setStageAspectRatio((current) => {
+          const next = width / height;
+          return Math.abs(current - next) > 0.01 ? next : current;
+        });
+      }
+    };
+
+    updateAspectRatio();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateAspectRatio);
+      return () => window.removeEventListener('resize', updateAspectRatio);
+    }
+
+    const observer = new ResizeObserver(updateAspectRatio);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
       className="learning-path-overview learning-path-orbit"
@@ -157,7 +194,7 @@ export default function LearningPathOverview({
     >
       <header className="learning-path-orbit__summary">
         <div>
-          <span><Compass aria-hidden="true" size={14} />顺序学习路径</span>
+          <span><Compass aria-hidden="true" size={16} />顺序学习路径</span>
           <strong>中医药知识体系</strong>
           <p>{directDrill ? '按阶段依次进入教材与知识点' : '沿导引环逐步掌握中医核心知识'}</p>
         </div>
@@ -167,6 +204,7 @@ export default function LearningPathOverview({
         </div>
       </header>
       <div
+        ref={stageRef}
         className="learning-path-overview__stage learning-path-orbit__stage"
         style={{
           '--orbit-node-width': `${metrics.nodeWidth}px`,
@@ -194,13 +232,6 @@ export default function LearningPathOverview({
             </linearGradient>
           </defs>
           <ellipse
-            className="learning-path-orbit__halo"
-            cx={metrics.centerX}
-            cy={metrics.centerY}
-            rx={metrics.radiusX + 52}
-            ry={metrics.radiusY + 46}
-          />
-          <ellipse
             className="learning-path-orbit__track"
             cx={metrics.centerX}
             cy={metrics.centerY}
@@ -221,13 +252,14 @@ export default function LearningPathOverview({
               />
             );
           })}
-          {orderedNodes.slice(1).map((node, index) => {
-            const from = positions[nodeId(orderedNodes[index])];
-            const to = positions[nodeId(node)];
+          {orderedNodes.length > 1 && orderedNodes.map((node, index) => {
+            const nextNode = orderedNodes[(index + 1) % orderedNodes.length];
+            const from = positions[nodeId(node)];
+            const to = positions[nodeId(nextNode)];
             const state = index < currentIndex ? 'completed' : index === currentIndex ? 'current' : 'upcoming';
             return (
               <path
-                key={`sequence-${nodeId(orderedNodes[index])}-${nodeId(node)}`}
+                key={`sequence-${nodeId(node)}-${nodeId(nextNode)}`}
                 data-testid="learning-path-orbit-segment"
                 data-state={state}
                 className="learning-path-orbit__sequence"
@@ -293,7 +325,7 @@ export default function LearningPathOverview({
               title={node.title}
             >
               <span className="learning-path-orbit__order">{String(index + 1).padStart(2, '0')}</span>
-              <span className="learning-path-orbit__title"><Icon aria-hidden="true" size={15} /><b>{node.title}</b></span>
+              <span className="learning-path-orbit__title"><Icon aria-hidden="true" size={16} /><b>{node.title}</b></span>
               <small>{meta.label}{total ? ` · ${total}项` : ''}</small>
               {node.status === 'in_progress' && node.average_mastery != null && (
                 <span className="learning-path-orbit__progress" aria-label={`掌握度 ${node.average_mastery}%`}>

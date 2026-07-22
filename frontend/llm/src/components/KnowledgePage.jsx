@@ -335,7 +335,7 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
 
   if (activeWorkspace === 'atlas') {
     return (
-      <div className="knowledge-page__atlas-shell">
+      <div className="knowledge-page__atlas-shell" data-workspace="knowledge-atlas">
         <KnowledgeAtlasErrorBoundary>
           <React.Suspense fallback={<div className="grid min-h-[520px] place-content-center text-sm text-slate-500" role="status">正在加载知识星球…</div>}>
             <KnowledgeAtlas initialContext={navigationContext} onDisabled={handleAtlasDisabled} workspaceNavigation={workspaceNavigation} />

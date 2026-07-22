@@ -2114,17 +2114,11 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                 
                 <div 
                   ref={inputContainerRef}
-                  className={`
-                    relative flex flex-col rounded-[28px] transition-[background-color,border-color,box-shadow] duration-200
-                    ${isDragging 
-                      ? 'bg-emerald-50 ring-2 ring-emerald-500/30' 
-                      : 'bg-white/80 border border-emerald-100 focus-within:bg-white focus-within:shadow-md focus-within:shadow-emerald-100 focus-within:ring-1 focus-within:ring-emerald-200'
-                    }
-                  `}
+                  className={`assistant-composer__input relative flex flex-col ${isDragging ? 'is-dragging' : ''}`}
                   onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}
                 >
                   {isDragging && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm rounded-[28px] animate-in fade-in duration-200 pointer-events-none">
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-none">
                        <UploadCloud size={48} className="mb-2 text-emerald-600 upload-float" />
                        <span className="font-semibold text-emerald-700 text-lg">释放文件以上传</span>
                     </div>

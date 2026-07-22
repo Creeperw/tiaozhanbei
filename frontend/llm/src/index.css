@@ -1758,8 +1758,8 @@ textarea:focus-visible {
 .compact-assistant__error { border-top: 1px solid #fecaca; background: #fff1f2; padding: 7px 12px; color: #be123c; font-size: .65rem; }
 .compact-assistant__composer { display: grid; grid-template-columns: minmax(0,1fr) 30px; gap: 7px; margin: 0; padding: 10px 11px 12px; border-top: 1px solid #e2e8f0; }
 .compact-assistant__composer label { display: block; min-width: 0; }
-.compact-assistant__composer textarea { display: block; width: 100%; min-height: 34px; max-height: 90px; resize: none; border: 1px solid #e2e8f0; border-radius: 13px; background: #f8fafc; padding: 8px 10px; color: #334155; font: inherit; font-size: .7rem; line-height: 1.4; outline: none; }
-.compact-assistant__composer textarea:focus { border-color: #34d399; box-shadow: 0 0 0 3px #d1fae5; }
+.compact-assistant__composer textarea { display: block; width: 100%; min-height: 34px; max-height: 90px; resize: none; border: 0; border-radius: 0; background: transparent; padding: 8px 0; color: #334155; font: inherit; font-size: .7rem; line-height: 1.4; outline: none; }
+.compact-assistant__composer textarea:focus { border-color: transparent; box-shadow: none; }
 .compact-assistant__composer > button { display: grid; width: 30px; height: 30px; align-self: center; place-items: center; border: 0; border-radius: 11px; background: #059669; color: #fff; cursor: pointer; }
 .compact-assistant__composer > button:disabled { background: #e2e8f0; color: #94a3b8; cursor: default; }
 
@@ -1892,7 +1892,7 @@ textarea:focus-visible {
   position: relative;
   display: flex;
   height: 100%;
-  min-height: 440px;
+  min-height: 520px;
   flex-direction: column;
   overflow: hidden;
   color: var(--orbit-ink);
@@ -1933,21 +1933,21 @@ textarea:focus-visible {
   flex: none;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px 22px 8px;
+  gap: 24px;
+  padding: 20px 32px 8px;
   pointer-events: none;
 }
 .learning-path-orbit__summary > div:first-child { min-width: 0; }
 .learning-path-orbit__summary > div:first-child > span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   border: 1px solid rgba(184, 144, 40, .25);
   border-radius: 999px;
   background: rgba(255, 250, 232, .84);
-  padding: 4px 9px;
+  padding: 5px 11px;
   color: #947527;
-  font-size: .58rem;
+  font-size: .64rem;
   font-weight: 800;
   letter-spacing: .08em;
 }
@@ -1955,32 +1955,37 @@ textarea:focus-visible {
   display: block;
   margin-top: 8px;
   color: #163b31;
-  font-size: clamp(1rem, 1.55vw, 1.28rem);
+  font-size: clamp(1.12rem, 1.75vw, 1.46rem);
   letter-spacing: -.035em;
 }
 .learning-path-orbit__summary p {
-  margin: 4px 0 0;
+  margin: 5px 0 0;
   color: #708d83;
-  font-size: .65rem;
+  font-size: .73rem;
+  line-height: 1.45;
 }
 .learning-path-orbit__current {
   display: grid;
-  gap: 2px;
-  min-width: 98px;
+  gap: 3px;
+  min-width: 112px;
   border: 1px solid rgba(126, 183, 159, .38);
-  border-radius: 14px;
+  border-radius: 16px;
   background: rgba(255,255,255,.7);
-  padding: 8px 10px;
+  padding: 10px 12px;
   text-align: right;
   box-shadow: 0 8px 20px rgba(23, 82, 63, .045);
 }
-.learning-path-orbit__current span { color: #78958b; font-size: .54rem; font-weight: 700; letter-spacing: .06em; }
-.learning-path-orbit__current strong { margin: 0; color: #107858; font-size: .68rem; letter-spacing: 0; }
+.learning-path-orbit__current span { color: #78958b; font-size: .61rem; font-weight: 700; letter-spacing: .06em; }
+.learning-path-orbit__current strong { margin: 0; color: #107858; font-size: .8rem; letter-spacing: 0; }
 .learning-path-orbit__stage {
   position: relative;
   z-index: 1;
+  width: auto;
+  min-width: 0;
   min-height: 0;
   flex: 1;
+  margin: 0 8px 2px;
+  isolation: isolate;
 }
 .learning-path-orbit__canvas {
   position: absolute;
@@ -1990,22 +1995,16 @@ textarea:focus-visible {
   overflow: visible;
   pointer-events: none;
 }
-.learning-path-orbit__halo {
-  fill: rgba(255,255,255,.18);
-  stroke: rgba(195, 157, 54, .2);
-  stroke-dasharray: 4 7;
-  stroke-width: 2;
-}
 .learning-path-orbit__track {
-  fill: none;
-  stroke: rgba(24, 112, 83, .16);
-  stroke-width: 2.2;
+  fill: rgba(255, 255, 255, .11);
+  stroke: rgba(24, 112, 83, .19);
+  stroke-width: 1.8;
 }
 .learning-path-orbit__sequence {
   fill: none;
   stroke: rgba(153, 194, 178, .38);
   stroke-linecap: round;
-  stroke-width: 3.5;
+  stroke-width: 3.1;
 }
 .learning-path-orbit__sequence[data-state="completed"] {
   stroke: url(#learning-path-orbit-progress);
@@ -2018,36 +2017,38 @@ textarea:focus-visible {
   filter: drop-shadow(0 0 4px rgba(200, 158, 54, .28));
 }
 .learning-path-orbit__spoke {
-  stroke: rgba(58, 135, 107, .17);
-  stroke-width: 1.5;
+  stroke: rgba(58, 135, 107, .11);
+  stroke-dasharray: 3 7;
+  stroke-width: 1.25;
 }
-.learning-path-orbit__spoke.is-past { stroke: rgba(15, 135, 98, .34); }
-.learning-path-orbit__spoke.is-current { stroke: rgba(196, 153, 43, .72); stroke-width: 2; }
+.learning-path-orbit__spoke.is-past { stroke: rgba(15, 135, 98, .23); }
+.learning-path-orbit__spoke.is-current { stroke: rgba(196, 153, 43, .52); stroke-width: 1.65; }
 .learning-path-orbit__start-dot { fill: #0c8d68; stroke: #fff; stroke-width: 3; }
 .learning-path-orbit__core {
   position: absolute;
-  z-index: 3;
-  top: 53%;
+  z-index: 10;
+  top: 50%;
   left: 50%;
   display: grid;
-  width: 146px;
-  height: 146px;
+  width: 112px;
+  height: 112px;
   place-content: center;
   border: 1px solid rgba(187, 156, 62, .14);
   border-radius: 50%;
   background: radial-gradient(circle at 42% 34%, #fffef7, #effaf4 68%);
-  box-shadow: 0 15px 34px rgba(15, 93, 68, .10), inset 0 0 0 9px rgba(255,255,255,.48);
+  box-shadow: 0 16px 38px rgba(15, 93, 68, .13), inset 0 0 0 8px rgba(255,255,255,.62);
   text-align: center;
   transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 .learning-path-orbit__core::before {
   position: absolute;
-  inset: 12px;
+  inset: 9px;
   border: 1px dashed rgba(191, 153, 49, .28);
   border-radius: inherit;
   content: '';
 }
-.learning-path-orbit__core svg { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); transform: rotate(-90deg); }
+.learning-path-orbit__core svg { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); transform: rotate(-90deg); }
 .learning-path-orbit__core-track,
 .learning-path-orbit__core-progress { fill: none; stroke-width: 5; }
 .learning-path-orbit__core-track { stroke: rgba(25, 96, 73, .1); }
@@ -2056,8 +2057,8 @@ textarea:focus-visible {
 .learning-path-orbit__core small,
 .learning-path-orbit__core em { position: relative; z-index: 1; }
 .learning-path-orbit__core span { color: #0e7758; font-size: 1.52rem; font-weight: 800; letter-spacing: -.065em; font-variant-numeric: tabular-nums; }
-.learning-path-orbit__core small { margin-top: 1px; color: #5f7c72; font-size: .58rem; font-weight: 700; }
-.learning-path-orbit__core em { margin-top: 5px; color: #a17d2f; font-size: .5rem; font-style: normal; }
+.learning-path-orbit__core small { margin-top: 1px; color: #5f7c72; font-size: .65rem; font-weight: 700; }
+.learning-path-orbit__core em { margin-top: 5px; color: #a17d2f; font-size: .56rem; font-style: normal; }
 .learning-path-orbit__node {
   position: absolute;
   z-index: 4;
@@ -2067,12 +2068,12 @@ textarea:focus-visible {
   flex-direction: column;
   justify-content: center;
   border: 1px solid rgba(132, 182, 162, .48);
-  border-radius: 16px;
+  border-radius: 15px;
   background: rgba(255,255,255,.88);
-  padding: 10px 11px 9px 38px;
+  padding: 10px 12px 9px 47px;
   color: #31594c;
   text-align: left;
-  box-shadow: 0 8px 18px rgba(22, 83, 64, .075);
+  box-shadow: 0 10px 22px rgba(22, 83, 64, .07);
   cursor: pointer;
   transform: translate(-50%, -50%);
   transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, opacity .18s ease;
@@ -2080,9 +2081,9 @@ textarea:focus-visible {
 .learning-path-orbit__node::before {
   position: absolute;
   top: 50%;
-  left: 11px;
-  width: 19px;
-  height: 19px;
+  left: 10px;
+  width: 27px;
+  height: 27px;
   border: 1px solid rgba(19, 125, 91, .36);
   border-radius: 50%;
   background: #f4fbf7;
@@ -2113,22 +2114,29 @@ textarea:focus-visible {
 .learning-path-orbit__order {
   position: absolute;
   top: 50%;
-  left: 11px;
+  left: 9px;
   z-index: 1;
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
   color: #5f8779;
-  font-size: .49rem;
+  font-size: .65rem;
   font-weight: 900;
-  letter-spacing: -.03em;
+  letter-spacing: -.04em;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   transform: translateY(-50%);
 }
 .learning-path-orbit__node.is-completed .learning-path-orbit__order { color: #fff; }
 .learning-path-orbit__node.is-in-progress .learning-path-orbit__order { color: #755614; }
-.learning-path-orbit__title { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 5px; min-width: 0; color: inherit; font-size: .68rem; font-weight: 800; line-height: 1.2; }
+.learning-path-orbit__title { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px; min-width: 0; color: inherit; font-size: .78rem; font-weight: 800; line-height: 1.24; }
 .learning-path-orbit__title svg { flex: none; color: #17835f; }
 .learning-path-orbit__node.is-in-progress .learning-path-orbit__title svg { color: #b28725; }
 .learning-path-orbit__node.is-locked .learning-path-orbit__title svg { color: #9aada6; }
 .learning-path-orbit__title b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font: inherit; }
-.learning-path-orbit__node small { margin-top: 3px; overflow: hidden; color: #8aa198; font-size: .53rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.learning-path-orbit__node small { margin-top: 4px; overflow: hidden; color: #8aa198; font-size: .62rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
 .learning-path-orbit__node.is-in-progress small { color: #9d7b2f; }
 .learning-path-orbit__progress { height: 3px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: rgba(190, 162, 85, .18); }
 .learning-path-orbit__progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c49a31, #e6c963); }
@@ -2139,18 +2147,18 @@ textarea:focus-visible {
   flex: none;
   flex-wrap: wrap;
   align-items: center;
-  gap: 7px 12px;
-  margin: 0 16px 13px;
+  gap: 8px 15px;
+  margin: 0 26px 16px;
   border: 1px solid rgba(133, 184, 163, .32);
-  border-radius: 14px;
+  border-radius: 15px;
   background: rgba(255,255,255,.76);
-  padding: 7px 10px;
+  padding: 8px 12px;
   color: #6d887e;
-  font-size: .54rem;
+  font-size: .63rem;
   backdrop-filter: blur(10px);
 }
 .learning-path-orbit__legend span { display: inline-flex; align-items: center; gap: 5px; }
-.learning-path-orbit__legend i { width: 7px; height: 7px; border: 1px solid #91aba1; border-radius: 50%; background: #fff; }
+.learning-path-orbit__legend i { width: 8px; height: 8px; border: 1px solid #91aba1; border-radius: 50%; background: #fff; }
 .learning-path-orbit__legend i.is-completed { border-color: #118d68; background: #118d68; }
 .learning-path-orbit__legend i.is-progress { border-color: #c89e36; background: #f6dc86; box-shadow: 0 0 0 2px rgba(244, 220, 134, .35); }
 .learning-path-orbit__legend i.is-next { border-color: #51ad87; background: #d9f2e5; }
@@ -2165,6 +2173,7 @@ textarea:focus-visible {
 }
 @media (max-width: 760px) {
   .learning-path-orbit { min-height: 540px; }
+  .learning-path-orbit__stage { margin: 0; }
   .learning-path-orbit__summary { padding: 14px 14px 5px; }
   .learning-path-orbit__summary strong { font-size: .95rem; }
   .learning-path-orbit__summary p { display: none; }
@@ -3947,6 +3956,19 @@ textarea:focus-visible {
   border-top: 1px solid rgba(198, 226, 215, .7);
   background: linear-gradient(180deg, rgba(250, 253, 251, .82), rgba(255, 255, 255, .98) 22%);
   backdrop-filter: blur(18px);
+}
+
+.assistant-composer__input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.assistant-composer__input.is-dragging {
+  background: rgba(236, 253, 245, .72);
+  outline: 2px dashed rgba(16, 185, 129, .58);
+  outline-offset: -2px;
 }
 
 .assistant-starter-card {

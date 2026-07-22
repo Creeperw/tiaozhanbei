@@ -37,7 +37,7 @@ describe('LearningPathOverview', () => {
     expect(onDrill).toHaveBeenCalledWith(nodes[1]);
   });
 
-  it('renders an ordered orbit, progress center, and sequential path segments', () => {
+  it('renders a closed ordered orbit, progress center, and sequential path segments', () => {
     render(
       <LearningPathOverview
         nodes={nodes}
@@ -51,7 +51,7 @@ describe('LearningPathOverview', () => {
     expect(screen.getByLabelText('一级知识学习路径')).toBeInTheDocument();
     expect(screen.getByText('中医药知识体系')).toBeInTheDocument();
     expect(screen.getByLabelText('总体学习进度 48%')).toBeInTheDocument();
-    expect(screen.getAllByTestId('learning-path-orbit-segment')).toHaveLength(2);
+    expect(screen.getAllByTestId('learning-path-orbit-segment')).toHaveLength(nodes.length);
     expect(screen.getByRole('button', { name: /选择方剂学，第 2 阶段/ })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByText('星球')).not.toBeInTheDocument();
   });
