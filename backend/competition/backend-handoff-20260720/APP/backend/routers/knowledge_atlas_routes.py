@@ -46,13 +46,24 @@ def get_atlas_nodes(
     route: str = Query("textbook_14_5"),
     lv1: str = Query(""),
     lv2: str = Query(""),
+    chapter: str = Query(""),
+    chapter_id: str = Query(""),
+    section_id: str = Query(""),
     current_user: UserModel = Depends(get_current_user),
 ):
     del current_user
     try:
         return {
             "ok": True,
-            **atlas_service.nodes(level, route_id=route, lv1=lv1, lv2=lv2),
+            **atlas_service.nodes(
+                level,
+                route_id=route,
+                lv1=lv1,
+                lv2=lv2,
+                chapter=chapter,
+                chapter_id=chapter_id,
+                section_id=section_id,
+            ),
         }
     except AtlasUnavailableError as exc:
         raise _unavailable(exc) from exc

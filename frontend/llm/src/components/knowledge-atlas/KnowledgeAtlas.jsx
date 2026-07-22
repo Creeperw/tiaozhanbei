@@ -44,11 +44,18 @@ const arrangements = [
 ];
 
 function initialPath(context) {
-  return { lv1: context?.lv1 || '', lv2: context?.lv2 || '' };
+  return {
+    lv1: context?.lv1 || '',
+    chapter: context?.chapter || '',
+    chapterId: context?.chapterId || context?.chapter_id || '',
+    lv2: context?.lv2 || '',
+    sectionId: context?.sectionId || context?.section_id || '',
+  };
 }
 
 function initialLevel(context) {
-  if (context?.kpId || context?.kp_id || context?.lv2) return 3;
+  if (context?.kpId || context?.kp_id || context?.lv2) return 4;
+  if (context?.chapter || context?.chapterId || context?.chapter_id) return 3;
   if (context?.lv1) return 2;
   return 1;
 }
@@ -117,17 +124,19 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      const nextPath = { lv1: initialContext.lv1 || '', lv2: initialContext.lv2 || '' };
+      const nextPath = initialPath(initialContext);
       const nextLevel = initialContext.kpId || initialContext.kp_id || initialContext.lv2
-        ? 3
-        : initialContext.lv1 ? 2 : 1;
+        ? 4
+        : initialContext.chapter || initialContext.chapterId || initialContext.chapter_id
+          ? 3
+          : initialContext.lv1 ? 2 : 1;
       setRoute(initialContext.route || 'textbook_14_5');
       setPath(nextPath);
       setLevel(nextLevel);
       setPendingKpId(initialContext.kpId || initialContext.kp_id || '');
     });
     return () => { cancelled = true; };
-  }, [initialContext.kpId, initialContext.kp_id, initialContext.lv1, initialContext.lv2, initialContext.membershipId, initialContext.route, initialContext.trackId]);
+  }, [initialContext.chapter, initialContext.chapterId, initialContext.chapter_id, initialContext.kpId, initialContext.kp_id, initialContext.lv1, initialContext.lv2, initialContext.membershipId, initialContext.route, initialContext.sectionId, initialContext.section_id, initialContext.trackId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -157,8 +166,14 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
           });
           if (controller.signal.aborted) return;
           if (resolved.route) setRoute(resolved.route);
-          setPath({ lv1: resolved.lv1 || '', lv2: resolved.lv2 || '' });
-          setLevel(resolved.kp_id || resolved.lv2 ? 3 : resolved.lv1 ? 2 : 1);
+          setPath({
+            lv1: resolved.lv1 || '',
+            chapter: resolved.chapter || '',
+            chapterId: resolved.chapter_id || '',
+            lv2: resolved.lv2 || '',
+            sectionId: resolved.section_id || '',
+          });
+          setLevel(resolved.kp_id || resolved.lv2 ? 4 : resolved.chapter ? 3 : resolved.lv1 ? 2 : 1);
           if (resolved.kp_id) setPendingKpId(resolved.kp_id);
           if (resolved.notice) setNotice(resolved.notice);
           else if (!resolved.resolved) setNotice('未能精确定位首页节点，已打开默认教材路线。');
@@ -182,12 +197,21 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
       setLoading(true);
       setError('');
       setQuery('');
-      loadAtlasNodes({ level, route, lv1: path.lv1, lv2: path.lv2, signal: controller.signal })
+      loadAtlasNodes({
+        level,
+        route,
+        lv1: path.lv1,
+        lv2: path.lv2,
+        chapter: path.chapter,
+        chapterId: path.chapterId,
+        sectionId: path.sectionId,
+        signal: controller.signal,
+      })
         .then((payload) => {
           if (controller.signal.aborted) return;
           const nextNodes = (payload.nodes || []).map(normalizeAtlasNode);
-          const compact = level === 3 && nextNodes.length > 0 && nextNodes.length < 12 && arrangementRef.current !== 'sequence';
-          const clustered = level === 3 && nextNodes.length >= 12 && arrangementRef.current === 'semantic';
+          const compact = level === 4 && nextNodes.length > 0 && nextNodes.length < 12 && arrangementRef.current !== 'sequence';
+          const clustered = level === 4 && nextNodes.length >= 12 && arrangementRef.current === 'semantic';
           setNodes(nextNodes);
           setStats(payload.stats || {});
           if (compact || clustered) {
@@ -206,7 +230,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
         .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     });
     return () => controller.abort();
-  }, [level, path.lv1, path.lv2, retryVersion, route]);
+  }, [level, path.chapter, path.chapterId, path.lv1, path.lv2, path.sectionId, retryVersion, route]);
 
   useEffect(() => () => {
     detailControllerRef.current?.abort();
@@ -225,8 +249,8 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
   }, []);
 
   const filteredNodes = useMemo(() => filterAtlasNodes(nodes, query), [nodes, query]);
-  const compactSphere = level === 3 && nodes.length > 0 && nodes.length < 12 && arrangement !== 'sequence';
-  const clusterAllowed = level === 3 && nodes.length >= 12;
+  const compactSphere = level === 4 && nodes.length > 0 && nodes.length < 12 && arrangement !== 'sequence';
+  const clusterAllowed = level === 4 && nodes.length >= 12;
   const clusterSphere = compactSphere || (arrangement === 'semantic' && clusterAllowed);
   const effectiveArrangement = compactSphere
     ? 'compact'
@@ -297,7 +321,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
     autoRotate,
     paused: Boolean(selectedNode) || effectiveArrangement === 'sequence',
     clustered: clusterSphere,
-    resourceStyles: level === 3,
+    resourceStyles: level === 4,
     loading,
     onNodeActivate: handleCanvasNodeActivate,
   });
@@ -309,8 +333,8 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
   const selectArrangement = useCallback((nextArrangement) => {
     arrangementRef.current = nextArrangement;
     setArrangement(nextArrangement);
-    const nextCompact = level === 3 && nodes.length > 0 && nodes.length < 12 && nextArrangement !== 'sequence';
-    const nextClustered = level === 3 && nodes.length >= 12 && nextArrangement === 'semantic';
+    const nextCompact = level === 4 && nodes.length > 0 && nodes.length < 12 && nextArrangement !== 'sequence';
+    const nextClustered = level === 4 && nodes.length >= 12 && nextArrangement === 'semantic';
     if (nextCompact || nextClustered) {
       setAutoRotate(false);
       setViewPreset({ yaw: 0, pitch: 0, zoom: nextCompact ? 1.28 : 1.14 });
@@ -320,7 +344,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
   }, [level, nodes.length, setViewPreset]);
 
   const beginLayerNavigation = useCallback((nextLevel, nextPath, direction, origin = null) => {
-    if (nextLevel !== 3 && arrangementRef.current === 'semantic') {
+    if (nextLevel !== 4 && arrangementRef.current === 'semantic') {
       arrangementRef.current = 'sphere';
       setArrangement('sphere');
     }
@@ -335,26 +359,48 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
 
   const enterNode = useCallback((node) => {
     if (level === 1) {
-      beginLayerNavigation(2, { lv1: node.name, lv2: '' }, 'dive', node);
+      beginLayerNavigation(2, { lv1: node.name, chapter: '', chapterId: '', lv2: '', sectionId: '' }, 'dive', node);
     } else if (level === 2) {
-      beginLayerNavigation(3, { lv1: path.lv1, lv2: node.name }, 'dive', node);
+      beginLayerNavigation(3, {
+        lv1: path.lv1,
+        chapter: node.name,
+        chapterId: node.id,
+        lv2: '',
+        sectionId: '',
+      }, 'dive', node);
+    } else if (level === 3) {
+      beginLayerNavigation(4, {
+        lv1: path.lv1,
+        chapter: path.chapter,
+        chapterId: path.chapterId,
+        lv2: node.name,
+        sectionId: node.id,
+      }, 'dive', node);
     } else {
       openDetail(node);
     }
-  }, [beginLayerNavigation, level, openDetail, path.lv1]);
+  }, [beginLayerNavigation, level, openDetail, path.chapter, path.chapterId, path.lv1]);
   useEffect(() => {
     enterNodeRef.current = enterNode;
   }, [enterNode]);
 
   const goBack = useCallback(() => {
-    if (level === 3) {
-      beginLayerNavigation(2, { lv1: path.lv1, lv2: '' }, 'back');
+    if (level === 4) {
+      beginLayerNavigation(3, {
+        lv1: path.lv1,
+        chapter: path.chapter,
+        chapterId: path.chapterId,
+        lv2: '',
+        sectionId: '',
+      }, 'back');
+    } else if (level === 3) {
+      beginLayerNavigation(2, { lv1: path.lv1, chapter: '', chapterId: '', lv2: '', sectionId: '' }, 'back');
     } else if (level === 2) {
-      beginLayerNavigation(1, { lv1: '', lv2: '' }, 'back');
+      beginLayerNavigation(1, { lv1: '', chapter: '', chapterId: '', lv2: '', sectionId: '' }, 'back');
     }
-  }, [beginLayerNavigation, level, path.lv1]);
+  }, [beginLayerNavigation, level, path.chapter, path.chapterId, path.lv1]);
 
-  const unit = level === 1 ? '教材' : level === 2 ? '章节' : '知识点';
+  const unit = level === 1 ? '教材' : level === 2 ? '章节' : level === 3 ? '小节' : '知识点';
 
   return (
     <section className="knowledge-atlas" aria-labelledby="knowledge-atlas-title" data-level={level} data-arrangement={effectiveArrangement}>
@@ -364,16 +410,17 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
           <div><small>Knowledge atlas</small><h1 id="knowledge-atlas-title">知识星球</h1></div>
         </div>
         <div className="knowledge-atlas__context">
-          <strong>{path.lv2 || path.lv1 || '教材知识目录'}</strong>
-          <span>{path.lv2 ? `${path.lv1} · ${unit}` : path.lv1 ? `教材目录 · ${unit}` : '按教材、章节、知识点顺序浏览配套资源'}</span>
+          <strong>{path.lv2 || path.chapter || path.lv1 || '教材知识目录'}</strong>
+          <span>{path.lv2 ? `${path.lv1} · ${path.chapter} · ${unit}` : path.chapter ? `${path.lv1} · ${unit}` : path.lv1 ? `教材目录 · ${unit}` : '按教材、章节、小节、知识点顺序浏览配套资源'}</span>
         </div>
         {workspaceNavigation || (onOpenLegacy && <button type="button" className="knowledge-atlas__legacy" onClick={onOpenLegacy}>旧版钻取</button>)}
       </header>
 
       <div className="knowledge-atlas__toolbar" role="toolbar" aria-label="知识星球视图工具">
         <nav className="knowledge-atlas__breadcrumbs" aria-label="知识星球面包屑">
-          <button type="button" onClick={() => { if (level > 1) beginLayerNavigation(1, { lv1: '', lv2: '' }, 'back'); }}>教材目录</button>
-          {path.lv1 && <><ChevronRight aria-hidden="true" size={13} /><button type="button" onClick={() => { if (level > 2) beginLayerNavigation(2, { lv1: path.lv1, lv2: '' }, 'back'); }}>{path.lv1}</button></>}
+          <button type="button" onClick={() => { if (level > 1) beginLayerNavigation(1, { lv1: '', chapter: '', chapterId: '', lv2: '', sectionId: '' }, 'back'); }}>教材目录</button>
+          {path.lv1 && <><ChevronRight aria-hidden="true" size={13} /><button type="button" onClick={() => { if (level > 2) beginLayerNavigation(2, { lv1: path.lv1, chapter: '', chapterId: '', lv2: '', sectionId: '' }, 'back'); }}>{path.lv1}</button></>}
+          {path.chapter && <><ChevronRight aria-hidden="true" size={13} /><button type="button" onClick={() => { if (level > 3) beginLayerNavigation(3, { lv1: path.lv1, chapter: path.chapter, chapterId: path.chapterId, lv2: '', sectionId: '' }, 'back'); }}>{path.chapter}</button></>}
           {path.lv2 && <><ChevronRight aria-hidden="true" size={13} /><span aria-current="page">{path.lv2}</span></>}
         </nav>
         <div className="knowledge-atlas__search">
@@ -411,7 +458,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
           aria-busy={loading || Boolean(spaceTransitionMode)}
         >
           <div className="knowledge-atlas__stage-meta">
-            <div><small>LEVEL {String(level).padStart(2, '0')}</small><h2>{level === 1 ? '教材目录' : level === 2 ? path.lv1 : path.lv2}</h2><p>{level === 1 ? '选择教材，进入章节知识空间' : level === 2 ? '继续下钻，定位到可学习知识点' : '打开节点，查看视频、切片、图片、公式和题目'}</p></div>
+            <div><small>LEVEL {String(level).padStart(2, '0')}</small><h2>{level === 1 ? '教材目录' : level === 2 ? path.lv1 : level === 3 ? path.chapter : path.lv2}</h2><p>{level === 1 ? '选择教材，进入章节知识空间' : level === 2 ? '选择章节，查看按原书顺序排列的小节' : level === 3 ? '选择小节，定位到可学习知识点' : '打开节点，查看视频、切片、图片、公式和题目'}</p></div>
             <span><b>{filteredNodes.length.toLocaleString('zh-CN')}</b>{unit}</span>
           </div>
 
@@ -427,7 +474,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
             aria-label="知识星球画布"
             data-zoom={zoom.toFixed(2)}
             data-arranged-node-count={arrangedNodes.length}
-            data-resource-styles={level === 3}
+            data-resource-styles={level === 4}
             {...bindings}
           />
           {effectiveArrangement === 'sequence' && (
@@ -439,11 +486,11 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
               <div className="knowledge-atlas__sequence-list">
                 {directoryNodes.map((node, index) => {
                   const kind = getAtlasResourceKind(node);
-                  const action = level === 3 ? `打开${node.name}详情` : `进入${node.name}`;
+                  const action = level === 4 ? `打开${node.name}详情` : `进入${node.name}`;
                   return (
                     <button type="button" key={node.id} aria-label={action} data-resource-kind={kind} onClick={() => enterNode(node)}>
                       <span className="knowledge-atlas__node-index">{String(index + 1).padStart(2, '0')}</span>
-                      <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.alias || `${node.count || node.children_count || 0} ${level === 3 ? '项资源' : '个下级节点'}`}</small></span>
+                      <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.alias || `${node.count || node.children_count || 0} ${level === 4 ? '项资源' : '个下级节点'}`}</small></span>
                       <span className="knowledge-atlas__node-resource">
                         {(kind === 'question' || kind === 'both') && <CircleHelp aria-label={`${node.question_count} 道题`} size={14} />}
                         {(kind === 'video' || kind === 'both') && <Clapperboard aria-label={`${node.video_count} 个视频`} size={14} />}
@@ -460,7 +507,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
               <strong>{hovered.name}</strong><span>{resourceLabel(getAtlasResourceKind(hovered))} · {hovered.count || 0} 项</span>
             </div>
           )}
-          {level === 3 && (
+          {level === 4 && (
             <div className="knowledge-atlas__legend" aria-label="资源节点图例">
               <span data-kind="both"><i />题目 + 视频</span>
               <span data-kind="question"><i />含题目</span>
@@ -475,11 +522,11 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
           <div className="knowledge-atlas__node-list">
             {directoryNodes.map((node, index) => {
               const kind = getAtlasResourceKind(node);
-              const action = level === 3 ? `打开${node.name}详情` : `进入${node.name}`;
+              const action = level === 4 ? `打开${node.name}详情` : `进入${node.name}`;
               return (
                 <button type="button" key={node.id} aria-label={action} data-resource-kind={kind} onClick={() => enterNode(node)}>
                   <span className="knowledge-atlas__node-index">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.alias || `${node.count || node.children_count || 0} ${level === 3 ? '项资源' : '个下级节点'}`}</small></span>
+                  <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.alias || `${node.count || node.children_count || 0} ${level === 4 ? '项资源' : '个下级节点'}`}</small></span>
                   <span className="knowledge-atlas__node-resource">
                     {(kind === 'question' || kind === 'both') && <CircleHelp aria-label={`${node.question_count} 道题`} size={14} />}
                     {(kind === 'video' || kind === 'both') && <Clapperboard aria-label={`${node.video_count} 个视频`} size={14} />}
@@ -494,8 +541,9 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
 
       <footer className="knowledge-atlas__footer">
         <span>{stats.lv1 ? `${Number(stats.lv1).toLocaleString('zh-CN')} 教材` : '83 部教材'}</span>
-        <span>{stats.lv2 ? `${Number(stats.lv2).toLocaleString('zh-CN')} 章节` : '4,535 个章节'}</span>
-        <span>{stats.lv3 ? `${Number(stats.lv3).toLocaleString('zh-CN')} 知识点` : '73,777 个知识点'}</span>
+        <span>{stats.lv2 ? `${Number(stats.lv2).toLocaleString('zh-CN')} 章节` : '1,282 个章节'}</span>
+        <span>{stats.lv3 ? `${Number(stats.lv3).toLocaleString('zh-CN')} 小节` : '5,186 个小节'}</span>
+        <span>{stats.lv4 ? `${Number(stats.lv4).toLocaleString('zh-CN')} 知识点` : '73,777 个知识点'}</span>
         <span className={status?.warmed ? 'is-ready' : ''}>{status?.warmed ? '资源索引已预热' : '按需加载资源索引'}</span>
         {reducedMotion && <span>已按系统偏好减少空间运动</span>}
       </footer>

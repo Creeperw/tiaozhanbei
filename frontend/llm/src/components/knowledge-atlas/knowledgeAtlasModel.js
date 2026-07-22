@@ -82,9 +82,12 @@ function plainLabel(value) {
 
 function sequenceSort(nodes, level) {
   return [...nodes].sort((left, right) => {
-    if (level === 2) {
+    if (level < 4) {
       const byOrder = Number(left.order_index || 0) - Number(right.order_index || 0);
       if (byOrder) return byOrder;
+    } else {
+      const byKnowledgeOrder = String(left.order || '').localeCompare(String(right.order || ''), 'zh-CN', { numeric: true });
+      if (byKnowledgeOrder) return byKnowledgeOrder;
     }
     return plainLabel(left.name).localeCompare(plainLabel(right.name), 'zh-CN-u-co-pinyin');
   });
@@ -92,7 +95,7 @@ function sequenceSort(nodes, level) {
 
 function naturalSort(nodes, level) {
   return [...nodes].sort((left, right) => (
-    level < 3
+    level < 4
       ? Number(right.count || 0) - Number(left.count || 0) || left.name.localeCompare(right.name, 'zh-CN')
       : String(left.order || '').localeCompare(String(right.order || '')) || left.name.localeCompare(right.name, 'zh-CN')
   ));

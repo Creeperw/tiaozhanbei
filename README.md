@@ -135,7 +135,13 @@ Live 模式使用 `qwen3.7-max-2026-05-20`、`Qwen/Qwen3-Embedding-4B` 和正式
 QUESTION_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
 KNOWLEDGE_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
 KNOWLEDGE_HANDOFF_ROOT=/absolute/path/to/知识星球视频知识库_前端交接包_2026-07-18
+# 可选；默认使用仓库内 2026-07-22 章节映射
+KNOWLEDGE_ATLAS_CHAPTER_ROOT=/absolute/path/to/chapter-mapping
 ```
+
+仓库内 `backend/competition/knowledge_atlas_chapters/2026-07-22` 保存章节映射，不复制原始
+教材和切片正文。知识星球按“教材 → 章节 → 小节 → 知识点”四级顺序展示；同章同名的重复
+切片区间会合并为一个小节入口，但底层 `chunk_uid` 关系全部保留。
 
 也可以把这两个资产软链接到 `backend/competition/` 下的同名目录；这些入口已被
 `.gitignore` 排除。启动时可通过 `/health` 和 `/api/v1/platform/status` 检查主框架与交接

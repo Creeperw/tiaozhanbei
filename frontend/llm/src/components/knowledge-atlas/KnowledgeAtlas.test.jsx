@@ -19,18 +19,22 @@ vi.mock('./knowledgeAtlasApi', () => ({
 
 const route = { id: 'textbook_14_5', name: '十四五教材', description: '教材知识路线', book_count: 14 };
 const lv1 = { id: 'book-1', name: '药理学', children_count: 1, count: 1 };
-const lv2 = { id: 'topic-1', name: '第一节 心律失常的电生理学基础', children_count: 1, count: 1 };
+const chapter = { id: 'chapter-1', name: '第十四章 抗心律失常药', children_count: 1, count: 4, order_index: 14 };
+const section = { id: 'section-1', name: '第一节 心律失常的电生理学基础', children_count: 4, count: 4, order_index: 1 };
 const kp = { id: 'kp-1', name: '折返', question_count: 1, video_count: 1, count: 2 };
 const questionOnly = { id: 'kp-2', name: '动作电位', question_count: 2, video_count: 0, count: 2 };
 const videoOnly = { id: 'kp-3', name: '钠通道', question_count: 0, video_count: 1, count: 1 };
 const plain = { id: 'kp-4', name: '复极', question_count: 0, video_count: 0, count: 0 };
 
 function responseForLevel({ level }) {
-  return { nodes: level === 1 ? [lv1] : level === 2 ? [lv2] : [kp, questionOnly, videoOnly, plain], stats: { lv1: 14, lv2: 4535, lv3: 73777 } };
+  return {
+    nodes: level === 1 ? [lv1] : level === 2 ? [chapter] : level === 3 ? [section] : [kp, questionOnly, videoOnly, plain],
+    stats: { lv1: 14, lv2: 1282, lv3: 5186, lv4: 73777 },
+  };
 }
 
 describe('KnowledgeAtlas', () => {
-  it('keeps L1/L2 nodes solid and enables four resource outlines only at L3', () => {
+  it('keeps directory nodes solid and enables four resource outlines only at the knowledge-point level', () => {
     expect(getAtlasNodeDrawKind(plain, false)).toBe('solid');
     expect(getAtlasNodeDrawKind(questionOnly, false)).toBe('solid');
     expect(getAtlasNodeDrawKind(plain, true)).toBe('plain');
@@ -109,8 +113,8 @@ describe('KnowledgeAtlas', () => {
     expect(screen.getByRole('toolbar', { name: '知识星球视图工具' })).toBeInTheDocument();
   });
 
-  it('forces compact L3 nodes to zoom 1.28 and enables cluster only for at least 12 L3 nodes', async () => {
-    const { unmount } = render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', lv2: '第一节 心律失常的电生理学基础' }} />);
+  it('forces compact knowledge-point nodes to zoom 1.28 and enables cluster only for at least 12 nodes', async () => {
+    const { unmount } = render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', chapter: chapter.name, chapterId: chapter.id, lv2: section.name, sectionId: section.id }} />);
     const compactCanvas = await screen.findByLabelText('知识星球画布');
     await screen.findByRole('button', { name: /打开折返详情/ });
     await waitFor(() => expect(compactCanvas).toHaveAttribute('data-zoom', '1.28'));
@@ -119,11 +123,11 @@ describe('KnowledgeAtlas', () => {
     unmount();
 
     api.loadAtlasNodes.mockImplementation(async (params) => (
-      params.level === 3
+      params.level === 4
         ? { nodes: Array.from({ length: 12 }, (_, index) => ({ ...kp, id: `kp-${index}`, name: `知识点 ${index}` })), stats: {} }
         : responseForLevel(params)
     ));
-    render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', lv2: '第一节 心律失常的电生理学基础' }} />);
+    render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', chapter: chapter.name, chapterId: chapter.id, lv2: section.name, sectionId: section.id }} />);
     const clusterButton = await screen.findByRole('button', { name: '相关聚类' });
     fireEvent.click(clusterButton);
     const clusterCanvas = screen.getByLabelText('知识星球画布');
@@ -131,9 +135,10 @@ describe('KnowledgeAtlas', () => {
     expect(screen.getByRole('button', { name: /自动旋转/ })).toBeDisabled();
   });
 
-  it('drills through three levels, searches current nodes, and exposes four resource meanings', async () => {
+  it('drills through book, chapter, section and knowledge-point levels', async () => {
     render(<KnowledgeAtlas initialContext={{}} />);
     fireEvent.click(await screen.findByRole('button', { name: /进入药理学/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /进入第十四章 抗心律失常药/ }));
     fireEvent.click(await screen.findByRole('button', { name: /进入第一节 心律失常的电生理学基础/ }));
     expect(await screen.findByRole('button', { name: /打开折返详情/ })).toHaveAttribute('data-resource-kind', 'both');
     expect(screen.getByRole('button', { name: /打开动作电位详情/ })).toHaveAttribute('data-resource-kind', 'question');
@@ -142,16 +147,16 @@ describe('KnowledgeAtlas', () => {
     fireEvent.change(screen.getByRole('searchbox', { name: '搜索当前层' }), { target: { value: '不存在' } });
     expect(screen.getByText('当前层没有匹配节点')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '药理学' }));
-    expect(await screen.findByText('第一节 心律失常的电生理学基础')).toBeInTheDocument();
+    expect(await screen.findByText('第十四章 抗心律失常药')).toBeInTheDocument();
   });
 
   it('renders the directory in the delivery-defined sequence order', async () => {
     api.loadAtlasNodes.mockImplementation(async (params) => (
-      params.level === 3
+      params.level === 4
         ? { nodes: [kp, videoOnly, plain, questionOnly], stats: {} }
         : responseForLevel(params)
     ));
-    render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', lv2: '第一节 心律失常的电生理学基础' }} />);
+    render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', chapter: chapter.name, chapterId: chapter.id, lv2: section.name, sectionId: section.id }} />);
 
     fireEvent.click(await screen.findByRole('button', { name: '顺序列表' }));
     const directory = screen.getByLabelText('当前层节点列表');
@@ -180,7 +185,7 @@ describe('KnowledgeAtlas', () => {
   });
 
   it('opens an accessible detail drawer with video timestamp, chunk image, formula text, answer and explanation', async () => {
-    render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', lv2: '第一节 心律失常的电生理学基础', kpId: 'kp-1' }} />);
+    render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', chapter: chapter.name, chapterId: chapter.id, lv2: section.name, sectionId: section.id, kpId: 'kp-1' }} />);
     const drawer = await screen.findByRole('dialog', { name: '折返' });
     const closeButton = screen.getByRole('button', { name: '关闭详情' });
     await waitFor(() => expect(closeButton).toHaveFocus());
@@ -220,7 +225,10 @@ describe('KnowledgeAtlas', () => {
       resolved: true,
       route: 'postgraduate',
       lv1: '药理学',
+      chapter: '第十四章 抗心律失常药',
+      chapter_id: 'chapter-1',
       lv2: '第一节 心律失常的电生理学基础',
+      section_id: 'section-1',
       kp_id: 'kp-1',
     });
     render(<KnowledgeAtlas initialContext={{ trackId: 'track-a', membershipId: 'node-a', source: 'dashboard' }} />);

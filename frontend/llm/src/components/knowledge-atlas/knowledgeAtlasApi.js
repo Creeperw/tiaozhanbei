@@ -27,10 +27,22 @@ export async function loadAtlasRoutes({ signal } = {}) {
   return Array.isArray(payload) ? payload : (payload.routes || payload.items || []);
 }
 
-export async function loadAtlasNodes({ level = 1, route = 'textbook_14_5', lv1 = '', lv2 = '', signal } = {}) {
+export async function loadAtlasNodes({
+  level = 1,
+  route = 'textbook_14_5',
+  lv1 = '',
+  lv2 = '',
+  chapter = '',
+  chapterId = '',
+  sectionId = '',
+  signal,
+} = {}) {
   const params = new URLSearchParams({ level: String(level), route });
   if (lv1) params.set('lv1', lv1);
   if (lv2) params.set('lv2', lv2);
+  if (chapter) params.set('chapter', chapter);
+  if (chapterId) params.set('chapter_id', chapterId);
+  if (sectionId) params.set('section_id', sectionId);
   const payload = await readAtlasResponse(`/knowledge/atlas/nodes?${params}`, { signal });
   if (Array.isArray(payload)) return { nodes: payload, count: payload.length, stats: {} };
   return {

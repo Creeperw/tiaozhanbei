@@ -12,7 +12,7 @@ import json
 import os
 import re
 import threading
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -50,8 +50,15 @@ ROUTES: tuple[dict[str, Any], ...] = (
 
 _QUESTION_FILE = Path("01_question_bank") / "formatted_questions.json"
 _CHUNK_FILE = Path("03_pipeline_chunks") / "source_chunks.jsonl"
+_CHAPTER_NODES_FILE = "chapter_nodes.jsonl"
+_CHUNK_CHAPTER_LINKS_FILE = "chunk_chapter_links.jsonl"
 _KP_FILE = Path("04_knowledge_points") / "final_knowledge_points.json"
 _IMAGE_DIR = Path("04_knowledge_points") / "images"
+_REPOSITORY_CHAPTER_ROOT = (
+    Path(__file__).resolve().parents[3]
+    / "knowledge_atlas_chapters"
+    / "2026-07-22"
+)
 
 
 class AtlasUnavailableError(RuntimeError):
@@ -68,6 +75,32 @@ def _read_json_array(path: Path, label: str) -> list[dict[str, Any]]:
     if not isinstance(payload, list):
         raise AtlasUnavailableError(f"Atlas {label} must be a JSON array: {path}")
     return [row for row in payload if isinstance(row, dict)]
+
+
+def _iter_jsonl(path: Path, label: str) -> Iterable[dict[str, Any]]:
+    try:
+        with path.open("r", encoding="utf-8-sig") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                if isinstance(row, dict):
+                    yield row
+    except FileNotFoundError as exc:
+        raise AtlasUnavailableError(f"missing Atlas {label}: {path}") from exc
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AtlasUnavailableError(f"invalid Atlas {label}: {path}") from exc
+
+
+def _order_value(value: Any, fallback: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _normalized_heading(value: Any) -> str:
+    return re.sub(r"\s+", "", str(value or "")).strip()
 
 
 def _question_value(row: dict[str, Any], *keys: str, default: Any = "") -> Any:
@@ -89,12 +122,14 @@ class KnowledgeAtlasStore:
         enabled: bool = True,
         asset_version: str = "2026-07-18",
         contract_path: Path | str | None = None,
+        chapter_root: Path | str | None = None,
     ) -> None:
         self.data_root = Path(data_root).resolve()
         self.video_root = Path(video_root).resolve() if video_root else self.data_root.parent / "video"
         self.enabled = bool(enabled)
         self.asset_version = asset_version
         self.contract_path = Path(contract_path).resolve() if contract_path else None
+        self._chapter_root_override = Path(chapter_root).resolve() if chapter_root else None
         self._lock = threading.RLock()
         self._warm_thread: threading.Thread | None = None
         self._warm_error: str | None = None
@@ -104,6 +139,12 @@ class KnowledgeAtlasStore:
         self._video_signature: tuple[str, int, int] | None = None
         self.kps: dict[str, dict[str, Any]] = {}
         self.tree: dict[str, dict[str, list[dict[str, Any]]]] = {}
+        self.book_order: dict[str, int] = {}
+        self.chapters_by_book: dict[str, list[dict[str, Any]]] = {}
+        self.chapter_by_id: dict[str, dict[str, Any]] = {}
+        self.section_by_id: dict[str, dict[str, Any]] = {}
+        self.kps_by_section: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self.kp_locations: dict[str, dict[str, Any]] = {}
         self.questions: list[dict[str, Any]] = []
         self.questions_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.chunk_offsets: dict[str, int] = {}
@@ -112,6 +153,21 @@ class KnowledgeAtlasStore:
     @property
     def image_root(self) -> Path:
         return self.data_root / _IMAGE_DIR
+
+    @property
+    def chapter_root(self) -> Path:
+        if self._chapter_root_override is not None:
+            return self._chapter_root_override
+        configured = os.getenv("KNOWLEDGE_ATLAS_CHAPTER_ROOT", "").strip()
+        if configured:
+            return Path(configured).resolve()
+        embedded = self.data_root / "03_pipeline_chunks"
+        if (
+            (embedded / _CHAPTER_NODES_FILE).is_file()
+            and (embedded / _CHUNK_CHAPTER_LINKS_FILE).is_file()
+        ):
+            return embedded
+        return _REPOSITORY_CHAPTER_ROOT
 
     @property
     def video_result_root(self) -> Path:
@@ -141,6 +197,8 @@ class KnowledgeAtlasStore:
             self.data_root / _QUESTION_FILE,
             self.data_root / _CHUNK_FILE,
             self.image_root,
+            self.chapter_root / _CHAPTER_NODES_FILE,
+            self.chapter_root / _CHUNK_CHAPTER_LINKS_FILE,
         )
         return [f"missing {path.name}: {path}" for path in required if not path.exists()]
 
@@ -175,6 +233,15 @@ class KnowledgeAtlasStore:
         if self._hierarchy_ready:
             manifest.setdefault("knowledge_points", len(self.kps))
             manifest.setdefault("books", len(self.tree))
+            manifest.setdefault("chapters", sum(len(rows) for rows in self.chapters_by_book.values()))
+            manifest.setdefault(
+                "sections",
+                sum(
+                    len(chapter["sections"])
+                    for chapters in self.chapters_by_book.values()
+                    for chapter in chapters
+                ),
+            )
         if self._questions_ready:
             manifest.setdefault("questions", len(self.questions))
             manifest.setdefault("linked_questions", sum(bool(row["kp_ids"]) for row in self.questions))
@@ -187,6 +254,7 @@ class KnowledgeAtlasStore:
             "warming": warming,
             "asset_version": self.asset_version,
             "data_root": str(self.data_root),
+            "chapter_root": str(self.chapter_root),
             "video_root": str(self.video_root),
             "video_result_root": str(self.video_result_root),
             "manifest": manifest,
@@ -307,8 +375,208 @@ class KnowledgeAtlasStore:
                 lv2 = str(kp.get("kp_lv2") or kp.get("kp_Lv2") or "").strip() or "未分类"
                 kps[kp_id] = kp
                 tree.setdefault(lv1, {}).setdefault(lv2, []).append(kp)
+
+            node_rows = list(_iter_jsonl(
+                self.chapter_root / _CHAPTER_NODES_FILE,
+                "chapter nodes",
+            ))
+            link_rows = list(_iter_jsonl(
+                self.chapter_root / _CHUNK_CHAPTER_LINKS_FILE,
+                "chunk chapter links",
+            ))
+            book_title_by_source: dict[str, str] = {}
+            book_title_by_node: dict[str, str] = {}
+            book_order: dict[str, int] = {}
+            chapters_by_book: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            chapter_by_id: dict[str, dict[str, Any]] = {}
+            section_by_id: dict[str, dict[str, Any]] = {}
+            logical_sections: dict[tuple[str, str], dict[str, Any]] = {}
+
+            for row in node_rows:
+                if row.get("node_type") != "book":
+                    continue
+                source_book = str(row.get("book") or "").strip()
+                title = str(row.get("title") or source_book.removesuffix("_clean")).strip()
+                node_id = str(row.get("node_id") or "").strip()
+                if not title:
+                    continue
+                book_title_by_source[source_book] = title
+                if node_id:
+                    book_title_by_node[node_id] = title
+                book_order[title] = _order_value(row.get("order"), len(book_order) + 1)
+
+            for row in node_rows:
+                if row.get("node_type") != "chapter":
+                    continue
+                chapter_id = str(row.get("node_id") or "").strip()
+                book = book_title_by_source.get(
+                    str(row.get("book") or "").strip(),
+                    book_title_by_node.get(str(row.get("parent_id") or "").strip(), ""),
+                )
+                if not chapter_id or not book:
+                    continue
+                chapter = {
+                    "id": chapter_id,
+                    "name": str(row.get("title") or "未识别章节").strip() or "未识别章节",
+                    "book": book,
+                    "order_index": _order_value(row.get("chapter_order"), _order_value(row.get("order"))),
+                    "review_status": str(row.get("review_status") or "resolved"),
+                    "unresolved_identifier": row.get("unresolved_identifier"),
+                    "sections": [],
+                }
+                chapters_by_book[book].append(chapter)
+                chapter_by_id[chapter_id] = chapter
+
+            for row in node_rows:
+                if row.get("node_type") != "section":
+                    continue
+                section_id = str(row.get("node_id") or "").strip()
+                chapter = chapter_by_id.get(str(row.get("parent_id") or "").strip())
+                if not section_id or chapter is None:
+                    continue
+                section_name = str(row.get("title") or "未识别小节").strip() or "未识别小节"
+                logical_key = (chapter["id"], _normalized_heading(section_name))
+                existing = logical_sections.get(logical_key)
+                if existing is not None:
+                    existing["source_section_ids"].append(section_id)
+                    section_by_id[section_id] = existing
+                    continue
+                section = {
+                    "id": section_id,
+                    "name": section_name,
+                    "book": chapter["book"],
+                    "chapter_id": chapter["id"],
+                    "chapter_name": chapter["name"],
+                    "chapter_order": chapter["order_index"],
+                    "order_index": _order_value(row.get("section_order"), _order_value(row.get("order"))),
+                    "source_section_ids": [section_id],
+                    "kps": [],
+                }
+                chapter["sections"].append(section)
+                section_by_id[section_id] = section
+                logical_sections[logical_key] = section
+
+            for chapters in chapters_by_book.values():
+                chapters.sort(key=lambda row: (row["order_index"], row["name"], row["id"]))
+                for chapter in chapters:
+                    chapter["sections"].sort(
+                        key=lambda row: (row["order_index"], row["name"], row["id"])
+                    )
+
+            link_by_chunk = {
+                str(row.get("chunk_uid") or ""): row
+                for row in link_rows
+                if row.get("chunk_uid")
+            }
+            sections_by_heading: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+            for chapters in chapters_by_book.values():
+                for chapter in chapters:
+                    for section in chapter["sections"]:
+                        sections_by_heading[(section["book"], _normalized_heading(section["name"]))].append(section)
+            for sections in sections_by_heading.values():
+                sections.sort(key=lambda row: (row["chapter_order"], row["order_index"], row["id"]))
+
+            kps_by_section: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            kp_locations: dict[str, dict[str, Any]] = {}
+
+            def fallback_section(book: str, section_name: str) -> dict[str, Any]:
+                chapter_id = f"UNRESOLVED_CHAPTER::{book}"
+                chapter = chapter_by_id.get(chapter_id)
+                if chapter is None:
+                    chapter = {
+                        "id": chapter_id,
+                        "name": "待确认章节",
+                        "book": book,
+                        "order_index": 999999,
+                        "review_status": "needs_review",
+                        "unresolved_identifier": chapter_id,
+                        "sections": [],
+                    }
+                    chapter_by_id[chapter_id] = chapter
+                    chapters_by_book[book].append(chapter)
+                safe_name = section_name or "未识别小节"
+                section_id = f"UNRESOLVED_SECTION::{book}::{safe_name}"
+                section = section_by_id.get(section_id)
+                if section is None:
+                    section = {
+                        "id": section_id,
+                        "name": safe_name,
+                        "book": book,
+                        "chapter_id": chapter_id,
+                        "chapter_name": chapter["name"],
+                        "chapter_order": chapter["order_index"],
+                        "order_index": len(chapter["sections"]) + 1,
+                        "source_section_ids": [section_id],
+                        "kps": [],
+                    }
+                    section_by_id[section_id] = section
+                    chapter["sections"].append(section)
+                return section
+
+            for kp_id, kp in kps.items():
+                book = str(kp.get("kp_lv1") or kp.get("kp_Lv1") or "").strip() or "未分类"
+                section_name = str(kp.get("kp_lv2") or kp.get("kp_Lv2") or "").strip() or "未识别小节"
+                candidates: Counter[tuple[str, str]] = Counter()
+                for chunk_uid in (str(value) for value in (kp.get("raw_content") or []) if value):
+                    link = link_by_chunk.get(chunk_uid)
+                    if not link:
+                        continue
+                    chapter_id = str(link.get("chapter_id") or "")
+                    section_id = str(link.get("section_id") or "")
+                    section = section_by_id.get(section_id)
+                    if section and section["book"] == book and chapter_id == section["chapter_id"]:
+                        candidates[(chapter_id, section_id)] += 1
+
+                section: dict[str, Any] | None = None
+                if candidates:
+                    _, selected_section_id = min(
+                        candidates,
+                        key=lambda pair: (
+                            -candidates[pair],
+                            section_by_id[pair[1]]["chapter_order"],
+                            section_by_id[pair[1]]["order_index"],
+                            pair[1],
+                        ),
+                    )
+                    section = section_by_id[selected_section_id]
+                if section is None:
+                    matches = sections_by_heading.get((book, _normalized_heading(section_name)), [])
+                    if matches:
+                        section = matches[0]
+                if section is None:
+                    section = fallback_section(book, section_name)
+
+                section["kps"].append(kp)
+                kps_by_section[section["id"]].append(kp)
+                kp_locations[kp_id] = {
+                    "chapter_id": section["chapter_id"],
+                    "chapter": section["chapter_name"],
+                    "section_id": section["id"],
+                    "section": section["name"],
+                }
+
+            for chapters in chapters_by_book.values():
+                chapters.sort(key=lambda row: (row["order_index"], row["name"], row["id"]))
+                for chapter in chapters:
+                    chapter["sections"].sort(
+                        key=lambda row: (row["order_index"], row["name"], row["id"])
+                    )
+                    for section in chapter["sections"]:
+                        section["kps"].sort(
+                            key=lambda kp: (
+                                str(kp.get("order") or ""),
+                                str(kp.get("kp_lv3") or kp.get("kp_Lv3") or ""),
+                            )
+                        )
+
             self.tree = tree
             self.kps = kps
+            self.book_order = book_order
+            self.chapters_by_book = dict(chapters_by_book)
+            self.chapter_by_id = chapter_by_id
+            self.section_by_id = section_by_id
+            self.kps_by_section = kps_by_section
+            self.kp_locations = kp_locations
             self._hierarchy_ready = True
 
     def route(self, route_id: str) -> dict[str, Any]:
@@ -342,14 +610,22 @@ class KnowledgeAtlasStore:
         *,
         lv1: str = "",
         lv2: str = "",
+        chapter: str = "",
+        chapter_id: str = "",
+        section_id: str = "",
         route_id: str = "textbook_14_5",
     ) -> dict[str, Any]:
         self.ensure_hierarchy()
         books = self.route_books(route_id)
         stats = {
             "lv1": len(books),
-            "lv2": sum(len(self.tree[name]) for name in books),
-            "lv3": sum(len(items) for name in books for items in self.tree[name].values()),
+            "lv2": sum(len(self.chapters_by_book.get(name, [])) for name in books),
+            "lv3": sum(
+                len(chapter_row["sections"])
+                for name in books
+                for chapter_row in self.chapters_by_book.get(name, [])
+            ),
+            "lv4": sum(len(items) for name in books for items in self.tree[name].values()),
         }
         if level == 1:
             rows = [
@@ -357,33 +633,81 @@ class KnowledgeAtlasStore:
                     "id": name,
                     "name": name,
                     "count": sum(len(items) for items in children.values()),
-                    "children_count": len(children),
+                    "children_count": len(self.chapters_by_book.get(name, [])),
+                    "order_index": self.book_order.get(name, 999999),
+                    "alias": (
+                        f"{len(self.chapters_by_book.get(name, []))} 个章节 · "
+                        f"{sum(len(row['sections']) for row in self.chapters_by_book.get(name, []))} 个小节"
+                    ),
                 }
                 for name, children in self.tree.items()
                 if name in books
             ]
+            rows.sort(key=lambda row: (row["order_index"], row["name"]))
         elif level == 2:
             if lv1 not in books:
                 raise KeyError("该路线不包含此一级教材")
-            children = self.tree.get(lv1)
+            children = self.chapters_by_book.get(lv1)
             if children is None:
                 raise KeyError("一级标签不存在")
             rows = [
                 {
-                    "id": name,
-                    "name": name,
-                    "count": len(items),
-                    "children_count": len(items),
-                    "order_index": index,
+                    "id": row["id"],
+                    "name": row["name"],
+                    "count": sum(len(section["kps"]) for section in row["sections"]),
+                    "children_count": len(row["sections"]),
+                    "order_index": row["order_index"],
+                    "review_status": row["review_status"],
+                    "unresolved_identifier": row["unresolved_identifier"],
+                    "alias": (
+                        f"{len(row['sections'])} 个小节 · "
+                        f"{sum(len(section['kps']) for section in row['sections'])} 个知识点"
+                    ),
                 }
-                for index, (name, items) in enumerate(children.items())
+                for row in children
             ]
         elif level == 3:
             if lv1 not in books:
                 raise KeyError("该路线不包含此一级教材")
-            children = self.tree.get(lv1, {}).get(lv2)
-            if children is None:
-                raise KeyError("二级标签不存在")
+            selected_chapter = self.chapter_by_id.get(chapter_id) if chapter_id else None
+            if selected_chapter is None and chapter:
+                selected_chapter = next(
+                    (row for row in self.chapters_by_book.get(lv1, []) if row["name"] == chapter),
+                    None,
+                )
+            if selected_chapter is None or selected_chapter["book"] != lv1:
+                raise KeyError("章节不存在")
+            rows = [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "count": len(row["kps"]),
+                    "children_count": len(row["kps"]),
+                    "order_index": row["order_index"],
+                    "alias": f"{len(row['kps'])} 个知识点",
+                }
+                for row in selected_chapter["sections"]
+            ]
+        elif level == 4:
+            if lv1 not in books:
+                raise KeyError("该路线不包含此一级教材")
+            selected_section = self.section_by_id.get(section_id) if section_id else None
+            if selected_section is None and lv2:
+                candidates = [
+                    row
+                    for row in self.section_by_id.values()
+                    if row["book"] == lv1 and row["name"] == lv2
+                    and (not chapter_id or row["chapter_id"] == chapter_id)
+                    and (not chapter or row["chapter_name"] == chapter)
+                ]
+                selected_section = min(
+                    candidates,
+                    key=lambda row: (row["chapter_order"], row["order_index"], row["id"]),
+                    default=None,
+                )
+            if selected_section is None or selected_section["book"] != lv1:
+                raise KeyError("小节不存在")
+            children = selected_section["kps"]
             self.ensure_questions()
             self.ensure_videos()
             rows = []
@@ -409,7 +733,7 @@ class KnowledgeAtlasStore:
                     ),
                 })
         else:
-            raise ValueError("level 只能是 1、2 或 3")
+            raise ValueError("level 只能是 1、2、3 或 4")
         return {
             "level": level,
             "nodes": rows,
@@ -589,6 +913,7 @@ class KnowledgeAtlasStore:
         self.ensure_questions()
         self.ensure_videos()
         refs = [str(value) for value in (kp.get("raw_content") or []) if value]
+        location = self.kp_locations.get(str(kp_id), {})
         chunks = [chunk for uid in refs if (chunk := self._chunk(uid)) is not None]
         questions = self.questions_by_kp.get(str(kp_id), [])
         return {
@@ -597,6 +922,9 @@ class KnowledgeAtlasStore:
                 "lv1": kp.get("kp_lv1") or kp.get("kp_Lv1") or "",
                 "lv2": kp.get("kp_lv2") or kp.get("kp_Lv2") or "",
                 "lv3": kp.get("kp_lv3") or kp.get("kp_Lv3") or "",
+                "chapter": location.get("chapter", ""),
+                "chapter_id": location.get("chapter_id", ""),
+                "section_id": location.get("section_id", ""),
                 "alias": kp.get("other_name", ""),
                 "order": kp.get("order", ""),
                 "updated_at": kp.get("updated_at", ""),
@@ -687,6 +1015,8 @@ class KnowledgeAtlasStore:
         notice: str | None = None,
     ) -> dict[str, Any]:
         lv1 = (kp or {}).get("kp_lv1") or (kp or {}).get("kp_Lv1") or ""
+        kp_id = str((kp or {}).get("kp_id") or "")
+        location = self.kp_locations.get(kp_id, {})
         compatible_route = self._route_containing_book(route_id, str(lv1)) if lv1 else route_id
         return {
             "resolved": kp is not None,
@@ -694,7 +1024,10 @@ class KnowledgeAtlasStore:
             "route": compatible_route,
             "lv1": lv1,
             "lv2": (kp or {}).get("kp_lv2") or (kp or {}).get("kp_Lv2") or "",
-            "kp_id": str((kp or {}).get("kp_id") or ""),
+            "chapter": location.get("chapter", ""),
+            "chapter_id": location.get("chapter_id", ""),
+            "section_id": location.get("section_id", ""),
+            "kp_id": kp_id,
             "track_id": track_id,
             "membership_id": membership_id,
             **({"notice": notice} if notice else {}),

@@ -23,17 +23,29 @@ describe('knowledgeAtlasModel', () => {
 
   it('provides natural golden sphere, sequence, and semantic cluster arrangements', () => {
     for (const mode of ['sphere', 'sequence', 'semantic']) {
-      const arranged = arrangeAtlasNodes(nodes, mode, 3);
+      const arranged = arrangeAtlasNodes(nodes, mode, 4);
       expect(arranged).toHaveLength(nodes.length);
       expect(arranged.every((node) => Number.isFinite(node.px) && Number.isFinite(node.py) && Number.isFinite(node.pz))).toBe(true);
     }
-    expect(arrangeAtlasNodes(nodes, 'sequence', 3).map((node) => node.name))
+    expect(arrangeAtlasNodes(nodes, 'sequence', 4).map((node) => node.name))
       .toEqual(['动作电位', '复极', '钠通道', '折返']);
+  });
+
+  it('orders chapters and sections by their explicit delivery indexes', () => {
+    const directory = [
+      { id: 'second', name: '第二章', order_index: 2 },
+      { id: 'first', name: '第一章', order_index: 1 },
+      { id: 'third', name: '第三章', order_index: 3 },
+    ];
+    expect(arrangeAtlasNodes(directory, 'sequence', 2).map((node) => node.id))
+      .toEqual(['first', 'second', 'third']);
+    expect(arrangeAtlasNodes(directory, 'sequence', 3).map((node) => node.id))
+      .toEqual(['first', 'second', 'third']);
   });
 
   it('filters only the current level and projects visible hit targets', () => {
     expect(filterAtlasNodes(nodes, '返').map((node) => node.id)).toEqual(['both']);
-    const projected = projectAtlasNodes(arrangeAtlasNodes(nodes, 'sphere', 3), {
+    const projected = projectAtlasNodes(arrangeAtlasNodes(nodes, 'sphere', 4), {
       width: 900,
       height: 600,
       yaw: 0.2,
