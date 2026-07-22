@@ -95,6 +95,10 @@
   animation: auth-fade-up 700ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
+.auth-showcase__content {
+  justify-self: center;
+}
+
 .auth-kicker {
   animation: auth-fade-up 600ms 80ms cubic-bezier(0.2, 0, 0, 1) both;
 }
@@ -104,6 +108,8 @@
 }
 
 .auth-login-card {
+  max-width: 760px;
+  margin: 0 auto;
   animation: auth-login-card-in 320ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
@@ -242,6 +248,12 @@
     left: -4%;
     transform: scale(0.82);
     transform-origin: left bottom;
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-showcase__content {
+    justify-self: start;
   }
 }
 

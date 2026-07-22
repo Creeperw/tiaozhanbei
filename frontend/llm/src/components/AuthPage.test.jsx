@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import AuthPage from './AuthPage';
@@ -64,11 +64,14 @@ describe('AuthPage main-backend cookie contract', () => {
 
     expect(screen.queryByRole('dialog', { name: '进入学习工作台' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('账号')).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '中医药在线学习场景' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '登录' }));
 
-    expect(screen.getByRole('dialog', { name: '进入学习工作台' })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: '进入学习工作台' });
+    expect(dialog).toBeInTheDocument();
     expect(screen.getByLabelText('账号')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('img', { name: '中医药在线学习场景' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '返回展示页' }));
     expect(screen.queryByLabelText('账号')).not.toBeInTheDocument();

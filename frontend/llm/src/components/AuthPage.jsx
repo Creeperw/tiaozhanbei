@@ -22,7 +22,7 @@ const capabilityCards = [
 ];
 
 const AuthVisual = () => (
-  <div className="auth-visual relative mx-auto flex aspect-square w-full max-w-[460px] items-center justify-center">
+  <div className="auth-visual relative mx-auto flex aspect-square w-full max-w-[560px] items-center justify-center">
     <div className="auth-visual__orb" />
     <div className="auth-visual__ring auth-visual__ring--outer" />
     <div className="auth-visual__ring auth-visual__ring--inner" />
@@ -132,21 +132,24 @@ const AuthPage = ({ onLogin }) => {
       </header>
 
       <main className="relative mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
-        <section className="auth-showcase mx-auto flex min-h-[calc(100vh-76px)] max-w-4xl flex-col items-center justify-center py-16 text-center lg:py-24">
+        <section className="auth-showcase grid min-h-[calc(100vh-76px)] items-center gap-12 py-16 lg:grid-cols-[minmax(0,1.03fr)_minmax(380px,0.97fr)] lg:gap-16 lg:py-24">
+          <div className="auth-showcase__content max-w-3xl text-center lg:text-left">
           <div className="auth-kicker inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/75 px-4 py-2 text-xs font-bold tracking-[0.12em] text-emerald-700 shadow-sm shadow-emerald-100">
             <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>
             AI 赋能 · 时珍精粹
           </div>
           <h1 className="mt-7 text-5xl font-black leading-[1.08] tracking-[-0.055em] text-emerald-950 sm:text-6xl lg:text-8xl">承时珍医脉<br /><span className="auth-title-gradient">启智慧学习</span></h1>
           <p className="mt-7 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg lg:text-xl">融合中医药经典智慧与智能学习技术，构建可理解、可追踪、可持续的个性化学习工作台，陪伴每一位学习者循证精进。</p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm font-semibold text-emerald-950/70">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm font-semibold text-emerald-950/70 lg:justify-start">
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-2.5 shadow-sm shadow-emerald-100/60"><CheckCircle2 size={16} className="text-emerald-600" /> 学习画像驱动推荐</span>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-2.5 shadow-sm shadow-emerald-100/60"><Library size={16} className="text-emerald-600" /> 资料来源可追踪</span>
           </div>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4 lg:justify-start">
             <button type="button" onClick={() => openAuth('register')} className="auth-primary-button group inline-flex items-center gap-3 rounded-2xl px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-emerald-200/80 transition hover:-translate-y-0.5">开启智训之旅 <ArrowRight size={18} className="transition group-hover:translate-x-1" /></button>
             <button type="button" onClick={() => openAuth('login')} className="rounded-2xl border border-emerald-200 bg-white/75 px-6 py-3.5 text-sm font-bold text-emerald-800 shadow-sm shadow-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-white">登录已有账号</button>
           </div>
+          </div>
+          <AuthVisual />
         </section>
 
         <section id="capabilities" className="pb-16 pt-4 lg:pb-24">
@@ -162,8 +165,7 @@ const AuthPage = ({ onLogin }) => {
 
       {showAuth && (
         <section className="auth-login-view fixed inset-0 z-[70] overflow-y-auto bg-[#f4fbf7]/96 px-4 py-6 backdrop-blur-md sm:px-8 sm:py-10" role="dialog" aria-modal="true" aria-label={title}>
-          <div className="mx-auto grid min-h-full max-w-6xl items-center gap-8 lg:grid-cols-[minmax(290px,0.9fr)_minmax(400px,1fr)] lg:gap-12">
-            <AuthVisual />
+          <div className="auth-login-layout mx-auto flex min-h-full max-w-6xl items-center">
             <div className="auth-login-card relative w-full rounded-[2rem] border border-white/95 bg-white/92 p-6 shadow-2xl shadow-emerald-200/70 sm:p-8">
               <button type="button" onClick={closeAuth} className="auth-login-back absolute right-5 top-5 text-sm font-semibold text-emerald-700 transition hover:text-emerald-900">返回展示页</button>
               <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200"><BrainCircuit size={24} /></div><div><div className="text-sm font-bold text-emerald-700">时珍智训</div><div className="text-xs text-slate-500">进入你的学习工作台</div></div></div>
