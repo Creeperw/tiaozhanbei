@@ -4,13 +4,12 @@
 
 ## 系统能力
 
-- 长期规划、短期规划和当日任务分层生成，并投影为“阶段 → 教材 → 知识点”学习路径；学习路径同时提供可独立浏览的非个性化经典路线；
+- 长期规划、短期规划和当日任务分层生成，并投影为“阶段 → 教材 → 知识点”学习路径；
 - 正式对话界面支持 LangGraph 流式执行、中断恢复、引用展示和六智能体执行轨迹；
-- 学习工坊包含客观题、案例简答、AI 病患模拟、全量错题与变式训练、知识卡片和计时试卷；知识卡可聚合讲解、教材切片、视频与题目；
-- 智能助教按会话恢复连续问答，超过上下文阈值后由 Memory Agent 压缩；客观错题先补充作答情境再开放变式，主观题由 Expert Agent 批改；
-- 学习行为、掌握度、复习队列和资源推送按登录用户隔离并持久化，并提供行为汇总、趋势与原始计数接口；
+- 学习工坊包含题目训练、知识卡片和计时试卷，知识卡可聚合讲解、教材切片、视频与题目；
+- 学习行为、掌握度、复习队列和资源推送按登录用户隔离并持久化；
 - 知识库优先使用本地可信资料，资源不足时保留网络检索与专家补题能力；
-- Cookie 会话认证、注册登录、管理员权限和前后端同源部署已经接入；未登录用户先进入公开展示页，再通过登录或注册弹层进入学习工作台。
+- Cookie 会话认证、注册登录、管理员权限和前后端同源部署已经接入。
 
 系统对外统一呈现六个智能体角色：任务规划、记忆管理、学情诊断、知识库管理、专家、审核裁判。复习调度、计划持久化等确定性能力作为后端服务运行，不额外伪装成智能体。
 
@@ -30,8 +29,6 @@ tiaozhanbei/
 后端完整环境、数据库、接口、SSE、中断恢复和测试说明见
 [backend/competition_app/README.md](backend/competition_app/README.md)。
 
-前端开发和联调请优先阅读 [前端接口参考](docs/frontend-api-reference.md)。文档明确区分正式 `/api/v1` 与迁移期 `/api` 接口，并包含认证、SSE、中断恢复、学习路径、学习行为、正式题库取题与批改、全量错题、案例训练、知识库顺序节点、复习队列和错误处理契约；关键接口均给出请求、成功响应、空状态、幂等/一次性凭证与用户隔离说明。
-
 ## 快速启动
 
 项目不要求 Docker，统一使用 Python 3.10 与已有 Conda `torch` 环境：
@@ -50,8 +47,10 @@ cp competition_app/.env.example competition_app/.env.local
 cd ../frontend/llm
 npm install
 npm run build
-cd ../../backend
-COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve
+Set-Location "D:\A学业\赛事\小挑\揭榜挂帅\code design\code design v2\tiaozhanbei\backend"
+
+$env:COMPETITION_APP_MODE = "stub"
+D:\miniforge3\python.exe -m competition_app.cli.app serve
 ```
 
 打开：
@@ -79,7 +78,7 @@ python -m competition_app.cli.app serve
 
 ## 前端接入要点
 
-1. 开发服务器将 `/api` 和登录页健康检查 `/health` 代理到 `http://127.0.0.1:7860`。
+1. 开发服务器将 `/api` 代理到 `http://127.0.0.1:7860`。
 2. Cookie 会话请求设置 `credentials: 'include'`。
 3. 以 `/api/v1/platform/openapi.json` 与 `/docs` 为接口真源。
 4. 对话执行使用 `POST /api/v1/review-cards/stream`，按 SSE `event` 字段消费。
@@ -91,8 +90,7 @@ python -m competition_app.cli.app serve
 
 正式前端已使用主后端 HttpOnly Cookie，不在 localStorage 保存认证令牌。体验完整业务域时
 设置 `BACKEND_HANDOFF_ENABLED=true`。Vite 保留两类代理：`/api/v1/*` 原样转发给主 API，
-迁移期 `/api/*` 去掉 `/api` 前缀后交给兼容业务路由；`/health` 原样转发给主后端，供登录页
-判断认证服务是否可用：
+迁移期 `/api/*` 去掉 `/api` 前缀后交给兼容业务路由：
 
 ```powershell
 $env:BACKEND_HANDOFF_ENABLED = "true"
@@ -107,11 +105,6 @@ npm run dev
 
 打开 `http://127.0.0.1:5173`。登录、会话、首页和 LangGraph 对话已经使用主 `/api/v1`；
 只验证这些主功能时可保持 `BACKEND_HANDOFF_ENABLED=false`。
-
-未登录时前端默认展示“承时珍医脉，启智慧学习”公开页，页面本身不直接暴露账号输入框。
-点击“登录”或“登录已有账号”打开登录弹层，点击“开始学习”或“开启智训之旅”打开注册弹层；
-弹层可返回展示页。登录和注册仍分别调用 `/api/v1/auth/login`、`/api/v1/auth/register`，
-不会在浏览器本地保存令牌。
 
 ## Live 环境与大体积数据
 
@@ -168,8 +161,7 @@ npm run build
 
 不要从 WSL 命令行运行 Live pytest；Live 验收在已启动前端运行面板点击 Execute。
 
-当前基线：主后端非 Live 测试 620 项通过、3 项按环境跳过；前端完整测试基线随功能增加，
-以 CI/本地最新输出为准。登录页定向测试、lint 与生产构建必须通过。
+当前基线：后端非 Live 测试 611 项、前端单元与组件测试 207 项。若测试数量随功能增加，以 CI/本地最新输出为准。
 
 ## 协作建议
 

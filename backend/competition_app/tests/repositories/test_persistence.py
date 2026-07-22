@@ -1,13 +1,16 @@
 from datetime import datetime, timezone
+from pathlib import Path
 
 from sqlalchemy import create_engine, text
 
+from competition_app.config import Settings
 from competition_app.contracts.learning_plan import (
     LearningPlanResult,
     LearningTask,
     LongTermPlan,
     ShortTermPlan,
 )
+from competition_app.db.bootstrap import DatabaseBootstrap
 from competition_app.repositories.learning_plan import SqlLearningPlanRepository
 from competition_app.repositories.runtime import (
     SqlConversationRepository,
@@ -177,3 +180,36 @@ def test_sql_conversation_repository_is_idempotent_and_checks_owner() -> None:
     with engine.connect() as connection:
         assert connection.execute(text("SELECT COUNT(*) FROM conversation_sessions")).scalar_one() == 1
         assert connection.execute(text("SELECT COUNT(*) FROM conversation_messages")).scalar_one() == 1
+
+
+def test_formal_sqlite_database_preserves_runtime_repositories(tmp_path: Path) -> None:
+    settings = Settings(
+        mode="stub",
+        use_sqlite=True,
+        sqlite_path=tmp_path / "competition_app.sqlite3",
+    )
+    first_engine = DatabaseBootstrap(settings).ensure_database()
+    SqlLearningPlanRepository(first_engine).save_current("L1", plan_result())
+    SqlRunStateRepository(first_engine).save("THREAD_1", {
+        "status": "completed",
+        "thread_id": "THREAD_1",
+        "execution_id": "EXE_1",
+        "case_id": "CASE_1",
+        "learner_id": "L1",
+    })
+    messages = [{"message_id": "M1", "role": "user", "content": "制定长期规划"}]
+    SqlConversationRepository(first_engine).save_messages("THREAD_1", "L1", messages)
+    first_engine.dispose()
+
+    second_engine = DatabaseBootstrap(settings).ensure_database()
+
+    assert SqlLearningPlanRepository(second_engine).get_current("L1") == plan_result()
+    assert SqlRunStateRepository(second_engine).get("THREAD_1")["status"] == "completed"
+    restored_messages = SqlConversationRepository(second_engine).get_messages(
+        "THREAD_1", "L1"
+    )
+    assert [
+        {key: message[key] for key in ("message_id", "role", "content")}
+        for message in restored_messages
+    ] == messages
+    assert restored_messages[0]["created_at"]

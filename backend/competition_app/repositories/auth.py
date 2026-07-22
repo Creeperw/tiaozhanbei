@@ -14,6 +14,14 @@ class UsernameTakenError(ValueError):
     pass
 
 
+def _utc_datetime(value):
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value)
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 class AuthRepository(Protocol):
     def create_user(self, user: StoredAuthUser) -> None: ...
 
@@ -125,7 +133,9 @@ class SqlAuthRepository:
             ).mappings().first()
         if row is None:
             return None
-        return StoredAuthUser.model_validate(dict(row))
+        values = dict(row)
+        values["created_at"] = _utc_datetime(values.get("created_at"))
+        return StoredAuthUser.model_validate(values)
 
     def create_session(self, session: AuthSession) -> None:
         with self.engine.begin() as connection:
@@ -153,9 +163,7 @@ class SqlAuthRepository:
             return None
         values = dict(row)
         for key in ("expires_at", "created_at", "last_seen_at", "revoked_at"):
-            value = values.get(key)
-            if value is not None and value.tzinfo is None:
-                values[key] = value.replace(tzinfo=timezone.utc)
+            values[key] = _utc_datetime(values.get(key))
         return AuthSession.model_validate(values)
 
     def revoke_session(self, token_hash: str, revoked_at: datetime) -> None:
