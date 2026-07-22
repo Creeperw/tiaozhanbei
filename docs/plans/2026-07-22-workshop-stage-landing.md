@@ -2,11 +2,22 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Replace the learning workshop's reused learning-path landing with the approved six-stage Figma entry, then open the existing path view in classic-route mode by default.
+**Goal:** Replace the learning workshop's reused learning-path landing with a backend-ready, adaptive 4–6 stage Figma entry, then open the existing path view in classic-route mode by default through an OriginKit-inspired flip transition.
 
-**Architecture:** Keep the existing `practice` page intent and split it into `stages`, `path`, and `workspace` views. Add one responsive presentational component for the Figma stage overview, keep `DashboardPage` as the path experience, and preserve `PracticePage` for deep-linked training modules.
+**Architecture:** Keep the existing `practice` page intent and split it into `stages`, `path`, and `workspace` views. Add a data-driven responsive stage component, keep the flip overlay at `App` level so it survives the route midpoint, keep `DashboardPage` as the path experience, and preserve `PracticePage` for deep-linked training modules.
 
-**Tech Stack:** React 18, JavaScript, CSS, Vitest, Testing Library, existing page-intent navigation, existing Tailwind utility classes.
+**Tech Stack:** React 19, JavaScript, CSS, Framer Motion, Vitest, Testing Library, existing page-intent navigation, existing Tailwind utility classes.
+
+**Approved revision (supersedes fixed-six code samples below):**
+
+- `LearningStageLanding` accepts a stage array and renders the actual 4–6 results. `getStageLayout(count)` computes equal-width columns, responsive gaps, and normalized staircase heights for 4, 5, and 6 stages.
+- Keep the approved six-stage content only as the empty/backend-pending fallback; do not force a backend result into six slots.
+- Adapt OriginKit Magnetic Carousel's pointer-distance falloff to the stage buttons without adopting its image-strip presentation.
+- Add `StagePageTransition` above the routed page in `App`. Adapt OriginKit Flip Gallery's perspective, two faces, hidden backface, and 180-degree final flip. Change the route at half duration and remove the overlay only after completion.
+- Add `framer-motion` (authorized by the user) and update both `package.json` and `package-lock.json`.
+- Verify keyboard activation, touch behavior, transition double-click protection, and `prefers-reduced-motion` fallback in addition to the tests below.
+- Add a content-density contract: every card exposes its normalized progress, cards in the first half use a compact one-line resource treatment, later cards use full resource tags, and the redundant action label is removed from layout flow.
+- Raise the responsive base height while reducing the total height range so all core tasks fit and 4–6 cards retain equal visual steps. Verify in the browser that every card has `scrollHeight <= clientHeight` and that resource blocks do not overlap task blocks.
 
 ---
 
@@ -312,4 +323,3 @@ Only if visual verification required a small scoped correction:
 git add frontend/llm/src/components/learning-stage frontend/llm/src/App.jsx frontend/llm/src/components/DashboardPage.jsx
 git commit -m "fix: polish workshop stage navigation"
 ```
-
