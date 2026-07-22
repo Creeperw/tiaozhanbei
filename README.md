@@ -9,6 +9,8 @@
 - 学习工坊包含客观题、案例简答、AI 病患模拟、全量错题与变式训练、知识卡片和计时试卷；知识卡可聚合讲解、教材切片、视频与题目；
 - 智能助教按会话恢复连续问答，超过上下文阈值后由 Memory Agent 压缩；客观错题先补充作答情境再开放变式，主观题由 Expert Agent 批改；
 - 学习行为、掌握度、复习队列和资源推送按登录用户隔离并持久化；学情诊断依赖带样本数与新鲜度的监控快照，复习队列只接纳已完成且批改通过的知识点题目作答；
+- 学情报告提供能力结构、行为趋势、薄弱知识点、错因分布和资源匹配依据；主动干预、站内通知及规划自动复盘形成可确认、可追踪的闭环；
+- 数据库模式下 LangGraph 中断检查点和恢复上下文均持久化，页面刷新、断线或服务重启后可从原节点继续；
 - 知识库优先使用本地可信资料，资源不足时保留网络检索与专家补题能力；
 - Cookie 会话认证、注册登录、管理员权限和前后端同源部署已经接入；未登录用户先进入公开展示页，再通过登录或注册弹层进入学习工作台。
 
@@ -34,6 +36,8 @@ tiaozhanbei/
 [数据库运维指南](docs/database-operations.md)。两份文档覆盖无 Docker 安装、双库初始化、迁移、备份恢复、生产启动、升级回滚和常见故障。
 
 前端开发和联调请优先阅读 [前端接口参考](docs/frontend-api-reference.md)。文档明确区分正式 `/api/v1` 与迁移期 `/api` 接口，并包含认证、SSE、中断恢复、学习路径、学习行为、正式题库取题与批改、全量错题、案例训练、知识库顺序节点、复习队列和错误处理契约；关键接口均给出请求、成功响应、空状态、幂等/一次性凭证与用户隔离说明。
+
+学情指标的数据表、采集动作、时间窗口、公式、推荐权重、版本和研究依据见 [学情监测与资源匹配口径](docs/learning-monitoring-methodology.md)。
 
 ## 快速启动
 
@@ -135,7 +139,13 @@ Live 模式使用 `qwen3.7-max-2026-05-20`、`Qwen/Qwen3-Embedding-4B` 和正式
 QUESTION_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
 KNOWLEDGE_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
 KNOWLEDGE_HANDOFF_ROOT=/absolute/path/to/知识星球视频知识库_前端交接包_2026-07-18
+# 可选；留空时使用仓库内置的 2026-07-22 章节映射
+KNOWLEDGE_ATLAS_CHAPTER_ROOT=/absolute/path/to/chapter-mapping
 ```
+
+仓库内 `backend/competition/knowledge_atlas_chapters/2026-07-22` 保存章节顺序映射，
+不复制原始教材和切片正文。知识星球据此按“教材 → 章节 → 小节 → 知识点”四级展示；
+同章同名的重复切片区间会合并为一个小节入口，底层 `chunk_uid` 关联保持不变。
 
 也可以把这两个资产软链接到 `backend/competition/` 下的同名目录；这些入口已被
 `.gitignore` 排除。启动时可通过 `/health` 和 `/api/v1/platform/status` 检查主框架与交接

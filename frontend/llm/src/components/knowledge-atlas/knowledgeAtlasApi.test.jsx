@@ -31,11 +31,22 @@ describe('knowledgeAtlasApi', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ nodes: [{ id: 'kp-1' }] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ kp: { id: 'kp-1' }, questions: [] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ resolved: true, route: 'postgraduate' }) });
-    await loadAtlasNodes({ level: 3, route: 'postgraduate', lv1: '药理学', lv2: '第一节 心律失常', signal: null });
+    await loadAtlasNodes({
+      level: 4,
+      route: 'postgraduate',
+      lv1: '药理学',
+      chapter: '第十四章 抗心律失常药',
+      chapterId: 'chapter/14',
+      lv2: '第一节 心律失常',
+      sectionId: 'section/1',
+      signal: null,
+    });
     await loadAtlasDetail('kp/1', { questionLimit: 50 });
     await resolveAtlasContext({ trackId: 'track a', membershipId: 'node/1' });
-    expect(fetchWithAuth.mock.calls[0][0]).toContain('level=3');
+    expect(fetchWithAuth.mock.calls[0][0]).toContain('level=4');
     expect(fetchWithAuth.mock.calls[0][0]).toContain('lv1=%E8%8D%AF%E7%90%86%E5%AD%A6');
+    expect(fetchWithAuth.mock.calls[0][0]).toContain('chapter_id=chapter%2F14');
+    expect(fetchWithAuth.mock.calls[0][0]).toContain('section_id=section%2F1');
     expect(fetchWithAuth.mock.calls[1][0]).toBe('/api/knowledge/atlas/detail/kp%2F1?question_limit=50');
     expect(fetchWithAuth.mock.calls[2][0]).toContain('track_id=track+a');
     expect(fetchWithAuth.mock.calls[2][0]).toContain('membership_id=node%2F1');

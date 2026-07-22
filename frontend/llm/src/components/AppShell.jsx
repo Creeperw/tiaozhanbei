@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
+  Bell,
   ChartNoAxesColumnIncreasing,
   ClipboardList,
   Database,
@@ -17,6 +18,7 @@ import {
 import { getAppShellConfig } from '../appShell';
 import HomeButton from './HomeButton';
 import { useModalFocus } from './ui/useModalFocus';
+import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 
 const navIconMap = {
   dashboard: Home,
@@ -142,12 +144,27 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
   const [collapsed, setCollapsed] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMounted, setDrawerMounted] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const drawerExitTimerRef = useRef(null);
   const displayName = currentUser?.username || 'User';
   const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice'].includes(shell.currentPage);
   const scrollRegion = ['assistant', 'knowledge'].includes(shell.currentPage) ? 'contained' : 'page';
 
   useEffect(() => () => window.clearTimeout(drawerExitTimerRef.current), []);
+  useEffect(() => {
+    let cancelled = false;
+    const loadUnread = async () => {
+      try {
+        const response = await fetchWithAuth(`${API_BASE}/v1/notifications?status=unread&limit=1`);
+        const payload = await readJsonResponse(response, {});
+        if (!cancelled && response.ok) setUnreadNotifications(Number(payload.unread_count) || 0);
+      } catch {
+        if (!cancelled) setUnreadNotifications(0);
+      }
+    };
+    loadUnread();
+    return () => { cancelled = true; };
+  }, [currentPage]);
 
   const openDrawer = () => {
     window.clearTimeout(drawerExitTimerRef.current);
@@ -183,6 +200,10 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
             <strong>{displayName}</strong>
             <small>{currentUser?.role === 'admin' ? '管理员支持权限' : '个人学习者'}</small>
           </div>
+          <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'personalization', params: { view: 'governance' } })}>
+            <Bell aria-hidden="true" size={17} />
+            {unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
+          </button>
           <button type="button" className="icon-button" aria-label="退出登录" onClick={onLogout}>
             <LogOut aria-hidden="true" size={17} />
           </button>
@@ -201,7 +222,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
             <Menu aria-hidden="true" size={21} />
           </button>
           <ShellIdentity collapsed={false} />
-          <span className="app-shell__mobile-user">{displayName}</span>
+          <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'personalization', params: { view: 'governance' } })}><Bell aria-hidden="true" size={18} />{unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}</button>
         </header>
 
         <main

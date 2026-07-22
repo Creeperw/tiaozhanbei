@@ -143,3 +143,29 @@ GROUP BY table_schema;
 
 整体部署步骤见 [部署与升级指南](deployment.md)，接口的数据归属规则见
 [前端接口参考](frontend-api-reference.md)。
+
+## 9. 学习治理与 LangGraph 持久化表
+
+主库迁移 `008_langgraph_persistent_checkpoints.sql` 新增：
+
+- `langgraph_checkpoints`：图状态、元数据和父检查点；
+- `langgraph_checkpoint_blobs`：按通道版本保存状态值；
+- `langgraph_checkpoint_writes`：保存中断、恢复和任务中间写入。
+
+正常完成或失败的执行会清理对应检查点；处于 `interrupted` 的执行必须保留。排障时先查
+`workflow_run_states` 的当前用户、状态和 `thread_id`，再查 LangGraph 三张表。禁止只删除其中一张表，
+否则恢复链会不完整。
+
+兼容业务库新增以下用户隔离表：
+
+- `learning_intervention_lifecycles`：干预触发快照、冷却、反馈和效果评估；
+- `notification_preferences`、`notification_records`：通知偏好、去重和读状态；
+- `plan_review_records`：规划复盘证据、提案及用户决定。
+
+这些表由兼容业务模块的 SQLAlchemy 增量初始化创建。备份和恢复时必须和学习行为、计划及主库检查点
+保持同一时间点。多实例部署应保证所有实例连接同一主库；不要使用每个实例独立的 SQLite 文件。
+
+学情报告还读取 `learning_activity_records`、`learning_task`、`learning_focus_sessions`、`question_attempt`、
+`knowledge_mastery_states`、`learner_kp_review_states` 与 `mistake_records`。这些表不能单独清理，否则同一窗口
+内的雷达指标会失去来源或产生不完整样本。字段、公式和版本见
+[学情监测与资源匹配口径](learning-monitoring-methodology.md)。

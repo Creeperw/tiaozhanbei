@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from competition_app.agents.planner import PlannerAgent
+from competition_app.agents.planner import PlannerAgent, PlannerDecision
 from competition_app.contracts.base import AgentEnvelope, WritebackIntent
 from competition_app.contracts.execution import ExecutionPlan
 from competition_app.contracts.resource import (
@@ -120,6 +120,7 @@ class _WorkflowContinuation:
     execution_id: str
     execution_plan: ExecutionPlan
     planner_output: AgentEnvelope[Any]
+    context: dict[str, Any]
 
 
 class PersonalizedReviewCardUseCase:
@@ -436,6 +437,7 @@ class PersonalizedReviewCardUseCase:
                 execution_id=execution_id,
                 execution_plan=execution_plan,
                 planner_output=planner_output,
+                context=context,
             )
             self._remember_run(
                 thread_id,
@@ -446,6 +448,9 @@ class PersonalizedReviewCardUseCase:
                     "completed_steps": interrupted.completed_steps,
                     "execution_id": execution_id,
                     "task_type": interrupted.task_type,
+                    "continuation": self._continuation_payload(
+                        self._continuations[thread_id]
+                    ),
                 },
             )
             self._save_assistant_message(
@@ -466,7 +471,12 @@ class PersonalizedReviewCardUseCase:
         )
         self._remember_run(
             thread_id,
-            {"status": "completed", "thread_id": thread_id, "result": result},
+            {
+                "status": "completed",
+                "thread_id": thread_id,
+                "result": result,
+                "continuation": None,
+            },
         )
         self._save_assistant_message(
             conversation_id, request.learner_id, persisted_messages, result
@@ -479,6 +489,10 @@ class PersonalizedReviewCardUseCase:
         request: WorkflowResumeRequest,
     ) -> ReviewCardResult | WorkflowInterruptedResult:
         continuation = self._continuations.get(thread_id)
+        if continuation is None:
+            continuation = self._restore_continuation(thread_id)
+            if continuation is not None:
+                self._continuations[thread_id] = continuation
         if continuation is None:
             raise KeyError(f"没有可恢复的 LangGraph 会话：{thread_id}")
         self._remember_run(thread_id, {"status": "running", "thread_id": thread_id})
@@ -521,6 +535,8 @@ class PersonalizedReviewCardUseCase:
         execution = await self.orchestrator.resume(
             thread_id,
             resume_payload,
+            plan=continuation.execution_plan,
+            context=continuation.context,
         )
         if execution.status == "interrupted":
             interrupted = WorkflowInterruptedResult(
@@ -548,6 +564,7 @@ class PersonalizedReviewCardUseCase:
                     "completed_steps": interrupted.completed_steps,
                     "execution_id": continuation.execution_id,
                     "task_type": interrupted.task_type,
+                    "continuation": self._continuation_payload(continuation),
                 },
             )
             self._save_assistant_message(
@@ -572,7 +589,12 @@ class PersonalizedReviewCardUseCase:
         self._continuations.pop(thread_id, None)
         self._remember_run(
             thread_id,
-            {"status": "completed", "thread_id": thread_id, "result": result},
+            {
+                "status": "completed",
+                "thread_id": thread_id,
+                "result": result,
+                "continuation": None,
+            },
         )
         self._save_assistant_message(
             conversation_id,
@@ -610,7 +632,55 @@ class PersonalizedReviewCardUseCase:
         self._continuations.pop(thread_id, None)
         self._remember_run(
             thread_id,
-            {"status": "failed", "thread_id": thread_id, "message": message},
+            {
+                "status": "failed",
+                "thread_id": thread_id,
+                "message": message,
+                "continuation": None,
+            },
+        )
+
+    def _continuation_payload(
+        self, continuation: _WorkflowContinuation
+    ) -> dict[str, Any]:
+        context = {
+            key: value
+            for key, value in continuation.context.items()
+            if key != "terminal_trace"
+        }
+        return {
+            "request": continuation.request.model_dump(mode="json"),
+            "case_id": continuation.case_id,
+            "execution_id": continuation.execution_id,
+            "execution_plan": continuation.execution_plan.model_dump(mode="json"),
+            "planner_output": continuation.planner_output.model_dump(mode="json"),
+            "context": context,
+        }
+
+    def _restore_continuation(
+        self, thread_id: str
+    ) -> _WorkflowContinuation | None:
+        state = self.run_state_repository.get(thread_id) or {}
+        if state.get("status") not in {"interrupted", "running"}:
+            return None
+        payload = state.get("continuation")
+        if not isinstance(payload, dict):
+            return None
+        context = dict(payload.get("context") or {})
+        context["terminal_trace"] = self.terminal_trace
+        return _WorkflowContinuation(
+            request=ReviewCardRequest.model_validate(payload.get("request") or {}),
+            case_id=str(payload.get("case_id") or state.get("case_id") or ""),
+            execution_id=str(
+                payload.get("execution_id") or state.get("execution_id") or ""
+            ),
+            execution_plan=ExecutionPlan.model_validate(
+                payload.get("execution_plan") or {}
+            ),
+            planner_output=AgentEnvelope[PlannerDecision].model_validate(
+                payload.get("planner_output") or {}
+            ),
+            context=context,
         )
 
     def _remember_run(self, thread_id: str, state: dict[str, Any]) -> None:

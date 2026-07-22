@@ -1914,7 +1914,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       />
 
       {/* Sidebar */}
-      <aside aria-label="会话列表" aria-hidden={isSidebarOpen ? undefined : true} inert={isSidebarOpen ? undefined : true} data-open={String(isSidebarOpen)} className={`assistant-session-rail ${isSidebarOpen ? 'w-[280px] translate-x-0' : 'w-0 -translate-x-full opacity-0'} bg-white/70 backdrop-blur-xl border-r border-emerald-100 flex flex-col flex-shrink-0 z-20 transition-[transform,opacity] duration-200 ease-out overflow-hidden shadow-xl shadow-emerald-100/40`}>
+      <aside aria-label="会话列表" aria-hidden={isSidebarOpen ? undefined : true} inert={isSidebarOpen ? undefined : true} data-open={String(isSidebarOpen)} className={`assistant-session-rail ${isSidebarOpen ? 'w-[244px] translate-x-0' : 'w-0 -translate-x-full opacity-0'} bg-white/70 backdrop-blur-xl border-r border-emerald-100 flex flex-col flex-shrink-0 z-20 transition-[transform,opacity] duration-200 ease-out overflow-hidden shadow-xl shadow-emerald-100/40`}>
         {/* Sidebar Header */}
         <div className="h-16 flex items-center justify-between px-4 pt-2 flex-shrink-0">
            <div className="font-semibold text-gray-700 flex items-center gap-2">
@@ -1930,8 +1930,8 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
 
         {/* New Chat Button */}
         <div className="px-4 pb-2">
-          <button onClick={createSession} className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 px-4 py-3 rounded-xl shadow-md shadow-emerald-200 transition-[transform,box-shadow,background-color] transform hover:-translate-y-0.5 font-medium text-sm">
-            <Plus size={18} /><span>新对话</span>
+          <button onClick={createSession} className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 text-[13px] font-medium text-white shadow-sm shadow-emerald-200 transition-[transform,box-shadow,background-color] hover:-translate-y-0.5 hover:from-emerald-700 hover:to-teal-700">
+            <Plus size={16} /><span>新对话</span>
           </button>
         </div>
 
@@ -1999,20 +1999,14 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
         {currentSessionId ? (
           <>
             {/* Chat Header */}
-            <header className="sticky top-0 z-10 grid min-h-16 grid-cols-[auto,minmax(0,1fr),auto] items-center gap-2 border-b border-emerald-100 bg-white/75 px-4 shadow-sm shadow-emerald-50 backdrop-blur-xl sm:px-6">
+            <header className="sticky top-0 z-10 grid h-11 min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-emerald-100 bg-white/75 px-3 shadow-sm shadow-emerald-50 backdrop-blur-xl sm:px-4">
               <div className="flex min-w-0 items-center gap-2">
                  {!isSidebarOpen && (
-                  <button onClick={() => setIsSidebarOpen(true)} aria-label="展开侧边栏" className="group p-2 rounded-2xl bg-white/90 border border-emerald-100 text-emerald-600 shadow-sm shadow-emerald-100 hover:text-white hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-500 hover:shadow-md hover:shadow-emerald-200/70 transition-[color,background-color,border-color,box-shadow]" title="展开侧边栏"><ChevronsRight size={19} className="transition-transform group-hover:translate-x-0.5" /></button>
+                  <button onClick={() => setIsSidebarOpen(true)} aria-label="展开侧边栏" className="group rounded-xl border border-emerald-100 bg-white/90 p-1.5 text-emerald-600 shadow-sm shadow-emerald-100 transition-[color,background-color,border-color,box-shadow] hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-md hover:shadow-emerald-200/70" title="展开侧边栏"><ChevronsRight size={18} className="transition-transform group-hover:translate-x-0.5" /></button>
                  )}
-                 <div className="flex w-[184px] items-center gap-2 sm:w-[220px]">
-                   {!embedded && shellConfig.assistantHomeAction && onBackHome ? (
-                     <HomeButton onClick={onBackHome} label={shellConfig.assistantHomeAction.label} className="h-10 flex-1 justify-center px-2 py-2" />
-                   ) : null}
-                   <button onClick={createSession} className="flex h-10 flex-1 items-center justify-center gap-1 rounded-full bg-emerald-600 px-2 text-sm font-medium text-white transition hover:bg-emerald-700" title="新建对话">
-                     <SquarePen size={17} />
-                     <span>新对话</span>
-                   </button>
-                 </div>
+                 {!embedded && shellConfig.assistantHomeAction && onBackHome ? (
+                   <HomeButton onClick={onBackHome} label={shellConfig.assistantHomeAction.label} className="h-8 justify-center px-3 py-1.5" />
+                 ) : null}
               </div>
 
               <div className="flex min-w-0 items-center justify-center gap-2 px-1 text-center">
@@ -2108,23 +2102,21 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
             </div>
 
             {/* Input Area */}
-            <div className="assistant-composer p-4 sm:p-6">
+            <div className="assistant-composer border-t-0 p-3 sm:p-4">
               <div className="max-w-4xl mx-auto relative group">
-                <div className="absolute inset-0 bg-emerald-500/10 rounded-[28px] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                
                 <div 
                   ref={inputContainerRef}
                   className={`
-                    relative flex flex-col rounded-[28px] transition-[background-color,border-color,box-shadow] duration-200
-                    ${isDragging 
-                      ? 'bg-emerald-50 ring-2 ring-emerald-500/30' 
-                      : 'bg-white/80 border border-emerald-100 focus-within:bg-white focus-within:shadow-md focus-within:shadow-emerald-100 focus-within:ring-1 focus-within:ring-emerald-200'
+                    relative flex flex-col rounded-3xl border border-emerald-100/80 bg-white/90 shadow-[0_12px_32px_rgba(16,185,129,0.08)] transition-[background-color,border-color,box-shadow] duration-200
+                    ${isDragging
+                      ? 'border-emerald-300 bg-emerald-50 shadow-md shadow-emerald-100'
+                      : 'focus-within:border-emerald-200 focus-within:bg-white focus-within:shadow-[0_14px_36px_rgba(16,185,129,0.12)]'
                     }
                   `}
                   onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}
                 >
                   {isDragging && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm rounded-[28px] animate-in fade-in duration-200 pointer-events-none">
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm rounded-3xl animate-in fade-in duration-200 pointer-events-none">
                        <UploadCloud size={48} className="mb-2 text-emerald-600 upload-float" />
                        <span className="font-semibold text-emerald-700 text-lg">释放文件以上传</span>
                     </div>
@@ -2150,11 +2142,11 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                     onChange={(e) => setInput(e.target.value)} 
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())} 
                     placeholder="描述你想学习、练习或规划的内容…"
-                    className="w-full bg-transparent border-none outline-none focus:ring-0 text-gray-700 placeholder-gray-500 resize-none max-h-[160px] overflow-y-auto input-scrollbar py-4 px-6 min-h-[56px]" 
+                    className="min-h-[52px] w-full max-h-[160px] resize-none overflow-y-auto border-none bg-transparent px-5 py-3 text-gray-700 outline-none placeholder-gray-500 focus:ring-0 focus-visible:outline-none input-scrollbar"
                     rows="1" 
                   />
                   
-                  <div className="flex justify-between items-center px-4 pb-3">
+                  <div className="flex items-center justify-between px-3 pb-2.5">
                     <div className="flex items-center gap-2">
                       <div className="relative" ref={toolMenuRef}>
                         <button
@@ -2223,7 +2215,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                   </div>
 
                 </div>
-                <div className="text-center mt-3 text-xs text-gray-400 font-medium">支持 .txt, .md, .docx, .png, .jpg 拖拽上传</div>
+                <div className="mt-2 text-center text-xs font-medium text-gray-400">支持 .txt, .md, .docx, .png, .jpg 拖拽上传</div>
               </div>
             </div>
           </>
@@ -2234,15 +2226,9 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                 {!isSidebarOpen && (
                   <button aria-label="展开侧边栏" onClick={() => setIsSidebarOpen(true)} className="group p-2 rounded-2xl bg-white/90 shadow-sm shadow-emerald-100 border border-emerald-100 text-emerald-600 hover:text-white hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-500 hover:shadow-md hover:shadow-emerald-200/70 transition-[color,background-color,border-color,box-shadow]"><ChevronsRight size={19} className="transition-transform group-hover:translate-x-0.5" /></button>
                 )}
-                <div className="flex w-[184px] items-center gap-2 sm:w-[220px]">
-                  {!embedded && shellConfig.assistantHomeAction && onBackHome ? (
-                    <HomeButton onClick={onBackHome} label={shellConfig.assistantHomeAction.label} className="h-10 flex-1 justify-center px-2 py-2" />
-                  ) : null}
-                  <button onClick={createSession} className="flex h-10 flex-1 items-center justify-center gap-1 rounded-full bg-emerald-600 px-2 text-sm font-medium text-white transition hover:bg-emerald-700" title="新建对话">
-                    <SquarePen size={17} />
-                    <span>新对话</span>
-                  </button>
-                </div>
+                {!embedded && shellConfig.assistantHomeAction && onBackHome ? (
+                  <HomeButton onClick={onBackHome} label={shellConfig.assistantHomeAction.label} className="h-10 justify-center px-3 py-2" />
+                ) : null}
               </div>
             </div>
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">

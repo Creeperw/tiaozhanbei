@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from APP.backend import database
 from APP.backend.system_data_service import (
+    build_learning_window_metrics,
     record_dashboard_recommendation_click,
     record_dashboard_recommendations_view,
     rebuild_system_data,
@@ -268,6 +269,14 @@ class SystemDataServiceTests(unittest.TestCase):
             ),
         ))
         self.db.commit()
+
+        metrics = build_learning_window_metrics(self.db, user_id=1, days=7, now=now + timedelta(hours=2))
+        self.assertEqual(metrics["task_completion_rate"]["value"], 0.5)
+        self.assertEqual(metrics["resource_click_rate"]["value"], 0.5)
+        self.assertEqual(metrics["counts"]["tasks"], 2)
+        self.assertEqual(metrics["counts"]["completed_tasks"], 1)
+        self.assertEqual(metrics["counts"]["focus_sessions"], 2)
+        self.assertEqual(metrics["calculation_version"], "learning-window-v1")
 
         snapshot = rebuild_system_data(self.db, user_id=1, now=now + timedelta(hours=2))
         self.db.commit()

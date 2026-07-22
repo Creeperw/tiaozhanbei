@@ -1,7 +1,9 @@
 import asyncio
+from pathlib import Path
 
 import pytest
 from pydantic import BaseModel
+from sqlalchemy import create_engine
 
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.resource import AuditResult
@@ -13,6 +15,8 @@ from competition_app.config import Settings
 from competition_app.runtime.agent_registry import AgentRegistry
 from competition_app.runtime.langgraph_orchestrator import LangGraphOrchestrator
 from competition_app.runtime.orchestrator import Orchestrator
+from competition_app.runtime.sqlalchemy_checkpointer import SqlAlchemyCheckpointSaver
+from competition_app.db.migrations import MigrationRunner
 
 
 class RecordingAgent:
@@ -330,6 +334,62 @@ async def test_langgraph_interrupts_and_resumes_same_thread_from_checkpoint() ->
     assert resumed.outputs["diagnosis"]["plan_scope"] == "long_term"
     assert agent.calls == 3
     assert orchestrator.pending_interrupt("THREAD_INTERRUPT_001") is None
+
+
+@pytest.mark.asyncio
+async def test_langgraph_restores_interrupted_thread_after_process_recreation(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'langgraph-restart.sqlite'}"
+    migration_dir = Path(__file__).parents[2] / "migrations"
+    plan = ExecutionPlan(
+        plan_id="P_PERSISTENT_INTERRUPT",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="diagnosis", agent="diagnosis_agent")],
+    )
+    context = {
+        "case_id": "CASE_PERSISTENT",
+        "trace_id": "TRACE_PERSISTENT",
+        "request_id": "REQ_PERSISTENT",
+        "execution_id": "EXE_PERSISTENT",
+        "learner_id": "LEARNER_PERSISTENT",
+        "task_type": "learning_plan",
+        "user_request": "重新制定长期计划",
+        "original_user_request": "重新制定长期计划",
+        "messages": [],
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    first_engine = create_engine(database_url)
+    MigrationRunner(first_engine, migration_dir).run()
+    first_registry = AgentRegistry()
+    first_registry.register("diagnosis_agent", ClarifyingAgent())
+    first = LangGraphOrchestrator(
+        first_registry,
+        checkpointer=SqlAlchemyCheckpointSaver(first_engine),
+    )
+
+    interrupted = await first.execute(
+        plan, context, thread_id="THREAD_PERSISTENT_INTERRUPT"
+    )
+    assert interrupted.status == "interrupted"
+    first_engine.dispose()
+
+    second_engine = create_engine(database_url)
+    second_registry = AgentRegistry()
+    second_registry.register("diagnosis_agent", ClarifyingAgent())
+    restored = LangGraphOrchestrator(
+        second_registry,
+        checkpointer=SqlAlchemyCheckpointSaver(second_engine),
+    )
+    resumed = await restored.resume(
+        "THREAD_PERSISTENT_INTERRUPT",
+        {"answer": "半年内完成方剂学", "plan_scope": "long_term"},
+        plan=plan,
+        context=context,
+    )
+
+    assert resumed.status == "success"
+    assert "半年内完成方剂学" in resumed.outputs["diagnosis"]["resolved_request"]
+    second_engine.dispose()
 
 
 @pytest.mark.asyncio

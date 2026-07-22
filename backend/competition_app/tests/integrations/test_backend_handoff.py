@@ -180,6 +180,22 @@ def test_formal_frontend_assistant_character_assets_are_mounted(tmp_path) -> Non
     assert response.content == b"frontend-avatar"
 
 
+def test_formal_frontend_learning_stage_assets_are_mounted(tmp_path) -> None:
+    asset_root = tmp_path / "learning-stage"
+    asset_root.mkdir(parents=True)
+    (asset_root / "foundation.png").write_bytes(b"learning-stage-artwork")
+    container = ApplicationContainer.build(
+        Settings(frontend_dist_root=tmp_path),
+        snapshot_root=tmp_path / "snapshots",
+    )
+
+    with TestClient(create_app(container, auth_required=False)) as client:
+        response = client.get("/learning-stage/foundation.png")
+
+    assert response.status_code == 200
+    assert response.content == b"learning-stage-artwork"
+
+
 def test_main_cookie_identity_reaches_mounted_business_routes(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     runtime = FakeBackendHandoffRuntime()

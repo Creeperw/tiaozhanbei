@@ -401,6 +401,237 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def load_learning_insights(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+        plan_context: dict[str, Any] | None = None,
+        run_automation: bool = True,
+    ) -> dict[str, Any]:
+        """Return the stable learning-insight contract and run idempotent automation."""
+
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            if run_automation:
+                cycle = governance.run_automation_cycle(
+                    db,
+                    user.id,
+                    plan_context=plan_context or {},
+                    days=days,
+                )
+                result = cycle["insights"]
+                result["automation"] = {
+                    "intervention": cycle.get("intervention"),
+                    "plan_review": cycle.get("plan_review"),
+                }
+            else:
+                result = governance.build_learning_insights(db, user.id, days=days)
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_resource_match_report(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any] | None = None,
+        limit: int = 12,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            insights = governance.build_learning_insights(db, user.id, days=30)
+            report = governance.build_resource_match_report(
+                db,
+                user.id,
+                insights=insights,
+                plan_context=plan_context or {},
+                limit=limit,
+            )
+            db.commit()
+            return report
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_notifications(
+        self,
+        external_user_id: str,
+        *,
+        status: str = "all",
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.list_notifications(db, user.id, status=status, limit=limit)
+        finally:
+            db.close()
+
+    def update_notification_status(
+        self,
+        external_user_id: str,
+        notification_id: str,
+        status: str,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.update_notification_status(
+                db, user.id, notification_id, status
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def get_notification_preferences(self, external_user_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            row = governance.get_notification_preferences(db, user.id)
+            result = governance.serialize_notification_preferences(row)
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def update_notification_preferences(
+        self,
+        external_user_id: str,
+        updates: dict[str, Any],
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.update_notification_preferences(db, user.id, updates)
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_interventions(self, external_user_id: str, *, limit: int = 30) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.list_interventions(db, user.id, limit=limit)
+        finally:
+            db.close()
+
+    def submit_intervention_feedback(
+        self,
+        external_user_id: str,
+        intervention_id: int,
+        action: str,
+        reason: str = "",
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.record_intervention_feedback(
+                db, user.id, intervention_id, action, reason
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_plan_reviews(self, external_user_id: str, *, limit: int = 30) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.list_plan_reviews(db, user.id, limit=limit)
+        finally:
+            db.close()
+
+    def run_plan_review(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any] | None = None,
+        trigger_type: str = "manual",
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            insights = governance.build_learning_insights(db, user.id, days=30)
+            result = governance.run_plan_review(
+                db,
+                user.id,
+                insights=insights,
+                plan_context=plan_context or {},
+                trigger_type=trigger_type,
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def decide_plan_review(
+        self,
+        external_user_id: str,
+        review_id: str,
+        decision: str,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.decide_plan_review(
+                db, user.id, review_id, decision
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
     def load_learning_activity_summary(
         self,
         external_user_id: str,

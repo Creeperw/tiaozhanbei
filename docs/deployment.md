@@ -72,6 +72,8 @@ QUESTION_VECTOR_STORE_ROOT=/srv/tiaozhanbei-assets/vdb_store
 KNOWLEDGE_VECTOR_STORE_ROOT=/srv/tiaozhanbei-assets/vdb_store
 KNOWLEDGE_HANDOFF_ROOT=/srv/tiaozhanbei-assets/知识星球视频知识库_前端交接包_2026-07-18
 KNOWLEDGE_RUNTIME_ROOT=/srv/tiaozhanbei-runtime/knowledge
+# 可选；不配置时读取仓库内 backend/competition/knowledge_atlas_chapters/2026-07-22
+KNOWLEDGE_ATLAS_CHAPTER_ROOT=/srv/tiaozhanbei-assets/knowledge-atlas-chapters
 ```
 
 生产环境通过 HTTPS 对外提供服务时设置 `AUTH_COOKIE_SECURE=true`。不要启用弱默认管理员密码；若需要初始化管理员，设置一次性强密码，登录后立即更换并从环境中移除。
@@ -165,5 +167,15 @@ RestartSec=5
 - 登录成功后仍返回 401：请求需带 `credentials: 'include'`，HTTPS 环境检查安全 Cookie 与代理头；
 - SSE 无增量输出：检查反向代理缓冲和读取超时配置；
 - Live 资源检索失败：检查资产绝对路径、目录权限、模型密钥及索引版本。
+- 教材下没有章节或知识点：检查 `/api/knowledge/atlas/status` 返回的 `chapter_root`，确认其中包含 `chapter_nodes.jsonl` 和 `chunk_chapter_links.jsonl`；默认应指向仓库内置的 `2026-07-22` 映射。
 
 接口联调细节见 [前端接口参考](frontend-api-reference.md)。
+
+## 9. 自动治理与中断恢复部署检查
+
+- 正式环境必须启用主数据库，否则 LangGraph 会明确降级为仅进程内恢复；
+- `python -m competition_app.cli.app init-db` 必须执行到 `008_langgraph_persistent_checkpoints.sql`；
+- 主应用和兼容业务模块必须连接共享持久数据库，不能把 SQLite 放在临时目录；
+- 反向代理重连 SSE 时保留原 `thread_id`，不要把同一答案重新创建为新任务；
+- 学情洞察读取会执行幂等自动检查，通知、干预和每周复盘分别通过去重键、24 小时冷却和周期键防重复；
+- 升级后抽查 `/api/v1/learning-insights`、`/api/v1/notifications`、`/api/v1/plan-reviews`，并实际完成一次“中断—重启服务—恢复”验证。

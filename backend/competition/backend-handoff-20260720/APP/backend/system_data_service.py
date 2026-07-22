@@ -161,6 +161,76 @@ def rebuild_system_data(
     return snapshot
 
 
+def build_learning_window_metrics(
+    db: Session,
+    *,
+    user_id: int,
+    days: int,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Calculate auditable behavior metrics over the caller's exact rolling window.
+
+    ``system_data`` remains the persisted 30-day compatibility snapshot.  Reports that
+    advertise a 7/30/90-day window must not reuse that fixed snapshot, so they call this
+    function instead.
+    """
+
+    if days not in {7, 30, 90}:
+        raise ValueError("days must be one of: 7, 30, 90")
+    calculated_at = now or utc_now()
+    window_start = calculated_at - timedelta(days=days)
+    activities = db.query(LearningActivityRecord).filter(
+        LearningActivityRecord.user_id == user_id,
+        LearningActivityRecord.created_at >= window_start,
+        LearningActivityRecord.created_at <= calculated_at,
+    ).all()
+    tasks = db.query(LearningTask).filter(
+        LearningTask.user_id == user_id,
+        LearningTask.created_at >= window_start,
+        LearningTask.created_at <= calculated_at,
+    ).all()
+    focus_sessions = db.query(LearningFocusSession).filter(
+        LearningFocusSession.user_id == user_id,
+        LearningFocusSession.started_at <= calculated_at,
+        or_(
+            LearningFocusSession.ended_at.is_(None),
+            LearningFocusSession.ended_at >= window_start,
+        ),
+    ).all()
+    recommendation_views = [
+        row for row in activities if row.activity_type == _RECOMMENDATION_VIEW_ACTIVITY
+    ]
+    recommendation_clicks = [
+        row for row in activities if row.activity_type == _RESOURCE_CLICK_ACTIVITY
+    ]
+    active_focus_sessions = [
+        row for row in focus_sessions if row.status == "completed" and (row.active_seconds or 0) > 0
+    ]
+    non_cancelled_tasks = [row for row in tasks if row.status != "cancelled"]
+    return {
+        "window": {
+            "days": days,
+            "start_at": _beijing_iso(window_start),
+            "end_at": _beijing_iso(calculated_at),
+            "timezone": "Asia/Shanghai",
+        },
+        "time_data": _time_data(activities, focus_sessions, window_start, calculated_at),
+        "task_completion_rate": _task_completion_rate(tasks, window_start, calculated_at),
+        "resource_click_rate": _resource_click_rate(activities, window_start, calculated_at),
+        "counts": {
+            "activity_records": len(activities),
+            "tasks": len(non_cancelled_tasks),
+            "completed_tasks": sum(row.status == "completed" for row in non_cancelled_tasks),
+            "focus_sessions": len(active_focus_sessions),
+            "recommendation_views": len(recommendation_views),
+            "recommendation_clicks": len(recommendation_clicks),
+        },
+        "data_source": "learning_tasks,learning_focus_sessions,learning_activity_records",
+        "calculation_version": "learning-window-v1",
+        "calculated_at": _beijing_iso(calculated_at),
+    }
+
+
 def build_learning_trends(
     db: Session,
     *,

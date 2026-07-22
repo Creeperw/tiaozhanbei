@@ -43,23 +43,49 @@ class _InterruptedSession:
 class LangGraphOrchestrator(Orchestrator):
     """Execute the existing dynamic ExecutionPlan through a LangGraph StateGraph.
 
-    Checkpoints are kept in memory. They survive browser refreshes and short network
-    disconnects while this service process remains alive, but intentionally do not
-    survive a server restart.
+    The checkpointer is injected by the application container. Production database
+    deployments use durable SQL checkpoints; dependency-free tests keep the in-memory
+    saver.
     """
 
     engine_name = "langgraph"
     _RESUME_SENSITIVE_AGENTS = frozenset({"default_route_resolver"})
 
-    def __init__(self, agent_registry, tool_registry=None) -> None:
+    def __init__(self, agent_registry, tool_registry=None, *, checkpointer=None) -> None:
         super().__init__(agent_registry, tool_registry)
-        self._checkpointer = InMemorySaver(
-            serde=JsonPlusSerializer(
-                pickle_fallback=True,
-                allowed_msgpack_modules=True,
-            )
+        serde = JsonPlusSerializer(
+            pickle_fallback=True,
+            allowed_msgpack_modules=True,
+        )
+        self._checkpointer = checkpointer or InMemorySaver(serde=serde)
+        self.persistent_checkpoints = bool(
+            getattr(self._checkpointer, "persistent", False)
         )
         self._interrupted_sessions: dict[str, _InterruptedSession] = {}
+
+    def restore_thread(
+        self,
+        thread_id: str,
+        plan: ExecutionPlan,
+        context: dict[str, Any],
+    ) -> None:
+        """Recompile closures and attach them to an existing durable checkpoint."""
+
+        if thread_id in self._interrupted_sessions:
+            return
+        plan.validate_dag()
+        trace = TraceRecorder()
+        graph = self.compile_plan(plan, context, trace)
+        config = {"configurable": {"thread_id": thread_id}}
+        snapshot = graph.get_state(config)
+        if not snapshot or not snapshot.tasks:
+            raise KeyError(f"LangGraph thread {thread_id} has no durable checkpoint")
+        self._interrupted_sessions[thread_id] = _InterruptedSession(
+            graph=graph,
+            config=config,
+            plan=plan,
+            trace=trace,
+        )
 
     async def execute(
         self,
@@ -107,8 +133,18 @@ class LangGraphOrchestrator(Orchestrator):
             await self._checkpointer.adelete_thread(resolved_thread_id)
         return result
 
-    async def resume(self, thread_id: str, resume_value: Any) -> ExecutionResult:
+    async def resume(
+        self,
+        thread_id: str,
+        resume_value: Any,
+        *,
+        plan: ExecutionPlan | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> ExecutionResult:
         session = self._interrupted_sessions.get(thread_id)
+        if session is None and plan is not None and context is not None:
+            self.restore_thread(thread_id, plan, context)
+            session = self._interrupted_sessions.get(thread_id)
         if session is None:
             raise KeyError(f"LangGraph thread {thread_id} is not waiting for input")
         emit_runtime_event("graph_resume_requested", thread_id=thread_id)

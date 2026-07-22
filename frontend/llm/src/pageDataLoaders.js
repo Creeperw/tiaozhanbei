@@ -1,5 +1,5 @@
 const planningPaths = ['/agent/plan/summary', '/training/plan/summary'];
-const reportPaths = ['/agent/diagnosis/report', '/training/report'];
+const legacyReportPaths = ['/agent/diagnosis/report', '/training/report'];
 const briefPath = ['/agent/context/brief'];
 const tracePath = ['/agent/trace/recent'];
 
@@ -34,6 +34,19 @@ export const learningTaskToDailyTasks = (learningTask) => {
 };
 
 export const emptyReport = {
+  schema_version: '1.0',
+  generated_at: null,
+  window: { days: 30, timezone: 'Asia/Shanghai' },
+  overview: { stage_id: 'T0', stage_name: '', summary: '', confidence: 0, due_review_count: 0 },
+  dimensions: [],
+  activity_trends: { days: 30, series: [] },
+  mastery_heatmap: [],
+  mistake_distribution: [],
+  data_quality: { confidence: 0, sample_count: 0, sources: [], is_sufficient_for_intervention: false },
+  data_sources: [],
+  methodology: { version: '', status: '', limitations: [], references: [] },
+  automation: { intervention: null, plan_review: null },
+  resource_match_report: { target: {}, summary: {}, matches: [], no_match_reason: '' },
   learner_overview: {},
   mastery_radar: [],
   weak_points: [],
@@ -191,6 +204,24 @@ export const isReportPayloadValid = (data) => {
     || data.weak_points.length > 0
     || data.next_actions.length > 0;
 };
+
+export const isLearningInsightsPayloadValid = (data) => (
+  data && typeof data === 'object'
+  && data.overview && typeof data.overview === 'object'
+  && hasItemsArray(data.dimensions)
+  && data.activity_trends && hasItemsArray(data.activity_trends.series)
+  && hasItemsArray(data.mastery_heatmap)
+  && hasItemsArray(data.weak_points)
+  && hasItemsArray(data.mistake_distribution)
+  && data.data_quality && typeof data.data_quality === 'object'
+);
+
+export const isResourceMatchReportValid = (data) => (
+  data && typeof data === 'object'
+  && data.target && typeof data.target === 'object'
+  && data.summary && typeof data.summary === 'object'
+  && hasItemsArray(data.matches)
+);
 
 export const isTrainingModulesPayloadValid = (data) => {
   const defaultKey = data?.default_module || data?.default_task_type;
@@ -435,21 +466,41 @@ export async function loadPlanningData({ fetcher }) {
 export async function loadReportsData({ fetcher }) {
   try {
     const { data, source } = await fetcher({
-      paths: reportPaths,
+      paths: ['/v1/learning-insights?days=30'],
       fallback: emptyReport,
-      validator: isReportPayloadValid,
+      validator: isLearningInsightsPayloadValid,
     });
+    let resourceReport = emptyReport.resource_match_report;
+    try {
+      const resourceResult = await fetcher({
+        paths: ['/v1/resource-match-report?limit=12'],
+        fallback: resourceReport,
+        validator: isResourceMatchReportValid,
+      });
+      resourceReport = resourceResult.data;
+    } catch {
+      resourceReport = emptyReport.resource_match_report;
+    }
     return {
-      report: { ...emptyReport, ...data },
+      report: { ...emptyReport, ...data, resource_match_report: resourceReport },
       error: '',
       source,
     };
   } catch (error) {
-    return {
-      report: emptyReport,
-      error: error.message || '学情报告加载失败',
-      source: null,
-    };
+    try {
+      const { data, source } = await fetcher({
+        paths: legacyReportPaths,
+        fallback: emptyReport,
+        validator: isReportPayloadValid,
+      });
+      return { report: { ...emptyReport, ...data }, error: '', source };
+    } catch (legacyError) {
+      return {
+        report: emptyReport,
+        error: legacyError.message || error.message || '学情报告加载失败',
+        source: null,
+      };
+    }
   }
 }
 

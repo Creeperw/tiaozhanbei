@@ -160,7 +160,9 @@ export default function DashboardPage({
   const [legacyDrilldown, setLegacyDrilldown] = useState(null);
   const [plannedPath, setPlannedPath] = useState(null);
   const [pathParent, setPathParent] = useState(null);
-  const [pathMode, setPathMode] = useState('personalized');
+  const [pathMode, setPathMode] = useState(() => (
+    navigationContext.pathMode === 'classic' ? 'classic' : 'personalized'
+  ));
   const [classicRoutes, setClassicRoutes] = useState([]);
   const [classicRouteId, setClassicRouteId] = useState('');
   const [classicRoutePayload, setClassicRoutePayload] = useState(null);
@@ -205,10 +207,26 @@ export default function DashboardPage({
         try {
           const planned = await loadPlannedLearningPath();
           if (cancelled) return;
+          const rootNodes = planned.nodes.map(adaptPlannedPathNode);
+          const requestedStage = navigationContext.stageId
+            ? rootNodes.find((node) => node.node_id === navigationContext.stageId)
+            : null;
+          let displayedPlanned = planned;
+          let displayedPlannedNodes = rootNodes;
+          if (requestedStage) {
+            try {
+              displayedPlanned = await loadPlannedLearningPath(requestedStage.node_id);
+              displayedPlannedNodes = displayedPlanned.nodes.map(adaptPlannedPathNode);
+            } catch {
+              displayedPlanned = planned;
+              displayedPlannedNodes = rootNodes;
+            }
+          }
+          if (cancelled) return;
           setTrack({ id: trackId, label: getTrackLabel(target, tracks, trackId) });
-          setNodes(planned.nodes.map(adaptPlannedPathNode));
-          setPlannedPath(planned);
-          setPathParent(null);
+          setNodes(displayedPlannedNodes);
+          setPlannedPath(displayedPlanned);
+          setPathParent(requestedStage && displayedPlanned !== planned ? requestedStage : null);
           setSelectedNode(null);
           setLegacyDrilldown(null);
           onKnowledgeContextChange?.({ trackId, planId: planned.plan_ref?.plan_id });
@@ -242,7 +260,7 @@ export default function DashboardPage({
     };
     loadPath();
     return () => { cancelled = true; };
-  }, [navigationContext.trackId, onKnowledgeContextChange]);
+  }, [navigationContext.stageId, navigationContext.trackId, onKnowledgeContextChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -408,6 +426,15 @@ export default function DashboardPage({
         assistantCollapsed={assistantCollapsed}
         assistantDocked={assistantDocked}
         pathTopContent={<>
+          <button
+            type="button"
+            autoFocus
+            data-learning-path-return
+            className="mb-3 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm hover:border-emerald-300 hover:bg-emerald-50"
+            onClick={() => onNavigate?.({ page: 'practice', params: { view: 'stages' } })}
+          >
+            <span aria-hidden="true">←</span> 返回学习阶段
+          </button>
           <LearningPathTrainingModules trackId={track.id} onNavigate={onNavigate} />
           {Array.isArray(dashboard.recommendations) && dashboard.recommendations.length > 0 && (
             <section className="mt-3 flex flex-wrap gap-2" aria-label="个性化学习推荐">

@@ -5,6 +5,7 @@ import ReportsPage from './ReportsPage';
 import OnboardingSurveyPanel from './OnboardingSurveyPanel';
 import ProfileConflictList from './ProfileConflictList';
 import ReviewDashboardPanel from './ReviewDashboardPanel';
+import LearningGovernancePanel from './LearningGovernancePanel';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 
 const tabs = [
@@ -13,6 +14,7 @@ const tabs = [
   { key: 'planning', label: '学情规划' },
   { key: 'reports', label: '学情报告' },
   { key: 'review', label: '复习与掌握' },
+  { key: 'governance', label: '干预与通知' },
   { key: 'survey', label: '学情调查' },
   { key: 'conflicts', label: '冲突清单' },
 ];
@@ -41,6 +43,10 @@ const visualByTab = {
   review: {
     title: '复习与掌握',
     description: '查看已进入复习队列的知识点、当前掌握度、复习状态和历史变化。',
+  },
+  governance: {
+    title: '干预与通知',
+    description: '集中查看主动干预、复习提醒和规划复盘建议，并由你确认是否执行调整。',
   },
   conflicts: {
     title: '冲突确认',
@@ -117,6 +123,7 @@ export default function PersonalizationHubPage({ navigationContext = {}, onNavig
         {activeTab === 'planning' && <PlanningPage />}
         {activeTab === 'reports' && <ReportsPage />}
         {activeTab === 'review' && <ReviewDashboardPanel />}
+        {activeTab === 'governance' && <LearningGovernancePanel />}
         {activeTab === 'conflicts' && (
           <>
             {conflictError && <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{conflictError}</div>}

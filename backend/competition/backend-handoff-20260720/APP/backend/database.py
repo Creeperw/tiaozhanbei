@@ -623,6 +623,103 @@ class LearningInterventionRecord(Base):
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
+
+class LearningInterventionLifecycle(Base):
+    """Durable lifecycle metadata for an explainable learning intervention.
+
+    The legacy intervention row is intentionally kept stable because existing
+    clients already read it.  This companion table adds idempotency, delivery
+    and effect-evaluation state without rewriting historical rows.
+    """
+
+    __tablename__ = "learning_intervention_lifecycles"
+    id = Column(Integer, primary_key=True, index=True)
+    intervention_record_id = Column(
+        Integer,
+        ForeignKey("learning_intervention_records.id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    intervention_key = Column(String(180), nullable=False, index=True)
+    status = Column(String(40), nullable=False, default="suggested", index=True)
+    trigger_snapshot_json = Column(Text, nullable=False, default="{}")
+    baseline_json = Column(Text, nullable=False, default="{}")
+    result_json = Column(Text, nullable=False, default="{}")
+    delivered_at = Column(DateTime, nullable=True)
+    evaluate_after = Column(DateTime, nullable=True, index=True)
+    evaluated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("user_id", "intervention_key", name="uq_intervention_user_key"),
+    )
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preferences"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    in_app_enabled = Column(Boolean, nullable=False, default=True)
+    review_due_enabled = Column(Boolean, nullable=False, default=True)
+    intervention_enabled = Column(Boolean, nullable=False, default=True)
+    plan_review_enabled = Column(Boolean, nullable=False, default=True)
+    digest_frequency = Column(String(20), nullable=False, default="realtime")
+    quiet_hours_start = Column(String(5), nullable=False, default="22:00")
+    quiet_hours_end = Column(String(5), nullable=False, default="07:00")
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+
+class NotificationRecord(Base):
+    __tablename__ = "notification_records"
+    id = Column(Integer, primary_key=True, index=True)
+    notification_id = Column(String(120), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    category = Column(String(50), nullable=False, index=True)
+    severity = Column(String(20), nullable=False, default="info", index=True)
+    title = Column(String(200), nullable=False, default="")
+    message = Column(Text, nullable=False, default="")
+    status = Column(String(30), nullable=False, default="unread", index=True)
+    source_type = Column(String(60), nullable=False, default="system", index=True)
+    source_id = Column(String(120), nullable=False, default="", index=True)
+    dedupe_key = Column(String(180), nullable=False)
+    action_json = Column(Text, nullable=False, default="{}")
+    scheduled_at = Column(DateTime, nullable=True, index=True)
+    delivered_at = Column(DateTime, nullable=True)
+    read_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True, index=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("user_id", "dedupe_key", name="uq_notification_user_dedupe"),
+        Index("ix_notification_user_status_created", "user_id", "status", "created_at"),
+    )
+
+
+class PlanReviewRecord(Base):
+    __tablename__ = "plan_review_records"
+    id = Column(Integer, primary_key=True, index=True)
+    review_id = Column(String(120), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    trigger_type = Column(String(50), nullable=False, index=True)
+    period_key = Column(String(80), nullable=False)
+    status = Column(String(30), nullable=False, default="pending", index=True)
+    outcome = Column(String(60), nullable=False, default="on_track", index=True)
+    summary = Column(Text, nullable=False, default="")
+    evidence_json = Column(Text, nullable=False, default="[]")
+    proposal_json = Column(Text, nullable=False, default="{}")
+    plan_refs_json = Column(Text, nullable=False, default="{}")
+    input_snapshot_json = Column(Text, nullable=False, default="{}")
+    decided_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("user_id", "trigger_type", "period_key", name="uq_plan_review_period"),
+        Index("ix_plan_review_user_created", "user_id", "created_at"),
+    )
+
 class FeedbackRecord(Base):
     __tablename__ = "feedback_records"
     id = Column(Integer, primary_key=True, index=True)
@@ -2750,6 +2847,13 @@ _CASE_TRAINING_TABLES = (
     "case_help_records",
 )
 
+_LEARNING_GOVERNANCE_TABLES = (
+    "learning_intervention_lifecycles",
+    "notification_preferences",
+    "notification_records",
+    "plan_review_records",
+)
+
 
 def _ensure_case_training_tables(bind):
     Base.metadata.create_all(
@@ -2812,6 +2916,15 @@ def _ensure_learning_workshop_schema(bind):
                     )
 
 
+def _ensure_learning_governance_tables(bind):
+    """Create additive automation tables on both SQLite and MySQL deployments."""
+
+    Base.metadata.create_all(
+        bind=bind,
+        tables=[Base.metadata.tables[table_name] for table_name in _LEARNING_GOVERNANCE_TABLES],
+    )
+
+
 def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
     """Apply small additive schema updates that create_all will not add to existing tables."""
     if bind.dialect.name == "mysql":
@@ -2825,6 +2938,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
             if not inspector.has_table("users"):
                 Base.metadata.create_all(bind=bind)
                 _ensure_case_training_tables(bind)
+                _ensure_learning_governance_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
                 _ensure_formal_content_tables(bind)
                 _ensure_learning_workshop_schema(bind)
@@ -2835,6 +2949,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 # additive and avoid replaying the legacy phase-three repair.
                 Base.metadata.create_all(bind=bind)
                 _ensure_case_training_tables(bind)
+                _ensure_learning_governance_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
                 _ensure_formal_content_tables(bind)
                 _ensure_learning_workshop_schema(bind)
@@ -2843,6 +2958,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
             _repair_mysql_phase_three_schema(bind, inventory)
             if hasattr(bind, "connect"):
                 _ensure_case_training_tables(bind)
+                _ensure_learning_governance_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
                 _ensure_formal_content_tables(bind)
                 _ensure_learning_workshop_schema(bind)
@@ -2889,6 +3005,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 ],
             )
             _ensure_paper_item_snapshot_column(bind)
+            _ensure_learning_governance_tables(bind)
             _ensure_core_learning_contract_tables(bind)
             _ensure_formal_content_tables(bind)
             return
@@ -3017,6 +3134,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 conn.execute(text("UPDATE sessions SET active_leaf_message_id = COALESCE(active_leaf_message_id, :mid) WHERE id = :sid"), {"mid": previous_id, "sid": sid})
     _ensure_paper_item_snapshot_column(bind)
     _ensure_learning_workshop_schema(bind)
+    _ensure_learning_governance_tables(bind)
     _ensure_core_learning_contract_tables(bind)
     _ensure_formal_content_tables(bind)
 

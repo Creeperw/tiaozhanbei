@@ -173,6 +173,28 @@ class WorkshopPaperSubmitRequest(BaseModel):
     request_id: str = Field(min_length=1, max_length=120)
 
 
+class NotificationStatusRequest(BaseModel):
+    status: str = Field(pattern="^(read|dismissed)$")
+
+
+class NotificationPreferenceRequest(BaseModel):
+    in_app_enabled: bool | None = None
+    categories: dict[str, bool] = Field(default_factory=dict)
+    digest_frequency: str | None = Field(
+        default=None, pattern="^(realtime|daily|weekly|paused)$"
+    )
+    quiet_hours: dict[str, str] = Field(default_factory=dict)
+
+
+class InterventionFeedbackRequest(BaseModel):
+    action: str = Field(pattern="^(accept|postpone|not_relevant|too_easy|too_hard)$")
+    reason: str = Field(default="", max_length=1000)
+
+
+class PlanReviewDecisionRequest(BaseModel):
+    decision: str = Field(pattern="^(accept|reject)$")
+
+
 def create_app(container: ApplicationContainer, *, auth_required: bool = True) -> FastAPI:
     backend_handoff = container.backend_handoff_runtime
 
@@ -209,6 +231,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "/assistant-character",
             StaticFiles(directory=frontend_root / "assistant-character"),
             name="frontend_assistant_character",
+        )
+    if frontend_root and (frontend_root / "learning-stage").is_dir():
+        app.mount(
+            "/learning-stage",
+            StaticFiles(directory=frontend_root / "learning-stage"),
+            name="frontend_learning_stage",
         )
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
@@ -269,6 +297,13 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     learner_id=current_user.user_id,
                     attempts=behavior.get("question_attempt", []),
                 )
+                await asyncio.to_thread(
+                    backend_handoff.load_learning_insights,
+                    current_user.user_id,
+                    days=30,
+                    plan_context={},
+                    run_automation=True,
+                )
             except Exception:
                 # The authoritative answer has already been committed. A later
                 # context/queue read retries this idempotent projection.
@@ -312,6 +347,25 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if isinstance(exc, (ValueError, LookupError)):
             return HTTPException(status_code=422, detail=str(exc))
         return HTTPException(status_code=500, detail=str(exc))
+
+    def current_plan_context(learner_id: str) -> dict[str, dict]:
+        state = container.review_card_use_case.plan_repository.get_current(learner_id)
+        if state is None:
+            return {}
+        return {
+            "long_term_plan": (
+                state.long_term_plan.model_dump(mode="json")
+                if state.long_term_plan is not None else {}
+            ),
+            "short_term_plan": (
+                state.short_term_plan.model_dump(mode="json")
+                if state.short_term_plan is not None else {}
+            ),
+            "learning_task": (
+                state.learning_task.model_dump(mode="json")
+                if state.learning_task is not None else {}
+            ),
+        }
 
     def scoped_review_request(
         request: ReviewCardRequest, user: AuthUser | None
@@ -774,6 +828,16 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "focus_tracking": backend_handoff is not None,
                 "task_completion": backend_handoff is not None,
                 "learning_trends": backend_handoff is not None,
+                "learning_insights": backend_handoff is not None,
+                "resource_matching_report": backend_handoff is not None,
+                "active_intervention": backend_handoff is not None,
+                "notifications": backend_handoff is not None,
+                "automatic_plan_review": backend_handoff is not None,
+                "persistent_graph_resume": getattr(
+                    container.review_card_use_case.orchestrator,
+                    "persistent_checkpoints",
+                    False,
+                ),
                 "learning_activity_summary_endpoint": (
                     "/api/v1/learning-activity/summary"
                     if backend_handoff is not None
@@ -838,6 +902,197 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return LearningMonitoringService().build_snapshot(
             user.user_id, behavior, window_days=days
         ).model_dump(mode="json")
+
+    @app.get("/api/v1/learning-insights")
+    async def learning_insights(
+        request: Request,
+        days: int = Query(default=30),
+        run_automation: bool = Query(default=True),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学情洞察服务未启用")
+        if days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+        return await asyncio.to_thread(
+            backend_handoff.load_learning_insights,
+            user.user_id,
+            days=days,
+            plan_context=current_plan_context(user.user_id),
+            run_automation=run_automation,
+        )
+
+    @app.get("/api/v1/resource-match-report")
+    async def resource_match_report(
+        request: Request,
+        limit: int = Query(default=12, ge=1, le=30),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="资源匹配服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.load_resource_match_report,
+            user.user_id,
+            plan_context=current_plan_context(user.user_id),
+            limit=limit,
+        )
+
+    @app.get("/api/v1/notifications")
+    async def notifications(
+        request: Request,
+        status: str = Query(default="all", pattern="^(all|unread|read|dismissed)$"),
+        limit: int = Query(default=50, ge=1, le=100),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="通知服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.list_notifications,
+            user.user_id,
+            status=status,
+            limit=limit,
+        )
+
+    @app.patch("/api/v1/notifications/{notification_id}")
+    async def update_notification(
+        notification_id: str,
+        body: NotificationStatusRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="通知服务未启用")
+        try:
+            return await asyncio.to_thread(
+                backend_handoff.update_notification_status,
+                user.user_id,
+                notification_id,
+                body.status,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/v1/notification-preferences")
+    async def notification_preferences(request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="通知服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.get_notification_preferences, user.user_id
+        )
+
+    @app.put("/api/v1/notification-preferences")
+    async def save_notification_preferences(
+        body: NotificationPreferenceRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="通知服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.update_notification_preferences,
+            user.user_id,
+            body.model_dump(exclude_none=True),
+        )
+
+    @app.get("/api/v1/interventions")
+    async def interventions(
+        request: Request,
+        limit: int = Query(default=30, ge=1, le=100),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="主动干预服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.list_interventions, user.user_id, limit=limit
+        )
+
+    @app.post("/api/v1/interventions/{intervention_id}/feedback")
+    async def intervention_feedback(
+        intervention_id: int,
+        body: InterventionFeedbackRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="主动干预服务未启用")
+        try:
+            return await asyncio.to_thread(
+                backend_handoff.submit_intervention_feedback,
+                user.user_id,
+                intervention_id,
+                body.action,
+                body.reason,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/v1/plan-reviews")
+    async def plan_reviews(
+        request: Request,
+        limit: int = Query(default=30, ge=1, le=100),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="规划复盘服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.list_plan_reviews, user.user_id, limit=limit
+        )
+
+    @app.post("/api/v1/plan-reviews/run")
+    async def trigger_plan_review(request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="规划复盘服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.run_plan_review,
+            user.user_id,
+            plan_context=current_plan_context(user.user_id),
+            trigger_type="manual",
+        )
+
+    @app.post("/api/v1/plan-reviews/{review_id}/decision")
+    async def decide_plan_review(
+        review_id: str,
+        body: PlanReviewDecisionRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="规划复盘服务未启用")
+        try:
+            return await asyncio.to_thread(
+                backend_handoff.decide_plan_review,
+                user.user_id,
+                review_id,
+                body.decision,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     async def learning_path_page(
         request: Request,

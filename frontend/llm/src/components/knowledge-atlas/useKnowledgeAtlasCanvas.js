@@ -45,7 +45,12 @@ function drawWireSphere(ctx, width, height, radius, alpha) {
 }
 
 export function getAtlasNodeDrawKind(node, resourceStyles = false) {
-  return resourceStyles ? getAtlasResourceKind(node) : 'solid';
+  const kind = resourceStyles ? getAtlasResourceKind(node) : 'solid';
+  return {
+    kind,
+    filled: true,
+    marker: kind === 'both' ? 'ring-dot' : kind === 'question' ? 'ring' : kind === 'video' ? 'dot' : 'none',
+  };
 }
 
 function drawNode(ctx, node, hovered, resourceStyles) {
@@ -63,30 +68,22 @@ function drawNode(ctx, node, hovered, resourceStyles) {
   ctx.strokeStyle = node.color?.solid || '#159b6b';
   ctx.lineWidth = Math.max(1.6, radius * 0.26);
   ctx.setLineDash?.([]);
-  const kind = getAtlasNodeDrawKind(node, resourceStyles);
+  const { kind, marker } = getAtlasNodeDrawKind(node, resourceStyles);
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  if (kind === 'solid') {
-    ctx.fill();
-  } else if (kind === 'both') {
-    ctx.fill();
+  ctx.fill();
+  if (marker.includes('ring')) {
     ctx.strokeStyle = '#b57b1e';
-    ctx.lineWidth = Math.max(1.4, radius * 0.16);
+    ctx.lineWidth = Math.max(1.1, radius * (kind === 'both' ? 0.14 : 0.13));
     ctx.beginPath();
-    ctx.arc(0, 0, radius + 3.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius + (kind === 'both' ? 2.8 : 2.2), 0, Math.PI * 2);
     ctx.stroke();
-  } else if (kind === 'question') {
-    ctx.strokeStyle = '#b57b1e';
-    ctx.stroke();
-  } else if (kind === 'video') {
-    ctx.stroke();
+  }
+  if (marker.includes('dot')) {
+    ctx.fillStyle = 'rgba(232,255,246,.92)';
     ctx.beginPath();
-    ctx.arc(0, 0, Math.max(1.3, radius * 0.34), 0, Math.PI * 2);
+    ctx.arc(0, 0, Math.max(1.2, radius * 0.27), 0, Math.PI * 2);
     ctx.fill();
-  } else {
-    ctx.setLineDash?.([2.5, 2.5]);
-    ctx.stroke();
-    ctx.setLineDash?.([]);
   }
   ctx.restore();
 }
@@ -271,14 +268,16 @@ export default function useKnowledgeAtlasCanvas({ nodes, autoRotate, paused, clu
         .sort((left, right) => right.depth - left.depth)
         .slice(0, width < 560 ? 12 : 28);
       context.save();
-      context.font = '600 12px system-ui, sans-serif';
+      context.font = '600 10.5px system-ui, sans-serif';
       context.textAlign = 'center';
+      context.shadowColor = 'rgba(255,255,255,.96)';
+      context.shadowBlur = 4;
       const occupied = [];
       let drawnLabelCount = 0;
       labels.forEach((node) => {
         const text = node.name.length > 18 ? `${node.name.slice(0, 17)}…` : node.name;
         const measured = context.measureText(text).width;
-        const box = { x: node.x - measured / 2 - 6, y: node.y + node.radius + 7, width: measured + 12, height: 21 };
+        const box = { x: node.x - measured / 2 - 4, y: node.y + node.radius + 5, width: measured + 8, height: 18 };
         const collides = hovered?.id !== node.id && occupied.some((other) => (
           box.x < other.x + other.width
           && box.x + box.width > other.x
@@ -288,10 +287,8 @@ export default function useKnowledgeAtlasCanvas({ nodes, autoRotate, paused, clu
         if (collides) return;
         occupied.push(box);
         drawnLabelCount += 1;
-        context.fillStyle = `rgba(247,250,248,${Math.min(0.94, node.alpha + 0.16)})`;
-        context.fillRect?.(box.x, box.y, box.width, box.height);
         context.fillStyle = `rgba(24,49,42,${Math.min(1, node.alpha + 0.22)})`;
-        context.fillText(text, node.x, node.y + node.radius + 22);
+        context.fillText(text, node.x, node.y + node.radius + 17);
       });
       canvas.dataset.drawnLabelCount = String(drawnLabelCount);
       context.restore();

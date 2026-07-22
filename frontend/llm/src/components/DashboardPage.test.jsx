@@ -395,9 +395,20 @@ describe('DashboardPage learning workspace', () => {
       }) });
     }));
 
-    render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
+    render(
+      <DashboardPage
+        currentUser={{ username: 'admin' }}
+        navigationContext={{ view: 'path', pathMode: 'classic', stageId: 'foundation', stageIndex: 0 }}
+        onNavigate={onNavigate}
+      />,
+    );
 
-    fireEvent.click(await screen.findByRole('tab', { name: '经典路线' }));
+    expect(await screen.findByRole('tab', { name: '经典路线' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('button', { name: '返回学习阶段' }));
+    expect(onNavigate).toHaveBeenLastCalledWith({ page: 'practice', params: { view: 'stages' } });
+    fireEvent.click(screen.getByRole('tab', { name: '我的学习路径' }));
+    expect(screen.getByRole('tab', { name: '我的学习路径' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('tab', { name: '经典路线' }));
     expect(await screen.findByRole('combobox', { name: '经典学习路线' })).toHaveDisplayValue('中医执业医师经典路线');
     fireEvent.click(await screen.findByRole('button', { name: /进入中医基础阶段/ }));
     fireEvent.click(await screen.findByRole('button', { name: /进入《中医学基础》/ }));

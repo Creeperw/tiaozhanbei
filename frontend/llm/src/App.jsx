@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import AuthPage from './components/AuthPage';
 import ChatInterface from './components/ChatInterface';
 import KnowledgePage from './components/KnowledgePage';
@@ -8,6 +8,8 @@ import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
+import LearningStageLanding from './components/learning-stage/LearningStageLanding';
+import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
@@ -32,6 +34,7 @@ export default function App() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [pageIntent, setPageIntent] = useState(initialPageIntent);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
+  const [stageTransition, setStageTransition] = useState(null);
   const currentPage = getIntentPage(pageIntent);
   const selectedSessionId = pageIntent.params.sessionId || null;
 
@@ -123,6 +126,24 @@ export default function App() {
     setPageIntent(createPageIntent(destination, params));
   };
 
+  const startStageTransition = useCallback((selection) => {
+    setStageTransition((current) => current || selection);
+  }, []);
+
+  const openStagePathAtMidpoint = useCallback((selection) => {
+    setPageIntent(createPageIntent({
+      page: 'practice',
+      params: {
+        view: 'path',
+        pathMode: 'personalized',
+        stageId: selection.stage.nodeId || selection.stage.id,
+        stageIndex: selection.index,
+      },
+    }));
+  }, []);
+
+  const finishStageTransition = useCallback(() => setStageTransition(null), []);
+
   if (checkingAuth) {
     return <div className="flex h-screen items-center justify-center bg-[#f8fafc] text-gray-400">Loading...</div>;
   }
@@ -152,9 +173,11 @@ export default function App() {
           />
         );
       case 'practice':
-        return pageIntent.params.view === 'workspace'
-          ? <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />
-          : (
+        if (pageIntent.params.view === 'workspace') {
+          return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
+        }
+        if (pageIntent.params.view === 'path') {
+          return (
             <DashboardPage
               currentUser={currentUser}
               navigationContext={pageIntent.params}
@@ -162,6 +185,16 @@ export default function App() {
               onKnowledgeContextChange={setKnowledgeNavigationContext}
             />
           );
+        }
+        return (
+          <LearningStageLanding
+            onStageSelect={startStageTransition}
+            onCreatePlan={() => navigateToPage({
+              page: 'assistant',
+              params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' },
+            })}
+          />
+        );
       case 'knowledge':
         return (
           <KnowledgePage
@@ -193,6 +226,11 @@ export default function App() {
       onLogout={handleLogout}
     >
       {renderAuthenticatedPage()}
+      <StagePageTransition
+        selection={stageTransition}
+        onMidpoint={openStagePathAtMidpoint}
+        onComplete={finishStageTransition}
+      />
     </AppShell>
   );
 }

@@ -89,6 +89,60 @@ def write_atlas_fixture(root: Path, video_root: Path) -> None:
         }, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
+    (root / "03_pipeline_chunks" / "chapter_nodes.jsonl").write_text(
+        "\n".join(json.dumps(row, ensure_ascii=False) for row in [
+            {
+                "node_id": "book-pharmacology",
+                "parent_id": None,
+                "node_type": "book",
+                "book": "药理学_clean",
+                "title": "药理学",
+                "order": 1,
+            },
+            {
+                "node_id": "chapter-arrhythmia",
+                "parent_id": "book-pharmacology",
+                "node_type": "chapter",
+                "book": "药理学_clean",
+                "title": "第十四章 抗心律失常药",
+                "chapter_order": 14,
+                "review_status": "resolved",
+            },
+            {
+                "node_id": "section-electrophysiology",
+                "parent_id": "chapter-arrhythmia",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第一节 心律失常的电生理学基础",
+                "chapter_order": 14,
+                "section_order": 1,
+            },
+            {
+                "node_id": "section-electrophysiology-continued",
+                "parent_id": "chapter-arrhythmia",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第一节 心律失常的电生理学基础",
+                "chapter_order": 14,
+                "section_order": 2,
+            },
+        ]) + "\n",
+        encoding="utf-8",
+    )
+    (root / "03_pipeline_chunks" / "chunk_chapter_links.jsonl").write_text(
+        json.dumps({
+            "chunk_uid": "chunk-1",
+            "book": "药理学_clean",
+            "chapter_id": "chapter-arrhythmia",
+            "chapter_name": "第十四章 抗心律失常药",
+            "chapter_order": 14,
+            "section_id": "section-electrophysiology",
+            "section_name": "第一节 心律失常的电生理学基础",
+            "section_order": 1,
+            "review_status": "resolved",
+        }, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     (root / "04_knowledge_points" / "images" / "reentry.png").write_bytes(b"PNG")
     video_root.mkdir(parents=True)
     (video_root / "catalog.json").write_text('{"version":1}', encoding="utf-8")
@@ -195,13 +249,24 @@ class KnowledgeAtlasServiceTests(unittest.TestCase):
         self.assertEqual([route["id"] for route in routes], ["textbook_14_5", "tcm_assistant", "postgraduate"])
         level_one = store.nodes(1, route_id="textbook_14_5")
         self.assertEqual(level_one["nodes"][0]["name"], "药理学")
+        level_two = store.nodes(2, lv1="药理学", route_id="textbook_14_5")
+        self.assertEqual(level_two["nodes"][0]["name"], "第十四章 抗心律失常药")
         level_three = store.nodes(
             3,
             lv1="药理学",
-            lv2="第一节 心律失常的电生理学基础",
+            chapter_id="chapter-arrhythmia",
             route_id="textbook_14_5",
         )
-        styles = {node["id"]: node["node_style"] for node in level_three["nodes"]}
+        self.assertEqual(level_three["nodes"][0]["name"], "第一节 心律失常的电生理学基础")
+        self.assertEqual(level_three["count"], 1)
+        level_four = store.nodes(
+            4,
+            lv1="药理学",
+            chapter_id="chapter-arrhythmia",
+            section_id="section-electrophysiology",
+            route_id="textbook_14_5",
+        )
+        styles = {node["id"]: node["node_style"] for node in level_four["nodes"]}
         self.assertEqual(styles["kp-reentry"], "solid")
         self.assertEqual(styles["kp-question-only"], "ring")
         self.assertEqual(styles["kp-video-only"], "video")
@@ -209,6 +274,7 @@ class KnowledgeAtlasServiceTests(unittest.TestCase):
 
         detail = store.detail("kp-reentry", question_limit=1)
         self.assertEqual(detail["kp"]["lv3"], "折返")
+        self.assertEqual(detail["kp"]["chapter"], "第十四章 抗心律失常药")
         self.assertEqual(detail["chunks"][0]["uid"], "chunk-1")
         self.assertEqual(detail["questions"][0]["question_id"], "q-linked")
         self.assertEqual(detail["questions"][0]["stem"], "折返形成需要什么条件？")

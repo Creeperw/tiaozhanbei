@@ -19,6 +19,7 @@ from APP.backend.learner_profile_service import (
     serialize_json_field,
 )
 from APP.backend import exam_learning_service
+from APP.backend import learning_governance_service
 from APP.backend.learning_target_service import (
     LearningTargetLockedError,
     LearningTargetValidationError,
@@ -58,6 +59,7 @@ class LearnerProfileUpdate(BaseModel):
 class LearnerSettingsUpdate(BaseModel):
     analysis_frequency: Optional[str] = None
     locked_fields: Optional[list[str]] = None
+    notification_preferences: Optional[dict] = None
 
 
 class LearningTargetUpdate(BaseModel):
@@ -246,8 +248,15 @@ def update_learner_profile(body: LearnerProfileUpdate, current_user: UserModel =
 @router.get("/learner-settings")
 def get_learner_settings(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     profile = get_or_create_profile(db, current_user.id)
+    notification_preferences = learning_governance_service.serialize_notification_preferences(
+        learning_governance_service.get_notification_preferences(db, current_user.id)
+    )
     return {
-        "settings": {"analysis_frequency": "daily", **_survey_settings(profile)},
+        "settings": {
+            "analysis_frequency": "daily",
+            **_survey_settings(profile),
+            "notification_preferences": notification_preferences,
+        },
         "locked_fields": parse_json_field(getattr(profile, "locked_fields_json", "[]"), []),
         "lock_reason": parse_json_field(getattr(profile, "lock_reason_json", "{}"), {}),
     }
@@ -275,6 +284,10 @@ def update_learner_settings(body: LearnerSettingsUpdate, current_user: UserModel
         }
         profile.locked_fields_json = serialize_json_field(next_locked_fields)
         profile.lock_reason_json = serialize_json_field(next_reasons)
+    if body.notification_preferences is not None:
+        learning_governance_service.update_notification_preferences(
+            db, current_user.id, body.notification_preferences
+        )
     db.commit()
     return get_learner_settings(current_user=current_user, db=db)
 

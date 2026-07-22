@@ -49,6 +49,8 @@ from competition_app.llm.terminal import (
 from competition_app.runtime.terminal_trace import TerminalTrace
 from competition_app.runtime.model_trace import ModelTraceRecorder
 from competition_app.runtime.langgraph_orchestrator import LangGraphOrchestrator
+from competition_app.runtime.sqlalchemy_checkpointer import SqlAlchemyCheckpointSaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from competition_app.runtime.event_stream import emit_runtime_event, has_event_sink
 from competition_app.repositories.learning_plan import (
     InMemoryLearningPlanRepository,
@@ -286,9 +288,28 @@ class ApplicationContainer:
         backend_handoff_runtime = (
             load_backend_handoff(settings) if include_backend_handoff else None
         )
+        orchestrator = (
+            orchestrator_class(
+                registry,
+                tool_registry,
+                checkpointer=(
+                    SqlAlchemyCheckpointSaver(
+                        database_engine,
+                        serde=JsonPlusSerializer(
+                            pickle_fallback=True,
+                            allowed_msgpack_modules=True,
+                        ),
+                    )
+                    if database_engine is not None
+                    else None
+                ),
+            )
+            if orchestrator_class is LangGraphOrchestrator
+            else orchestrator_class(registry, tool_registry)
+        )
         return cls(
             PersonalizedReviewCardUseCase(
-                orchestrator_class(registry, tool_registry),
+                orchestrator,
                 exporter,
                 writeback_executor=writeback_executor,
                 terminal_trace=terminal_trace,

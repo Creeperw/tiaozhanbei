@@ -995,13 +995,14 @@ status == "completed" && audit.decision == "pass"
 
 新页面优先使用 `/api/v1/knowledge/*`；兼容层仅保留现有知识图谱交互。
 
-知识图谱的目录和画布必须使用同一套顺序：二级章节优先按后端 `order_index` 的教材原始顺序，三级知识点按后端返回的拼音顺序。顺序视图采用单列纵向排布。前端筛选只移除节点，不得重新按标题或资源数量排序；否则目录与画布会出现同一层级顺序不一致。
+知识图谱固定按“教材 → 章节 → 小节 → 知识点”四级下钻。目录和画布必须使用同一套顺序：教材、章节、小节按后端 `order_index` 升序，知识点按后端 `order` 升序。顺序视图采用单列纵向排布。前端筛选只移除节点，不得按标题或资源数量重新排序。
 
 当前知识星球节点请求示例：
 
 ```text
 GET /api/knowledge/atlas/nodes?level=2&route=textbook_14_5&lv1=中医学基础
-GET /api/knowledge/atlas/nodes?level=3&route=textbook_14_5&lv1=中医学基础&lv2=绪论
+GET /api/knowledge/atlas/nodes?level=3&route=textbook_14_5&lv1=中医学基础&chapter_id=CHAPTER_ID
+GET /api/knowledge/atlas/nodes?level=4&route=textbook_14_5&lv1=中医学基础&chapter_id=CHAPTER_ID&section_id=SECTION_ID
 ```
 
 节点响应：
@@ -1012,20 +1013,21 @@ GET /api/knowledge/atlas/nodes?level=3&route=textbook_14_5&lv1=中医学基础&l
   "level": 2,
   "nodes": [
     {
-      "id": "绪论",
-      "name": "绪论",
+      "id": "稳定章节标识",
+      "name": "第一章 绪论",
       "count": 33,
-      "children_count": 33,
-      "order_index": 0
+      "children_count": 4,
+      "order_index": 1,
+      "review_status": "resolved"
     }
   ],
   "count": 36,
-  "stats": {"lv1": 83, "lv2": 4535, "lv3": 73777},
+  "stats": {"lv1": 83, "lv2": 1282, "lv3": 5186, "lv4": 73777},
   "route": "textbook_14_5"
 }
 ```
 
-前端下钻时必须用当前节点的 `name` 作为下一级 `lv1`/`lv2` 查询值，用 `id` 作为三级知识点详情的 `kp_id`。顺序视图直接按 `order_index` 升序展示；缺失该字段时才使用响应数组原顺序，不得重新按 `count` 排序。
+前端进入教材时传 `lv1=name`；进入章节时传 `chapter_id=id`（也可同时传 `chapter=name`）；进入小节时传 `section_id=id`（兼容调用可传 `lv2=name`）；第四级节点的 `id` 才是详情接口所需的 `kp_id`。`resolve-context` 也会返回 `chapter`、`chapter_id`、`section_id`，前端应原样保留以恢复钻取位置。
 
 ## 8. 复习队列
 
@@ -1147,6 +1149,9 @@ const destinations = {
 | 学习工坊 | `/api/v1/workshop*` | 训练任务、案例训练暂用 `/api/training*` |
 | 知识仓库 | `/api/v1/knowledge*` | 现有三维图谱暂用 `/api/knowledge/atlas*` |
 | 个性数据 | `/api/v1/learning-context`、`/api/v1/learning-monitoring/snapshot`、`/api/v1/learning-activity/*` | 画像、记忆编辑暂用 `/api/personalization*` |
+| 学情洞察与资源匹配 | `/api/v1/learning-insights`、`/api/v1/resource-match-report` | 旧 `/api/agent/diagnosis/report` 仅作无数据降级 |
+| 通知与主动干预 | `/api/v1/notifications*`、`/api/v1/notification-preferences`、`/api/v1/interventions*` | 设置页也可通过 `/api/personalization/learner-settings` 一次保存通知偏好 |
+| 规划自动复盘 | `/api/v1/plan-reviews*` | 调整提案必须由用户确认，长期规划不得静默覆盖 |
 | 规划入口 | `/api/v1/planning/readiness`、`/api/v1/review-cards*` | readiness 只做预检，生成接口仍会强制校验 |
 | 复习队列 | `/api/v1/review-queue` | 带 learner_id 的旧接口仅作兼容 |
 
@@ -1180,3 +1185,84 @@ npm run build
 ```
 
 Live 验收不要从 WSL 命令行运行 Live pytest；应在已启动前端运行面板点击 Execute。
+
+## 14. 学情洞察、自动治理与通知
+
+### 14.1 学情洞察
+
+`GET /api/v1/learning-insights?days=30&run_automation=true`
+
+`days` 只允许 `7`、`30`、`90`。响应中的稳定字段包括：
+
+- `overview`：当前 T 阶段、诊断摘要、可信度、到期复习数量；
+- `dimensions`：知识掌握、复习保持、任务执行、练习正确、学习规律和资源使用；
+- `activity_trends.series`：按日登录、有效学习分钟和任务完成率；
+- `mastery_heatmap`、`weak_points`、`mistake_distribution`；
+- `data_quality`：样本量、数据来源及是否足以触发主动干预；
+- `automation`：本次幂等检查得到的干预与规划复盘结果。
+
+前端必须展示 `data_quality`。数据不足时不得把空值渲染成确定性诊断。
+
+每个 `dimensions[]` 同时返回 `source_ids`、`formula`、`evidence_count` 和 `window_days`；
+顶层 `data_sources[]` 与 `methodology` 是正式审计契约。`overview.confidence` 和
+`data_quality.confidence` 表示数据覆盖度，不是统计置信区间。完整口径见
+[学情监测与资源匹配口径](learning-monitoring-methodology.md)。
+
+### 14.2 资源匹配报告
+
+`GET /api/v1/resource-match-report?limit=12`
+
+每个 `matches[]` 包含 `resource_id`、`resource_type`、`title`、`score`、
+`estimated_minutes`、`components`、`reasons` 和白名单 `action`。`components` 当前包含知识点覆盖、
+质量、资源形式、时间和难度匹配。前端用 `action.type` 做受控跳转，不自行拼接外部 URL。
+
+资源项还包含 `component_sources`、`quality_basis`、`estimated_minutes_basis` 和原始 `source`。
+缺少难度等特征时对应 component 为 `null`，服务端排除该特征并重新归一化权重；前端不得把
+`null` 渲染为 0 分。没有薄弱知识点和今日任务知识点时，服务端返回空 `matches`，禁止前端补默认推荐。
+
+### 14.3 通知
+
+- `GET /api/v1/notifications?status=all|unread|read|dismissed&limit=50`
+- `PATCH /api/v1/notifications/{notification_id}`，请求体：`{"status":"read"}` 或 `dismissed`
+- `GET /api/v1/notification-preferences`
+- `PUT /api/v1/notification-preferences`
+
+偏好请求示例：
+
+```json
+{
+  "in_app_enabled": true,
+  "categories": {
+    "review_due": true,
+    "intervention": true,
+    "plan_review": true
+  },
+  "digest_frequency": "realtime",
+  "quiet_hours": {"start": "22:00", "end": "07:00"}
+}
+```
+
+通知使用服务端 `dedupe_key` 防重复，前端不得按标题自行合并。所有读写均以 Cookie 当前用户为边界。
+
+### 14.4 主动干预
+
+- `GET /api/v1/interventions?limit=30`
+- `POST /api/v1/interventions/{intervention_id}/feedback`
+
+反馈 `action` 可为 `accept`、`postpone`、`not_relevant`、`too_easy` 或 `too_hard`。
+系统仅在 `data_quality.is_sufficient_for_intervention=true` 时创建干预，并执行 24 小时冷却。
+
+### 14.5 规划自动复盘
+
+- `GET /api/v1/plan-reviews?limit=30`
+- `POST /api/v1/plan-reviews/run`
+- `POST /api/v1/plan-reviews/{review_id}/decision`，请求体为 `{"decision":"accept"}` 或 `reject`
+
+`outcome` 可能为 `on_track`、`daily_adjustment_suggested`、`short_replan_suggested` 或
+`long_replan_requires_confirmation`。每日层调整只能处于现有短期计划范围；短期和长期提案需确认后才能写入正式计划。
+
+### 14.6 LangGraph 重启恢复
+
+当主库启用时，中断检查点和恢复上下文写入数据库。页面刷新、连接中断或服务重启后仍使用原
+`thread_id` 调用 `/api/v1/review-cards/runs/{thread_id}/resume/stream`。恢复前可读取
+`GET /api/v1/review-cards/runs/{thread_id}`；若状态不是 `interrupted`，前端不得重复提交恢复答案。

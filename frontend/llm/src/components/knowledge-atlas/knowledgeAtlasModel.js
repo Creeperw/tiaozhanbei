@@ -82,9 +82,12 @@ function plainLabel(value) {
 
 function sequenceSort(nodes, level) {
   return [...nodes].sort((left, right) => {
-    if (level === 2) {
+    if (level < 4) {
       const byOrder = Number(left.order_index || 0) - Number(right.order_index || 0);
       if (byOrder) return byOrder;
+    } else {
+      const byKnowledgeOrder = String(left.order || '').localeCompare(String(right.order || ''), 'zh-CN', { numeric: true });
+      if (byKnowledgeOrder) return byKnowledgeOrder;
     }
     return plainLabel(left.name).localeCompare(plainLabel(right.name), 'zh-CN-u-co-pinyin');
   });
@@ -92,7 +95,7 @@ function sequenceSort(nodes, level) {
 
 function naturalSort(nodes, level) {
   return [...nodes].sort((left, right) => (
-    level < 3
+    level < 4
       ? Number(right.count || 0) - Number(left.count || 0) || left.name.localeCompare(right.name, 'zh-CN')
       : String(left.order || '').localeCompare(String(right.order || '')) || left.name.localeCompare(right.name, 'zh-CN')
   ));
@@ -145,14 +148,40 @@ function clusterAssignments(nodes) {
   let centers = seedIndexes.map((index) => Float32Array.from(vectors[index]));
   let assignments = new Array(count).fill(0);
   for (let iteration = 0; iteration < 6; iteration += 1) {
+    const assignmentTotals = new Array(clusterCount).fill(0);
     assignments = vectors.map((vector) => {
       let best = 0;
       let score = -Infinity;
       centers.forEach((center, index) => {
         const candidate = similarity(vector, center);
-        if (candidate > score) { score = candidate; best = index; }
+        if (candidate > score + 1e-7 || (Math.abs(candidate - score) <= 1e-7 && assignmentTotals[index] < assignmentTotals[best])) {
+          score = candidate;
+          best = index;
+        }
       });
+      assignmentTotals[best] += 1;
       return best;
+    });
+    assignmentTotals.forEach((total, emptyCluster) => {
+      if (total) return;
+      const donorCluster = assignmentTotals.reduce((largest, candidate, index) => (
+        candidate > assignmentTotals[largest] ? index : largest
+      ), 0);
+      let moveIndex = -1;
+      let weakestScore = Infinity;
+      assignments.forEach((cluster, vectorIndex) => {
+        if (cluster !== donorCluster) return;
+        const candidateScore = similarity(vectors[vectorIndex], centers[donorCluster]);
+        if (candidateScore < weakestScore) {
+          weakestScore = candidateScore;
+          moveIndex = vectorIndex;
+        }
+      });
+      if (moveIndex >= 0) {
+        assignments[moveIndex] = emptyCluster;
+        assignmentTotals[donorCluster] -= 1;
+        assignmentTotals[emptyCluster] += 1;
+      }
     });
     const sums = Array.from({ length: clusterCount }, () => new Float32Array(vectors[0].length));
     const totals = new Array(clusterCount).fill(0);
@@ -176,25 +205,30 @@ function semanticArrangement(nodes) {
   const { assignments, clusterCount } = clusterAssignments(ordered);
   const groups = Array.from({ length: clusterCount }, () => []);
   ordered.forEach((node, index) => groups[assignments[index]].push(node));
-  const centers = spherePositions(clusterCount);
+  const populatedGroups = groups
+    .map((group, clusterId) => ({ group, clusterId }))
+    .filter(({ group }) => group.length > 0);
+  const centers = populatedGroups.map((_, index) => {
+    if (populatedGroups.length === 1) return { px: 0, py: 0, pz: 0.72 };
+    if (populatedGroups.length === 2) return { px: index === 0 ? -0.42 : 0.42, py: 0, pz: 0.7 };
+    const theta = -Math.PI / 2 + (index / populatedGroups.length) * Math.PI * 2;
+    return { px: Math.cos(theta) * 0.54, py: Math.sin(theta) * 0.4, pz: 0.68 };
+  });
   const arranged = [];
-  groups.forEach((group, clusterId) => {
+  populatedGroups.forEach(({ group, clusterId }, groupIndex) => {
     group.forEach((node, index) => {
       const fade = group.length <= 1 ? 0 : Math.sqrt(index / (group.length - 1));
-      const spread = index === 0 ? 0 : 0.05 + 0.16 * fade;
+      const spread = index === 0 ? 0 : 0.04 + 0.14 * fade;
       const theta = index * GOLDEN_ANGLE;
-      const center = centers[clusterId];
-      const raw = {
+      const center = centers[groupIndex];
+      const position = {
         px: center.px * 0.68 + Math.cos(theta) * spread,
         py: center.py * 0.68 + Math.sin(theta) * spread,
-        pz: 0.5 + center.pz * 0.28,
+        pz: center.pz + ((index % 3) - 1) * 0.025,
       };
-      const length = Math.hypot(raw.px, raw.py, raw.pz) || 1;
       arranged.push({
         ...node,
-        px: raw.px / length,
-        py: raw.py / length,
-        pz: raw.pz / length,
+        ...position,
         cluster_id: clusterId,
         cluster_fade: fade,
         visualAlpha: 1 - fade * 0.18,
@@ -247,7 +281,7 @@ export function projectAtlasNodes(nodes, view) {
       y: height / 2 + y2 * base * perspective,
       z: z2,
       depth,
-      radius: clamp((5.2 + Math.log2(Number(node.count || 0) + 2) * 1.28) * perspective, 5, 16),
+      radius: clamp((4.3 + Math.log2(Number(node.count || 0) + 2)) * perspective, 4.2, 12.5),
       alpha: clamp(0.34 + depth * 0.72, 0.3, 1) * Number(node.visualAlpha ?? 1),
     };
   }).sort((left, right) => left.z - right.z);

@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Clock, Sparkles } from 'lucide-react';
-import { fetchJsonWithAuthFallback } from '../utils/api';
+import { BookOpen, Clock, RefreshCcw, Sparkles } from 'lucide-react';
+import { API_BASE, fetchJsonWithAuthFallback, fetchWithAuth, readJsonResponse } from '../utils/api';
 import { emptyPlan, loadPlanningData } from '../pageDataLoaders.js';
 
 export default function PlanningPage() {
   const [plan, setPlan] = useState(emptyPlan);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [latestReview, setLatestReview] = useState(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -16,6 +18,13 @@ export default function PlanningPage() {
       const { plan: nextPlan, error: nextError } = await loadPlanningData({
         fetcher: fetchJsonWithAuthFallback,
       });
+      try {
+        const reviewRes = await fetchWithAuth(`${API_BASE}/v1/plan-reviews?limit=1`);
+        const reviewData = await readJsonResponse(reviewRes, { items: [] });
+        if (!cancelled && reviewRes.ok) setLatestReview(reviewData.items?.[0] || null);
+      } catch {
+        if (!cancelled) setLatestReview(null);
+      }
       if (!cancelled) {
         setPlan(nextPlan);
         setError(nextError);
@@ -28,6 +37,36 @@ export default function PlanningPage() {
       cancelled = true;
     };
   }, []);
+
+  const runReview = async () => {
+    setReviewBusy(true);
+    setError('');
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/v1/plan-reviews/run`, { method: 'POST' });
+      const payload = await readJsonResponse(response, {});
+      if (!response.ok) throw new Error(payload.detail || '规划复盘失败');
+      setLatestReview(payload);
+    } catch (reviewError) {
+      setError(reviewError.message || '规划复盘失败');
+    } finally {
+      setReviewBusy(false);
+    }
+  };
+
+  const decideReview = async (decision) => {
+    if (!latestReview?.review_id) return;
+    setReviewBusy(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/v1/plan-reviews/${latestReview.review_id}/decision`, { method: 'POST', body: JSON.stringify({ decision }) });
+      const payload = await readJsonResponse(response, {});
+      if (!response.ok) throw new Error(payload.detail || '复盘决定保存失败');
+      setLatestReview(payload);
+    } catch (reviewError) {
+      setError(reviewError.message || '复盘决定保存失败');
+    } finally {
+      setReviewBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -107,6 +146,14 @@ export default function PlanningPage() {
             )}
           </div>
         </div>
+      </section>
+
+      <section className="rounded-[28px] bg-[#f2f8f4] p-5 sm:p-6" aria-label="规划自动复盘">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div><div className="flex items-center gap-2 text-sm font-semibold text-emerald-950"><RefreshCcw size={16} />规划自动复盘</div><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">系统结合任务完成率、知识点掌握度和到期复习压力检查计划。长期规划只会给出提案，不会被静默修改。</p></div>
+          <button type="button" className="button button--secondary" disabled={reviewBusy} onClick={runReview}>{reviewBusy ? '复盘中…' : '立即复盘'}</button>
+        </div>
+        {latestReview ? <article className="mt-5 rounded-2xl bg-white p-4"><div className="flex flex-wrap items-center justify-between gap-3"><strong className="text-sm text-slate-950">{latestReview.summary}</strong><span className="text-xs text-slate-500">{latestReview.period_key}</span></div><div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">{(latestReview.evidence || []).map((item) => <span key={item} className="rounded-lg bg-slate-100 px-2 py-1">{item}</span>)}</div>{latestReview.status === 'proposal_pending' && <div className="mt-4 flex gap-2"><button type="button" className="button button--primary" disabled={reviewBusy} onClick={() => decideReview('accept')}>接受调整</button><button type="button" className="button button--secondary" disabled={reviewBusy} onClick={() => decideReview('reject')}>保持原计划</button></div>}</article> : <div className="mt-5 rounded-2xl bg-white/70 p-4 text-sm text-slate-500">尚无复盘记录。系统会按周生成，或者你可以立即运行一次。</div>}
       </section>
 
       {error && !loading && (
