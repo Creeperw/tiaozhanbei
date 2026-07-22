@@ -19,6 +19,11 @@ from competition_app.application.personalized_review_card import (
     WorkflowResumeRequest,
 )
 from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
+from competition_app.runtime.model_credentials import (
+    RuntimeModelCredentials,
+    bind_model_credentials,
+    reset_model_credentials,
+)
 from competition_app.runtime.snapshot import _sanitize
 from competition_app.contracts.review import ReviewAttemptSubmission
 from competition_app.contracts.auth import AuthUser, LoginRequest, RegisterRequest
@@ -125,6 +130,115 @@ class ReviewDispatchRequest(BaseModel):
     available_minutes: int = Field(default=15, gt=0, le=24 * 60)
 
 
+class FrontendAssistantRequest(BaseModel):
+    role: str = "user"
+    content: str = Field(min_length=1, max_length=20000)
+    files: list[dict] = Field(default_factory=list)
+    tools_enabled: bool = False
+    web_search: bool = False
+    rag_search: bool = False
+
+
+def _render_frontend_assistant_result(result: object) -> str:
+    body = _sanitize(result)
+    if body.get("status") == "interrupted":
+        interrupt = body.get("interrupt") or {}
+        questions = interrupt.get("questions") or []
+        reason = interrupt.get("reason") or "还需要补充一些信息。"
+        return "\n".join(
+            [reason, *[f"{index}. {item}" for index, item in enumerate(questions, 1)]]
+        )
+
+    plan = body.get("learning_plan")
+    if not plan:
+        for output in body.get("agent_outputs") or []:
+            if output.get("producer") == "learning_plan_service":
+                plan = output.get("payload")
+                break
+    if plan:
+        if plan.get("requires_clarification"):
+            questions = plan.get("clarification_questions") or []
+            reason = plan.get("reason") or "还需要补充一些信息。"
+            return "\n".join(
+                [reason, *[f"{index}. {item}" for index, item in enumerate(questions, 1)]]
+            )
+        sections = []
+        for label, key in (
+            ("长期学习规划", "long_term_plan"),
+            ("短期学习计划", "short_term_plan"),
+            ("当前学习任务", "learning_task"),
+        ):
+            value = plan.get(key)
+            if value:
+                sections.append(
+                    f"## {label}\n{json.dumps(value, ensure_ascii=False, indent=2)}"
+                )
+        return "学习安排已经生成。\n\n" + "\n\n".join(sections)
+
+    resource = body.get("resource")
+    if resource:
+        title = resource.get("title") or "学习内容"
+        content = resource.get("content") or {}
+        sections = [
+            f"## {key}\n"
+            + (
+                value
+                if isinstance(value, str)
+                else json.dumps(value, ensure_ascii=False, indent=2)
+            )
+            for key, value in content.items()
+        ]
+        return f"# {title}\n\n" + "\n\n".join(sections)
+    return "本次处理已经完成。"
+
+
+def _frontend_stream_event(event: dict[str, object]) -> str:
+    event_name = str(event.get("event") or "")
+    if event_name in {"run_completed", "run_interrupted"}:
+        answer = _render_frontend_assistant_result(event.get("result") or {})
+        return f"<<ROLLBACK:main-result>>{answer}"
+    if event_name == "run_failed":
+        message = str(event.get("message") or "智能助教执行失败")
+        safe_event = {key: value for key, value in event.items() if key != "message"}
+        return (
+            f"<<EV:{json.dumps(safe_event, ensure_ascii=False)}>>"
+            f"<<ROLLBACK:main-error>>执行失败：{message}"
+        )
+    if event_name == "model_delta":
+        return "<<STATUS:generating:模型正在生成结构化结果…>>"
+    status_labels = {
+        "run_started": "main 工作流已启动…",
+        "run_resumed": "正在恢复工作流…",
+        "graph_compiled": "执行图已编译…",
+        "step_started": "智能体正在执行…",
+        "step_completed": "智能体步骤已完成…",
+        "behavior_context_loaded": "已载入个人学习上下文…",
+    }
+    # The compact frontend only needs execution metadata. Model prompts, raw
+    # outputs and transport bodies stay server-side: they can be very large and
+    # may contain private learning material.
+    private_or_large_fields = {
+        "request_payload",
+        "response_text",
+        "reasoning_text",
+        "raw_input",
+        "raw_output",
+        "output",
+        "delta",
+        "result",
+    }
+    safe_event = {
+        key: value
+        for key, value in event.items()
+        if key not in private_or_large_fields
+    }
+    payload = json.dumps(safe_event, ensure_ascii=False)
+    label = status_labels.get(event_name)
+    return f"<<EV:{payload}>>" + (
+        f"<<STATUS:running:{label}>>" if label else ""
+    )
+
+
 class KnowledgeQuestionSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     kp_ids: list[str] = Field(default_factory=list)
@@ -212,11 +326,30 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
+    if backend_handoff is not None:
+        # Keep the React frontend's JWT API under a dedicated namespace.  Mounting
+        # it only as a catch-all makes routes such as /chat/{session_id} collide
+        # with this application's cookie-authenticated /chat static interface.
+        app.mount(
+            "/frontend-api",
+            backend_handoff.app,
+            name="frontend_backend_api",
+        )
 
     @app.middleware("http")
     async def authentication_boundary(request: Request, call_next):
         raw_token = request.cookies.get(SESSION_COOKIE)
         current_user = container.authentication_service.authenticate(raw_token)
+        authorization = request.headers.get("authorization", "")
+        if (
+            current_user is None
+            and backend_handoff is not None
+            and authorization.lower().startswith("bearer ")
+        ):
+            current_user = await asyncio.to_thread(
+                backend_handoff.authenticate_bearer,
+                authorization[7:].strip(),
+            )
         request.state.current_user = current_user
         path = request.url.path
         # Mounted business routes share the main cookie identity. Their internal
@@ -304,6 +437,19 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     def knowledge_owner(request: Request) -> str:
         user = current_user(request)
         return user.user_id if user is not None else "anonymous"
+
+    async def request_mineru_token(request: Request) -> str:
+        explicit_token = request.headers.get("x-mineru-token", "").strip()
+        if explicit_token:
+            return explicit_token
+        user = current_user(request)
+        if backend_handoff is None or user is None:
+            return ""
+        credentials = await asyncio.to_thread(
+            backend_handoff.load_user_api_credentials,
+            user.user_id,
+        )
+        return credentials.mineru_api_token
 
     def knowledge_error(exc: Exception) -> HTTPException:
         if isinstance(exc, KeyError):
@@ -522,7 +668,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return FileResponse(static_root / "index.html")
 
     @app.get("/health")
-    async def health() -> dict[str, str]:
+    async def health() -> dict[str, object]:
         payload = {
             "status": "ok",
             "mode": container.mode,
@@ -537,6 +683,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         }
         if backend_handoff is not None:
             payload["frontend_backend"] = "mounted"
+            payload["request_scoped_providers"] = {
+                "chat": "deepseek-v4-flash",
+                "embedding": "Qwen/Qwen3-Embedding-4B",
+                "document_parser": "MinerU",
+                "fallback_mode": container.mode,
+            }
         return payload
 
     @app.get("/api/v1/platform/status")
@@ -1286,7 +1438,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 filename,
                 await request.body(),
                 knowledge_owner(request),
-                mineru_token=request.headers.get("x-mineru-token", ""),
+                mineru_token=await request_mineru_token(request),
             )
         except Exception as exc:
             raise knowledge_error(exc) from exc
@@ -1319,7 +1471,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 knowledge_owner(request),
                 title=title,
                 apply=apply,
-                mineru_token=request.headers.get("x-mineru-token", ""),
+                mineru_token=await request_mineru_token(request),
             )
         except Exception as exc:
             raise knowledge_error(exc) from exc
@@ -1448,7 +1600,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 await request.body(),
                 knowledge_owner(request),
                 replace=replace,
-                mineru_token=request.headers.get("x-mineru-token", ""),
+                mineru_token=await request_mineru_token(request),
             )
         except Exception as exc:
             raise knowledge_error(exc) from exc
@@ -1462,11 +1614,66 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         except RuntimeError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    @app.post("/api/v1/frontend/chat/{session_id}")
+    async def frontend_chat_adapter(
+        session_id: str,
+        body: FrontendAssistantRequest,
+        http_request: Request,
+    ) -> StreamingResponse:
+        user = current_user(http_request)
+        if user is None or backend_handoff is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            messages = await asyncio.to_thread(
+                backend_handoff.load_chat_messages,
+                session_id,
+                user.user_id,
+            )
+            review_request = scoped_review_request(
+                ReviewCardRequest(
+                    thread_id=session_id,
+                    learner_id=user.user_id,
+                    user_request=body.content,
+                    messages=messages,
+                ),
+                user,
+            )
+            require_available_thread(http_request, session_id)
+            credentials = await asyncio.to_thread(
+                backend_handoff.load_user_api_credentials,
+                user.user_id,
+            )
+
+            async def persist_result(result) -> None:
+                answer = _render_frontend_assistant_result(result)
+                await asyncio.to_thread(
+                    backend_handoff.save_chat_turn,
+                    session_id,
+                    user.user_id,
+                    body.content,
+                    answer,
+                )
+
+            return _workflow_stream(
+                session_id,
+                lambda: container.review_card_use_case.execute(review_request),
+                user_request=body.content,
+                credentials=credentials,
+                on_result=persist_result,
+                event_formatter=_frontend_stream_event,
+                media_type="text/plain",
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc).strip("'")) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     @app.post("/api/v1/review-cards/stream")
     async def stream_review_card(
         request: ReviewCardRequest, http_request: Request
     ) -> StreamingResponse:
-        request = scoped_review_request(request, current_user(http_request))
+        user = current_user(http_request)
+        request = scoped_review_request(request, user)
         require_available_thread(http_request, request.thread_id)
         thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
         request = request.model_copy(update={"thread_id": thread_id})
@@ -1474,6 +1681,15 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             thread_id,
             lambda: container.review_card_use_case.execute(request),
             user_request=request.user_request,
+            credentials=(
+                await asyncio.to_thread(
+                    backend_handoff.load_user_api_credentials,
+                    user.user_id,
+                )
+                if backend_handoff is not None
+                and user is not None
+                else None
+            ),
         )
 
     @app.post("/api/v1/review-cards/runs/{thread_id}/resume/stream")
@@ -1482,11 +1698,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         request: WorkflowResumeRequest,
         http_request: Request,
     ) -> StreamingResponse:
+        user = current_user(http_request)
         require_run_owner(http_request, thread_id)
         return _workflow_stream(
             thread_id,
             lambda: container.review_card_use_case.resume(thread_id, request),
             resumed=True,
+            credentials=(
+                await asyncio.to_thread(
+                    backend_handoff.load_user_api_credentials,
+                    user.user_id,
+                )
+                if backend_handoff is not None and user is not None
+                else None
+            ),
         )
 
     @app.get("/api/v1/review-cards/runs/{thread_id}")
@@ -1591,6 +1816,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         *,
         user_request: str | None = None,
         resumed: bool = False,
+        credentials: RuntimeModelCredentials | None = None,
+        on_result=None,
+        event_formatter=None,
+        media_type: str = "text/event-stream",
     ) -> StreamingResponse:
         queue: asyncio.Queue[dict[str, object] | None] = asyncio.Queue()
 
@@ -1599,6 +1828,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
         async def run_workflow() -> None:
             token = bind_event_sink(publish)
+            credential_token = bind_model_credentials(credentials)
             try:
                 await queue.put(
                     {
@@ -1608,6 +1838,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     }
                 )
                 result = await operation()
+                if on_result is not None:
+                    await on_result(result)
                 event_name = (
                     "run_interrupted"
                     if getattr(result, "status", None) == "interrupted"
@@ -1632,6 +1864,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 )
             finally:
                 reset_event_sink(token)
+                reset_model_credentials(credential_token)
                 await queue.put(None)
 
         async def event_source():
@@ -1641,7 +1874,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     event = await queue.get()
                     if event is None:
                         break
-                    yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+                    if event_formatter is None:
+                        yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+                    else:
+                        yield event_formatter(event)
             finally:
                 # The workflow intentionally keeps running after an SSE disconnect.
                 # Its status/result remains available through the run-state endpoint.
@@ -1649,7 +1885,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
         return StreamingResponse(
             event_source(),
-            media_type="text/event-stream",
+            media_type=media_type,
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 

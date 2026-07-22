@@ -21,8 +21,10 @@ from competition_app.application.personalized_review_card import PersonalizedRev
 from competition_app.config import Settings
 from competition_app.llm.stub import StubChatModel
 from competition_app.llm.openai_compatible import OpenAICompatibleChatModel
+from competition_app.llm.configurable import UserConfiguredChatModel
 from competition_app.embeddings.stub import StubEmbeddingModel
 from competition_app.embeddings.siliconflow import SiliconFlowEmbeddingModel
+from competition_app.embeddings.configurable import UserConfiguredEmbeddingModel
 from competition_app.db.bootstrap import DatabaseBootstrap
 from competition_app.runtime.agent_registry import AgentRegistry
 from competition_app.runtime.orchestrator import Orchestrator
@@ -181,6 +183,8 @@ class ApplicationContainer:
             question_retriever = StubQuestionRetriever()
             textbook_retriever = None
             knowledge_backend = None
+        chat_model = UserConfiguredChatModel(chat_model)
+        embedding_model = UserConfiguredEmbeddingModel(embedding_model)
         exa_retriever = (
             ExaVideoRetriever(settings.exa_api_key)
             if settings.mode == "live" and settings.exa_api_key

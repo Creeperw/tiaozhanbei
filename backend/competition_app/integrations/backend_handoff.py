@@ -8,7 +8,7 @@ import threading
 from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
@@ -18,6 +18,8 @@ from uuid import uuid4
 from fastapi import FastAPI
 
 from competition_app.config import Settings
+from competition_app.contracts.auth import AuthUser
+from competition_app.runtime.model_credentials import RuntimeModelCredentials
 
 
 _IMPORT_LOCK = threading.RLock()
@@ -63,6 +65,181 @@ class BackendHandoffRuntime:
             "started": self._started,
         }
 
+    @staticmethod
+    def _delivered_user_id(external_user_id: str) -> int | None:
+        prefix = "frontend:"
+        if not external_user_id.startswith(prefix):
+            return None
+        try:
+            return int(external_user_id[len(prefix):])
+        except ValueError:
+            return None
+
+    def authenticate_bearer(self, token: str | None) -> AuthUser | None:
+        """Resolve a delivered-frontend JWT into the host authentication model."""
+
+        if not token:
+            return None
+        auth = importlib.import_module("APP.backend.auth")
+        config = importlib.import_module("APP.backend.config")
+        database = importlib.import_module("APP.backend.database")
+        try:
+            payload = auth.jwt.decode(
+                token,
+                config.SECRET_KEY,
+                algorithms=[config.ALGORITHM],
+            )
+        except auth.JWTError:
+            return None
+        username = str(payload.get("sub") or "").strip()
+        if not username:
+            return None
+        db = database.SessionLocal()
+        try:
+            user = (
+                db.query(database.UserModel)
+                .filter(database.UserModel.username == username)
+                .first()
+            )
+            if user is None:
+                return None
+            created_at = user.created_at or datetime.now(timezone.utc)
+            return AuthUser(
+                user_id=f"frontend:{user.id}",
+                username=user.username,
+                display_name=user.username,
+                status="active",
+                created_at=created_at,
+            )
+        finally:
+            db.close()
+
+    def load_chat_messages(
+        self, session_id: str, external_user_id: str
+    ) -> list[dict[str, str]]:
+        """Load a delivered frontend session after enforcing its owner."""
+
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            session = (
+                db.query(database.DbSession)
+                .filter(
+                    database.DbSession.id == session_id,
+                    database.DbSession.user_id
+                    == self._delivered_user_id(external_user_id),
+                )
+                .first()
+            )
+            if session is None:
+                raise KeyError("Session not found")
+            rows = (
+                db.query(database.DbMessage)
+                .filter(database.DbMessage.session_id == session_id)
+                .order_by(database.DbMessage.id.asc())
+                .all()
+            )
+            return [
+                {"role": row.role, "content": row.content}
+                for row in rows
+                if row.role in {"user", "assistant"} and row.content
+            ]
+        finally:
+            db.close()
+
+    def save_chat_turn(
+        self,
+        session_id: str,
+        external_user_id: str,
+        user_content: str,
+        assistant_content: str,
+    ) -> None:
+        """Persist a main-backend answer in the delivered frontend session."""
+
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            session = (
+                db.query(database.DbSession)
+                .filter(
+                    database.DbSession.id == session_id,
+                    database.DbSession.user_id
+                    == self._delivered_user_id(external_user_id),
+                )
+                .first()
+            )
+            if session is None:
+                raise KeyError("Session not found")
+            timestamp = datetime.now().strftime("%H:%M")
+            user_message = database.DbMessage(
+                session_id=session_id,
+                parent_id=session.active_leaf_message_id,
+                role="user",
+                content=user_content,
+                files="[]",
+                timestamp=timestamp,
+            )
+            db.add(user_message)
+            db.flush()
+            assistant_message = database.DbMessage(
+                session_id=session_id,
+                parent_id=user_message.id,
+                role="assistant",
+                content=assistant_content,
+                files="[]",
+                timestamp=timestamp,
+            )
+            db.add(assistant_message)
+            db.flush()
+            session.active_leaf_message_id = assistant_message.id
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_user_api_credentials(
+        self, external_user_id: str
+    ) -> RuntimeModelCredentials:
+        """Read private provider keys for the current main or legacy user."""
+
+        database = importlib.import_module("APP.backend.database")
+        auth = importlib.import_module("APP.backend.auth")
+        profile_service = importlib.import_module("APP.backend.health_memory")
+        learner_profile = importlib.import_module("APP.backend.learner_profile_service")
+        db = database.SessionLocal()
+        try:
+            delivered_user_id = self._delivered_user_id(external_user_id)
+            if delivered_user_id is None:
+                user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+                    db, SimpleNamespace(user_id=external_user_id)
+                )
+            else:
+                user = (
+                    db.query(database.UserModel)
+                    .filter(database.UserModel.id == delivered_user_id)
+                    .one()
+                )
+            profile = profile_service.get_or_create_profile(db, user.id)
+            survey = learner_profile.parse_json_field(
+                getattr(profile, "survey_json", "{}"), {}
+            )
+            private = (
+                survey.get("private_api_credentials", {})
+                if isinstance(survey, dict)
+                else {}
+            )
+            if not isinstance(private, dict):
+                private = {}
+            return RuntimeModelCredentials(
+                deepseek_api_key=str(private.get("deepseek_api_key") or ""),
+                siliconflow_api_key=str(private.get("siliconflow_api_key") or ""),
+                mineru_api_token=str(private.get("mineru_api_token") or ""),
+            )
+        finally:
+            db.close()
+
     async def startup(self) -> None:
         if self._started:
             return
@@ -89,9 +266,17 @@ class BackendHandoffRuntime:
         system_data = importlib.import_module("APP.backend.system_data_service")
         db = database.SessionLocal()
         try:
-            user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
-                db, SimpleNamespace(user_id=external_user_id)
-            )
+            delivered_user_id = self._delivered_user_id(external_user_id)
+            if delivered_user_id is None:
+                user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+                    db, SimpleNamespace(user_id=external_user_id)
+                )
+            else:
+                user = (
+                    db.query(database.UserModel)
+                    .filter(database.UserModel.id == delivered_user_id)
+                    .one()
+                )
             stored_profile = diagnosis.get_or_create_profile(db, user.id, commit=False)
             snapshot = system_data.rebuild_system_data(db, user_id=user.id)
             profile = diagnosis.build_learning_profile(db, user.id)
@@ -1017,7 +1202,20 @@ def load_backend_handoff(settings: Settings) -> BackendHandoffRuntime | None:
     runtime_root.mkdir(parents=True, exist_ok=True)
 
     knowledge_paths_root = settings.knowledge_handoff_root.resolve()
-    knowledge_component = knowledge_paths_root / "知识库管理组件"
+    # Accept either the complete video handoff root or a directly mounted
+    # knowledge-management component.  Local collaborators commonly have the
+    # latter as a sibling directory instead of the original delivery wrapper.
+    direct_component = knowledge_paths_root / "data" / "backend_delivery"
+    knowledge_component = (
+        knowledge_paths_root
+        if direct_component.is_dir()
+        else knowledge_paths_root / "知识库管理组件"
+    )
+    video_paths_root = (
+        knowledge_paths_root.parent
+        if direct_component.is_dir()
+        else knowledge_paths_root
+    )
     database_env, database_backend = _database_environment(settings, runtime_root)
     environment = {
         **database_env,
@@ -1029,7 +1227,7 @@ def load_backend_handoff(settings: Settings) -> BackendHandoffRuntime | None:
             knowledge_component / "data" / "backend_delivery"
         ),
         "KNOWLEDGE_ATLAS_VIDEO_ROOT": str(
-            knowledge_paths_root / "bilibili_video_page" / "runtime"
+            video_paths_root / "bilibili_video_page" / "runtime"
         ),
         "OFFICIAL_EXAM_DATA_DIR": str(
             knowledge_component / "data" / "backend_delivery" / "08_exam_learning_path_2025"

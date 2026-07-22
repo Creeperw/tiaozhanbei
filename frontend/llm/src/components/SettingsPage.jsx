@@ -26,6 +26,16 @@ export default function SettingsPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [apiForm, setApiForm] = useState({
+    deepseek_api_key: '',
+    siliconflow_api_key: '',
+    mineru_api_token: '',
+  });
+  const [apiProviders, setApiProviders] = useState({});
+  const [apiLoading, setApiLoading] = useState(true);
+  const [apiSaving, setApiSaving] = useState(false);
+  const [apiMessage, setApiMessage] = useState('');
+  const [apiError, setApiError] = useState('');
 
   const createSnapshot = (frequency, fields) => JSON.stringify({
     analysis_frequency: frequency,
@@ -63,6 +73,26 @@ export default function SettingsPage() {
     return () => { cancelled = true; };
   }, [reloadKey]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadApiSettings = async () => {
+      setApiLoading(true);
+      setApiError('');
+      try {
+        const res = await fetchWithAuth(`${API_BASE}/personalization/api-settings`);
+        const data = await readJsonResponse(res, { providers: {} });
+        if (!res.ok) throw new Error(data.detail || 'API 配置加载失败');
+        if (!cancelled) setApiProviders(data.providers || {});
+      } catch (loadError) {
+        if (!cancelled) setApiError(loadError.message || 'API 配置加载失败');
+      } finally {
+        if (!cancelled) setApiLoading(false);
+      }
+    };
+    loadApiSettings();
+    return () => { cancelled = true; };
+  }, [reloadKey]);
+
   const toggleField = (key) => {
     setLockedFields((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
   };
@@ -88,6 +118,54 @@ export default function SettingsPage() {
     }
   };
 
+  const saveApiSettings = async () => {
+    const payload = Object.fromEntries(
+      Object.entries(apiForm).filter(([, value]) => value.trim()),
+    );
+    if (Object.keys(payload).length === 0) {
+      setApiError('请至少填写一个新的 API Key 或 Token。');
+      return;
+    }
+    setApiSaving(true);
+    setApiError('');
+    setApiMessage('');
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/personalization/api-settings`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+      const data = await readJsonResponse(res, { providers: {} });
+      if (!res.ok) throw new Error(data.detail || 'API 配置保存失败');
+      setApiProviders(data.providers || {});
+      setApiForm({ deepseek_api_key: '', siliconflow_api_key: '', mineru_api_token: '' });
+      setApiMessage('API 配置已保存在本机；刷新页面后仍会继续使用。');
+    } catch (saveError) {
+      setApiError(saveError.message || 'API 配置保存失败');
+    } finally {
+      setApiSaving(false);
+    }
+  };
+
+  const clearApiSetting = async (provider) => {
+    setApiSaving(true);
+    setApiError('');
+    setApiMessage('');
+    try {
+      const res = await fetchWithAuth(`${API_BASE}/personalization/api-settings`, {
+        method: 'PUT',
+        body: JSON.stringify({ clear: [provider] }),
+      });
+      const data = await readJsonResponse(res, { providers: {} });
+      if (!res.ok) throw new Error(data.detail || 'API 配置清除失败');
+      setApiProviders(data.providers || {});
+      setApiMessage('已清除对应的本机 API 配置。');
+    } catch (clearError) {
+      setApiError(clearError.message || 'API 配置清除失败');
+    } finally {
+      setApiSaving(false);
+    }
+  };
+
   return (
     <div className="settings-page space-y-6">
       {loading && <div role="status" className="settings-page__loading">正在加载设置…</div>}
@@ -99,6 +177,53 @@ export default function SettingsPage() {
               {option.label}
             </button>
           ))}
+        </div>
+      </section>
+      <section aria-busy={apiLoading || apiSaving} className="rounded-[28px] border border-emerald-200 bg-white p-5 shadow-sm shadow-emerald-100/60 sm:p-6">
+        <h2 className="text-xl font-semibold text-slate-950">本机模型 API 配置</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          密钥保存在本机后端数据库，浏览器不会保存明文，接口也只返回脱敏状态。留空表示保留原配置。
+        </p>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          {[
+            { provider: 'deepseek', field: 'deepseek_api_key', label: 'DeepSeek API Key', hint: '智能助教：deepseek-v4-flash' },
+            { provider: 'siliconflow', field: 'siliconflow_api_key', label: '硅基流动 API Key', hint: '向量模型：Qwen3-Embedding-4B' },
+            { provider: 'mineru', field: 'mineru_api_token', label: 'MinerU API Token', hint: 'PDF 与图片资料解析' },
+          ].map((item) => {
+            const status = apiProviders[item.provider] || {};
+            return (
+              <div key={item.provider} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <label className="block text-sm font-semibold text-slate-900" htmlFor={item.field}>{item.label}</label>
+                <p className="mt-1 text-xs text-slate-500">{item.hint}</p>
+                <input
+                  id={item.field}
+                  type="password"
+                  autoComplete="new-password"
+                  value={apiForm[item.field]}
+                  placeholder={status.configured ? `已保存：${status.masked}` : '尚未配置'}
+                  onChange={(event) => setApiForm((current) => ({ ...current, [item.field]: event.target.value }))}
+                  className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400"
+                />
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs">
+                  <span className={status.configured ? 'text-emerald-700' : 'text-slate-500'}>
+                    {status.configured ? '已配置并持久化' : '未配置'}
+                  </span>
+                  {status.configured && (
+                    <button type="button" disabled={apiSaving} onClick={() => clearApiSetting(item.provider)} className="text-rose-600 underline disabled:opacity-50">
+                      清除
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {apiError && <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{apiError}</div>}
+        {apiMessage && <div role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{apiMessage}</div>}
+        <div className="mt-4 flex justify-end">
+          <button type="button" onClick={saveApiSettings} disabled={apiLoading || apiSaving} className="button button--primary">
+            {apiSaving ? '正在保存 API…' : '保存 API 配置'}
+          </button>
         </div>
       </section>
       <section aria-busy={loading} className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">

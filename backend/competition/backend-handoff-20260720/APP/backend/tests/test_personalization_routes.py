@@ -88,6 +88,31 @@ class MarkdownMemoryUploadLimitsTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
 
+    def test_api_settings_are_persisted_but_never_returned_in_plaintext(self):
+        saved = self.client.put(
+            "/personalization/api-settings",
+            json={
+                "deepseek_api_key": "sk-deepseek-secret-1234",
+                "siliconflow_api_key": "sk-silicon-secret-5678",
+                "mineru_api_token": "mineru-secret-9012",
+            },
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertNotIn("sk-deepseek-secret-1234", saved.text)
+        self.assertTrue(saved.json()["providers"]["deepseek"]["configured"])
+
+        loaded = self.client.get("/personalization/api-settings")
+        self.assertEqual(loaded.status_code, 200)
+        self.assertNotIn("secret", loaded.text)
+        self.assertTrue(loaded.json()["providers"]["siliconflow"]["configured"])
+
+        cleared = self.client.put(
+            "/personalization/api-settings",
+            json={"clear": ["deepseek"]},
+        )
+        self.assertFalse(cleared.json()["providers"]["deepseek"]["configured"])
+        self.assertTrue(cleared.json()["providers"]["mineru"]["configured"])
+
 
 if __name__ == "__main__":
     unittest.main()

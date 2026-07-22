@@ -492,6 +492,8 @@ class OpenAICompatibleChatModel(ChatModel):
                 # responses that must satisfy a strict JSON contract.
                 if self.model.lower().startswith("qwen3"):
                     request_payload["enable_thinking"] = False
+                if self.model.lower().startswith("deepseek-v4"):
+                    request_payload["thinking"] = {"type": "disabled"}
                 self.last_request_payload = {
                     "url": f"{self.base_url}/chat/completions",
                     "body": request_payload,

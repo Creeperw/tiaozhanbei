@@ -20,14 +20,54 @@ function deferred() {
 describe('SettingsPage state model', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchWithAuth.mockImplementation((url) => Promise.resolve({
+      ok: true,
+      payload: url.endsWith('/personalization/api-settings')
+        ? { providers: {} }
+        : { settings: { analysis_frequency: 'daily' }, locked_fields: [] },
+    }));
+  });
+
+  it('saves provider keys server-side and clears the input after saving', async () => {
+    fetchWithAuth.mockImplementation((url, options = {}) => {
+      if (url.endsWith('/personalization/learner-settings')) {
+        return Promise.resolve({ ok: true, payload: { settings: { analysis_frequency: 'daily' }, locked_fields: [] } });
+      }
+      if (options.method === 'PUT') {
+        return Promise.resolve({
+          ok: true,
+          payload: { providers: { deepseek: { configured: true, masked: 'sk-a…1234' } } },
+        });
+      }
+      return Promise.resolve({ ok: true, payload: { providers: {} } });
+    });
+
+    render(<SettingsPage />);
+    const input = await screen.findByLabelText('DeepSeek API Key');
+    fireEvent.change(input, { target: { value: 'sk-api-secret-1234' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存 API 配置' }));
+
+    expect(await screen.findByText('已配置并持久化')).toBeInTheDocument();
+    expect(input).toHaveValue('');
+    expect(fetchWithAuth).toHaveBeenCalledWith(
+      'http://api.test/personalization/api-settings',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ deepseek_api_key: 'sk-api-secret-1234' }),
+      }),
+    );
   });
 
   it('shows loading, dirty and saving states while keeping save sticky and intentional', async () => {
     const loadingRequest = deferred();
     const savingRequest = deferred();
-    fetchWithAuth
-      .mockImplementationOnce(() => loadingRequest.promise)
-      .mockImplementationOnce(() => savingRequest.promise);
+    fetchWithAuth.mockImplementation((url, options = {}) => {
+      if (url.endsWith('/personalization/api-settings')) {
+        return Promise.resolve({ ok: true, payload: { providers: {} } });
+      }
+      if (options.method === 'PUT') return savingRequest.promise;
+      return loadingRequest.promise;
+    });
 
     render(<SettingsPage />);
     expect(screen.getByRole('status')).toHaveTextContent('正在加载设置');

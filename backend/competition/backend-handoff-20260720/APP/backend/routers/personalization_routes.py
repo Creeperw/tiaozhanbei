@@ -3,7 +3,7 @@ from APP.backend.time_utils import utc_now
 import json
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
@@ -58,6 +58,55 @@ class LearnerProfileUpdate(BaseModel):
 class LearnerSettingsUpdate(BaseModel):
     analysis_frequency: Optional[str] = None
     locked_fields: Optional[list[str]] = None
+
+
+class ApiSettingsUpdate(BaseModel):
+    deepseek_api_key: Optional[str] = None
+    siliconflow_api_key: Optional[str] = None
+    mineru_api_token: Optional[str] = None
+    clear: list[str] = Field(default_factory=list)
+
+
+API_CREDENTIAL_FIELDS = {
+    "deepseek": "deepseek_api_key",
+    "siliconflow": "siliconflow_api_key",
+    "mineru": "mineru_api_token",
+}
+
+
+def _masked_secret(value: str) -> str:
+    if len(value) <= 8:
+        return "****"
+    return f"{value[:4]}…{value[-4:]}"
+
+
+def _private_api_credentials(profile) -> dict[str, str]:
+    survey = parse_json_field(getattr(profile, "survey_json", "{}"), {})
+    if not isinstance(survey, dict):
+        return {}
+    credentials = survey.get("private_api_credentials")
+    if not isinstance(credentials, dict):
+        return {}
+    return {
+        key: str(value)
+        for key, value in credentials.items()
+        if key in API_CREDENTIAL_FIELDS.values() and str(value).strip()
+    }
+
+
+def _api_settings_response(profile) -> dict:
+    credentials = _private_api_credentials(profile)
+    return {
+        "providers": {
+            provider: {
+                "configured": bool(credentials.get(field)),
+                "masked": _masked_secret(credentials[field])
+                if credentials.get(field)
+                else "",
+            }
+            for provider, field in API_CREDENTIAL_FIELDS.items()
+        }
+    }
 
 
 class LearningTargetUpdate(BaseModel):
@@ -277,6 +326,45 @@ def update_learner_settings(body: LearnerSettingsUpdate, current_user: UserModel
         profile.lock_reason_json = serialize_json_field(next_reasons)
     db.commit()
     return get_learner_settings(current_user=current_user, db=db)
+
+
+@router.get("/api-settings")
+def get_api_settings(
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return _api_settings_response(get_or_create_profile(db, current_user.id))
+
+
+@router.put("/api-settings")
+def update_api_settings(
+    body: ApiSettingsUpdate,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = get_or_create_profile(db, current_user.id)
+    survey = parse_json_field(getattr(profile, "survey_json", "{}"), {})
+    if not isinstance(survey, dict):
+        survey = {}
+    credentials = _private_api_credentials(profile)
+    for provider in body.clear:
+        field = API_CREDENTIAL_FIELDS.get(provider)
+        if field:
+            credentials.pop(field, None)
+    for field in API_CREDENTIAL_FIELDS.values():
+        value = getattr(body, field)
+        if value is None:
+            continue
+        normalized = value.strip()
+        if not normalized:
+            continue
+        if len(normalized) > 4096:
+            raise HTTPException(status_code=422, detail=f"{field} is too long")
+        credentials[field] = normalized
+    survey["private_api_credentials"] = credentials
+    profile.survey_json = json.dumps(survey, ensure_ascii=False)
+    db.commit()
+    return _api_settings_response(profile)
 
 
 @router.get("/learning-trends")
