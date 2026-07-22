@@ -39,6 +39,8 @@ tiaozhanbei/
 
 学情指标的数据表、采集动作、时间窗口、公式、推荐权重、版本和研究依据见 [学情监测与资源匹配口径](docs/learning-monitoring-methodology.md)。
 
+参与开发前请阅读 [协作与贡献说明](CONTRIBUTING.md)。协作分支以保留原作者提交历史的方式进入 `main`，确保 GitHub Contributors 能正确识别团队成员贡献。
+
 ## 快速启动
 
 项目不要求 Docker，统一使用 Python 3.10 与已有 Conda `torch` 环境：
@@ -190,7 +192,9 @@ npm run build
 ## 协作建议
 
 - 后端改动放在 `backend/**`，前端改动放在 `frontend/**`；
-- 每个功能分支只处理一个交付目标，通过 Pull Request 合并到 `main`；
+- 每个功能分支只处理一个交付目标，通过 Pull Request 合并到 `main`，并保留原提交作者历史；
 - 不提交 `.env`、密钥、数据库、缓存、快照、向量索引和用户数据；
 - 接口有变化时同步更新 OpenAPI/Pydantic 契约和 README；
 - 前端不要硬编码 Agent 节点数、执行顺序、系统 ID 或计划版本。
+
+贡献者名单、历史分支和验收规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
