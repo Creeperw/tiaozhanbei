@@ -11,7 +11,7 @@ from APP.backend.database import (
     AuditResultRecord, EvidencePackRecord, GradingResultRecord,
     KnowledgeMasteryState, LearnerKPReviewState, LearnerKnowledgeMastery,
     LearningAttemptItemRecord, LearningAttemptRecord, LearningWritebackReceipt,
-    MasteryHistoryRecord, MistakeRecord, ReviewTaskRecord,
+    MasteryHistoryRecord, MistakeRecord, QuestionVersionRecord, ReviewTaskRecord,
 )
 from APP.backend.review_formula import (
     FORMULA_VERSION, lambda_per_day, mastery_after_attempt, stability_for_interval,
@@ -180,6 +180,15 @@ def apply_grading_writeback(db: Session, learner_id: int, command: GradingWriteb
         if mistake is None:
             mistake = MistakeRecord(user_id=learner_id, question_id=item.question_version_id, status="active")
             db.add(mistake)
+        mistake.attempt_item_id = item.attempt_item_id
+        authoritative_version = db.query(QuestionVersionRecord).filter_by(
+            question_version_id=item.question_version_id,
+        ).one_or_none()
+        mistake.question_version_id = (
+            authoritative_version.question_version_id
+            if authoritative_version is not None
+            else None
+        )
         mistake.kp_ids_json = json.dumps(grading_kps)
         mistake.error_type = ",".join(_kp_ids(grading.error_types_json))
         mistake.summary = grading.error_reason

@@ -86,6 +86,7 @@ class ApplicationContainer:
     auth_cookie_secure: bool = False
     backend_handoff_runtime: BackendHandoffRuntime | None = None
     frontend_dist_root: Path | None = None
+    textbook_route_repository: TextbookRouteRepository | None = None
 
     @classmethod
     def build(
@@ -318,6 +319,7 @@ class ApplicationContainer:
             auth_cookie_secure=settings.auth_cookie_secure,
             backend_handoff_runtime=backend_handoff_runtime,
             frontend_dist_root=settings.frontend_dist_root,
+            textbook_route_repository=textbook_route_repository,
         )
 
 

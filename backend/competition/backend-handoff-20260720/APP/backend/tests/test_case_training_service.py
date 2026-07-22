@@ -357,6 +357,20 @@ class CaseTrainingServiceTests(unittest.TestCase):
             self.assertEqual(db.query(database.GradingResultRecord).count(), 1)
             self.assertEqual(db.query(database.AuditResultRecord).count(), 1)
 
+    def test_incomplete_case_submission_enters_mistake_history(self):
+        service = self.build_service(grading_runner=lambda **kwargs: valid_case_grading())
+        started = service.start_session(1, case_version_id="CASEV_001", mode="full")
+
+        result = service.submit(1, started["session_id"], {"syndrome": "脾胃气虚"})
+
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(len(result["writeback"]["mistake_ids"]), 1)
+        with self.Session() as db:
+            mistake = db.query(database.MistakeRecord).filter_by(user_id=1).one()
+            self.assertEqual(mistake.question_id, "case:CASEV_001")
+            self.assertTrue(mistake.attempt_item_id)
+            self.assertEqual(mistake.error_type, "case_dimension_incomplete")
+
     def test_completed_submission_writes_case_activity_and_system_snapshot(self):
         service = self.build_service(grading_runner=lambda **kwargs: valid_case_grading())
         started = service.start_session(1, case_version_id="CASEV_001", mode="full")

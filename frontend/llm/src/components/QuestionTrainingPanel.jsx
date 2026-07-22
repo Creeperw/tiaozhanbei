@@ -1,26 +1,36 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AtlasPracticePanel from './exam-atlas/AtlasPracticePanel';
 import CaseTrainingPanel from './CaseTrainingPanel';
 import MistakeVariationPanel from './MistakeVariationPanel';
 
 const modes = [
-  ['practice', '题目作答与批改'],
-  ['case', '案例训练'],
+  ['objective', '客观题'],
+  ['case', '案例简答'],
+  ['patient', 'AI 病患模拟'],
   ['variation', '错题变式'],
 ];
+
+function normalizeInitialMode(value) {
+  if (value === 'mistake_variation') return 'variation';
+  if (value === 'case_training') return 'case';
+  if (value === 'ai_patient_simulation') return 'patient';
+  return 'objective';
+}
 
 export default function QuestionTrainingPanel({
   enabled,
   selectedKnowledgePoint,
   practiceScope,
   onPracticeScopeChange,
-  question,
-  answer,
-  onAnswerChange,
-  onSubmit,
-  loading,
+  initialMode = '',
+  onResult,
 }) {
-  const [mode, setMode] = useState('practice');
+  const [mode, setMode] = useState(() => normalizeInitialMode(initialMode));
+
+  useEffect(() => {
+    setMode(normalizeInitialMode(initialMode));
+  }, [initialMode]);
+
   if (!enabled) return <p className="mt-5 text-sm text-slate-600">题目训练暂未开放。</p>;
 
   return (
@@ -40,9 +50,7 @@ export default function QuestionTrainingPanel({
         ))}
       </div>
 
-      {mode === 'case' && <CaseTrainingPanel enabled />}
-      {mode === 'variation' && <MistakeVariationPanel enabled />}
-      {mode === 'practice' && selectedKnowledgePoint && (
+      {(mode === 'objective' || mode === 'case') && (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs font-semibold text-slate-600">题目范围</span>
@@ -64,26 +72,17 @@ export default function QuestionTrainingPanel({
               ))}
             </div>
           </div>
-          <AtlasPracticePanel knowledgePoint={selectedKnowledgePoint} scope={practiceScope} />
-        </div>
-      )}
-      {mode === 'practice' && !selectedKnowledgePoint && (
-        <div>
-          <p className="text-sm font-medium leading-6 text-slate-900">{question.stem}</p>
-          <p className="mt-2 text-sm text-slate-500">知识点：{question.knowledge_points.join('、')}</p>
-          <label htmlFor="practice-answer" className="mt-5 block text-sm font-medium text-slate-700">你的答案</label>
-          <textarea
-            id="practice-answer"
-            value={answer}
-            onChange={(event) => onAnswerChange(event.target.value)}
-            className="mt-2 min-h-32 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6"
-            disabled={loading}
+          <AtlasPracticePanel
+            key={`${mode}:${practiceScope}:${selectedKnowledgePoint?.kpId || selectedKnowledgePoint?.kp_id || 'all'}`}
+            knowledgePoint={selectedKnowledgePoint}
+            scope={practiceScope}
+            mode={mode}
+            onResult={onResult}
           />
-          <button type="button" onClick={onSubmit} disabled={loading} className="mt-4 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-55">
-            {loading ? '正在批改…' : '提交并批改'}
-          </button>
         </div>
       )}
+      {mode === 'patient' && <CaseTrainingPanel enabled />}
+      {mode === 'variation' && <MistakeVariationPanel enabled />}
     </div>
   );
 }

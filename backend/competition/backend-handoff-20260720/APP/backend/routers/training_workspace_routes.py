@@ -8,13 +8,31 @@ from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Callable
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from APP.backend.auth import get_current_user
-from APP.backend.database import SystemData, UserModel, get_db
-from APP.backend.mistake_variation_service import MistakeVariationNotFound, list_available_variation_sources
+from APP.backend.database import (
+    GradingResultRecord,
+    LearningAttemptItemRecord,
+    LearningAttemptRecord,
+    LearningQuestion,
+    MistakeRecord,
+    QuestionAttempt,
+    QuestionBankItem,
+    QuestionVersionRecord,
+    SystemData,
+    UserModel,
+    UserQuestionItem,
+    get_db,
+)
+from APP.backend.case_training_models import CaseDefinitionRecord, CaseSessionRecord, CaseVersionRecord
+from APP.backend.mistake_variation_service import (
+    MistakeVariationNotFound,
+    available_variation_source_ids,
+    list_available_variation_sources,
+)
 from APP.backend.paper_submission_service import PaperSubmissionInvalid, PaperSubmissionNotFound, get_owned_paper, save_paper_answers, submit_paper
 from APP.backend.system_data_service import system_data_payload
 from APP.backend.training_workspace_service import (
@@ -26,6 +44,7 @@ from APP.backend.training_workspace_service import (
 )
 
 router = APIRouter(prefix="/training/workspace", tags=["Training Workspace"])
+stable_practice_router = APIRouter(prefix="/v1/workshop/practice", tags=["Workshop Practice"])
 
 
 @dataclass(frozen=True)
@@ -160,6 +179,192 @@ def get_mistake_variation_sources(
     db: Session = Depends(get_db),
 ):
     return {"items": list_available_variation_sources(db, current_user.id)}
+
+
+def _json_list(value: str | None) -> list[Any]:
+    try:
+        decoded = json.loads(value or "[]")
+    except (TypeError, ValueError):
+        return []
+    return decoded if isinstance(decoded, list) else []
+
+
+def _mistake_question(db: Session, mistake: MistakeRecord, user_id: int) -> dict[str, Any]:
+    if mistake.question_version_id:
+        row = db.query(QuestionVersionRecord).filter_by(
+            question_version_id=mistake.question_version_id,
+        ).one_or_none()
+        if row is not None:
+            return {
+                "stem": row.stem,
+                "question_type": row.question_type,
+                "difficulty": row.standard_difficulty,
+            }
+    private = db.query(UserQuestionItem).filter_by(
+        question_id=mistake.question_id,
+        owner_user_id=user_id,
+    ).one_or_none()
+    if private is not None:
+        return {
+            "stem": private.stem,
+            "question_type": private.question_type,
+            "difficulty": 2,
+        }
+    public = db.query(QuestionBankItem).filter_by(question_id=mistake.question_id).one_or_none()
+    if public is not None:
+        return {
+            "stem": public.stem,
+            "question_type": public.question_type,
+            "difficulty": int(public.difficulty or 2),
+        }
+    delivered = db.query(LearningQuestion).filter_by(question_id=mistake.question_id).one_or_none()
+    if delivered is not None:
+        return {
+            "stem": delivered.question_content,
+            "question_type": delivered.question_type,
+            "difficulty": int(delivered.difficulty or 2),
+        }
+    if mistake.attempt_item_id and str(mistake.question_id or "").startswith("case:"):
+        case_row = db.query(CaseDefinitionRecord, CaseSessionRecord).join(
+            CaseVersionRecord,
+            CaseVersionRecord.case_definition_id == CaseDefinitionRecord.case_definition_id,
+        ).join(
+            CaseSessionRecord,
+            CaseSessionRecord.case_version_id == CaseVersionRecord.case_version_id,
+        ).join(
+            LearningAttemptRecord,
+            LearningAttemptRecord.source_task_id == CaseSessionRecord.session_id,
+        ).join(
+            LearningAttemptItemRecord,
+            LearningAttemptItemRecord.attempt_id == LearningAttemptRecord.attempt_id,
+        ).filter(
+            LearningAttemptItemRecord.attempt_item_id == mistake.attempt_item_id,
+            CaseSessionRecord.owner_user_id == user_id,
+        ).one_or_none()
+        if case_row is not None:
+            definition, session = case_row
+            return {
+                "stem": definition.title,
+                "question_type": f"case_{session.mode}",
+                "difficulty": 2,
+            }
+    return {"stem": "题目内容暂不可用", "question_type": "", "difficulty": None}
+
+
+def _mistake_attempt(db: Session, mistake: MistakeRecord, user_id: int) -> dict[str, Any]:
+    if mistake.attempt_item_id:
+        item = db.query(LearningAttemptItemRecord).filter_by(
+            attempt_item_id=mistake.attempt_item_id,
+        ).one_or_none()
+        grading = db.query(GradingResultRecord).filter_by(
+            attempt_item_id=mistake.attempt_item_id,
+        ).order_by(GradingResultRecord.id.desc()).first()
+        if item is not None:
+            return {
+                "student_answer": item.submitted_answer,
+                "score": float(grading.score) if grading and grading.score is not None else None,
+                "max_score": float(grading.max_score) if grading and grading.max_score is not None else None,
+                "feedback": grading.error_reason if grading else "",
+            }
+    attempt = db.query(QuestionAttempt).filter(
+        QuestionAttempt.user_id == user_id,
+        QuestionAttempt.question_id == mistake.question_id,
+        QuestionAttempt.is_correct.is_(False),
+    ).order_by(QuestionAttempt.created_at.desc(), QuestionAttempt.id.desc()).first()
+    return {
+        "student_answer": attempt.answer if attempt else "",
+        "score": float(attempt.score) if attempt and attempt.score is not None else None,
+        "max_score": 100.0 if attempt and attempt.score is not None else None,
+        "feedback": attempt.feedback if attempt else "",
+    }
+
+
+def _mistake_payload(
+    db: Session,
+    mistake: MistakeRecord,
+    user_id: int,
+    variation_ids: set[int],
+) -> dict[str, Any]:
+    question = _mistake_question(db, mistake, user_id)
+    attempt = _mistake_attempt(db, mistake, user_id)
+    variation_available = mistake.id in variation_ids
+    return {
+        "mistake_id": mistake.id,
+        "status": mistake.status,
+        "question_id": mistake.question_id,
+        "question_version_id": mistake.question_version_id,
+        "attempt_item_id": mistake.attempt_item_id,
+        "stem": question["stem"],
+        "question_type": question["question_type"],
+        "difficulty": question["difficulty"],
+        "kp_ids": _json_list(mistake.kp_ids_json),
+        "error_type": mistake.error_type,
+        "summary": mistake.summary,
+        **attempt,
+        "variation_available": variation_available,
+        "variation_reason": (
+            ""
+            if variation_available
+            else "错题已归档" if mistake.status != "active"
+            else "该错题尚缺已审核题目版本或知识点证据"
+        ),
+        "created_at": mistake.created_at.isoformat() if mistake.created_at else None,
+        "updated_at": mistake.updated_at.isoformat() if mistake.updated_at else None,
+    }
+
+
+@router.get("/mistakes")
+@stable_practice_router.get("/mistakes")
+def list_mistakes(
+    status: str = Query(default="all", max_length=50),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    query = db.query(MistakeRecord).filter(MistakeRecord.user_id == current_user.id)
+    if status != "all":
+        query = query.filter(MistakeRecord.status == status)
+    total = query.count()
+    mistakes = query.order_by(
+        MistakeRecord.created_at.desc(), MistakeRecord.id.desc()
+    ).offset(offset).limit(limit).all()
+    variation_ids = available_variation_source_ids(
+        db,
+        current_user.id,
+        [mistake.id for mistake in mistakes],
+    )
+    return {
+        "schema_version": "1.0",
+        "items": [
+            _mistake_payload(db, mistake, current_user.id, variation_ids)
+            for mistake in mistakes
+        ],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + len(mistakes) < total,
+    }
+
+
+@router.get("/mistakes/{mistake_id}")
+@stable_practice_router.get("/mistakes/{mistake_id}")
+def get_mistake(
+    mistake_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    mistake = db.query(MistakeRecord).filter_by(
+        id=mistake_id,
+        user_id=current_user.id,
+    ).one_or_none()
+    if mistake is None:
+        raise HTTPException(status_code=404, detail="Mistake was not found")
+    variation_ids = available_variation_source_ids(db, current_user.id, [mistake.id])
+    return {
+        "schema_version": "1.0",
+        "mistake": _mistake_payload(db, mistake, current_user.id, variation_ids),
+    }
 
 
 @router.get("/papers/{paper_id}")

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import { loadPaper, loadPapers, savePaperAnswers, submitPaper, submitTrainingWorkspaceTask } from '../pageDataLoaders';
+import { groupPaperItems } from './paperQuestionGroups';
 
 const questionTypes = [
   ['single_choice', '单选题'],
@@ -11,7 +12,6 @@ const questionTypes = [
   ['case_quiz', '案例题'],
 ];
 const paperStorageKey = 'training-paper-id';
-
 const optionText = (option, index) => {
   if (typeof option === 'string') return option;
   const key = option?.key || option?.option_id || option?.id || String.fromCharCode(65 + index);
@@ -60,6 +60,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
   const activePaperId = paper?.paper_id || '';
   const hasActivePaper = Boolean(activePaperId);
   const allAnswered = paper?.items?.every((item) => answers[item.paper_item_id]?.trim());
+  const groupedItems = useMemo(() => groupPaperItems(paper?.items || []), [paper?.items]);
 
   const restorePaper = (loaded) => {
     setPaper(loaded.paper);
@@ -171,6 +172,22 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
     }
   };
 
+  const returnToPaperLibrary = async () => {
+    sessionStorage.removeItem(paperStorageKey);
+    setPaper(null);
+    setAnswers({});
+    setSubmitted(null);
+    setSubmissionRequestId('');
+    setRemainingSeconds(null);
+    setError('');
+    const loaded = await loadPapers({ fetcher: fetchJsonWithAuthFallback });
+    if (loaded.error) {
+      setError(loaded.error);
+      return;
+    }
+    setPaperLibrary(loaded.papers.items);
+  };
+
   const save = async () => {
     setLoading(true);
     setError('');
@@ -200,6 +217,8 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
         return;
       }
       setSubmitted(response.result);
+      setPaper((current) => current ? { ...current, status: 'submitted', result: response.result } : current);
+      setRemainingSeconds(null);
     } finally {
       setLoading(false);
     }
@@ -247,24 +266,27 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
       </>}
       {paper && <div className="space-y-4 border-t border-slate-200 pt-4">
         <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
-          <div><h3 className="text-base font-semibold text-slate-950">{paper.title}</h3><p className="mt-1 text-xs text-slate-500">已答 {paper.items.filter((item) => answers[item.paper_item_id]?.trim()).length} / {paper.items.length} 题</p></div>
-          <div className={`font-mono text-lg font-semibold ${remainingSeconds === 0 ? 'text-rose-600' : 'text-emerald-800'}`}>{formatRemaining(remainingSeconds)}</div>
+          <div className="flex items-center gap-3"><button type="button" onClick={returnToPaperLibrary} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">返回试卷列表</button><div><h3 className="text-base font-semibold text-slate-950">{paper.title}</h3><p className="mt-1 text-xs text-slate-500">已答 {paper.items.filter((item) => answers[item.paper_item_id]?.trim()).length} / {paper.items.length} 题</p></div></div>
+          <div className={`font-mono text-lg font-semibold ${remainingSeconds === 0 ? 'text-rose-600' : 'text-emerald-800'}`}>{paperSubmitted ? '已交卷' : formatRemaining(remainingSeconds)}</div>
         </div>
-        {paper.items.map((item) => {
-          const options = Array.isArray(item.options) ? item.options : [];
-          const choice = options.length > 0 && ['single_choice', '单选题', '单项选择题', 'multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
-          const multiple = ['multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
-          return <fieldset key={item.paper_item_id} className="rounded-2xl border border-slate-200 p-4" disabled={loading || answerLocked}>
-            <legend className="px-1 text-sm font-medium leading-6 text-slate-800">{item.position}. {item.stem}</legend>
-            {choice ? <div className="mt-3 space-y-2">{options.map((option, index) => {
-              const value = optionText(option, index);
-              const checked = multiple
-                ? String(answers[item.paper_item_id] || '').split(',').map((entry) => entry.trim()).includes(value)
-                : answers[item.paper_item_id] === value;
-              return <label key={`${item.paper_item_id}-${index}`} className="flex cursor-pointer gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700"><input type={multiple ? 'checkbox' : 'radio'} name={item.paper_item_id} checked={checked} onChange={() => multiple ? toggleMultiple(item.paper_item_id, value) : setAnswers({ ...answers, [item.paper_item_id]: value })} />{value}</label>;
-            })}</div> : <textarea aria-label={`第${item.position}题答案`} value={answers[item.paper_item_id] || ''} onChange={(event) => setAnswers({ ...answers, [item.paper_item_id]: event.target.value })} className="mt-3 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />}
-          </fieldset>;
-        })}
+        {groupedItems.map((group) => <section key={group.key} aria-labelledby={`paper-group-${group.key}`} className="space-y-3">
+          <div className="flex items-center gap-2 border-b border-slate-200 pb-2"><h4 id={`paper-group-${group.key}`} className="text-sm font-semibold text-slate-900">{group.label}</h4><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{group.items.length} 题</span></div>
+          {group.items.map((item) => {
+            const options = Array.isArray(item.options) ? item.options : [];
+            const choice = options.length > 0 && ['single_choice', '单选题', '单项选择题', 'multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
+            const multiple = ['multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
+            return <fieldset key={item.paper_item_id} className="rounded-2xl border border-slate-200 p-4" disabled={loading || answerLocked}>
+              <legend className="px-1 text-sm font-medium leading-6 text-slate-800">{item.position}. {item.stem}</legend>
+              {choice ? <div className="mt-3 space-y-2">{options.map((option, index) => {
+                const value = optionText(option, index);
+                const checked = multiple
+                  ? String(answers[item.paper_item_id] || '').split(',').map((entry) => entry.trim()).includes(value)
+                  : answers[item.paper_item_id] === value;
+                return <label key={`${item.paper_item_id}-${index}`} className="flex cursor-pointer gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700"><input type={multiple ? 'checkbox' : 'radio'} name={item.paper_item_id} checked={checked} onChange={() => multiple ? toggleMultiple(item.paper_item_id, value) : setAnswers({ ...answers, [item.paper_item_id]: value })} />{value}</label>;
+              })}</div> : <textarea aria-label={`第${item.position}题答案`} value={answers[item.paper_item_id] || ''} onChange={(event) => setAnswers({ ...answers, [item.paper_item_id]: event.target.value })} className="mt-3 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />}
+            </fieldset>;
+          })}
+        </section>)}
         {!paperSubmitted && timeExpired && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">答题时间已结束，答案已锁定，请提交当前作答。</p>}
         {!paperSubmitted && <div className="flex flex-wrap gap-2">{!timeExpired && <button type="button" onClick={save} disabled={loading} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50">保存答案</button>}<button type="button" onClick={() => submit({ allowIncomplete: timeExpired })} disabled={loading || (!timeExpired && !allAnswered)} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{timeExpired ? '按当前答案交卷' : '提交试卷'}</button></div>}
       </div>}

@@ -13,12 +13,15 @@ import {
   loadCaseTypes,
   loadPaper,
   loadPapers,
+  loadPracticeQuestion,
+  loadMistakes,
   loadVariationSources,
   requestCaseHelp,
   savePaperAnswers,
   sendCaseMessage,
   startCaseSession,
   submitPaper,
+  submitPracticeAnswer,
   submitCaseSession,
   isTrainingModulesPayloadValid,
   isTrainingTaskResultApproved,
@@ -491,6 +494,42 @@ test('variation source loader returns only validated source projections', async 
   assert.deepEqual(received.paths, ['/training/workspace/mistake-variations/sources']);
   assert.deepEqual(result.sources, payload);
   assert.equal(result.error, '');
+});
+
+test('practice loaders use stable objective and mistake history contracts', async () => {
+  const requests = [];
+  const question = {
+    question_id: 'Q_1', question_type: 'single_choice', stem: '客观题', options: ['A', 'B'],
+    kp_ids: ['KP_1'], difficulty: 2, request_id: 'REQ_1', source_scope: 'public',
+  };
+  const fetcher = async (request) => {
+    requests.push(request);
+    if (request.paths[0].includes('/practice/next')) {
+      return { data: { available: true, kp_id: null, question }, source: request.paths[0] };
+    }
+    if (request.paths[0].endsWith('/practice/grade')) {
+      return { data: { grading: { score: 100, is_correct: true }, writeback: { status: 'applied' } }, source: request.paths[0] };
+    }
+    return {
+      data: {
+        schema_version: '1.0',
+        items: [{ mistake_id: 1, question_id: 'Q_1', stem: '客观题', kp_ids: ['KP_1'], variation_available: false }],
+        total: 1, offset: 0, limit: 50, has_more: false,
+      },
+      source: request.paths[0],
+    };
+  };
+
+  const loaded = await loadPracticeQuestion({ fetcher, mode: 'objective', scope: 'all' });
+  const graded = await submitPracticeAnswer({ fetcher, question, answer: 'A' });
+  const mistakes = await loadMistakes({ fetcher });
+
+  assert.equal(loaded.practice.question.question_id, 'Q_1');
+  assert.equal(graded.result.grading.is_correct, true);
+  assert.equal(mistakes.mistakes.total, 1);
+  assert.match(requests[0].paths[0], /^\/v1\/workshop\/practice\/next\?/);
+  assert.deepEqual(requests[1].paths, ['/v1/workshop/practice/grade', '/training/practice/grade']);
+  assert.match(requests[2].paths[0], /^\/v1\/workshop\/practice\/mistakes\?/);
 });
 
 test('case training loaders use the independent session API contracts', async () => {

@@ -145,6 +145,25 @@ describe('KnowledgeAtlas', () => {
     expect(await screen.findByText('第一节 心律失常的电生理学基础')).toBeInTheDocument();
   });
 
+  it('renders the directory in the delivery-defined sequence order', async () => {
+    api.loadAtlasNodes.mockImplementation(async (params) => (
+      params.level === 3
+        ? { nodes: [kp, videoOnly, plain, questionOnly], stats: {} }
+        : responseForLevel(params)
+    ));
+    render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学', lv2: '第一节 心律失常的电生理学基础' }} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '顺序列表' }));
+    const directory = screen.getByLabelText('当前层节点列表');
+    expect(directory).toHaveClass('knowledge-atlas__sequence-panel');
+    expect(screen.getByText('知识点顺序')).toBeInTheDocument();
+    expect(screen.getByText('4 项')).toBeInTheDocument();
+    expect(within(directory).getAllByRole('button').map((button) => button.textContent))
+      .toEqual(expect.arrayContaining(['01动作电位2 项资源', '02复极0 项资源', '03钠通道1 项资源', '04折返2 项资源']));
+    expect(within(directory).getAllByRole('button').map((button) => button.getAttribute('aria-label')))
+      .toEqual(['打开动作电位详情', '打开复极详情', '打开钠通道详情', '打开折返详情']);
+  });
+
   it('keeps the 1050ms morph and exposes direction-aware dive and back space transitions', async () => {
     const { unmount } = render(<KnowledgeAtlas initialContext={{}} />);
     const stage = await screen.findByTestId('knowledge-atlas-stage');

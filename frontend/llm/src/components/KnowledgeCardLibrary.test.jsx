@@ -61,8 +61,14 @@ describe('KnowledgeCardLibrary', () => {
     expect(screen.getByText('益气健脾基础方。')).toBeInTheDocument();
     expect(screen.getByText('由人参、白术、茯苓、炙甘草组成。')).toBeInTheDocument();
     expect(screen.queryByText(/"知识讲解"/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '教材切片 1' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '视频资源 1' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '配套题目 1' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: '教材切片 1' }));
     expect(screen.getByRole('heading', { name: '教材切片 1' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: '视频资源 1' }));
     expect(screen.getByRole('heading', { name: '视频资源 1' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: '配套题目 1' }));
     expect(screen.getByRole('heading', { name: '配套题目 1' })).toBeInTheDocument();
     expect(screen.getByText('含网络补充资源')).toBeInTheDocument();
 

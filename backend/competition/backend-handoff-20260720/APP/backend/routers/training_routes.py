@@ -17,6 +17,7 @@ from APP.backend.database import (
     LearningActivityRecord,
     LearningAttemptRecord,
     LearningInterventionRecord,
+    LearningQuestion,
     LearningQuestionAttempt,
     MistakeRecord,
     PersonalizationMemory,
@@ -62,6 +63,22 @@ from APP.backend.system_data_service import rebuild_system_data
 from APP.backend.training_service import grade_practice_submission
 
 router = APIRouter(prefix="/training", tags=["Training"])
+stable_practice_router = APIRouter(prefix="/v1/workshop/practice", tags=["Workshop Practice"])
+
+OBJECTIVE_QUESTION_TYPES = {
+    "single_choice", "multiple_choice", "fill_blank", "true_false",
+}
+CASE_QUESTION_TYPES = {"short_answer", "case_quiz"}
+QUESTION_TYPE_ALIASES = {
+    "单选题": "single_choice",
+    "单项选择题": "single_choice",
+    "多选题": "multiple_choice",
+    "多项选择题": "multiple_choice",
+    "填空题": "fill_blank",
+    "判断题": "true_false",
+    "简答题": "short_answer",
+    "案例题": "case_quiz",
+}
 
 # Module-level seam lets route tests control only the application runner.
 practice_grading_runner = grade_practice_submission
@@ -283,23 +300,67 @@ def _question_kp_ids(question: QuestionBankItem) -> list[str]:
     ))
 
 
+def _normalized_question_type(value: str | None) -> str:
+    text = str(value or "").strip()
+    return QUESTION_TYPE_ALIASES.get(text, text)
+
+
+def _matches_practice_mode(question_type: str | None, mode: str) -> bool:
+    normalized = _normalized_question_type(question_type)
+    if mode == "objective":
+        return normalized in OBJECTIVE_QUESTION_TYPES
+    if mode == "case":
+        return normalized in CASE_QUESTION_TYPES
+    return True
+
+
+def _decode_options(value: str | None) -> list[Any]:
+    try:
+        decoded = json.loads(value or "[]")
+    except (TypeError, ValueError):
+        return []
+    if isinstance(decoded, dict):
+        return [{"key": str(key), "value": item} for key, item in decoded.items()]
+    return decoded if isinstance(decoded, list) else []
+
+
+def _public_question_options(db: Session, question_id: str) -> list[Any]:
+    row = db.query(LearningQuestion).filter(
+        LearningQuestion.question_id == question_id,
+    ).one_or_none()
+    return _decode_options(row.options_json) if row is not None else []
+
+
 @router.get("/practice/next")
+@stable_practice_router.get("/next")
 def next_practice_question(
-    kp_id: str = Query(min_length=1, max_length=120),
+    kp_id: str | None = Query(default=None, min_length=1, max_length=120),
     scope: str = Query(default="public", pattern="^(public|user|all)$"),
+    mode: str = Query(default="all", pattern="^(all|objective|case)$"),
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if scope in {"user", "all"}:
+        attempted_user_question_ids = {
+            question_id
+            for question_id, in db.query(QuestionAttempt.question_id).filter(
+                QuestionAttempt.user_id == current_user.id,
+            ).all()
+        }
         user_candidates = []
         for question in db.query(UserQuestionItem).filter_by(
             owner_user_id=current_user.id,
             status="active",
         ).all():
             question_kp_ids = json.loads(question.kp_ids_json or "[]")
-            if kp_id in question_kp_ids:
+            if (not kp_id or kp_id in question_kp_ids) and _matches_practice_mode(
+                question.question_type, mode
+            ):
                 user_candidates.append((question, question_kp_ids))
-        user_candidates.sort(key=lambda item: item[0].question_id)
+        user_candidates.sort(key=lambda item: (
+            item[0].question_id in attempted_user_question_ids,
+            item[0].question_id,
+        ))
         if user_candidates:
             question, question_kp_ids = user_candidates[0]
             request_id = str(uuid.uuid4())
@@ -314,8 +375,9 @@ def next_practice_question(
                 "kp_id": kp_id,
                 "question": {
                     "question_id": question.question_id,
-                    "question_type": question.question_type,
+                    "question_type": _normalized_question_type(question.question_type),
                     "stem": question.stem,
+                    "options": _decode_options(question.options_json),
                     "kp_ids": question_kp_ids,
                     "difficulty": 2,
                     "request_id": request_id,
@@ -335,12 +397,26 @@ def next_practice_question(
         QuestionBankItem.status == "active"
     ).all():
         question_kp_ids = _question_kp_ids(question)
-        if kp_id not in question_kp_ids:
+        if kp_id and kp_id not in question_kp_ids:
+            continue
+        if not _matches_practice_mode(question.question_type, mode):
             continue
         if not question_kp_ids or not set(question_kp_ids) <= registered_kp_ids:
             continue
         candidates.append((question, question_kp_ids))
+    attempted_question_ids = {
+        question_id for question_id, in db.query(QuestionAttempt.question_id).filter(
+            QuestionAttempt.user_id == current_user.id,
+        ).all()
+    }
+    attempted_question_ids.update(
+        question_id
+        for question_id, in db.query(LearningQuestionAttempt.question_id).filter(
+            LearningQuestionAttempt.user_id == current_user.id,
+        ).all()
+    )
     candidates.sort(key=lambda item: (
+        item[0].question_id in attempted_question_ids,
         -float(item[0].quality_score or 0),
         abs(float(item[0].difficulty or 2) - 2),
         item[0].question_id,
@@ -367,8 +443,9 @@ def next_practice_question(
         "kp_id": kp_id,
         "question": {
             "question_id": question.question_id,
-            "question_type": question.question_type,
+            "question_type": _normalized_question_type(question.question_type),
             "stem": question.stem,
+            "options": _public_question_options(db, question.question_id),
             "kp_ids": question_kp_ids,
             "difficulty": int(question.difficulty or 2),
             "request_id": request_id,
@@ -378,6 +455,7 @@ def next_practice_question(
 
 
 @router.post("/practice/grade")
+@stable_practice_router.post("/grade")
 def grade_practice(
     req: PracticeGradeRequest,
     current_user: UserModel = Depends(get_current_user),
@@ -478,6 +556,13 @@ def grade_practice(
             "error_type": raw_grading.get("error_type", "none"),
         }
         attempt_id = str(uuid.uuid4())
+        is_correct = bool(grading.get("is_correct"))
+        score = (
+            float(grading["score"])
+            if isinstance(grading.get("score"), (int, float))
+            else None
+        )
+        kp_ids = list(grading_submission.get("knowledge_points") or ())
         db.add(LearningAttemptRecord(
             attempt_id=attempt_id,
             learner_id=current_user.id,
@@ -487,6 +572,35 @@ def grade_practice(
             submitted_at=_now(),
             source_kind="user_question",
         ))
+        db.add(QuestionAttempt(
+            user_id=current_user.id,
+            question_id=controlled_submission["question_id"],
+            answer=grading_submission["student_answer"],
+            is_correct=is_correct,
+            score=score,
+            kp_ids_json=json.dumps(kp_ids, ensure_ascii=False),
+            feedback=str(grading.get("analysis") or ""),
+            created_at=_now(),
+        ))
+        mistake_ids: list[str] = []
+        if not is_correct:
+            mistake = db.query(MistakeRecord).filter_by(
+                user_id=current_user.id,
+                question_id=controlled_submission["question_id"],
+                status="active",
+            ).one_or_none()
+            if mistake is None:
+                mistake = MistakeRecord(
+                    user_id=current_user.id,
+                    question_id=controlled_submission["question_id"],
+                    status="active",
+                )
+                db.add(mistake)
+            mistake.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
+            mistake.error_type = str(grading.get("error_type") or "练习错因")
+            mistake.summary = str(grading.get("analysis") or "")
+            db.flush()
+            mistake_ids.append(str(mistake.id))
         db.add(LearningActivityRecord(
             user_id=current_user.id,
             activity_type="question_attempt",
@@ -494,10 +608,15 @@ def grade_practice(
             resource_type="user_question",
             duration_minutes=0,
             completion_status="completed",
-            score=float(grading["score"]) if isinstance(grading.get("score"), (int, float)) else None,
-            payload_json=json.dumps({"request_id": submission["request_id"]}, ensure_ascii=False),
+            score=score,
+            payload_json=json.dumps({
+                "request_id": submission["request_id"],
+                "is_correct": is_correct,
+                "question_type": grading_submission["question_type"],
+            }, ensure_ascii=False),
             created_at=_now(),
         ))
+        rebuild_system_data(db, user_id=current_user.id)
         db.commit()
         return {
             "grading": grading,
@@ -509,7 +628,7 @@ def grade_practice(
             "writeback": {
                 "status": "recorded",
                 "receipt_id": None,
-                "mistake_ids": [],
+                "mistake_ids": mistake_ids,
                 "review_task_ids": [],
             },
         }

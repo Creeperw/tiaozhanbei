@@ -5,12 +5,15 @@ import json
 import os
 import sys
 import threading
+from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 from urllib.parse import quote_plus
+from uuid import uuid4
 
 from fastapi import FastAPI
 
@@ -199,6 +202,317 @@ class BackendHandoffRuntime:
                 ],
                 "learning_trends": trends,
                 "diagnosis": report_payload,
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_learning_activity_summary(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+        recent_limit: int = 20,
+    ) -> dict[str, Any]:
+        """Return user-isolated behavior metrics and their observable source rows."""
+
+        if days not in {7, 30, 90}:
+            raise ValueError("days must be one of: 7, 30, 90")
+        if recent_limit < 1 or recent_limit > 100:
+            raise ValueError("recent_limit must be between 1 and 100")
+
+        database = importlib.import_module("APP.backend.database")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            calculated_at = time_utils.utc_now()
+            window_start = calculated_at - timedelta(days=days)
+            snapshot = system_data.rebuild_system_data(
+                db,
+                user_id=user.id,
+                now=calculated_at,
+            )
+            trends = system_data.build_learning_trends(
+                db,
+                user_id=user.id,
+                days=days,
+                now=calculated_at,
+            )
+            tasks = (
+                db.query(database.LearningTask)
+                .filter(
+                    database.LearningTask.user_id == user.id,
+                    database.LearningTask.created_at >= window_start,
+                    database.LearningTask.created_at <= calculated_at,
+                )
+                .all()
+            )
+            focus_sessions = (
+                db.query(database.LearningFocusSession)
+                .filter(
+                    database.LearningFocusSession.user_id == user.id,
+                    database.LearningFocusSession.started_at >= window_start,
+                    database.LearningFocusSession.started_at <= calculated_at,
+                )
+                .all()
+            )
+            activities = (
+                db.query(database.LearningActivityRecord)
+                .filter(
+                    database.LearningActivityRecord.user_id == user.id,
+                    database.LearningActivityRecord.created_at >= window_start,
+                    database.LearningActivityRecord.created_at <= calculated_at,
+                )
+                .order_by(
+                    database.LearningActivityRecord.created_at.desc(),
+                    database.LearningActivityRecord.id.desc(),
+                )
+                .all()
+            )
+            task_statuses = Counter(str(row.status or "unknown") for row in tasks)
+            focus_statuses = Counter(str(row.status or "unknown") for row in focus_sessions)
+            activity_types = Counter(str(row.activity_type or "unknown") for row in activities)
+            db.commit()
+            return {
+                "schema_version": "1.0",
+                "window_days": days,
+                "calculated_at": system_data.system_data_payload(snapshot).get("calculated_at"),
+                "system_data": system_data.system_data_payload(snapshot),
+                "trends": trends,
+                "counters": {
+                    "learning_tasks": {
+                        "total": len(tasks),
+                        "by_status": dict(sorted(task_statuses.items())),
+                    },
+                    "focus_sessions": {
+                        "total": len(focus_sessions),
+                        "active_seconds": sum(max(0, int(row.active_seconds or 0)) for row in focus_sessions),
+                        "by_status": dict(sorted(focus_statuses.items())),
+                    },
+                    "activities": {
+                        "total": len(activities),
+                        "by_type": dict(sorted(activity_types.items())),
+                    },
+                },
+                "recent_activities": [
+                    {
+                        "activity_id": row.id,
+                        "activity_type": row.activity_type,
+                        "resource_type": row.resource_type,
+                        "resource_id": row.resource_id,
+                        "completion_status": row.completion_status,
+                        "score": float(row.score) if row.score is not None else None,
+                        "duration_minutes": int(row.duration_minutes or 0),
+                        "created_at": row.created_at.isoformat() if row.created_at else None,
+                    }
+                    for row in activities[:recent_limit]
+                ],
+                "collection": {
+                    "task_completion": "learning_tasks",
+                    "focus_time": "learning_focus_sessions heartbeat",
+                    "resource_click": "dashboard recommendation view and click",
+                    "graded_learning": "question, paper and case submission activities",
+                },
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def issue_personal_practice(
+        self,
+        external_user_id: str,
+        *,
+        kp_id: str | None,
+        mode: str,
+    ) -> dict[str, Any]:
+        """Issue an owned uploaded question through the existing controlled route."""
+
+        database = importlib.import_module("APP.backend.database")
+        routes = importlib.import_module("APP.backend.routers.training_routes")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return routes.next_practice_question(
+                kp_id=kp_id,
+                scope="user",
+                mode=mode,
+                current_user=user,
+                db=db,
+            )
+        finally:
+            db.close()
+
+    def issue_cached_public_practice(
+        self,
+        external_user_id: str,
+        *,
+        kp_id: str | None,
+        mode: str,
+    ) -> dict[str, Any]:
+        """Fallback for stub mode and already projected formal questions."""
+
+        database = importlib.import_module("APP.backend.database")
+        routes = importlib.import_module("APP.backend.routers.training_routes")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return routes.next_practice_question(
+                kp_id=kp_id,
+                scope="public",
+                mode=mode,
+                current_user=user,
+                db=db,
+            )
+        finally:
+            db.close()
+
+    def issue_formal_practice(
+        self,
+        external_user_id: str,
+        question: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Persist one server-owned authority snapshot and issue a one-use claim.
+
+        The 93k public bank remains read-only in the knowledge delivery. Only the
+        selected question is projected into the learning database so grading,
+        mistakes, review scheduling and variation generation share one chain.
+        """
+
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            question_id = str(question.get("question_id") or "").strip()
+            stem = str(question.get("stem") or "").strip()
+            answer = str(question.get("standard_answer") or "").strip()
+            question_type = str(question.get("question_type") or "short_answer").strip()
+            analysis = str(question.get("analysis") or "").strip()
+            options = question.get("options") or []
+            kp_ids = list(dict.fromkeys(
+                str(value).strip()
+                for value in question.get("kp_ids") or []
+                if str(value).strip()
+            ))
+            if not question_id or not stem or not answer or not kp_ids:
+                raise ValueError("formal practice question is incomplete")
+            try:
+                difficulty = max(1, min(5, int(float(question.get("difficulty") or 2))))
+            except (TypeError, ValueError):
+                difficulty = 2
+            kp_names = {
+                str(key): str(value)
+                for key, value in (question.get("kp_names") or {}).items()
+                if str(key).strip() and str(value).strip()
+            }
+            for kp_id in kp_ids:
+                row = db.query(database.KnowledgePoint).filter_by(kp_id=kp_id).one_or_none()
+                if row is None:
+                    db.add(database.KnowledgePoint(
+                        kp_id=kp_id,
+                        name=kp_names.get(kp_id, kp_id),
+                        source="formal_question_bank",
+                        status="active",
+                    ))
+                elif row.status != "active":
+                    row.status = "active"
+
+                core_kp = db.query(database.LearningKnowledgePoint).filter_by(kp_id=kp_id).one_or_none()
+                if core_kp is None:
+                    db.add(database.LearningKnowledgePoint(kp_id=kp_id))
+
+            bank = db.query(database.QuestionBankItem).filter_by(question_id=question_id).one_or_none()
+            if bank is None:
+                bank = database.QuestionBankItem(question_id=question_id)
+                db.add(bank)
+            bank.stem = stem
+            bank.answer = answer
+            bank.analysis = analysis
+            bank.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
+            bank.question_type = question_type
+            bank.difficulty = difficulty
+            bank.quality_score = 1.0
+            bank.source = "formal_question_bank"
+            bank.status = "active"
+
+            core = db.query(database.LearningQuestion).filter_by(question_id=question_id).one_or_none()
+            if core is None:
+                core = database.LearningQuestion(question_id=question_id)
+                db.add(core)
+            core.question_type = question_type
+            core.question_content = stem
+            core.options_json = json.dumps(options, ensure_ascii=False)
+            raw_answer = question.get("raw_answer")
+            core.answer_json = json.dumps(
+                raw_answer if isinstance(raw_answer, list) else [answer],
+                ensure_ascii=False,
+            )
+            core.explanation = analysis
+            core.difficulty = difficulty
+            core.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
+
+            version = db.query(database.QuestionVersionRecord).filter_by(
+                question_version_id=question_id,
+            ).one_or_none()
+            if version is None:
+                version = database.QuestionVersionRecord(
+                    question_version_id=question_id,
+                    question_id=question_id,
+                    version=1,
+                )
+                db.add(version)
+            version.question_type = question_type
+            version.stem = stem
+            version.answer = answer
+            version.analysis = analysis
+            version.standard_difficulty = difficulty
+            version.source_kind = "formal_question_bank"
+            version.status = "active"
+            db.flush()
+            existing_links = {
+                row.kp_id: row
+                for row in db.query(database.QuestionKPLinkRecord).filter_by(
+                    question_version_id=question_id,
+                ).all()
+            }
+            for index, kp_id in enumerate(kp_ids):
+                link = existing_links.get(kp_id)
+                if link is None:
+                    db.add(database.QuestionKPLinkRecord(
+                        question_version_id=question_id,
+                        kp_id=kp_id,
+                        is_primary=index == 0,
+                        status="active",
+                    ))
+                else:
+                    link.status = "active"
+                    link.is_primary = index == 0
+
+            request_id = str(uuid4())
+            db.add(database.CorePracticeSubmissionClaim(
+                user_id=user.id,
+                request_id=request_id,
+                question_id=question_id,
+            ))
+            db.commit()
+            return {
+                "available": True,
+                "kp_id": kp_ids[0] if len(kp_ids) == 1 else None,
+                "question": {
+                    "question_id": question_id,
+                    "question_type": question_type,
+                    "stem": stem,
+                    "options": options,
+                    "kp_ids": kp_ids,
+                    "difficulty": difficulty,
+                    "request_id": request_id,
+                    "source_scope": "formal_question_bank",
+                },
             }
         except Exception:
             db.rollback()

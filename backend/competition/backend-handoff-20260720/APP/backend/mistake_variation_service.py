@@ -137,6 +137,21 @@ def _question_projection(question) -> dict[str, Any]:
     }
 
 
+def available_variation_source_ids(
+    db: Session,
+    user_id: int,
+    mistake_ids: list[int] | tuple[int, ...],
+) -> set[int]:
+    available = set()
+    for mistake_id in mistake_ids:
+        try:
+            source = _source(db, user_id, int(mistake_id))
+        except (MistakeVariationNotFound, TypeError, ValueError):
+            continue
+        available.add(source.mistake_id)
+    return available
+
+
 def list_available_variation_sources(db: Session, user_id: int, *, limit: int = 50) -> list[dict[str, Any]]:
     if user_id <= 0:
         return []

@@ -191,6 +191,51 @@ describe('DashboardPage learning workspace', () => {
     });
   });
 
+  it('records a displayed recommendation click before opening its resource', async () => {
+    const onNavigate = vi.fn();
+    const fetchMock = vi.fn((url) => {
+      if (url.endsWith('/training/onboarding/status')) {
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({ needs_survey_popup: false }) });
+      }
+      if (url.includes('/dashboard/recommendations/click')) {
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({ recorded: true }) });
+      }
+      if (url.includes('/learning-routes')) {
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({ schema_version: '1.0', items: [], total: 0 }) });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          hero: { greeting: '你好', goal: '继续学习', focus: '今日重点' },
+          today_tasks: [],
+          yesterday_feedback: { metrics: [] },
+          recommendation_view_id: 'recommendation-view:1',
+          recommendations: [{ key: 'daily-question', title: '每日一题', action_label: '开始答题' }],
+        }),
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
+    fireEvent.click(await screen.findByRole('button', { name: '开始答题' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/dashboard/recommendations/click'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          recommendation_key: 'daily-question',
+          recommendation_view_id: 'recommendation-view:1',
+        }),
+      }),
+    ));
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: { view: 'workspace', taskType: 'question_training' },
+    });
+  });
+
   it('uses the persisted long-term plan as stage to book navigation', async () => {
     const onNavigate = vi.fn();
     vi.stubGlobal('fetch', vi.fn((url) => {
@@ -285,6 +330,59 @@ describe('DashboardPage learning workspace', () => {
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'assistant',
       params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' },
+    });
+  });
+
+  it('shows non-personalized classic routes beside the learner path', async () => {
+    const onNavigate = vi.fn();
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (url === '/api/v1/learning-routes') {
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({
+          schema_version: '1.0',
+          route_kind: 'classic_reference',
+          personalized: false,
+          items: [{ route_id: 'classic-1', goal_name: '中医执业医师经典路线' }],
+          total: 1,
+        }) });
+      }
+      if (url === '/api/v1/learning-routes/classic-1') {
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({
+          schema_version: '1.0',
+          route_kind: 'classic_reference',
+          personalized: false,
+          route: {
+            route_id: 'classic-1',
+            stages: [{ stage_id: 's1', order: 1, name: '中医基础阶段', objective: '建立基础', books: ['《中医学基础》'], source_refs: [] }],
+          },
+          navigation: { atlas_route_id: 'textbook_14_5' },
+        }) });
+      }
+      if (url.includes('/api/v1/learning-path')) {
+        return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({
+          schema_version: '1.0', nodes: [], plan_ref: null, availability: 'requires_long_term_plan',
+        }) });
+      }
+      return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({
+        hero: { greeting: '你好', goal: '继续学习', focus: '建立基础' },
+        today_tasks: [], yesterday_feedback: { metrics: [] }, recommendations: [],
+      }) });
+    }));
+
+    render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: '经典路线' }));
+    expect(await screen.findByRole('combobox', { name: '经典学习路线' })).toHaveDisplayValue('中医执业医师经典路线');
+    fireEvent.click(await screen.findByRole('button', { name: /进入中医基础阶段/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /进入《中医学基础》/ }));
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'knowledge',
+      params: {
+        view: 'atlas',
+        route: 'textbook_14_5',
+        lv1: '中医学基础',
+        source: 'classic-learning-route',
+        routeId: 'classic-1',
+      },
     });
   });
 

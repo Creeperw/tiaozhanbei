@@ -75,11 +75,17 @@ TRAINING_MODULES = [
     {
         "key": "question_training",
         "label": "题目训练",
-        "description": "集中完成练习批改、案例训练和错题变式。",
+        "description": "完成客观题、案例简答、AI 病患模拟和错题变式训练。",
         "enabled": True,
         "badge": "可用",
         "recommended": True,
         "capabilities": ["practice_grading", "case_training", "mistake_variation"],
+        "practice_modes": [
+            "objective_practice",
+            "case_short_answer",
+            "ai_patient_simulation",
+            "mistake_history",
+        ],
     },
     {
         "key": "knowledge_cards",

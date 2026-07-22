@@ -495,6 +495,7 @@ def _public_writeback(value: Any) -> dict[str, Any] | None:
     return {
         "status": value.status,
         "receipt_id": value.receipt_id,
+        "mistake_ids": list(value.mistake_ids),
         "mastery_updates": list(value.mastery_updates),
         "review_task_ids": list(value.review_task_ids),
     }

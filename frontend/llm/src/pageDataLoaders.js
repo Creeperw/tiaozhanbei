@@ -73,6 +73,15 @@ export const emptyVariationSources = {
   items: [],
 };
 
+export const emptyMistakePage = {
+  schema_version: '1.0',
+  items: [],
+  total: 0,
+  offset: 0,
+  limit: 50,
+  has_more: false,
+};
+
 export const emptyPaper = {
   paper_id: '',
   title: '',
@@ -233,6 +242,47 @@ export const isVariationSourcesPayloadValid = (data) => (
     && hasNonEmptyText(item.question_type)
     && Number.isInteger(item.difficulty)
     && hasItemsArray(item.kp_ids) && item.kp_ids.every(hasNonEmptyText)
+  ))
+);
+
+export const isPracticeQuestionPayloadValid = (data) => (
+  data && typeof data === 'object'
+  && typeof data.available === 'boolean'
+  && (data.question === null || (
+    data.question && typeof data.question === 'object'
+    && hasNonEmptyText(data.question.question_id)
+    && hasNonEmptyText(data.question.question_type)
+    && hasNonEmptyText(data.question.stem)
+    && hasItemsArray(data.question.options)
+    && hasItemsArray(data.question.kp_ids)
+    && Number.isInteger(data.question.difficulty)
+    && hasNonEmptyText(data.question.request_id)
+  ))
+);
+
+export const isPracticeGradePayloadValid = (data) => (
+  data && typeof data === 'object'
+  && data.grading && typeof data.grading === 'object'
+  && Number.isFinite(data.grading.score)
+  && typeof data.grading.is_correct === 'boolean'
+  && data.writeback && typeof data.writeback === 'object'
+);
+
+export const isMistakePagePayloadValid = (data) => (
+  data && typeof data === 'object'
+  && data.schema_version === '1.0'
+  && hasItemsArray(data.items)
+  && Number.isInteger(data.total)
+  && Number.isInteger(data.offset)
+  && Number.isInteger(data.limit)
+  && typeof data.has_more === 'boolean'
+  && data.items.every((item) => (
+    item && typeof item === 'object'
+    && Number.isInteger(item.mistake_id)
+    && hasNonEmptyText(item.question_id)
+    && hasNonEmptyText(item.stem)
+    && hasItemsArray(item.kp_ids)
+    && typeof item.variation_available === 'boolean'
   ))
 );
 
@@ -575,6 +625,68 @@ export async function loadVariationSources({ fetcher }) {
     return { sources: { ...emptyVariationSources, ...data }, error: '', source };
   } catch (error) {
     return { sources: { ...emptyVariationSources }, error: error.message || '错题列表加载失败', source: null };
+  }
+}
+
+export async function loadPracticeQuestion({ fetcher, mode = 'objective', kpId = '', topic = '', scope = 'public' }) {
+  const params = new URLSearchParams({ mode, scope });
+  if (hasNonEmptyText(kpId)) params.set('kp_id', kpId.trim());
+  if (hasNonEmptyText(topic)) params.set('topic', topic.trim());
+  const legacyParams = new URLSearchParams();
+  if (hasNonEmptyText(kpId)) legacyParams.set('kp_id', kpId.trim());
+  legacyParams.set('scope', scope);
+  legacyParams.set('mode', mode);
+  try {
+    const { data, source } = await fetcher({
+      paths: [`/v1/workshop/practice/next?${params.toString()}`, `/training/practice/next?${legacyParams.toString()}`],
+      fallback: { available: false, kp_id: kpId || null, question: null },
+      validator: isPracticeQuestionPayloadValid,
+    });
+    return { practice: data, error: '', source };
+  } catch (error) {
+    return { practice: { available: false, kp_id: kpId || null, question: null }, error: error.message || '练习题加载失败', source: null };
+  }
+}
+
+export async function submitPracticeAnswer({ fetcher, question, answer }) {
+  if (!question || typeof question !== 'object' || !hasNonEmptyText(answer)) {
+    return { result: null, error: '请先完成作答', source: null };
+  }
+  try {
+    const { data, source } = await fetcher({
+      paths: ['/v1/workshop/practice/grade', '/training/practice/grade'],
+      fallback: null,
+      options: {
+        method: 'POST',
+        body: JSON.stringify({
+          question_id: question.question_id,
+          question_type: question.question_type,
+          stem: question.stem,
+          student_answer: answer.trim(),
+          knowledge_points: question.kp_ids,
+          difficulty: question.difficulty,
+          request_id: question.request_id,
+        }),
+      },
+      validator: isPracticeGradePayloadValid,
+    });
+    return { result: data, error: '', source };
+  } catch (error) {
+    return { result: null, error: error.message || '答案提交失败', source: null };
+  }
+}
+
+export async function loadMistakes({ fetcher, status = 'all', offset = 0, limit = 50 }) {
+  const params = new URLSearchParams({ status, offset: String(offset), limit: String(limit) });
+  try {
+    const { data, source } = await fetcher({
+      paths: [`/v1/workshop/practice/mistakes?${params.toString()}`, `/training/workspace/mistakes?${params.toString()}`],
+      fallback: emptyMistakePage,
+      validator: isMistakePagePayloadValid,
+    });
+    return { mistakes: { ...emptyMistakePage, ...data }, error: '', source };
+  } catch (error) {
+    return { mistakes: { ...emptyMistakePage }, error: error.message || '错题列表加载失败', source: null };
   }
 }
 

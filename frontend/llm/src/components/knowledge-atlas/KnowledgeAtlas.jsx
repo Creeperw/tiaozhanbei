@@ -251,6 +251,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
     () => arrangeAtlasNodes(filteredNodes, effectiveArrangement, level),
     [effectiveArrangement, filteredNodes, level],
   );
+  const directoryNodes = effectiveArrangement === 'sequence' ? arrangedNodes : filteredNodes;
 
   const openDetail = useCallback((node) => {
     const normalized = normalizeAtlasNode(node);
@@ -438,7 +439,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
 
       {notice && <div className="knowledge-atlas__notice" role="status">{notice}<button type="button" aria-label="关闭提示" onClick={() => setNotice('')}>×</button></div>}
 
-      <div className="knowledge-atlas__workspace">
+      <div className={`knowledge-atlas__workspace${effectiveArrangement === 'sequence' ? ' is-sequence' : ''}`}>
         <div
           className="knowledge-atlas__stage"
           data-testid="knowledge-atlas-stage"
@@ -467,6 +468,31 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
             data-resource-styles={level === 3}
             {...bindings}
           />
+          {effectiveArrangement === 'sequence' && (
+            <div className="knowledge-atlas__sequence-panel" aria-label="当前层节点列表">
+              <header>
+                <div><ListOrdered aria-hidden="true" size={16} /><strong>{unit}顺序</strong></div>
+                <span>{directoryNodes.length.toLocaleString('zh-CN')} 项</span>
+              </header>
+              <div className="knowledge-atlas__sequence-list">
+                {directoryNodes.map((node, index) => {
+                  const kind = getAtlasResourceKind(node);
+                  const action = level === 3 ? `打开${node.name}详情` : `进入${node.name}`;
+                  return (
+                    <button type="button" key={node.id} aria-label={action} data-resource-kind={kind} onClick={() => enterNode(node)}>
+                      <span className="knowledge-atlas__node-index">{String(index + 1).padStart(2, '0')}</span>
+                      <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.alias || `${node.count || node.children_count || 0} ${level === 3 ? '项资源' : '个下级节点'}`}</small></span>
+                      <span className="knowledge-atlas__node-resource">
+                        {(kind === 'question' || kind === 'both') && <CircleHelp aria-label={`${node.question_count} 道题`} size={14} />}
+                        {(kind === 'video' || kind === 'both') && <Clapperboard aria-label={`${node.video_count} 个视频`} size={14} />}
+                        <ChevronRight aria-hidden="true" size={14} />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {hovered && effectiveArrangement !== 'sequence' && (
             <div className="knowledge-atlas__tooltip" role="status">
               <strong>{hovered.name}</strong><span>{resourceLabel(getAtlasResourceKind(hovered))} · {hovered.count || 0} 项</span>
@@ -482,10 +508,10 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
           )}
         </div>
 
-        <aside className="knowledge-atlas__node-panel" aria-label="当前层节点列表">
+        {effectiveArrangement !== 'sequence' && <aside className="knowledge-atlas__node-panel" aria-label="当前层节点列表">
           <header><div><BookMarked aria-hidden="true" size={15} /><span>当前层目录</span></div><small>{effectiveArrangement === 'sequence' ? '顺序浏览' : '键盘与移动端入口'}</small></header>
           <div className="knowledge-atlas__node-list">
-            {filteredNodes.map((node, index) => {
+            {directoryNodes.map((node, index) => {
               const kind = getAtlasResourceKind(node);
               const action = level === 3 ? `打开${node.name}详情` : `进入${node.name}`;
               return (
@@ -501,7 +527,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
               );
             })}
           </div>
-        </aside>
+        </aside>}
       </div>
 
       <footer className="knowledge-atlas__footer">

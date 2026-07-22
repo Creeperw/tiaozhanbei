@@ -27,6 +27,10 @@ class TrainingRoutesOpenApiTests(unittest.TestCase):
         paths = app.openapi()["paths"]
 
         self.assertIn("/training/practice/grade", paths)
+        self.assertIn("/v1/workshop/practice/next", paths)
+        self.assertIn("/v1/workshop/practice/grade", paths)
+        self.assertIn("/v1/workshop/practice/mistakes", paths)
+        self.assertIn("/v1/workshop/practice/mistakes/{mistake_id}", paths)
         self.assertIn("/training/workspace/modules", paths)
         self.assertIn("/training/workspace/tasks", paths)
         self.assertIn("200", paths["/training/workspace/tasks"]["post"]["responses"])
@@ -122,6 +126,10 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(
             question_training["capabilities"],
             ["practice_grading", "case_training", "mistake_variation"],
+        )
+        self.assertEqual(
+            question_training["practice_modes"],
+            ["objective_practice", "case_short_answer", "ai_patient_simulation", "mistake_history"],
         )
 
     def test_workspace_mistake_variation_returns_404_for_missing_or_unowned_source(self):
@@ -1446,6 +1454,166 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(missing.status_code, 200)
         self.assertFalse(missing.json()["available"])
         self.assertIsNone(missing.json()["question"])
+
+    def test_stable_practice_endpoint_filters_objective_and_case_questions_without_kp(self):
+        with self.Session() as db:
+            db.add(database.KnowledgePoint(kp_id="KP_MODE", name="题型筛选", status="active"))
+            db.add_all([
+                database.QuestionBankItem(
+                    question_id="Q_OBJECTIVE",
+                    stem="四君子汤由哪些药物组成？",
+                    answer="A",
+                    analysis="人参、白术、茯苓、炙甘草。",
+                    kp_ids_json='["KP_MODE"]',
+                    question_type="single_choice",
+                    difficulty=1,
+                    quality_score=1.0,
+                    status="active",
+                ),
+                database.LearningQuestion(
+                    question_id="Q_OBJECTIVE",
+                    question_type="single_choice",
+                    question_content="四君子汤由哪些药物组成？",
+                    options_json='[{"option_id":"A","content":"人参、白术、茯苓、炙甘草"}]',
+                    answer_json='["A"]',
+                    kp_ids_json='["KP_MODE"]',
+                ),
+                database.QuestionBankItem(
+                    question_id="Q_CASE",
+                    stem="分析脾胃气虚证使用四君子汤的依据。",
+                    answer="辨证与配伍依据",
+                    analysis="案例解析",
+                    kp_ids_json='["KP_MODE"]',
+                    question_type="case_quiz",
+                    difficulty=2,
+                    quality_score=0.9,
+                    status="active",
+                ),
+            ])
+            db.commit()
+
+        objective = self.client.get("/v1/workshop/practice/next", params={"mode": "objective"})
+        case = self.client.get("/v1/workshop/practice/next", params={"mode": "case"})
+
+        self.assertEqual(objective.status_code, 200)
+        self.assertEqual(objective.json()["question"]["question_id"], "Q_OBJECTIVE")
+        self.assertEqual(objective.json()["question"]["options"][0]["option_id"], "A")
+        self.assertEqual(case.status_code, 200)
+        self.assertEqual(case.json()["question"]["question_id"], "Q_CASE")
+        self.assertEqual(case.json()["question"]["question_type"], "case_quiz")
+
+    def test_next_practice_moves_to_an_unattempted_question_after_grading(self):
+        with self.Session() as db:
+            db.add(database.KnowledgePoint(kp_id="KP_SEQUENCE", name="连续练习", status="active"))
+            db.add_all([
+                database.QuestionBankItem(
+                    question_id="Q_SEQUENCE_1",
+                    stem="第一题",
+                    answer="A",
+                    analysis="第一题解析",
+                    kp_ids_json='["KP_SEQUENCE"]',
+                    question_type="single_choice",
+                    difficulty=1,
+                    quality_score=1.0,
+                    status="active",
+                ),
+                database.QuestionBankItem(
+                    question_id="Q_SEQUENCE_2",
+                    stem="第二题",
+                    answer="B",
+                    analysis="第二题解析",
+                    kp_ids_json='["KP_SEQUENCE"]',
+                    question_type="single_choice",
+                    difficulty=1,
+                    quality_score=0.9,
+                    status="active",
+                ),
+            ])
+            db.commit()
+        first = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"mode": "objective", "kp_id": "KP_SEQUENCE"},
+        ).json()["question"]
+        runner_payload = {
+            "grading": {
+                "score": 100,
+                "is_correct": True,
+                "error_type": "",
+                "analysis": "回答正确。",
+                "standard_answer": "A",
+            }
+        }
+        with patch.object(training_routes, "practice_grading_runner", return_value=runner_payload):
+            graded = self.client.post(
+                "/v1/workshop/practice/grade",
+                json={
+                    "question_id": first["question_id"],
+                    "stem": first["stem"],
+                    "student_answer": "A",
+                    "request_id": first["request_id"],
+                },
+            )
+
+        self.assertEqual(graded.status_code, 200)
+        second = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"mode": "objective", "kp_id": "KP_SEQUENCE"},
+        )
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()["question"]["question_id"], "Q_SEQUENCE_2")
+
+    def test_mistake_history_lists_all_owned_mistakes_and_marks_variation_eligibility(self):
+        with self.Session() as db:
+            db.add(database.UserModel(id=2, username="other-learner", email="other@example.com", hashed_password="x"))
+            db.add(database.QuestionBankItem(
+                question_id="Q_WRONG",
+                stem="四君子汤的功用是什么？",
+                answer="益气健脾",
+                analysis="功用辨析",
+                kp_ids_json='["KP_WRONG"]',
+                question_type="fill_blank",
+                difficulty=1,
+                status="active",
+            ))
+            db.add(database.QuestionAttempt(
+                user_id=1,
+                question_id="Q_WRONG",
+                answer="温中散寒",
+                is_correct=False,
+                score=0,
+                kp_ids_json='["KP_WRONG"]',
+                feedback="功用混淆",
+            ))
+            db.add_all([
+                database.MistakeRecord(
+                    id=301,
+                    user_id=1,
+                    question_id="Q_WRONG",
+                    kp_ids_json='["KP_WRONG"]',
+                    error_type="知识混淆",
+                    summary="将补气剂与温里剂混淆",
+                    status="active",
+                ),
+                database.MistakeRecord(
+                    id=302,
+                    user_id=2,
+                    question_id="Q_FOREIGN",
+                    kp_ids_json='["KP_FOREIGN"]',
+                    status="active",
+                ),
+            ])
+            db.commit()
+
+        response = self.client.get("/v1/workshop/practice/mistakes", params={"status": "all"})
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["items"][0]["mistake_id"], 301)
+        self.assertEqual(body["items"][0]["student_answer"], "温中散寒")
+        self.assertEqual(body["items"][0]["score"], 0.0)
+        self.assertFalse(body["items"][0]["variation_available"])
+        self.assertTrue(body["items"][0]["variation_reason"])
 
     def test_expired_controlled_practice_request_is_rejected_without_running_grader(self):
         with self.Session() as db:

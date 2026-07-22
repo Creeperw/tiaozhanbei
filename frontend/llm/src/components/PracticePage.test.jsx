@@ -14,7 +14,7 @@ vi.mock('../learningFocusTracker.js', () => ({
 
 vi.mock('../pageDataLoaders.js', () => ({
   loadPracticeAgentContext: vi.fn(() => Promise.resolve({ contextBrief: null, recentTrace: [] })),
-  loadVariationSources: vi.fn(() => Promise.resolve({ sources: { items: [] }, error: '' })),
+  loadMistakes: vi.fn(() => Promise.resolve({ mistakes: { items: [], total: 0 }, error: '' })),
   loadTrainingWorkspaceModules: vi.fn(() => Promise.resolve({
     workspace: {
       modules: [{
@@ -63,6 +63,10 @@ describe('PracticePage personal question scope', () => {
     }} />);
 
     expect(await screen.findByTestId('atlas-practice-scope')).toHaveTextContent('public');
+    expect(screen.getByRole('tab', { name: '客观题' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '案例简答' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'AI 病患模拟' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '错题变式' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '我的题目' }));
     expect(screen.getByTestId('atlas-practice-scope')).toHaveTextContent('user');
     fireEvent.click(screen.getByRole('button', { name: '全部题目' }));

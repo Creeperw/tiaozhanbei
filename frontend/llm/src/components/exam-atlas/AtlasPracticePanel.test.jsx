@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import AtlasPracticePanel from './AtlasPracticePanel';
 
@@ -18,7 +18,7 @@ describe('AtlasPracticePanel', () => {
     const requests = [];
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
       requests.push({ url, options });
-      if (url.includes('/training/practice/next?kp_id=kp-yinyang')) {
+      if (url.includes('/practice/next') && url.includes('kp_id=kp-yinyang')) {
         return jsonResponse({
           available: true,
           kp_id: 'kp-yinyang',
@@ -26,13 +26,14 @@ describe('AtlasPracticePanel', () => {
             question_id: 'question-1',
             question_type: 'short_answer',
             stem: '阴阳关系的基本特征是什么？',
+            options: [],
             kp_ids: ['kp-yinyang'],
             difficulty: 2,
             request_id: 'request-1',
           },
         });
       }
-      if (url.endsWith('/training/practice/grade')) {
+      if (url.endsWith('/practice/grade')) {
         return jsonResponse({
           grading: { score: 88, is_correct: true, analysis: '回答覆盖核心关系。' },
           writeback: { status: 'applied' },
@@ -45,10 +46,10 @@ describe('AtlasPracticePanel', () => {
 
     expect(await screen.findByText('阴阳关系的基本特征是什么？')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '对立制约，互根互用。' } });
-    fireEvent.click(screen.getByRole('button', { name: '提交答案' }));
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
 
-    expect(await screen.findByText('得分：88')).toBeInTheDocument();
-    const gradeRequest = requests.find(({ url }) => url.endsWith('/training/practice/grade'));
+    expect(await screen.findByText(/得分 88/)).toBeInTheDocument();
+    const gradeRequest = requests.find(({ url }) => url.endsWith('/practice/grade'));
     const body = JSON.parse(gradeRequest.options.body);
     expect(body).toMatchObject({
       question_id: 'question-1',
@@ -71,6 +72,7 @@ describe('AtlasPracticePanel', () => {
             question_id: 'user-question-1',
             question_type: 'short_answer',
             stem: '个人题目',
+            options: [],
             kp_ids: ['kp-user'],
             difficulty: 2,
             request_id: 'user-request-1',
@@ -78,8 +80,8 @@ describe('AtlasPracticePanel', () => {
           },
         });
       }
-      if (url.endsWith('/training/practice/grade')) {
-        return jsonResponse({ grading: { score: 90, analysis: '完成' }, writeback: { status: 'applied' } });
+      if (url.endsWith('/practice/grade')) {
+        return jsonResponse({ grading: { score: 90, is_correct: true, analysis: '完成' }, writeback: { status: 'applied' } });
       }
       throw new Error(`Unexpected request: ${url}`);
     }));
@@ -106,15 +108,16 @@ describe('AtlasPracticePanel', () => {
             question_id: 'question-first',
             question_type: 'short_answer',
             stem: '旧知识点题目',
+            options: [],
             kp_ids: ['kp-first'],
             difficulty: 2,
             request_id: 'request-first',
           },
         });
       }
-      if (url.endsWith('/training/practice/grade')) {
+      if (url.endsWith('/practice/grade')) {
         return jsonResponse({
-          grading: { score: 80, analysis: '旧题批改结果' },
+          grading: { score: 80, is_correct: true, analysis: '旧题批改结果' },
           writeback: { status: 'applied' },
         });
       }
@@ -129,17 +132,18 @@ describe('AtlasPracticePanel', () => {
     );
     await screen.findByText('旧知识点题目');
     fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '旧答案' } });
-    fireEvent.click(screen.getByRole('button', { name: '提交答案' }));
-    await screen.findByText('得分：80');
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+    await screen.findByText(/得分 80/);
 
     rerender(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-second', kpName: '新知识点' }} />);
-    expect(screen.queryByText('旧知识点题目')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('旧知识点题目')).not.toBeInTheDocument());
     resolveSecond(await jsonResponse({
       available: true,
       question: {
         question_id: 'question-second',
         question_type: 'short_answer',
         stem: '新知识点题目',
+        options: [],
         kp_ids: ['kp-second'],
         difficulty: 2,
         request_id: 'request-second',
@@ -148,7 +152,7 @@ describe('AtlasPracticePanel', () => {
 
     await screen.findByText('新知识点题目');
     expect(screen.getByLabelText('你的答案')).toHaveValue('');
-    expect(screen.queryByText('得分：80')).not.toBeInTheDocument();
+    expect(screen.queryByText(/得分 80/)).not.toBeInTheDocument();
   });
 
   it('shows a non-submittable empty state when no formal question exists', async () => {
@@ -160,7 +164,7 @@ describe('AtlasPracticePanel', () => {
 
     render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-empty', kpName: '待补题知识点' }} />);
 
-    expect(await screen.findByText('该知识点暂无可练习的正式题目')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '提交答案' })).not.toBeInTheDocument();
+    expect(await screen.findByText('当前暂无可用客观题')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '提交并批改' })).not.toBeInTheDocument();
   });
 });

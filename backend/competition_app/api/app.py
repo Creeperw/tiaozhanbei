@@ -32,6 +32,92 @@ from competition_app.application.workflow_presentation import workflow_result_to
 
 SESSION_COOKIE = "competition_session"
 
+_PRACTICE_TYPE_ALIASES = {
+    "单项选择题": "single_choice",
+    "单选题": "single_choice",
+    "多项选择题": "multiple_choice",
+    "多选题": "multiple_choice",
+    "判断题": "true_false",
+    "填空题": "fill_blank",
+    "问答题": "short_answer",
+    "简答题": "short_answer",
+    "临床案例问答": "case_quiz",
+    "病例分析/实践技能": "case_quiz",
+    "临床案例分析": "case_quiz",
+}
+_OBJECTIVE_PRACTICE_TYPES = {
+    "single_choice", "multiple_choice", "true_false", "fill_blank",
+}
+_CASE_PRACTICE_TYPES = {"short_answer", "case_quiz"}
+
+
+def _practice_question_type(value: object) -> str:
+    text = str(value or "").strip()
+    return _PRACTICE_TYPE_ALIASES.get(text, text)
+
+
+def _practice_mode_matches(question_type: object, mode: str) -> bool:
+    normalized = _practice_question_type(question_type)
+    if mode == "objective":
+        return normalized in _OBJECTIVE_PRACTICE_TYPES
+    if mode == "case":
+        return normalized in _CASE_PRACTICE_TYPES
+    return True
+
+
+def _profile_practice_query(context: dict) -> str:
+    profile = context.get("user_profile") if isinstance(context, dict) else {}
+    profile = profile if isinstance(profile, dict) else {}
+    goals = profile.get("goals") if isinstance(profile.get("goals"), dict) else {}
+    for value in (
+        profile.get("short_term_goal"),
+        profile.get("current_focus"),
+        goals.get("short_term_goal"),
+        goals.get("goal_name"),
+        profile.get("learning_goal"),
+    ):
+        if str(value or "").strip():
+            return str(value).strip()
+    return "中医基础"
+
+
+def _formal_question_payload(question: dict, kp_names: dict[str, str]) -> dict:
+    raw_answer = question.get("answer", question.get("题目答案", []))
+    if isinstance(raw_answer, list):
+        standard_answer = ", ".join(str(value) for value in raw_answer)
+    else:
+        standard_answer = str(raw_answer or "").strip()
+    kp_ids = list(dict.fromkeys(
+        str(value).strip()
+        for value in question.get("kp_ids") or []
+        if str(value).strip()
+    ))
+    return {
+        "question_id": str(question.get("question_id") or question.get("题目id") or "").strip(),
+        "question_type": _practice_question_type(
+            question.get("question_type") or question.get("题型")
+        ),
+        "stem": str(
+            question.get("question_content")
+            or question.get("题目内容")
+            or question.get("stem")
+            or ""
+        ).strip(),
+        "options": question.get("options") or [],
+        "raw_answer": raw_answer,
+        "standard_answer": standard_answer,
+        "analysis": str(
+            question.get("explanation")
+            or question.get("explaination")
+            or question.get("题目解析")
+            or question.get("analysis")
+            or ""
+        ).strip(),
+        "kp_ids": kp_ids,
+        "kp_names": {kp_id: kp_names.get(kp_id, kp_id) for kp_id in kp_ids},
+        "difficulty": question.get("difficulty") or 2,
+    }
+
 
 class ReviewDispatchRequest(BaseModel):
     available_minutes: int = Field(default=15, gt=0, le=24 * 60)
@@ -156,8 +242,13 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         response = await call_next(request)
         completed_question_submission = (
             path == "/training/practice/grade"
+            or path == "/api/v1/workshop/practice/grade"
             or (
                 path.startswith("/training/workspace/papers/")
+                and path.endswith("/submit")
+            )
+            or (
+                path.startswith("/api/v1/workshop/papers/")
                 and path.endswith("/submit")
             )
         )
@@ -460,6 +551,122 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=404, detail="前端后端兼容层未启用")
         return backend_handoff.app.openapi()
 
+    @app.get("/api/v1/learning-routes")
+    async def list_learning_routes(
+        request: Request,
+        status: str = Query(default="approved", pattern="^(approved|all)$"),
+        q: str = Query(default="", max_length=120),
+    ) -> dict:
+        current_user(request)
+        repository = container.textbook_route_repository
+        if repository is None:
+            raise HTTPException(status_code=503, detail="经典教材路线未启用")
+        keyword = q.strip().casefold()
+        routes = [
+            route
+            for route in repository.routes
+            if (status == "all" or route.status == status)
+            and (
+                not keyword
+                or keyword in route.goal_name.casefold()
+                or keyword in route.route_id.casefold()
+                or any(keyword in alias.casefold() for alias in route.aliases)
+                or any(
+                    keyword in stage.name.casefold()
+                    or any(keyword in book.casefold() for book in stage.books)
+                    for stage in route.stages
+                )
+            )
+        ]
+        return {
+            "schema_version": "1.0",
+            "route_kind": "classic_reference",
+            "personalized": False,
+            "items": [
+                {
+                    "route_id": route.route_id,
+                    "route_version": route.route_version,
+                    "status": route.status,
+                    "goal_name": route.goal_name,
+                    "aliases": route.aliases,
+                    "stage_count": len(route.stages),
+                    "book_count": len(
+                        {book for stage in route.stages for book in stage.books}
+                    ),
+                    "reviewed_by": route.reviewed_by,
+                    "source_refs": route.source_refs,
+                    "detail_endpoint": f"/api/v1/learning-routes/{route.route_id}",
+                }
+                for route in routes
+            ],
+            "total": len(routes),
+        }
+
+    @app.get("/api/v1/learning-routes/{route_id}")
+    async def get_learning_route(route_id: str, request: Request) -> dict:
+        current_user(request)
+        repository = container.textbook_route_repository
+        if repository is None:
+            raise HTTPException(status_code=503, detail="经典教材路线未启用")
+        route = next(
+            (item for item in repository.routes if item.route_id == route_id),
+            None,
+        )
+        if route is None:
+            raise HTTPException(status_code=404, detail="经典教材路线不存在")
+        source_ids = set(route.source_refs)
+        source_ids.update(
+            ref for stage in route.stages for ref in stage.source_refs
+        )
+        return {
+            "schema_version": "1.0",
+            "route_kind": "classic_reference",
+            "personalized": False,
+            "route": route.model_dump(mode="json"),
+            "sources": [
+                source.model_dump(mode="json")
+                for source in repository.sources
+                if source.source_id in source_ids
+            ],
+            "navigation": {
+                "atlas_route_id": "textbook_14_5",
+                "stage_endpoint": f"/api/v1/learning-routes/{route.route_id}",
+            },
+        }
+
+    @app.get("/api/v1/learning-activity/summary")
+    async def learning_activity_summary(
+        request: Request,
+        days: int = Query(default=30),
+        recent_limit: int = Query(default=20, ge=1, le=100),
+    ) -> dict:
+        user = current_user(request)
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学习行为持久化服务未启用")
+        if days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+        return await asyncio.to_thread(
+            backend_handoff.load_learning_activity_summary,
+            user.user_id,
+            days=days,
+            recent_limit=recent_limit,
+        )
+
+    @app.get("/api/v1/learning-activity/trends")
+    async def learning_activity_trends(
+        request: Request,
+        days: int = Query(default=30),
+    ) -> dict:
+        summary = await learning_activity_summary(
+            request,
+            days=days,
+            recent_limit=1,
+        )
+        return {
+            "schema_version": summary["schema_version"],
+            **summary["trends"],
+        }
+
     @app.get("/api/v1/learning-context")
     async def learning_context(request: Request) -> dict:
         user = current_user(request)
@@ -513,6 +720,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "available": long_term_payload is not None,
                 "root_endpoint": "/api/v1/learning-path",
                 "children_endpoint": "/api/v1/learning-path/nodes?parent_id={node_id}",
+                "classic_routes_endpoint": "/api/v1/learning-routes",
                 "schema_version": "1.0",
             },
             "capabilities": {
@@ -520,6 +728,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "focus_tracking": backend_handoff is not None,
                 "task_completion": backend_handoff is not None,
                 "learning_trends": backend_handoff is not None,
+                "learning_activity_summary_endpoint": (
+                    "/api/v1/learning-activity/summary"
+                    if backend_handoff is not None
+                    else None
+                ),
                 "review_feedback": True,
                 "execution_graph": True,
             },
@@ -602,6 +815,151 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     async def workshop_overview(request: Request) -> dict:
         current_user(request)
         return require_workshop_runtime().workshop_overview()
+
+    def select_formal_practice_question(
+        *,
+        query: str,
+        kp_id: str | None,
+        mode: str,
+        attempted_question_ids: set[str],
+    ) -> dict | None:
+        backend = container.knowledge_backend
+        if backend is None:
+            return None
+        store = backend.map
+        store.ensure_hierarchy()
+        store.ensure_questions()
+        selected_kps: list[dict] = []
+        if kp_id:
+            kp = store.kps.get(str(kp_id))
+            if kp is not None:
+                selected_kps.append({"kp_id": str(kp_id), "kp": kp})
+        if not selected_kps:
+            selected_kps = store.resolve_topic(query, limit=8)
+
+        candidates: list[dict] = []
+        seen: set[str] = set()
+        for match in selected_kps:
+            matched_kp_id = str(match.get("kp_id") or "")
+            for question in store.questions_by_kp.get(matched_kp_id, ()):
+                question_id = str(question.get("question_id") or question.get("题目id") or "")
+                if not question_id or question_id in seen:
+                    continue
+                seen.add(question_id)
+                if not _practice_mode_matches(
+                    question.get("question_type") or question.get("题型"), mode
+                ):
+                    continue
+                payload = _formal_question_payload(
+                    question,
+                    {
+                        str(value): str(
+                            (store.kps.get(str(value)) or {}).get("kp_lv3")
+                            or (store.kps.get(str(value)) or {}).get("other_name")
+                            or value
+                        )
+                        for value in question.get("kp_ids") or []
+                    },
+                )
+                if payload["standard_answer"] and payload["kp_ids"]:
+                    candidates.append(payload)
+
+        if not candidates:
+            # A broad credential goal may not resolve to one KP name. The source
+            # is still the complete formal bank; choose a linked question of the
+            # requested type instead of reporting that the bank is empty.
+            for linked_kp_id, questions in store.questions_by_kp.items():
+                for question in questions:
+                    question_id = str(question.get("question_id") or question.get("题目id") or "")
+                    if not question_id or question_id in seen:
+                        continue
+                    seen.add(question_id)
+                    if not _practice_mode_matches(
+                        question.get("question_type") or question.get("题型"), mode
+                    ):
+                        continue
+                    payload = _formal_question_payload(
+                        question,
+                        {
+                            str(value): str(
+                                (store.kps.get(str(value)) or {}).get("kp_lv3")
+                                or (store.kps.get(str(value)) or {}).get("other_name")
+                                or value
+                            )
+                            for value in question.get("kp_ids") or []
+                        },
+                    )
+                    if payload["standard_answer"] and payload["kp_ids"]:
+                        candidates.append(payload)
+                        break
+                if candidates:
+                    break
+        if not candidates:
+            return None
+        return next(
+            (
+                question
+                for question in candidates
+                if question["question_id"] not in attempted_question_ids
+            ),
+            candidates[0],
+        )
+
+    @app.get("/api/v1/workshop/practice/next")
+    async def next_workshop_practice_question(
+        request: Request,
+        kp_id: str | None = Query(default=None, min_length=1, max_length=120),
+        topic: str | None = Query(default=None, min_length=1, max_length=500),
+        scope: str = Query(default="public", pattern="^(public|user|all)$"),
+        mode: str = Query(default="objective", pattern="^(all|objective|case)$"),
+    ) -> dict:
+        user = current_user(request)
+        runtime = require_workshop_runtime()
+        if scope in {"user", "all"}:
+            personal = await asyncio.to_thread(
+                runtime.issue_personal_practice,
+                user.user_id,
+                kp_id=kp_id,
+                mode=mode,
+            )
+            if personal.get("available") or scope == "user":
+                return personal
+
+        context: dict = {}
+        try:
+            context = await asyncio.to_thread(runtime.load_learning_context, user.user_id)
+        except Exception:
+            context = {}
+        attempted_ids = {
+            str(item.get("question_id") or "")
+            for item in context.get("question_attempt") or []
+            if isinstance(item, dict) and item.get("question_id")
+        }
+        query = str(topic or "").strip() or _profile_practice_query(context)
+        try:
+            candidate = await asyncio.to_thread(
+                select_formal_practice_question,
+                query=query,
+                kp_id=kp_id,
+                mode=mode,
+                attempted_question_ids=attempted_ids,
+            )
+            if candidate is not None:
+                return await asyncio.to_thread(
+                    runtime.issue_formal_practice,
+                    user.user_id,
+                    candidate,
+                )
+        except Exception:
+            # Keep projected formal questions usable while the read-only bank
+            # is temporarily unavailable; never reinterpret this as an empty bank.
+            pass
+        return await asyncio.to_thread(
+            runtime.issue_cached_public_practice,
+            user.user_id,
+            kp_id=kp_id,
+            mode=mode,
+        )
 
     @app.get("/api/v1/workshop/knowledge-cards")
     async def list_workshop_knowledge_cards(

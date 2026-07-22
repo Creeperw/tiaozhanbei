@@ -47,6 +47,7 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeResource, setActiveResource] = useState('explanation');
 
   const filteredCards = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -72,7 +73,10 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
           : null;
       if (!active) return;
       if (detail?.error) setError(detail.error);
-      if (detail?.card) setActiveCard(detail.card);
+      if (detail?.card) {
+        setActiveResource('explanation');
+        setActiveCard(detail.card);
+      }
       await refresh();
       if (active) setLoading(false);
     };
@@ -83,6 +87,7 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
   const openCard = async (id) => {
     setLoading(true);
     setError('');
+    setActiveResource('explanation');
     const result = await loadKnowledgeCard({ fetcher: fetchJsonWithAuthFallback, cardId: id });
     setActiveCard(result.card);
     setError(result.error);
@@ -95,6 +100,12 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
   const videos = Array.isArray(bundle.videos) ? bundle.videos : [];
   const questions = Array.isArray(bundle.questions) ? bundle.questions : [];
   const fallbackUsed = Array.isArray(bundle.coverage?.fallback_used) ? bundle.coverage.fallback_used : [];
+  const resourceTabs = [
+    ['explanation', '知识讲解', null],
+    ['textbook', '教材切片', textbookSlices.length],
+    ['videos', '视频资源', videos.length],
+    ['questions', '配套题目', questions.length],
+  ];
 
   return (
     <div className="knowledge-card-library mt-5 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -152,26 +163,41 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
               {knowledgePointDescription(knowledgePoint) && <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">{text(knowledgePointDescription(knowledgePoint))}</p>}
             </header>
 
-            <section>
+            <nav className="flex flex-wrap gap-2" role="tablist" aria-label="知识卡资源">
+              {resourceTabs.map(([key, label, count]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeResource === key}
+                  onClick={() => setActiveResource(key)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${activeResource === key ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200'}`}
+                >
+                  {label}{count === null ? '' : ` ${count}`}
+                </button>
+              ))}
+            </nav>
+
+            {activeResource === 'explanation' && <section role="tabpanel" aria-label="知识讲解内容">
               <ResourceHeading icon={BookOpen} title="知识点讲解" count="" />
               <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">{text(explanationText(bundle.explanation?.content))}</p>
-            </section>
+            </section>}
 
-            <section>
+            {activeResource === 'textbook' && <section role="tabpanel" aria-label="教材切片内容">
               <ResourceHeading icon={Library} title="教材切片" count={textbookSlices.length} />
               {textbookSlices.length > 0 ? textbookSlices.slice(0, 5).map((item, index) => (
                 <blockquote key={item.chunk_uid || item.source_id || index} className="mt-3 border-l-2 border-emerald-200 pl-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{text(item.retrieval_text || item.text || item.summary)}</blockquote>
               )) : <p className="mt-2 text-sm text-slate-500">当前暂无教材切片。</p>}
-            </section>
+            </section>}
 
-            <section>
+            {activeResource === 'videos' && <section role="tabpanel" aria-label="视频资源内容">
               <ResourceHeading icon={Film} title="视频资源" count={videos.length} />
               {videos.length > 0 ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{videos.map((item, index) => (
                 <a key={item.source_id || index} href={item.url} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-50">{item.video_title || item.title || item.summary || '查看视频'}</a>
               ))}</div> : <p className="mt-2 text-sm text-slate-500">当前暂无视频资源。</p>}
-            </section>
+            </section>}
 
-            <section>
+            {activeResource === 'questions' && <section role="tabpanel" aria-label="配套题目内容">
               <ResourceHeading icon={CircleHelp} title="配套题目" count={questions.length} />
               {questions.length > 0 ? <ol className="mt-3 space-y-3">{questions.slice(0, 10).map((item, index) => (
                 <li key={item.question_id || item.source_id || index} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm leading-6 text-slate-700">
@@ -180,7 +206,7 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
                   {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="mt-2 inline-block font-medium text-emerald-700 underline">打开网络题源</a>}
                 </li>
               ))}</ol> : <p className="mt-2 text-sm text-slate-500">当前暂无配套题目。</p>}
-            </section>
+            </section>}
           </article>
         )}
         {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}

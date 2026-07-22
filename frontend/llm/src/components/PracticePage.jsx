@@ -3,7 +3,6 @@ import {
   ClipboardCheck,
   FileText,
 } from 'lucide-react';
-import { formatSystemDataMetrics } from '../systemDataDisplay.js';
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import PaperGenerationPanel from './PaperGenerationPanel';
@@ -13,19 +12,8 @@ import {
   loadPracticeAgentContext,
   loadTrainingWorkspaceModules,
   isTrainingTaskResultApproved,
-  submitTrainingWorkspaceTask,
 } from '../pageDataLoaders.js';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
-
-const demoQuestion = {
-  question_id: 'demo-sijunzi-001',
-  question_type: 'short_answer',
-  stem: '四君子汤主治的核心证型是什么？请简要说明。',
-  standard_answer: '脾胃气虚证',
-  rubric: '答出脾胃气虚证并能说明气虚、纳差、乏力等证据为满分。',
-  knowledge_points: ['四君子汤', '脾胃气虚证'],
-  difficulty: 2,
-};
 
 const fallbackPracticeModule = {
   key: 'question_training',
@@ -241,12 +229,8 @@ export default function PracticePage({ navigationContext = {} }) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
   const [modules, setModules] = useState([]);
   const [activeTaskType, setActiveTaskType] = useState(() => workshopModuleKey(navigationContext.taskType));
-  const [answer, setAnswer] = useState('中焦虚寒证');
   const [taskResult, setTaskResult] = useState(null);
-  const [systemData, setSystemData] = useState({});
-  const [loading, setLoading] = useState(false);
   const [modulesLoading, setModulesLoading] = useState(true);
-  const [error, setError] = useState('');
   const [moduleError, setModuleError] = useState('');
   const [contextBrief, setContextBrief] = useState(null);
   const [recentTrace, setRecentTrace] = useState([]);
@@ -256,8 +240,6 @@ export default function PracticePage({ navigationContext = {} }) {
   const [practiceScope, setPracticeScope] = useState('public');
   const [statusMessage, setStatusMessage] = useState('正在加载训练模块。');
   const mountedRef = useRef(true);
-  const requestSequenceRef = useRef(0);
-  const submittingRef = useRef(false);
   const tabRefs = useRef([]);
 
   const visibleModules = useMemo(
@@ -295,21 +277,6 @@ export default function PracticePage({ navigationContext = {} }) {
   }, []);
 
   useEffect(() => {
-    if (modulesLoading || !requestedTaskType) return;
-
-    const requestedModule = visibleModules.find((module) => module.key === requestedTaskType);
-    const fallbackModule = visibleModules.find((module) => module.enabled) || fallbackPracticeModule;
-    const nextTaskType = requestedModule?.enabled ? requestedModule.key : fallbackModule.key;
-
-    setActiveTaskType(nextTaskType);
-    setTaskResult(null);
-    setError('');
-    if (!requestedModule?.enabled) {
-      setStatusMessage('请求的训练模块暂未开放，已切换到可用训练模块。');
-    }
-  }, [modulesLoading, requestedTaskType, visibleModules]);
-
-  useEffect(() => {
     mountedRef.current = true;
     let cancelled = false;
     const loadWorkspace = async () => {
@@ -326,7 +293,6 @@ export default function PracticePage({ navigationContext = {} }) {
       if (requestedModuleUnavailable) {
         setActiveTaskType(fallbackModule.key);
         setTaskResult(null);
-        setError('');
       }
       setModules(moduleResult.workspace.modules);
       setModuleError(moduleResult.error);
@@ -342,76 +308,41 @@ export default function PracticePage({ navigationContext = {} }) {
     return () => {
       cancelled = true;
       mountedRef.current = false;
-      requestSequenceRef.current += 1;
     };
   }, [requestedTaskType]);
 
   const selectModule = (taskType) => {
-    if (loading || submittingRef.current) return;
     const targetModule = visibleModules.find((module) => module.key === taskType);
     if (!targetModule?.enabled) return;
     setActiveTaskType(taskType);
     setTaskResult(null);
-    setError('');
   };
 
-  const submitTask = async () => {
-    if (loading || submittingRef.current || !activeModule.enabled) return;
-    const submittedTaskType = 'question_training';
-    const requestSequence = requestSequenceRef.current + 1;
-    requestSequenceRef.current = requestSequence;
-    submittingRef.current = true;
-    const task = {
-        task_type: 'practice_grading',
-        title: '四君子汤练习批改',
-        query: demoQuestion.stem,
-        inputs: { ...demoQuestion, student_answer: answer },
-        options: { save_activity: true, need_audit: true },
-      };
-
-    setLoading(true);
-    setError('');
-    setTaskResult(null);
-    setStatusMessage('正在提交训练任务。');
-    try {
-      const result = await submitTrainingWorkspaceTask({ fetcher: fetchJsonWithAuthFallback, task });
-      if (!mountedRef.current
-        || requestSequence !== requestSequenceRef.current
-        || submittedTaskType !== activeTaskType) return;
-      if (result.error) {
-        setError(result.error);
-        setStatusMessage('训练任务提交失败。');
-        return;
-      }
-      setTaskResult(result.taskResult);
-      setMobilePage('result');
-      if (result.taskResult.system_data) {
-        setSystemData(result.taskResult.system_data);
-      }
-      if (!isTrainingTaskResultApproved(result.taskResult)) {
-        setActiveInspectorTab('audit');
-        setStatusMessage('训练任务未完成或审核未通过。');
-        return;
-      }
-      setActiveInspectorTab('evidence');
-      setStatusMessage('训练任务已完成。');
-    } catch (submissionError) {
-      if (mountedRef.current
-        && requestSequence === requestSequenceRef.current
-        && submittedTaskType === activeTaskType) {
-        setError(submissionError.message || '训练任务请求失败');
-        setStatusMessage('训练任务提交失败。');
-      }
-    } finally {
-      if (mountedRef.current && requestSequence === requestSequenceRef.current) {
-        submittingRef.current = false;
-        setLoading(false);
-      }
-    }
+  const handlePracticeResult = (result, question) => {
+    const grading = result?.grading || {};
+    setTaskResult({
+      task_id: result?.attempt_id || `practice-${question.question_id}`,
+      task_type: 'practice_grading',
+      status: 'completed',
+      title: `${question.question_type}批改结果`,
+      summary: grading.is_correct ? '回答正确，学习记录已更新。' : '回答错误，已进入错题记录。',
+      artifact: {
+        artifact_type: 'grading_result',
+        title: '练习批改结果',
+        content: { grading, remediation: {} },
+      },
+      evidence_pack: {},
+      audit: { decision: 'pass', reason: '正式题库受控批改已完成' },
+      trace: [],
+      learning_updates: { writeback: result?.writeback || {} },
+      next_actions: [],
+    });
+    setMobilePage('result');
+    setActiveInspectorTab('evidence');
+    setStatusMessage(grading.is_correct ? '练习已完成。' : '练习已完成并记录错题。');
   };
 
   const handleNextAction = (action) => {
-    if (loading || submittingRef.current) return;
     const targetModule = visibleModules.find((module) => module.key === workshopModuleKey(action?.task_type));
     if (!targetModule?.enabled) return;
     selectModule(targetModule.key);
@@ -511,7 +442,7 @@ export default function PracticePage({ navigationContext = {} }) {
                   key={module.key}
                   type="button"
                   onClick={() => selectModule(module.key)}
-                  disabled={loading || !module.enabled}
+                  disabled={!module.enabled}
                   aria-current={selected ? 'page' : undefined}
                   className={`w-full break-words rounded-xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 ${moduleButtonClass} disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:border-transparent disabled:hover:bg-transparent`}
                 >
@@ -550,11 +481,8 @@ export default function PracticePage({ navigationContext = {} }) {
                 selectedKnowledgePoint={selectedKnowledgePoint}
                 practiceScope={practiceScope}
                 onPracticeScopeChange={setPracticeScope}
-                question={demoQuestion}
-                answer={answer}
-                onAnswerChange={setAnswer}
-                onSubmit={submitTask}
-                loading={loading}
+                initialMode={navigationContext.taskType || ''}
+                onResult={handlePracticeResult}
               />
             ) : (
               <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
@@ -562,13 +490,12 @@ export default function PracticePage({ navigationContext = {} }) {
               </div>
             )}
 
-            {error && <div role="alert" className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">{error}</div>}
           </section>
 
           <section
             data-testid="practice-result-panel"
             data-mobile-active={String(mobilePage === 'result')}
-            aria-busy={loading}
+            aria-busy="false"
             aria-labelledby="training-artifact-title"
             className="practice-result-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50"
           >
@@ -587,16 +514,6 @@ export default function PracticePage({ navigationContext = {} }) {
             ) : (
               <div className="mt-4 [overflow-wrap:anywhere]"><ArtifactResult taskResult={taskResult} /></div>
             )}
-            {taskResultApproved && formatSystemDataMetrics(systemData).length > 0 && (
-              <div className="mt-5 grid gap-3 border-t border-emerald-100 pt-4 sm:grid-cols-2">
-                {formatSystemDataMetrics(systemData).map((metric) => (
-                  <div key={metric.key} className="border-l-2 border-emerald-300 pl-3">
-                    <div className="text-xs font-medium text-emerald-800">{metric.label}</div>
-                    <div className="mt-1 text-sm text-emerald-950">{metric.value}</div>
-                  </div>
-                ))}
-              </div>
-            )}
             {taskResultApproved && Array.isArray(taskResult?.next_actions) && taskResult.next_actions.length > 0 && (
               <div className="mt-5 border-t border-slate-200 pt-4">
                 <h3 className="text-sm font-semibold text-slate-900">下一步</h3>
@@ -608,7 +525,7 @@ export default function PracticePage({ navigationContext = {} }) {
                       <button
                         key={`${action?.task_type || 'action'}-${index}`}
                         type="button"
-                        disabled={loading || !enabled}
+                        disabled={!enabled}
                         onClick={() => handleNextAction(action)}
                         title={enabled ? `切换至${targetModule.label}` : '该后续模块暂未开放'}
                         className="break-words rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-950"

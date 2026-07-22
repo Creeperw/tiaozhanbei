@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
-import { loadVariationSources, submitTrainingWorkspaceTask } from '../pageDataLoaders';
+import { loadMistakes, submitTrainingWorkspaceTask } from '../pageDataLoaders';
 
 const requestId = () => `variation-${crypto.randomUUID()}`;
 
 export default function MistakeVariationPanel({ enabled }) {
-  const [sources, setSources] = useState([]);
+  const [mistakes, setMistakes] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedMistakeId, setSelectedMistakeId] = useState('');
   const [questions, setQuestions] = useState([]);
   const [selectedQuestion, setSelectedQuestion] = useState('');
@@ -15,13 +17,41 @@ export default function MistakeVariationPanel({ enabled }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const refreshSources = async () => {
-    const response = await loadVariationSources({ fetcher: fetchJsonWithAuthFallback });
-    setSources(response.sources.items);
-    if (response.error) setError(response.error);
+  const selectedMistake = useMemo(
+    () => mistakes.find((item) => String(item.mistake_id) === selectedMistakeId),
+    [mistakes, selectedMistakeId],
+  );
+
+  const refreshMistakes = async () => {
+    const loaded = [];
+    let offset = 0;
+    let expectedTotal = 0;
+    let loadError = '';
+    let hasMore = true;
+    while (hasMore) {
+      const response = await loadMistakes({
+        fetcher: fetchJsonWithAuthFallback,
+        status: statusFilter,
+        offset,
+        limit: 100,
+      });
+      loadError = response.error || '';
+      if (loadError) break;
+      const page = response.mistakes.items;
+      loaded.push(...page);
+      expectedTotal = response.mistakes.total;
+      offset += page.length;
+      hasMore = Boolean(response.mistakes.has_more) && page.length > 0;
+    }
+    setMistakes(loaded);
+    setTotal(expectedTotal);
+    if (!loaded.some((item) => String(item.mistake_id) === selectedMistakeId)) {
+      setSelectedMistakeId('');
+    }
+    if (loadError) setError(loadError);
   };
 
-  useEffect(() => { refreshSources(); }, []);
+  useEffect(() => { refreshMistakes(); }, [statusFilter]);
 
   const run = async (action) => {
     setLoading(true);
@@ -35,8 +65,8 @@ export default function MistakeVariationPanel({ enabled }) {
 
   const generate = () => run(async () => {
     const mistakeId = Number(selectedMistakeId);
-    if (!Number.isInteger(mistakeId) || mistakeId <= 0) {
-      setError('请选择一条可用错题。');
+    if (!Number.isInteger(mistakeId) || mistakeId <= 0 || !selectedMistake?.variation_available) {
+      setError(selectedMistake?.variation_reason || '请选择一条可生成变式的错题。');
       return;
     }
     const response = await submitTrainingWorkspaceTask({
@@ -91,6 +121,7 @@ export default function MistakeVariationPanel({ enabled }) {
       return;
     }
     setResult(response.taskResult);
+    await refreshMistakes();
   });
 
   if (!enabled) return <p className="mt-5 text-sm leading-6 text-slate-600">错题变式暂未开放。</p>;
@@ -99,16 +130,64 @@ export default function MistakeVariationPanel({ enabled }) {
   const grading = result?.artifact?.content?.grading?.grading || {};
   return (
     <div className="mt-5 space-y-5">
-      <label className="block text-sm font-medium text-slate-700">选择错题来源
-        <select value={selectedMistakeId} onChange={(event) => setSelectedMistakeId(event.target.value)} disabled={loading} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-          <option value="">请选择一条可用错题</option>
-          {sources.map((item) => <option key={item.mistake_id} value={item.mistake_id}>#{item.mistake_id} · {item.stem}</option>)}
-        </select>
-      </label>
-      {sources.length === 0 && <p className="text-sm leading-6 text-slate-600">暂无可用错题。完成普通练习并通过审核后，可在此生成变式。</p>}
-      <button type="button" onClick={generate} disabled={loading || !selectedMistakeId} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-950">全部错题记录</h3>
+          <p className="mt-1 text-xs text-slate-500">当前筛选共 {total} 条；所有错误都会保留，满足审核条件的错题可生成变式。</p>
+        </div>
+        <button type="button" onClick={() => run(refreshMistakes)} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700">
+          <RefreshCw size={14} />刷新
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label="错题状态筛选">
+        {[
+          ['all', '全部'],
+          ['active', '待复盘'],
+          ['resolved', '已解决'],
+        ].map(([value, label]) => (
+          <button key={value} type="button" aria-pressed={statusFilter === value} onClick={() => setStatusFilter(value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${statusFilter === value ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 text-slate-600'}`}>{label}</button>
+        ))}
+      </div>
+
+      <div className="max-h-96 space-y-3 overflow-y-auto pr-1" aria-label="错题列表">
+        {mistakes.map((item) => {
+          const selectedItem = selectedMistakeId === String(item.mistake_id);
+          return (
+            <button
+              key={item.mistake_id}
+              type="button"
+              aria-pressed={selectedItem}
+              onClick={() => {
+                setSelectedMistakeId(String(item.mistake_id));
+                setQuestions([]);
+                setResult(null);
+                setError('');
+              }}
+              className={`w-full rounded-xl border p-3 text-left ${selectedItem ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-slate-500">错题 #{item.mistake_id} · {item.status}</span>
+                <span className={`text-xs font-medium ${item.variation_available ? 'text-emerald-700' : 'text-amber-700'}`}>{item.variation_available ? '可生成变式' : '仅保留记录'}</span>
+              </div>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-900">{item.stem}</p>
+              <div className="mt-2 grid gap-1 text-xs leading-5 text-slate-600 sm:grid-cols-2">
+                <span>题型：{item.question_type || '未知'}</span>
+                <span>得分：{item.score ?? '未记录'}{item.max_score ? ` / ${item.max_score}` : ''}</span>
+                <span>错因：{item.error_type || item.summary || '待分析'}</span>
+                <span>作答：{item.student_answer || '未记录'}</span>
+              </div>
+            </button>
+          );
+        })}
+        {mistakes.length === 0 && <p className="rounded-xl bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-600">当前筛选下暂无错题。完成客观题、案例简答、AI 病患模拟或变式作答后，错误结果会自动记录在这里。</p>}
+      </div>
+
+      {selectedMistake && !selectedMistake.variation_available && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{selectedMistake.variation_reason}</p>}
+      <button type="button" onClick={generate} disabled={loading || !selectedMistake?.variation_available} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
         {loading && <Loader2 size={16} className="animate-spin" />}生成变式
       </button>
+
       {selected && <div className="space-y-3 border-t border-slate-200 pt-4">
         <p className="text-sm font-semibold leading-6 text-slate-900">{selected.stem}</p>
         <p className="text-xs leading-5 text-slate-500">知识点：{selected.kp_ids?.join('、') || '暂无'}</p>

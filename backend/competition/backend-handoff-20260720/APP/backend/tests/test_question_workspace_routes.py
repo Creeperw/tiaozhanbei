@@ -507,6 +507,50 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
         )
         runner.assert_not_called()
 
+    def test_wrong_personal_question_is_recorded_in_unified_mistake_history(self):
+        uploaded = self.upload_markdown()
+        question_id = uploaded.json()["items"][0]["question_id"]
+        self.client.post(f"/question-workspace/items/{question_id}/confirm")
+        issued = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"kp_id": "KP_YINYANG", "scope": "user", "mode": "case"},
+        ).json()["question"]
+        runner_payload = {
+            "grading": {
+                "score": 20,
+                "is_correct": False,
+                "error_type": "知识点遗漏",
+                "analysis": "阴阳关系回答不完整。",
+                "standard_answer": "权威答案",
+            },
+        }
+
+        from APP.backend.routers import training_routes
+        with patch.object(training_routes, "practice_grading_runner", return_value=runner_payload):
+            graded = self.client.post(
+                "/v1/workshop/practice/grade",
+                json={
+                    "question_id": question_id,
+                    "stem": "客户端伪造题干",
+                    "student_answer": "阴阳相反。",
+                    "request_id": issued["request_id"],
+                },
+            )
+
+        self.assertEqual(graded.status_code, 200)
+        self.assertEqual(len(graded.json()["writeback"]["mistake_ids"]), 1)
+        history = self.client.get("/v1/workshop/practice/mistakes", params={"status": "all"})
+        self.assertEqual(history.status_code, 200)
+        self.assertEqual(history.json()["total"], 1)
+        mistake = history.json()["items"][0]
+        self.assertEqual(mistake["question_id"], question_id)
+        self.assertEqual(mistake["student_answer"], "阴阳相反。")
+        self.assertEqual(mistake["error_type"], "知识点遗漏")
+        self.assertFalse(mistake["variation_available"])
+        with self.Session() as db:
+            self.assertEqual(db.query(database.QuestionAttempt).count(), 1)
+            self.assertEqual(db.query(database.MistakeRecord).count(), 1)
+
     def test_owner_can_rebuild_personal_index_and_other_user_cannot_target_it(self):
         uploaded = self.upload_markdown()
         question_id = uploaded.json()["items"][0]["question_id"]

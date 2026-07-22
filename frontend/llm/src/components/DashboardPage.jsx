@@ -19,7 +19,11 @@ import LearningPathTrainingModules from './learning-tree/LearningPathTrainingMod
 import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
 import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import {
+  adaptClassicRouteBooks,
+  adaptClassicRouteStage,
   adaptPlannedPathNode,
+  loadClassicLearningRoute,
+  loadClassicLearningRoutes,
   loadPlannedLearningPath,
 } from './learning-tree/learningPathApi';
 
@@ -81,6 +85,13 @@ function buildPathEdges(nodes) {
   }));
 }
 
+function recommendationIntent(item) {
+  if (item?.key === 'daily-question') return { page: 'practice', params: { view: 'workspace', taskType: 'question_training' } };
+  if (item?.key === 'case-training') return { page: 'practice', params: { view: 'workspace', taskType: 'case_training' } };
+  if (item?.key === 'resource-card') return { page: 'practice', params: { view: 'workspace', taskType: 'knowledge_cards' } };
+  return { page: item?.target_page || 'assistant', params: { context: item?.summary || item?.title || '' } };
+}
+
 export default function DashboardPage({
   currentUser,
   navigationContext = {},
@@ -97,6 +108,13 @@ export default function DashboardPage({
   const [legacyDrilldown, setLegacyDrilldown] = useState(null);
   const [plannedPath, setPlannedPath] = useState(null);
   const [pathParent, setPathParent] = useState(null);
+  const [pathMode, setPathMode] = useState('personalized');
+  const [classicRoutes, setClassicRoutes] = useState([]);
+  const [classicRouteId, setClassicRouteId] = useState('');
+  const [classicRoutePayload, setClassicRoutePayload] = useState(null);
+  const [classicNodes, setClassicNodes] = useState([]);
+  const [classicParent, setClassicParent] = useState(null);
+  const [classicError, setClassicError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -174,13 +192,93 @@ export default function DashboardPage({
     return () => { cancelled = true; };
   }, [navigationContext.trackId, onKnowledgeContextChange]);
 
+  useEffect(() => {
+    let cancelled = false;
+    loadClassicLearningRoutes()
+      .then((payload) => {
+        if (cancelled) return;
+        const routes = payload.items || [];
+        setClassicRoutes(routes);
+        setClassicRouteId((current) => current || routes[0]?.route_id || '');
+      })
+      .catch((loadError) => {
+        if (!cancelled) setClassicError(loadError.message || '经典路线列表加载失败');
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!classicRouteId) return undefined;
+    let cancelled = false;
+    setClassicError('');
+    loadClassicLearningRoute(classicRouteId)
+      .then((payload) => {
+        if (cancelled) return;
+        setClassicRoutePayload(payload);
+        setClassicNodes(payload.route.stages.map((stage) => adaptClassicRouteStage(payload.route, stage)));
+        setClassicParent(null);
+      })
+      .catch((loadError) => {
+        if (cancelled) return;
+        setClassicRoutePayload(null);
+        setClassicNodes([]);
+        setClassicError(loadError.message || '经典路线详情加载失败');
+      });
+    return () => { cancelled = true; };
+  }, [classicRouteId]);
+
   const focus = useMemo(() => buildDailyFocus(dashboard), [dashboard]);
   const schedule = useMemo(() => buildDailySchedule(dashboard), [dashboard]);
   const feedback = useMemo(() => buildDailyFeedback(dashboard), [dashboard]);
-  const pathEdges = useMemo(() => buildPathEdges(nodes), [nodes]);
+  const displayedNodes = pathMode === 'classic' ? classicNodes : nodes;
+  const pathEdges = useMemo(() => buildPathEdges(displayedNodes), [displayedNodes]);
   const greeting = dashboard.hero?.greeting || EMPTY_DASHBOARD.hero.greeting;
 
+  const openRecommendation = async (item) => {
+    const viewId = dashboard.recommendation_view_id;
+    if (viewId && item?.key) {
+      try {
+        await fetchWithAuth(`${API_BASE}/dashboard/recommendations/click`, {
+          method: 'POST',
+          body: JSON.stringify({ recommendation_key: item.key, recommendation_view_id: viewId }),
+        });
+      } catch {
+        // Navigation remains available if telemetry is temporarily unavailable.
+      }
+    }
+    onNavigate?.(recommendationIntent(item));
+  };
+
   const openKnowledgePlanet = async (node) => {
+    if (pathMode === 'classic') {
+      if (node.node_type === 'stage') {
+        const route = classicRoutePayload?.route;
+        const stageId = node.navigation?.stage_id;
+        const stage = route?.stages?.find((item) => item.stage_id === stageId);
+        if (!route || !stage) return;
+        setClassicNodes(adaptClassicRouteBooks(
+          route,
+          stage,
+          classicRoutePayload?.navigation?.atlas_route_id,
+        ));
+        setClassicParent(node);
+        setSelectedNode(null);
+        return;
+      }
+      if (node.node_type === 'book') {
+        onNavigate?.({
+          page: 'knowledge',
+          params: {
+            view: 'atlas',
+            route: node.navigation?.route_id || 'textbook_14_5',
+            lv1: node.navigation?.book || node.title.replace(/[《》]/g, ''),
+            source: 'classic-learning-route',
+            routeId: classicRouteId,
+          },
+        });
+      }
+      return;
+    }
     if (plannedPath && node.node_type === 'stage') {
       try {
         const childPage = await loadPlannedLearningPath(node.node_id);
@@ -223,7 +321,7 @@ export default function DashboardPage({
   };
 
   const selectPathNode = (node) => {
-    if (plannedPath && ['stage', 'book'].includes(node.node_type)) {
+    if ((pathMode === 'classic' || plannedPath) && ['stage', 'book'].includes(node.node_type)) {
       openKnowledgePlanet(node);
       return;
     }
@@ -253,16 +351,69 @@ export default function DashboardPage({
         feedback={feedback}
         assistantCollapsed={assistantCollapsed}
         assistantDocked={assistantDocked}
-        pathTopContent={<LearningPathTrainingModules trackId={track.id} onNavigate={onNavigate} />}
-        pathHint={plannedPath ? '阶段 → 教材 → 知识点，单击继续' : undefined}
+        pathTopContent={<>
+          <LearningPathTrainingModules trackId={track.id} onNavigate={onNavigate} />
+          {Array.isArray(dashboard.recommendations) && dashboard.recommendations.length > 0 && (
+            <section className="mt-3 flex flex-wrap gap-2" aria-label="个性化学习推荐">
+              {dashboard.recommendations.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  title={item.summary}
+                  onClick={() => openRecommendation(item)}
+                  className="rounded-full border border-emerald-100 bg-white px-3 py-1.5 text-xs font-medium text-emerald-800 shadow-sm hover:border-emerald-300 hover:bg-emerald-50"
+                >{item.action_label || item.title}</button>
+              ))}
+            </section>
+          )}
+        </>}
+        pathHint={pathMode === 'classic' ? '经典路线：阶段 → 教材 → 知识点' : plannedPath ? '阶段 → 教材 → 知识点，单击继续' : undefined}
         pathContent={(
           <>
             <div className="learning-path-content">
-              {pathParent && (
+              <div className="mb-3 flex flex-wrap items-center gap-2" role="tablist" aria-label="学习路径来源">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={pathMode === 'personalized'}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${pathMode === 'personalized' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
+                  onClick={() => { setPathMode('personalized'); setSelectedNode(null); }}
+                >我的学习路径</button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={pathMode === 'classic'}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${pathMode === 'classic' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
+                  onClick={() => { setPathMode('classic'); setSelectedNode(null); }}
+                >经典路线</button>
+                {pathMode === 'classic' && classicRoutes.length > 0 && (
+                  <label className="ml-auto flex items-center gap-2 text-xs text-slate-600">路线
+                    <select
+                      aria-label="经典学习路线"
+                      value={classicRouteId}
+                      onChange={(event) => {
+                        setClassicRouteId(event.target.value);
+                        setSelectedNode(null);
+                      }}
+                      className="max-w-64 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+                    >
+                      {classicRoutes.map((route) => <option key={route.route_id} value={route.route_id}>{route.goal_name}</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
+              {(pathMode === 'classic' ? classicParent : pathParent) && (
                 <button
                   type="button"
                   className="learning-path-content__back"
                   onClick={async () => {
+                    if (pathMode === 'classic') {
+                      const route = classicRoutePayload?.route;
+                      setClassicNodes(route?.stages?.map((stage) => adaptClassicRouteStage(route, stage)) || []);
+                      setClassicParent(null);
+                      setSelectedNode(null);
+                      return;
+                    }
                     try {
                       const rootPage = await loadPlannedLearningPath();
                       setNodes(rootPage.nodes.map(adaptPlannedPathNode));
@@ -277,16 +428,20 @@ export default function DashboardPage({
                   返回阶段
                 </button>
               )}
-              {nodes.length > 0 ? (
+              {displayedNodes.length > 0 ? (
                 <LearningPathOverview
-                  nodes={nodes}
+                  nodes={displayedNodes}
                   edges={pathEdges}
                   selectedId={selectedNode?.membership_id}
                   onSelect={selectPathNode}
                   onClearSelection={() => setSelectedNode(null)}
                   onDrill={openKnowledgePlanet}
-                  directDrill={Boolean(plannedPath)}
+                  directDrill={pathMode === 'classic' || Boolean(plannedPath)}
                 />
+              ) : pathMode === 'classic' ? (
+                <div className="dashboard-daily__path-empty" data-state="classic-route-unavailable">
+                  <p>{classicError || '经典路线正在准备中。'}</p>
+                </div>
               ) : plannedPath?.availability === 'requires_long_term_plan' ? (
                 <div className="dashboard-daily__path-empty" data-state="requires-long-term-plan">
                   <p>{plannedPath.message || '请先完成长期学习规划，再生成阶段、教材和知识点路径。'}</p>
@@ -306,7 +461,7 @@ export default function DashboardPage({
                   layout="overlay"
                   node={selectedNode}
                   summary={selectedNode}
-                  routeNodes={nodes}
+                  routeNodes={displayedNodes}
                   onClose={() => setSelectedNode(null)}
                   onStartLearning={(node) => onNavigate?.({
                     page: 'practice',
