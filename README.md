@@ -106,6 +106,20 @@ npm run dev
 打开 `http://127.0.0.1:5173`。登录、会话、首页和 LangGraph 对话已经使用主 `/api/v1`；
 只验证这些主功能时可保持 `BACKEND_HANDOFF_ENABLED=false`。
 
+### 一键本地登录联调
+
+当前前端的登录、注册和会话均依赖主 FastAPI 后端；只运行 Vite 时认证请求会失败。在已配置
+本机 Conda `tiaozhanbei` 环境后，可从 `frontend/llm` 一次启动两端：
+
+```powershell
+cd frontend/llm
+npm install
+npm run dev:full
+```
+
+该命令会在 `7860` 启动 Stub 后端，并在 `5173` 启动 Vite。首次使用请在登录窗口点击
+“创建学习账号”注册本地测试用户；Stub 模式未配置 MySQL 时用户数据仅保存在当前后端进程中。
+
 ## Live 环境与大体积数据
 
 Live 模式使用 `deepseek-v4-flash`、`Qwen/Qwen3-Embedding-4B` 和正式知识库。下列内容

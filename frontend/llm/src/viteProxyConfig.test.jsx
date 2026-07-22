@@ -9,5 +9,7 @@ describe('Vite API proxy', () => {
     expect(viteConfig.server.proxy['/api'].target).toBe('http://127.0.0.1:7860');
     expect(viteConfig.server.proxy['/api/v1'].target).toBe('http://127.0.0.1:7860');
     expect(viteConfig.server.proxy['/api/v1'].rewrite).toBeUndefined();
+    expect(viteConfig.server.proxy['/health'].target).toBe('http://127.0.0.1:7860');
+    expect(viteConfig.server.proxy['/health'].rewrite).toBeUndefined();
   });
 });

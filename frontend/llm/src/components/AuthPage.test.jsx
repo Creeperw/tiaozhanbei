@@ -14,9 +14,20 @@ describe('AuthPage main-backend cookie contract', () => {
     vi.unstubAllGlobals();
   });
 
+  const stubHealthyBackend = () => {
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (url === '/health') return Promise.resolve(jsonResponse(200, { status: 'ok' }));
+      return Promise.resolve(jsonResponse(500, { detail: 'Unexpected request' }));
+    }));
+  };
+
   it('logs in with JSON and lets the server own the session cookie', async () => {
     const user = { user_id: 'USER_1', username: 'lin', display_name: '林同学' };
-    const request = vi.fn().mockResolvedValue(jsonResponse(200, { user }));
+    const request = vi.fn((url) => (
+      url === '/health'
+        ? Promise.resolve(jsonResponse(200, { status: 'ok' }))
+        : Promise.resolve(jsonResponse(200, { user }))
+    ));
     const onLogin = vi.fn();
     vi.stubGlobal('fetch', request);
     render(<AuthPage onLogin={onLogin} />);
@@ -38,7 +49,11 @@ describe('AuthPage main-backend cookie contract', () => {
 
   it('registers with the main backend contract without email verification fields', async () => {
     const user = { user_id: 'USER_2', username: 'newlearner', display_name: '新同学' };
-    const request = vi.fn().mockResolvedValue(jsonResponse(201, { user }));
+    const request = vi.fn((url) => (
+      url === '/health'
+        ? Promise.resolve(jsonResponse(200, { status: 'ok' }))
+        : Promise.resolve(jsonResponse(201, { user }))
+    ));
     const onLogin = vi.fn();
     vi.stubGlobal('fetch', request);
     render(<AuthPage onLogin={onLogin} />);
@@ -50,8 +65,7 @@ describe('AuthPage main-backend cookie contract', () => {
     fireEvent.click(screen.getByRole('button', { name: '提交' }));
 
     await waitFor(() => expect(onLogin).toHaveBeenCalledWith(user));
-    const options = request.mock.calls[0][1];
-    expect(request.mock.calls[0][0]).toBe('/api/v1/auth/register');
+    const [, options] = request.mock.calls.find(([url]) => url === '/api/v1/auth/register');
     expect(JSON.parse(options.body)).toEqual({
       username: 'newlearner',
       display_name: '新同学',
@@ -60,6 +74,7 @@ describe('AuthPage main-backend cookie contract', () => {
   });
 
   it('keeps the authentication card out of the showcase until login is selected', () => {
+    stubHealthyBackend();
     render(<AuthPage onLogin={vi.fn()} />);
 
     expect(screen.queryByRole('dialog', { name: '进入学习工作台' })).not.toBeInTheDocument();
@@ -75,5 +90,15 @@ describe('AuthPage main-backend cookie contract', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '返回展示页' }));
     expect(screen.queryByLabelText('账号')).not.toBeInTheDocument();
+  });
+
+  it('explains how to start the local API when the health check fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    render(<AuthPage onLogin={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+
+    expect(await screen.findByText(/认证服务尚未连接/)).toBeInTheDocument();
+    expect(screen.getByText(/npm run dev:full/)).toBeInTheDocument();
   });
 });

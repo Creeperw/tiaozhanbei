@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
@@ -20,6 +20,8 @@ const capabilityCards = [
   { icon: Library, title: '本草知识溯源', description: '连接经典教材与个人资料，保留每一次学习检索的来源线索。' },
   { icon: Target, title: '训练反馈闭环', description: '把练习、错因和复盘建议沉淀到后续任务，持续看见进步。' },
 ];
+
+const authServiceUnavailableMessage = '认证服务尚未连接。请运行 npm run dev:full，或先启动后端服务后重试。';
 
 const AuthVisual = () => (
   <div className="auth-visual relative mx-auto flex aspect-square w-full max-w-[560px] items-center justify-center">
@@ -47,6 +49,7 @@ const AuthPage = ({ onLogin }) => {
   const [showAuth, setShowAuth] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [authServiceStatus, setAuthServiceStatus] = useState('checking');
   const [formData, setFormData] = useState({
     username: '',
     displayName: '',
@@ -56,6 +59,28 @@ const AuthPage = ({ onLogin }) => {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
+
+    fetch('/health', { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error('health check failed');
+        if (active) setAuthServiceStatus('ready');
+      })
+      .catch(() => {
+        if (active) setAuthServiceStatus('unavailable');
+      })
+      .finally(() => window.clearTimeout(timeout));
+
+    return () => {
+      active = false;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, []);
 
   const openAuth = (nextMode) => {
     setMode(nextMode);
@@ -90,11 +115,20 @@ const AuthPage = ({ onLogin }) => {
         body: JSON.stringify(payload),
       });
       const data = await readJsonResponse(res, {});
-      if (!res.ok) throw new Error(data.detail || (mode === 'login' ? '登录失败' : '注册失败'));
+      if (!res.ok) {
+        const detail = typeof data.detail === 'string' ? data.detail.trim() : '';
+        if (res.status >= 500 && !detail) throw new Error(authServiceUnavailableMessage);
+        throw new Error(detail || (mode === 'login' ? '登录失败' : '注册失败'));
+      }
       if (!data.user) throw new Error('登录响应缺少用户信息');
       onLogin(data.user);
     } catch (err) {
-      setError(err.message);
+      const isNetworkError = err instanceof TypeError || err?.name === 'AbortError';
+      setError(
+        isNetworkError
+          ? '认证服务尚未启动。请从项目根目录运行 npm run dev:full，或先启动后端服务后重试。'
+          : err.message || '登录失败，请稍后重试。',
+      );
     } finally {
       setLoading(false);
     }
@@ -170,6 +204,12 @@ const AuthPage = ({ onLogin }) => {
               <button type="button" onClick={closeAuth} className="auth-login-back absolute right-5 top-5 text-sm font-semibold text-emerald-700 transition hover:text-emerald-900">返回展示页</button>
               <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-200"><BrainCircuit size={24} /></div><div><div className="text-sm font-bold text-emerald-700">时珍智训</div><div className="text-xs text-slate-500">进入你的学习工作台</div></div></div>
               <div className="mt-6"><h2 className="text-2xl font-bold tracking-tight text-emerald-950">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-600">{description}</p></div>
+
+              {authServiceStatus === 'unavailable' && (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800" role="status">
+                  {authServiceUnavailableMessage}
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div>
