@@ -7,10 +7,12 @@
 | 贡献者 | 已合并工作 |
 |---|---|
 | Creeperw | 多智能体后端、前后端整合、章节层级、数据持久化、接口与部署文档 |
-| sunjingyan | 登录体验、顺序学习路径、知识空间和学习工坊前端交互 |
+| sunjingyan（GitHub：[@Monologue-8106](https://github.com/Monologue-8106)） | 登录体验、顺序学习路径、知识空间和学习工坊前端交互 |
 | 11075 | 团队交接与 PowerShell 启动端口校准 |
 
 GitHub Contributors 页面依据 `main` 可达提交的作者邮箱统计。提交者应使用已绑定到个人 GitHub 账号的邮箱；修改历史提交作者会破坏审计链路，不应为了统计而重写已经共享的提交。
+
+当前 GitHub 已将 `sunjingyan <2136945143@qq.com>` 正确映射为 `@Monologue-8106`。`11075 <11075@local>` 不是 GitHub 可识别邮箱，因此提交历史已经保留，但在该邮箱绑定到账号前不会出现在 GitHub Contributors 页面。
 
 ## 已保留的协作分支历史
 
