@@ -43,6 +43,12 @@ class KnowledgeExplanationAgent:
             for item in evidence_pack.evidence_items
         ]
         retrieval_summary = str(getattr(evidence_pack, "retrieval_summary", "")).strip()
+        memory_output = context.get("dependency_outputs", {}).get("memory")
+        memory_payload = getattr(memory_output, "payload", None)
+        context_summary = getattr(memory_payload, "context_summary", None)
+        compressed_summary = str(getattr(context_summary, "summary", "") or "").strip()
+        conversation_messages = list(context.get("messages", []))
+        recent_messages = conversation_messages[-1:] if compressed_summary else conversation_messages[-8:]
         try:
             raw_output = await self.chat_model.complete_json(
                     "expert_agent",
@@ -53,6 +59,15 @@ class KnowledgeExplanationAgent:
                         payload={
                             "phase": "knowledge_explanation",
                             "user_request": context.get("user_request", ""),
+                            "recent_conversation": [
+                                {
+                                    "role": str(item.get("role", "")),
+                                    "content": str(item.get("content", "")),
+                                }
+                                for item in recent_messages
+                                if isinstance(item, dict) and str(item.get("content", "")).strip()
+                            ],
+                            "compressed_conversation_summary": compressed_summary,
                             "user_preference": preferences,
                             "topic": evidence_pack.query,
                             "retrieval_summary": retrieval_summary,
@@ -75,7 +90,7 @@ class KnowledgeExplanationAgent:
                             },
                         },
                         permission_note=(
-                            "优先依据教材和网络来源生成教学讲解；覆盖不足时允许使用明确标注的"
+                            "结合最近对话解析当前问题中的指代，优先依据教材和网络来源生成教学讲解；覆盖不足时允许使用明确标注的"
                             "模型自身知识。不得伪造引用，不得生成现实诊断、处方或剂量建议。"
                         ),
                     ),

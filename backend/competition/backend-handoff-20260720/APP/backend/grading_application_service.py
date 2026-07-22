@@ -41,6 +41,7 @@ class GradePracticeCommand:
     hint_used: bool
     profile: dict[str, Any]
     memories: tuple[dict[str, Any], ...]
+    kp_names: tuple[str, ...] = ()
     attempt_type: str = "practice"
 
 
@@ -80,6 +81,7 @@ def _command(
         standard_answer=str(data.get("standard_answer") or ""),
         rubric=str(data.get("rubric") or ""),
         kp_ids=tuple(data.get("kp_ids") or data.get("knowledge_points") or ()),
+        kp_names=tuple(data.get("knowledge_point_names") or ()),
         difficulty=int(data.get("difficulty") or 1),
         duration_sec=data.get("duration_sec"),
         hint_used=bool(data.get("hint_used", False)),
@@ -129,6 +131,7 @@ def _submission(command: GradePracticeCommand) -> dict[str, Any]:
         "standard_answer": command.standard_answer,
         "rubric": command.rubric,
         "knowledge_points": list(command.kp_ids),
+        "knowledge_point_names": list(command.kp_names),
         "difficulty": command.difficulty,
     }
 

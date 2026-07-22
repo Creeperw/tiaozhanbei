@@ -44,6 +44,12 @@ class KnowledgeBaseAgent:
         if not user_request:
             raise ValueError("knowledge base agent requires user_request")
         prompt_skill = prompt_skill_registry.load("knowledge_base_agent", "vector_retrieval")
+        memory_output = context.get("dependency_outputs", {}).get("memory")
+        memory_payload = getattr(memory_output, "payload", None)
+        context_summary = getattr(memory_payload, "context_summary", None)
+        compressed_summary = str(getattr(context_summary, "summary", "") or "").strip()
+        conversation_messages = list(context.get("messages", []))
+        recent_messages = conversation_messages[-1:] if compressed_summary else conversation_messages[-8:]
         try:
             raw_plan = await self.chat_model.complete_json(
                     "knowledge_base_agent",
@@ -54,6 +60,15 @@ class KnowledgeBaseAgent:
                         payload={
                             "phase": "plan_retrieval",
                             "user_request": user_request,
+                            "recent_conversation": [
+                                {
+                                    "role": str(item.get("role", "")),
+                                    "content": str(item.get("content", "")),
+                                }
+                                for item in recent_messages
+                                if isinstance(item, dict) and str(item.get("content", "")).strip()
+                            ],
+                            "compressed_conversation_summary": compressed_summary,
                             "retrieval_context": {
                                 "user_short_term_goal": context.get("user_profile", {}).get("goals", {}).get("short_term_goal", ""),
                                 "current_long_term_plan": context.get("current_long_term_plan", {}).get("content", ""),
@@ -70,7 +85,10 @@ class KnowledgeBaseAgent:
                             },
                             "output_schema": KnowledgeRetrievalPlanModelOutput.model_json_schema(),
                         },
-                        permission_note="生成两类检索语句和检索理由；不得直接伪造检索结果、工具返回、知识点ID或题目ID。",
+                        permission_note=(
+                            "结合最近对话解析‘这些、它、上述内容’等指代，再生成可独立检索的两类检索语句和检索理由；"
+                            "不得直接伪造检索结果、工具返回、知识点ID或题目ID。"
+                        ),
                     ),
                 )
             if not isinstance(raw_plan, dict):

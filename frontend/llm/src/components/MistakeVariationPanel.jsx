@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
-import { loadMistakes, submitTrainingWorkspaceTask } from '../pageDataLoaders';
+import { loadMistakes, submitMistakeAnswerContext, submitTrainingWorkspaceTask } from '../pageDataLoaders';
 
 const requestId = () => `variation-${crypto.randomUUID()}`;
 
@@ -16,6 +16,9 @@ export default function MistakeVariationPanel({ enabled }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [answerState, setAnswerState] = useState('');
+  const [reason, setReason] = useState('');
+  const [contextNotes, setContextNotes] = useState('');
 
   const selectedMistake = useMemo(
     () => mistakes.find((item) => String(item.mistake_id) === selectedMistakeId),
@@ -163,6 +166,9 @@ export default function MistakeVariationPanel({ enabled }) {
                 setQuestions([]);
                 setResult(null);
                 setError('');
+                setAnswerState('');
+                setReason('');
+                setContextNotes('');
               }}
               className={`w-full rounded-xl border p-3 text-left ${selectedItem ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}
             >
@@ -174,7 +180,7 @@ export default function MistakeVariationPanel({ enabled }) {
               <div className="mt-2 grid gap-1 text-xs leading-5 text-slate-600 sm:grid-cols-2">
                 <span>题型：{item.question_type || '未知'}</span>
                 <span>得分：{item.score ?? '未记录'}{item.max_score ? ` / ${item.max_score}` : ''}</span>
-                <span>错因：{item.error_type || item.summary || '待分析'}</span>
+                <span>错因：{item.answer_context_required && !item.answer_context_completed ? '待补充作答情况后分析' : (item.error_type || item.summary || '待分析')}</span>
                 <span>作答：{item.student_answer || '未记录'}</span>
               </div>
             </button>
@@ -183,14 +189,41 @@ export default function MistakeVariationPanel({ enabled }) {
         {mistakes.length === 0 && <p className="rounded-xl bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-600">当前筛选下暂无错题。完成客观题、案例简答、AI 病患模拟或变式作答后，错误结果会自动记录在这里。</p>}
       </div>
 
-      {selectedMistake && !selectedMistake.variation_available && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{selectedMistake.variation_reason}</p>}
+      {selectedMistake?.answer_context_required && !selectedMistake.answer_context_completed && (
+        <section className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4" aria-label="错题作答情况调研">
+          <div><h4 className="text-sm font-semibold text-amber-950">先回忆当时怎么做的</h4><p className="mt-1 text-xs leading-5 text-amber-800">系统先了解你的把握和判断过程，再分析错因并生成变式。</p></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-slate-700">当时的把握
+              <select value={answerState} onChange={(event) => setAnswerState(event.target.value)} className="mt-1.5 w-full rounded-lg border border-amber-200 bg-white p-2 text-sm">
+                <option value="">请选择</option>
+                {['确定后作答', '犹豫后作答', '排除后猜测', '完全猜测', '误读题意'].map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className="text-xs font-medium text-slate-700">你认为更接近的原因
+              <select value={reason} onChange={(event) => setReason(event.target.value)} className="mt-1.5 w-full rounded-lg border border-amber-200 bg-white p-2 text-sm">
+                <option value="">请选择</option>
+                {['概念混淆', '审题遗漏', '记忆不清', '选项辨析困难', '操作失误', '其他'].map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+          </div>
+          <label className="block text-xs font-medium text-slate-700">补充说明（可选）
+            <textarea value={contextNotes} onChange={(event) => setContextNotes(event.target.value)} className="mt-1.5 min-h-20 w-full rounded-lg border border-amber-200 bg-white p-2 text-sm" />
+          </label>
+          <button type="button" disabled={loading || !answerState || !reason} onClick={() => run(async () => {
+            const response = await submitMistakeAnswerContext({ fetcher: fetchJsonWithAuthFallback, mistakeId: Number(selectedMistakeId), answerState, reason, notes: contextNotes });
+            if (response.error) { setError(response.error); return; }
+            setMistakes((items) => items.map((item) => item.mistake_id === response.mistake.mistake_id ? response.mistake : item));
+          })} className="rounded-lg bg-amber-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">保存作答情况</button>
+        </section>
+      )}
+      {selectedMistake && !selectedMistake.variation_available && selectedMistake.answer_context_completed && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{selectedMistake.variation_reason}</p>}
       <button type="button" onClick={generate} disabled={loading || !selectedMistake?.variation_available} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
         {loading && <Loader2 size={16} className="animate-spin" />}生成变式
       </button>
 
       {selected && <div className="space-y-3 border-t border-slate-200 pt-4">
         <p className="text-sm font-semibold leading-6 text-slate-900">{selected.stem}</p>
-        <p className="text-xs leading-5 text-slate-500">知识点：{selected.kp_ids?.join('、') || '暂无'}</p>
+        <p className="text-xs leading-5 text-slate-500">知识点：{selected.kp_names?.join('、') || '已关联，名称待同步'}</p>
         <label className="block text-sm font-medium text-slate-700">你的答案
           <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} disabled={loading} className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />
         </label>

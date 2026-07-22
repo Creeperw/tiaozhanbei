@@ -680,16 +680,17 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
     assert model.payload["permission_note"]
     diagnosis_payload = model.payload["payload"]
     assert set(diagnosis_payload) == {
+        "compressed_conversation_summary",
         "user_request",
         "goals",
         "time_constraints",
         "learning_evidence",
         "default_route",
-            "existing_plans",
-            "plan_actions",
-            "plan_scope",
-            "output_schema",
-        }
+        "existing_plans",
+        "plan_actions",
+        "plan_scope",
+        "output_schema",
+    }
     evidence = diagnosis_payload["learning_evidence"]
     assert evidence["behavior_summary"] == {"current_stage_id": "T1", "target_difficulty": 3}
     assert diagnosis_payload["goals"] == ["掌握方剂组成与配伍"]

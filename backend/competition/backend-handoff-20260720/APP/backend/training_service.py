@@ -39,7 +39,7 @@ def _classify_error(submission: dict[str, Any]) -> str:
         return "证型-方剂匹配错误"
     if any(keyword in text for keyword in ("概念", "阴阳", "五行", "术语")):
         return "概念混淆"
-    return "知识点掌握不牢"
+    return "答案要点不完整"
 
 
 def _score_answer(student_answer: str, standard_answer: str) -> tuple[bool, int]:
@@ -52,6 +52,65 @@ def _score_answer(student_answer: str, standard_answer: str) -> tuple[bool, int]
     shared_chars = set(normalized_student) & set(normalized_standard)
     partial_score = 60 if len(shared_chars) >= max(2, len(set(normalized_standard)) // 2) else 40
     return False, partial_score
+
+
+def _choice_tokens(value: str) -> set[str]:
+    compact = re.sub(r"选项|答案|[\[\]()（）{}'\"]", "", value or "", flags=re.IGNORECASE).upper()
+    parts = [item for item in re.split(r"[\s,，、;；/|]+", compact) if item]
+    if len(parts) == 1 and re.fullmatch(r"[A-H]+", parts[0]):
+        return set(parts[0])
+    return set(parts)
+
+
+def _objective_grading_payload(submission: dict[str, Any]) -> dict[str, Any]:
+    question_type = _text(submission.get("question_type"))
+    student_answer = _text(submission.get("student_answer"))
+    standard_answer = _text(submission.get("standard_answer"))
+    kp_names = [_text(item) for item in submission.get("knowledge_point_names", []) if _text(item)]
+    if not kp_names:
+        kp_names = [
+            _text(item) for item in submission.get("knowledge_points", [])
+            if _text(item) and re.search(r"[\u4e00-\u9fff]", _text(item))
+        ]
+    point_text = "、".join(kp_names)
+    if question_type in {"multiple_choice", "多选题", "多项选择题"}:
+        selected = _choice_tokens(student_answer)
+        correct = _choice_tokens(standard_answer)
+        wrong = selected - correct
+        is_correct = bool(correct) and selected == correct
+        score = 0 if wrong or not correct else (100 if is_correct else round(100 * len(selected & correct) / len(correct)))
+        rule_note = "多选题含错误选项，按规则计 0 分。" if wrong else "多选题按正确选项覆盖情况计分。"
+    else:
+        is_correct, score = _score_answer(student_answer, standard_answer)
+        if question_type in {"single_choice", "true_false", "单选题", "单项选择题", "判断题"} and not is_correct:
+            score = 0
+        rule_note = "客观题由系统依据标准答案自动判分。"
+    topic_note = f"本题考查{point_text}。" if point_text else "本题的知识点名称暂未匹配，系统不会用内部编号代替。"
+    analysis = f"{topic_note}{rule_note}"
+    error_type = "none" if is_correct else "待结合作答情况分析"
+    if not is_correct:
+        analysis += " 错因暂不自动下结论，请到错题变式中补充当时的作答把握和判断过程。"
+    return {
+        "grading": {
+            "question_id": _text(submission.get("question_id"), "manual-question"),
+            "is_correct": is_correct,
+            "score": score,
+            "error_type": error_type,
+            "analysis": analysis,
+            "standard_answer": standard_answer,
+        },
+        "mistake_record": None if is_correct else {
+            "category": "mistake",
+            "error_type": error_type,
+            "content": analysis,
+            "source": "objective_practice_grading",
+        },
+        "agent_trace": [
+            {"agent": "planner_agent", "action": "识别为客观题批改", "status": "success"},
+            {"agent": "audit_agent", "action": "核对服务端标准答案与计分规则", "status": "success"},
+            {"agent": "memory_agent", "action": "等待用户补充作答情境后再归因", "status": "skipped" if is_correct else "pending"},
+        ],
+    }
 
 
 def _build_variant_questions(knowledge_points: list[str], standard_answer: str) -> list[dict[str, Any]]:
@@ -82,10 +141,11 @@ def _grade_submission_payload(
     student_answer = _text(submission.get("student_answer"))
     standard_answer = _text(submission.get("standard_answer"))
     knowledge_points = [_text(item) for item in submission.get("knowledge_points", []) if _text(item)]
+    knowledge_point_names = [_text(item) for item in submission.get("knowledge_point_names", []) if _text(item)]
     is_correct, score = _score_answer(student_answer, standard_answer)
     error_type = "已掌握" if is_correct else _classify_error(submission)
     focus = _first_focus(profile, memories)
-    point_text = "、".join(knowledge_points) or "当前知识点"
+    point_text = "、".join(knowledge_point_names) or "当前知识点"
 
     analysis = (
         f"本题考查{point_text}。你的答案为“{student_answer or '未作答'}”，"
@@ -125,7 +185,7 @@ def _grade_submission_payload(
                 "title": f"复盘卡：{point_text}",
                 "content": f"先回看{point_text}的定义、适用证据和易混点，再用自己的话复述标准答案：{standard_answer or point_text}。",
             },
-            "variant_questions": _build_variant_questions(knowledge_points, standard_answer),
+            "variant_questions": _build_variant_questions(knowledge_point_names, standard_answer),
         },
     }
 
@@ -136,11 +196,17 @@ def grade_practice_submission(
     memories: list[dict[str, Any]],
     submission: dict[str, Any],
 ) -> dict[str, Any]:
+    if _text(submission.get("question_type")) in {
+        "single_choice", "multiple_choice", "fill_blank", "true_false",
+        "单选题", "单项选择题", "多选题", "多项选择题", "填空题", "判断题",
+    }:
+        return _objective_grading_payload(submission)
     from APP.backend.agent_contracts import DiagnosisReport, EvidenceItem, EvidencePack, LearnerContextBrief
     from APP.backend.expert_agent_service import grade_submission
 
     knowledge_points = [_text(item) for item in submission.get("knowledge_points", []) if _text(item)]
-    point_text = "、".join(knowledge_points) or "当前知识点"
+    knowledge_point_names = [_text(item) for item in submission.get("knowledge_point_names", []) if _text(item)]
+    point_text = "、".join(knowledge_point_names) or "当前知识点"
     expert_artifact = grade_submission(
         learner_context=LearnerContextBrief(
             learner_id="practice-learner",

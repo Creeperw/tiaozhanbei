@@ -36,14 +36,52 @@ class TrainingServicePhase4Tests(unittest.TestCase):
 
         self.assertEqual(payload["grading"]["is_correct"], False)
         self.assertLess(payload["grading"]["score"], 100)
-        self.assertEqual(payload["grading"]["error_type"], "证型-方剂匹配错误")
+        self.assertEqual(payload["grading"]["error_type"], "待结合作答情况分析")
+        self.assertIn("错因暂不自动下结论", payload["grading"]["analysis"])
+        self.assertNotIn("知识点掌握不牢", payload["grading"]["analysis"])
         self.assertIn("四君子汤", payload["grading"]["analysis"])
         self.assertEqual(payload["mistake_record"]["category"], "mistake")
-        self.assertEqual(payload["mistake_record"]["source"], "practice_grading")
-        self.assertIn("脾胃气虚证", payload["remediation"]["review_card"]["content"])
-        self.assertGreaterEqual(len(payload["remediation"]["variant_questions"]), 2)
+        self.assertEqual(payload["mistake_record"]["source"], "objective_practice_grading")
+        self.assertNotIn("remediation", payload)
         self.assertEqual(payload["agent_trace"][0]["agent"], "planner_agent")
         self.assertEqual(payload["agent_trace"][-1]["agent"], "memory_agent")
+
+    def test_multiple_choice_with_any_wrong_option_scores_zero(self):
+        service = self._service()
+        payload = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-multiple",
+                "question_type": "multiple_choice",
+                "stem": "请选择正确项",
+                "student_answer": "A,C",
+                "standard_answer": "A,B",
+                "knowledge_points": ["022758"],
+                "knowledge_point_names": ["感冒辨证"],
+            },
+        )
+        self.assertEqual(payload["grading"]["score"], 0)
+        self.assertFalse(payload["grading"]["is_correct"])
+        self.assertIn("感冒辨证", payload["grading"]["analysis"])
+        self.assertNotIn("022758", payload["grading"]["analysis"])
+
+    def test_subjective_answer_uses_expert_agent_facade(self):
+        service = self._service()
+        payload = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-short",
+                "question_type": "short_answer",
+                "stem": "简述风寒感冒治法",
+                "student_answer": "辛温解表",
+                "standard_answer": "辛温解表，宣肺散寒",
+                "knowledge_points": ["022758"],
+                "knowledge_point_names": ["风寒感冒"],
+            },
+        )
+        self.assertTrue(any(item["agent"] == "expert_agent" for item in payload["agent_trace"]))
 
     def test_builds_learning_plan_summary_with_daily_tasks_from_profile_and_mistakes(self):
         service = self._service()

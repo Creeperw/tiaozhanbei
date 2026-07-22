@@ -133,6 +133,52 @@ async def test_planner_routes_resource_request_through_expert_and_audit(tmp_path
 
 
 @pytest.mark.asyncio
+async def test_followup_knowledge_request_reuses_server_conversation_history(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    captured = {}
+    original = container.review_card_use_case.orchestrator.agent_registry.get("knowledge_base_agent")
+
+    class CapturingKnowledgeAgent:
+        async def run(self, context):
+            captured["messages"] = list(context.get("messages", []))
+            return await original.run({**context, "user_request": "四君子汤"})
+
+    container.review_card_use_case.orchestrator.agent_registry._agents["knowledge_base_agent"] = CapturingKnowledgeAgent()
+    await container.review_card_use_case.execute(ReviewCardRequest(
+        learner_id="CONTEXT_USER_1",
+        conversation_id="CONTEXT_CONVERSATION_1",
+        user_request="给我讲解一下感冒的证型有哪几种",
+    ))
+    await container.review_card_use_case.execute(ReviewCardRequest(
+        learner_id="CONTEXT_USER_1",
+        conversation_id="CONTEXT_CONVERSATION_1",
+        user_request="这些证型分别怎么治疗？",
+    ))
+
+    contents = [item["content"] for item in captured["messages"]]
+    assert "给我讲解一下感冒的证型有哪几种" in contents
+    assert "这些证型分别怎么治疗？" in contents
+    assert all(item.get("message_id") for item in captured["messages"])
+
+
+@pytest.mark.asyncio
+async def test_long_conversation_forces_memory_compression_before_knowledge(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    result = await container.review_card_use_case.execute(ReviewCardRequest(
+        learner_id="CONTEXT_USER_2",
+        conversation_id="CONTEXT_CONVERSATION_2",
+        user_request="请解释四君子汤是什么？",
+        messages=[{
+            "role": "user",
+            "content": "感冒证型学习背景：" + "风寒、风热、暑湿。" * 500,
+        }],
+    ))
+    producers = [item.producer for item in result.agent_outputs]
+    assert "memory_agent" in producers
+    assert producers.index("memory_agent") < producers.index("knowledge_base_agent")
+
+
+@pytest.mark.asyncio
 async def test_planner_routes_plan_plus_learning_card_through_resource_chain(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
 

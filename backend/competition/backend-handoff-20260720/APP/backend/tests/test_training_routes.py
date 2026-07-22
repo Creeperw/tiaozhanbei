@@ -31,6 +31,7 @@ class TrainingRoutesOpenApiTests(unittest.TestCase):
         self.assertIn("/v1/workshop/practice/grade", paths)
         self.assertIn("/v1/workshop/practice/mistakes", paths)
         self.assertIn("/v1/workshop/practice/mistakes/{mistake_id}", paths)
+        self.assertIn("/v1/workshop/practice/mistakes/{mistake_id}/answer-context", paths)
         self.assertIn("/training/workspace/modules", paths)
         self.assertIn("/training/workspace/tasks", paths)
         self.assertIn("200", paths["/training/workspace/tasks"]["post"]["responses"])
@@ -1498,6 +1499,7 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(objective.status_code, 200)
         self.assertEqual(objective.json()["question"]["question_id"], "Q_OBJECTIVE")
         self.assertEqual(objective.json()["question"]["options"][0]["option_id"], "A")
+        self.assertEqual(objective.json()["question"]["kp_names"], ["题型筛选"])
         self.assertEqual(case.status_code, 200)
         self.assertEqual(case.json()["question"]["question_id"], "Q_CASE")
         self.assertEqual(case.json()["question"]["question_type"], "case_quiz")
@@ -1614,6 +1616,21 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(body["items"][0]["score"], 0.0)
         self.assertFalse(body["items"][0]["variation_available"])
         self.assertTrue(body["items"][0]["variation_reason"])
+        self.assertTrue(body["items"][0]["answer_context_required"])
+        self.assertFalse(body["items"][0]["answer_context_completed"])
+
+        researched = self.client.post(
+            "/v1/workshop/practice/mistakes/301/answer-context",
+            json={
+                "answer_state": "犹豫后作答",
+                "reason": "选项辨析困难",
+                "notes": "在两个相近功用之间犹豫。",
+            },
+        )
+        self.assertEqual(researched.status_code, 200)
+        researched_mistake = researched.json()["mistake"]
+        self.assertTrue(researched_mistake["answer_context_completed"])
+        self.assertEqual(researched_mistake["error_type"], "选项辨析困难")
 
     def test_expired_controlled_practice_request_is_rejected_without_running_grader(self):
         with self.Session() as db:

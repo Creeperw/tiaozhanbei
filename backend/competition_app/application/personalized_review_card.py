@@ -176,7 +176,22 @@ class PersonalizedReviewCardUseCase:
         existing_messages = self.conversation_repository.get_messages(
             conversation_id, request.learner_id
         )
-        persisted_messages = list(request.messages or existing_messages)
+        # The repository is the durable source of conversation context.  A
+        # client may send only the visible/current turn after a refresh, so it
+        # must never replace a longer server-side history.
+        persisted_messages = list(existing_messages)
+        if request.messages:
+            if not persisted_messages:
+                persisted_messages = list(request.messages)
+            elif (
+                len(request.messages) >= len(persisted_messages)
+                and request.messages[: len(persisted_messages)] == persisted_messages
+            ):
+                persisted_messages = list(request.messages)
+            else:
+                for message in request.messages:
+                    if not persisted_messages or message != persisted_messages[-1]:
+                        persisted_messages.append(message)
         if (
             not persisted_messages
             or persisted_messages[-1].get("content") != request.user_request
@@ -270,7 +285,7 @@ class PersonalizedReviewCardUseCase:
                     clarification_parts.append(f"{label}：{value.strip()}")
             effective_user_request = "\n".join(clarification_parts)
         total_message_chars = sum(
-            len(str(item.get("content", ""))) for item in request.messages
+            len(str(item.get("content", ""))) for item in persisted_messages
         )
         # Explicit scope is user/system authority. Text classifiers only provide
         # a hint; Planner owns the semantic decision and may override that hint.
@@ -278,6 +293,15 @@ class PersonalizedReviewCardUseCase:
         plan_scope_hint = request.plan_scope_hint or infer_plan_scope(
             effective_user_request
         )
+        context_messages = [
+            {
+                **item,
+                "message_id": item.get("message_id") or f"{conversation_id}:message:{index + 1}",
+                "learner_id": item.get("learner_id") or request.learner_id,
+            }
+            for index, item in enumerate(persisted_messages)
+            if isinstance(item, dict)
+        ]
         context = {
             "case_id": case_id,
             "trace_id": f"TRACE_{uuid4().hex}",
@@ -289,7 +313,7 @@ class PersonalizedReviewCardUseCase:
             "learner_id": request.learner_id,
             "user_request": effective_user_request,
             "available_minutes": request.available_minutes,
-            "messages": request.messages,
+            "messages": context_messages,
             "user_profile": effective_user_profile,
             "learning_profile": effective_learning_profile,
             "system_data": effective_system_data,

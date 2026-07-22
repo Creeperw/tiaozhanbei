@@ -366,6 +366,7 @@ class IncompleteReviewCardModel:
     ("selected_agents", "requires_compression", "expected_memory"),
     [
         (["memory_agent"], True, True),
+        (["knowledge_base_agent"], True, True),
         (["knowledge_base_agent"], False, False),
     ],
 )

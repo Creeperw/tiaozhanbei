@@ -9,6 +9,8 @@ export const emptyPlan = {
   daily_tasks: [],
   constraints: {},
   agent_trace: [],
+  long_term_plan_content: '',
+  short_term_plan_content: '',
 };
 
 export const emptyReport = {
@@ -354,15 +356,29 @@ export const isPaperSubmissionPayloadValid = (data) => (
 
 export async function loadPlanningData({ fetcher }) {
   try {
-    const { data, source } = await fetcher({
-      paths: planningPaths,
-      fallback: emptyPlan,
-      validator: isPlanPayloadValid,
-    });
+    const [summaryResult, contextResult] = await Promise.allSettled([
+      fetcher({ paths: planningPaths, fallback: emptyPlan, validator: isPlanPayloadValid }),
+      fetcher({
+        paths: ['/v1/learning-context'],
+        fallback: {},
+        validator: (data) => data && typeof data === 'object',
+      }),
+    ]);
+    if (summaryResult.status !== 'fulfilled' && contextResult.status !== 'fulfilled') {
+      throw summaryResult.reason || contextResult.reason || new Error('学习规划加载失败');
+    }
+    const summary = summaryResult.status === 'fulfilled' ? summaryResult.value : { data: emptyPlan, source: null };
+    const learningContext = contextResult.status === 'fulfilled' ? contextResult.value.data : {};
+    const data = {
+      ...emptyPlan,
+      ...summary.data,
+      long_term_plan_content: String(learningContext.long_term_plan?.content || ''),
+      short_term_plan_content: String(learningContext.short_term_plan?.content || ''),
+    };
     return {
-      plan: { ...emptyPlan, ...data },
+      plan: data,
       error: '',
-      source,
+      source: summary.source || contextResult.value?.source || null,
     };
   } catch (error) {
     return {
@@ -664,6 +680,7 @@ export async function submitPracticeAnswer({ fetcher, question, answer }) {
           stem: question.stem,
           student_answer: answer.trim(),
           knowledge_points: question.kp_ids,
+          knowledge_point_names: question.kp_names || [],
           difficulty: question.difficulty,
           request_id: question.request_id,
         }),
@@ -687,6 +704,26 @@ export async function loadMistakes({ fetcher, status = 'all', offset = 0, limit 
     return { mistakes: { ...emptyMistakePage, ...data }, error: '', source };
   } catch (error) {
     return { mistakes: { ...emptyMistakePage }, error: error.message || '错题列表加载失败', source: null };
+  }
+}
+
+export async function submitMistakeAnswerContext({ fetcher, mistakeId, answerState, reason, notes = '' }) {
+  if (!Number.isInteger(mistakeId) || mistakeId <= 0 || !hasNonEmptyText(answerState) || !hasNonEmptyText(reason)) {
+    return { mistake: null, error: '请完整填写当时的作答情况', source: null };
+  }
+  try {
+    const { data, source } = await fetcher({
+      paths: [`/v1/workshop/practice/mistakes/${mistakeId}/answer-context`],
+      fallback: null,
+      options: {
+        method: 'POST',
+        body: JSON.stringify({ answer_state: answerState, reason, notes: notes.trim() }),
+      },
+      validator: (value) => value && typeof value === 'object' && value.mistake?.mistake_id === mistakeId,
+    });
+    return { mistake: data.mistake, error: '', source };
+  } catch (error) {
+    return { mistake: null, error: error.message || '作答情况保存失败', source: null };
   }
 }
 

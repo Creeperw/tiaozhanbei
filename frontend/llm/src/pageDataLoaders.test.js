@@ -224,6 +224,32 @@ test('loadPlanningData returns empty plan and error when all sources fail', asyn
   assert.equal(result.source, null);
 });
 
+test('loadPlanningData merges persisted long and short plan narratives', async () => {
+  const result = await loadPlanningData({
+    fetcher: async ({ paths }) => {
+      if (paths[0] === '/v1/learning-context') {
+        return {
+          data: {
+            long_term_plan: { content: '【最终目标】掌握中医辨证。' },
+            short_term_plan: { content: '【阶段安排】本周学习感冒辨证。' },
+          },
+          source: paths[0],
+        };
+      }
+      return {
+        data: {
+          plan_summary: { goal: '中医辨证' },
+          weekly_plan: { focus: '感冒辨证', evidence: [] },
+          daily_tasks: [],
+        },
+        source: paths[0],
+      };
+    },
+  });
+  assert.equal(result.plan.long_term_plan_content, '【最终目标】掌握中医辨证。');
+  assert.equal(result.plan.short_term_plan_content, '【阶段安排】本周学习感冒辨证。');
+});
+
 test('loadReportsData returns empty report and error when all sources fail', async () => {
   const result = await loadReportsData({
     fetcher: async () => {

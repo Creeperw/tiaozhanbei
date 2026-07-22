@@ -81,12 +81,12 @@ describe('KnowledgeAtlas', () => {
     vi.unstubAllGlobals();
   });
 
-  it('keeps all three routes and shows only layouts valid for the current layer', async () => {
+  it('shows the textbook directory without exposing alternate learning routes', async () => {
     render(<KnowledgeAtlas initialContext={{}} />);
     expect(await screen.findByRole('heading', { name: '知识星球' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: '学习路线' })).toHaveDisplayValue('十四五教材');
-    expect(screen.getByRole('option', { name: '中医助理医师' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '西医考研' })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '学习路线' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('教材目录').length).toBeGreaterThan(0);
+    expect(api.loadAtlasRoutes).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: '球面布局' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '顺序列表' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '相关聚类' })).not.toBeInTheDocument();
@@ -99,12 +99,12 @@ describe('KnowledgeAtlas', () => {
     expect(canvas).toHaveAttribute('data-zoom', '1.00');
   });
 
-  it('groups route context in one labelled topbar and keeps view controls in a dedicated toolbar', async () => {
+  it('groups directory context in one labelled topbar and keeps view controls in a dedicated toolbar', async () => {
     render(<KnowledgeAtlas initialContext={{ route: 'textbook_14_5', lv1: '药理学' }} />);
 
     const topbar = await screen.findByRole('banner', { name: '知识星球顶栏' });
     expect(within(topbar).getByRole('heading', { name: '知识星球' })).toBeInTheDocument();
-    expect(within(topbar).getByRole('combobox', { name: '学习路线' })).toBeInTheDocument();
+    expect(within(topbar).queryByRole('combobox', { name: '学习路线' })).not.toBeInTheDocument();
     expect(within(topbar).getByText('药理学')).toBeInTheDocument();
     expect(screen.getByRole('toolbar', { name: '知识星球视图工具' })).toBeInTheDocument();
   });

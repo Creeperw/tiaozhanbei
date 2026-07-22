@@ -92,6 +92,7 @@ class PracticeGradeRequest(BaseModel):
     standard_answer: str = ""
     rubric: str = ""
     knowledge_points: list[str] = Field(default_factory=list)
+    knowledge_point_names: list[str] = Field(default_factory=list)
     difficulty: int = 2
     request_id: str | None = Field(default=None, max_length=120)
 
@@ -300,6 +301,12 @@ def _question_kp_ids(question: QuestionBankItem) -> list[str]:
     ))
 
 
+def _knowledge_point_names(db: Session, kp_ids: list[str]) -> list[str]:
+    rows = db.query(KnowledgePoint).filter(KnowledgePoint.kp_id.in_(kp_ids)).all() if kp_ids else []
+    names = {row.kp_id: row.name for row in rows if str(row.name or "").strip()}
+    return [names[kp_id] for kp_id in kp_ids if kp_id in names]
+
+
 def _normalized_question_type(value: str | None) -> str:
     text = str(value or "").strip()
     return QUESTION_TYPE_ALIASES.get(text, text)
@@ -379,6 +386,7 @@ def next_practice_question(
                     "stem": question.stem,
                     "options": _decode_options(question.options_json),
                     "kp_ids": question_kp_ids,
+                    "kp_names": _knowledge_point_names(db, question_kp_ids),
                     "difficulty": 2,
                     "request_id": request_id,
                     "source_scope": "user",
@@ -447,6 +455,7 @@ def next_practice_question(
             "stem": question.stem,
             "options": _public_question_options(db, question.question_id),
             "kp_ids": question_kp_ids,
+            "kp_names": _knowledge_point_names(db, question_kp_ids),
             "difficulty": int(question.difficulty or 2),
             "request_id": request_id,
             "source_scope": "public",
@@ -531,6 +540,12 @@ def grade_practice(
         commit=controlled_request_id is None,
     )
     grading_submission = controlled_submission or submission
+    grading_submission = {
+        **grading_submission,
+        "knowledge_point_names": _knowledge_point_names(
+            db, list(grading_submission.get("knowledge_points") or ())
+        ) or list(submission.get("knowledge_point_names") or ()),
+    }
     if private_controlled:
         runner_payload = practice_grading_runner(
             profile=_profile_payload(profile),
@@ -543,6 +558,7 @@ def grade_practice(
                 "standard_answer": grading_submission["standard_answer"],
                 "rubric": grading_submission["rubric"],
                 "knowledge_points": grading_submission["knowledge_points"],
+                "knowledge_point_names": grading_submission["knowledge_point_names"],
                 "difficulty": grading_submission["difficulty"],
             },
         )

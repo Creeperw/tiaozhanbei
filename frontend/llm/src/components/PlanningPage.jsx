@@ -44,6 +44,21 @@ export default function PlanningPage() {
         </p>
       </section>
 
+      <section className="grid gap-6 xl:grid-cols-2" aria-label="规划文字说明">
+        <article className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">
+          <div className="mb-4 text-sm font-semibold text-slate-950">长期规划说明</div>
+          <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+            {plan.long_term_plan_content || (loading ? '正在读取长期规划…' : '尚未制定长期规划。')}
+          </div>
+        </article>
+        <article className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">
+          <div className="mb-4 text-sm font-semibold text-slate-950">短期规划说明</div>
+          <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+            {plan.short_term_plan_content || (loading ? '正在读取短期规划…' : '尚未制定短期规划。')}
+          </div>
+        </article>
+      </section>
+
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">
           <div className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-500">

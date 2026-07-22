@@ -33,6 +33,11 @@ from APP.backend.mistake_variation_service import (
     available_variation_source_ids,
     list_available_variation_sources,
 )
+from APP.backend.mistake_context_service import (
+    latest_mistake_context,
+    mistake_context_required,
+    record_mistake_context,
+)
 from APP.backend.paper_submission_service import PaperSubmissionInvalid, PaperSubmissionNotFound, get_owned_paper, save_paper_answers, submit_paper
 from APP.backend.system_data_service import system_data_payload
 from APP.backend.training_workspace_service import (
@@ -132,6 +137,12 @@ class PaperAnswersRequest(BaseModel):
 
 class PaperSubmitRequest(BaseModel):
     request_id: str = Field(min_length=1, max_length=120)
+
+
+class MistakeAnswerContextRequest(BaseModel):
+    answer_state: str = Field(min_length=1, max_length=40)
+    reason: str = Field(min_length=1, max_length=80)
+    notes: str = Field(default="", max_length=1000)
 
 
 TRAINING_TASK_REQUEST_OPENAPI_SCHEMA = (
@@ -287,7 +298,12 @@ def _mistake_payload(
 ) -> dict[str, Any]:
     question = _mistake_question(db, mistake, user_id)
     attempt = _mistake_attempt(db, mistake, user_id)
-    variation_available = mistake.id in variation_ids
+    context_required = mistake_context_required(question["question_type"])
+    answer_context = latest_mistake_context(db, user_id, mistake.id)
+    variation_available = (
+        mistake.id in variation_ids
+        and (not context_required or answer_context is not None)
+    )
     return {
         "mistake_id": mistake.id,
         "status": mistake.status,
@@ -300,12 +316,16 @@ def _mistake_payload(
         "kp_ids": _json_list(mistake.kp_ids_json),
         "error_type": mistake.error_type,
         "summary": mistake.summary,
+        "answer_context_required": context_required,
+        "answer_context_completed": not context_required or answer_context is not None,
+        "answer_context": answer_context,
         **attempt,
         "variation_available": variation_available,
         "variation_reason": (
             ""
             if variation_available
             else "错题已归档" if mistake.status != "active"
+            else "请先补充当时的作答把握和判断过程" if context_required and answer_context is None
             else "该错题尚缺已审核题目版本或知识点证据"
         ),
         "created_at": mistake.created_at.isoformat() if mistake.created_at else None,
@@ -364,6 +384,44 @@ def get_mistake(
     return {
         "schema_version": "1.0",
         "mistake": _mistake_payload(db, mistake, current_user.id, variation_ids),
+    }
+
+
+@router.post("/mistakes/{mistake_id}/answer-context")
+@stable_practice_router.post("/mistakes/{mistake_id}/answer-context")
+def submit_mistake_answer_context(
+    mistake_id: int,
+    req: MistakeAnswerContextRequest,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    mistake = db.query(MistakeRecord).filter_by(
+        id=mistake_id,
+        user_id=current_user.id,
+        status="active",
+    ).one_or_none()
+    if mistake is None:
+        raise HTTPException(status_code=404, detail="Mistake was not found")
+    question = _mistake_question(db, mistake, current_user.id)
+    if not mistake_context_required(question["question_type"]):
+        raise HTTPException(status_code=409, detail="主观题由专家批改结果直接归因，无需补充作答情况")
+    answer_states = {"确定后作答", "犹豫后作答", "排除后猜测", "完全猜测", "误读题意"}
+    reasons = {"概念混淆", "审题遗漏", "记忆不清", "选项辨析困难", "操作失误", "其他"}
+    if req.answer_state not in answer_states or req.reason not in reasons:
+        raise HTTPException(status_code=422, detail="作答情况或错因选项无效")
+    context = record_mistake_context(
+        db,
+        user_id=current_user.id,
+        mistake=mistake,
+        answer_state=req.answer_state,
+        reason=req.reason,
+        notes=req.notes,
+    )
+    variation_ids = available_variation_source_ids(db, current_user.id, [mistake.id])
+    return {
+        "schema_version": "1.0",
+        "mistake": _mistake_payload(db, mistake, current_user.id, variation_ids),
+        "answer_context": context,
     }
 
 
@@ -451,6 +509,21 @@ async def create_workspace_task(
     try:
         req = await _read_training_task_request(request)
         payload = req.model_dump() if hasattr(req, "model_dump") else req.dict()
+        if payload.get("task_type") == "mistake_variation":
+            inputs = payload.get("inputs") or {}
+            if inputs.get("action", "generate") == "generate":
+                mistake_id = inputs.get("mistake_id")
+                mistake = db.query(MistakeRecord).filter_by(
+                    id=mistake_id,
+                    user_id=current_user.id,
+                    status="active",
+                ).one_or_none()
+                if mistake is not None:
+                    question = _mistake_question(db, mistake, current_user.id)
+                    if mistake_context_required(question["question_type"]) and latest_mistake_context(
+                        db, current_user.id, mistake.id
+                    ) is None:
+                        raise HTTPException(status_code=409, detail="请先补充本题当时的作答情况，再生成错题变式")
         try:
             result = create_training_task(db, current_user.id, payload)
             snapshot = db.query(SystemData).filter_by(user_id=current_user.id).one_or_none()

@@ -22,14 +22,12 @@ import {
 import {
   loadAtlasDetail,
   loadAtlasNodes,
-  loadAtlasRoutes,
   loadAtlasStatus,
   resolveAtlasContext,
   warmAtlas,
 } from './knowledgeAtlasApi';
 import {
   arrangeAtlasNodes,
-  ATLAS_ROUTES,
   filterAtlasNodes,
   getAtlasResourceKind,
   normalizeAtlasNode,
@@ -44,14 +42,6 @@ const arrangements = [
   { id: 'sequence', label: '顺序列表', short: '顺序', Icon: ListOrdered },
   { id: 'semantic', label: '相关聚类', short: '聚类', Icon: Grid2X2 },
 ];
-
-function mergeRoutes(routes) {
-  const apiRoutes = Array.isArray(routes) ? routes : [];
-  return ATLAS_ROUTES.map((fallback) => ({
-    ...fallback,
-    ...(apiRoutes.find((route) => route.id === fallback.id) || {}),
-  }));
-}
 
 function initialPath(context) {
   return { lv1: context?.lv1 || '', lv2: context?.lv2 || '' };
@@ -97,7 +87,6 @@ export class KnowledgeAtlasErrorBoundary extends React.Component {
 
 export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDisabled, workspaceNavigation = null }) {
   const [status, setStatus] = useState(null);
-  const [routes, setRoutes] = useState(ATLAS_ROUTES);
   const [route, setRoute] = useState(initialContext.route || 'textbook_14_5');
   const [level, setLevel] = useState(() => initialLevel(initialContext));
   const [path, setPath] = useState(() => initialPath(initialContext));
@@ -144,9 +133,8 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
     const controller = new AbortController();
     let warmTimer = null;
     const bootstrap = async () => {
-      const [statusResult, routesResult] = await Promise.allSettled([
+      const [statusResult] = await Promise.allSettled([
         loadAtlasStatus({ signal: controller.signal }),
-        loadAtlasRoutes({ signal: controller.signal }),
       ]);
       if (controller.signal.aborted) return;
       if (statusResult.status === 'fulfilled') {
@@ -160,9 +148,6 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
       } else if (statusResult.reason?.name !== 'AbortError') {
         setNotice('状态接口暂时不可用，正在尝试直接读取知识路线。');
       }
-      if (routesResult.status === 'fulfilled') setRoutes(mergeRoutes(routesResult.value));
-      else if (routesResult.reason?.name !== 'AbortError') setNotice('路线清单暂时不可用，已保留三条标准路线入口。');
-
       if (initialContext.trackId || initialContext.membershipId) {
         try {
           const resolved = await resolveAtlasContext({
@@ -369,7 +354,6 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
     }
   }, [beginLayerNavigation, level, path.lv1]);
 
-  const routeInfo = routes.find((item) => item.id === route) || ATLAS_ROUTES[0];
   const unit = level === 1 ? '教材' : level === 2 ? '章节' : '知识点';
 
   return (
@@ -379,38 +363,16 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
           <span><Orbit aria-hidden="true" size={19} /></span>
           <div><small>Knowledge atlas</small><h1 id="knowledge-atlas-title">知识星球</h1></div>
         </div>
-        <div className="knowledge-atlas__route-field">
-          <label htmlFor="atlas-route">学习路线</label>
-          <select
-            id="atlas-route"
-            aria-label="学习路线"
-            value={route}
-            onChange={(event) => {
-              startSpaceNavigation(level > 1 ? 'back' : 'dive');
-              setLoading(true);
-              setNodes([]);
-              setRoute(event.target.value);
-              setPath({ lv1: '', lv2: '' });
-              setLevel(1);
-              arrangementRef.current = 'sphere';
-              setArrangement('sphere');
-              setViewPreset({ zoom: 1 });
-              closeDetail();
-            }}
-          >
-            {routes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </div>
         <div className="knowledge-atlas__context">
-          <strong>{path.lv2 || path.lv1 || routeInfo.name}</strong>
-          <span>{path.lv2 ? `${path.lv1} · ${unit}` : path.lv1 ? `${routeInfo.name} · ${unit}` : (routeInfo.description || '从学习路线进入教材、章节与知识点资源闭环')}</span>
+          <strong>{path.lv2 || path.lv1 || '教材知识目录'}</strong>
+          <span>{path.lv2 ? `${path.lv1} · ${unit}` : path.lv1 ? `教材目录 · ${unit}` : '按教材、章节、知识点顺序浏览配套资源'}</span>
         </div>
         {workspaceNavigation || (onOpenLegacy && <button type="button" className="knowledge-atlas__legacy" onClick={onOpenLegacy}>旧版钻取</button>)}
       </header>
 
       <div className="knowledge-atlas__toolbar" role="toolbar" aria-label="知识星球视图工具">
         <nav className="knowledge-atlas__breadcrumbs" aria-label="知识星球面包屑">
-          <button type="button" onClick={() => { if (level > 1) beginLayerNavigation(1, { lv1: '', lv2: '' }, 'back'); }}>{routeInfo.name}</button>
+          <button type="button" onClick={() => { if (level > 1) beginLayerNavigation(1, { lv1: '', lv2: '' }, 'back'); }}>教材目录</button>
           {path.lv1 && <><ChevronRight aria-hidden="true" size={13} /><button type="button" onClick={() => { if (level > 2) beginLayerNavigation(2, { lv1: path.lv1, lv2: '' }, 'back'); }}>{path.lv1}</button></>}
           {path.lv2 && <><ChevronRight aria-hidden="true" size={13} /><span aria-current="page">{path.lv2}</span></>}
         </nav>
@@ -449,7 +411,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
           aria-busy={loading || Boolean(spaceTransitionMode)}
         >
           <div className="knowledge-atlas__stage-meta">
-            <div><small>LEVEL {String(level).padStart(2, '0')}</small><h2>{level === 1 ? routeInfo.name : level === 2 ? path.lv1 : path.lv2}</h2><p>{level === 1 ? '选择教材，进入章节知识空间' : level === 2 ? '继续下钻，定位到可学习知识点' : '打开节点，查看视频、切片、图片、公式和题目'}</p></div>
+            <div><small>LEVEL {String(level).padStart(2, '0')}</small><h2>{level === 1 ? '教材目录' : level === 2 ? path.lv1 : path.lv2}</h2><p>{level === 1 ? '选择教材，进入章节知识空间' : level === 2 ? '继续下钻，定位到可学习知识点' : '打开节点，查看视频、切片、图片、公式和题目'}</p></div>
             <span><b>{filteredNodes.length.toLocaleString('zh-CN')}</b>{unit}</span>
           </div>
 

@@ -160,6 +160,19 @@ class PlannerAgent:
                     "planner_agent", valid=False, detail="PlannerModelOutput"
                 )
             raise ValueError("planner output validation failed") from exc
+        if (
+            context.get("conversation_requires_compression", False)
+            and "memory_agent" not in model_output.selected_agents
+        ):
+            model_output = model_output.model_copy(
+                update={
+                    "selected_agents": ["memory_agent", *model_output.selected_agents],
+                    "routing_reason": (
+                        model_output.routing_reason
+                        + " 会话已超过上下文阈值，系统强制先由记忆管理智能体压缩。"
+                    )[:500],
+                }
+            )
         model_output = self.complete_required_selection(model_output)
         try:
             self.validate_selection(model_output)
@@ -525,7 +538,11 @@ class PlannerAgent:
                     ExecutionStep(
                         step_id="expert",
                         agent="knowledge_explanation_agent",
-                        depends_on=["knowledge"],
+                        depends_on=(
+                            ["memory", "knowledge"]
+                            if "memory_agent" in selected
+                            else ["knowledge"]
+                        ),
                     ),
                     ExecutionStep(
                         step_id="audit",
@@ -568,12 +585,19 @@ class PlannerAgent:
                 ExecutionStep(
                     step_id=step_id_by_agent[agent],
                     agent=agent,
-                    depends_on=[
+                    depends_on=(
+                        (
+                            ["memory"]
+                            if "memory_agent" in selected and agent != "memory_agent"
+                            else []
+                        )
+                        + [
                         step_id_by_agent[dependency]
                         for dependency in AGENT_DEPENDENCIES[agent]
                         + OPTIONAL_AGENT_DEPENDENCIES.get(agent, [])
                         if dependency in selected
-                    ],
+                        ]
+                    ),
                 )
                 for agent in ordered_agents
             ]
@@ -598,7 +622,13 @@ class PlannerAgent:
             ExecutionStep(
                 step_id=step_id_by_agent[agent],
                 agent=agent,
-                depends_on=[
+                depends_on=(
+                    (
+                        ["memory"]
+                        if "memory_agent" in selected and agent != "memory_agent"
+                        else []
+                    )
+                    + [
                     step_id_by_agent[dependency]
                     for dependency in [
                         *dependencies[agent],
@@ -609,7 +639,8 @@ class PlannerAgent:
                         ),
                     ]
                     if dependency in selected
-                ],
+                    ]
+                ),
             )
             for agent in ordered_agents
         ]

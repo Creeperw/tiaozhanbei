@@ -228,9 +228,15 @@ class DiagnosisAgent:
             })
 
         model_textbook_context = self._model_textbook_context(route_context)
+        memory_output = context.get("dependency_outputs", {}).get("memory")
+        memory_payload = getattr(memory_output, "payload", None)
+        memory_context_summary = getattr(memory_payload, "context_summary", None)
         planning_payload = {
             "plan_scope": plan_scope,
             "user_request": str(context.get("user_request", "")),
+            "compressed_conversation_summary": str(
+                getattr(memory_context_summary, "summary", "") or ""
+            ),
             "goals": learning_goals,
             "time_constraints": {
                 "available_minutes_today": context.get("available_minutes"),

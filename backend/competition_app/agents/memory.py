@@ -52,31 +52,34 @@ class MemoryAgent:
             raise ValueError("memory agent must only run after the compression threshold is exceeded")
         prompt_skill = prompt_skill_registry.load("memory_agent", "conversation_compression")
         try:
+            raw_output = await self.chat_model.complete_json(
+                "memory_agent",
+                build_model_context(
+                    context,
+                    target_agent="memory_agent",
+                    prompt_skill=prompt_skill,
+                    payload={
+                        "user_profile": {
+                            "user_preference": context.get("profile", {}).get(
+                                "confirmed_preferences", {}
+                            )
+                        },
+                        "messages": [
+                            {"role": item["role"], "content": item.get("content", "")}
+                            for item in messages
+                        ],
+                        "temporary_constraints": context.get("temporary_constraints", []),
+                        "expected_uncertainty": [],
+                        "output_schema": MemoryModelOutput.model_json_schema(),
+                    },
+                    permission_note="只处理当前会话、已确认偏好和临时约束；不得生成掌握度、计划或知识库事实。",
+                ),
+            )
+            if isinstance(raw_output, dict) and isinstance(raw_output.get("summary"), str):
+                raw_output = {**raw_output, "summary": raw_output["summary"][:2_000]}
             model_output = validate_training_style_output(
                 MemoryModelOutput,
-                await self.chat_model.complete_json(
-                    "memory_agent",
-                    build_model_context(
-                        context,
-                        target_agent="memory_agent",
-                        prompt_skill=prompt_skill,
-                        payload={
-                            "user_profile": {
-                                "user_preference": context.get("profile", {}).get(
-                                    "confirmed_preferences", {}
-                                )
-                            },
-                            "messages": [
-                                {"role": item["role"], "content": item.get("content", "")}
-                                for item in messages
-                            ],
-                            "temporary_constraints": context.get("temporary_constraints", []),
-                            "expected_uncertainty": [],
-                            "output_schema": MemoryModelOutput.model_json_schema(),
-                        },
-                        permission_note="只处理当前会话、已确认偏好和临时约束；不得生成掌握度、计划或知识库事实。",
-                    ),
-                ),
+                raw_output,
                 [],
             )
         except ValueError as exc:
