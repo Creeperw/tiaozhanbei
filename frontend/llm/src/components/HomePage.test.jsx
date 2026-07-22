@@ -60,6 +60,28 @@ describe('HomePage', () => {
     expect(screen.getByRole('button', { name: /智能问答/ })).toBeEnabled();
   });
 
+  it('records a daily check-in and shows the persisted streak', async () => {
+    const fetchMock = vi.fn((url, options = {}) => {
+      if (String(url).endsWith('/checkin') && options.method === 'POST') {
+        return Promise.resolve(response({
+          message: '今日签到成功',
+          status: { checked_in_today: true, streak: 4, total_checkins: 8, calendar_days: [] },
+        }));
+      }
+      return Promise.resolve(response({
+        checkin_status: { checked_in_today: false, streak: 3, total_checkins: 7, calendar_days: [] },
+      }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<HomePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '今日签到' }));
+    expect(await screen.findByRole('button', { name: '今日已签到，连续4天' })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('今日签到成功');
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/checkin$/), expect.objectContaining({ method: 'POST' }));
+  });
+
   it('keeps portal navigation available when the dashboard summary request fails', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(response({ detail: '首页数据暂不可用' }, false, 503))));
     const onNavigate = vi.fn();

@@ -6,7 +6,7 @@ from competition_app.runtime.data_permissions import AgentDataPermissionGateway
 def test_profile_write_requires_allowlisted_and_confirmed_field() -> None:
     gateway = AgentDataPermissionGateway()
     gateway.authorize(
-        agent="diagnosis_agent",
+        agent="memory_agent",
         domain="learner_profile",
         action="write",
         fields={"learning_background"},
@@ -15,7 +15,7 @@ def test_profile_write_requires_allowlisted_and_confirmed_field() -> None:
 
     with pytest.raises(PermissionError):
         gateway.authorize(
-            agent="diagnosis_agent",
+            agent="memory_agent",
             domain="learner_profile",
             action="write",
             fields={"medical_history"},

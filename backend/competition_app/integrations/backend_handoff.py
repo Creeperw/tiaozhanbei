@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import re
 import sys
 import threading
 from collections import Counter
@@ -21,6 +22,23 @@ from competition_app.config import Settings
 
 
 _IMPORT_LOCK = threading.RLock()
+
+
+def _normalize_profile_memory_value(field: str, value: Any) -> Any:
+    """Normalize legacy profile prose before it becomes shared agent context."""
+
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if field != "learning_goal" or not text:
+        return text
+    if "中医" in text and "执业医师" in text:
+        return "中医执业医师资格考试"
+    if any(token in text for token in ("请结合", "给我制定", "重新制定", "规划")):
+        match = re.search(r"(?:我要|我想|目标是|准备)(?:考取|报考|参加)?([^，。；\n]+)", text)
+        if match:
+            return match.group(1).strip("：:，。； ")
+    return text
 
 
 @contextmanager
@@ -77,6 +95,48 @@ class BackendHandoffRuntime:
             await self._lifespan.__aexit__(None, None, None)
         self._lifespan = None
         self._started = False
+
+    def record_login_activity(self, external_user_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            snapshot = system_data.record_login_activity(db, user_id=user.id)
+            db.commit()
+            return system_data.system_data_payload(snapshot)
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def get_checkin_status(self, external_user_id: str, *, days: int = 7) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        checkin = importlib.import_module("APP.backend.checkin_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return checkin.build_checkin_status(db, user.id, days=days)
+        finally:
+            db.close()
+
+    def record_daily_checkin(self, external_user_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        checkin = importlib.import_module("APP.backend.checkin_service")
+        system_data = importlib.import_module("APP.backend.system_data_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = checkin.record_daily_checkin(db, user.id)
+            snapshot = system_data.rebuild_system_data(db, user_id=user.id)
+            db.commit()
+            return {**result, "system_data": system_data.system_data_payload(snapshot)}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     def load_learning_context(self, external_user_id: str) -> dict[str, Any]:
         """Build a server-owned behavior context for the host application's user."""
@@ -137,6 +197,35 @@ class BackendHandoffRuntime:
                 survey = {}
             confirmed_profile = survey.get("agent_confirmed_profile") if isinstance(survey, dict) else {}
             if isinstance(confirmed_profile, dict):
+                normalized_confirmed = {
+                    str(key): _normalize_profile_memory_value(str(key), value)
+                    for key, value in confirmed_profile.items()
+                    if str(key).strip() and value not in (None, "")
+                }
+                repaired = {
+                    key: value for key, value in normalized_confirmed.items()
+                    if value != confirmed_profile.get(key)
+                }
+                if repaired:
+                    profile_service = importlib.import_module("APP.backend.learner_profile_service")
+                    profile_service.apply_learner_profile_update(
+                        stored_profile,
+                        {key: value for key, value in repaired.items() if key in {
+                            "display_name", "learner_group", "learning_goal", "time_constraints",
+                        }},
+                        source="memory_agent",
+                    )
+                    survey["agent_confirmed_profile"] = normalized_confirmed
+                    stored_profile.survey_json = json.dumps(survey, ensure_ascii=False)
+                    db.add(database.AgentEvent(
+                        user_id=user.id,
+                        agent_name="memory_agent",
+                        event_type="profile_memory_normalized",
+                        input_summary="清理历史画像中的任务指令式文本",
+                        output_summary="已归一化：" + "、".join(sorted(repaired)),
+                        payload=json.dumps({"fields": sorted(repaired)}, ensure_ascii=False),
+                    ))
+                confirmed_profile = normalized_confirmed
                 user_profile.update(
                     {
                         str(key): value
@@ -145,7 +234,9 @@ class BackendHandoffRuntime:
                     }
                 )
             if learning_target:
-                goal_name = str(learning_target.get("exam_name") or "").strip()
+                goal_name = _normalize_profile_memory_value(
+                    "learning_goal", str(learning_target.get("exam_name") or "").strip()
+                )
                 target_type = str(learning_target.get("target_type") or "").strip()
                 goal_type = (
                     "credential"
@@ -206,6 +297,107 @@ class BackendHandoffRuntime:
         except Exception:
             db.rollback()
             raise
+        finally:
+            db.close()
+
+    def load_review_dashboard(self, external_user_id: str, *, history_limit: int = 100) -> dict[str, Any]:
+        """Return user-owned mastery, review state and history for presentation."""
+
+        database = importlib.import_module("APP.backend.database")
+        auth = importlib.import_module("APP.backend.auth")
+        db = database.SessionLocal()
+        try:
+            user = auth._get_or_create_host_user(  # noqa: SLF001 - integration boundary
+                db, SimpleNamespace(user_id=external_user_id)
+            )
+            mastery_rows = (
+                db.query(database.KnowledgeMasteryState)
+                .filter(database.KnowledgeMasteryState.learner_id == user.id)
+                .order_by(database.KnowledgeMasteryState.updated_at.desc())
+                .all()
+            )
+            review_rows = (
+                db.query(database.LearnerKPReviewState)
+                .filter(database.LearnerKPReviewState.learner_id == user.id)
+                .all()
+            )
+            history_rows = (
+                db.query(database.MasteryHistoryRecord)
+                .filter(database.MasteryHistoryRecord.learner_id == user.id)
+                .order_by(database.MasteryHistoryRecord.calculated_at.desc())
+                .limit(max(1, min(history_limit, 500)))
+                .all()
+            )
+            task_rows = (
+                db.query(database.ReviewTaskRecord)
+                .filter(database.ReviewTaskRecord.learner_id == user.id)
+                .order_by(database.ReviewTaskRecord.created_at.desc())
+                .limit(200)
+                .all()
+            )
+            kp_ids = {
+                str(row.kp_id) for row in [*mastery_rows, *review_rows, *history_rows]
+                if str(getattr(row, "kp_id", "") or "").strip()
+            }
+            kp_names = {
+                str(row.kp_id): str(row.name or row.kp_id)
+                for row in db.query(database.KnowledgePoint).filter(
+                    database.KnowledgePoint.kp_id.in_(kp_ids)
+                ).all()
+            } if kp_ids else {}
+            review_by_kp = {str(row.kp_id): row for row in review_rows}
+            mastery = []
+            for row in mastery_rows:
+                kp_id = str(row.kp_id)
+                review = review_by_kp.get(kp_id)
+                mastery.append({
+                    "kp_id": kp_id,
+                    "kp_name": kp_names.get(kp_id, kp_id),
+                    "mastery_score": float(row.mastery_score or 0.0),
+                    "mastery_confidence": float(row.mastery_confidence or 0.0),
+                    "attempt_count": int(row.attempt_count or 0),
+                    "last_assessed_at": row.last_assessed_at.isoformat() if row.last_assessed_at else None,
+                    "review_stage": review.review_stage if review else "new",
+                    "retention_estimate": float(review.retention_estimate or 0.0) if review else None,
+                    "last_review_at": review.last_review_at.isoformat() if review and review.last_review_at else None,
+                    "next_review_at": review.next_review_at.isoformat() if review and review.next_review_at else None,
+                    "requires_remediation": bool(review.requires_remediation) if review else False,
+                })
+            history = [{
+                "history_id": row.history_id,
+                "kp_id": str(row.kp_id or ""),
+                "kp_name": kp_names.get(str(row.kp_id or ""), str(row.kp_id or "")),
+                "mastery_score": float(row.mastery_score or 0.0),
+                "mastery_confidence": float(row.mastery_confidence or 0.0),
+                "trigger_attempt_item_id": row.trigger_attempt_item_id,
+                "calculated_at": row.calculated_at.isoformat() if row.calculated_at else None,
+            } for row in history_rows]
+            tasks = [{
+                "review_task_id": row.review_task_id,
+                "kp_id": row.primary_kp_id,
+                "kp_name": kp_names.get(str(row.primary_kp_id), str(row.primary_kp_id)),
+                "review_type": row.review_type,
+                "status": row.status,
+                "scheduled_at": row.scheduled_at.isoformat() if row.scheduled_at else None,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            } for row in task_rows]
+            return {
+                "schema_version": "1.0",
+                "learner_id": external_user_id,
+                "mastery": mastery,
+                "mastery_history": history,
+                "review_states": [{
+                    "kp_id": str(row.kp_id),
+                    "kp_name": kp_names.get(str(row.kp_id), str(row.kp_id)),
+                    "review_stage": row.review_stage,
+                    "retention_estimate": float(row.retention_estimate or 0.0),
+                    "last_review_at": row.last_review_at.isoformat() if row.last_review_at else None,
+                    "next_review_at": row.next_review_at.isoformat() if row.next_review_at else None,
+                    "requires_remediation": bool(row.requires_remediation),
+                    "status": row.status,
+                } for row in review_rows],
+                "review_tasks": tasks,
+            }
         finally:
             db.close()
 
@@ -528,9 +720,12 @@ class BackendHandoffRuntime:
     ) -> dict[str, Any]:
         """Persist user-confirmed planning context with an auditable boundary."""
 
-        allowed_fields = {"learning_goal", "learning_background", "time_constraints"}
+        allowed_fields = {
+            "display_name", "learner_group", "learning_goal",
+            "learning_background", "time_constraints",
+        }
         normalized = {
-            str(key): value
+            str(key): _normalize_profile_memory_value(str(key), value)
             for key, value in updates.items()
             if key in allowed_fields and value not in (None, "")
         }
@@ -554,13 +749,12 @@ class BackendHandoffRuntime:
                 key: value for key, value in normalized.items() if key not in locked_fields
             }
             mapped = {
-                key: value
-                for key, value in confirmed.items()
-                if key in {"learning_goal", "time_constraints"}
+                key: value for key, value in confirmed.items()
+                if key in {"display_name", "learner_group", "learning_goal", "time_constraints"}
             }
             if mapped:
                 profile_service.apply_learner_profile_update(
-                    profile, mapped, source="diagnosis_agent"
+                    profile, mapped, source="memory_agent"
                 )
             try:
                 survey = json.loads(profile.survey_json or "{}")
@@ -577,9 +771,9 @@ class BackendHandoffRuntime:
             db.add(
                 database.AgentEvent(
                     user_id=user.id,
-                    agent_name="diagnosis_agent",
+                    agent_name="memory_agent",
                     event_type="profile_confirmed_writeback",
-                    input_summary="用户在规划追问中确认画像信息",
+                    input_summary="记忆管理智能体提炼用户已明确表达的画像信息",
                     output_summary="已写入：" + "、".join(sorted(confirmed)),
                     payload=json.dumps(
                         {
@@ -600,6 +794,71 @@ class BackendHandoffRuntime:
             raise
         finally:
             db.close()
+
+    def extract_and_update_learning_profile(
+        self,
+        external_user_id: str,
+        user_text: str,
+        execution_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Let Memory Agent distill explicit stable profile facts before planning."""
+
+        text_value = str(user_text or "").strip()
+        markers = (
+            "我是", "我叫", "昵称", "专业", "零基础", "学过", "基础",
+            "想考", "准备考", "目标", "每天", "每周", "小时", "分钟",
+        )
+        if not text_value or not any(marker in text_value for marker in markers):
+            return {}
+        try:
+            health_llm = importlib.import_module("APP.backend.health_llm")
+            health_utils = importlib.import_module("APP.backend.health_utils")
+            client = health_llm.build_llm_client("manager")
+            response = client.chat(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是记忆管理智能体。只提炼用户在本段文字中明确陈述、可供后续学习系统复用的稳定画像事实。"
+                            "不得猜测，不得把用户的任务指令整句保存为学习目标。只返回JSON："
+                            "display_name、learner_group、learning_goal、learning_background、time_constraints、"
+                            "confidence_by_field。没有明确事实的字段返回空字符串。"
+                            "learning_background应压缩为基础程度、专业背景和已学内容；learning_goal只保留目标考试或学习方向。"
+                        ),
+                    },
+                    {"role": "user", "content": text_value},
+                ],
+                temperature=0.0,
+                max_tokens=700,
+                extra_body={"response_format": {"type": "json_object"}},
+            )
+            parsed = health_utils.extract_json_object(response)
+            confidences = parsed.get("confidence_by_field")
+            if not isinstance(confidences, dict):
+                confidences = {}
+            allowed = {
+                "display_name", "learner_group", "learning_goal",
+                "learning_background", "time_constraints",
+            }
+            updates = {}
+            for key in allowed:
+                value = parsed.get(key)
+                confidence = confidences.get(key, 0.0)
+                if (
+                    isinstance(value, str) and value.strip()
+                    and isinstance(confidence, (int, float)) and not isinstance(confidence, bool)
+                    and float(confidence) >= 0.75
+                ):
+                    updates[key] = value.strip()[:1000]
+            if not updates:
+                return {}
+            return self.update_learning_profile(
+                external_user_id, updates, execution_id
+            )
+        except Exception:
+            # Profile extraction enriches context but must not make the user's
+            # primary workflow unavailable when the model is temporarily down.
+            return {}
 
     @staticmethod
     def workshop_overview() -> dict[str, Any]:
@@ -742,6 +1001,19 @@ class BackendHandoffRuntime:
         try:
             user = self._workshop_user(db, external_user_id)
             return service.save_paper_answers(db, user.id, paper_id, answers)
+        finally:
+            db.close()
+
+    def set_paper_timer_paused(
+        self, external_user_id: str, paper_id: str, *, paused: bool
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.paper_submission_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            operation = service.pause_paper_timer if paused else service.resume_paper_timer
+            return operation(db, user.id, paper_id)
         finally:
             db.close()
 

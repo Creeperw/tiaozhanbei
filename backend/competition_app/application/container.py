@@ -307,6 +307,11 @@ class ApplicationContainer:
                     if backend_handoff_runtime is not None
                     else None
                 ),
+                profile_memory_extractor=(
+                    backend_handoff_runtime.extract_and_update_learning_profile
+                    if backend_handoff_runtime is not None
+                    else None
+                ),
                 workshop_runtime=backend_handoff_runtime,
             ),
             review_service=review_service,

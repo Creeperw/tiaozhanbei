@@ -88,6 +88,8 @@ class RecommendationTrace(ContractModel):
 class LearningTaskProposal(ContractModel):
     task_type: str
     task_content: str
+    learning_chapter: str = ""
+    focus_knowledge_points: list[str] = Field(default_factory=list)
     estimated_minutes: int = Field(gt=0)
     expected_output: str
     completion_criteria: str
@@ -159,6 +161,8 @@ class LearningTask(ContractModel):
     short_term_plan_id: str = Field(min_length=1)
     task_type: str
     task_content: str
+    learning_chapter: str = ""
+    focus_knowledge_points: list[str] = Field(default_factory=list)
     estimated_minutes: int = Field(gt=0)
     expected_output: str
     completion_criteria: str

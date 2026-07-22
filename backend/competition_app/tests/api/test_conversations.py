@@ -71,3 +71,67 @@ def test_workflow_messages_are_persisted_under_conversation_not_run(tmp_path: Pa
     assert messages[0]["content"] == "请讲解四君子汤"
     assert messages[1]["content"]
     assert client.get("/api/v1/conversations").json()[0]["title"] == "请讲解四君子汤"
+
+
+def test_conversation_history_returns_persisted_workflow_actions(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    client = TestClient(create_app(container))
+    user = register(client, "conversation-actions")
+    conversation_id = client.post(
+        "/api/v1/conversations", json={"title": "组卷"}
+    ).json()["id"]
+    repository = container.review_card_use_case.conversation_repository
+    repository.save_messages(
+        conversation_id,
+        user["user_id"],
+        [{
+            "role": "assistant",
+            "content": "试卷已经生成。",
+            "actions": [{
+                "label": "开始答题",
+                "destination": "workshop.paper",
+                "params": {"paper_id": "PAPER_1"},
+            }],
+        }],
+    )
+
+    messages = client.get(
+        f"/api/v1/conversations/{conversation_id}/messages"
+    ).json()
+
+    assert messages[0]["actions"] == [{
+        "label": "开始答题",
+        "destination": "workshop.paper",
+        "params": {"paper_id": "PAPER_1"},
+    }]
+
+
+def test_conversation_history_gives_legacy_paper_messages_a_safe_fallback(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    client = TestClient(create_app(container))
+    user = register(client, "conversation-legacy-paper")
+    conversation_id = client.post(
+        "/api/v1/conversations", json={"title": "旧组卷"}
+    ).json()["id"]
+    container.review_card_use_case.conversation_repository.save_messages(
+        conversation_id,
+        user["user_id"],
+        [{
+            "role": "assistant",
+            "content": (
+                "试卷已经完成组卷并通过审核。试卷正文已保存到学习工坊，"
+                "请点击下方“开始答题”进入计时答题界面。"
+            ),
+        }],
+    )
+
+    message = client.get(
+        f"/api/v1/conversations/{conversation_id}/messages"
+    ).json()[0]
+
+    assert message["actions"][0] == {
+        "action_type": "navigate",
+        "label": "前往试卷列表",
+        "destination": "workshop.paper",
+        "params": {},
+    }

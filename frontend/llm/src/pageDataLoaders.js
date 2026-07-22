@@ -14,6 +14,25 @@ export const emptyPlan = {
   short_term_plan_content: '',
 };
 
+export const learningTaskToDailyTasks = (learningTask) => {
+  if (!learningTask || typeof learningTask !== 'object'
+    || typeof learningTask.task_content !== 'string'
+    || !learningTask.task_content.trim()) {
+    return [];
+  }
+  return [{
+    key: learningTask.task_id || `learning-task-v${learningTask.version || 1}`,
+    title: learningTask.task_content,
+    reason: learningTask.completion_criteria
+      ? `验收标准：${learningTask.completion_criteria}`
+      : (learningTask.expected_output ? `学习产出：${learningTask.expected_output}` : '完成后记录本次学习结果。'),
+    duration_min: Number.isInteger(learningTask.estimated_minutes) ? learningTask.estimated_minutes : 0,
+    expected_output: learningTask.expected_output || '',
+    status: learningTask.status || '',
+    source: 'learning_task',
+  }];
+};
+
 export const emptyReport = {
   learner_overview: {},
   mastery_radar: [],
@@ -101,6 +120,16 @@ export const emptyPaperPage = {
   limit: 50,
 };
 
+export const emptyReviewDashboard = {
+  schema_version: '1.0',
+  summary: { knowledge_point_count: 0, average_mastery: null, due_count: 0, active_task_count: 0, history_count: 0 },
+  queue: { entries: [], due_count: 0, active_task_count: 0, awaiting_resource_count: 0 },
+  mastery: [],
+  mastery_history: [],
+  review_states: [],
+  review_tasks: [],
+};
+
 const createEmptyTrainingWorkspace = () => ({
   ...emptyTrainingWorkspace,
   modules: [],
@@ -118,6 +147,15 @@ const createEmptyTrainingTaskResult = () => ({
 
 const hasItemsArray = (value) => Array.isArray(value);
 const hasNonEmptyText = (value) => typeof value === 'string' && value.trim().length > 0;
+
+export const isReviewDashboardPayloadValid = (data) => (
+  data && typeof data === 'object'
+  && data.summary && typeof data.summary === 'object'
+  && data.queue && Array.isArray(data.queue.entries)
+  && Array.isArray(data.mastery)
+  && Array.isArray(data.mastery_history)
+  && Array.isArray(data.review_states)
+);
 
 export const isPlanPayloadValid = (data) => {
   if (!data || typeof data !== 'object') {
@@ -378,6 +416,7 @@ export async function loadPlanningData({ fetcher }) {
         ? learningContext.long_term_plan.stages
         : [],
       short_term_plan_content: String(learningContext.short_term_plan?.content || ''),
+      daily_tasks: learningTaskToDailyTasks(learningContext.learning_task),
     };
     return {
       plan: data,
@@ -517,6 +556,57 @@ export async function submitTrainingWorkspaceTask({ fetcher, task }) {
   });
 }
 
+export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribution }) {
+  const activeDistribution = Object.fromEntries(
+    Object.entries(distribution || {}).filter(([, count]) => Number.isInteger(count) && count > 0),
+  );
+  const questionCount = Object.values(activeDistribution).reduce((total, count) => total + count, 0);
+  if (!hasNonEmptyText(topic) || questionCount < 1 || questionCount > 50) {
+    return { paperId: '', result: null, error: '请填写主题，并设置 1 至 50 道题的题型分布。', source: null };
+  }
+  const typeLabels = {
+    single_choice: '单选题',
+    multiple_choice: '多选题',
+    fill_blank: '填空题',
+    short_answer: '简答题',
+    case_quiz: '案例分析题',
+  };
+  const typeRequirement = Object.entries(activeDistribution)
+    .map(([type, count]) => `${typeLabels[type] || type}${count}题`)
+    .join('、');
+  try {
+    const { data, source } = await fetcher({
+      paths: ['/v1/review-cards'],
+      fallback: null,
+      options: {
+        method: 'POST',
+        body: JSON.stringify({
+          learner_id: 'authenticated-user',
+          user_request: `请围绕“${topic.trim()}”生成一份练习试卷，共${questionCount}题，其中${typeRequirement}。完成审核后发布到学习工坊，不要在对话中展开试卷正文。`,
+          available_minutes: 60,
+          exam_constraints: {
+            question_count: questionCount,
+            question_types: Object.keys(activeDistribution).map((type) => typeLabels[type] || type),
+            question_type_distribution: activeDistribution,
+          },
+        }),
+      },
+      validator: (value) => value && typeof value === 'object'
+        && value.status === 'success'
+        && value.task_type === 'paper_generation'
+        && Array.isArray(value.ui_actions),
+    });
+    const action = data.ui_actions.find((item) => item?.destination === 'workshop.paper');
+    const paperId = action?.params?.paper_id || action?.params?.paperId || '';
+    if (!hasNonEmptyText(paperId)) {
+      return { paperId: '', result: data, error: '试卷已生成，但未能发布到答题工作区。', source };
+    }
+    return { paperId, result: data, error: '', source };
+  } catch (error) {
+    return { paperId: '', result: null, error: error.message || '试卷生成失败', source: null };
+  }
+}
+
 export async function loadTrainingWorkspaceTask({ fetcher, taskId }) {
   if (!hasNonEmptyText(taskId)) {
     return {
@@ -617,6 +707,25 @@ export async function savePaperAnswers({ fetcher, paperId, answers }) {
   }
 }
 
+export async function setPaperTimerPaused({ fetcher, paperId, paused }) {
+  if (!hasNonEmptyText(paperId)) return { paper: { ...emptyPaper }, error: '试卷 ID 不能为空', source: null };
+  try {
+    const action = paused ? 'pause' : 'resume';
+    const { data, source } = await fetcher({
+      paths: [
+        `/v1/workshop/papers/${encodeURIComponent(paperId.trim())}/timer/${action}`,
+        `/training/workspace/papers/${encodeURIComponent(paperId.trim())}/timer/${action}`,
+      ],
+      fallback: emptyPaper,
+      options: { method: 'POST' },
+      validator: isPaperPayloadValid,
+    });
+    return { paper: { ...emptyPaper, ...data }, error: '', source };
+  } catch (error) {
+    return { paper: { ...emptyPaper }, error: error.message || '计时状态更新失败', source: null };
+  }
+}
+
 export async function submitPaper({ fetcher, paperId, requestId }) {
   if (!hasNonEmptyText(paperId) || !hasNonEmptyText(requestId)) return { result: {}, error: '交卷请求无效', source: null };
   try {
@@ -708,6 +817,29 @@ export async function loadMistakes({ fetcher, status = 'all', offset = 0, limit 
     return { mistakes: { ...emptyMistakePage, ...data }, error: '', source };
   } catch (error) {
     return { mistakes: { ...emptyMistakePage }, error: error.message || '错题列表加载失败', source: null };
+  }
+}
+
+export async function loadReviewDashboard({ fetcher, limit = 50, historyLimit = 100 }) {
+  try {
+    const params = new URLSearchParams({ limit: String(limit), history_limit: String(historyLimit) });
+    const { data, source } = await fetcher({
+      paths: [`/v1/review-dashboard?${params.toString()}`],
+      fallback: emptyReviewDashboard,
+      validator: isReviewDashboardPayloadValid,
+    });
+    return {
+      dashboard: {
+        ...emptyReviewDashboard,
+        ...data,
+        summary: { ...emptyReviewDashboard.summary, ...(data.summary || {}) },
+        queue: { ...emptyReviewDashboard.queue, ...(data.queue || {}) },
+      },
+      error: '',
+      source,
+    };
+  } catch (error) {
+    return { dashboard: { ...emptyReviewDashboard }, error: error.message || '复习数据加载失败', source: null };
   }
 }
 

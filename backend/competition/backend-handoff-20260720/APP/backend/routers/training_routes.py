@@ -563,6 +563,7 @@ def grade_practice(
             },
         )
         raw_grading = runner_payload.get("grading", runner_payload)
+        audit_payload = runner_payload.get("audit") if isinstance(runner_payload, dict) else None
         grading = {
             "question_id": submission["question_id"],
             "question_type": grading_submission["question_type"],
@@ -570,7 +571,32 @@ def grade_practice(
             "is_correct": raw_grading.get("is_correct"),
             "analysis": raw_grading.get("analysis", raw_grading.get("feedback", "")),
             "error_type": raw_grading.get("error_type", "none"),
+            "grading_source": raw_grading.get("grading_source", "unknown"),
+            "confidence": raw_grading.get("confidence"),
+            "dimension_scores": raw_grading.get("dimension_scores", {}),
         }
+        if not isinstance(audit_payload, dict) or audit_payload.get("decision") != "pass":
+            db.commit()
+            return {
+                "grading": grading,
+                "audit": audit_payload or {
+                    "decision": "needs_human_review",
+                    "reason": "主观题审核结果缺失。",
+                    "confidence": 0.0,
+                },
+                "mistake_record": None,
+                "attempt_id": None,
+                "attempt_item_id": None,
+                "grading_artifact_id": None,
+                "audit_id": None,
+                "writeback": {
+                    "status": "withheld_pending_audit",
+                    "receipt_id": None,
+                    "mistake_ids": [],
+                    "review_task_ids": [],
+                },
+                "agent_trace": runner_payload.get("agent_trace", []),
+            }
         attempt_id = str(uuid.uuid4())
         is_correct = bool(grading.get("is_correct"))
         score = (
@@ -636,6 +662,7 @@ def grade_practice(
         db.commit()
         return {
             "grading": grading,
+            "audit": audit_payload,
             "mistake_record": runner_payload.get("mistake_record"),
             "attempt_id": attempt_id,
             "attempt_item_id": None,
@@ -647,6 +674,7 @@ def grade_practice(
                 "mistake_ids": mistake_ids,
                 "review_task_ids": [],
             },
+            "agent_trace": runner_payload.get("agent_trace", []),
         }
     command = from_legacy_route_request(
         current_user.id,
@@ -669,7 +697,8 @@ def grade_practice(
         grading.get("error_types") or ["none" if grading.get("is_correct") else "练习错因"]
     )[0]
     grading.setdefault("standard_answer", grading_submission["standard_answer"])
-    if controlled_submission is not None and submission.get("request_id"):
+    audit_passed = isinstance(result.audit, dict) and result.audit.get("decision") == "pass"
+    if controlled_submission is not None and submission.get("request_id") and audit_passed:
         record_practice_outcome(
             db,
             user_id=current_user.id,
@@ -696,6 +725,7 @@ def grade_practice(
     writeback = result.writeback
     response = {
         "grading": grading,
+        "audit": result.audit,
         "mistake_record": result.presentation.get("mistake_record"),
         "attempt_id": result.attempt_id,
         "attempt_item_id": result.attempt_item_id,

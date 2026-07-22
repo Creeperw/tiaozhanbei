@@ -68,8 +68,19 @@ describe('DashboardPage learning workspace', () => {
           checkin_status: { checked_in_today: false, streak: 12 },
           today_tasks: [
             { key: 'review', title: '回顾昨日错题', status: 'completed', duration: '8 分钟' },
-            { key: 'formula', title: '方剂学第 3 章', reason: '重点掌握方证对应', duration: '25 分钟' },
+            { key: 'formula', title: '方剂学第 3 章', reason: '重点掌握方证对应', duration: '25 分钟', source: 'daily_task' },
           ],
+          current_learning_task: {
+            task_id: 'task-formula',
+            title: '学习四君子汤的组成、功用与配伍意义',
+            duration: '25 分钟',
+            completion_criteria: '闭卷说出组成并解释四味药的作用。',
+            learning_chapter: { book: '方剂学', title: '补益剂·补气' },
+            knowledge_cards: [
+              { kp_id: 'KP_SIJUNZI', title: '四君子汤' },
+              { kp_id: 'KP_JUNCHEN', title: '君臣佐使配伍' },
+            ],
+          },
           recommendations: [], continue_learning: [], announcements: [],
         };
       return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify(payload) });
@@ -141,6 +152,22 @@ describe('DashboardPage learning workspace', () => {
     expect(within(feedback).getByText('正确率')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '今日核心任务' })).not.toBeInTheDocument();
     expect(workspace).not.toContainElement(feedback);
+  });
+
+  it('shows the formal daily task in the right rail and opens pushed knowledge cards', async () => {
+    const onNavigate = vi.fn();
+    render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
+
+    const task = await screen.findByRole('region', { name: '今日任务' });
+    expect(within(task).getByText('方剂学 · 补益剂·补气')).toBeInTheDocument();
+    expect(within(task).getByText('四君子汤')).toBeInTheDocument();
+    expect(within(task).getByText('君臣佐使配伍')).toBeInTheDocument();
+
+    fireEvent.click(within(task).getAllByRole('button', { name: /打开知识卡/ })[0]);
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: { view: 'workspace', taskType: 'knowledge_cards', kpId: 'KP_SIJUNZI' },
+    });
   });
 
   it('lets today schedule reclaim the right column only after the assistant moves away', async () => {

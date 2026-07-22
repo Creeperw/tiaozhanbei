@@ -10,6 +10,8 @@ from APP.backend.paper_submission_service import (
     PaperSubmissionInvalid,
     PaperSubmissionNotFound,
     get_owned_paper,
+    pause_paper_timer,
+    resume_paper_timer,
     save_paper_answers,
     submit_paper,
 )
@@ -62,6 +64,22 @@ class PaperSubmissionServiceTests(unittest.TestCase):
                 with self.subTest(paper_id=paper_id):
                     with self.assertRaises(PaperSubmissionNotFound):
                         get_owned_paper(db, 2, paper_id)
+
+    def test_timer_pause_and_resume_are_persisted_and_user_scoped(self):
+        with self.Session() as db:
+            started = get_owned_paper(db, 1, "PAPER_1")
+            paused = pause_paper_timer(db, 1, "PAPER_1")
+            restored = get_owned_paper(db, 1, "PAPER_1")
+
+            self.assertFalse(started["timing"]["paused"])
+            self.assertTrue(paused["timing"]["paused"])
+            self.assertEqual(restored["timing"]["remaining_seconds"], paused["timing"]["remaining_seconds"])
+            with self.assertRaises(PaperSubmissionNotFound):
+                pause_paper_timer(db, 2, "PAPER_1")
+
+            resumed = resume_paper_timer(db, 1, "PAPER_1")
+            self.assertFalse(resumed["timing"]["paused"])
+            self.assertIsNotNone(resumed["timing"]["expires_at"])
 
     def test_submit_requires_every_answer_and_replays_same_request(self):
         with self.Session() as db:

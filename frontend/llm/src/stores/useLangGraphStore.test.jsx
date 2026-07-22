@@ -49,4 +49,25 @@ describe('LangGraph six-agent trace state', () => {
     expect(state.nodes[0].tools).toHaveLength(1);
     expect(state.nodes[0].agent).toBe('knowledge_base_agent');
   });
+
+  it('keeps every compiled agent visible before its step starts', () => {
+    let state = reduceLangGraphEvent(emptyState, {
+      type: 'planning_start', agent: 'planner_agent', stepId: 'planner', text: '开始规划', ts: 10,
+    });
+    state = reduceLangGraphEvent(state, {
+      type: 'planning_done',
+      agent: 'planner_agent',
+      stepId: 'planner',
+      text: '执行路径已确定',
+      ts: 20,
+      plannedNodes: [
+        { step_id: 'paper_assembly', agent: 'paper_assembly_agent' },
+        { step_id: 'audit', agent: 'audit_agent' },
+      ],
+    });
+
+    expect(state.nodes.find((node) => node.agent === 'audit_agent')?.status).toBe('pending');
+    state = reduceLangGraphEvent(state, { type: 'workflow_done', ts: 30 });
+    expect(state.nodes.find((node) => node.agent === 'audit_agent')?.status).toBe('done');
+  });
 });

@@ -278,6 +278,12 @@ describe('CompactAssistant', () => {
     expect(onFloatingDockChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('can stay contained in a workspace without covering adjacent controls', () => {
+    render(<CompactAssistant currentUser="admin" floating={false} onOpenFull={vi.fn()} />);
+
+    expect(screen.getByLabelText('常驻智能助教')).toHaveAttribute('data-floating', 'false');
+  });
+
   it('keeps the draggable assistant inside the visible viewport', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1000 });
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 700 });

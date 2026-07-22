@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
-import { loadPaper, loadPapers, savePaperAnswers, submitPaper, submitTrainingWorkspaceTask } from '../pageDataLoaders';
+import { generateWorkshopPaperWithAgents, loadPaper, loadPapers, savePaperAnswers, setPaperTimerPaused, submitPaper } from '../pageDataLoaders';
 import { groupPaperItems } from './paperQuestionGroups';
 
 const questionTypes = [
@@ -30,7 +30,6 @@ const formatRemaining = (seconds) => {
 
 export default function PaperGenerationPanel({ enabled, paperId = '' }) {
   const [topic, setTopic] = useState('围绕四君子汤与脾胃气虚证完成训练');
-  const [difficulty, setDifficulty] = useState(1);
   const [distribution, setDistribution] = useState({
     single_choice: 1,
     multiple_choice: 0,
@@ -54,9 +53,10 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
   const types = questionTypes.filter(([key]) => distribution[key] > 0).map(([key]) => key);
   const canGenerate = enabled && topic.trim() && questionCount > 0 && questionCount <= 50;
   const paperSubmitted = paper?.status === 'submitted' || Boolean(submitted);
+  const timerPaused = Boolean(paper?.timing?.paused);
   const timeExpired = remainingSeconds === 0;
   const answerLocked = paperSubmitted || timeExpired;
-  const timerActive = Boolean(paper) && !paperSubmitted && Number.isFinite(remainingSeconds) && remainingSeconds > 0;
+  const timerActive = Boolean(paper) && !paperSubmitted && !timerPaused && Number.isFinite(remainingSeconds) && remainingSeconds > 0;
   const activePaperId = paper?.paper_id || '';
   const hasActivePaper = Boolean(activePaperId);
   const allAnswered = paper?.items?.every((item) => answers[item.paper_item_id]?.trim());
@@ -119,38 +119,29 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
     setPaper(null);
     setSubmitted(null);
     try {
-      const response = await submitTrainingWorkspaceTask({
+      const response = await generateWorkshopPaperWithAgents({
         fetcher: fetchJsonWithAuthFallback,
-        task: {
-          task_type: 'paper_generation',
-          title: '训练试卷',
-          query: topic.trim(),
-          inputs: {
-            topic: topic.trim(),
-            difficulty,
-            question_count: questionCount,
-            types,
-            distribution: Object.fromEntries(types.map((key) => [key, distribution[key]])),
-          },
-          options: { need_audit: true },
-        },
+        topic: topic.trim(),
+        distribution: Object.fromEntries(types.map((key) => [key, distribution[key]])),
       });
       if (response.error) {
         setError(response.error);
         return;
       }
-      if (response.taskResult.status !== 'completed' || response.taskResult.audit?.decision !== 'pass') {
-        setError(response.taskResult.summary || response.taskResult.audit?.reason || '试卷未通过审核。');
+      const generatedPaperId = response.paperId;
+      if (!generatedPaperId) {
+        setError('试卷已经生成，但后端没有返回试卷 ID，请稍后从试卷列表打开。');
         return;
       }
-      const paperId = response.taskResult.artifact?.content?.paper_id;
-      const loaded = await loadPaper({ fetcher: fetchJsonWithAuthFallback, paperId });
+      const loaded = await loadPaper({ fetcher: fetchJsonWithAuthFallback, paperId: generatedPaperId });
       if (loaded.error) {
         setError(loaded.error);
         return;
       }
-      sessionStorage.setItem(paperStorageKey, paperId);
+      sessionStorage.setItem(paperStorageKey, generatedPaperId);
       restorePaper(loaded);
+    } catch (generationError) {
+      setError(generationError?.message || '试卷生成失败，请稍后重试。');
     } finally {
       setLoading(false);
     }
@@ -205,6 +196,27 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
     }
   };
 
+  const toggleTimer = async () => {
+    if (!paper || paperSubmitted || timeExpired) return;
+    setLoading(true);
+    setError('');
+    try {
+      const updated = await setPaperTimerPaused({
+        fetcher: fetchJsonWithAuthFallback,
+        paperId: paper.paper_id,
+        paused: !timerPaused,
+      });
+      if (updated.error) {
+        setError(updated.error);
+        return;
+      }
+      setPaper((current) => current ? { ...current, timing: updated.paper.timing } : current);
+      setRemainingSeconds(updated.paper.timing?.remaining_seconds ?? null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const submit = async ({ allowIncomplete = false } = {}) => {
     const saved = await save();
     if (!saved || (!allAnswered && !allowIncomplete)) return;
@@ -243,14 +255,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
         <label className="block text-sm font-medium text-slate-700">训练主题
           <textarea value={topic} onChange={(event) => setTopic(event.target.value)} disabled={loading} className="mt-2 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />
         </label>
-        <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-sm font-medium text-slate-700">难度
-            <select value={difficulty} onChange={(event) => setDifficulty(Number(event.target.value))} disabled={loading} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-              {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value}</option>)}
-            </select>
-          </label>
-          <p className="self-end text-sm text-slate-600">题量：{questionCount} 题</p>
-        </div>
+        <p className="text-sm text-slate-600">题量：{questionCount} 题；难度由智能体根据学习状态和组卷目标自动确定。</p>
         <fieldset>
           <legend className="text-sm font-medium text-slate-700">题型分布</legend>
           <p className="mt-1 text-xs leading-5 text-slate-500">可只保留一种题型，也可组合组卷；总题量不超过 50 题。</p>
@@ -261,14 +266,18 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
           </div>
         </fieldset>
         <button type="button" onClick={generate} disabled={loading || !canGenerate} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
-          {loading && <Loader2 size={16} className="animate-spin" />}生成试卷
+          {loading && <Loader2 size={16} className="animate-spin" />}{loading ? '正在组卷并审核…' : '生成试卷'}
         </button>
       </>}
       {paper && <div className="space-y-4 border-t border-slate-200 pt-4">
         <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
           <div className="flex items-center gap-3"><button type="button" onClick={returnToPaperLibrary} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">返回试卷列表</button><div><h3 className="text-base font-semibold text-slate-950">{paper.title}</h3><p className="mt-1 text-xs text-slate-500">已答 {paper.items.filter((item) => answers[item.paper_item_id]?.trim()).length} / {paper.items.length} 题</p></div></div>
-          <div className={`font-mono text-lg font-semibold ${remainingSeconds === 0 ? 'text-rose-600' : 'text-emerald-800'}`}>{paperSubmitted ? '已交卷' : formatRemaining(remainingSeconds)}</div>
+          <div className="flex items-center gap-3">
+            <div className={`font-mono text-lg font-semibold ${remainingSeconds === 0 ? 'text-rose-600' : timerPaused ? 'text-amber-700' : 'text-emerald-800'}`}>{paperSubmitted ? '已交卷' : formatRemaining(remainingSeconds)}</div>
+            {!paperSubmitted && !timeExpired && <button type="button" onClick={toggleTimer} disabled={loading} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">{timerPaused ? '继续计时' : '暂停计时'}</button>}
+          </div>
         </div>
+        {!paperSubmitted && timerPaused && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">计时已暂停。继续答题前请点击“继续计时”。</p>}
         {groupedItems.map((group) => <section key={group.key} aria-labelledby={`paper-group-${group.key}`} className="space-y-3">
           <div className="flex items-center gap-2 border-b border-slate-200 pb-2"><h4 id={`paper-group-${group.key}`} className="text-sm font-semibold text-slate-900">{group.label}</h4><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{group.items.length} 题</span></div>
           {group.items.map((item) => {

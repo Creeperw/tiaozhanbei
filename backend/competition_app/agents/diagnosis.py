@@ -613,6 +613,10 @@ class DiagnosisAgent:
             "daily_task_content": str(
                 field(current_task, "task_content") or "本次未生成当日任务。"
             ),
+            "learning_chapter": str(field(current_task, "learning_chapter") or ""),
+            "focus_knowledge_points": cls._string_list(
+                field(current_task, "focus_knowledge_points")
+            ),
             "estimated_minutes": int(field(current_task, "estimated_minutes") or fallback_minutes),
             "expected_output": str(field(current_task, "expected_output") or "本层规划结果。"),
             "completion_criteria": str(
@@ -808,6 +812,8 @@ class DiagnosisAgent:
             task_proposal=LearningTaskProposal(
                 task_type="daily_learning",
                 task_content=daily_content,
+                learning_chapter=output.learning_chapter,
+                focus_knowledge_points=output.focus_knowledge_points,
                 estimated_minutes=estimated_minutes,
                 expected_output=output.expected_output,
                 completion_criteria=output.completion_criteria,
@@ -1040,6 +1046,8 @@ class DiagnosisAgent:
                 task_proposal=LearningTaskProposal(
                     task_type=output.learning_task.task_type,
                     task_content=bounded_text(output.learning_task.task_content),
+                    learning_chapter=output.learning_task.learning_chapter,
+                    focus_knowledge_points=output.learning_task.focus_knowledge_points,
                     estimated_minutes=estimated_minutes,
                     expected_output=output.learning_task.expected_output,
                     completion_criteria=output.learning_task.completion_criteria,

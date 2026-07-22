@@ -70,6 +70,7 @@ export function buildDailySchedule(dashboard = {}) {
     duration: text(task.duration) || text(task.estimated_duration),
     time: text(task.time) || text(task.scheduled_time) || text(task.start_time),
     state: taskState(task),
+    source: text(task.source),
   }));
 }
 

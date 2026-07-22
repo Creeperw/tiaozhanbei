@@ -1990,19 +1990,36 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
             self.assertEqual(db.query(database.EvidencePackRecord).count(), 0)
 
     def test_practice_grade_wrong_answer_updates_diagnosis_report_inputs(self):
-        response = self.client.post(
-            "/training/practice/grade",
-            json={
-                "question_id": "demo-sijunzi-001",
-                "question_type": "short_answer",
-                "stem": "四君子汤主治的核心证型是什么？请简要说明。",
-                "student_answer": "中焦虚寒证",
+        runner_payload = {
+            "grading": {
+                "score": 20,
+                "max_score": 100,
+                "is_correct": False,
+                "error_type": "证型辨析错误",
+                "analysis": "回答与脾胃气虚证不符。",
                 "standard_answer": "脾胃气虚证",
-                "rubric": "答出脾胃气虚证并能说明气虚、纳差、乏力等证据为满分。",
-                "knowledge_points": ["四君子汤", "脾胃气虚证"],
-                "difficulty": 2,
+                "grading_source": "expert_agent_model",
             },
-        )
+            "audit": {"decision": "pass", "confidence": 0.93},
+            "agent_trace": [
+                {"agent": "expert_agent", "status": "completed"},
+                {"agent": "audit_agent", "status": "completed"},
+            ],
+        }
+        with patch.object(training_routes, "practice_grading_runner", return_value=runner_payload):
+            response = self.client.post(
+                "/training/practice/grade",
+                json={
+                    "question_id": "demo-sijunzi-001",
+                    "question_type": "short_answer",
+                    "stem": "四君子汤主治的核心证型是什么？请简要说明。",
+                    "student_answer": "中焦虚寒证",
+                    "standard_answer": "脾胃气虚证",
+                    "rubric": "答出脾胃气虚证并能说明气虚、纳差、乏力等证据为满分。",
+                    "knowledge_points": ["四君子汤", "脾胃气虚证"],
+                    "difficulty": 2,
+                },
+            )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["grading"]["is_correct"])
 

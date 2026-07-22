@@ -262,7 +262,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
       ? `正在思考：${currentTraceStep}`
       : traceStatus === 'failed'
         ? '查看复核轨迹'
-        : '已完成规划';
+        : '执行已完成';
 
   // 🔥 简化版解析逻辑：依赖后端保证 <think> 的存在
   const parseThinkContent = (text) => {

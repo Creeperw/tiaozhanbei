@@ -32,6 +32,29 @@ const explanationText = (value) => {
   }
 };
 
+const videoTitle = (video) => video?.video_title || video?.title || video?.summary || '视频讲解';
+
+function embeddedVideo(video) {
+  const source = String(video?.url || '');
+  const bvid = String(video?.bvid || source.match(/\/video\/(BV[\w]+)/i)?.[1] || '');
+  if (bvid) {
+    let page = Number(video?.page || 1);
+    let start = Math.floor(Number(video?.start_seconds || 0));
+    try {
+      const parsed = new URL(source);
+      page = Number(parsed.searchParams.get('p') || page) || 1;
+      start = Math.floor(Number(parsed.searchParams.get('t') || start)) || 0;
+    } catch {
+      // Structured video fields remain authoritative when the URL is partial.
+    }
+    return { kind: 'iframe', src: `https://player.bilibili.com/player.html?bvid=${encodeURIComponent(bvid)}&p=${page}&t=${start}` };
+  }
+  const youtubeId = source.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{6,})/i)?.[1];
+  if (youtubeId) return { kind: 'iframe', src: `https://www.youtube.com/embed/${youtubeId}` };
+  if (/\.(?:mp4|webm|ogg)(?:[?#]|$)/i.test(source)) return { kind: 'video', src: source };
+  return null;
+}
+
 function ResourceHeading({ icon, title, count }) {
   return (
     <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
@@ -48,6 +71,7 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeResource, setActiveResource] = useState('explanation');
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
 
   const filteredCards = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -75,6 +99,7 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
       if (detail?.error) setError(detail.error);
       if (detail?.card) {
         setActiveResource('explanation');
+        setActiveVideoIndex(0);
         setActiveCard(detail.card);
       }
       await refresh();
@@ -88,6 +113,7 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
     setLoading(true);
     setError('');
     setActiveResource('explanation');
+    setActiveVideoIndex(0);
     const result = await loadKnowledgeCard({ fetcher: fetchJsonWithAuthFallback, cardId: id });
     setActiveCard(result.card);
     setError(result.error);
@@ -100,6 +126,8 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
   const videos = Array.isArray(bundle.videos) ? bundle.videos : [];
   const questions = Array.isArray(bundle.questions) ? bundle.questions : [];
   const fallbackUsed = Array.isArray(bundle.coverage?.fallback_used) ? bundle.coverage.fallback_used : [];
+  const activeVideo = videos[activeVideoIndex] || videos[0] || null;
+  const activeVideoPlayer = activeVideo ? embeddedVideo(activeVideo) : null;
   const resourceTabs = [
     ['explanation', '知识讲解', null],
     ['textbook', '教材切片', textbookSlices.length],
@@ -192,9 +220,15 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
 
             {activeResource === 'videos' && <section role="tabpanel" aria-label="视频资源内容">
               <ResourceHeading icon={Film} title="视频资源" count={videos.length} />
-              {videos.length > 0 ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{videos.map((item, index) => (
-                <a key={item.source_id || index} href={item.url} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium text-emerald-800 transition hover:border-emerald-300 hover:bg-emerald-50">{item.video_title || item.title || item.summary || '查看视频'}</a>
-              ))}</div> : <p className="mt-2 text-sm text-slate-500">当前暂无视频资源。</p>}
+              {videos.length > 0 ? <div className="mt-3 space-y-3">
+                {activeVideoPlayer?.kind === 'iframe' && <div className="aspect-video overflow-hidden rounded-2xl bg-slate-950"><iframe title={videoTitle(activeVideo)} src={activeVideoPlayer.src} className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>}
+                {activeVideoPlayer?.kind === 'video' && <video title={videoTitle(activeVideo)} src={activeVideoPlayer.src} className="aspect-video w-full rounded-2xl bg-slate-950" controls preload="metadata" />}
+                {!activeVideoPlayer && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">该来源暂不支持站内播放，可使用下方原始链接查看。</p>}
+                <div className="grid gap-2 sm:grid-cols-2">{videos.map((item, index) => (
+                  <button key={item.source_id || index} type="button" onClick={() => setActiveVideoIndex(index)} aria-pressed={activeVideoIndex === index} className={`rounded-xl border px-3 py-3 text-left text-sm font-medium transition ${activeVideoIndex === index ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 text-slate-700 hover:border-emerald-200'}`}>{videoTitle(item)}</button>
+                ))}</div>
+                {activeVideo?.url && <a href={activeVideo.url} target="_blank" rel="noreferrer" className="inline-block text-xs font-medium text-emerald-700 underline">在原网站打开</a>}
+              </div> : <p className="mt-2 text-sm text-slate-500">当前暂无视频资源。</p>}
             </section>}
 
             {activeResource === 'questions' && <section role="tabpanel" aria-label="配套题目内容">

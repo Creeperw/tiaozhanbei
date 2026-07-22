@@ -200,7 +200,7 @@ def build_learning_trends(
     login_dates = {
         as_beijing(activity.created_at).date()
         for activity in activities
-        if activity.activity_type == "login"
+        if activity.activity_type in {"login", "daily_checkin"}
     }
     focus_seconds_by_date = _focus_seconds_by_beijing_date(
         focus_sessions,
@@ -319,7 +319,7 @@ def _time_data(
     login_dates = {
         as_beijing(activity.created_at).date().isoformat()
         for activity in activities
-        if activity.activity_type == "login"
+        if activity.activity_type in {"login", "daily_checkin"}
     }
     focus_slot = ""
     completed_focus_sessions = [

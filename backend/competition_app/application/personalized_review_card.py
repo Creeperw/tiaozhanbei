@@ -138,6 +138,7 @@ class PersonalizedReviewCardUseCase:
         review_service: ReviewService | None = None,
         behavior_context_loader: Callable[[str], dict[str, Any]] | None = None,
         profile_update_writer: Callable[[str, dict[str, Any], str | None], dict[str, Any]] | None = None,
+        profile_memory_extractor: Callable[[str, str, str | None], dict[str, Any]] | None = None,
         data_permission_gateway: AgentDataPermissionGateway | None = None,
         workshop_runtime: Any | None = None,
     ) -> None:
@@ -154,6 +155,7 @@ class PersonalizedReviewCardUseCase:
         self.review_service = review_service
         self.behavior_context_loader = behavior_context_loader
         self.profile_update_writer = profile_update_writer
+        self.profile_memory_extractor = profile_memory_extractor
         self.data_permission_gateway = data_permission_gateway or AgentDataPermissionGateway()
         self.workshop_runtime = workshop_runtime
         self._continuations: dict[str, _WorkflowContinuation] = {}
@@ -209,6 +211,13 @@ class PersonalizedReviewCardUseCase:
                 conversation_id,
                 request.learner_id,
                 request.user_request.strip().replace("\n", " ")[:40] or "新对话",
+            )
+        if self.profile_memory_extractor is not None:
+            await asyncio.to_thread(
+                self.profile_memory_extractor,
+                request.learner_id,
+                request.user_request,
+                execution_id,
             )
         behavior_context = await self._load_behavior_context(request.learner_id)
         effective_user_profile = self._merge_context_dict(
@@ -494,7 +503,7 @@ class PersonalizedReviewCardUseCase:
             if not profile_updates and len(pending_fields) == 1:
                 profile_updates[next(iter(pending_fields))] = request.answer.strip()
             self.data_permission_gateway.authorize(
-                agent="diagnosis_agent",
+                agent="memory_agent",
                 domain="learner_profile",
                 action="write",
                 fields=set(profile_updates),
@@ -581,10 +590,17 @@ class PersonalizedReviewCardUseCase:
         result: ReviewCardResult | WorkflowInterruptedResult,
     ) -> None:
         content = workflow_result_to_markdown(result)
+        actions = [
+            action.model_dump(mode="json")
+            for action in getattr(result, "ui_actions", [])
+        ]
+        assistant_message: dict[str, Any] = {"role": "assistant", "content": content}
+        if actions:
+            assistant_message["actions"] = actions
         self.conversation_repository.save_messages(
             conversation_id,
             learner_id,
-            [*messages, {"role": "assistant", "content": content}],
+            [*messages, assistant_message],
         )
 
     def get_run_state(self, thread_id: str) -> dict[str, Any] | None:

@@ -81,6 +81,16 @@ def workflow_result_to_markdown(result: Any) -> str:
         )
         return "\n\n".join(part for part in (intro, continuation, question_text) if part)
 
+    if body.get("task_type") == "paper_generation":
+        actions = body.get("ui_actions") or []
+        has_answer_action = any(
+            isinstance(item, dict) and item.get("destination") == "workshop.paper"
+            for item in actions
+        )
+        if has_answer_action:
+            return "试卷已经完成组卷并通过审核。试卷正文已保存到学习工坊，请点击下方“开始答题”进入计时答题界面。"
+        return "试卷已经完成组卷并通过审核。试卷正文已保存到学习工坊，可前往试卷生成页面查看。"
+
     plan = _plain(body.get("learning_plan"))
     if not plan:
         outputs = body.get("agent_outputs") or []
@@ -114,7 +124,18 @@ def workflow_result_to_markdown(result: Any) -> str:
         if short_term.get("content"):
             parts.append(str(short_term["content"]))
         if learning_task:
+            focus_points = learning_task.get("focus_knowledge_points") or []
             task_parts = [
+                (
+                    f"今日章节：{learning_task['learning_chapter']}"
+                    if learning_task.get("learning_chapter")
+                    else None
+                ),
+                (
+                    f"重点知识点：{'、'.join(str(item) for item in focus_points)}"
+                    if focus_points
+                    else None
+                ),
                 learning_task.get("task_content"),
                 (
                     f"验收标准：{learning_task['completion_criteria']}"

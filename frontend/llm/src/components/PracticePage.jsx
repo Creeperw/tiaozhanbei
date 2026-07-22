@@ -24,12 +24,6 @@ const fallbackPracticeModule = {
   recommended: true,
 };
 
-const inspectorTabs = [
-  { key: 'evidence', label: '证据' },
-  { key: 'audit', label: '审核' },
-  { key: 'trace', label: '轨迹' },
-];
-
 const workshopModuleKey = (value) => {
   if (['practice_grading', 'case_training', 'mistake_variation', 'question_training'].includes(value)) return 'question_training';
   if (['paper_generation', 'paper_workspace'].includes(value)) return 'paper_workspace';
@@ -176,55 +170,6 @@ function ArtifactResult({ taskResult }) {
   );
 }
 
-function EvidencePanel({ evidencePack }) {
-  const evidence = isRecord(evidencePack) ? evidencePack : {};
-  const items = Array.isArray(evidence.items) ? evidence.items.slice(0, 8) : [];
-  if (items.length === 0 && !evidence.pack_id) return <EmptyState>暂无证据包；提交任务后会显示来源与知识点对齐信息。</EmptyState>;
-
-  return (
-    <div className="space-y-4">
-      <div className="text-sm leading-6 text-slate-700">
-        <p>来源范围：{displayValue(evidence.source_scope)}</p>
-        <p>已对齐知识点：{displayValue(evidence.resolved_kp_ids ?? evidence.kp_ids)}</p>
-      </div>
-      {items.length > 0 ? items.map((item, index) => (
-        <div key={item?.source_id || index} className="border-t border-slate-200 pt-3 text-sm leading-6 text-slate-700">
-          <p className="font-medium text-slate-900">{displayValue(item?.source_scope || item?.source_id || `证据 ${index + 1}`)}</p>
-          <p className="mt-1">{displayValue(item?.summary)}</p>
-        </div>
-      )) : <EmptyState>证据包已创建，暂未返回条目。</EmptyState>}
-    </div>
-  );
-}
-
-function AuditPanel({ audit }) {
-  const auditData = isRecord(audit) ? audit : {};
-  if (Object.keys(auditData).length === 0) return <EmptyState>暂无审核信息。</EmptyState>;
-  return (
-    <div className="space-y-3 text-sm leading-6 text-slate-700">
-      <p><span className="font-medium text-slate-900">决策：</span>{displayValue(auditData.decision)}</p>
-      <p><span className="font-medium text-slate-900">风险：</span>{displayValue(auditData.safety_risk)}</p>
-      <p><span className="font-medium text-slate-900">说明：</span>{displayValue(auditData.reason)}</p>
-    </div>
-  );
-}
-
-function TracePanel({ trace }) {
-  const entries = Array.isArray(trace) ? trace.slice(0, 12) : [];
-  if (entries.length === 0) return <EmptyState>暂无执行轨迹；提交后会按步骤展示处理状态。</EmptyState>;
-  return (
-    <ol className="space-y-3">
-      {entries.map((entry, index) => (
-        <li key={entry?.step_id || index} className="border-l-2 border-cyan-200 pl-3 text-sm leading-6 text-slate-700">
-          <p className="font-medium text-slate-900">{displayValue(entry?.status)} · {displayValue(entry?.agent)}</p>
-          <p>动作：{displayValue(entry?.action)}</p>
-          <p className="text-slate-500">{displayValue(entry?.summary)}</p>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export default function PracticePage({ navigationContext = {} }) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
   const [modules, setModules] = useState([]);
@@ -233,14 +178,10 @@ export default function PracticePage({ navigationContext = {} }) {
   const [modulesLoading, setModulesLoading] = useState(true);
   const [moduleError, setModuleError] = useState('');
   const [contextBrief, setContextBrief] = useState(null);
-  const [recentTrace, setRecentTrace] = useState([]);
-  const [activeInspectorTab, setActiveInspectorTab] = useState('evidence');
   const [mobilePage, setMobilePage] = useState('task');
-  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [practiceScope, setPracticeScope] = useState('public');
   const [statusMessage, setStatusMessage] = useState('正在加载训练模块。');
   const mountedRef = useRef(true);
-  const tabRefs = useRef([]);
 
   const visibleModules = useMemo(
     () => (modules.length > 0 ? modules : [fallbackPracticeModule]),
@@ -298,7 +239,6 @@ export default function PracticePage({ navigationContext = {} }) {
       setModuleError(moduleResult.error);
       setModulesLoading(false);
       setContextBrief(contextResult.contextBrief);
-      setRecentTrace(contextResult.recentTrace);
       setStatusMessage(requestedModuleUnavailable
         ? '请求的训练模块暂未开放，已切换到可用训练模块。'
         : moduleResult.error ? '训练模块加载失败，已保留题目训练入口。' : '训练模块加载完成。');
@@ -338,7 +278,6 @@ export default function PracticePage({ navigationContext = {} }) {
       next_actions: [],
     });
     setMobilePage('result');
-    setActiveInspectorTab('evidence');
     setStatusMessage(grading.is_correct ? '练习已完成。' : '练习已完成并记录错题。');
   };
 
@@ -348,21 +287,6 @@ export default function PracticePage({ navigationContext = {} }) {
     selectModule(targetModule.key);
   };
 
-  const handleInspectorTabKeyDown = (event) => {
-    const currentIndex = inspectorTabs.findIndex((tab) => tab.key === activeInspectorTab);
-    let nextIndex = currentIndex;
-    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % inspectorTabs.length;
-    if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + inspectorTabs.length) % inspectorTabs.length;
-    if (event.key === 'Home') nextIndex = 0;
-    if (event.key === 'End') nextIndex = inspectorTabs.length - 1;
-    if (nextIndex === currentIndex) return;
-    event.preventDefault();
-    const nextTab = inspectorTabs[nextIndex];
-    setActiveInspectorTab(nextTab.key);
-    tabRefs.current[nextIndex]?.focus();
-  };
-
-  const inspectorContent = taskResult || { trace: recentTrace };
   const taskResultApproved = isTrainingTaskResultApproved(taskResult);
 
   return (
@@ -380,7 +304,6 @@ export default function PracticePage({ navigationContext = {} }) {
             <p className="break-words text-sm leading-6 text-slate-600">
               当前目标：{contextBrief?.goal || (modulesLoading ? '正在加载学习上下文…' : '暂无全局学习目标，仍可直接开始训练。')}
             </p>
-            <button type="button" className="practice-inspector-toggle button button--secondary" onClick={() => setInspectorOpen(true)}>打开证据检查器</button>
           </div>
         </div>
       </header>
@@ -389,7 +312,6 @@ export default function PracticePage({ navigationContext = {} }) {
         {[
           ['task', '任务'],
           ['result', '结果'],
-          ['evidence', '证据'],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -428,7 +350,7 @@ export default function PracticePage({ navigationContext = {} }) {
         </div>
       )}
 
-      <div className="practice-workspace-grid grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)_300px]">
+      <div className="practice-workspace-grid grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">
         <nav data-mobile-active={String(mobilePage === 'task')} aria-busy={modulesLoading} aria-label="训练模块" className="practice-module-nav rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm shadow-slate-200/50">
           <div className="px-2 py-2 text-sm font-semibold text-slate-900">训练模块</div>
           <div className="space-y-1">
@@ -540,45 +462,6 @@ export default function PracticePage({ navigationContext = {} }) {
           </section>
         </div>
 
-        <button
-          type="button"
-          aria-label="关闭证据检查器"
-          aria-hidden={inspectorOpen ? undefined : true}
-          tabIndex={inspectorOpen ? 0 : -1}
-          data-open={String(inspectorOpen)}
-          className="practice-inspector-backdrop"
-          onClick={() => setInspectorOpen(false)}
-        />
-        <aside data-testid="practice-inspector" data-open={String(inspectorOpen)} data-mobile-active={String(mobilePage === 'evidence')} className="practice-inspector rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/50">
-          <div className="practice-inspector__heading">
-            <strong>证据检查器</strong>
-            <button type="button" className="practice-inspector-close icon-button" aria-label="收起证据检查器" onClick={() => setInspectorOpen(false)}>×</button>
-          </div>
-          <div role="tablist" aria-label="训练检查器" className="flex border-b border-slate-200">
-            {inspectorTabs.map((tab, index) => (
-              <button
-                key={tab.key}
-                ref={(element) => { tabRefs.current[index] = element; }}
-                id={`inspector-tab-${tab.key}`}
-                type="button"
-                role="tab"
-                tabIndex={activeInspectorTab === tab.key ? 0 : -1}
-                aria-selected={activeInspectorTab === tab.key}
-                aria-controls={`inspector-panel-${tab.key}`}
-                onClick={() => setActiveInspectorTab(tab.key)}
-                onKeyDown={handleInspectorTabKeyDown}
-                className={`flex-1 border-b-2 px-2 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-inset ${activeInspectorTab === tab.key ? 'border-emerald-600 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-      <div id={`inspector-panel-${activeInspectorTab}`} role="tabpanel" aria-labelledby={`inspector-tab-${activeInspectorTab}`} className="break-words pt-4">
-            {activeInspectorTab === 'evidence' && <EvidencePanel evidencePack={inspectorContent.evidence_pack} />}
-            {activeInspectorTab === 'audit' && <AuditPanel audit={inspectorContent.audit} />}
-            {activeInspectorTab === 'trace' && <TracePanel trace={inspectorContent.trace} />}
-          </div>
-        </aside>
       </div>
     </div>
   );

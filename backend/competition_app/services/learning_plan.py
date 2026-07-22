@@ -508,6 +508,14 @@ class LearningPlanService:
                     or proposal.daily_task_content
                     or proposal.task_proposal.task_content
                 ),
+                learning_chapter=str(
+                    self._field(task_source, "learning_chapter")
+                    or proposal.task_proposal.learning_chapter
+                ),
+                focus_knowledge_points=list(
+                    self._field(task_source, "focus_knowledge_points")
+                    or proposal.task_proposal.focus_knowledge_points
+                ),
                 estimated_minutes=int(
                     self._field(task_source, "estimated_minutes")
                     or proposal.task_proposal.estimated_minutes
@@ -828,6 +836,8 @@ class LearningPlanService:
             short_term_plan_id=str(short_term_plan_id),
             task_type=proposal.task_proposal.task_type,
             task_content=proposal.task_proposal.task_content,
+            learning_chapter=proposal.task_proposal.learning_chapter,
+            focus_knowledge_points=proposal.task_proposal.focus_knowledge_points,
             estimated_minutes=proposal.task_proposal.estimated_minutes,
             expected_output=proposal.task_proposal.expected_output,
             completion_criteria=proposal.task_proposal.completion_criteria,

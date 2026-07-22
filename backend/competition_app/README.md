@@ -150,6 +150,8 @@ fetch('/api/v1/auth/me', {
 | 完整交接接口契约 | `GET /api/v1/platform/openapi.json` |
 | FastAPI 文档 | `GET /docs` |
 
+`GET /api/v1/dashboard/home` 的 `current_learning_task` 是学习工坊右栏的正式今日任务投影，包含 `learning_chapter`、`focus_knowledge_points` 与 `knowledge_cards[].action`。知识点 ID 由知识仓库解析，前端不得从自然语言任务正文自行生成 ID；点击动作后使用现有知识卡解析接口打开对应内容。
+
 每个 `conversation_id` 表示一个可包含多轮消息的正式会话；每次 LangGraph 执行使用独立
 `thread_id`。中断恢复复用该次 `thread_id`，不能把会话 ID 当作所有轮次共用的检查点 ID。
 

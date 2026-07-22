@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import { BookOpenText, Clock3, Sparkles } from 'lucide-react';
+import { API_BASE, MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import CompactAssistant from './CompactAssistant';
 import DashboardDailyWorkspace from './dashboard/DashboardDailyWorkspace';
 import {
@@ -34,8 +35,59 @@ const EMPTY_DASHBOARD = {
     focus: '开始今日学习',
   },
   today_tasks: [],
+  current_learning_task: null,
   yesterday_feedback: { metrics: [] },
 };
+
+function TodayTaskRail({ task, onNavigate }) {
+  const chapter = task?.learning_chapter || {};
+  const cards = Array.isArray(task?.knowledge_cards) ? task.knowledge_cards : [];
+  if (!task) {
+    return (
+      <section className="today-task-rail" aria-label="今日任务" data-state="empty">
+        <header><span>Today</span><h2>今日任务</h2></header>
+        <p>还没有可执行的今日任务。</p>
+        <button
+          type="button"
+          onClick={() => onNavigate?.({ page: 'assistant', params: { context: '请结合当前短期计划和学习状态，给我制定今日任务。' } })}
+        >去制定今日任务</button>
+      </section>
+    );
+  }
+  return (
+    <section className="today-task-rail" aria-label="今日任务">
+      <header>
+        <div><span>Today</span><h2>今日任务</h2></div>
+        <small><Clock3 aria-hidden="true" size={13} />{task.duration}</small>
+      </header>
+      <h3>{task.title}</h3>
+      <div className="today-task-rail__chapter">
+        <BookOpenText aria-hidden="true" size={16} />
+        <div><span>今日章节</span><strong>{[chapter.book, chapter.title].filter(Boolean).join(' · ') || '待任务重新定位'}</strong></div>
+      </div>
+      <div className="today-task-rail__knowledge">
+        <span><Sparkles aria-hidden="true" size={14} />重点知识点</span>
+        {cards.length > 0 ? (
+          <div>
+            {cards.map((card) => (
+              <button
+                key={card.kp_id}
+                type="button"
+                onClick={() => onNavigate?.({
+                  page: 'practice',
+                  params: { view: 'workspace', taskType: 'knowledge_cards', kpId: card.kp_id },
+                })}
+              >
+                <strong>{card.title}</strong><small>打开知识卡</small>
+              </button>
+            ))}
+          </div>
+        ) : <p>当前任务尚未匹配到知识卡，请重新制定今日任务。</p>}
+      </div>
+      {task.completion_criteria && <p className="today-task-rail__criteria">验收：{task.completion_criteria}</p>}
+    </section>
+  );
+}
 
 function hasDashboardShape(value) {
   return value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0;
@@ -121,7 +173,7 @@ export default function DashboardPage({
     const loadDashboard = async () => {
       setError('');
       try {
-        const response = await fetchWithAuth(`${API_BASE}/dashboard/home`);
+        const response = await fetchWithAuth(`${MAIN_API_BASE}/dashboard/home`);
         const payload = await readJsonResponse(response, {});
         if (!response.ok) throw new Error(payload.detail || '首页数据加载失败');
         if (!hasDashboardShape(payload)) throw new Error('首页数据解析失败');
@@ -228,7 +280,10 @@ export default function DashboardPage({
   }, [classicRouteId]);
 
   const focus = useMemo(() => buildDailyFocus(dashboard), [dashboard]);
-  const schedule = useMemo(() => buildDailySchedule(dashboard), [dashboard]);
+  const schedule = useMemo(
+    () => buildDailySchedule(dashboard).filter((item) => item.source !== 'daily_task'),
+    [dashboard],
+  );
   const feedback = useMemo(() => buildDailyFeedback(dashboard), [dashboard]);
   const displayedNodes = pathMode === 'classic' ? classicNodes : nodes;
   const pathEdges = useMemo(() => buildPathEdges(displayedNodes), [displayedNodes]);
@@ -348,6 +403,7 @@ export default function DashboardPage({
         greeting={greeting}
         focus={focus}
         schedule={schedule}
+        todayTaskContent={<TodayTaskRail task={dashboard.current_learning_task} onNavigate={onNavigate} />}
         feedback={feedback}
         assistantCollapsed={assistantCollapsed}
         assistantDocked={assistantDocked}
@@ -479,6 +535,7 @@ export default function DashboardPage({
         assistantContent={(
           <CompactAssistant
             currentUser={currentUser?.username || 'User'}
+            floating={false}
             dailyGoal={dashboard.hero?.goal || ''}
             dailyFocus={focus.title}
             onCollapsedChange={setAssistantCollapsed}
