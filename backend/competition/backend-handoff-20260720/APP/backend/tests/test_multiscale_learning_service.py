@@ -300,6 +300,41 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
         self.assertNotEqual(first["state_id"], second["state_id"])
         self.assertEqual(first["state_digest"], second["state_digest"])
 
+    def test_digest_queries_include_unique_tie_breakers(self) -> None:
+        statements: list[str] = []
+
+        def capture(_conn, _cursor, statement, _parameters, _context, _many):
+            statements.append(statement)
+
+        event.listen(self.engine, "before_cursor_execute", capture)
+        try:
+            build_multiscale_state(self.db, 1, approved_plan_context())
+        finally:
+            event.remove(self.engine, "before_cursor_execute", capture)
+
+        relevant = {
+            "question_attempt": "question_attempt.id",
+            "knowledge_mastery_states": "knowledge_mastery_states.id",
+            "learner_kp_review_states": "learner_kp_review_states.id",
+            "mistake_records": "mistake_records.id",
+            "learning_focus_sessions": "learning_focus_sessions.id",
+        }
+        for table, tie_breaker in relevant.items():
+            matching = [
+                statement
+                for statement in statements
+                if f"FROM {table}" in statement
+            ]
+            self.assertTrue(matching, table)
+            self.assertTrue(
+                any(
+                    "ORDER BY" in statement.upper()
+                    and tie_breaker in statement
+                    for statement in matching
+                ),
+                table,
+            )
+
     def test_state_sources_are_traceable_and_builder_does_not_persist_a_snapshot(self) -> None:
         counts_before = {
             table.name: self.db.query(mapper.class_).count()
@@ -454,6 +489,40 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertIn("中药学", result["reason"])
 
+    def test_prerequisite_requires_owned_evidence_and_reports_its_source(self) -> None:
+        context = approved_plan_context()
+        context["long_term_plan"]["planning_route"]["phases"][0][
+            "prerequisites"
+        ] = ["中药学"]
+        context["completed_prerequisites"] = ["中药学"]
+        blocked_state = build_multiscale_state(self.db, 1, context)
+        blocked = build_path_candidates(
+            self.db, 1, state=blocked_state, scope="daily_task", plan_context=context
+        )
+        blocked_result = next(
+            result
+            for result in blocked["items"][0]["hard_constraint_results"]
+            if result["key"] == "prerequisite_satisfied"
+        )
+        self.assertFalse(blocked_result["passed"])
+
+        self.db.query(database.LearningUserProfile).filter(
+            database.LearningUserProfile.user_id == 1
+        ).update({"completed_courses_json": '["中药学"]'})
+        self.db.commit()
+        verified_state = build_multiscale_state(self.db, 1, context)
+        verified = build_path_candidates(
+            self.db, 1, state=verified_state, scope="daily_task", plan_context=context
+        )
+        verified_result = next(
+            result
+            for result in verified["items"][0]["hard_constraint_results"]
+            if result["key"] == "prerequisite_satisfied"
+        )
+
+        self.assertTrue(verified_result["passed"])
+        self.assertIn("user_profile:1", verified_result["source_refs"])
+
     def test_unapproved_and_not_official_sources_are_not_trusted(self) -> None:
         self.db.query(database.TeachingResource).filter(
             database.TeachingResource.resource_id == "RESOURCE_NO_DIFFICULTY"
@@ -532,6 +601,54 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
 
         self.assertFalse(mapping["passed"])
 
+    def test_canonical_kp_id_cannot_fallback_to_duplicate_display_name(self) -> None:
+        self.db.add_all(
+            [
+                database.KnowledgePoint(
+                    kp_id="KP_DUPLICATE_NAME",
+                    name="阴阳学说",
+                    source="approved_textbook",
+                ),
+                database.KnowledgeMasteryState(
+                    mastery_state_id="MASTER_DUPLICATE_NAME",
+                    learner_id=1,
+                    kp_id="KP_DUPLICATE_NAME",
+                    mastery_score=20,
+                    mastery_confidence=0.8,
+                    attempt_count=2,
+                ),
+                database.TeachingResource(
+                    resource_id="RESOURCE_DUPLICATE_NAME",
+                    title="同名阶段外资源",
+                    resource_type="textbook_excerpt",
+                    kp_ids_json='["KP_DUPLICATE_NAME"]',
+                    source="approved_textbook",
+                    status="active",
+                ),
+            ]
+        )
+        self.db.commit()
+        context = approved_plan_context()
+        context["short_term_plan"]["short_term_focus"][
+            "knowledge_point_ids"
+        ].append("KP_DUPLICATE_NAME")
+        state = build_multiscale_state(self.db, 1, context)
+        candidates = build_path_candidates(
+            self.db, 1, state=state, scope="daily_task", plan_context=context, limit=30
+        )
+        candidate = next(
+            item
+            for item in candidates["items"]
+            if "resource:RESOURCE_DUPLICATE_NAME" in item["source_refs"]
+        )
+        mapping = next(
+            result
+            for result in candidate["hard_constraint_results"]
+            if result["key"] == "approved_stage_mapping"
+        )
+
+        self.assertFalse(mapping["passed"])
+
     def test_book_outside_approved_stage_fails_stage_mapping(self) -> None:
         context = approved_plan_context()
         context["long_term_plan"]["textbook_selection"]["books"] = ["伪造教材"]
@@ -566,6 +683,26 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
         self.assertFalse(alignment["passed"])
         self.assertEqual(alignment["reason"], "learner_goal_missing")
 
+    def test_unverified_plan_context_status_and_owner_are_blocked(self) -> None:
+        context = approved_plan_context()
+        context["long_term_plan"].pop("status")
+        context["short_term_plan"].pop("status")
+        context["long_term_plan"]["plan_id"] = "FORGED_LONG"
+        context["short_term_plan"]["plan_id"] = "FORGED_SHORT"
+        context["short_term_plan"]["long_term_plan_id"] = "FORGED_LONG"
+        state = build_multiscale_state(self.db, 1, context)
+        candidates = build_path_candidates(
+            self.db, 1, state=state, scope="daily_task", plan_context=context
+        )
+        parent = next(
+            result
+            for result in candidates["items"][0]["hard_constraint_results"]
+            if result["key"] == "parent_plan_exists"
+        )
+
+        self.assertFalse(parent["passed"])
+        self.assertIn("unverified", parent["reason"])
+
     def test_low_data_with_unknown_difficulty_is_blocked(self) -> None:
         self.db.add(
             database.LearningUserProfile(
@@ -589,6 +726,135 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
 
         self.assertFalse(low_data_result["passed"])
         self.assertIn("difficulty_unknown", low_data_result["reason"])
+
+    def test_low_data_due_review_uses_not_applicable_difficulty_and_can_pass(self) -> None:
+        self.db.add_all(
+            [
+                database.LearningUserProfile(
+                    user_id=2,
+                    goals_json='{"target_exam_or_course":"中医执业医师资格考试"}',
+                    completed_courses_json="[]",
+                    daily_available_minutes=30,
+                ),
+                database.KnowledgePoint(
+                    kp_id="KP_REVIEW_ONLY",
+                    name="阴阳学说",
+                    source="approved_textbook",
+                ),
+                database.LearnerKPReviewState(
+                    review_state_id="REVIEW_ONLY",
+                    learner_id=2,
+                    kp_id="KP_REVIEW_ONLY",
+                    retention_estimate=0.3,
+                    next_review_at=datetime.utcnow() - timedelta(days=1),
+                    status="active",
+                ),
+            ]
+        )
+        self.db.commit()
+        context = approved_plan_context()
+        context["long_term_plan"]["planning_route"]["phases"][0][
+            "knowledge_point_ids"
+        ] = ["KP_REVIEW_ONLY"]
+        context["short_term_plan"]["short_term_focus"][
+            "knowledge_point_ids"
+        ] = ["KP_REVIEW_ONLY"]
+        state = build_multiscale_state(self.db, 2, context)
+        candidates = build_path_candidates(
+            self.db, 2, state=state, scope="daily_task", plan_context=context
+        )
+        review = next(
+            item for item in candidates["items"]
+            if item["recommended_action"] == "review"
+        )
+        low_data = next(
+            result
+            for result in review["hard_constraint_results"]
+            if result["key"] == "low_data_protection"
+        )
+
+        self.assertTrue(low_data["passed"])
+        self.assertEqual(
+            review["score_components"]["difficulty_fit"]["unavailable_reason"],
+            "difficulty_not_applicable_for_review",
+        )
+
+    def test_long_and_short_scope_have_valid_time_contracts(self) -> None:
+        context = approved_plan_context()
+        context["long_term_plan"]["planning_route"]["phases"][0][
+            "estimated_minutes"
+        ] = 120
+        context["short_term_available_minutes"] = 180
+        state = build_multiscale_state(self.db, 1, context)
+
+        long_candidates = build_path_candidates(
+            self.db, 1, state=state, scope="long_term", plan_context=context
+        )
+        short_candidates = build_path_candidates(
+            self.db, 1, state=state, scope="short_term", plan_context=context
+        )
+        long_time = next(
+            result
+            for result in long_candidates["items"][0]["hard_constraint_results"]
+            if result["key"] == "time_budget"
+        )
+        short_time = next(
+            result
+            for result in short_candidates["items"][0]["hard_constraint_results"]
+            if result["key"] == "time_budget"
+        )
+
+        self.assertTrue(long_time["passed"])
+        self.assertEqual(long_time["reason"], "not_applicable_for_long_term_scope")
+        self.assertTrue(short_time["passed"])
+        self.assertTrue(any(item["eligible"] for item in short_candidates["items"]))
+
+    def test_daily_route_focus_requires_authoritative_duration(self) -> None:
+        self.db.query(database.LearningTask).filter(
+            database.LearningTask.user_id == 1
+        ).delete()
+        self.db.query(database.TeachingResource).delete()
+        self.db.query(database.QuestionBankItem).delete()
+        self.db.query(database.LearnerKPReviewState).filter(
+            database.LearnerKPReviewState.learner_id == 1
+        ).delete()
+        self.db.commit()
+        context = approved_plan_context()
+        without_duration = build_multiscale_state(self.db, 1, context)
+        blocked = build_path_candidates(
+            self.db,
+            1,
+            state=without_duration,
+            scope="daily_task",
+            plan_context=context,
+        )
+        blocked_time = next(
+            result
+            for result in blocked["items"][0]["hard_constraint_results"]
+            if result["key"] == "time_budget"
+        )
+        self.assertFalse(blocked_time["passed"])
+        self.assertEqual(blocked_time["reason"], "estimated_minutes_missing")
+
+        context["long_term_plan"]["planning_route"]["phases"][0][
+            "daily_estimated_minutes"
+        ] = 18
+        verified_duration = build_multiscale_state(self.db, 1, context)
+        allowed = build_path_candidates(
+            self.db,
+            1,
+            state=verified_duration,
+            scope="daily_task",
+            plan_context=context,
+        )
+        allowed_time = next(
+            result
+            for result in allowed["items"][0]["hard_constraint_results"]
+            if result["key"] == "time_budget"
+        )
+
+        self.assertTrue(allowed_time["passed"])
+        self.assertEqual(allowed["items"][0]["estimated_minutes"], 18)
 
     def test_missing_estimated_minutes_stays_unknown_and_is_blocked(self) -> None:
         self.db.add(
@@ -677,6 +943,36 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
             24 * 60 + 20,
             delta=1,
         )
+
+    def test_due_window_counts_early_completion_and_reports_event_time_field(self) -> None:
+        now = datetime.utcnow()
+        self.db.add(
+            database.LearningTask(
+                task_id="TASK_EARLY_COMPLETE",
+                user_id=1,
+                short_term_plan_id="SHORT_1",
+                task_type="learning",
+                kp_ids_json='["KP_1"]',
+                task_content="提前完成",
+                estimated_minutes=15,
+                status="completed",
+                created_at=now - timedelta(days=40),
+                completed_at=now - timedelta(days=10),
+                due_at=now - timedelta(days=2),
+            )
+        )
+        self.db.commit()
+        state = build_multiscale_state(
+            self.db, 1, approved_plan_context(), window_days=7
+        )
+        task_source = next(
+            source
+            for source in state["source_refs"]
+            if source["source_id"] == "learning_task:TASK_EARLY_COMPLETE"
+        )
+
+        self.assertEqual(state["meso"]["task_completion_rate"]["value"], 1.0)
+        self.assertEqual(task_source["time_field"], "due_at")
 
     def test_nullable_mastery_and_partial_task_duration_are_unavailable(self) -> None:
         self.db.execute(

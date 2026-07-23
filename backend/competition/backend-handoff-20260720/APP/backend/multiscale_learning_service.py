@@ -411,19 +411,28 @@ def build_multiscale_state(
             LearningQuestionAttempt.answered_at >= window_start,
             LearningQuestionAttempt.answered_at <= now_db,
         )
-        .order_by(LearningQuestionAttempt.answered_at.desc())
+        .order_by(
+            LearningQuestionAttempt.answered_at.desc(),
+            LearningQuestionAttempt.id.desc(),
+        )
         .all()
     )
     mastery_rows = (
         db.query(KnowledgeMasteryState)
         .filter(KnowledgeMasteryState.learner_id == user_id)
-        .order_by(KnowledgeMasteryState.updated_at.desc())
+        .order_by(
+            KnowledgeMasteryState.updated_at.desc(),
+            KnowledgeMasteryState.id.desc(),
+        )
         .all()
     )
     review_rows = (
         db.query(LearnerKPReviewState)
         .filter(LearnerKPReviewState.learner_id == user_id)
-        .order_by(LearnerKPReviewState.next_review_at.asc())
+        .order_by(
+            LearnerKPReviewState.next_review_at.asc(),
+            LearnerKPReviewState.id.asc(),
+        )
         .all()
     )
     mistake_rows = (
@@ -433,7 +442,7 @@ def build_multiscale_state(
             MistakeRecord.created_at >= window_start,
             MistakeRecord.created_at <= now_db,
         )
-        .order_by(MistakeRecord.created_at.desc())
+        .order_by(MistakeRecord.created_at.desc(), MistakeRecord.id.desc())
         .all()
     )
     focus_rows = (
@@ -446,7 +455,10 @@ def build_multiscale_state(
                 | (LearningFocusSession.ended_at >= window_start)
             ),
         )
-        .order_by(LearningFocusSession.started_at.desc())
+        .order_by(
+            LearningFocusSession.started_at.desc(),
+            LearningFocusSession.id.desc(),
+        )
         .all()
     )
     due_rows = [
@@ -549,8 +561,6 @@ def build_multiscale_state(
 
     completed_tasks = sum(
         row.status == "completed"
-        and row.completed_at is not None
-        and window_start <= row.completed_at <= now_db
         for row in completion_tasks
     )
     task_completion = (
@@ -841,13 +851,26 @@ def build_multiscale_state(
         )
     elif short_row is not None:
         source_refs.append(_source("short_term_plan", short_row.plan_id))
-    source_refs.extend(
-        _source(
-            "learning_task", row.task_id,
-            window_days=window_days, time_field="created_at",
+    for row in tasks:
+        task_time_field = None
+        if (
+            row.completed_at is not None
+            and window_start <= row.completed_at <= now_db
+        ):
+            task_time_field = "completed_at"
+        elif (
+            row.due_at is not None
+            and window_start <= row.due_at <= now_db
+        ):
+            task_time_field = "due_at"
+        source_refs.append(
+            _source(
+                "learning_task",
+                row.task_id,
+                window_days=(window_days if task_time_field else None),
+                time_field=task_time_field,
+            )
         )
-        for row in tasks
-    )
     source_refs.extend(
         _source(
             "question_attempt", row.attempt_id,
@@ -1058,6 +1081,7 @@ def _evaluate_hard_constraints(
     allowed_stage_kp_names: set[str],
     allowed_stage_books: set[str],
     missing_prerequisites: list[str],
+    prerequisite_evidence_refs: list[str],
     goal_aligned: bool,
     goal_reason: str,
     route_refs: list[str],
@@ -1068,6 +1092,9 @@ def _evaluate_hard_constraints(
     due_rows: list[LearnerKPReviewState],
     low_data: bool,
     state_digest: str,
+    long_plan_verified: bool,
+    short_plan_verified: bool,
+    parent_link_verified: bool,
 ) -> tuple[list[dict[str, Any]], bool, bool, int]:
     """Evaluate the fixed safety gate without consulting score components."""
 
@@ -1080,48 +1107,42 @@ def _evaluate_hard_constraints(
     duration_known = raw_estimated is not None
     duration_below_day = duration_known and int(raw_estimated) < 1440
     time_ok = (
-        budget is not None
-        and duration_below_day
-        and int(raw_estimated) <= budget
+        True
+        if scope == "long_term"
+        else (
+            budget is not None
+            and duration_below_day
+            and int(raw_estimated) <= budget
+        )
     )
 
-    long_status_ok = (
-        bool(long_plan)
-        and str(long_plan.get("status") or "active") in _ACTIVE_PLAN_STATUSES
-        and bool(str(long_plan.get("plan_id") or "").strip())
-    )
-    short_status_ok = (
-        bool(short_plan)
-        and str(short_plan.get("status") or "active") in _ACTIVE_PLAN_STATUSES
-        and bool(str(short_plan.get("plan_id") or "").strip())
-    )
-    parent_link_ok = (
-        str(short_plan.get("long_term_plan_id") or "")
-        == str(long_plan.get("plan_id") or "")
-    )
     if scope == "long_term":
-        parent_ok = long_status_ok
+        parent_ok = long_plan_verified
         parent_reason = (
-            "long_term_root_candidate"
+            "verified_long_term_root_candidate"
             if parent_ok else "long_term_plan_required_or_inactive"
         )
     elif scope == "short_term":
-        parent_ok = long_status_ok
+        parent_ok = long_plan_verified
         parent_reason = (
-            "long_term_plan_present"
-            if parent_ok else "long_term_plan_required"
+            "verified_long_term_plan_present"
+            if parent_ok else "long_term_plan_unverified"
         )
     else:
-        parent_ok = long_status_ok and short_status_ok and parent_link_ok
-        if not long_status_ok:
-            parent_reason = "long_term_plan_required_or_inactive"
-        elif not short_plan:
+        parent_ok = (
+            long_plan_verified
+            and short_plan_verified
+            and parent_link_verified
+        )
+        if not short_plan:
             parent_reason = "short_term_plan_required"
-        elif not short_status_ok and not parent_link_ok:
+        elif not long_plan_verified:
+            parent_reason = "long_term_plan_unverified"
+        elif not short_plan_verified and not parent_link_verified:
             parent_reason = "short_term_plan_inactive_parent_mismatch"
-        elif not short_status_ok:
-            parent_reason = "short_term_plan_required_or_inactive"
-        elif not parent_link_ok:
+        elif not short_plan_verified:
+            parent_reason = "short_term_plan_unverified"
+        elif not parent_link_verified:
             parent_reason = "short_term_parent_mismatch"
         else:
             parent_reason = "parent_plans_present"
@@ -1129,15 +1150,19 @@ def _evaluate_hard_constraints(
     prerequisite_ok = not missing_prerequisites
     covers_due = bool(kp_set.intersection(due_ids))
     due_ok = (
-        not due_ids
+        scope != "daily_task"
+        or not due_ids
         or descriptor["recommended_action"] == "review"
         or covers_due
     )
     safe_under_low_data = (
-        scope == "daily_task"
-        and approved_route
-        and isinstance(descriptor["difficulty"], (int, float))
-        and float(descriptor["difficulty"]) <= 3
+        descriptor["kind"] == "due_review"
+        or (
+            scope == "daily_task"
+            and approved_route
+            and isinstance(descriptor["difficulty"], (int, float))
+            and float(descriptor["difficulty"]) <= 3
+        )
     )
     low_data_ok = not low_data or safe_under_low_data
 
@@ -1152,9 +1177,9 @@ def _evaluate_hard_constraints(
         if isinstance(item, dict) and str(item.get("name") or "").strip()
     }
     kps_mapped = (
-        not kp_set
-        or kp_set.issubset(allowed_stage_kp_ids)
-        or candidate_kp_names.issubset(allowed_stage_kp_names)
+        kp_set.issubset(allowed_stage_kp_ids)
+        if kp_set
+        else candidate_kp_names.issubset(allowed_stage_kp_names)
     )
     candidate_books = {
         str(item.get("name") or "").strip()
@@ -1200,22 +1225,26 @@ def _evaluate_hard_constraints(
                 else "prerequisite_not_satisfied:"
                 + ",".join(missing_prerequisites)
             ),
-            route_refs,
+            _unique(route_refs + prerequisite_evidence_refs),
         ),
         "time_budget": (
             time_ok,
             (
-                "within_time_budget"
-                if time_ok
+                "not_applicable_for_long_term_scope"
+                if scope == "long_term"
                 else (
-                    "estimated_minutes_missing"
-                    if not duration_known
+                    "within_time_budget"
+                    if time_ok
                     else (
-                        "candidate_duration_must_be_less_than_1440"
-                        if not duration_below_day
+                        "estimated_minutes_missing"
+                        if not duration_known
                         else (
-                            "time_budget_missing"
-                            if budget is None else "time_budget_exceeded"
+                            "candidate_duration_must_be_less_than_1440"
+                            if not duration_below_day
+                            else (
+                                "time_budget_missing"
+                                if budget is None else "time_budget_exceeded"
+                            )
                         )
                     )
                 )
@@ -1284,6 +1313,7 @@ def _evaluate_hard_constraints(
 def _build_score_components(
     *,
     descriptor: dict[str, Any],
+    scope: str,
     target_ids: set[str],
     mastery_by_kp: dict[str, float],
     mastery_ref_by_kp: dict[str, str],
@@ -1325,7 +1355,7 @@ def _build_score_components(
         len(kp_set.intersection(target_ids)) / len(target_ids)
         if target_ids and kp_set else None
     )
-    time_fit = 1.0 if time_ok else None
+    time_fit = 1.0 if time_ok and scope != "long_term" else None
     difficulty = descriptor.get("difficulty")
     if isinstance(difficulty, (int, float)) and mastery_values:
         learner_level = 1 + 4 * (
@@ -1400,11 +1430,15 @@ def _build_score_components(
             time_fit,
             sources=budget_refs,
             reason=(
-                "estimated_minutes_missing"
-                if not duration_known
+                "time_fit_not_applicable_for_long_term_scope"
+                if scope == "long_term"
                 else (
-                    "time_budget_missing"
-                    if budget is None else "candidate_exceeds_time_budget"
+                    "estimated_minutes_missing"
+                    if not duration_known
+                    else (
+                        "time_budget_missing"
+                        if budget is None else "candidate_exceeds_time_budget"
+                    )
                 )
             ),
         ),
@@ -1412,9 +1446,11 @@ def _build_score_components(
             difficulty_fit,
             sources=descriptor["source_refs"],
             reason=(
-                "resource_difficulty_missing"
-                if difficulty is None
+                "difficulty_not_applicable_for_review"
+                if descriptor["kind"] == "due_review"
                 else "learner_mastery_missing_for_difficulty_fit"
+                if difficulty is not None
+                else "resource_difficulty_missing"
             ),
         ),
         "autonomy_support": _score_metric(
@@ -1517,9 +1553,29 @@ def build_path_candidates(
         [f"route:{route.get('route_id')}"] if route.get("route_id") else []
     )
     route_evidence = _route_evidence(route, stage)
-    budget, budget_refs = _available_minutes(
-        db, user_id, plan_context, available_minutes
-    )
+    if scope == "long_term":
+        budget, budget_refs = None, []
+    elif scope == "short_term":
+        short_budget = (
+            available_minutes
+            if available_minutes is not None
+            else plan_context.get("short_term_available_minutes")
+        )
+        if short_budget is None:
+            short_budget = short_plan.get("available_minutes")
+        budget = (
+            max(0, min(1440, int(short_budget)))
+            if isinstance(short_budget, (int, float))
+            else None
+        )
+        budget_refs = (
+            ["plan_context:short_term_available_minutes"]
+            if budget is not None else []
+        )
+    else:
+        budget, budget_refs = _available_minutes(
+            db, user_id, plan_context, available_minutes
+        )
 
     review_capacity = (
         int(daily_capacity) if daily_capacity is not None else int(limit)
@@ -1838,7 +1894,11 @@ def build_path_candidates(
                         if str(name).strip()
                     ],
                     "kp_ids": set(),
-                    "estimated_minutes": None,
+                    "estimated_minutes": (
+                        int(item["estimated_minutes"])
+                        if isinstance(item.get("estimated_minutes"), (int, float))
+                        else None
+                    ),
                     "difficulty": None,
                     "recommended_action": "continue_stage",
                     "source_refs": _unique(
@@ -1873,7 +1933,13 @@ def build_path_candidates(
                 ],
                 "knowledge_points": [{"name": focus}] if focus else [],
                 "kp_ids": set(),
-                "estimated_minutes": None,
+                "estimated_minutes": (
+                    int(stage["daily_estimated_minutes"])
+                    if isinstance(
+                        stage.get("daily_estimated_minutes"), (int, float)
+                    )
+                    else None
+                ),
                 "difficulty": None,
                 "recommended_action": "learn",
                 "source_refs": _unique(route_refs + ["plan_context:route_focus"]),
@@ -1917,10 +1983,7 @@ def build_path_candidates(
     }
     completed_prerequisites = {
         str(item).strip()
-        for item in (
-            list(profile.get("completed_courses") or [])
-            + list(plan_context.get("completed_prerequisites") or [])
-        )
+        for item in list(profile.get("completed_courses") or [])
         if str(item).strip()
     }
     required_prerequisites = {
@@ -1930,6 +1993,37 @@ def build_path_candidates(
     }
     missing_prerequisites = sorted(
         required_prerequisites - completed_prerequisites
+    )
+    prerequisite_evidence_refs = (
+        profile_refs if required_prerequisites and not missing_prerequisites else []
+    )
+    long_plan_id = str(long_plan.get("plan_id") or "")
+    short_plan_id = str(short_plan.get("plan_id") or "")
+    claimed_long_status = long_plan.get("status")
+    claimed_short_status = short_plan.get("status")
+    long_plan_verified = bool(
+        long_row is not None
+        and str(long_row.plan_id) == long_plan_id
+        and str(long_row.status or "") in _ACTIVE_PLAN_STATUSES
+        and (
+            claimed_long_status is None
+            or str(claimed_long_status) == str(long_row.status)
+        )
+    )
+    short_plan_verified = bool(
+        short_row is not None
+        and str(short_row.plan_id) == short_plan_id
+        and str(short_row.status or "") in _ACTIVE_PLAN_STATUSES
+        and (
+            claimed_short_status is None
+            or str(claimed_short_status) == str(short_row.status)
+        )
+    )
+    parent_link_verified = bool(
+        long_plan_verified
+        and short_plan_verified
+        and str(short_row.long_term_plan_id or "") == long_plan_id
+        and str(short_plan.get("long_term_plan_id") or "") == long_plan_id
     )
     current_stage_id = str(
         stage.get("phase_id") or stage.get("stage_id") or ""
@@ -1972,6 +2066,7 @@ def build_path_candidates(
                 allowed_stage_kp_names=allowed_stage_kp_names,
                 allowed_stage_books=allowed_stage_books,
                 missing_prerequisites=missing_prerequisites,
+                prerequisite_evidence_refs=prerequisite_evidence_refs,
                 goal_aligned=goal_aligned,
                 goal_reason=goal_reason,
                 route_refs=route_refs,
@@ -1982,10 +2077,14 @@ def build_path_candidates(
                 due_rows=due_rows,
                 low_data=low_data,
                 state_digest=str(state["state_digest"]),
+                long_plan_verified=long_plan_verified,
+                short_plan_verified=short_plan_verified,
+                parent_link_verified=parent_link_verified,
             )
         )
         components = _build_score_components(
             descriptor=descriptor,
+            scope=scope,
             target_ids=target_ids,
             mastery_by_kp=mastery_by_kp,
             mastery_ref_by_kp=mastery_ref_by_kp,
