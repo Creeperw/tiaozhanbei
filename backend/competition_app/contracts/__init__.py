@@ -9,6 +9,12 @@ from competition_app.contracts.agent_communication import (
 )
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep, PlanValidationError
 from competition_app.contracts.local_repair import LocalRepairPlan, RepairAction, RepairIssue
+from competition_app.contracts.multiscale_learning import (
+    HardConstraintResult,
+    MetricValue,
+    MultiScaleLearningState,
+    PathCandidate,
+)
 from competition_app.contracts.knowledge import (
     LearnerQuestionView,
     QuestionBridge,
@@ -46,7 +52,11 @@ __all__ = [
     "KnowledgeResourceBundle",
     "LearnerQuestionView",
     "LocalRepairPlan",
+    "HardConstraintResult",
+    "MetricValue",
+    "MultiScaleLearningState",
     "PaperTiming",
+    "PathCandidate",
     "PlanValidationError",
     "QuestionBridge",
     "QuestionDetail",
