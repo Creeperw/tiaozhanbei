@@ -68,7 +68,7 @@ class CognitiveGapAnalyzer:
             "task_constraints",
         }
     )
-    _ROOT_ALIASES = {"user_request": "learning_goal", "available_minutes": "time_budget"}
+    _ROOT_ALIASES = {"available_minutes": "time_budget"}
     _SECRET_MARKERS = ("api_key", "token", "password")
     _FOREIGN_USER_MARKERS = ("user_id", "user_ids", "learner_id", "learner_ids")
 
@@ -105,10 +105,14 @@ class CognitiveGapAnalyzer:
         catalog_needs = AGENT_NEED_CATALOG.get(step.agent)
         compatibility_mode = catalog_needs is None
         needs = () if compatibility_mode else catalog_needs
-        satisfied_fields = [need.field for need in needs if need.field in known_values]
-        missing_fields = [need.field for need in needs if need.field not in known_values]
+        satisfied_fields = [
+            need.field
+            for need in needs
+            if self._need_is_satisfied(need, known_values, evidence, root_context)
+        ]
+        missing_fields = [need.field for need in needs if need.field not in satisfied_fields]
         blocking_fields = [
-            need.field for need in needs if need.required and need.field not in known_values
+            need.field for need in needs if need.required and need.field not in satisfied_fields
         ]
         allowed_fields = (
             {field for field, (_, source) in known_values.items() if source != "root_context"}
@@ -156,7 +160,7 @@ class CognitiveGapAnalyzer:
             confirmed_facts=facts,
             evidence=evidence,
             uncertainties=uncertainties,
-            task_constraints=self._safe_constraints(root_context),
+            task_constraints={} if compatibility_mode else self._safe_constraints(root_context),
             downstream_needs=list(needs),
             omitted_categories=self._unique(omitted),
             generated_at=generated_at,
@@ -202,6 +206,30 @@ class CognitiveGapAnalyzer:
             return {}
         sanitized = self._sanitize_value(constraints)
         return sanitized if isinstance(sanitized, dict) else {}
+
+    @staticmethod
+    def _need_is_satisfied(
+        need: DownstreamNeed,
+        known_values: Mapping[str, tuple[Any, str]],
+        evidence: Sequence[EvidenceReference],
+        root_context: Mapping[str, Any],
+    ) -> bool:
+        if need.field != "evidence":
+            return need.field in known_values
+        if not evidence:
+            return False
+        policy = root_context.get("source_policy")
+        trusted_source_types: set[str] = set()
+        if isinstance(policy, Mapping):
+            configured_types = policy.get("trusted_source_types", ())
+            if isinstance(configured_types, Sequence) and not isinstance(configured_types, str):
+                trusted_source_types = {str(source_type) for source_type in configured_types}
+        accepted_source_types = set(need.accepted_source_types)
+        return any(
+            (not accepted_source_types or item.source_type in accepted_source_types)
+            and (not trusted_source_types or item.source_type in trusted_source_types)
+            for item in evidence
+        )
 
     def _is_safe_field(self, field: str) -> bool:
         normalized = field.lower()
