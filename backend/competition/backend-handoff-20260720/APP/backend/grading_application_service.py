@@ -14,6 +14,7 @@ from APP.backend.database import (
     GradingResultRecord,
     LearningAttemptItemRecord,
     LearningAttemptRecord,
+    QuestionVersionRecord,
 )
 from APP.backend.learning_writeback_service import (
     GradingWritebackCommand,
@@ -234,6 +235,36 @@ def _structured_rubric(value: str) -> dict[str, Any] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _attach_cached_explanation(
+    db: Session,
+    command: GradePracticeCommand,
+    grading_payload: dict[str, Any],
+) -> None:
+    version = db.query(QuestionVersionRecord).filter_by(
+        question_version_id=command.question_version_id,
+    ).one_or_none()
+    generated = str(
+        grading_payload.get("question_explanation")
+        or grading_payload.get("feedback")
+        or grading_payload.get("error_reason")
+        or ""
+    ).strip()
+    if version is None:
+        if generated:
+            grading_payload["question_explanation"] = generated
+            grading_payload["explanation_source"] = "grading_generated_unpersisted"
+        return
+    cached = str(version.analysis or "").strip()
+    if cached:
+        grading_payload["question_explanation"] = cached
+        grading_payload["explanation_source"] = "question_version_cache"
+        return
+    if generated:
+        version.analysis = generated
+        grading_payload["question_explanation"] = generated
+        grading_payload["explanation_source"] = "generated_on_first_attempt"
+
+
 def apply_practice_grading(
     db: Session,
     command: GradePracticeCommand,
@@ -314,6 +345,7 @@ def apply_practice_grading(
     audit_id = str(uuid.uuid4())
     pack_id = str(uuid.uuid4())
     grading_payload = {**grading_payload, "question_version_id": command.question_version_id}
+    _attach_cached_explanation(db, command, grading_payload)
     structured_rubric = _structured_rubric(command.rubric)
     if structured_rubric is not None:
         grading_payload["rubric"] = structured_rubric

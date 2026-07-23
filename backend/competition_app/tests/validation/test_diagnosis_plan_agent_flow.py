@@ -355,7 +355,7 @@ async def test_diagnosis_revises_invalid_three_layer_output_only_once() -> None:
 
 
 @pytest.mark.asyncio
-async def test_diagnosis_stops_after_second_invalid_output() -> None:
+async def test_diagnosis_requests_route_after_second_unpublishable_output() -> None:
     model = RevisingPlanModel()
 
     async def always_invalid(role, payload, on_delta=None):
@@ -374,7 +374,9 @@ async def test_diagnosis_stops_after_second_invalid_output() -> None:
         "dependency_outputs": {"knowledge": knowledge_output(), "route_resolution": route_output()},
     }
 
-    with pytest.raises(ValueError, match="三层规划修订后仍未通过校验"):
-        await DiagnosisAgent(model).run(context)
+    result = (await DiagnosisAgent(model).run(context)).payload
 
     assert len(model.calls) == 2
+    assert result.requires_clarification is True
+    assert result.interrupt_type == "route_resolution"
+    assert "真实教材" in result.clarification_reason

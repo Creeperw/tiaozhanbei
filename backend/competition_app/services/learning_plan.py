@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import re
 from typing import Any
 from uuid import uuid4
@@ -62,6 +62,8 @@ _LONG_TERM_CONTENT_SECTIONS = (
     "【重规划条件】",
     "【保温底线】",
 )
+
+_DAILY_TASK_REFRESH_INTERVAL = timedelta(hours=24)
 
 
 def _all_text(value: Any) -> list[str]:
@@ -323,6 +325,13 @@ class LearningPlanService:
         if not learner_id:
             raise ValueError("learner_id is required")
         validate_medical_education_safety(proposal)
+        if (
+            proposal.long_term_plan_action == "update"
+            and bool(proposal.long_term_plan_stages)
+        ):
+            self._validate_publishable_long_term_stages(
+                proposal.long_term_plan_stages
+            )
         timestamp = now or datetime.now(timezone.utc)
         previous = self.plan_repository.get_current(learner_id)
 
@@ -535,6 +544,13 @@ class LearningPlanService:
                     or timestamp
                 ),
                 updated_at=timestamp,
+                refresh_started_at=(
+                    self._field(task_source, "refresh_started_at") or timestamp
+                ),
+                refresh_due_at=(
+                    self._field(task_source, "refresh_due_at")
+                    or timestamp + _DAILY_TASK_REFRESH_INTERVAL
+                ),
             ),
         )
         self.plan_repository.save_current(learner_id, result)
@@ -651,6 +667,9 @@ class LearningPlanService:
         if not learner_id:
             raise ValueError("learner_id is required")
         validate_medical_education_safety(proposal)
+        self._validate_publishable_long_term_stages(
+            proposal.long_term_plan_stages
+        )
         timestamp = now or datetime.now(timezone.utc)
         previous = self.plan_repository.get_current(learner_id)
         previous_long = previous.long_term_plan if previous is not None else None
@@ -692,6 +711,25 @@ class LearningPlanService:
             generated_scope="long_term",
             invalidated_layers=["short_term", "daily_task"],
         )
+
+    @classmethod
+    def _validate_publishable_long_term_stages(cls, stages: Any) -> None:
+        stage_list = list(stages or [])
+        placeholder_tokens = (
+            "待确认", "未确认", "unknown", "tbd", "不可发布", "路线解析失败"
+        )
+        if not stage_list:
+            raise ValueError("long-term plan requires trusted textbook stages")
+        for index, stage in enumerate(stage_list, start=1):
+            books = list(cls._field(stage, "book") or [])
+            if not books or any(
+                any(token in str(book).lower() for token in placeholder_tokens)
+                for book in books
+            ):
+                raise ValueError(
+                    f"long-term plan stage {index} requires real route textbooks; "
+                    "placeholder textbooks cannot be published"
+                )
 
     def materialize_short_term(
         self,
@@ -843,8 +881,10 @@ class LearningPlanService:
             completion_criteria=proposal.task_proposal.completion_criteria,
             version=int(self._field(task_source, "version") or 0) + 1,
             status="pending",
-            created_at=self._field(task_source, "created_at") or timestamp,
+            created_at=timestamp,
             updated_at=timestamp,
+            refresh_started_at=timestamp,
+            refresh_due_at=timestamp + _DAILY_TASK_REFRESH_INTERVAL,
         )
         if previous is not None:
             stored = previous.model_copy(update={"learning_task": task})

@@ -75,6 +75,24 @@ async def test_resolver_prefers_structured_profile_goal(
 
 
 @pytest.mark.asyncio
+async def test_resolver_uses_confirmed_direct_learning_goal(
+    repository: DefaultRouteRepository,
+) -> None:
+    result = await DefaultRouteResolverAgent(repository).run(
+        {
+            **agent_context(),
+            "user_request": "请结合我的学习状态，给我制定一份长期学习计划。",
+            "user_profile": {"learning_goal": "中医执业医师资格考试"},
+        }
+    )
+
+    assert result.payload.goal_type == "credential"
+    assert result.payload.goal_name == "中医执业医师资格考试"
+    assert result.payload.planning_status == "approved_route"
+    assert result.payload.match_reason in {"alias", "embedded_alias"}
+
+
+@pytest.mark.asyncio
 async def test_resolver_uses_first_structured_goal_from_list_before_request(
     repository: DefaultRouteRepository,
 ) -> None:
@@ -278,6 +296,9 @@ async def test_resolver_preserves_textbook_clarification_for_vague_nursing_exam(
     assert result.payload.textbook_route is not None
     assert result.payload.textbook_route.planning_status == "needs_clarification"
     assert result.payload.textbook_route.clarification_questions
+    assert set(result.payload.textbook_route.clarification_questions).issubset(
+        set(result.payload.unknowns_to_confirm)
+    )
 
 
 @pytest.mark.asyncio
@@ -353,6 +374,87 @@ async def test_route_agent_selects_only_an_approved_catalog_route(
     assert result.payload.textbook_route is not None
     assert result.payload.textbook_route.planning_status == "resolved"
     assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
+
+
+@pytest.mark.asyncio
+async def test_route_agent_clarifies_physician_path_for_nonmedical_background(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    model = RouteDecisionModel(
+        {
+            "decision": "select",
+            "selected_route_id": "tcm_physician_standard_degree",
+            "confidence": 0.96,
+            "reason": "错误地默认了规定学历路径。",
+            "clarification_question": None,
+        }
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "我想考中医执业医师资格考试",
+            "user_profile": {
+                "learning_goal": "中医执业医师资格考试",
+                "learning_background": "零基础，计算机专业",
+            },
+        }
+    )
+
+    assert result.payload.planning_status == "provisional"
+    assert result.payload.route_id is None
+    assert result.payload.match_reason == "agent_requires_clarification"
+    assert len(result.payload.unknowns_to_confirm) == 1
+    assert "规定学历" in result.payload.unknowns_to_confirm[0]
+    assert "计算机专业" in result.payload.unknowns_to_confirm[0]
+    assert result.payload.textbook_route is None
+    assert model.payload["payload"]["learner_context"]["learning_background"] == "零基础，计算机专业"
+
+
+@pytest.mark.asyncio
+async def test_route_agent_keeps_confirmed_goal_after_profile_completion(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    model = RouteDecisionModel(
+        {
+            "decision": "select",
+            "selected_route_id": "tcm_physician_standard_degree",
+            "confidence": 0.96,
+            "reason": "用户已明确考试目标。",
+            "clarification_question": None,
+        }
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "请结合我的学习状态，给我制定一份长期学习计划。",
+            "user_profile": {
+                "learning_goal": "中医执业医师资格考试",
+                "learning_background": "零基础，计算机专业",
+                "time_constraints": "每周4天，每天2小时",
+            },
+        }
+    )
+
+    assert result.payload.goal_type == "credential"
+    assert result.payload.goal_name == "中医执业医师资格考试"
+    assert result.payload.planning_status == "provisional"
+    assert len(result.payload.unknowns_to_confirm) == 1
+    assert "规定学历" in result.payload.unknowns_to_confirm[0]
+    assert "考试" not in result.payload.unknowns_to_confirm[0].split("请说明", 1)[-1]
+    assert model.payload["payload"]["structured_goal"] == {
+        "goal_type": "credential",
+        "goal_name": "中医执业医师资格考试",
+    }
 
 
 @pytest.mark.asyncio
@@ -759,6 +861,57 @@ async def test_generic_long_term_request_uses_active_learning_target_without_rea
     assert result.payload.match_reason == "active_learning_target"
     assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
     assert model.payload is None
+
+
+@pytest.mark.asyncio
+async def test_explicit_unknown_target_change_does_not_inherit_old_route(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    current = repository.resolve(
+        goal_type="credential", goal_name="中医执业医师"
+    )
+    model = RouteDecisionModel(
+        {
+            "decision": "clarify",
+            "selected_route_id": None,
+            "confidence": 0.98,
+            "reason": "目录没有覆盖用户本轮明确提出的新方向。",
+            "clarification_question": "请说明该方向对应的正式考试、课程或培养项目名称。",
+        }
+    )
+
+    result = await DefaultRouteResolverAgent(
+        repository, textbook_repository, model
+    ).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "explicit_long_term_change": True,
+            "user_request": (
+                "请重新制定长期规划，我想学习一个系统目前没有收录的"
+                "火星医学专业方向。"
+            ),
+            "user_profile": {
+                "goals": {"type": "credential", "name": "中医执业医师"}
+            },
+            "learning_target": {
+                "target_type": "certification",
+                "exam_name": "中医执业医师",
+                "is_active": True,
+            },
+            "current_long_term_plan": {
+                "content": "原长期规划",
+                "planning_route": current.model_dump(mode="json"),
+            },
+        }
+    )
+
+    assert result.payload.planning_status == "provisional"
+    assert result.payload.route_id is None
+    assert result.payload.match_reason == "agent_requires_clarification"
+    assert result.payload.goal_name.startswith("请重新制定长期规划")
+    assert model.payload is not None
 
 
 @pytest.mark.asyncio

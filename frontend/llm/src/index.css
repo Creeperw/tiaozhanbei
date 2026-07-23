@@ -2842,6 +2842,9 @@ textarea:focus-visible {
 .today-task-rail__knowledge p,
 .today-task-rail[data-state="empty"] > p { margin: 8px 0 0; color: #71877f; font-size: .62rem; line-height: 1.55; }
 .today-task-rail__criteria { margin: 10px 0 0; color: #60776f; font-size: .58rem; line-height: 1.5; }
+.daily-task-countdown { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; border: 1px solid #dcece6; border-radius: 11px; background: #f5fbf8; padding: 8px 10px; color: #42665c; font-size: .62rem; }
+.daily-task-countdown > span { display: inline-flex; align-items: center; gap: 5px; }
+.daily-task-countdown > strong { color: #08785c; font-size: .68rem; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
 .today-task-rail[data-state="empty"] > button { margin-top: 12px; border: 0; border-radius: 999px; background: #07845f; padding: 7px 11px; color: #fff; font-size: .62rem; font-weight: 700; cursor: pointer; }
 
 .dashboard-daily__feedback {

@@ -353,10 +353,7 @@ class PersonalizedReviewCardUseCase:
             # Every product entry point follows the same backend-owned planning
             # prerequisite policy. Tests that call agents directly remain able to
             # opt in explicitly without manufacturing persistence dependencies.
-            "enforce_profile_readiness": (
-                self.behavior_context_loader is not None
-                and not self._has_meaningful_profile(request.user_profile)
-            ),
+            "enforce_profile_readiness": self.behavior_context_loader is not None,
             "enforce_planning_readiness": True,
             "behavior_context_calculated_at": behavior_context.get("calculated_at"),
             "learning_monitoring": learning_monitoring.model_dump(mode="json"),
@@ -532,6 +529,32 @@ class PersonalizedReviewCardUseCase:
                 continuation.execution_id,
             )
             resume_payload["profile_updates"] = profile_updates
+        elif (
+            interrupt_payload.get("interrupt_type") == "route_resolution"
+            and self.profile_memory_extractor is not None
+        ):
+            extracted_profile = await asyncio.to_thread(
+                self.profile_memory_extractor,
+                continuation.request.learner_id,
+                request.answer,
+                continuation.execution_id,
+            )
+            if isinstance(extracted_profile, dict):
+                allowed_profile_fields = {
+                    "display_name",
+                    "learner_group",
+                    "learning_goal",
+                    "learning_background",
+                    "time_constraints",
+                }
+                continuation.context.setdefault("user_profile", {}).update(
+                    {
+                        key: value
+                        for key, value in extracted_profile.items()
+                        if key in allowed_profile_fields
+                        and value not in (None, "", [], {})
+                    }
+                )
         execution = await self.orchestrator.resume(
             thread_id,
             resume_payload,

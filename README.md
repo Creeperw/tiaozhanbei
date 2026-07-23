@@ -124,7 +124,7 @@ npm run dev
 
 ## Live 环境与大体积数据
 
-Live 模式使用 `qwen3.7-max-2026-05-20`、`Qwen/Qwen3-Embedding-4B` 和正式知识库。下列内容
+Live 模式使用 `qwen3.7-plus-2026-05-26`、`Qwen/Qwen3-Embedding-4B` 和正式知识库。下列内容
 不进入 Git，由项目共享盘提供并通过环境变量指向绝对路径：
 
 - 题库与知识点原始交付包；

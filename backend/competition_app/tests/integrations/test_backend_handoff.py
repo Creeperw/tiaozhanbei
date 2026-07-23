@@ -9,6 +9,7 @@ from competition_app.api.app import create_app
 from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings
 from competition_app.integrations.backend_handoff import (
+    _explicit_profile_updates,
     _model_environment,
     _normalize_profile_memory_value,
 )
@@ -19,6 +20,43 @@ def test_memory_agent_normalizes_legacy_instruction_shaped_learning_goal():
         "learning_goal",
         "请结合我的学习状态，重新给我制定一份长期规划。我要考取中医执业医师资格证。",
     ) == "中医执业医师资格考试"
+
+
+def test_memory_agent_drops_generic_planning_instruction_as_goal():
+    assert _normalize_profile_memory_value(
+        "learning_goal",
+        "请结合我的学习状态，为我制定一份学习计划。",
+    ) == ""
+
+
+def test_explicit_profile_fallback_captures_current_turn_without_inference():
+    assert _explicit_profile_updates(
+        "请制定长期规划。我想考中医执业医师资格考试，目前零基础，"
+        "我是计算机专业，每周可以学习4天、每天4小时。"
+    ) == {
+        "learning_goal": "中医执业医师资格考试",
+        "learning_background": "零基础，计算机专业",
+        "time_constraints": "每周可以学习4天，每天4小时",
+    }
+
+
+def test_explicit_profile_fallback_accepts_bare_exam_answer():
+    assert _explicit_profile_updates("中医执业医师考试") == {
+        "learning_goal": "中医执业医师资格考试"
+    }
+
+
+def test_explicit_profile_fallback_keeps_major_after_zero_basis_clause():
+    updates = _explicit_profile_updates(
+        "请制定长期计划。我是零基础，计算机专业，每周学习4天，每天2小时。"
+    )
+
+    assert updates["learning_background"] == "零基础，计算机专业"
+    assert updates["time_constraints"] == "每周学习4天，每天2小时"
+
+
+def test_explicit_profile_fallback_does_not_invent_missing_facts():
+    assert _explicit_profile_updates("请结合我的学习状态制定长期规划") == {}
 
 
 class FakeBackendHandoffRuntime:

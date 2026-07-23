@@ -534,9 +534,12 @@ class LangGraphOrchestrator(Orchestrator):
             if (
                 dependency_step is None
                 or dependency_step.agent not in self._RESUME_SENSITIVE_AGENTS
-                or not self._clarification_comes_from_dependency(
-                    clarification,
-                    refreshed.get(dependency_id),
+                or not (
+                    self._clarification_comes_from_dependency(
+                        clarification,
+                        refreshed.get(dependency_id),
+                    )
+                    or self._profile_clarification_affects_route(clarification)
                 )
             ):
                 continue
@@ -561,12 +564,42 @@ class LangGraphOrchestrator(Orchestrator):
             for item in (getattr(payload, "unknowns_to_confirm", None) or [])
             if str(item).strip()
         }
+        textbook_resolution = getattr(payload, "textbook_route", None)
+        if isinstance(textbook_resolution, dict):
+            textbook_questions = textbook_resolution.get(
+                "clarification_questions"
+            ) or []
+        else:
+            textbook_questions = (
+                getattr(textbook_resolution, "clarification_questions", None)
+                or []
+            )
+        dependency_questions.update(
+            str(item).strip()
+            for item in textbook_questions
+            if str(item).strip()
+        )
         current_questions = {
             str(item).strip()
             for item in (clarification.get("questions") or [])
             if str(item).strip()
         }
         return bool(dependency_questions & current_questions)
+
+    @staticmethod
+    def _profile_clarification_affects_route(
+        clarification: dict[str, Any],
+    ) -> bool:
+        profile_fields = {
+            str(item).strip()
+            for item in (clarification.get("profile_fields") or [])
+            if str(item).strip()
+        }
+        return bool(
+            profile_fields.intersection(
+                {"learning_goal", "learning_background"}
+            )
+        )
 
     @staticmethod
     def _clarification_payload(result: Any, step: ExecutionStep) -> dict[str, Any] | None:

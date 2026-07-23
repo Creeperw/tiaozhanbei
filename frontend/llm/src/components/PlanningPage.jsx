@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { BookOpen, Clock, RefreshCcw, Sparkles } from 'lucide-react';
 import { API_BASE, fetchJsonWithAuthFallback, fetchWithAuth, readJsonResponse } from '../utils/api';
 import { emptyPlan, loadPlanningData } from '../pageDataLoaders.js';
+import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
 
 export default function PlanningPage() {
   const [plan, setPlan] = useState(emptyPlan);
@@ -10,33 +11,33 @@ export default function PlanningPage() {
   const [latestReview, setLatestReview] = useState(null);
   const [reviewBusy, setReviewBusy] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadPlan = async () => {
-      setLoading(true);
-      setError('');
-      const { plan: nextPlan, error: nextError } = await loadPlanningData({
-        fetcher: fetchJsonWithAuthFallback,
-      });
-      try {
-        const reviewRes = await fetchWithAuth(`${API_BASE}/v1/plan-reviews?limit=1`);
-        const reviewData = await readJsonResponse(reviewRes, { items: [] });
-        if (!cancelled && reviewRes.ok) setLatestReview(reviewData.items?.[0] || null);
-      } catch {
-        if (!cancelled) setLatestReview(null);
-      }
-      if (!cancelled) {
-        setPlan(nextPlan);
-        setError(nextError);
-        setLoading(false);
-      }
-    };
-
-    loadPlan();
-    return () => {
-      cancelled = true;
-    };
+  const loadPlan = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    const { plan: nextPlan, error: nextError } = await loadPlanningData({
+      fetcher: fetchJsonWithAuthFallback,
+    });
+    try {
+      const reviewRes = await fetchWithAuth(`${API_BASE}/v1/plan-reviews?limit=1`);
+      const reviewData = await readJsonResponse(reviewRes, { items: [] });
+      if (reviewRes.ok) setLatestReview(reviewData.items?.[0] || null);
+    } catch {
+      setLatestReview(null);
+    }
+    setPlan(nextPlan);
+    setError(nextError);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadPlan(); }, [loadPlan]);
+
+  const refreshDailyTask = useCallback(async () => {
+    try {
+      await fetchWithAuth(`${API_BASE}/v1/learning-tasks/current/refresh`, { method: 'POST' });
+    } finally {
+      await loadPlan();
+    }
+  }, [loadPlan]);
 
   const runReview = async () => {
     setReviewBusy(true);
@@ -126,6 +127,7 @@ export default function PlanningPage() {
             <BookOpen size={16} />
             今日任务卡
           </div>
+          <DailyTaskCountdown timer={plan.daily_task_timer} onExpire={refreshDailyTask} className="mb-4" />
           <div className="space-y-3">
             {plan.daily_tasks.map((task) => (
               <div key={task.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

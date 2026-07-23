@@ -129,6 +129,7 @@ class MistakeVariationServiceTests(unittest.TestCase):
             "question_type": "single_choice",
             "difficulty": 2,
             "kp_ids": ["KP_1"],
+            "kp_names": [],
         }])
         self.assertNotIn("原题秘密答案", json.dumps(sources, ensure_ascii=False))
 
@@ -254,7 +255,7 @@ class MistakeVariationServiceTests(unittest.TestCase):
         self.assertNotIn("原题秘密答案", serialized)
         self.assertEqual(
             set(result["questions"][0]),
-            {"question_version_id", "question_id", "stem", "question_type", "difficulty", "kp_ids", "source_kind"},
+            {"question_version_id", "question_id", "stem", "question_type", "difficulty", "kp_ids", "kp_names", "source_kind"},
         )
         self.assertTrue(all(
             audits[variation.audit_id].decision == "pass"

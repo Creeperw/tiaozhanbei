@@ -488,7 +488,7 @@ async def test_chat_client_retries_one_transient_http_status() -> None:
     client = OpenAICompatibleChatModel(
         base_url="https://example.test/v1",
         api_key="secret-value",
-        model="qwen3.7-max-2026-05-20",
+        model="qwen3.7-plus-2026-05-26",
         transport=httpx.MockTransport(handler),
     )
 
@@ -508,7 +508,7 @@ async def test_chat_client_does_not_retry_non_transient_http_status() -> None:
     client = OpenAICompatibleChatModel(
         base_url="https://example.test/v1",
         api_key="secret-value",
-        model="qwen3.7-max-2026-05-20",
+        model="qwen3.7-plus-2026-05-26",
         transport=httpx.MockTransport(handler),
     )
 
@@ -539,7 +539,7 @@ async def test_chat_client_uses_bounded_backoff_for_rate_limit(monkeypatch) -> N
     client = OpenAICompatibleChatModel(
         base_url="https://example.test/v1",
         api_key="secret-value",
-        model="qwen3.7-max-2026-05-20",
+        model="qwen3.7-plus-2026-05-26",
         transport=httpx.MockTransport(handler),
     )
 

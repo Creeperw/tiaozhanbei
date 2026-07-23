@@ -609,8 +609,10 @@ def generate_question_variation(
     source_version_id = _text(request.get("source_question_version_id"))
     source_question_id = _text(request.get("source_question_id"))
     source_stem = _text(request.get("source_stem"))
+    source_answer = _text(request.get("source_answer"))
+    source_analysis = _text(request.get("source_analysis"))
     requested_kp_ids = request.get("kp_ids")
-    if not isinstance(mistake_id, int) or mistake_id <= 0 or not source_version_id or not source_stem:
+    if not isinstance(mistake_id, int) or mistake_id <= 0 or not source_version_id or not source_stem or not source_answer:
         raise ValueError("owned mistake and source question are required")
     if not isinstance(requested_kp_ids, list) or not requested_kp_ids:
         raise ValueError("kp_ids are required")
@@ -627,6 +629,8 @@ def generate_question_variation(
         "source_mistake_id": mistake_id,
         "source_question_id": source_question_id,
         "source_question_version_id": source_version_id,
+        "answer": source_answer,
+        "analysis": source_analysis or f"参考答案为{source_answer}。请结合关联知识点说明判断依据。",
     }, claim_texts=[stem])
     artifact = ExpertArtifact(
         artifact_type="question_variation",

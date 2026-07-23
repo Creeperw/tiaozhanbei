@@ -280,14 +280,24 @@ def build_evidence_pack(
     query: str,
     learner_context: LearnerContextBrief,
     task_type: str | None = None,
+    requested_kp_ids: list[str] | None = None,
     document_result: dict[str, Any] | None = None,
     rag_search: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> EvidencePack:
     user_id = int(learner_context.learner_id) if str(learner_context.learner_id).isdigit() else None
     alignment = align_knowledge_points(db, query, user_id=user_id)
     query_kp_ids = list(alignment.get("resolved_kp_ids", []))
-    evidence_kp_ids = query_kp_ids or list(learner_context.kp_ids)
-    resolved_kp_ids = list(dict.fromkeys([*query_kp_ids, *learner_context.kp_ids]))
+    scoped_kp_ids = list(dict.fromkeys(
+        value.strip()
+        for value in (requested_kp_ids or [])
+        if isinstance(value, str) and value.strip()
+    ))
+    evidence_kp_ids = scoped_kp_ids or query_kp_ids or list(learner_context.kp_ids)
+    resolved_kp_ids = (
+        scoped_kp_ids
+        if scoped_kp_ids
+        else list(dict.fromkeys([*query_kp_ids, *learner_context.kp_ids]))
+    )
     candidate_kp_ids = list(alignment.get("candidate_kp_ids", []))
     search = rag_search or rag_service.search
     retrieval_risks: list[str] = []

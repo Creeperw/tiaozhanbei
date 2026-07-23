@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BookOpenText, Clock3, Sparkles } from 'lucide-react';
 import { API_BASE, MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import CompactAssistant from './CompactAssistant';
 import DashboardDailyWorkspace from './dashboard/DashboardDailyWorkspace';
+import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
 import {
   buildDailyFeedback,
   buildDailyFocus,
@@ -36,16 +37,18 @@ const EMPTY_DASHBOARD = {
   },
   today_tasks: [],
   current_learning_task: null,
+  daily_task_timer: null,
   yesterday_feedback: { metrics: [] },
 };
 
-function TodayTaskRail({ task, onNavigate }) {
+function TodayTaskRail({ task, timer, onExpire, onNavigate }) {
   const chapter = task?.learning_chapter || {};
   const cards = Array.isArray(task?.knowledge_cards) ? task.knowledge_cards : [];
   if (!task) {
     return (
       <section className="today-task-rail" aria-label="今日任务" data-state="empty">
         <header><span>Today</span><h2>今日任务</h2></header>
+        <DailyTaskCountdown timer={timer} onExpire={onExpire} />
         <p>还没有可执行的今日任务。</p>
         <button
           type="button"
@@ -60,6 +63,7 @@ function TodayTaskRail({ task, onNavigate }) {
         <div><span>Today</span><h2>今日任务</h2></div>
         <small><Clock3 aria-hidden="true" size={13} />{task.duration}</small>
       </header>
+      <DailyTaskCountdown timer={timer} onExpire={onExpire} />
       <h3>{task.title}</h3>
       <div className="today-task-rail__chapter">
         <BookOpenText aria-hidden="true" size={16} />
@@ -170,26 +174,29 @@ export default function DashboardPage({
   const [classicParent, setClassicParent] = useState(null);
   const [classicError, setClassicError] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadDashboard = async () => {
-      setError('');
-      try {
-        const response = await fetchWithAuth(`${MAIN_API_BASE}/dashboard/home`);
-        const payload = await readJsonResponse(response, {});
-        if (!response.ok) throw new Error(payload.detail || '首页数据加载失败');
-        if (!hasDashboardShape(payload)) throw new Error('首页数据解析失败');
-        if (!cancelled) setDashboard({ ...EMPTY_DASHBOARD, ...payload });
-      } catch (loadError) {
-        if (!cancelled) {
-          setDashboard(EMPTY_DASHBOARD);
-          setError(loadError.message || '首页数据加载失败');
-        }
-      }
-    };
-    loadDashboard();
-    return () => { cancelled = true; };
+  const loadDashboard = useCallback(async () => {
+    setError('');
+    try {
+      const response = await fetchWithAuth(`${MAIN_API_BASE}/dashboard/home`);
+      const payload = await readJsonResponse(response, {});
+      if (!response.ok) throw new Error(payload.detail || '首页数据加载失败');
+      if (!hasDashboardShape(payload)) throw new Error('首页数据解析失败');
+      setDashboard({ ...EMPTY_DASHBOARD, ...payload });
+    } catch (loadError) {
+      setDashboard(EMPTY_DASHBOARD);
+      setError(loadError.message || '首页数据加载失败');
+    }
   }, []);
+
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+
+  const refreshDailyTask = useCallback(async () => {
+    try {
+      await fetchWithAuth(`${MAIN_API_BASE}/learning-tasks/current/refresh`, { method: 'POST' });
+    } finally {
+      await loadDashboard();
+    }
+  }, [loadDashboard]);
 
   useEffect(() => {
     let cancelled = false;
@@ -421,7 +428,7 @@ export default function DashboardPage({
         greeting={greeting}
         focus={focus}
         schedule={schedule}
-        todayTaskContent={<TodayTaskRail task={dashboard.current_learning_task} onNavigate={onNavigate} />}
+        todayTaskContent={<TodayTaskRail task={dashboard.current_learning_task} timer={dashboard.daily_task_timer} onExpire={refreshDailyTask} onNavigate={onNavigate} />}
         feedback={feedback}
         assistantCollapsed={assistantCollapsed}
         assistantDocked={assistantDocked}

@@ -149,13 +149,20 @@ class DiagnosisAgent:
                     context, plan_scope, learner_id=context.get("learner_id")
                 )
                 if not planning_readiness.can_generate:
+                    clarification_questions = await self._clarification_questions(
+                        context, planning_readiness
+                    )
+                    readiness_summary = {
+                        "needs_profile": "制定长期规划前，需要先补齐最少量的个性化信息。",
+                        "needs_long_term_plan": "制定短期计划前，需要先建立长期规划。",
+                        "needs_short_term_plan": "制定当日任务前，需要先建立短期计划。",
+                        "stale_parent_plan": "上层规划已失效，需要先恢复当前有效版本。",
+                    }.get(
+                        planning_readiness.status,
+                        "当前规划前置条件尚未满足。",
+                    )
                     result = DiagnosisResult(
-                        summary={
-                            "needs_profile": "制定长期规划前，需要先补齐最少量的个性化信息。",
-                            "needs_long_term_plan": "制定短期计划前，需要先建立长期规划。",
-                            "needs_short_term_plan": "制定当日任务前，需要先建立短期计划。",
-                            "stale_parent_plan": "上层规划已失效，需要先恢复当前有效版本。",
-                        }.get(planning_readiness.status, "当前规划前置条件尚未满足。"),
+                        summary=readiness_summary,
                         stage_id=str(system_data.get("current_stage_id", "T0")),
                         weak_kp_ids=resolved_kp_ids,
                         target_difficulty=target_difficulty,
@@ -163,11 +170,11 @@ class DiagnosisAgent:
                             capacity=1, target_difficulty=target_difficulty
                         ),
                         requires_clarification=True,
-                        clarification_questions=planning_readiness.questions,
+                        clarification_questions=clarification_questions,
                         clarification_fields=[planning_readiness.next_profile_field]
                         if planning_readiness.next_profile_field
                         else [],
-                        clarification_reason="；".join(planning_readiness.reason_codes),
+                        clarification_reason=readiness_summary,
                         interrupt_type=(
                             "profile_completion"
                             if planning_readiness.status == "needs_profile"
@@ -178,9 +185,11 @@ class DiagnosisAgent:
                     return envelope(context, "diagnosis_agent", "diagnosis_result", result)
         textbook_context = route_context.get("textbook_route") or {}
         if route_context.get("match_reason") == "agent_requires_clarification":
-            questions = self._string_list(route_context.get("unknowns_to_confirm"))
+            questions = self._string_list(
+                route_context.get("unknowns_to_confirm")
+            )[:1]
             result = DiagnosisResult(
-                summary="需要先确认学习目的，再选择长期教材路线。",
+                summary="需要先确认与当前目标匹配的具体学习或报考路线。",
                 stage_id=str(system_data.get("current_stage_id", "T0")),
                 weak_kp_ids=resolved_kp_ids,
                 target_difficulty=target_difficulty,
@@ -189,7 +198,8 @@ class DiagnosisAgent:
                 ),
                 requires_clarification=True,
                 clarification_questions=questions,
-                clarification_reason="当前信息不足以区分课程、考试、升学或专业方向。",
+                clarification_reason="当前目标与已知背景还不足以唯一确定一条已批准路线。",
+                interrupt_type="route_resolution",
                 plan_scope=plan_scope,
             )
             return envelope(context, "diagnosis_agent", "diagnosis_result", result)
@@ -208,6 +218,7 @@ class DiagnosisAgent:
                 requires_clarification=True,
                 clarification_questions=questions,
                 clarification_reason="教材方向已识别，但具体考试身份仍不明确。",
+                interrupt_type="route_resolution",
                 plan_scope=plan_scope,
             )
             return envelope(context, "diagnosis_agent", "diagnosis_result", result)
@@ -258,6 +269,41 @@ class DiagnosisAgent:
                 "daily_task_action": daily_action,
                 "reason": f"本次只生成{plan_scope}层，其他层不由模型改写。",
             })
+        if (
+            task_type == "learning_plan"
+            and plan_scope in {"long_term", "short_term", "daily_task"}
+            and not self._has_publishable_planning_phases(route_context)
+        ):
+            route_questions = self._string_list(
+                textbook_context.get("clarification_questions")
+            ) or self._string_list(route_context.get("unknowns_to_confirm"))
+            if plan_scope == "long_term":
+                summary = "当前目标还没有绑定到包含明确教材的可信学习路线。"
+                fallback_question = (
+                    "请补充你要参加的具体考试、课程或升学方向；"
+                    "如果是资格考试，也请说明具体报考路径。"
+                )
+            else:
+                summary = "现有长期规划没有绑定完整的教材路线，不能据此继续生成下层计划。"
+                fallback_question = "请先重新制定一份已绑定明确教材路线的长期规划。"
+            result = DiagnosisResult(
+                summary=summary,
+                stage_id=str(system_data.get("current_stage_id", "T0")),
+                weak_kp_ids=resolved_kp_ids,
+                target_difficulty=target_difficulty,
+                daily_review_policy=DailyReviewPolicy(
+                    capacity=1, target_difficulty=target_difficulty
+                ),
+                requires_clarification=True,
+                clarification_questions=route_questions[:1] or [fallback_question],
+                clarification_reason=(
+                    "长期规划必须来源于系统已解析且包含真实教材的路线，"
+                    "禁止用占位教材生成或落库。"
+                ),
+                interrupt_type="route_resolution",
+                plan_scope=plan_scope,
+            )
+            return envelope(context, "diagnosis_agent", "diagnosis_result", result)
 
         model_textbook_context = self._model_textbook_context(route_context)
         memory_output = context.get("dependency_outputs", {}).get("memory")
@@ -270,8 +316,17 @@ class DiagnosisAgent:
                 getattr(memory_context_summary, "summary", "") or ""
             ),
             "goals": learning_goals,
+            "learner_context": {
+                "learning_goal": user_profile.get("learning_goal"),
+                "learning_background": user_profile.get("learning_background"),
+                "completed_courses": user_profile.get("completed_courses"),
+                "learner_group": user_profile.get("learner_group") or user_profile.get("user_group"),
+            },
             "time_constraints": {
                 "available_minutes_today": context.get("available_minutes"),
+                "sustainable_schedule": user_profile.get("time_constraints"),
+                "daily_available_minutes": user_profile.get("daily_available_minutes"),
+                "weekly_available_minutes": user_profile.get("weekly_available_minutes"),
                 "preferences": user_profile.get("user_preference", {}),
             },
             "learning_evidence": {
@@ -342,6 +397,7 @@ class DiagnosisAgent:
                     three_layer,
                     resolved_route,
                     available_minutes=context.get("available_minutes"),
+                    user_time_constraints=str(user_profile.get("time_constraints") or ""),
                     long_term_action=change_decision.long_term_action,
                     short_term_action=change_decision.short_term_action,
                     daily_task_action=change_decision.daily_task_action,
@@ -391,12 +447,49 @@ class DiagnosisAgent:
                         three_layer,
                         resolved_route,
                         available_minutes=context.get("available_minutes"),
+                        user_time_constraints=str(user_profile.get("time_constraints") or ""),
                         long_term_action=change_decision.long_term_action,
                         short_term_action=change_decision.short_term_action,
                         daily_task_action=change_decision.daily_task_action,
                         confirmed_prerequisite_courses=confirmed_prerequisite_courses,
                     )
                     if not validation.valid:
+                        if any(
+                            "占位教材" in issue or "缺少系统可信路线阶段" in issue
+                            for issue in validation.issues
+                        ):
+                            result = DiagnosisResult(
+                                summary="当前目标还没有绑定到包含明确教材的可信学习路线。",
+                                stage_id=str(system_data.get("current_stage_id", "T0")),
+                                weak_kp_ids=resolved_kp_ids,
+                                target_difficulty=target_difficulty,
+                                daily_review_policy=DailyReviewPolicy(
+                                    capacity=1,
+                                    target_difficulty=target_difficulty,
+                                ),
+                                requires_clarification=True,
+                                clarification_questions=(
+                                    self._string_list(
+                                        route_context.get("unknowns_to_confirm")
+                                    )[:1]
+                                    or [
+                                        "请补充你要参加的具体考试、课程或升学方向；"
+                                        "如果是资格考试，也请说明具体报考路径。"
+                                    ]
+                                ),
+                                clarification_reason=(
+                                    "长期规划必须先绑定包含真实教材的系统可信路线，"
+                                    "占位阶段不会发布或落库。"
+                                ),
+                                interrupt_type="route_resolution",
+                                plan_scope=plan_scope,
+                            )
+                            return envelope(
+                                context,
+                                "diagnosis_agent",
+                                "diagnosis_result",
+                                result,
+                            )
                         clarification_questions = self._selection_clarification_questions(
                             validation.issues
                         )
@@ -499,6 +592,67 @@ class DiagnosisAgent:
         )
         return envelope(context, "diagnosis_agent", "diagnosis_result", result)
 
+    async def _clarification_questions(
+        self,
+        context: dict[str, Any],
+        planning_readiness: Any,
+    ) -> list[str]:
+        """Let Diagnosis phrase a system-bounded prerequisite question."""
+
+        fallback = [
+            str(item).strip()
+            for item in getattr(planning_readiness, "questions", [])[:1]
+            if str(item).strip()
+        ]
+        if not fallback:
+            return ["请补充当前规划所需的关键信息。"]
+        field = str(getattr(planning_readiness, "next_profile_field", "") or "")
+        field_goals = {
+            "learning_goal": "确认用户要参加的具体考试、学习课程或希望形成的能力",
+            "learning_background": "确认起点水平、专业背景以及已经学过的相关内容",
+            "time_constraints": "确认可持续的每周学习天数、单次或每日可用时长",
+        }
+        profile = context.get("user_profile") if isinstance(context.get("user_profile"), dict) else {}
+        known_profile = {
+            key: value
+            for key, value in profile.items()
+            if key in {"learning_goal", "learning_background", "time_constraints", "completed_courses", "education", "learner_group"}
+            and value not in (None, "", [], {})
+            and not any(token in str(value).lower() for token in ("未填写", "未选择", "待确认", "unknown"))
+        }
+        try:
+            skill = prompt_skill_registry.load("diagnosis_agent", "clarification")
+            raw = await self.chat_model.complete_json(
+                "diagnosis_clarification",
+                build_model_context(
+                    context,
+                    target_agent="diagnosis_agent",
+                    prompt_skill=skill,
+                    payload={
+                        "missing_field": field,
+                        "question_goal": field_goals.get(field, "确认当前规划缺少的必要信息"),
+                        "known_profile": known_profile,
+                        "current_user_request": str(context.get("user_request") or ""),
+                        "fallback_template": fallback[0],
+                        "output_schema": {
+                            "type": "object",
+                            "required": ["question"],
+                            "properties": {"question": {"type": "string"}},
+                        },
+                    },
+                    permission_note=(
+                        "只可改写当前一个追问的自然语言措辞；不得增加缺失字段、"
+                        "推断用户事实、修改规划状态或输出系统字段。"
+                    ),
+                ),
+            )
+            question = str(raw.get("question") or "").strip() if isinstance(raw, dict) else ""
+            if question and len(question) <= 220:
+                return [question]
+        except Exception:
+            pass
+        return fallback
+
     @staticmethod
     def _planning_output_schema(plan_scope: Any) -> dict[str, Any]:
         schemas = {
@@ -533,7 +687,7 @@ class DiagnosisAgent:
                 stage_index = position
             source = trusted[stage_index] if stage_index < len(trusted) else {}
             if not cls._string_list(stage.get("book")):
-                stage["book"] = cls._string_list(source.get("books")) or ["待确认教材"]
+                stage["book"] = cls._string_list(source.get("books"))
             if not str(stage.get("goal") or "").strip() and source:
                 stage["goal"] = str(source.get("objective") or "完成本阶段目标")
             repaired.append(stage)
@@ -560,11 +714,13 @@ class DiagnosisAgent:
         trusted_stages = [
             {
                 "stage": index,
-                "book": cls._string_list(phase.get("books")) or ["待确认教材"],
+                "book": cls._string_list(phase.get("books")),
                 "goal": str(phase.get("objective") or "完成本阶段目标"),
             }
             for index, phase in enumerate(cls._planning_phases(route_context), start=1)
-        ] or [{"stage": 1, "book": ["待确认教材"], "goal": "完成当前长期阶段"}]
+        ]
+        if not trusted_stages or any(not stage["book"] for stage in trusted_stages):
+            raise ValueError("长期规划缺少包含明确教材的系统可信路线，禁止生成占位阶段。")
 
         selection_source = (
             field(current_short, "textbook_selection")
@@ -646,6 +802,17 @@ class DiagnosisAgent:
                     "【保温底线】",
                 ),
             )
+            common["long_term_plan_content"] = cls._repair_full_capacity_mandate(
+                str(common["long_term_plan_content"]),
+                str(
+                    (
+                        context.get("user_profile")
+                        if isinstance(context.get("user_profile"), dict)
+                        else {}
+                    ).get("time_constraints")
+                    or ""
+                ),
+            )
         elif plan_scope == "short_term":
             scoped = ShortTermPlanningModelOutput.model_validate({
                 key: value
@@ -653,6 +820,28 @@ class DiagnosisAgent:
                 if key in ShortTermPlanningModelOutput.model_fields
             })
             common.update(scoped.model_dump())
+            common["short_term_plan_content"] = cls._repair_short_term_plan_constraints(
+                str(common["short_term_plan_content"]),
+                str(
+                    (
+                        context.get("user_profile")
+                        if isinstance(context.get("user_profile"), dict)
+                        else {}
+                    ).get("time_constraints")
+                    or ""
+                ),
+            )
+            common["short_term_plan_content"] = cls._repair_full_capacity_mandate(
+                str(common["short_term_plan_content"]),
+                str(
+                    (
+                        context.get("user_profile")
+                        if isinstance(context.get("user_profile"), dict)
+                        else {}
+                    ).get("time_constraints")
+                    or ""
+                ),
+            )
             common.update({
                 "daily_task_content": "本次仅制定短期计划；当日任务需另行安排。",
                 "estimated_minutes": fallback_minutes,
@@ -665,6 +854,169 @@ class DiagnosisAgent:
             })
             common.update(scoped.model_dump())
         return ThreeLayerPlanningModelOutput.model_validate(common)
+
+    @staticmethod
+    def _repair_short_term_plan_constraints(
+        content: str,
+        user_time_constraints: str,
+    ) -> str:
+        """Repair presentation-only violations without changing learning content."""
+
+        repaired = re.sub(
+            r"(?:具体)?(?:复习)?时间(?:点)?(?:待|由)系统[^。；\n]*(?:调度|安排)[^。；\n]*[。；]?",
+            "",
+            str(content or ""),
+        )
+        repaired = re.sub(
+            r"系统根据[^。；\n]*(?:调度|安排)[^。；\n]*[。；]?",
+            "",
+            repaired,
+        )
+        repaired = re.sub(
+            r"(?:建议)?在(?:每次|每个)[^，。；\n]{0,30}"
+            r"(?:开始前|结束前|开始时|结束时|结束后)，?"
+            r"(?:花|用)\s*[0-9一二两三四五六七八九十]+\s*分钟",
+            "",
+            repaired,
+        )
+        weekly_days_match = re.search(
+            r"每周[^\d]{0,12}(\d+)\s*天",
+            str(user_time_constraints or ""),
+        )
+        if weekly_days_match and int(weekly_days_match.group(1)) < 7:
+            repaired = re.sub(r"每日|每天", "每个学习日", repaired)
+            labels = iter(("前段", "中段", "验收段"))
+
+            def replace_day_range(_: re.Match[str]) -> str:
+                return next(labels, "验收段")
+
+            repaired = re.sub(
+                r"第\s*\d+\s*[-—至~]\s*\d+\s*天",
+                replace_day_range,
+                repaired,
+            )
+
+        cycle_markers = re.findall(
+            r"第[一二12]周|周初|周中|周末|前半周?|后半周?|"
+            r"本周|本周期|首个节点|下个节点|第二个节点|周期末|"
+            r"第?[一二12](?:个)?节点|第一阶段|第二阶段|阶段[一二12]|"
+            r"前段|中段|验收段",
+            repaired,
+        )
+        if len(set(cycle_markers)) < 2:
+            repaired = (
+                repaired.rstrip()
+                + "\n\n推进节奏按前段建立理解框架、中段完成辨析练习、周期末依据上述验收标准检查结果。"
+            )
+        return re.sub(r"\n{3,}", "\n\n", repaired).strip()
+
+    @staticmethod
+    def _repair_full_capacity_mandate(
+        content: str,
+        user_time_constraints: str,
+    ) -> str:
+        """Keep available capacity from becoming a mandatory full-load schedule."""
+
+        weekly = re.search(
+            r"每周[^0-9]{0,12}(\d+)\s*天",
+            str(user_time_constraints or ""),
+        )
+        per_session = re.search(
+            r"(?:每次|每天)[^0-9]{0,12}(\d+(?:\.\d+)?)\s*(小时|分钟)",
+            str(user_time_constraints or ""),
+        )
+        if weekly is None or per_session is None:
+            return str(content or "")
+
+        max_days = max(1, int(weekly.group(1)))
+        value = float(per_session.group(1))
+        max_minutes = int(round(value * 60)) if per_session.group(2) == "小时" else int(round(value))
+        if max_minutes <= 0:
+            return str(content or "")
+        recommended_days = max_days - 1 if max_days > 1 else 1
+        lower_minutes = max(15, int(round(max_minutes * 0.5 / 5) * 5))
+        upper_minutes = max(lower_minutes, int(round(max_minutes * 0.75 / 5) * 5))
+        recommendation = (
+            f"建议初期每周安排{recommended_days}个学习日、每次"
+            f"{lower_minutes}—{upper_minutes}分钟，其余可用容量用于休息、反馈和机动；"
+            "后续依据真实完成率再调整。"
+        )
+
+        parts = re.split(r"(?<=。)|\n", str(content or ""))
+        repaired: list[str] = []
+        replaced = False
+        for part in parts:
+            has_mandate = any(
+                token in part for token in ("保持", "必须", "确保", "固定", "充分利用")
+            )
+            has_full_days = bool(
+                re.search(rf"每周[^。；\n]{{0,25}}{max_days}\s*(?:天|次)", part)
+            )
+            session_value = per_session.group(1)
+            session_unit = per_session.group(2)
+            has_full_session = bool(
+                re.search(
+                    rf"每次[^。；\n]{{0,25}}{re.escape(session_value)}\s*{session_unit}",
+                    part,
+                )
+            )
+            if has_mandate and has_full_days and has_full_session:
+                if not replaced:
+                    repaired.append(recommendation)
+                    replaced = True
+                continue
+            repaired.append(part)
+        normalized = "\n".join(
+            line.strip() for line in repaired if line.strip()
+        ).strip()
+        session_ranges = [
+            (int(start), int(end))
+            for start, end in re.findall(
+                r"第\s*(\d+)\s*[-—至~]\s*(\d+)\s*次",
+                normalized,
+            )
+        ]
+        standalone_sessions = [
+            int(value)
+            for value in re.findall(r"第\s*(\d+)\s*次", normalized)
+        ]
+        max_planned_session = max(
+            [end for _, end in session_ranges] + standalone_sessions,
+            default=0,
+        )
+        if max_planned_session > recommended_days and max_days > recommended_days:
+            cycle_count = max(1, (max_planned_session + max_days - 1) // max_days)
+            recommended_total = recommended_days * cycle_count
+            if recommended_total < max_planned_session:
+                def remap(index: int) -> int:
+                    return max(
+                        1,
+                        min(
+                            recommended_total,
+                            (index * recommended_total + max_planned_session - 1)
+                            // max_planned_session,
+                        ),
+                    )
+
+                normalized = re.sub(
+                    r"第\s*(\d+)\s*[-—至~]\s*(\d+)\s*次",
+                    lambda match: (
+                        f"第{remap(int(match.group(1)))}-"
+                        f"{remap(int(match.group(2)))}次"
+                    ),
+                    normalized,
+                )
+                normalized = re.sub(
+                    r"第\s*(\d+)\s*次",
+                    lambda match: f"第{remap(int(match.group(1)))}次",
+                    normalized,
+                )
+                normalized = re.sub(
+                    rf"(?<!\d){max_planned_session}\s*次(?=计划学习|学习计划)",
+                    f"{recommended_total}次",
+                    normalized,
+                )
+        return normalized
 
     @staticmethod
     def _parent_planning_route(context: dict[str, Any], plan_scope: Any) -> Any:
@@ -764,24 +1116,32 @@ class DiagnosisAgent:
             for index, phase in enumerate(planning_phases, start=1)
         ]
         trusted_phases = planning_phases
-        long_term_stages = (
-            [
+        reusing_existing_long_term = change_decision.long_term_action == "reuse"
+        if (
+            not cls._has_publishable_planning_phases(route_context)
+            and not reusing_existing_long_term
+        ):
+            raise ValueError("长期规划缺少包含明确教材的系统可信路线，禁止生成占位阶段。")
+        if trusted_phases:
+            long_term_stages = [
                 LongTermPlanStage(
                     stage=index,
-                    book=cls._string_list(phase.get("books")) or ["待确认教材"],
+                    book=cls._string_list(phase.get("books")),
                     goal=str(phase.get("objective") or "完成本阶段目标"),
                 )
                 for index, phase in enumerate(trusted_phases, start=1)
             ]
-            if trusted_phases
-            else [
-                LongTermPlanStage(
-                    stage=1,
-                    book=["待确认教材"],
-                    goal="完成当前长期学习阶段目标",
-                )
+        else:
+            current_long = context.get("current_long_term_plan") or {}
+            existing_stages = (
+                current_long.get("stages", [])
+                if isinstance(current_long, dict)
+                else getattr(current_long, "stages", [])
+            )
+            long_term_stages = [
+                LongTermPlanStage.model_validate(stage)
+                for stage in (existing_stages or [])
             ]
-        )
         short_term_package = ShortTermLearningPackage(
             time_window_weeks=cls._short_term_window_weeks(context),
             current_goal=short_content,
@@ -1138,6 +1498,25 @@ class DiagnosisAgent:
                 for stage in textbook_route.get("stages", [])
             ]
         return list(route_context.get("phases", []))
+
+    @classmethod
+    def _has_publishable_planning_phases(
+        cls, route_context: dict[str, Any]
+    ) -> bool:
+        phases = cls._planning_phases(route_context)
+        if not phases:
+            return False
+        placeholder_tokens = (
+            "待确认", "未确认", "unknown", "tbd", "不可发布", "路线解析失败"
+        )
+        for phase in phases:
+            books = cls._string_list(phase.get("books"))
+            if not books or any(
+                any(token in book.lower() for token in placeholder_tokens)
+                for book in books
+            ):
+                return False
+        return True
 
     @classmethod
     def _model_textbook_context(

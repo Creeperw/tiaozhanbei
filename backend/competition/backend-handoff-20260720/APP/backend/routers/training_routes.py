@@ -303,7 +303,11 @@ def _question_kp_ids(question: QuestionBankItem) -> list[str]:
 
 def _knowledge_point_names(db: Session, kp_ids: list[str]) -> list[str]:
     rows = db.query(KnowledgePoint).filter(KnowledgePoint.kp_id.in_(kp_ids)).all() if kp_ids else []
-    names = {row.kp_id: row.name for row in rows if str(row.name or "").strip()}
+    names = {
+        row.kp_id: row.name
+        for row in rows
+        if str(row.name or "").strip() and str(row.name).strip() != str(row.kp_id)
+    }
     return [names[kp_id] for kp_id in kp_ids if kp_id in names]
 
 
@@ -388,6 +392,7 @@ def next_practice_question(
                     "kp_ids": question_kp_ids,
                     "kp_names": _knowledge_point_names(db, question_kp_ids),
                     "difficulty": 2,
+                    "difficulty_source": "system_default",
                     "request_id": request_id,
                     "source_scope": "user",
                 },
@@ -457,6 +462,7 @@ def next_practice_question(
             "kp_ids": question_kp_ids,
             "kp_names": _knowledge_point_names(db, question_kp_ids),
             "difficulty": int(question.difficulty or 2),
+            "difficulty_source": "question_bank_snapshot" if question.difficulty else "system_default",
             "request_id": request_id,
             "source_scope": "public",
         },
@@ -575,6 +581,20 @@ def grade_practice(
             "confidence": raw_grading.get("confidence"),
             "dimension_scores": raw_grading.get("dimension_scores", {}),
         }
+        cached_explanation = str(private_question.analysis or "").strip()
+        generated_explanation = str(
+            raw_grading.get("question_explanation")
+            or raw_grading.get("feedback")
+            or raw_grading.get("analysis")
+            or ""
+        ).strip()
+        if cached_explanation:
+            grading["question_explanation"] = cached_explanation
+            grading["explanation_source"] = "user_question_cache"
+        elif generated_explanation:
+            private_question.analysis = generated_explanation
+            grading["question_explanation"] = generated_explanation
+            grading["explanation_source"] = "generated_on_first_attempt"
         if not isinstance(audit_payload, dict) or audit_payload.get("decision") != "pass":
             db.commit()
             return {

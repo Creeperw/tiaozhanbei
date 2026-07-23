@@ -5,9 +5,16 @@ from datetime import timedelta
 from typing import Any
 from uuid import uuid4
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from APP.backend.database import KnowledgeCardRecord, PaperInstanceRecord, PaperItemRecord
+from APP.backend.database import (
+    KnowledgeCardRecord,
+    PaperInstanceRecord,
+    PaperItemRecord,
+    QuestionKPLinkRecord,
+    QuestionVersionRecord,
+)
 from APP.backend.time_utils import utc_now
 
 
@@ -148,6 +155,12 @@ def publish_agent_paper(
     )
     for position, (item, item_score) in enumerate(zip(paper_items, item_scores), start=1):
         question = item.get("question") or {}
+        try:
+            item_difficulty = max(1, min(5, int(float(
+                question.get("difficulty") or paper.get("difficulty") or blueprint.get("difficulty") or 2
+            ))))
+        except (TypeError, ValueError):
+            item_difficulty = 2
         bridges = question.get("bridges") or []
         kp_ids = list(dict.fromkeys(
             str(bridge.get("kp_id"))
@@ -155,8 +168,7 @@ def publish_agent_paper(
             if isinstance(bridge, dict) and str(bridge.get("kp_id") or "").strip()
         ))
         question_id = str(question.get("question_id") or f"AGENT_Q_{uuid4().hex}")
-        db.add(
-            PaperItemRecord(
+        paper_item = PaperItemRecord(
                 paper_item_id=f"PI_{uuid4().hex}",
                 paper_id=paper_id,
                 position=int(item.get("sequence") or position),
@@ -169,9 +181,14 @@ def publish_agent_paper(
                 kp_snapshot_json=json.dumps(kp_ids, ensure_ascii=False),
                 evidence_refs_json="[]",
                 source_kind="agent_audited",
-                standard_difficulty=2,
+                standard_difficulty=item_difficulty,
                 max_score_snapshot=item_score,
             )
+        db.add(paper_item)
+        ensure_paper_question_authority(
+            db,
+            paper_item,
+            analysis=str(question.get("analysis") or ""),
         )
     db.commit()
     return {"paper_id": paper_id, "status": "published", "duration_minutes": duration}
@@ -197,8 +214,10 @@ def _normalized_item_scores(
         total_score = float(paper.get("total_score") or blueprint.get("total_score") or 0)
     except (TypeError, ValueError):
         total_score = 0.0
+    if total_score <= 0 and all(score is not None for score in raw_scores):
+        return [round(float(score), 2) for score in raw_scores]
     if total_score <= 0:
-        return [round(score or 100.0, 2) for score in raw_scores]
+        total_score = 100.0
 
     explicit_total = sum(score or 0.0 for score in raw_scores)
     missing_count = sum(score is None for score in raw_scores)
@@ -214,6 +233,70 @@ def _normalized_item_scores(
     scaled = [round(total_score * score / provisional_total, 2) for score in provisional]
     scaled[-1] = round(scaled[-1] + total_score - sum(scaled), 2)
     return scaled
+
+
+def ensure_paper_question_authority(
+    db: Session,
+    item: PaperItemRecord,
+    *,
+    analysis: str = "",
+) -> QuestionVersionRecord:
+    """Backfill the immutable question authority required by grading and variations."""
+
+    version = db.query(QuestionVersionRecord).filter_by(
+        question_version_id=item.question_version_id,
+    ).one_or_none()
+    if version is None:
+        latest = db.query(func.max(QuestionVersionRecord.version)).filter_by(
+            question_id=item.question_id,
+        ).scalar()
+        version = QuestionVersionRecord(
+            question_version_id=item.question_version_id,
+            question_id=item.question_id,
+            version=int(latest or 0) + 1,
+        )
+        db.add(version)
+    version.question_type = item.question_type
+    version.stem = item.stem_snapshot
+    version.answer = item.standard_answer_snapshot
+    if analysis.strip() and not str(version.analysis or "").strip():
+        version.analysis = analysis.strip()
+    version.standard_difficulty = max(1, min(5, int(item.standard_difficulty or 2)))
+    version.source_kind = item.source_kind or "paper_snapshot"
+    version.status = "active"
+    db.flush()
+
+    kp_ids = list(dict.fromkeys(_paper_kp_ids(item.kp_snapshot_json)))
+    existing = {
+        row.kp_id: row
+        for row in db.query(QuestionKPLinkRecord).filter_by(
+            question_version_id=item.question_version_id,
+        ).all()
+    }
+    for index, kp_id in enumerate(kp_ids):
+        link = existing.get(kp_id)
+        if link is None:
+            db.add(QuestionKPLinkRecord(
+                question_version_id=item.question_version_id,
+                kp_id=kp_id,
+                is_primary=index == 0,
+                status="active",
+            ))
+        else:
+            link.is_primary = index == 0
+            link.status = "active"
+    db.flush()
+    return version
+
+
+def _paper_kp_ids(value: str | None) -> list[str]:
+    try:
+        decoded = json.loads(value or "[]")
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(decoded, list):
+        return []
+    return [str(item).strip() for item in decoded if str(item).strip()]
 
 
 def ensure_paper_started(db: Session, paper: PaperInstanceRecord) -> None:

@@ -9,6 +9,7 @@ from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.resource import AuditResult
 from competition_app.contracts.learning_plan import LearningPlanClarificationResult
 from competition_app.contracts.default_route import ResolvedPlanningRoute
+from competition_app.contracts.textbook_route import ResolvedTextbookRoute
 from competition_app.agents.common import envelope
 from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings
@@ -161,6 +162,59 @@ class RouteDependentDiagnosisAgent:
                 LearningPlanClarificationResult(
                     clarification_questions=list(route.unknowns_to_confirm),
                     reason="学习目标尚未匹配到正式路线。",
+                    requested_scope="long_term",
+                ),
+            )
+        return {"route_id": route.route_id, "goal_name": route.goal_name}
+
+
+class NestedTextbookRefreshingRouteAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        is_resumed = "用户补充的具体变化" in context.get("user_request", "")
+        question = "请说明要参加的具体考试或要学习的专业方向。"
+        return envelope(
+            context,
+            "default_route_resolver",
+            "resolved_planning_route",
+            ResolvedPlanningRoute(
+                goal_type="credential",
+                goal_name=("中医执业医师考试" if is_resumed else "学习计划"),
+                planning_status=("approved_route" if is_resumed else "provisional"),
+                route_id=("tcm_physician_standard_degree" if is_resumed else None),
+                route_version=(1 if is_resumed else None),
+                route_status=("approved" if is_resumed else None),
+                match_reason=("agent_selected" if is_resumed else "no_safe_match"),
+                assumptions=([] if is_resumed else ["目标待确认"]),
+                textbook_route=(
+                    None
+                    if is_resumed
+                    else ResolvedTextbookRoute(
+                        planning_status="unmatched",
+                        match_reason="no_textbook_route_match",
+                        clarification_questions=[question],
+                    )
+                ),
+            ),
+        )
+
+
+class NestedTextbookDependentDiagnosisAgent:
+    async def run(self, context):
+        route = context["dependency_outputs"]["route_resolution"].payload
+        if route.planning_status != "approved_route":
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "learning_plan_clarification",
+                LearningPlanClarificationResult(
+                    clarification_questions=list(
+                        route.textbook_route.clarification_questions
+                    ),
+                    reason="教材路线尚未确定。",
                     requested_scope="long_term",
                 ),
             )
@@ -497,3 +551,62 @@ async def test_langgraph_resume_refreshes_route_resolution_before_diagnosis() ->
         "route_id": "tcm_physician_standard_degree",
         "goal_name": "中医执业医师",
     }
+
+
+@pytest.mark.asyncio
+async def test_langgraph_resume_refreshes_route_for_nested_textbook_question() -> None:
+    registry = AgentRegistry()
+    route_agent = NestedTextbookRefreshingRouteAgent()
+    registry.register("default_route_resolver", route_agent)
+    registry.register(
+        "diagnosis_agent", NestedTextbookDependentDiagnosisAgent()
+    )
+    plan = ExecutionPlan(
+        plan_id="P_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(
+                step_id="route_resolution",
+                agent="default_route_resolver",
+            ),
+            ExecutionStep(
+                step_id="diagnosis",
+                agent="diagnosis_agent",
+                depends_on=["route_resolution"],
+            ),
+        ],
+    )
+    context = {
+        "case_id": "CASE_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "trace_id": "TRACE_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "request_id": "REQ_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "execution_id": "EXE_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "learner_id": "LEARNER_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        "task_type": "learning_plan",
+        "user_request": "请制定长期学习计划。",
+        "original_user_request": "请制定长期学习计划。",
+        "messages": [],
+        "interruptible": True,
+        "plan_scope": "long_term",
+    }
+    orchestrator = LangGraphOrchestrator(registry)
+
+    interrupted = await orchestrator.execute(
+        plan,
+        context,
+        thread_id="THREAD_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_INTERRUPT_REFRESH_NESTED_TEXTBOOK",
+        {"answer": "中医执业医师考试", "plan_scope": "long_term"},
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["questions"] == [
+        "请说明要参加的具体考试或要学习的专业方向。"
+    ]
+    assert resumed.status == "success"
+    assert route_agent.calls == 2
+    assert resumed.outputs["diagnosis"]["route_id"] == (
+        "tcm_physician_standard_degree"
+    )

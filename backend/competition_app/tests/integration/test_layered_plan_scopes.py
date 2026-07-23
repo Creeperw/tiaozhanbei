@@ -6,6 +6,11 @@ from competition_app.agents.diagnosis import DiagnosisAgent
 from competition_app.application.container import ApplicationContainer
 from competition_app.application.personalized_review_card import ReviewCardRequest
 from competition_app.config import Settings
+from competition_app.contracts.base import AgentEnvelope
+from competition_app.contracts.default_route import (
+    DefaultRoutePhase,
+    ResolvedPlanningRoute,
+)
 from competition_app.llm.stub import StubChatModel
 
 
@@ -21,6 +26,39 @@ class CapturingStubChatModel(StubChatModel):
 
 def plan_input(record) -> dict:
     return record.model_dump(mode="json")
+
+
+def resolved_route_output() -> AgentEnvelope[ResolvedPlanningRoute]:
+    return AgentEnvelope(
+        artifact_id="ART_SCOPE_ROUTE",
+        artifact_type="resolved_planning_route",
+        case_id="CASE_SCOPE_SCHEMA",
+        trace_id="TRACE_SCOPE_SCHEMA",
+        request_id="REQ_SCOPE_SCHEMA",
+        execution_id="EXE_SCOPE_SCHEMA",
+        step_id="route_resolution",
+        producer="default_route_resolver",
+        task_type="resolved_planning_route",
+        learner_id="SCOPED_SCHEMA",
+        payload=ResolvedPlanningRoute(
+            goal_type="course",
+            goal_name="方剂学",
+            planning_status="approved_route",
+            match_reason="canonical_name",
+            route_id="formula",
+            route_version=1,
+            route_status="approved",
+            phases=[
+                DefaultRoutePhase(
+                    phase_id="P1",
+                    name="方剂基础",
+                    objective="建立方剂学基础知识结构。",
+                    books=["《方剂学》"],
+                    exit_evidence=["完成阶段测评。"],
+                )
+            ],
+        ),
+    )
 
 
 @pytest.mark.asyncio
@@ -546,7 +584,7 @@ async def test_diagnosis_sends_only_the_target_layer_schema_to_the_model(
         "current_long_term_plan": {"content": "已有长期规划", "status": "active"},
         "current_short_term_plan": {"content": "已有短期计划", "status": "active"},
         "current_learning_task": {"task_content": "已有当日任务"},
-        "dependency_outputs": {},
+        "dependency_outputs": {"route_resolution": resolved_route_output()},
     }
 
     await DiagnosisAgent(model).run(context)

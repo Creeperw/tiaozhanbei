@@ -109,3 +109,6 @@ def test_dashboard_projects_current_task_chapter_and_knowledge_card_actions(tmp_
             "params": {"kp_id": "KP_SIJUNZI"},
         },
     }]
+    assert payload["daily_task_timer"]["policy"] == "rolling_24h"
+    assert payload["daily_task_timer"]["available"] is True
+    assert current["refresh_due_at"] is not None

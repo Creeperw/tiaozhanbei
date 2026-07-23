@@ -494,6 +494,57 @@ async def test_integrated_long_plan_collects_and_writes_required_profile_fields(
 
 
 @pytest.mark.asyncio
+async def test_partial_inline_profile_still_collects_and_resumes_missing_goal(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+    stored_profile = {
+        "learning_background": "零基础",
+        "time_constraints": "每周学习4天，每天2小时",
+    }
+    writes: list[dict] = []
+    container.review_card_use_case.behavior_context_loader = lambda _: {
+        "source": "frontend_backend",
+        "user_profile": dict(stored_profile),
+    }
+
+    def write_profile(_learner_id: str, updates: dict, _execution_id: str | None) -> dict:
+        writes.append(dict(updates))
+        stored_profile.update(updates)
+        return dict(stored_profile)
+
+    container.review_card_use_case.profile_update_writer = write_profile
+    thread_id = "THREAD_PARTIAL_INLINE_PROFILE"
+    interrupted = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            thread_id=thread_id,
+            learner_id="LEARNER_PARTIAL_INLINE_PROFILE",
+            user_request="请结合我的学习状态，给我制定一份长期学习计划。",
+            plan_scope="long_term",
+            user_profile={"learning_background": "零基础"},
+        )
+    )
+    resumed = await container.review_card_use_case.resume(
+        thread_id,
+        WorkflowResumeRequest(
+            answer="中医执业医师考试",
+            plan_scope="long_term",
+        ),
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["interrupt_type"] == "profile_completion"
+    assert interrupted.interrupt["profile_fields"] == ["learning_goal"]
+    assert resumed.status == "success"
+    assert writes == [{"learning_goal": "中医执业医师考试"}]
+    assert resumed.learning_plan.long_term_plan.planning_route.route_id == (
+        "tcm_physician_standard_degree"
+    )
+
+
+@pytest.mark.asyncio
 async def test_stub_formula_course_plan_uses_book_level_approved_route(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     plan = await build_layered_plan(

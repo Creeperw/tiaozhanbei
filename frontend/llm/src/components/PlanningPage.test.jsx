@@ -6,6 +6,9 @@ import PlanningPage from './PlanningPage';
 
 vi.mock('../utils/api', () => ({
   fetchJsonWithAuthFallback: vi.fn(),
+  fetchWithAuth: vi.fn(async () => ({ ok: true, text: async () => '{"items":[]}' })),
+  readJsonResponse: vi.fn(async (response, fallback) => JSON.parse(await response.text()) || fallback),
+  API_BASE: '/api',
 }));
 
 vi.mock('../pageDataLoaders.js', () => ({
@@ -16,6 +19,7 @@ vi.mock('../pageDataLoaders.js', () => ({
     long_term_plan_content: '',
     long_term_plan_stages: [],
     short_term_plan_content: '',
+    daily_task_timer: null,
   },
   loadPlanningData: vi.fn(async () => ({
     error: '',
@@ -33,6 +37,7 @@ vi.mock('../pageDataLoaders.js', () => ({
           goal: '建立中医基础。',
         },
       ],
+      daily_task_timer: null,
     },
   })),
 }));

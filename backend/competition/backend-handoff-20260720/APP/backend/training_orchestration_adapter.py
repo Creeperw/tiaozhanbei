@@ -65,6 +65,8 @@ def build_orchestration_request(value: TrainingOrchestrationInput) -> Orchestrat
             source_question_version_id=_safe_string(value.inputs.get("source_question_version_id")),
             source_question_id=_safe_string(value.inputs.get("source_question_id")),
             source_stem=_safe_string(value.inputs.get("source_stem")),
+            source_answer=_safe_string(value.inputs.get("source_answer")),
+            source_analysis=_safe_string(value.inputs.get("source_analysis")),
             source_question_type=_safe_string(value.inputs.get("source_question_type")) or "single_choice",
             source_difficulty=value.inputs.get("source_difficulty"),
         ),
@@ -174,6 +176,11 @@ def _persist_variation_audit(
         schema_version="question_variation_v1",
         payload_json=json.dumps(candidate, ensure_ascii=False),
     ))
+    # AuditResultRecord uses a composite foreign key to the immutable candidate
+    # artifact.  Flush the parent first explicitly: MySQL must be able to resolve
+    # that key before the audit row is inserted, and the two mappers do not have
+    # an ORM relationship that would otherwise guarantee unit-of-work ordering.
+    db.flush()
     db.add(AuditResultRecord(
         audit_id=audit_id,
         source_artifact_id=artifact_source_id,

@@ -15,6 +15,7 @@ from APP.backend.database import (
     LearningAttemptRecord,
     LearningWritebackReceipt,
     UserModel,
+    QuestionVersionRecord,
 )
 from APP.backend import grading_application_service as service
 
@@ -166,6 +167,27 @@ class GradingApplicationServiceTests(unittest.TestCase):
         self.assertIsNotNone(result.audit_id)
         self.assertEqual(result.writeback.status, "applied")
         self.assertEqual(self.artifact_counts(), (1, 1, 1, 1))
+
+    def test_first_grading_explanation_is_cached_and_reused(self):
+        self.db.add(QuestionVersionRecord(
+            question_version_id="qv-1", question_id="q-1", version=1,
+            stem="Explain the principle.", answer="standard", analysis="", status="active",
+        ))
+        self.db.commit()
+        first = service.apply_practice_grading(self.db, self.command(), runner=self.pass_runner)
+        self.assertEqual(first.grading_payload["question_explanation"], "good")
+        self.assertEqual(first.grading_payload["explanation_source"], "generated_on_first_attempt")
+
+        second_command = service.GradePracticeCommand(
+            **{**self.command().__dict__, "request_id": "request-2"}
+        )
+        second = service.apply_practice_grading(
+            self.db,
+            second_command,
+            runner=lambda **kwargs: {**self.pass_runner(**kwargs), "feedback": "different"},
+        )
+        self.assertEqual(second.grading_payload["question_explanation"], "good")
+        self.assertEqual(second.grading_payload["explanation_source"], "question_version_cache")
 
     def test_current_legacy_runner_shape_is_normalized_without_relational_ids(self):
         result = service.apply_practice_grading(self.db, self.command(), runner=self.legacy_runner)

@@ -156,6 +156,12 @@ GROUP BY table_schema;
 `workflow_run_states` 的当前用户、状态和 `thread_id`，再查 LangGraph 三张表。禁止只删除其中一张表，
 否则恢复链会不完整。
 
+规划追问确认的目标、学习背景和时间条件写入现有学习者画像及其
+`survey_json.agent_confirmed_profile`，不新增数据库表。恢复时应用会把已确认画像重新注入 LangGraph
+上下文，并在目标或背景变化时刷新路线解析。若线上出现同一句或同义问题循环，先核对
+`workflow_run_states.interrupt_payload` 的 `profile_fields`/`interrupt_type`，再检查画像中的
+`learning_goal`，不要通过手工删除检查点掩盖画像写回或路线刷新问题。
+
 兼容业务库新增以下用户隔离表：
 
 - `learning_intervention_lifecycles`：干预触发快照、冷却、反馈和效果评估；

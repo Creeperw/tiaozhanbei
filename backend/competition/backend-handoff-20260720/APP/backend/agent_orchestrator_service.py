@@ -27,6 +27,8 @@ class OrchestrationTaskContext(BaseModel):
     source_question_version_id: str = Field(default="", max_length=120)
     source_question_id: str = Field(default="", max_length=120)
     source_stem: str = Field(default="", max_length=8000)
+    source_answer: str = Field(default="", max_length=8000)
+    source_analysis: str = Field(default="", max_length=12000)
     source_question_type: str = Field(default="single_choice", max_length=50)
     source_difficulty: int | None = Field(default=None, ge=1, le=5)
 
@@ -468,11 +470,15 @@ def _tool_kwargs(
     evidence_pack = results.get("evidence_pack")
 
     if tool_name == "build_evidence_pack":
+        evidence_query = request.query
+        if request.task_type == "mistake_variation" and request.task_context.source_stem:
+            evidence_query = request.task_context.source_stem
         return {
             "db": db,
-            "query": request.query,
+            "query": evidence_query,
             "learner_context": learner_context,
             "task_type": request.task_type if request.task_type != "auto" else None,
+            "requested_kp_ids": list(request.task_context.kp_ids),
         }
     if tool_name in {"generate_handout", "generate_knowledge_card", "generate_paper", "generate_case_training"}:
         generation_request: dict[str, Any] = {
@@ -514,6 +520,8 @@ def _tool_kwargs(
                 "source_question_version_id": request.task_context.source_question_version_id,
                 "source_question_id": request.task_context.source_question_id,
                 "source_stem": request.task_context.source_stem,
+                "source_answer": request.task_context.source_answer,
+                "source_analysis": request.task_context.source_analysis,
                 "source_question_type": request.task_context.source_question_type,
                 "source_difficulty": request.task_context.source_difficulty,
                 "kp_ids": list(request.task_context.kp_ids),
@@ -654,7 +662,7 @@ def run_agent_orchestration(
             plan = _resource_plan_from_outputs(plan, inferred_outputs)
         else:
             plan = _apply_requested_outputs(plan, request.requested_outputs)
-        if plan.task_type == "resource_generation":
+        if plan.task_type in {"resource_generation", "mistake_variation"}:
             plan = _ensure_diagnosis_step(plan)
         validate_plan_for_orchestration(plan, request.query)
     except PlanValidationError as exc:

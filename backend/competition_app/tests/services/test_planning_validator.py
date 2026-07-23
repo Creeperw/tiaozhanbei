@@ -124,6 +124,83 @@ def test_validator_accepts_minor_format_and_wording_differences() -> None:
     assert result.valid, result.issues
 
 
+def test_validator_rejects_placeholder_stage_without_trusted_route_phases() -> None:
+    provisional = ResolvedPlanningRoute(
+        goal_type="credential",
+        goal_name="待解析目标",
+        planning_status="provisional",
+        match_reason="no_safe_match",
+        assumptions=["等待补充目标。"],
+    )
+    value = output().model_copy(
+        update={
+            "long_term_plan_stages": [
+                {
+                    "stage": 1,
+                    "book": ["待确认教材"],
+                    "goal": "完成当前长期学习阶段目标",
+                }
+            ]
+        }
+    )
+
+    result = PlanningValidator().validate(value, provisional, available_minutes=20)
+
+    assert not result.valid
+    assert any("禁止发布占位教材" in issue for issue in result.issues)
+    assert any("不得使用占位教材" in issue for issue in result.issues)
+
+
+def test_validator_rejects_paraphrased_system_schedule_placeholder() -> None:
+    value = output().model_copy(
+        update={
+            "short_term_plan_content": output().short_term_plan_content
+            + "\n复习时间点由系统根据遗忘曲线另行调度。",
+        }
+    )
+
+    result = PlanningValidator().validate(value, route(), available_minutes=20)
+
+    assert not result.valid
+    assert any("系统调度占位语" in issue for issue in result.issues)
+
+
+def test_validator_preserves_explicit_weekly_learning_days() -> None:
+    value = output().model_copy(
+        update={
+            "short_term_plan_content": (
+                output().short_term_plan_content
+                + "\n第1-5天每日学习10分钟，第6-10天继续推进。"
+            ),
+        }
+    )
+
+    result = PlanningValidator().validate(
+        value,
+        route(),
+        available_minutes=20,
+        user_time_constraints="每周可以学习4天，每天4小时",
+    )
+
+    assert not result.valid
+    assert any("每周学习天数" in issue for issue in result.issues)
+    assert any("连续自然日" in issue for issue in result.issues)
+
+
+def test_validator_rejects_per_session_review_timing() -> None:
+    value = output().model_copy(
+        update={
+            "short_term_plan_content": output().short_term_plan_content
+            + "\n每次学习结束后花10分钟复习本次内容。",
+        }
+    )
+
+    result = PlanningValidator().validate(value, route(), available_minutes=20)
+
+    assert not result.valid
+    assert any("固定复习时点" in issue for issue in result.issues)
+
+
 def test_validator_does_not_require_route_books_to_repeat_in_natural_language_content() -> None:
     value = output().model_copy(
         update={
@@ -416,7 +493,7 @@ def test_validator_accepts_natural_cycle_nodes_and_classic_short_titles() -> Non
         short_term_plan_content=(
             "## 当前周期目标\n本周完成方剂基础辨析。\n"
             "## 具体任务块\n本周先完成治法框架，下个节点完成方证验收。\n"
-            "## 复习任务\n具体时间待系统调度。"
+            "## 复习任务\n完成知识点题目后，闭卷复述治法与方证联系，以遗漏项清零为通过。"
         ),
         selected_textbook_route_id="textbook_formula",
         selected_stage_id="stage-2",

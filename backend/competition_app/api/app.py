@@ -95,6 +95,13 @@ def _formal_question_payload(question: dict, kp_names: dict[str, str]) -> dict:
         for value in question.get("kp_ids") or []
         if str(value).strip()
     ))
+    raw_difficulty = question.get("difficulty", question.get("难度"))
+    try:
+        difficulty = max(1, min(5, int(float(raw_difficulty))))
+        difficulty_source = "formal_question_bank"
+    except (TypeError, ValueError):
+        difficulty = 2
+        difficulty_source = "system_default"
     return {
         "question_id": str(question.get("question_id") or question.get("题目id") or "").strip(),
         "question_type": _practice_question_type(
@@ -117,8 +124,9 @@ def _formal_question_payload(question: dict, kp_names: dict[str, str]) -> dict:
             or ""
         ).strip(),
         "kp_ids": kp_ids,
-        "kp_names": {kp_id: kp_names.get(kp_id, kp_id) for kp_id in kp_ids},
-        "difficulty": question.get("difficulty") or 2,
+        "kp_names": {kp_id: kp_names.get(kp_id, "") for kp_id in kp_ids},
+        "difficulty": difficulty,
+        "difficulty_source": difficulty_source,
     }
 
 
@@ -764,6 +772,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             learner_id=user.user_id,
             attempts=behavior.get("question_attempt", []),
         )
+        daily_task_timer = await asyncio.to_thread(
+            container.daily_task_refresh_service.ensure_current, user.user_id
+        )
         plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
         queue = container.review_service.get_queue(user.user_id, limit=12)
         long_term_payload = (
@@ -815,6 +826,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 else None
             ),
             "review_queue": queue.model_dump(mode="json"),
+            "daily_task_timer": daily_task_timer,
             "profile_readiness": profile_readiness.model_dump(mode="json"),
             "learning_path": {
                 "available": long_term_payload is not None,
@@ -833,6 +845,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "active_intervention": backend_handoff is not None,
                 "notifications": backend_handoff is not None,
                 "automatic_plan_review": backend_handoff is not None,
+                "daily_task_auto_refresh": True,
                 "persistent_graph_resume": getattr(
                     container.review_card_use_case.orchestrator,
                     "persistent_checkpoints",
@@ -1464,6 +1477,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             except Exception:
                 # The home portal remains usable while optional behavior metrics recover.
                 behavior = {}
+        daily_task_timer = await asyncio.to_thread(
+            container.daily_task_refresh_service.ensure_current, user.user_id
+        )
         plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
         queue = container.review_service.get_queue(user.user_id, limit=12)
         sessions = container.review_card_use_case.conversation_repository.list_sessions(
@@ -1550,6 +1566,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "expected_output": task.expected_output,
                     "completion_criteria": task.completion_criteria,
                     "status": task.status,
+                    "refresh_started_at": task.refresh_started_at,
+                    "refresh_due_at": task.refresh_due_at,
                     "source": "daily_task",
                     "learning_chapter": {
                         "book": resolved_book,
@@ -1601,6 +1619,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "continue_learning": sessions[:5],
             "today_tasks": today_tasks,
             "current_learning_task": current_learning_task,
+            "daily_task_timer": daily_task_timer,
             "status_cards": [
                 {"key": "accuracy", "value": f"{round(float(accuracy or 0) * 100)}%"},
                 {"key": "completion", "value": f"{round(float(completion or 0) * 100)}%"},
@@ -1648,6 +1667,24 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 plans.model_copy(update={"learning_task": task}),
             )
         return {"learning_task": task.model_dump(mode="json")}
+
+    @app.post("/api/v1/learning-tasks/current/refresh")
+    async def refresh_current_learning_task(request: Request) -> dict:
+        """Idempotently roll an overdue daily task to the next short-term block."""
+
+        user = current_user(request)
+        timer = await asyncio.to_thread(
+            container.daily_task_refresh_service.ensure_current, user.user_id
+        )
+        plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
+        return {
+            "learning_task": (
+                plans.learning_task.model_dump(mode="json")
+                if plans is not None and plans.learning_task is not None
+                else None
+            ),
+            "daily_task_timer": timer,
+        }
 
     @app.get("/api/v1/knowledge/routes")
     async def knowledge_routes() -> dict:

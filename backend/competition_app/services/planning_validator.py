@@ -22,6 +22,7 @@ class PlanningValidator:
         route: Any = None,
         *,
         available_minutes: int | None = None,
+        user_time_constraints: str = "",
         long_term_action: str = "update",
         short_term_action: str = "update",
         daily_task_action: str = "update",
@@ -57,6 +58,7 @@ class PlanningValidator:
                     r"本周|本周期|首个节点|下个节点|第二个节点|周期末|"
                     r"第?[一二12](?:个)?节点|"
                     r"第一阶段|第二阶段|阶段[一二12]|"
+                    r"前段|中段|验收段|"
                     r"第?\d+\s*[-—至~]\s*\d+天|前\d+天|后\d+天",
                     output.short_term_plan_content,
                 )
@@ -71,6 +73,34 @@ class PlanningValidator:
                 output.short_term_plan_content,
             ):
                 issues.append("短期计划不得自行指定系统调度日期。")
+            if re.search(
+                r"(?:系统.{0,30}(?:调度|安排)|(?:调度|安排).{0,30}系统)",
+                output.short_term_plan_content,
+            ):
+                issues.append("短期计划不得包含系统调度占位语；复习时间由复习队列独立管理。")
+            if re.search(
+                r"(?:每次|每个)[^。；\n]{0,30}(?:开始前|结束前|开始时|结束时|结束后)",
+                output.short_term_plan_content,
+            ):
+                issues.append(
+                    "短期计划不得自行安排每次学习前后的固定复习时点；只描述复习对象、形式与验收。"
+                )
+            weekly_days_match = re.search(
+                r"每周[^\d]{0,12}(\d+)\s*天",
+                str(user_time_constraints or ""),
+            )
+            if weekly_days_match and int(weekly_days_match.group(1)) < 7:
+                if re.search(r"每日|每天", output.short_term_plan_content):
+                    issues.append(
+                        "短期计划不得把用户的每周学习天数改写为每日任务；请按学习日安排。"
+                    )
+                if re.search(
+                    r"第\s*\d+\s*[-—至~]\s*\d+\s*天",
+                    output.short_term_plan_content,
+                ):
+                    issues.append(
+                        "短期计划应按学习日或周期节点推进，不得把非连续学习安排写成连续自然日。"
+                    )
         if (
             actions["daily"] == "update"
             and len(output.daily_task_content.strip()) < 30
@@ -87,6 +117,24 @@ class PlanningValidator:
         phases = textbook_stages or list(self._field(route, "phases") or [])
         structured_stages = list(output.long_term_plan_stages)
         if actions["long"] == "update":
+            if not phases:
+                issues.append(
+                    "长期规划缺少系统可信路线阶段，禁止发布占位教材阶段。"
+                )
+            placeholder_tokens = (
+                "待确认", "未确认", "unknown", "tbd", "不可发布", "路线解析失败"
+            )
+            if not structured_stages or any(
+                not list(self._field(stage, "book") or [])
+                or any(
+                    any(token in str(book).lower() for token in placeholder_tokens)
+                    for book in (self._field(stage, "book") or [])
+                )
+                for stage in structured_stages
+            ):
+                issues.append(
+                    "long_term_plan_stages 必须包含可信路线中的真实教材，不得使用占位教材。"
+                )
             expected_stage_numbers = list(range(1, len(structured_stages) + 1))
             if [self._field(stage, "stage") for stage in structured_stages] != expected_stage_numbers:
                 issues.append("long_term_plan_stages 的长期阶段编号必须从 1 开始且连续。")
@@ -100,7 +148,12 @@ class PlanningValidator:
                         trusted_books = [
                             str(book)
                             for book in (self._field(trusted, "books") or [])
-                        ] or ["待确认教材"]
+                        ]
+                        if not trusted_books:
+                            issues.append(
+                                f"系统可信路线的第{index}个长期阶段缺少明确教材，禁止发布。"
+                            )
+                            continue
                         structured_books = list(self._field(structured, "book") or [])
                         if len(structured_books) != len(trusted_books) or any(
                             not any(

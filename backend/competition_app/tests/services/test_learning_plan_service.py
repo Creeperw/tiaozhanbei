@@ -248,6 +248,25 @@ def test_service_materializes_approved_route_and_all_formal_structured_fields(
     assert result.short_term_plan.recovery_policy == value.recovery_policy
 
 
+def test_materialize_long_term_rejects_placeholder_textbook_stage(
+    repository: DefaultRouteRepository,
+) -> None:
+    value = structured_proposal(repository)
+    value.long_term_plan_stages = [
+        {
+            "stage": 1,
+            "book": ["待确认教材"],
+            "goal": "完成当前长期学习阶段目标",
+        }
+    ]
+
+    with pytest.raises(ValueError, match="placeholder textbooks cannot be published"):
+        LearningPlanService(repository).materialize_long_term(
+            "LEARNER_PLACEHOLDER",
+            value,
+        )
+
+
 def test_service_materializes_provisional_plan_with_assumptions(
     repository: DefaultRouteRepository,
 ) -> None:

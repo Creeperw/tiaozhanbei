@@ -111,7 +111,11 @@ class DefaultRouteResolverAgent:
             resolution = await self._resolve_with_agent(
                 context, goal_type=goal_type, goal_name=goal_name
             )
-        if self._textbook_repository is not None and ambiguous_request is None:
+        if (
+            self._textbook_repository is not None
+            and ambiguous_request is None
+            and resolution.match_reason != "agent_requires_clarification"
+        ):
             request = self._optional_text(context.get("user_request")) or ""
             textbook_route = self._textbook_repository.resolve(
                 exam_route_id=(
@@ -122,7 +126,10 @@ class DefaultRouteResolverAgent:
                 goal_text=f"{goal_name} {request}".strip(),
             )
             unknowns = list(resolution.unknowns_to_confirm)
-            if textbook_route.planning_status == "needs_clarification":
+            if textbook_route.planning_status in {
+                "needs_clarification",
+                "unmatched",
+            }:
                 unknowns.extend(textbook_route.clarification_questions)
             resolution = resolution.model_copy(
                 update={
@@ -147,7 +154,10 @@ class DefaultRouteResolverAgent:
             # A generic request such as “结合我的状态制定长期规划” should
             # continue the user's approved goal instead of asking them to repeat
             # it. An explicit goal in this turn still takes precedence.
-            if self._classify_goal(self._optional_text(context.get("user_request"))):
+            if (
+                self._classify_goal(self._optional_text(context.get("user_request")))
+                or self._has_explicit_target_change(context)
+            ):
                 return None
             parent = (
                 context.get("current_long_term_plan")
@@ -266,7 +276,10 @@ class DefaultRouteResolverAgent:
     ) -> ResolvedPlanningRoute | None:
         """Resolve a persisted explicit target before asking the user again."""
 
-        if self._classify_goal(self._optional_text(context.get("user_request"))):
+        if (
+            self._classify_goal(self._optional_text(context.get("user_request")))
+            or self._has_explicit_target_change(context)
+        ):
             return None
         target = context.get("learning_target")
         if not isinstance(target, dict) or not target.get("is_active", True):
@@ -321,6 +334,7 @@ class DefaultRouteResolverAgent:
                             "goal_type": goal_type,
                             "goal_name": goal_name,
                         },
+                        "learner_context": self._route_relevant_learner_context(context),
                         "route_catalog": route_catalog,
                         "selection_rules": [
                             "只能选择 route_catalog 中的 route_id。",
@@ -328,6 +342,7 @@ class DefaultRouteResolverAgent:
                             "用户明确表示仅学习课程而非考试时，才选择对应课程路线。",
                             "用户本轮以补充、改为等方式明确修正旧目标时，以本轮明确目标为准。",
                             "目录没有覆盖目标或有多个合理候选时必须追问。",
+                            "用户的专业或资格背景与规定学历路径明显不一致，且未明确报考途径时必须追问。",
                         ],
                         "output_schema": RouteSelectionModelOutput.model_json_schema(),
                     },
@@ -355,6 +370,16 @@ class DefaultRouteResolverAgent:
         ):
             selected = self._repository.get(decision.selected_route_id)
             if selected is not None:
+                if (
+                    selected.route_id == "tcm_physician_standard_degree"
+                    and self._requires_physician_path_clarification(context)
+                ):
+                    return self._clarification_resolution(
+                        goal_type,
+                        goal_name,
+                        decision.clarification_question
+                        or self._physician_path_fallback_question(context),
+                    )
                 return self._repository.resolve(
                     goal_type=goal_type,
                     goal_name=goal_name,
@@ -380,6 +405,8 @@ class DefaultRouteResolverAgent:
         request_type = self._classify_goal(request)
         if request is None or request_type is None or request_type == "course":
             return None
+        if self._requires_physician_path_clarification(context):
+            return None
         resolution = self._repository.resolve(
             goal_type=request_type,
             goal_name=request,
@@ -391,6 +418,46 @@ class DefaultRouteResolverAgent:
         ):
             return None
         return resolution.model_copy(update={"match_reason": "agent_catalog_fallback"})
+
+    @classmethod
+    def _requires_physician_path_clarification(cls, context: dict[str, Any]) -> bool:
+        request = cls._optional_text(context.get("user_request")) or ""
+        profile = context.get("user_profile") if isinstance(context.get("user_profile"), dict) else {}
+        goal = " ".join(
+            str(profile.get(key) or "")
+            for key in ("learning_goal", "goals", "learning_goals")
+        )
+        combined = f"{request} {goal}"
+        if "中医" not in combined or "执业医师" not in combined:
+            return False
+        if any(marker in combined for marker in ("规定学历", "中医（专长）", "中医(专长)", "师承", "确有专长")):
+            return False
+        background = " ".join(
+            str(profile.get(key) or "")
+            for key in ("learning_background", "education", "user_major_or_profession", "learner_group")
+        ).strip()
+        if "专业" not in background:
+            return False
+        medical_markers = ("中医", "中西医", "医学", "针灸推拿")
+        return not any(marker in background for marker in medical_markers)
+
+    @staticmethod
+    def _route_relevant_learner_context(context: dict[str, Any]) -> dict[str, Any]:
+        profile = context.get("user_profile") if isinstance(context.get("user_profile"), dict) else {}
+        return {
+            key: profile.get(key)
+            for key in ("learning_goal", "learning_background", "education", "user_major_or_profession", "learner_group")
+            if profile.get(key) not in (None, "", [], {})
+        }
+
+    @staticmethod
+    def _physician_path_fallback_question(context: dict[str, Any]) -> str:
+        profile = context.get("user_profile") if isinstance(context.get("user_profile"), dict) else {}
+        background = str(profile.get("learning_background") or "当前专业背景").strip()
+        return (
+            f"你提到自己是{background}。为了匹配正确路线，请说明计划通过规定学历、"
+            "中医（专长）医师考核，还是传统医学师承/确有专长途径报考？"
+        )
 
     def _ambiguous_explicit_request_resolution(
         self,
@@ -482,6 +549,21 @@ class DefaultRouteResolverAgent:
     def _extract_goal(self, context: dict[str, Any]) -> tuple[str, str, bool]:
         user_request = self._optional_text(context.get("user_request")) or "未提供学习目标"
         structured_goal = self._first_structured_goal(context.get("user_profile"))
+        if self._has_explicit_target_change(context):
+            goal_type = self._classify_goal(user_request)
+            if (
+                goal_type == "credential"
+                and "执业医师" in user_request
+                and not any(
+                    category in user_request
+                    for category in ("中医", "中西医", "临床", "口腔", "公共卫生")
+                )
+                and structured_goal is not None
+                and structured_goal[0] == "credential"
+                and "执业医师" in str(structured_goal[1] or "")
+            ):
+                return "credential", str(structured_goal[1]), False
+            return goal_type or "learning", user_request, goal_type is None
         if structured_goal is not None:
             goal_type, goal_name = structured_goal
             if goal_type is not None:
@@ -494,6 +576,28 @@ class DefaultRouteResolverAgent:
 
         goal_type = self._classify_goal(user_request)
         return goal_type or "literacy", user_request, goal_type is None
+
+    @classmethod
+    def _has_explicit_target_change(cls, context: dict[str, Any]) -> bool:
+        if (
+            context.get("plan_scope") != "long_term"
+        ):
+            return False
+        request = cls._optional_text(context.get("user_request")) or ""
+        target_markers = (
+            "我想学习",
+            "我要学习",
+            "我想学",
+            "我要学",
+            "我想考",
+            "我要考",
+            "目标改为",
+            "改成学习",
+            "改学",
+            "转向",
+            "报考",
+        )
+        return any(marker in request for marker in target_markers)
 
     def _first_structured_goal(self, user_profile: Any) -> tuple[str | None, str | None] | None:
         if not isinstance(user_profile, dict):
@@ -510,6 +614,9 @@ class DefaultRouteResolverAgent:
             long_term_goal = self._optional_text(goal.get("long_term_goal"))
             if long_term_goal:
                 return self._classify_goal(long_term_goal), long_term_goal
+        learning_goal = self._optional_text(user_profile.get("learning_goal"))
+        if learning_goal:
+            return self._classify_goal(learning_goal), learning_goal
         return None
 
     @classmethod

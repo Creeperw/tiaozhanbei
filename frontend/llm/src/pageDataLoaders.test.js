@@ -298,6 +298,11 @@ test('loadPlanningData merges persisted long and short plan narratives', async (
               completion_criteria: '正确率达到 80%',
               status: 'pending',
             },
+            daily_task_timer: {
+              policy: 'rolling_24h',
+              available: true,
+              refresh_due_at: '2026-07-24T00:00:00Z',
+            },
           },
           source: paths[0],
         };
@@ -326,6 +331,7 @@ test('loadPlanningData merges persisted long and short plan narratives', async (
     status: 'pending',
     source: 'learning_task',
   }]);
+  assert.equal(result.plan.daily_task_timer.policy, 'rolling_24h');
 });
 
 test('loadReportsData returns empty report and error when all sources fail', async () => {

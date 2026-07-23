@@ -170,6 +170,8 @@ class LearningTask(ContractModel):
     status: str = Field(min_length=1)
     created_at: datetime
     updated_at: datetime
+    refresh_started_at: datetime | None = None
+    refresh_due_at: datetime | None = None
 
 
 class LearningPlanResult(ContractModel):

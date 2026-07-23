@@ -40,6 +40,7 @@ from competition_app.services.writeback import WritebackExecutor
 from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.textbook_route import TextbookRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
+from competition_app.services.daily_task_refresh import DailyTaskRefreshService
 from competition_app.services.review import ReviewService
 from competition_app.llm.terminal import (
     terminal_agent_finished,
@@ -79,6 +80,7 @@ class ApplicationContainer:
     review_card_use_case: PersonalizedReviewCardUseCase
     review_service: ReviewService
     authentication_service: AuthenticationService
+    daily_task_refresh_service: DailyTaskRefreshService
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
     knowledge_backend: KnowledgeDeliveryBackend | None = None
     mode: str = "stub"
@@ -132,6 +134,7 @@ class ApplicationContainer:
         learning_plan_service = LearningPlanService(
             default_route_repository, plan_repository
         )
+        daily_task_refresh_service = DailyTaskRefreshService(plan_repository)
         review_service = ReviewService(review_repository)
         authentication_service = AuthenticationService(
             auth_repository,
@@ -337,6 +340,7 @@ class ApplicationContainer:
             ),
             review_service=review_service,
             authentication_service=authentication_service,
+            daily_task_refresh_service=daily_task_refresh_service,
             question_retrieval_tool=knowledge_tool,
             knowledge_backend=knowledge_backend,
             mode=settings.mode,

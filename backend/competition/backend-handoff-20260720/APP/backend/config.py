@@ -60,7 +60,7 @@ LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 # 远程 LLM Anthropic 兼容服务地址。
 LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://api.deepseek.com/anthropic")
 # 远程 LLM 模型名。
-LLM_API_MODEL = os.getenv("LLM_API_MODEL", "qwen3.7-max-2026-05-20")
+LLM_API_MODEL = os.getenv("LLM_API_MODEL", "qwen3.7-plus-2026-05-26")
 
 # --- 本地 vLLM OpenAI 兼容接口配置（LLM_MODE=local 时启用） ---
 # Planner/Executor 模型的 OpenAI 兼容服务地址。

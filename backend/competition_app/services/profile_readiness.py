@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from competition_app.contracts.profile_readiness import ProfileFieldRequirement, ProfileReadiness
@@ -68,7 +69,7 @@ class ProfileReadinessService:
                 self._resolved_goal(context),
                 self._planned_goal(context),
             )
-            return any(self._meaningful(value) for value in values)
+            return any(self._meaningful_goal(value) for value in values)
         if field == "learning_background":
             values = (
                 profile.get("learning_background"),
@@ -83,19 +84,61 @@ class ProfileReadinessService:
             profile.get("daily_available_minutes"),
             profile.get("weekly_available_minutes"),
         )
-        return any(self._meaningful(value) for value in values)
+        return any(self._meaningful_time_constraint(value) for value in values)
 
     @staticmethod
     def _resolved_goal(context: dict[str, Any]) -> str:
         route_output = (context.get("dependency_outputs") or {}).get("route_resolution")
         payload = getattr(route_output, "payload", None)
+        if getattr(payload, "planning_status", None) != "approved_route":
+            return ""
         return str(getattr(payload, "goal_name", "") or "")
 
     @staticmethod
     def _planned_goal(context: dict[str, Any]) -> str:
         plan = context.get("current_long_term_plan") or {}
         route = plan.get("planning_route") or {} if isinstance(plan, dict) else {}
+        if route.get("planning_status") != "approved_route":
+            return ""
         return str(route.get("goal_name") or "")
+
+    @classmethod
+    def _meaningful_goal(cls, value: Any) -> bool:
+        if not cls._meaningful(value):
+            return False
+        text = str(value).strip()
+        generic_request = any(
+            token in text
+            for token in ("请结合我的学习状态", "给我制定一份学习计划", "制定学习计划")
+        )
+        specific_target = any(
+            token in text
+            for token in (
+                "考试", "资格", "执业", "考研", "研究生", "课程",
+                "方剂", "中药", "中医基础", "医古文", "能力", "阅读",
+            )
+        )
+        return not generic_request or specific_target
+
+    @classmethod
+    def _meaningful_time_constraint(cls, value: Any) -> bool:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return value > 0
+        if not cls._meaningful(value):
+            return False
+        text = str(value).strip().lower()
+        if text in {
+            "不固定", "时间不固定", "暂不确定", "不确定",
+            "看情况", "有空再学", "暂无安排",
+        }:
+            return False
+        quantity = r"[0-9零一二两三四五六七八九十百两半]+"
+        return bool(
+            re.search(
+                rf"{quantity}\s*(?:分钟|小时|天|次)",
+                text,
+            )
+        )
 
     @staticmethod
     def _meaningful(value: Any) -> bool:

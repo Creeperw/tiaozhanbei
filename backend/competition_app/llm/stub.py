@@ -39,6 +39,29 @@ class StubChatModel:
                 marker in combined
                 for marker in ("执业医师", "执业药师", "职称", "专长", "师承", "保健艾灸师", "考研", "研究生")
             )
+            learner_context = business_payload.get("learner_context", {})
+            background = str(learner_context.get("learning_background", ""))
+            physician_path_is_explicit = any(
+                marker in combined
+                for marker in ("规定学历", "中医（专长）", "中医(专长)", "师承", "确有专长")
+            )
+            if (
+                "中医" in combined
+                and "执业医师" in combined
+                and "专业" in background
+                and not any(marker in background for marker in ("中医", "中西医", "医学", "针灸推拿"))
+                and not physician_path_is_explicit
+            ):
+                return self._emit({
+                    "decision": "clarify",
+                    "selected_route_id": None,
+                    "confidence": 0.96,
+                    "reason": "用户的专业背景不足以直接确认规定学历报考路径。",
+                    "clarification_question": (
+                        f"你提到自己是{background}。计划通过规定学历、中医（专长）医师考核，"
+                        "还是传统医学师承/确有专长途径报考？"
+                    ),
+                }, on_delta)
             if "方剂学" in combined and not course_only and not specific_intent:
                 return self._emit({
                     "decision": "clarify",
@@ -55,6 +78,16 @@ class StubChatModel:
                 if matched:
                     matches.append((max(len(label) for label in matched), route))
             if course_only and "方剂学" in combined:
+                matches = [
+                    (1000, route)
+                    for route in catalog
+                    if route.get("route_id") == "tcm_formula_course"
+                ]
+            # The live resolver model can infer the parent course from a named
+            # formula. Keep the offline stub semantically equivalent so
+            # composite planning/resource tests receive the approved route
+            # instead of an artificial clarification caused by a weak stub.
+            if "四君子汤" in combined and not specific_intent:
                 matches = [
                     (1000, route)
                     for route in catalog
@@ -224,8 +257,8 @@ class StubChatModel:
                     )
                 if not phase_rows:
                     phase_rows.append(
-                        f"| 1. 临时基础阶段 | 待确认教材 | 建立{topic}基础 | "
-                        "提交学习笔记 | 完成核对后晋级 | 待确认 |"
+                        f"| 1. 路线解析失败 | 不可发布 | 建立{topic}基础 | "
+                        "无 | 不可晋级 | 需要中断追问 |"
                     )
                 generated_long = (
                     f"## 目标契约\n最终目标是系统掌握{topic}；期限和稳定能力证据待用户确认。\n"
@@ -297,7 +330,8 @@ class StubChatModel:
                         [
                             {
                                 "stage": index,
-                                "book": list(phase.get("books", [])) or ["待确认教材"],
+                                "book": list(phase.get("books", []))
+                                or ["路线解析失败（不可发布）"],
                                 "goal": str(phase.get("objective") or "完成本阶段目标"),
                             }
                             for index, phase in enumerate(phases, start=1)
@@ -305,8 +339,8 @@ class StubChatModel:
                         or [
                             {
                                 "stage": 1,
-                                "book": ["待确认教材"],
-                                "goal": "长期教材和阶段目标待用户确认",
+                                "book": ["路线解析失败（不可发布）"],
+                                "goal": "必须先解析可信路线",
                             }
                         ]
                     ),

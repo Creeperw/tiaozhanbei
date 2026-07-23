@@ -28,6 +28,8 @@ const formatRemaining = (seconds) => {
   return [hours, minutes, rest].map((value) => String(value).padStart(2, '0')).join(':');
 };
 
+const displayAnswer = (value) => Array.isArray(value) ? value.join('、') : String(value ?? '');
+
 export default function PaperGenerationPanel({ enabled, paperId = '' }) {
   const [topic, setTopic] = useState('围绕四君子汤与脾胃气虚证完成训练');
   const [distribution, setDistribution] = useState({
@@ -271,7 +273,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
       </>}
       {paper && <div className="space-y-4 border-t border-slate-200 pt-4">
         <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
-          <div className="flex items-center gap-3"><button type="button" onClick={returnToPaperLibrary} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">返回试卷列表</button><div><h3 className="text-base font-semibold text-slate-950">{paper.title}</h3><p className="mt-1 text-xs text-slate-500">已答 {paper.items.filter((item) => answers[item.paper_item_id]?.trim()).length} / {paper.items.length} 题</p></div></div>
+          <div className="flex items-center gap-3"><button type="button" onClick={returnToPaperLibrary} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">返回试卷列表</button><div><h3 className="text-base font-semibold text-slate-950">{paper.title}</h3><p className="mt-1 text-xs text-slate-500">已答 {paper.items.filter((item) => answers[item.paper_item_id]?.trim()).length} / {paper.items.length} 题 · 满分 {paper.total_score ?? submitted?.max_score ?? 100} 分</p></div></div>
           <div className="flex items-center gap-3">
             <div className={`font-mono text-lg font-semibold ${remainingSeconds === 0 ? 'text-rose-600' : timerPaused ? 'text-amber-700' : 'text-emerald-800'}`}>{paperSubmitted ? '已交卷' : formatRemaining(remainingSeconds)}</div>
             {!paperSubmitted && !timeExpired && <button type="button" onClick={toggleTimer} disabled={loading} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">{timerPaused ? '继续计时' : '暂停计时'}</button>}
@@ -284,6 +286,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
             const options = Array.isArray(item.options) ? item.options : [];
             const choice = options.length > 0 && ['single_choice', '单选题', '单项选择题', 'multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
             const multiple = ['multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
+            const itemResult = submitted?.items?.find((entry) => entry.paper_item_id === item.paper_item_id);
             return <fieldset key={item.paper_item_id} className="rounded-2xl border border-slate-200 p-4" disabled={loading || answerLocked}>
               <legend className="px-1 text-sm font-medium leading-6 text-slate-800">{item.position}. {item.stem}</legend>
               {choice ? <div className="mt-3 space-y-2">{options.map((option, index) => {
@@ -293,6 +296,12 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
                   : answers[item.paper_item_id] === value;
                 return <label key={`${item.paper_item_id}-${index}`} className="flex cursor-pointer gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700"><input type={multiple ? 'checkbox' : 'radio'} name={item.paper_item_id} checked={checked} onChange={() => multiple ? toggleMultiple(item.paper_item_id, value) : setAnswers({ ...answers, [item.paper_item_id]: value })} />{value}</label>;
               })}</div> : <textarea aria-label={`第${item.position}题答案`} value={answers[item.paper_item_id] || ''} onChange={(event) => setAnswers({ ...answers, [item.paper_item_id]: event.target.value })} className="mt-3 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />}
+              {itemResult && <div className={`mt-4 rounded-xl border p-3 text-sm leading-6 ${itemResult.is_correct ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-rose-200 bg-rose-50 text-rose-900'}`}>
+                <strong>{itemResult.is_correct ? '回答正确' : '回答错误'} · {itemResult.score} / {itemResult.max_score} 分</strong>
+                <p>参考答案：{displayAnswer(itemResult.standard_answer) || '待补充'}</p>
+                <p>题目解析：{itemResult.explanation || '本题解析正在补充。'}</p>
+                {itemResult.grading_analysis && itemResult.grading_analysis !== itemResult.explanation && <p>本次批改：{itemResult.grading_analysis}</p>}
+              </div>}
             </fieldset>;
           })}
         </section>)}

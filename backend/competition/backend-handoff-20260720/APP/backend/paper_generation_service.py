@@ -7,6 +7,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session, sessionmaker
 
 from APP.backend.database import PaperInstanceRecord, PaperItemRecord
+from APP.backend.learning_workshop_service import _normalized_item_scores
 from APP.backend.question_repository import (
     QuestionRepository,
     QuestionSelectionCriteria,
@@ -169,7 +170,12 @@ def generate_and_publish_paper(
         evidence_pack_json=json.dumps(orchestration_result.get("evidence_pack") or {}, ensure_ascii=False),
     ))
     learner_items = []
-    for position, question in enumerate(selected, start=1):
+    item_scores = _normalized_item_scores(
+        [{} for _ in selected],
+        {},
+        blueprint,
+    )
+    for position, (question, item_score) in enumerate(zip(selected, item_scores), start=1):
         refs = _evidence_refs(orchestration_result.get("evidence_pack") or {}, question.kp_ids)
         db.add(PaperItemRecord(
             paper_item_id=f"PI_{uuid4().hex}", paper_id=paper_id, position=position,
@@ -180,7 +186,7 @@ def generate_and_publish_paper(
             kp_snapshot_json=json.dumps(list(question.kp_ids), ensure_ascii=False),
             evidence_refs_json=json.dumps(refs, ensure_ascii=False), source_kind=question.source_kind,
             standard_difficulty=question.standard_difficulty,
-            max_score_snapshot=100.0,
+            max_score_snapshot=item_score,
         ))
         learner_items.append({
             "position": position, "question_id": question.question_id,
@@ -188,6 +194,7 @@ def generate_and_publish_paper(
             "question_type": question.question_type, "stem": question.stem,
             "kp_ids": list(question.kp_ids), "standard_difficulty": question.standard_difficulty,
             "source_kind": question.source_kind, "evidence_refs": refs,
+            "max_score": item_score,
         })
     db.flush()
     return {

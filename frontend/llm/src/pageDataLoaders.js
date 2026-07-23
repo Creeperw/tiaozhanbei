@@ -12,6 +12,7 @@ export const emptyPlan = {
   long_term_plan_content: '',
   long_term_plan_stages: [],
   short_term_plan_content: '',
+  daily_task_timer: null,
 };
 
 export const learningTaskToDailyTasks = (learningTask) => {
@@ -448,6 +449,7 @@ export async function loadPlanningData({ fetcher }) {
         : [],
       short_term_plan_content: String(learningContext.short_term_plan?.content || ''),
       daily_tasks: learningTaskToDailyTasks(learningContext.learning_task),
+      daily_task_timer: learningContext.daily_task_timer || null,
     };
     return {
       plan: data,
