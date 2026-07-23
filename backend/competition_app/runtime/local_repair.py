@@ -21,6 +21,21 @@ IssueType = Literal[
 class LocalRepairController:
     """Build one bounded, whitelisted repair pass without running any step."""
 
+    _APPROVED_REPAIR_STEP_IDS = frozenset(
+        {
+            "memory",
+            "knowledge",
+            "route_resolution",
+            "diagnosis",
+            "learning_plan",
+            "schedule",
+            "expert",
+            "paper_blueprint",
+            "question_pool",
+            "paper_assembly",
+        }
+    )
+    _APPROVED_AUDIT_ACTIONS = frozenset({"audit", "review_exam_paper"})
     _DEFAULT_TARGETS: dict[IssueType, str] = {
         "missing_evidence": "expert",
         "conflicting_evidence": "expert",
@@ -100,7 +115,15 @@ class LocalRepairController:
                 audit_step_id=audit_step_id,
                 issues=issues,
             )
-        selected_steps, dependency_steps = self._merge_chains(resolved_chains, plan)
+        merged = self._merge_chains(resolved_chains, plan)
+        if merged is None:
+            return self._human_review_plan(
+                repair_id=repair_id,
+                execution_id=execution_id,
+                audit_step_id=audit_step_id,
+                issues=issues,
+            )
+        selected_steps, dependency_steps = merged
         if audit_step_id not in selected_steps or not selected_steps or not selected_steps[-1] == audit_step_id:
             return self._human_review_plan(
                 repair_id=repair_id,
@@ -206,7 +229,7 @@ class LocalRepairController:
     @staticmethod
     def _merge_chains(
         chains: Sequence[tuple[str, ...]], plan: ExecutionPlan
-    ) -> tuple[list[str], dict[str, list[str]]]:
+    ) -> tuple[list[str], dict[str, list[str]]] | None:
         plan_order = {step.step_id: index for index, step in enumerate(plan.steps)}
         steps_by_id = {step.step_id: step for step in plan.steps}
         dependencies: dict[str, set[str]] = {}
@@ -225,6 +248,12 @@ class LocalRepairController:
                     dependencies[dependency] = set()
                     pending.append(dependency)
 
+        permitted_steps = LocalRepairController._APPROVED_REPAIR_STEP_IDS | {
+            chain[-1] for chain in chains
+        }
+        if not set(dependencies).issubset(permitted_steps):
+            return None
+
         ordered: list[str] = []
         remaining = {step_id: set(required) for step_id, required in dependencies.items()}
         while remaining:
@@ -233,7 +262,7 @@ class LocalRepairController:
                 key=lambda step_id: (step_id == chains[0][-1], plan_order.get(step_id, len(plan_order)), step_id),
             )
             if not ready:
-                return [], {}
+                return None
             for step_id in ready:
                 ordered.append(step_id)
                 del remaining[step_id]
@@ -248,7 +277,11 @@ class LocalRepairController:
 
     @staticmethod
     def _is_audit_step(step: Any) -> bool:
-        return step.agent == "audit_agent" or "audit" in (step.action or "").lower()
+        return (
+            step.agent == "audit_agent"
+            or (step.action or "").lower()
+            in LocalRepairController._APPROVED_AUDIT_ACTIONS
+        )
 
     @staticmethod
     def _execution_id(outputs: Mapping[str, Any], fallback: str) -> str:

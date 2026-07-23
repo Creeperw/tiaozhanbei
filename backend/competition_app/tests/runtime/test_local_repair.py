@@ -201,3 +201,45 @@ def test_non_audit_trigger_fails_closed() -> None:
 
     assert repair.status == "needs_human_review"
     assert repair.actions == []
+
+
+@pytest.mark.parametrize("ancestor_step_id", ["critic", "topology", "unrelated"])
+def test_repair_rejects_non_whitelisted_source_ancestor(ancestor_step_id: str) -> None:
+    plan = _plan(
+        ExecutionStep(step_id="knowledge", agent="knowledge_base_agent"),
+        ExecutionStep(step_id=ancestor_step_id, agent=f"{ancestor_step_id}_agent"),
+        ExecutionStep(
+            step_id="expert",
+            agent="expert_agent",
+            depends_on=["knowledge", ancestor_step_id],
+        ),
+        ExecutionStep(step_id="audit", agent="audit_agent", depends_on=["expert"]),
+    )
+
+    repair = LocalRepairController().plan_repair(
+        plan=plan,
+        audit_step_id="audit",
+        audit_findings=["事实缺少教材证据"],
+        outputs=existing_outputs(),
+    )
+
+    assert repair.status == "needs_human_review"
+    assert repair.actions == []
+
+
+@pytest.mark.parametrize("action", ["audit_log", "preaudit_cleanup"])
+def test_audit_action_substrings_are_not_valid_triggers(action: str) -> None:
+    plan = _plan(
+        ExecutionStep(step_id="paper_assembly", agent="paper_assembly_agent"),
+        ExecutionStep(step_id="review", agent="review_agent", action=action),
+    )
+
+    repair = LocalRepairController().plan_repair(
+        plan=plan,
+        audit_step_id="review",
+        audit_findings=["题目内容表达不清"],
+        outputs=existing_outputs(),
+    )
+
+    assert repair.status == "needs_human_review"
+    assert repair.actions == []
