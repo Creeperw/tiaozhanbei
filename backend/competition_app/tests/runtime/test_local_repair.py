@@ -135,3 +135,69 @@ def test_controller_fails_closed_when_execution_plan_has_invalid_dag() -> None:
 
     assert repair.status == "needs_human_review"
     assert repair.actions == []
+
+
+def test_repair_actions_follow_reordered_source_dag_dependencies() -> None:
+    plan = _plan(
+        ExecutionStep(
+            step_id="diagnosis", agent="diagnosis_agent", depends_on=["knowledge"]
+        ),
+        ExecutionStep(step_id="knowledge", agent="knowledge_base_agent"),
+        ExecutionStep(step_id="expert", agent="expert_agent", depends_on=["diagnosis"]),
+        ExecutionStep(step_id="audit", agent="audit_agent", depends_on=["expert"]),
+    )
+
+    repair = LocalRepairController().plan_repair(
+        plan=plan,
+        audit_step_id="audit",
+        audit_findings=["资源未结合用户掌握状态"],
+        outputs=existing_outputs(),
+    )
+
+    assert [action.step_id for action in repair.actions] == [
+        "knowledge", "diagnosis", "expert", "audit"
+    ]
+    assert repair.actions[1].depends_on == ["rerun:knowledge"]
+
+
+def test_mixed_repair_closes_over_source_dag_without_duplicate_actions() -> None:
+    plan = _plan(
+        ExecutionStep(
+            step_id="paper_assembly", agent="paper_assembly_agent", depends_on=["expert"]
+        ),
+        ExecutionStep(step_id="expert", agent="expert_agent", depends_on=["diagnosis"]),
+        ExecutionStep(
+            step_id="diagnosis", agent="diagnosis_agent", depends_on=["knowledge"]
+        ),
+        ExecutionStep(step_id="knowledge", agent="knowledge_base_agent"),
+        ExecutionStep(step_id="audit", agent="audit_agent", depends_on=["paper_assembly"]),
+    )
+
+    repair = LocalRepairController().plan_repair(
+        plan=plan,
+        audit_step_id="audit",
+        audit_findings=["事实缺少教材证据", "题目内容表达不清"],
+        outputs=existing_outputs(),
+    )
+
+    assert [action.step_id for action in repair.actions] == [
+        "knowledge", "diagnosis", "expert", "paper_assembly", "audit"
+    ]
+    assert len({action.step_id for action in repair.actions}) == len(repair.actions)
+
+
+def test_non_audit_trigger_fails_closed() -> None:
+    plan = _plan(
+        ExecutionStep(step_id="paper_assembly", agent="paper_assembly_agent"),
+        ExecutionStep(step_id="review", agent="review_agent", action="manual_review"),
+    )
+
+    repair = LocalRepairController().plan_repair(
+        plan=plan,
+        audit_step_id="review",
+        audit_findings=["题目内容表达不清"],
+        outputs=existing_outputs(),
+    )
+
+    assert repair.status == "needs_human_review"
+    assert repair.actions == []
