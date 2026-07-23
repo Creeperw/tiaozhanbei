@@ -18,6 +18,7 @@ import LearningPathOverview from './learning-tree/LearningPathOverview';
 import LearningPlanRail from './learning-tree/LearningPlanRail';
 import LearningPathTrainingModules from './learning-tree/LearningPathTrainingModules';
 import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
+import LearningStageSwitcher from './learning-stage/LearningStageSwitcher';
 import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import {
   adaptClassicRouteBooks,
@@ -38,6 +39,33 @@ const EMPTY_DASHBOARD = {
   current_learning_task: null,
   yesterday_feedback: { metrics: [] },
 };
+
+const WORKSHOP_PREFERENCES_KEY = 'learning-workshop.preferences';
+const VALID_PATH_MODES = new Set(['personalized', 'classic']);
+const VALID_STAGE_IDS = new Set(['foundation', 'classics', 'classic-study', 'formulas', 'clinical', 'specialty', 'mastery']);
+
+function readWorkshopPreferences() {
+  try {
+    const value = JSON.parse(localStorage.getItem(WORKSHOP_PREFERENCES_KEY) || '{}');
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function preferredPathMode(navigationContext, preferences) {
+  if (VALID_PATH_MODES.has(navigationContext.pathMode)) return navigationContext.pathMode;
+  if (navigationContext.view === 'path') return 'classic';
+  if (VALID_PATH_MODES.has(preferences.pathMode)) return preferences.pathMode;
+  return 'personalized';
+}
+
+function preferredStageId(navigationContext, preferences) {
+  const requested = navigationContext.currentStageId || navigationContext.stageId;
+  const candidate = VALID_STAGE_IDS.has(requested) ? requested : preferences.currentStageId;
+  if (!VALID_STAGE_IDS.has(candidate)) return 'classics';
+  return candidate === 'classic-study' ? 'classics' : candidate;
+}
 
 function TodayTaskRail({ task, onNavigate }) {
   const chapter = task?.learning_chapter || {};
@@ -155,18 +183,18 @@ export default function DashboardPage({
   const [track, setTrack] = useState({ id: '', label: '' });
   const [nodes, setNodes] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [assistantCollapsed, setAssistantCollapsed] = useState(false);
+  const [assistantCollapsed, setAssistantCollapsed] = useState(true);
   const [assistantDocked, setAssistantDocked] = useState(true);
   const [legacyDrilldown, setLegacyDrilldown] = useState(null);
   const [plannedPath, setPlannedPath] = useState(null);
   const [pathParent, setPathParent] = useState(null);
-  const [pathMode, setPathMode] = useState(() => (
-    navigationContext.pathMode === 'classic' || navigationContext.view === 'path'
-      ? 'classic'
-      : 'personalized'
-  ));
+  const [initialPreferences] = useState(readWorkshopPreferences);
+  const [pathMode, setPathMode] = useState(() => preferredPathMode(navigationContext, initialPreferences));
   const [classicRoutes, setClassicRoutes] = useState([]);
-  const [classicRouteId, setClassicRouteId] = useState('');
+  const [classicRouteId, setClassicRouteId] = useState(() => (
+    navigationContext.classicRouteId || navigationContext.routeId || initialPreferences.classicRouteId || ''
+  ));
+  const [currentStageId, setCurrentStageId] = useState(() => preferredStageId(navigationContext, initialPreferences));
   const [classicRoutePayload, setClassicRoutePayload] = useState(null);
   const [classicNodes, setClassicNodes] = useState([]);
   const [classicParent, setClassicParent] = useState(null);
@@ -255,7 +283,11 @@ export default function DashboardPage({
         if (cancelled) return;
         const routes = payload.items || [];
         setClassicRoutes(routes);
-        setClassicRouteId((current) => current || routes[0]?.route_id || '');
+        setClassicRouteId((current) => (
+          routes.some((route) => route.route_id === current)
+            ? current
+            : routes[0]?.route_id || ''
+        ));
       })
       .catch((loadError) => {
         if (!cancelled) setClassicError(loadError.message || '经典路线列表加载失败');
@@ -282,6 +314,18 @@ export default function DashboardPage({
       });
     return () => { cancelled = true; };
   }, [classicRouteId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(WORKSHOP_PREFERENCES_KEY, JSON.stringify({
+        pathMode,
+        classicRouteId,
+        currentStageId,
+      }));
+    } catch {
+      // Persistence is an enhancement; private browsing must not block learning.
+    }
+  }, [pathMode, classicRouteId, currentStageId]);
 
   const focus = useMemo(() => buildDailyFocus(dashboard), [dashboard]);
   const schedule = useMemo(
@@ -411,66 +455,48 @@ export default function DashboardPage({
         feedback={feedback}
         assistantCollapsed={assistantCollapsed}
         assistantDocked={assistantDocked}
-        pathTopContent={<>
-          <button
-            type="button"
-            autoFocus
-            data-learning-path-return
-            className="mb-3 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm hover:border-emerald-300 hover:bg-emerald-50"
-            onClick={() => onNavigate?.({ page: 'practice', params: { view: 'stages' } })}
-          >
-            <span aria-hidden="true">←</span> 返回学习阶段
-          </button>
-          <LearningPathTrainingModules trackId={track.id} onNavigate={onNavigate} />
-          {Array.isArray(dashboard.recommendations) && dashboard.recommendations.length > 0 && (
-            <section className="mt-3 flex flex-wrap gap-2" aria-label="个性化学习推荐">
-              {dashboard.recommendations.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  title={item.summary}
-                  onClick={() => openRecommendation(item)}
-                  className="rounded-full border border-emerald-100 bg-white px-3 py-1.5 text-xs font-medium text-emerald-800 shadow-sm hover:border-emerald-300 hover:bg-emerald-50"
-                >{item.action_label || item.title}</button>
-              ))}
-            </section>
+        railTab={assistantCollapsed ? 'today' : 'assistant'}
+        pathControls={<>
+          <div className="learning-path-source-tabs" role="tablist" aria-label="学习路径来源">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pathMode === 'personalized'}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${pathMode === 'personalized' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
+              onClick={() => { setPathMode('personalized'); setSelectedNode(null); }}
+            >我的学习路径</button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pathMode === 'classic'}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${pathMode === 'classic' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
+              onClick={() => { setPathMode('classic'); setSelectedNode(null); }}
+            >经典路线</button>
+          </div>
+          {pathMode === 'classic' && classicRoutes.length > 0 && (
+            <label className="learning-path-route-select">路线
+              <select
+                aria-label="经典学习路线"
+                value={classicRouteId}
+                onChange={(event) => {
+                  setClassicRouteId(event.target.value);
+                  setSelectedNode(null);
+                }}
+              >
+                {classicRoutes.map((route) => <option key={route.route_id} value={route.route_id}>{route.goal_name}</option>)}
+              </select>
+            </label>
           )}
+          <LearningStageSwitcher
+            currentStageId={currentStageId}
+            onCurrentStageChange={setCurrentStageId}
+            onNavigate={onNavigate}
+          />
         </>}
         pathHint={pathMode === 'classic' ? '经典路线：阶段 → 教材 → 知识点' : plannedPath ? '阶段 → 教材 → 知识点，单击继续' : undefined}
         pathContent={(
           <>
             <div className="learning-path-content">
-              <div className="mb-3 flex flex-wrap items-center gap-2" role="tablist" aria-label="学习路径来源">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={pathMode === 'personalized'}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${pathMode === 'personalized' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
-                  onClick={() => { setPathMode('personalized'); setSelectedNode(null); }}
-                >我的学习路径</button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={pathMode === 'classic'}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${pathMode === 'classic' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
-                  onClick={() => { setPathMode('classic'); setSelectedNode(null); }}
-                >经典路线</button>
-                {pathMode === 'classic' && classicRoutes.length > 0 && (
-                  <label className="ml-auto flex items-center gap-2 text-xs text-slate-600">路线
-                    <select
-                      aria-label="经典学习路线"
-                      value={classicRouteId}
-                      onChange={(event) => {
-                        setClassicRouteId(event.target.value);
-                        setSelectedNode(null);
-                      }}
-                      className="max-w-64 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
-                    >
-                      {classicRoutes.map((route) => <option key={route.route_id} value={route.route_id}>{route.goal_name}</option>)}
-                    </select>
-                  </label>
-                )}
-              </div>
               {(pathMode === 'classic' ? classicParent : pathParent) && (
                 <button
                   type="button"
@@ -545,10 +571,27 @@ export default function DashboardPage({
             </div>
           </>
         )}
+        trainingContent={<>
+          <LearningPathTrainingModules trackId={track.id} onNavigate={onNavigate} />
+          {Array.isArray(dashboard.recommendations) && dashboard.recommendations.length > 0 && (
+            <section className="learning-workshop-recommendations" aria-label="个性化学习推荐">
+              {dashboard.recommendations.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  title={item.summary}
+                  onClick={() => openRecommendation(item)}
+                >{item.action_label || item.title}</button>
+              ))}
+            </section>
+          )}
+        </>}
+        onRailTabChange={(tab) => setAssistantCollapsed(tab !== 'assistant')}
         assistantContent={(
           <CompactAssistant
             currentUser={currentUser?.username || 'User'}
             floating={false}
+            initiallyCollapsed={false}
             dailyGoal={dashboard.hero?.goal || ''}
             dailyFocus={focus.title}
             onCollapsedChange={setAssistantCollapsed}

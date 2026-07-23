@@ -73,6 +73,7 @@ vi.mock('./components/AppShell', () => ({
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'dashboard', params: {} })}>Go dashboard</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: {} })}>Go training overview</button>
+      <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'stages' } })}>Go learning stages</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'workspace' } })}>Go training workspace</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: {} })}>Go personalization</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: { view: 'memory' } })}>Go memory</button>
@@ -109,9 +110,12 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go training overview' }));
-    expect(screen.getByRole('button', { name: 'Stage landing' })).toBeInTheDocument();
+    expect(screen.getByText('Training overview')).toBeInTheDocument();
+    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-view', '');
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'practice');
 
+    fireEvent.click(screen.getByRole('button', { name: 'Go learning stages' }));
+    expect(screen.getByRole('button', { name: 'Stage landing' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Stage landing' }));
     expect(screen.getByText('Stage transition')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reach flip midpoint' }));
@@ -146,6 +150,7 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-source', 'navigation');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go training overview' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Go learning stages' }));
     fireEvent.click(screen.getByRole('button', { name: 'Stage landing' }));
     fireEvent.click(screen.getByRole('button', { name: 'Reach flip midpoint' }));
     fireEvent.click(screen.getByRole('button', { name: 'Publish target' }));

@@ -176,17 +176,17 @@ export default function App() {
         if (pageIntent.params.view === 'workspace') {
           return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
         }
-        if (pageIntent.params.view === 'path') {
-          return (
-            <DashboardPage
-              currentUser={currentUser}
-              navigationContext={pageIntent.params}
-              onNavigate={navigateToPage}
-              onKnowledgeContextChange={setKnowledgeNavigationContext}
-            />
-          );
+        if (pageIntent.params.view === 'stages') {
+          return <LearningStageLanding onStageSelect={startStageTransition} />;
         }
-        return <LearningStageLanding onStageSelect={startStageTransition} />;
+        return (
+          <DashboardPage
+            currentUser={currentUser}
+            navigationContext={pageIntent.params}
+            onNavigate={navigateToPage}
+            onKnowledgeContextChange={setKnowledgeNavigationContext}
+          />
+        );
       case 'knowledge':
         return (
           <KnowledgePage

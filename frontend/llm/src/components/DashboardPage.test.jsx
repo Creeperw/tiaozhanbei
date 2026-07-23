@@ -1,7 +1,4 @@
 import React from 'react';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { cwd } from 'node:process';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardPage from './DashboardPage';
@@ -57,6 +54,7 @@ const clinicalSkill = { membership_id: 'clinical-skill', parent_membership_id: '
 
 describe('DashboardPage learning workspace', () => {
   beforeEach(() => {
+    localStorage.clear();
     resolveKnowledgeAtlasEnabled.mockResolvedValue(true);
     vi.stubGlobal('fetch', vi.fn((url) => {
       const payload = url.endsWith('/training/onboarding/status')
@@ -119,13 +117,27 @@ describe('DashboardPage learning workspace', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it('renders the greeting above a real dependency tree and a persistent assistant', async () => {
+  it('keeps the legacy path view mapped to the classic route', async () => {
+    localStorage.setItem('learning-workshop.preferences', JSON.stringify({ pathMode: 'personalized' }));
+
+    render(
+      <DashboardPage
+        currentUser={{ username: 'admin' }}
+        navigationContext={{ view: 'path' }}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByRole('tab', { name: '经典路线' }))
+      .toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('renders the learning path and keeps the assistant available from the shared rail', async () => {
     const onNavigate = vi.fn();
     render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
 
     expect(await screen.findByLabelText('一级知识学习路径')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '今日核心任务' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('常驻智能助教')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /选择中医操作技能/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /选择医学综合/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /选择方剂学/ }));
@@ -137,21 +149,25 @@ describe('DashboardPage learning workspace', () => {
     expect(within(plan).getByText('学习路径')).toBeInTheDocument();
     expect(within(plan).getByRole('button', { name: '开始练习' })).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('tab', { name: 'AI 助教' }));
     fireEvent.click(screen.getByRole('button', { name: '打开完整智能助教' }));
     expect(onNavigate).toHaveBeenLastCalledWith('assistant', 'session-home');
   });
 
-  it('uses the removed focus-banner space for the learning workspace', async () => {
+  it('uses the removed focus-banner space for the learning workspace and a single right rail', async () => {
     render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={vi.fn()} />);
 
     const workspace = await screen.findByRole('region', { name: '今日学习工作区' });
-    expect(within(workspace).getByRole('complementary', { name: '今日安排' })).toBeInTheDocument();
-    expect(within(workspace).getByRole('region', { name: '智能助教栏' })).toContainElement(screen.getByLabelText('常驻智能助教'));
+    const rail = within(workspace).getByRole('complementary', { name: '学习工作栏' });
+    expect(within(rail).getByRole('tab', { name: '今日任务' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(rail).getByRole('tab', { name: 'AI 助教' })).toHaveAttribute('aria-selected', 'false');
+    expect(within(workspace).queryByRole('region', { name: '智能助教栏' })).not.toBeInTheDocument();
 
     const feedback = screen.getByRole('region', { name: '昨日学习反馈' });
     expect(within(feedback).getByText('正确率')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '今日核心任务' })).not.toBeInTheDocument();
-    expect(workspace).not.toContainElement(feedback);
+    expect(workspace.querySelector('.dashboard-daily__learning-column')).toContainElement(feedback);
+    expect(rail).not.toContainElement(feedback);
   });
 
   it('shows the formal daily task in the right rail and opens pushed knowledge cards', async () => {
@@ -170,38 +186,21 @@ describe('DashboardPage learning workspace', () => {
     });
   });
 
-  it('lets today schedule reclaim the right column only after the assistant moves away', async () => {
+  it('defaults the assistant to collapsed and switches the shared rail without changing columns', async () => {
     render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={vi.fn()} />);
 
     const workspace = await screen.findByRole('region', { name: '今日学习工作区' });
-    expect(workspace).toHaveAttribute('data-assistant-collapsed', 'false');
-    expect(workspace).toHaveAttribute('data-assistant-docked', 'true');
-    expect(workspace).toHaveAttribute('data-right-column', 'stable');
-
-    fireEvent.click(screen.getByRole('button', { name: '折叠智能助教' }));
+    const rail = within(workspace).getByRole('complementary', { name: '学习工作栏' });
     expect(workspace).toHaveAttribute('data-assistant-collapsed', 'true');
     expect(workspace).toHaveAttribute('data-assistant-docked', 'true');
-
-    fireEvent.click(screen.getByRole('button', { name: '移开智能助教' }));
-    expect(workspace).toHaveAttribute('data-assistant-docked', 'false');
-
-    fireEvent.click(screen.getByRole('button', { name: '展开智能助教' }));
-    expect(workspace).toHaveAttribute('data-assistant-collapsed', 'false');
-    expect(workspace).toHaveAttribute('data-assistant-docked', 'false');
-
-    fireEvent.click(screen.getByRole('button', { name: '放回智能助教' }));
-    expect(workspace).toHaveAttribute('data-assistant-docked', 'true');
-  });
-
-  it('keeps the today column width unchanged when the docked assistant is collapsed', async () => {
-    render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={vi.fn()} />);
-
-    const workspace = await screen.findByRole('region', { name: '今日学习工作区' });
-    fireEvent.click(screen.getByRole('button', { name: '折叠智能助教' }));
-
-    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
     expect(workspace).toHaveAttribute('data-right-column', 'stable');
-    expect(stylesheet).not.toMatch(/\.dashboard-daily__workspace:has\(\.compact-assistant\.is-collapsed\)/);
+    expect(within(rail).getByRole('region', { name: '今日任务' })).toBeInTheDocument();
+    expect(screen.getByLabelText('常驻智能助教')).not.toBeVisible();
+
+    fireEvent.click(within(rail).getByRole('tab', { name: 'AI 助教' }));
+    expect(screen.getByLabelText('常驻智能助教')).toBeVisible();
+    expect(workspace).toHaveAttribute('data-assistant-docked', 'true');
+    expect(workspace).toHaveAttribute('data-right-column', 'stable');
   });
 
   it('opens the matching training module from the learning path header', async () => {
@@ -215,6 +214,30 @@ describe('DashboardPage learning workspace', () => {
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
       params: { view: 'workspace', taskType: 'case_training', trackId: 'track-a' },
+    });
+  });
+
+  it('expands the compact current-stage entry and opens the existing full stage page', async () => {
+    const onNavigate = vi.fn();
+    render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
+
+    const trigger = await screen.findByRole('button', { name: /当前阶段.*02.*经典研读/ });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(trigger);
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const stagePicker = screen.getByRole('dialog', { name: '学习阶段选择' });
+    expect(within(stagePicker).getByText('02')).toBeInTheDocument();
+    expect(within(stagePicker).getByText('经典研读')).toBeInTheDocument();
+    fireEvent.click(within(stagePicker).getByRole('button', { name: '关闭学习阶段选择' }));
+    expect(screen.queryByRole('dialog', { name: '学习阶段选择' })).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    fireEvent.click(within(screen.getByRole('dialog', { name: '学习阶段选择' }))
+      .getByRole('button', { name: '查看完整进阶路线' }));
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: { view: 'stages' },
     });
   });
 
@@ -362,6 +385,11 @@ describe('DashboardPage learning workspace', () => {
 
   it('shows non-personalized classic routes beside the learner path', async () => {
     const onNavigate = vi.fn();
+    localStorage.setItem('learning-workshop.preferences', JSON.stringify({
+      pathMode: 'classic',
+      classicRouteId: 'classic-1',
+      currentStageId: 'classic-study',
+    }));
     vi.stubGlobal('fetch', vi.fn((url) => {
       if (url === '/api/v1/learning-routes') {
         return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({
@@ -398,14 +426,16 @@ describe('DashboardPage learning workspace', () => {
     render(
       <DashboardPage
         currentUser={{ username: 'admin' }}
-        navigationContext={{ view: 'path', pathMode: 'classic', stageId: 'foundation', stageIndex: 0 }}
         onNavigate={onNavigate}
       />,
     );
 
     expect(await screen.findByRole('tab', { name: '经典路线' })).toHaveAttribute('aria-selected', 'true');
-    fireEvent.click(screen.getByRole('button', { name: '返回学习阶段' }));
-    expect(onNavigate).toHaveBeenLastCalledWith({ page: 'practice', params: { view: 'stages' } });
+    const headerControls = screen.getByRole('group', { name: '学习路径控制区' });
+    expect(within(headerControls).getByRole('heading', { name: '学习路径' })).toBeInTheDocument();
+    expect(within(headerControls).getByRole('tablist', { name: '学习路径来源' })).toBeInTheDocument();
+    expect(await within(headerControls).findByRole('combobox', { name: '经典学习路线' }))
+      .toHaveDisplayValue('中医执业医师经典路线');
     fireEvent.click(screen.getByRole('tab', { name: '我的学习路径' }));
     expect(screen.getByRole('tab', { name: '我的学习路径' })).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(screen.getByRole('tab', { name: '经典路线' }));
