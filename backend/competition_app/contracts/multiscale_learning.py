@@ -24,6 +24,8 @@ class MetricValue(ContractModel):
                 raise ValueError("unavailable metric requires reason")
         elif self.value is None:
             raise ValueError("available metric requires value")
+        elif not self.source_refs:
+            raise ValueError("available metric requires source refs")
         return self
 
 

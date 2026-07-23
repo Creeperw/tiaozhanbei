@@ -81,6 +81,11 @@ def test_unavailable_metric_cannot_carry_a_value() -> None:
         )
 
 
+def test_available_metric_requires_source_references() -> None:
+    with pytest.raises(ValueError, match="available metric requires source refs"):
+        MetricValue(available=True, value=0.5, unit="ratio_0_1")
+
+
 def test_multiscale_state_requires_canonical_digest() -> None:
     payload = {
         "state_id": "STATE_1",
