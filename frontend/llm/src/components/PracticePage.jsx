@@ -290,7 +290,7 @@ export default function PracticePage({ navigationContext = {} }) {
   const taskResultApproved = isTrainingTaskResultApproved(taskResult);
 
   return (
-    <div className="space-y-5 text-slate-800">
+    <div className="practice-page space-y-5 text-slate-800">
       <header className="border-b border-slate-200 pb-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

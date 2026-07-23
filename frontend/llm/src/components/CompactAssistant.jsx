@@ -48,6 +48,7 @@ export default function CompactAssistant({
   onCollapsedChange,
   onFloatingDockChange,
   onOpenFull,
+  characterHint = '点击问我',
   className = '',
 }) {
   const [sessionId, setSessionId] = useState(null);
@@ -64,6 +65,7 @@ export default function CompactAssistant({
   const floatingRef = useRef(null);
   const dragRef = useRef(null);
   const suppressExpandRef = useRef(false);
+  const collapsedPositionRef = useRef(null);
   const sessionGenerationRef = useRef(0);
   const [dragging, setDragging] = useState(false);
   const [floatingPosition, setFloatingPosition] = useState(null);
@@ -212,17 +214,34 @@ export default function CompactAssistant({
       suppressExpandRef.current = false;
       return;
     }
-    setFloatingPosition((current) => {
-      if (!current) return current;
+    const rect = floatingRef.current?.getBoundingClientRect();
+    const collapsedPosition = floatingPosition || (rect ? {
+      left: rect.left,
+      top: rect.top,
+    } : null);
+    if (floating && collapsedPosition) {
+      collapsedPositionRef.current = collapsedPosition;
+    }
+    setFloatingPosition(() => {
+      if (!collapsedPosition) return null;
       const expandedWidth = Math.min(320, Math.max(0, window.innerWidth - 16));
       const expandedHeight = Math.min(560, Math.max(0, window.innerHeight - 16));
       return {
-        left: Math.min(Math.max(8, window.innerWidth - expandedWidth - 8), Math.max(8, current.left)),
-        top: Math.min(Math.max(8, window.innerHeight - expandedHeight - 8), Math.max(8, current.top)),
+        left: Math.min(Math.max(8, window.innerWidth - expandedWidth - 8), Math.max(8, collapsedPosition.left)),
+        top: Math.min(Math.max(8, window.innerHeight - expandedHeight - 8), Math.max(8, collapsedPosition.top)),
       };
     });
     setCollapsed(false);
     onCollapsedChange?.(false);
+  };
+
+  const collapseAssistant = () => {
+    setHistoryOpen(false);
+    if (floating && collapsedPositionRef.current) {
+      setFloatingPosition(collapsedPositionRef.current);
+    }
+    setCollapsed(true);
+    onCollapsedChange?.(true);
   };
 
   const floatingStyle = floatingPosition ? {
@@ -335,7 +354,7 @@ export default function CompactAssistant({
                   />
                 ))}
               </span>
-              <span className="compact-assistant__character-hint">点击问我</span>
+              <span className="compact-assistant__character-hint">{characterHint}</span>
             </span>
           ) : (
             <span className="compact-assistant__character-fallback" data-testid="assistant-character-fallback" aria-hidden="true">
@@ -394,11 +413,7 @@ export default function CompactAssistant({
             type="button"
             aria-label="折叠智能助教"
             title="折叠智能助教"
-            onClick={() => {
-              setHistoryOpen(false);
-              setCollapsed(true);
-              onCollapsedChange?.(true);
-            }}
+            onClick={collapseAssistant}
           ><PanelRightClose aria-hidden="true" size={15} /></button>
           <button
             type="button"

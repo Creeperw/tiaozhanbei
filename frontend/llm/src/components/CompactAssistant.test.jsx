@@ -319,6 +319,8 @@ describe('CompactAssistant', () => {
     fireEvent.click(restoreButton);
     fireEvent.click(restoreButton);
     expect(screen.getByLabelText('常驻智能助教')).toHaveStyle({ left: '672px', top: '132px' });
+    fireEvent.click(screen.getByRole('button', { name: '折叠智能助教' }));
+    expect(screen.getByLabelText('常驻智能助教')).toHaveStyle({ left: '936px', top: '636px' });
   });
 
   it('uses one contextual workbench with reusable quick actions', async () => {

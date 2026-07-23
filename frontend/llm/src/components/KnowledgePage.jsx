@@ -573,14 +573,14 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
           )}
         </section>
 
-        <section className="knowledge-workbench__search p-4 sm:p-6 lg:p-8 flex-1">
+        <section className="knowledge-workbench__search p-4 sm:p-6 lg:p-8">
           <div className="max-w-4xl mx-auto">
             <div className="knowledge-workbench__search-heading">
               <p>Evidence search</p>
               <h1><Search size={20} />资料检索</h1>
               <span>先检索，再阅读；每条结果保留来源、范围与相似度。</span>
             </div>
-            <div className="bg-white p-2 rounded-2xl shadow-sm border border-emerald-100 flex flex-col gap-2 mb-6 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-shadow sm:flex-row sm:items-center">
+            <div className="knowledge-workbench__search-box bg-white p-2 rounded-2xl shadow-sm border border-emerald-100 flex flex-col gap-2 mb-6 transition-shadow sm:flex-row sm:items-center">
               <input
                 type="text"
                 value={searchQuery}
@@ -594,7 +594,7 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
               </button>
             </div>
 
-            <div className="space-y-4 pb-10">
+            <div className="knowledge-workbench__search-results space-y-4">
               {searchResults.map((result, idx) => (
                 <div key={idx} className="bg-white/90 p-5 rounded-2xl border border-emerald-50 shadow-sm hover:shadow-md transition-shadow group animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="flex justify-between items-start mb-2">
@@ -625,6 +625,8 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
         currentUser={currentUser?.username || 'User'}
         dailyGoal={contextBrief?.goal || ''}
         contextLabel={searchQuery ? `资料检索 · ${searchQuery}` : `${scopeLabel[activeScope]}资料库`}
+        initiallyCollapsed
+        characterHint="点我询问相关内容"
         onOpenFull={(sessionId) => onNavigate?.('assistant', sessionId)}
       />
       </div>
