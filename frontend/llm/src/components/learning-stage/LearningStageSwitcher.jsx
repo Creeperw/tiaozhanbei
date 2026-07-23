@@ -22,7 +22,7 @@ export default function LearningStageSwitcher({
   const [mobileSheet, setMobileSheet] = useState(() => (
     typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
-    && window.matchMedia('(max-width: 767px)').matches
+    && window.matchMedia('(max-width: 740px)').matches
   ));
   const rootRef = useRef(null);
   const dialogRef = useRef(null);
@@ -37,7 +37,7 @@ export default function LearningStageSwitcher({
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return undefined;
-    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const mediaQuery = window.matchMedia('(max-width: 740px)');
     const updateMobileSheet = (event) => setMobileSheet(event.matches);
     mediaQuery.addEventListener?.('change', updateMobileSheet);
     return () => mediaQuery.removeEventListener?.('change', updateMobileSheet);

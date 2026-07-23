@@ -15,7 +15,7 @@ describe('LearningStageSwitcher desktop preview', () => {
     vi.useFakeTimers();
     vi.stubGlobal('matchMedia', vi.fn(() => ({
       matches: false,
-      media: '(max-width: 767px)',
+      media: '(max-width: 740px)',
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     })));
@@ -38,6 +38,7 @@ describe('LearningStageSwitcher desktop preview', () => {
     );
 
     const root = container.querySelector('.learning-stage-switcher');
+    expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 740px)');
     fireEvent.mouseEnter(root);
     const dialog = screen.getByRole('dialog', { name: '学习阶段选择' });
 
@@ -60,7 +61,7 @@ describe('LearningStageSwitcher mobile sheet', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', vi.fn(() => ({
       matches: true,
-      media: '(max-width: 767px)',
+      media: '(max-width: 740px)',
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     })));
