@@ -4894,6 +4894,12 @@ textarea:focus-visible {
   .learning-path-route-select select { max-width: 160px; }
 }
 
+@media (min-width: 741px) and (max-width: 1100px) {
+  .learning-stage-switcher__dialog {
+    width: min(440px, calc(100vw - 40px));
+  }
+}
+
 @media (max-width: 767px) {
   .dashboard-daily--training-workshop { height: auto; min-height: 100dvh; overflow: visible; padding: 10px; }
   .dashboard-daily--training-workshop .dashboard-daily__workspace[data-right-column="stable"] {
