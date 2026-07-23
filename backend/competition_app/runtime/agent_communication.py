@@ -223,7 +223,13 @@ class CognitiveGapAnalyzer:
         if isinstance(policy, Mapping):
             configured_types = policy.get("trusted_source_types", ())
             if isinstance(configured_types, Sequence) and not isinstance(configured_types, str):
-                trusted_source_types = {str(source_type) for source_type in configured_types}
+                trusted_source_types = {
+                    source_type
+                    for source_type in configured_types
+                    if isinstance(source_type, str) and source_type
+                }
+        if not trusted_source_types:
+            return False
         accepted_source_types = set(need.accepted_source_types)
         return any(
             (not accepted_source_types or item.source_type in accepted_source_types)

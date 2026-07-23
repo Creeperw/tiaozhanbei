@@ -1,3 +1,5 @@
+import pytest
+
 from competition_app.contracts.base import AgentEnvelope, ArtifactReference
 from competition_app.contracts.execution import ExecutionStep
 from competition_app.runtime.agent_communication import CognitiveGapAnalyzer
@@ -184,6 +186,35 @@ def test_untrusted_evidence_does_not_satisfy_a_trusted_evidence_need() -> None:
         root_context=base_context(
             formal_task="explain algebra",
             source_policy={"trusted_source_types": ["textbook"]},
+        ),
+        dependency_outputs={
+            "knowledge": AgentEnvelope(
+                artifact_id="ART_KNOWLEDGE",
+                artifact_type="knowledge",
+                case_id="CASE_1",
+                trace_id="TRACE_1",
+                request_id="REQ_1",
+                execution_id="EXE_1",
+                step_id="knowledge",
+                producer="knowledge_base_agent",
+                task_type="knowledge_explanation",
+                learner_id="LEARNER_1",
+                payload={},
+                evidence_refs=[ArtifactReference(ref_type="web", ref_id="WEB_1")],
+            )
+        },
+    )
+
+    assert "evidence" in result.gap.blocking_fields
+
+
+@pytest.mark.parametrize("source_policy", [None, {}])
+def test_evidence_fails_closed_without_usable_trust_policy(source_policy: object) -> None:
+    result = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(step_id="expert", agent="expert_agent", depends_on=["knowledge"]),
+        root_context=base_context(
+            formal_task="explain algebra",
+            source_policy=source_policy,
         ),
         dependency_outputs={
             "knowledge": AgentEnvelope(
