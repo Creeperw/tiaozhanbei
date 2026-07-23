@@ -4530,6 +4530,20 @@ textarea:focus-visible {
   gap: 16px;
 }
 
+@media (min-width: 768px) {
+  .dashboard-daily--workspace-only.dashboard-daily--training-workshop[data-layout="fullscreen"] {
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    padding-bottom: 12px;
+  }
+
+  .dashboard-daily--training-workshop .dashboard-daily__workspace[data-right-column="stable"] {
+    height: auto;
+    align-items: stretch;
+  }
+}
+
 .dashboard-daily--training-workshop .dashboard-daily__workspace[data-right-column="stable"][data-assistant-docked="true"] {
   grid-template-rows: minmax(0, 1fr);
 }
