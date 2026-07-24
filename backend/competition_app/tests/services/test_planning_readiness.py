@@ -32,6 +32,13 @@ def test_short_and_daily_require_their_immediate_parent() -> None:
     assert daily.status == "needs_short_term_plan"
 
 
+def test_daily_without_any_plan_still_asks_for_immediate_short_term_parent() -> None:
+    result = PlanningReadinessService().evaluate({}, "daily_task", learner_id="U1")
+
+    assert result.status == "needs_short_term_plan"
+    assert result.requested_scope == "daily_task"
+
+
 def test_daily_rejects_short_plan_bound_to_old_long_plan() -> None:
     result = PlanningReadinessService().evaluate(
         {

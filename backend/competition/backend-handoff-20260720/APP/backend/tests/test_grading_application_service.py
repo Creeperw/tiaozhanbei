@@ -15,6 +15,8 @@ from APP.backend.database import (
     LearningAttemptRecord,
     LearningWritebackReceipt,
     UserModel,
+    QuestionBankItem,
+    QuestionVersionRecord,
 )
 from APP.backend import grading_application_service as service
 
@@ -166,6 +168,113 @@ class GradingApplicationServiceTests(unittest.TestCase):
         self.assertIsNotNone(result.audit_id)
         self.assertEqual(result.writeback.status, "applied")
         self.assertEqual(self.artifact_counts(), (1, 1, 1, 1))
+
+    def test_first_grading_explanation_is_cached_and_reused(self):
+        self.db.add(QuestionVersionRecord(
+            question_version_id="qv-1", question_id="q-1", version=1,
+            stem="Explain the principle.", answer="standard", analysis="", status="active",
+        ))
+        self.db.commit()
+        first = service.apply_practice_grading(self.db, self.command(), runner=self.pass_runner)
+        self.assertEqual(first.grading_payload["question_explanation"], "good")
+        self.assertEqual(first.grading_payload["explanation_source"], "generated_on_first_attempt")
+
+        second_command = service.GradePracticeCommand(
+            **{**self.command().__dict__, "request_id": "request-2"}
+        )
+        second = service.apply_practice_grading(
+            self.db,
+            second_command,
+            runner=lambda **kwargs: {**self.pass_runner(**kwargs), "feedback": "different"},
+        )
+        self.assertEqual(second.grading_payload["question_explanation"], "good")
+        self.assertEqual(second.grading_payload["explanation_source"], "question_version_cache")
+
+    def test_first_explanation_is_generated_once_and_cached_without_question_version(self):
+        self.db.add(QuestionBankItem(
+            question_id="q-bank-only",
+            stem="四君子汤的功效是什么？",
+            answer="益气健脾",
+            analysis="",
+            kp_ids_json='["kp-1"]',
+            question_type="single_choice",
+            status="active",
+        ))
+        self.db.commit()
+        command = service.GradePracticeCommand(
+            **{
+                **self.command().__dict__,
+                "question_version_id": "q-bank-only",
+                "question_type": "single_choice",
+                "stem": "四君子汤的功效是什么？",
+                "standard_answer": "益气健脾",
+            }
+        )
+        calls = []
+
+        def explain_once(*, submission):
+            calls.append(submission)
+            return "四君子汤以补益脾气为核心，因此其功效是益气健脾。"
+
+        first = service.apply_practice_grading(
+            self.db,
+            command,
+            runner=self.pass_runner,
+            explanation_runner=explain_once,
+        )
+        second = service.apply_practice_grading(
+            self.db,
+            service.GradePracticeCommand(
+                **{**command.__dict__, "request_id": "request-bank-2"}
+            ),
+            runner=self.pass_runner,
+            explanation_runner=lambda **_: self.fail("cached explanation must be reused"),
+        )
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(first.grading_payload["explanation_source"], "generated_on_first_attempt")
+        self.assertEqual(second.grading_payload["explanation_source"], "question_bank_cache")
+        self.assertEqual(
+            self.db.query(QuestionBankItem).filter_by(question_id="q-bank-only").one().analysis,
+            first.grading_payload["question_explanation"],
+        )
+
+    def test_legacy_grading_feedback_cache_is_replaced_by_real_explanation(self):
+        self.db.add(QuestionVersionRecord(
+            question_version_id="qv-1",
+            question_id="q-1",
+            version=1,
+            stem="Explain the principle.",
+            answer="standard",
+            analysis=(
+                "本题考查基本概念。客观题由系统依据标准答案自动判分。"
+                "错因暂不自动下结论，请到错题变式中补充判断过程。"
+            ),
+            status="active",
+        ))
+        self.db.commit()
+
+        result = service.apply_practice_grading(
+            self.db,
+            self.command(),
+            runner=self.pass_runner,
+            explanation_runner=lambda **_: "标准答案成立，因为题干条件与核心概念能够逐项对应。",
+        )
+
+        self.assertEqual(
+            result.grading_payload["question_explanation"],
+            "标准答案成立，因为题干条件与核心概念能够逐项对应。",
+        )
+        self.assertEqual(
+            result.grading_payload["explanation_source"],
+            "generated_on_first_attempt",
+        )
+        self.assertEqual(
+            self.db.query(QuestionVersionRecord).filter_by(
+                question_version_id="qv-1"
+            ).one().analysis,
+            result.grading_payload["question_explanation"],
+        )
 
     def test_current_legacy_runner_shape_is_normalized_without_relational_ids(self):
         result = service.apply_practice_grading(self.db, self.command(), runner=self.legacy_runner)

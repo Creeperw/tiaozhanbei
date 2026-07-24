@@ -79,6 +79,15 @@ class LearningWorkshopServiceTests(unittest.TestCase):
             self.assertGreater(paper["timing"]["remaining_seconds"], 0)
             self.assertEqual(paper["items"][0]["options"], ["A. 人参", "B. 甘草"])
             self.assertEqual(paper["items"][0]["max_score"], 25)
+            version = db.query(database.QuestionVersionRecord).filter_by(
+                question_version_id="Q_1:agent"
+            ).one()
+            link = db.query(database.QuestionKPLinkRecord).filter_by(
+                question_version_id=version.question_version_id,
+                kp_id="KP_1",
+            ).one()
+            self.assertEqual(version.answer, "A. 人参")
+            self.assertEqual(link.status, "active")
 
     def test_missing_item_scores_are_completed_to_the_authoritative_total(self):
         scores = _normalized_item_scores(

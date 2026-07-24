@@ -46,6 +46,14 @@ function buildGuidance({ isMultiple, isSingle, mode, kpName }) {
   return steps;
 }
 
+function difficultySourceLabel(source) {
+  if (source === 'formal_question_bank') return '正式题库标注';
+  if (source === 'question_bank_snapshot') return '题库快照';
+  if (source === 'system_default') return '题库未标注，系统默认';
+  if (source === 'variation') return '沿用原题';
+  return '题目快照';
+}
+
 export default function AtlasPracticePanel({
   knowledgePoint = null,
   scope = 'public',
@@ -105,8 +113,12 @@ export default function AtlasPracticePanel({
   const isSingle = singleTypes.has(question?.question_type);
   const submittedAnswer = isMultiple ? selectedAnswers.join(',') : answer.trim();
   const typeLabel = questionTypeLabel(question?.question_type, mode);
-  const knowledgeLabels = kpName ? [kpName] : (Array.isArray(question?.kp_ids) ? question.kp_ids.slice(0, 3) : []);
-  const guidance = buildGuidance({ isMultiple, isSingle, mode, kpName });
+  const knowledgeLabels = kpName
+    ? [kpName]
+    : (Array.isArray(question?.kp_names)
+      ? question.kp_names.filter((label) => label && !question?.kp_ids?.includes(label)).slice(0, 3)
+      : []);
+  const guidance = buildGuidance({ isMultiple, isSingle, mode, kpName: kpName || knowledgeLabels[0] || '' });
 
   const toggleMultiple = (value) => {
     setSelectedAnswers((current) => (
@@ -163,7 +175,7 @@ export default function AtlasPracticePanel({
             <div className="practice-question-meta">
               <span>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</span>
               <span>{typeLabel}</span>
-              <span>难度 {question.difficulty || '常规'}</span>
+              <span title={`来源：${difficultySourceLabel(question.difficulty_source)}`}>难度 D{question.difficulty || 2}</span>
             </div>
             <p id="practice-question">{question.stem}</p>
           </article>
@@ -243,6 +255,13 @@ export default function AtlasPracticePanel({
                 {' · '}得分 {result.grading?.score ?? '待确认'}
               </div>
               <p>{result.grading?.analysis || '批改已完成。'}</p>
+              {result.grading?.question_explanation && (
+                <div className="practice-question-explanation">
+                  <strong>题目解析</strong>
+                  <p>{result.grading.question_explanation}</p>
+                  <small>解析来源：{result.grading.explanation_source === 'generated_on_first_attempt' ? '首次作答自动生成并保存' : '题目解析库'}</small>
+                </div>
+              )}
               {result.grading?.grading_source && (
                 <small>批改来源：{result.grading.grading_source === 'expert_agent_model' ? 'Expert Agent 模型' : '规则降级结果'}</small>
               )}
@@ -301,7 +320,7 @@ export default function AtlasPracticePanel({
                 <h4>题目线索</h4>
                 <dl>
                   <div><dt>题型</dt><dd>{typeLabel}</dd></div>
-                  <div><dt>难度</dt><dd>{question.difficulty || '常规'}</dd></div>
+                  <div><dt>难度</dt><dd>D{question.difficulty || 2}（{difficultySourceLabel(question.difficulty_source)}）</dd></div>
                   <div><dt>来源</dt><dd>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</dd></div>
                 </dl>
               </section>

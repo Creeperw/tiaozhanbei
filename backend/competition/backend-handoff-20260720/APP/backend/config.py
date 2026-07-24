@@ -60,7 +60,7 @@ LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 # 远程 LLM Anthropic 兼容服务地址。
 LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://api.deepseek.com/anthropic")
 # 远程 LLM 模型名。
-LLM_API_MODEL = os.getenv("LLM_API_MODEL", "qwen3.7-max-2026-05-20")
+LLM_API_MODEL = os.getenv("LLM_API_MODEL", "qwen3.7-plus-2026-05-26")
 
 # --- 本地 vLLM OpenAI 兼容接口配置（LLM_MODE=local 时启用） ---
 # Planner/Executor 模型的 OpenAI 兼容服务地址。
@@ -238,9 +238,8 @@ KNOWLEDGE_ATLAS_CONTRACT_PATH = (
 )
 
 # --- Embedding Model ---
-# Embedding/RAG 开关：disabled=禁用（本地开发默认，不加载 Embedding 模型，检索返回空）；
-# enabled=加载本地 Embedding 模型并启用知识库检索。
-EMBEDDING_MODE = os.getenv("EMBEDDING_MODE", "disabled")
+# Embedding/RAG 默认开启；缺少本地模型时使用主后端注入的远程 Embedding。
+EMBEDDING_MODE = os.getenv("EMBEDDING_MODE", "enabled")
 
 class EmbeddingConfig:
     # Index identity is stable, while the runtime model path must be provided
@@ -248,6 +247,8 @@ class EmbeddingConfig:
     # downloads and the former Linux-only hard-coded path.
     EMBEDDING_MODEL_ID = os.getenv("EMBEDDING_MODEL_ID", "Qwen/Qwen3-Embedding-4B")
     EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", "").strip()
+    EMBEDDING_API_BASE_URL = os.getenv("EMBEDDING_API_BASE_URL", "").strip()
+    EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "").strip()
     EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "2560"))
     # Compatibility field used by status payloads and older manifest readers.
     EMBEDDING_MODEL = EMBEDDING_MODEL_ID

@@ -17,6 +17,7 @@ from APP.backend.database import (
     LearningQuestionAttempt,
     QuestionBankItem,
     QuestionLearningStat,
+    QuestionVersionRecord,
     UserKnowledgeState,
 )
 
@@ -86,8 +87,14 @@ def resolve_controlled_practice_submission(db: Session, submission: dict[str, An
             kp_ids_json=json.dumps(kp_ids, ensure_ascii=False),
         ))
 
+    version = db.query(QuestionVersionRecord).filter(
+        QuestionVersionRecord.question_id == question_id,
+        QuestionVersionRecord.status == "active",
+    ).order_by(QuestionVersionRecord.version.desc()).first()
+
     return {
         **submission,
+        "question_version_id": version.question_version_id if version is not None else question_id,
         "stem": question.stem,
         "standard_answer": question.answer,
         "rubric": question.analysis,

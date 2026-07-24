@@ -1,13 +1,11 @@
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-COMPONENT_ROOT = Path(__file__).resolve().parents[2] / "division of labor" / "7-15 知识库管理组件"
-if str(COMPONENT_ROOT) not in sys.path:
-    sys.path.insert(0, str(COMPONENT_ROOT))
-
-from question_pipeline.faiss_question_index import FaissQuestionIndex
+from APP.backend.question_index_v2_service import (
+    QuestionIndexContractError,
+    _validate_question_collection,
+)
 
 
 class FaissQuestionIndexManifestTests(unittest.TestCase):
@@ -21,8 +19,13 @@ class FaissQuestionIndexManifestTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self.assertRaisesRegex(ValueError, "embedding model"):
-                FaissQuestionIndex(index_dir, expected_embedding_model="Qwen/Qwen3-Embedding-4B")
+            with self.assertRaisesRegex(QuestionIndexContractError, "embedding model"):
+                _validate_question_collection(
+                    index_dir,
+                    expected_model="Qwen/Qwen3-Embedding-4B",
+                    expected_dimensions=2560,
+                    require_normalized=True,
+                )
 
 
 if __name__ == "__main__":

@@ -42,6 +42,7 @@ class AuthUser(ContractModel):
     display_name: str
     role: str = "user"
     status: str = "active"
+    onboarding_required: bool = False
     created_at: datetime
 
 

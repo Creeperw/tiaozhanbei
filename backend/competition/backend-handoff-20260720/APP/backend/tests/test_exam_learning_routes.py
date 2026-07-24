@@ -261,13 +261,15 @@ class ExamLearningRoutesTests(unittest.TestCase):
             "/personalization/learning-target",
             json={
                 "target_type": "certification",
-                "exam_track_id": "track-a",
+                "exam_track_id": "EXAM_2025_TCM_PHYSICIAN",
                 "exam_date": "2026-10-01",
                 "is_locked": True,
             },
         )
         self.assertEqual(saved.status_code, 200)
-        self.assertEqual(saved.json()["target"]["exam_track_id"], "track-a")
+        self.assertEqual(
+            saved.json()["target"]["exam_track_id"], "EXAM_2025_TCM_PHYSICIAN"
+        )
         self.assertTrue(saved.json()["target"]["is_locked"])
 
         invalid = self.client.put(

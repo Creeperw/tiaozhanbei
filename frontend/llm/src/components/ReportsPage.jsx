@@ -17,6 +17,100 @@ import LearningTrendChart from './LearningTrendChart';
 
 const percent = (value) => `${Math.round(Math.max(0, Math.min(1, Number(value) || 0)) * 100)}%`;
 
+const metricLabels = {
+  task_completion_rate: '任务完成率',
+  learning_regularity: '学习规律度',
+  question_accuracy: '答题正确率',
+  average_response_time: '平均答题用时',
+  average_mastery: '平均掌握度',
+  recent_focus_minutes: '近期专注时长',
+  current_task_load: '当前任务量',
+};
+
+const unavailableReasonLabels = {
+  no_tasks_in_window: '窗口内暂无任务',
+  no_learning_activity_in_window: '窗口内暂无学习活动',
+  no_question_attempts: '暂无答题记录（no_question_attempts）',
+  no_response_time_observations: '暂无答题用时记录',
+  no_mastery_observations: '暂无掌握度记录',
+  mastery_or_confidence_missing: '掌握度或可信度缺失',
+  no_focus_sessions: '暂无专注学习记录',
+  no_pending_tasks: '暂无待完成任务',
+  pending_task_duration_missing_or_incomplete: '待完成任务时长不完整',
+};
+
+function metricText(metric) {
+  if (!metric || metric.available === false || metric.value === null || metric.value === undefined) {
+    return '不可用';
+  }
+  if (metric.unit === 'seconds') return `${metric.value} 秒`;
+  if (metric.unit === 'minutes') return `${metric.value} 分钟`;
+  return percent(metric.value);
+}
+
+function MetricSummary({ metrics }) {
+  return (
+    <dl className="mt-3 space-y-2">
+      {metrics.map(([key, metric]) => (
+        <div key={key} className="rounded-xl bg-slate-50 px-3 py-2">
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <dt className="text-slate-600">{metricLabels[key] || key}</dt>
+            <dd className="font-mono font-semibold text-slate-900">{metricText(metric)}</dd>
+          </div>
+          {metric?.available === false && (
+            <p className="mt-1 text-xs text-amber-800">
+              {unavailableReasonLabels[metric.unavailable_reason] || metric.unavailable_reason || '未提供不可用原因'}
+            </p>
+          )}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function MultiscaleSummary({ state }) {
+  if (!state) return null;
+  const macro = state.macro || {};
+  const meso = state.meso || {};
+  const micro = state.micro || {};
+  const stageBooks = (macro.stage_books || []).map((item) => (
+    typeof item === 'string' ? item : item?.name
+  )).filter(Boolean);
+  const mesoMetrics = ['task_completion_rate', 'learning_regularity']
+    .filter((key) => meso[key])
+    .map((key) => [key, meso[key]]);
+  const microMetrics = [
+    'question_accuracy',
+    'average_response_time',
+    'average_mastery',
+    'recent_focus_minutes',
+    'current_task_load',
+  ].filter((key) => micro[key]).map((key) => [key, micro[key]]);
+
+  return (
+    <section className="rounded-[28px] bg-white p-5 shadow-sm shadow-emerald-950/5 sm:p-6" aria-label="多尺度学习状态">
+      <div className="grid gap-4 md:grid-cols-3">
+        <article className="rounded-2xl border border-slate-100 p-4">
+          <h3 className="text-sm font-semibold text-slate-950">宏观状态</h3>
+          <p className="mt-3 text-sm text-slate-700">{macro.current_stage?.name || '当前阶段不可用'}</p>
+          {stageBooks.length > 0 && <p className="mt-2 text-xs text-slate-500">{stageBooks.join('、')}</p>}
+        </article>
+        <article className="rounded-2xl border border-slate-100 p-4">
+          <h3 className="text-sm font-semibold text-slate-950">中观状态</h3>
+          {mesoMetrics.length > 0 ? <MetricSummary metrics={mesoMetrics} /> : <p className="mt-3 text-sm text-slate-500">暂无中观指标。</p>}
+        </article>
+        <article className="rounded-2xl border border-slate-100 p-4">
+          <h3 className="text-sm font-semibold text-slate-950">微观状态</h3>
+          {microMetrics.length > 0 ? <MetricSummary metrics={microMetrics} /> : <p className="mt-3 text-sm text-slate-500">暂无微观指标。</p>}
+        </article>
+      </div>
+      <div className="mt-4 text-xs text-slate-500">
+        数据来源：{(state.source_refs || []).map((source) => source.table || source.source_type).filter(Boolean).join('、') || '暂无可追溯来源'}
+      </div>
+    </section>
+  );
+}
+
 function RadarChart({ dimensions }) {
   const size = 286;
   const center = size / 2;
@@ -293,6 +387,8 @@ export default function ReportsPage() {
           </article>
         </div>
       </section>
+
+      <MultiscaleSummary state={report.multiscale} />
 
       <section className="rounded-[28px] bg-white p-5 shadow-sm shadow-emerald-950/5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">

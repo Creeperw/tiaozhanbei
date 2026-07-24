@@ -1,6 +1,18 @@
 import json
+from pathlib import Path
 
+import pytest
+from pydantic import ValidationError
+
+from competition_app.application.personalized_review_card import (
+    CoordinationSummary,
+    PersonalizedReviewCardUseCase,
+    ReviewCardResult,
+)
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
+from competition_app.repositories.runtime import InMemoryRunStateRepository
+from competition_app.runtime.orchestrator import ExecutionResult
+from competition_app.runtime.trace import CommunicationTrace
 
 
 def test_long_term_plan_message_includes_system_owned_stage_data() -> None:
@@ -87,3 +99,72 @@ def test_paper_message_keeps_exam_body_in_workspace() -> None:
     assert "不应出现在对话里" not in message
     assert "开始答题" in message
     assert "通过审核" in message
+
+
+def test_workflow_run_state_persists_communication_trace_summary() -> None:
+    execution = ExecutionResult(
+        status="success",
+        communication_trace=[
+            CommunicationTrace(
+                handoff_id="HANDOFF_EXE_1_diagnosis",
+                step_id="diagnosis",
+                target_agent="diagnosis_agent",
+                fact_count=2,
+                evidence_count=0,
+                blocking_field_count=0,
+                status="consumed",
+            )
+        ],
+    )
+    use_case = object.__new__(PersonalizedReviewCardUseCase)
+    use_case.run_state_repository = InMemoryRunStateRepository()
+    coordination = use_case._execution_coordination(execution)
+
+    use_case._remember_run(
+        "THREAD_COORDINATION",
+        {
+            "status": "completed",
+            "result": ReviewCardResult(
+                status="success",
+                execution_id="EXE_1",
+                task_type="learning_plan",
+                agent_outputs=[],
+                snapshot_path=Path("snapshot.json"),
+                writeback_intents=[],
+                coordination=coordination,
+            ),
+        },
+    )
+
+    saved = use_case.get_run_state("THREAD_COORDINATION")
+    assert saved is not None
+    assert coordination.schema_version == "1.0"
+    assert saved["coordination"]["schema_version"] == "1.0"
+    assert saved["coordination"]["communication_trace"][0]["schema_version"] == "1.0"
+    assert saved["coordination"]["communication_trace"][0]["handoff_id"] == (
+        "HANDOFF_EXE_1_diagnosis"
+    )
+
+
+def test_review_card_rejects_invalid_coordination_shape() -> None:
+    with pytest.raises(ValidationError):
+        ReviewCardResult(
+            status="success",
+            execution_id="EXE_INVALID_COORDINATION",
+            task_type="learning_plan",
+            agent_outputs=[],
+            snapshot_path=Path("snapshot.json"),
+            writeback_intents=[],
+            coordination={
+                "schema_version": "1.0",
+                "communication_trace": [],
+                "unexpected": "not allowed",
+            },
+        )
+
+    coordination = CoordinationSummary()
+    assert coordination.model_dump(mode="json") == {
+        "schema_version": "1.0",
+        "communication_trace": [],
+        "repair_trace": [],
+    }

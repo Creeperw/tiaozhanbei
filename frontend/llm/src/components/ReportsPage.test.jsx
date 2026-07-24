@@ -13,6 +13,7 @@ vi.mock('../pageDataLoaders.js', () => ({
     data_sources: [], methodology: { references: [], limitations: [] },
     resource_match_report: { summary: {}, matches: [] }, mastery_radar: [],
     learner_overview: {}, t_stage: {},
+    multiscale: { macro: {}, meso: {}, micro: {}, source_refs: [] },
   },
   loadReportsData: vi.fn(),
 }));
@@ -61,6 +62,17 @@ describe('ReportsPage', () => {
             },
           }],
         },
+        multiscale: {
+          schema_version: '1.0',
+          macro: { current_stage: { name: '中医基础与文化语言' }, stage_books: [{ name: '中医学基础' }] },
+          meso: {
+            task_completion_rate: { available: true, value: 0.75, source_refs: ['learning_task:1'] },
+          },
+          micro: {
+            question_accuracy: { available: false, value: null, unavailable_reason: 'no_question_attempts', source_refs: [] },
+          },
+          source_refs: [{ source_id: 'learning_task:1', table: 'learning_task' }],
+        },
       },
     });
 
@@ -72,6 +84,12 @@ describe('ReportsPage', () => {
     expect(screen.getByText('四君子汤知识卡')).toBeInTheDocument();
     expect(screen.getByText('样本状态：可用于谨慎干预')).toBeInTheDocument();
     expect(screen.getByText('监测口径、数据来源与参考依据')).toBeInTheDocument();
+    expect(screen.getByText('宏观状态')).toBeInTheDocument();
+    expect(screen.getByText('中医基础与文化语言')).toBeInTheDocument();
+    expect(screen.getByText('中观状态')).toBeInTheDocument();
+    expect(screen.getByText('微观状态')).toBeInTheDocument();
+    expect(screen.getByText(/no_question_attempts/)).toBeInTheDocument();
+    expect(screen.queryByText(/KP_/)).not.toBeInTheDocument();
 
     const basisButton = screen.getByRole('button', { name: '匹配依据' });
     expect(basisButton).toHaveAttribute('aria-expanded', 'false');

@@ -41,6 +41,7 @@ from APP.backend import exam_learning_service
 from APP.backend.learning_target_service import (
     LearningTargetLockedError,
     LearningTargetValidationError,
+    requires_official_exam_repository,
     serialize_learning_target,
     set_active_learning_target,
 )
@@ -61,6 +62,7 @@ from APP.backend.core_learning_service import (
 )
 from APP.backend.system_data_service import rebuild_system_data
 from APP.backend.training_service import grade_practice_submission
+from APP.backend.expert_agent_service import generate_question_explanation
 
 router = APIRouter(prefix="/training", tags=["Training"])
 stable_practice_router = APIRouter(prefix="/v1/workshop/practice", tags=["Workshop Practice"])
@@ -303,7 +305,11 @@ def _question_kp_ids(question: QuestionBankItem) -> list[str]:
 
 def _knowledge_point_names(db: Session, kp_ids: list[str]) -> list[str]:
     rows = db.query(KnowledgePoint).filter(KnowledgePoint.kp_id.in_(kp_ids)).all() if kp_ids else []
-    names = {row.kp_id: row.name for row in rows if str(row.name or "").strip()}
+    names = {
+        row.kp_id: row.name
+        for row in rows
+        if str(row.name or "").strip() and str(row.name).strip() != str(row.kp_id)
+    }
     return [names[kp_id] for kp_id in kp_ids if kp_id in names]
 
 
@@ -388,6 +394,7 @@ def next_practice_question(
                     "kp_ids": question_kp_ids,
                     "kp_names": _knowledge_point_names(db, question_kp_ids),
                     "difficulty": 2,
+                    "difficulty_source": "system_default",
                     "request_id": request_id,
                     "source_scope": "user",
                 },
@@ -457,6 +464,7 @@ def next_practice_question(
             "kp_ids": question_kp_ids,
             "kp_names": _knowledge_point_names(db, question_kp_ids),
             "difficulty": int(question.difficulty or 2),
+            "difficulty_source": "question_bank_snapshot" if question.difficulty else "system_default",
             "request_id": request_id,
             "source_scope": "public",
         },
@@ -575,6 +583,28 @@ def grade_practice(
             "confidence": raw_grading.get("confidence"),
             "dimension_scores": raw_grading.get("dimension_scores", {}),
         }
+        cached_explanation = str(private_question.analysis or "").strip()
+        generated_explanation = ""
+        if not cached_explanation:
+            generated_explanation = generate_question_explanation(
+                submission={
+                    "question_id": grading_submission["question_id"],
+                    "question_type": grading_submission["question_type"],
+                    "stem": grading_submission["stem"],
+                    "standard_answer": grading_submission["standard_answer"],
+                    "rubric": grading_submission["rubric"],
+                    "knowledge_points": grading_submission["knowledge_points"],
+                    "knowledge_point_names": grading_submission["knowledge_point_names"],
+                    "difficulty": grading_submission["difficulty"],
+                }
+            )
+        if cached_explanation:
+            grading["question_explanation"] = cached_explanation
+            grading["explanation_source"] = "user_question_cache"
+        elif generated_explanation:
+            private_question.analysis = generated_explanation
+            grading["question_explanation"] = generated_explanation
+            grading["explanation_source"] = "generated_on_first_attempt"
         if not isinstance(audit_payload, dict) or audit_payload.get("decision") != "pass":
             db.commit()
             return {
@@ -687,6 +717,7 @@ def grade_practice(
         db,
         command,
         runner=practice_grading_runner,
+        explanation_runner=generate_question_explanation,
         atomic=controlled_submission is not None and bool(submission.get("request_id")),
     )
     grading = dict(result.grading_payload or {})
@@ -782,22 +813,16 @@ def submit_training_onboarding_survey(
             detail="target_type and exam_track_id must be provided together",
         )
     try:
-        defaulted_payload = apply_onboarding_defaults(payload)
-    except OnboardingTemplateError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    learner_group = defaulted_payload["learner_group"]
-    locked_fields = defaulted_payload.get("profile_locked_fields") if "locked_fields" in payload else None
-    try:
-        result = submit_onboarding_survey(
-            db,
-            user_id=current_user.id,
-            survey_answers=defaulted_payload,
-            learner_group=learner_group,
-            locked_fields=locked_fields,
-            commit=False,
-        )
+        target = None
         if target_requested:
+            target_repository = (
+                exam_learning_service.get_official_exam_repository()
+                if requires_official_exam_repository(
+                    target_payload["target_type"],
+                    target_payload["exam_track_id"],
+                )
+                else None
+            )
             target = set_active_learning_target(
                 db,
                 user_id=current_user.id,
@@ -807,9 +832,30 @@ def submit_training_onboarding_survey(
                 is_locked=target_payload.get("is_locked", True),
                 lock_reason=target_payload.get("lock_reason", "用户手动选择"),
                 source="manual",
-                repository=exam_learning_service.get_official_exam_repository(),
+                repository=target_repository,
                 commit=False,
             )
+            goals = dict(payload.get("goals") or {})
+            goals.setdefault("target_exam_or_course", target.exam_name_snapshot)
+            payload["goals"] = goals
+            payload.setdefault("target_exam_or_course", target.exam_name_snapshot)
+
+        try:
+            defaulted_payload = apply_onboarding_defaults(payload)
+        except OnboardingTemplateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        learner_group = defaulted_payload["learner_group"]
+        locked_fields = defaulted_payload.get("profile_locked_fields") if "locked_fields" in payload else None
+        result = submit_onboarding_survey(
+            db,
+            user_id=current_user.id,
+            survey_answers=defaulted_payload,
+            learner_group=learner_group,
+            locked_fields=locked_fields,
+            commit=False,
+        )
+        if target is not None:
             result["learning_target"] = serialize_learning_target(target)
         db.commit()
         return result

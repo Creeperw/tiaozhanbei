@@ -1,12 +1,19 @@
 {
   "catalog_version": "1.0.0",
+  "selection_policy": {
+    "active_route_ids": [
+      "tcm_physician_standard_degree",
+      "licensed_pharmacist_tcm"
+    ],
+    "reason": "当前产品仅开放已有正式教材路线的中医/中西医结合医师资格考试与执业药师职业资格考试。"
+  },
   "project_import_metadata": {
     "imported_from": "competition/zhongyi-learning-planning/references/tcm-credential-default-routes.json",
     "imported_at": "2026-07-17",
     "import_policy": "Application-owned normalized copy; source Skill JSON is reference-only."
   },
   "route_match_metadata": {
-    "tcm_physician_standard_degree": {"aliases": ["中医执业医师", "中医执业助理医师", "中西医结合执业医师", "中西医结合执业助理医师", "规定学历", "规定学历路径"]},
+    "tcm_physician_standard_degree": {"aliases": ["中医执业医师", "中医执业医师资格考试", "中医执业助理医师", "中医执业助理医师资格考试", "中西医结合执业医师", "中西医结合执业医师资格考试", "中西医结合执业助理医师", "中西医结合执业助理医师资格考试", "规定学历", "规定学历路径"]},
     "tcm_formula_course": {"aliases": ["方剂学", "系统掌握方剂学", "方剂学课程"]},
     "tcm_special_expertise_physician": {"aliases": ["中医（专长）医师"]},
     "traditional_medicine_apprenticeship": {"aliases": ["传统医学师承", "传统医学确有专长"]},

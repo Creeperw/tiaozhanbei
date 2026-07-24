@@ -41,6 +41,11 @@ GROUP_TEMPLATES: list[dict[str, Any]] = [
             "current_difficulties": ["方剂组成混淆", "缺少练习反馈"],
         },
     },
+]
+
+# 已有用户可能保存过旧群体。它们只用于读取和规范化历史记录，不再通过
+# 调查模板返回，也不能成为新注册页面的可选项。
+LEGACY_GROUP_TEMPLATES: list[dict[str, Any]] = [
     {
         "key": "public_interest",
         "title": "大众兴趣群体",
@@ -56,8 +61,10 @@ GROUP_TEMPLATES: list[dict[str, Any]] = [
             "preferred_difficulty": "D1",
             "current_difficulties": ["术语记不住", "资料太分散"],
         },
-    },
+    }
 ]
+
+ALL_GROUP_TEMPLATES = [*GROUP_TEMPLATES, *LEGACY_GROUP_TEMPLATES]
 
 QUESTIONS: list[dict[str, Any]] = [
     {
@@ -82,7 +89,7 @@ QUESTIONS: list[dict[str, Any]] = [
             {"value": 60, "label": "45-60 分钟"},
             {"value": 90, "label": "90 分钟以上"},
         ],
-        "default_by_group": {item["key"]: item["default_profile"]["daily_available_minutes"] for item in GROUP_TEMPLATES},
+        "default_by_group": {item["key"]: item["default_profile"]["daily_available_minutes"] for item in ALL_GROUP_TEMPLATES},
         "help_text": "用于估算今日任务数量和默认学习节奏。",
     },
     {
@@ -91,7 +98,7 @@ QUESTIONS: list[dict[str, Any]] = [
         "type": "single_choice",
         "required": False,
         "options": ["早晨", "午休", "晚间或碎片化时间", "晚间固定学习时段", "周末", "碎片化不固定"],
-        "default_by_group": {item["key"]: item["default_profile"]["preferred_time_slot"] for item in GROUP_TEMPLATES},
+        "default_by_group": {item["key"]: item["default_profile"]["preferred_time_slot"] for item in ALL_GROUP_TEMPLATES},
         "help_text": "锁定后不会被行为日志自动覆盖。",
     },
     {
@@ -114,7 +121,7 @@ QUESTIONS: list[dict[str, Any]] = [
             "药食同源科普",
             "生活场景问答",
         ],
-        "default_by_group": {item["key"]: item["default_profile"]["resource_preference"] for item in GROUP_TEMPLATES},
+        "default_by_group": {item["key"]: item["default_profile"]["resource_preference"] for item in ALL_GROUP_TEMPLATES},
         "help_text": "可多选，用于每日推荐和智能助教讲解风格。",
     },
     {
@@ -143,7 +150,7 @@ def _group_display_label(group: dict[str, Any]) -> str:
 
 def _canonical_group_key(value: str) -> str:
     normalized = (value or "").strip()
-    for group in GROUP_TEMPLATES:
+    for group in ALL_GROUP_TEMPLATES:
         if normalized in {group["key"], _group_display_title(group), _group_display_label(group)}:
             return group["key"]
     raise OnboardingTemplateError("请选择有效的学习群体")
@@ -151,7 +158,7 @@ def _canonical_group_key(value: str) -> str:
 
 def _group_by_key(group_key: str) -> dict[str, Any]:
     canonical_key = _canonical_group_key(group_key)
-    for group in GROUP_TEMPLATES:
+    for group in ALL_GROUP_TEMPLATES:
         if group["key"] == canonical_key:
             return group
     raise OnboardingTemplateError("请选择有效的学习群体")
@@ -281,19 +288,29 @@ def apply_onboarding_defaults(payload: dict[str, Any]) -> dict[str, Any]:
         ),
     }
 
-    goals["long_term_goal"] = _first_answered(
-        goals.get("long_term_goal"),
-        normalized.get("long_term_goal"),
-        default_profile["learning_goal"],
-    )
-    goals["short_term_goal"] = _first_answered(
-        goals.get("short_term_goal"),
-        normalized.get("short_term_goal"),
-    )
     goals["target_exam_or_course"] = _first_answered(
         goals.get("target_exam_or_course"),
         normalized.get("target_exam_or_course"),
     )
+    goals["long_term_goal"] = _first_answered(
+        goals.get("target_exam_or_course"),
+        goals.get("long_term_goal"),
+        normalized.get("long_term_goal"),
+        default_profile["learning_goal"],
+    )
+    short_term_goal = _first_answered(
+        goals.get("short_term_goal"),
+        normalized.get("short_term_goal"),
+    )
+    if short_term_goal is None:
+        goals.pop("short_term_goal", None)
+        field_sources.pop("goals.short_term_goal", None)
+    else:
+        goals["short_term_goal"] = short_term_goal
+    if goals.get("target_exam_or_course"):
+        field_sources["goals.long_term_goal"] = field_sources[
+            "goals.target_exam_or_course"
+        ]
     goals["current_difficulties"] = _first_answered(
         goals.get("current_difficulties"),
         normalized.get("current_difficulties"),

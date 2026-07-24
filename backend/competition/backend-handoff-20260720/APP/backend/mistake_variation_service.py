@@ -18,6 +18,7 @@ from APP.backend.database import (
     VariationQuestionVersionRecord,
     VariationRubricRecord,
     VariationSetRecord,
+    KnowledgePoint,
 )
 from APP.backend.grading_application_service import (
     apply_practice_grading,
@@ -44,6 +45,8 @@ class _SourceSnapshot:
     source_question_version_id: str
     source_question_id: str
     source_stem: str
+    source_answer: str
+    source_analysis: str
     source_question_type: str
     source_difficulty: int
     kp_ids: tuple[str, ...]
@@ -62,6 +65,8 @@ class _SourceSnapshot:
             "source_question_version_id": self.source_question_version_id,
             "source_question_id": self.source_question_id,
             "source_stem": self.source_stem,
+            "source_answer": self.source_answer,
+            "source_analysis": self.source_analysis,
             "source_question_type": self.source_question_type,
             "source_difficulty": self.source_difficulty,
             "kp_ids": list(self.kp_ids),
@@ -111,6 +116,8 @@ def _source(db: Session, user_id: int, mistake_id: int) -> _SourceSnapshot:
         source_question_version_id=question.question_version_id,
         source_question_id=question.question_id,
         source_stem=question.stem,
+        source_answer=question.answer,
+        source_analysis=question.analysis,
         source_question_type=question.question_type,
         source_difficulty=question.standard_difficulty,
         kp_ids=kp_ids,
@@ -135,6 +142,12 @@ def _question_projection(question) -> dict[str, Any]:
         "kp_ids": list(question.kp_ids),
         "source_kind": question.source_kind,
     }
+
+
+def _kp_names(db: Session, kp_ids: tuple[str, ...] | list[str]) -> list[str]:
+    rows = db.query(KnowledgePoint).filter(KnowledgePoint.kp_id.in_(kp_ids)).all() if kp_ids else []
+    names = {str(row.kp_id): str(row.name) for row in rows if str(row.name or "").strip()}
+    return [names[kp_id] for kp_id in kp_ids if kp_id in names and names[kp_id] != kp_id]
 
 
 def available_variation_source_ids(
@@ -172,6 +185,7 @@ def list_available_variation_sources(db: Session, user_id: int, *, limit: int = 
             "question_type": source.source_question_type,
             "difficulty": source.source_difficulty,
             "kp_ids": list(source.kp_ids),
+            "kp_names": _kp_names(db, source.kp_ids),
         })
     return sources
 
@@ -392,6 +406,7 @@ def apply_mistake_variations(
                 "question_type": content["question_type"],
                 "difficulty": content.get("difficulty"),
                 "kp_ids": list(content["kp_ids"]),
+                "kp_names": _kp_names(db, list(content["kp_ids"])),
                 "source_kind": "variation",
             })
         db.flush()

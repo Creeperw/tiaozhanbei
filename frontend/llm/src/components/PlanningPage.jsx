@@ -1,7 +1,60 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { BookOpen, Clock, RefreshCcw, Sparkles } from 'lucide-react';
 import { API_BASE, fetchJsonWithAuthFallback, fetchWithAuth, readJsonResponse } from '../utils/api';
 import { emptyPlan, loadPlanningData } from '../pageDataLoaders.js';
+import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
+
+const candidateScoreLabels = {
+  mastery_fit: '掌握度适配',
+  due_review_priority: '到期复习优先',
+  time_fit: '时间适配',
+  preference_fit: '学习偏好适配',
+  repetition_penalty: '近期重复惩罚',
+  uncertainty_penalty: '数据不确定性',
+};
+
+const scorePercent = (value) => `${Math.round(Math.max(0, Math.min(1, Number(value) || 0)) * 100)}%`;
+
+function CandidateCard({ candidate }) {
+  const names = [
+    candidate.stage?.name,
+    ...(candidate.books || []).map((item) => item?.name),
+    ...(candidate.knowledge_points || []).map((item) => item?.name),
+  ].filter(Boolean);
+  const failedConstraints = (candidate.hard_constraint_results || []).filter((item) => !item.passed);
+
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-slate-900">{names.join(' · ') || '未命名候选路径'}</div>
+          <div className="mt-1 text-xs text-slate-500">预计 {candidate.estimated_minutes || 0} 分钟</div>
+        </div>
+        <span className="font-mono text-sm font-semibold text-emerald-800">{scorePercent(candidate.score)}</span>
+      </div>
+      {Object.keys(candidate.score_components || {}).length > 0 && (
+        <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+          {Object.entries(candidate.score_components).map(([key, component]) => (
+            <div key={key} className="flex justify-between gap-3 rounded-lg bg-white px-2.5 py-2 text-xs">
+              <dt className="text-slate-600">{candidateScoreLabels[key] || key}</dt>
+              <dd className="font-mono text-slate-900">
+                {component?.available === false || component?.value === null || component?.value === undefined
+                  ? '未纳入'
+                  : scorePercent(component.value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {(candidate.blocked_reasons || []).map((reason) => (
+        <p key={reason} className="mt-2 text-xs leading-5 text-rose-700">{reason}</p>
+      ))}
+      {failedConstraints.map((constraint) => (
+        <p key={constraint.key} className="mt-1 text-xs text-slate-600">{constraint.reason}</p>
+      ))}
+    </article>
+  );
+}
 
 export default function PlanningPage() {
   const [plan, setPlan] = useState(emptyPlan);
@@ -10,33 +63,33 @@ export default function PlanningPage() {
   const [latestReview, setLatestReview] = useState(null);
   const [reviewBusy, setReviewBusy] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadPlan = async () => {
-      setLoading(true);
-      setError('');
-      const { plan: nextPlan, error: nextError } = await loadPlanningData({
-        fetcher: fetchJsonWithAuthFallback,
-      });
-      try {
-        const reviewRes = await fetchWithAuth(`${API_BASE}/v1/plan-reviews?limit=1`);
-        const reviewData = await readJsonResponse(reviewRes, { items: [] });
-        if (!cancelled && reviewRes.ok) setLatestReview(reviewData.items?.[0] || null);
-      } catch {
-        if (!cancelled) setLatestReview(null);
-      }
-      if (!cancelled) {
-        setPlan(nextPlan);
-        setError(nextError);
-        setLoading(false);
-      }
-    };
-
-    loadPlan();
-    return () => {
-      cancelled = true;
-    };
+  const loadPlan = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    const { plan: nextPlan, error: nextError } = await loadPlanningData({
+      fetcher: fetchJsonWithAuthFallback,
+    });
+    try {
+      const reviewRes = await fetchWithAuth(`${API_BASE}/v1/plan-reviews?limit=1`);
+      const reviewData = await readJsonResponse(reviewRes, { items: [] });
+      if (reviewRes.ok) setLatestReview(reviewData.items?.[0] || null);
+    } catch {
+      setLatestReview(null);
+    }
+    setPlan(nextPlan);
+    setError(nextError);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadPlan(); }, [loadPlan]);
+
+  const refreshDailyTask = useCallback(async () => {
+    try {
+      await fetchWithAuth(`${API_BASE}/v1/learning-tasks/current/refresh`, { method: 'POST' });
+    } finally {
+      await loadPlan();
+    }
+  }, [loadPlan]);
 
   const runReview = async () => {
     setReviewBusy(true);
@@ -67,6 +120,10 @@ export default function PlanningPage() {
       setReviewBusy(false);
     }
   };
+
+  const candidates = plan.path_candidates?.items || [];
+  const eligibleCandidates = candidates.filter((item) => item.eligible);
+  const blockedCandidates = candidates.filter((item) => !item.eligible);
 
   return (
     <div className="space-y-6">
@@ -120,12 +177,32 @@ export default function PlanningPage() {
         </section>
       )}
 
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6" aria-label="路径候选验证">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-semibold text-emerald-900">可用候选</h3>
+            <div className="mt-3 space-y-3">
+              {eligibleCandidates.map((candidate) => <CandidateCard key={candidate.candidate_id} candidate={candidate} />)}
+              {eligibleCandidates.length === 0 && <p className="text-sm text-slate-500">当前没有满足全部硬约束的候选。</p>}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-rose-800">被阻断候选</h3>
+            <div className="mt-3 space-y-3">
+              {blockedCandidates.map((candidate) => <CandidateCard key={candidate.candidate_id} candidate={candidate} />)}
+              {blockedCandidates.length === 0 && <p className="text-sm text-slate-500">当前没有被硬约束阻断的候选。</p>}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section>
         <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">
           <div className="mb-5 flex items-center gap-2 text-sm font-medium text-slate-500">
             <BookOpen size={16} />
             今日任务卡
           </div>
+          <DailyTaskCountdown timer={plan.daily_task_timer} onExpire={refreshDailyTask} className="mb-4" />
           <div className="space-y-3">
             {plan.daily_tasks.map((task) => (
               <div key={task.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

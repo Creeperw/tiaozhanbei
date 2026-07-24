@@ -4,6 +4,8 @@ import threading
 import time
 import logging
 import json
+import numpy as np
+import requests
 from pathlib import Path
 from collections import defaultdict
 
@@ -31,6 +33,41 @@ def _create_sentence_transformer(model_path: str, device: str):
     from sentence_transformers import SentenceTransformer
 
     return SentenceTransformer(model_path, device=device)
+
+
+class RemoteEmbeddingModel:
+    """Small SentenceTransformer-compatible adapter for the main embedding API."""
+
+    def __init__(self, base_url: str, api_key: str, model_id: str):
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.model_id = model_id
+        self._dimensions: int | None = None
+
+    def encode(self, texts, convert_to_numpy=True):
+        values = [str(item) for item in texts]
+        response = requests.post(
+            f"{self.base_url}/embeddings",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json={"model": self.model_id, "input": values},
+            timeout=120,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        rows = sorted(payload.get("data") or [], key=lambda item: item.get("index", 0))
+        if len(rows) != len(values):
+            raise RuntimeError("remote embedding response count mismatch")
+        array = np.asarray([row["embedding"] for row in rows], dtype="float32")
+        if array.ndim != 2:
+            raise RuntimeError("remote embedding response has invalid dimensions")
+        self._dimensions = int(array.shape[1])
+        return array if convert_to_numpy else array.tolist()
+
+    def get_sentence_embedding_dimension(self):
+        return self._dimensions
 
 
 def _get_faiss():
@@ -146,20 +183,34 @@ class RAGService:
             self.current_status = "disabled"
             return
         model_path = str(getattr(Config, "EMBEDDING_MODEL_PATH", "") or "").strip()
-        if not model_path or not Path(model_path).is_dir():
+        api_base_url = str(
+            getattr(Config, "EMBEDDING_API_BASE_URL", "") or ""
+        ).strip()
+        api_key = str(getattr(Config, "EMBEDDING_API_KEY", "") or "").strip()
+        if (not model_path or not Path(model_path).is_dir()) and not (
+            api_base_url and api_key
+        ):
             self.device = 'cpu'
             self.model = None
             self.embedding_state = "misconfigured"
             self.embedding_error = (
-                "EMBEDDING_MODE=enabled requires EMBEDDING_MODEL_PATH to point "
-                "to a compatible local Qwen/Qwen3-Embedding-4B model directory"
+                "EMBEDDING_MODE=enabled requires either EMBEDDING_MODEL_PATH "
+                "or EMBEDDING_API_BASE_URL plus EMBEDDING_API_KEY"
             )
             self.current_status = "misconfigured"
             logger.error(self.embedding_error)
             return
         self.device = 'cuda' if import_torch_safe() else 'cpu'
         try:
-            self.model = _create_sentence_transformer(model_path, self.device)
+            self.model = (
+                _create_sentence_transformer(model_path, self.device)
+                if model_path and Path(model_path).is_dir()
+                else RemoteEmbeddingModel(
+                    api_base_url,
+                    api_key,
+                    getattr(Config, "EMBEDDING_MODEL_ID", Config.EMBEDDING_MODEL),
+                )
+            )
             self.embedding_contract = _validate_embedding_contract(self.model)
             self.load_all_dbs()
         except Exception as exc:

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from competition_app.agents.planner import PlannerAgent, PlannerDecision
 from competition_app.contracts.base import AgentEnvelope, WritebackIntent
@@ -21,6 +21,7 @@ from competition_app.contracts.resource import (
 from competition_app.contracts.review import ReviewResourceBinding, ReviewSchedule, ReviewTask
 from competition_app.contracts.workshop import UiAction
 from competition_app.runtime.orchestrator import Orchestrator
+from competition_app.runtime.trace import CommunicationTrace, RepairTrace
 from competition_app.runtime.snapshot import SnapshotExporter
 from competition_app.runtime.model_trace import ModelCallTrace, ModelTraceRecorder
 from competition_app.runtime.event_stream import emit_runtime_event
@@ -93,6 +94,7 @@ class ReviewCardResult(BaseModel):
     writeback_intents: list[WritebackIntent]
     model_trace: list[ModelCallTrace] = Field(default_factory=list)
     ui_actions: list[UiAction] = Field(default_factory=list)
+    coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
 
 
 class WorkflowResumeRequest(BaseModel):
@@ -100,6 +102,16 @@ class WorkflowResumeRequest(BaseModel):
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     plan_change_context: PlanChangeContext | None = None
     profile_updates: dict[str, str] = Field(default_factory=dict)
+
+
+class CoordinationSummary(BaseModel):
+    """Versioned, persisted summary of executor coordination artifacts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: Literal["1.0"] = "1.0"
+    communication_trace: list[CommunicationTrace] = Field(default_factory=list)
+    repair_trace: list[RepairTrace] = Field(default_factory=list)
 
 
 class WorkflowInterruptedResult(BaseModel):
@@ -111,6 +123,7 @@ class WorkflowInterruptedResult(BaseModel):
     completed_steps: list[str] = Field(default_factory=list)
     agent_outputs: list[AgentEnvelope[Any]] = Field(default_factory=list)
     model_trace: list[ModelCallTrace] = Field(default_factory=list)
+    coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
 
 
 @dataclass
@@ -138,6 +151,8 @@ class PersonalizedReviewCardUseCase:
         conversation_repository: ConversationRepository | None = None,
         review_service: ReviewService | None = None,
         behavior_context_loader: Callable[[str], dict[str, Any]] | None = None,
+        multiscale_state_loader: Callable[..., dict[str, Any]] | None = None,
+        path_candidate_loader: Callable[..., dict[str, Any]] | None = None,
         profile_update_writer: Callable[[str, dict[str, Any], str | None], dict[str, Any]] | None = None,
         profile_memory_extractor: Callable[[str, str, str | None], dict[str, Any]] | None = None,
         data_permission_gateway: AgentDataPermissionGateway | None = None,
@@ -155,6 +170,8 @@ class PersonalizedReviewCardUseCase:
         )
         self.review_service = review_service
         self.behavior_context_loader = behavior_context_loader
+        self.multiscale_state_loader = multiscale_state_loader
+        self.path_candidate_loader = path_candidate_loader
         self.profile_update_writer = profile_update_writer
         self.profile_memory_extractor = profile_memory_extractor
         self.data_permission_gateway = data_permission_gateway or AgentDataPermissionGateway()
@@ -322,6 +339,45 @@ class PersonalizedReviewCardUseCase:
             effective_user_request,
             persisted_messages,
         )
+        candidate_scope = next(
+            (
+                value
+                for value in (
+                    explicit_plan_scope,
+                    continued_plan_scope,
+                    plan_scope_hint,
+                )
+                if value in {"long_term", "short_term", "daily_task"}
+            ),
+            "daily_task",
+        )
+        multiscale_state, path_candidates = (
+            await self._load_multiscale_planning_context(
+                request.learner_id,
+                plan_context={
+                    key: value
+                    for key, value in {
+                        "long_term_plan": current_long_term_plan,
+                        "short_term_plan": current_short_term_plan,
+                        "learning_task": current_learning_task,
+                        "available_minutes": request.available_minutes,
+                    }.items()
+                    if value not in (None, "", [], {})
+                },
+                scope=candidate_scope,
+                legacy_state={
+                    "macro": effective_learning_profile,
+                    "meso": behavior_context,
+                    "micro": {
+                        "knowledge_states": effective_knowledge_states,
+                        "question_attempts": effective_question_attempts,
+                        "question_learning_stats": (
+                            effective_question_learning_stats
+                        ),
+                    },
+                },
+            )
+        )
         context_messages = [
             {
                 **item,
@@ -331,6 +387,8 @@ class PersonalizedReviewCardUseCase:
             for index, item in enumerate(persisted_messages)
             if isinstance(item, dict)
         ]
+        effective_goals = effective_user_profile.get("goals")
+        effective_goals = effective_goals if isinstance(effective_goals, dict) else {}
         context = {
             "case_id": case_id,
             "trace_id": f"TRACE_{uuid4().hex}",
@@ -341,7 +399,20 @@ class PersonalizedReviewCardUseCase:
             "original_user_request": request.user_request,
             "learner_id": request.learner_id,
             "user_request": effective_user_request,
+            "learning_goal": (
+                effective_user_profile.get("learning_goal")
+                or effective_goals.get("goal_name")
+                or effective_goals.get("name")
+            ),
             "available_minutes": request.available_minutes,
+            "time_budget": request.available_minutes,
+            "source_policy": {
+                "trusted_source_types": [
+                    "textbook",
+                    "knowledge_base",
+                    "official_question_bank",
+                ],
+            },
             "messages": context_messages,
             "user_profile": effective_user_profile,
             "learning_profile": effective_learning_profile,
@@ -349,14 +420,18 @@ class PersonalizedReviewCardUseCase:
             "user_knowledge_states": effective_knowledge_states,
             "question_attempts": effective_question_attempts,
             "question_learning_stats": effective_question_learning_stats,
+            "multi_scale_learning_state": multiscale_state,
+            "path_candidates": path_candidates,
+            "planner_multiscale_summary": self._planner_multiscale_summary(
+                multiscale_state,
+                current_long_term_plan=current_long_term_plan,
+                current_short_term_plan=current_short_term_plan,
+            ),
             "behavior_context_source": behavior_context.get("source"),
             # Every product entry point follows the same backend-owned planning
             # prerequisite policy. Tests that call agents directly remain able to
             # opt in explicitly without manufacturing persistence dependencies.
-            "enforce_profile_readiness": (
-                self.behavior_context_loader is not None
-                and not self._has_meaningful_profile(request.user_profile)
-            ),
+            "enforce_profile_readiness": self.behavior_context_loader is not None,
             "enforce_planning_readiness": True,
             "behavior_context_calculated_at": behavior_context.get("calculated_at"),
             "learning_monitoring": learning_monitoring.model_dump(mode="json"),
@@ -430,6 +505,7 @@ class PersonalizedReviewCardUseCase:
                     ],
                 ],
                 model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
             )
             self._continuations[thread_id] = _WorkflowContinuation(
                 request=request,
@@ -448,6 +524,7 @@ class PersonalizedReviewCardUseCase:
                     "completed_steps": interrupted.completed_steps,
                     "execution_id": execution_id,
                     "task_type": interrupted.task_type,
+                    "coordination": interrupted.coordination,
                     "continuation": self._continuation_payload(
                         self._continuations[thread_id]
                     ),
@@ -460,6 +537,8 @@ class PersonalizedReviewCardUseCase:
         if execution.status != "success":
             self.mark_run_failed(thread_id, execution.error_message or execution.status)
             detail = execution.error_message or self._execution_failure_detail(execution)
+            if "blocked path candidate" in detail:
+                raise ValueError(detail)
             raise RuntimeError(f"personalized review card execution failed: {detail}")
         result = self._finalize_execution(
             request=request,
@@ -532,6 +611,32 @@ class PersonalizedReviewCardUseCase:
                 continuation.execution_id,
             )
             resume_payload["profile_updates"] = profile_updates
+        elif (
+            interrupt_payload.get("interrupt_type") == "route_resolution"
+            and self.profile_memory_extractor is not None
+        ):
+            extracted_profile = await asyncio.to_thread(
+                self.profile_memory_extractor,
+                continuation.request.learner_id,
+                request.answer,
+                continuation.execution_id,
+            )
+            if isinstance(extracted_profile, dict):
+                allowed_profile_fields = {
+                    "display_name",
+                    "learner_group",
+                    "learning_goal",
+                    "learning_background",
+                    "time_constraints",
+                }
+                continuation.context.setdefault("user_profile", {}).update(
+                    {
+                        key: value
+                        for key, value in extracted_profile.items()
+                        if key in allowed_profile_fields
+                        and value not in (None, "", [], {})
+                    }
+                )
         execution = await self.orchestrator.resume(
             thread_id,
             resume_payload,
@@ -554,6 +659,7 @@ class PersonalizedReviewCardUseCase:
                     ],
                 ],
                 model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
             )
             self._remember_run(
                 thread_id,
@@ -564,6 +670,7 @@ class PersonalizedReviewCardUseCase:
                     "completed_steps": interrupted.completed_steps,
                     "execution_id": continuation.execution_id,
                     "task_type": interrupted.task_type,
+                    "coordination": interrupted.coordination,
                     "continuation": self._continuation_payload(continuation),
                 },
             )
@@ -684,7 +791,19 @@ class PersonalizedReviewCardUseCase:
         )
 
     def _remember_run(self, thread_id: str, state: dict[str, Any]) -> None:
-        self.run_state_repository.save(thread_id, state)
+        persisted_state = dict(state)
+        result = persisted_state.get("result")
+        coordination = getattr(result, "coordination", None)
+        if isinstance(coordination, CoordinationSummary):
+            persisted_state.setdefault("coordination", coordination.model_dump(mode="json"))
+        self.run_state_repository.save(thread_id, persisted_state)
+
+    @staticmethod
+    def _execution_coordination(execution: Any) -> CoordinationSummary:
+        return CoordinationSummary(
+            communication_trace=execution.communication_trace,
+            repair_trace=execution.repair_trace,
+        )
 
     def _finalize_execution(
         self,
@@ -714,6 +833,7 @@ class PersonalizedReviewCardUseCase:
                     "learning_plan": learning_plan,
                     "trace": execution.trace,
                     "tool_trace": execution.tool_trace,
+                    "communication_trace": execution.communication_trace,
                     "model_trace": self._model_trace(),
                 },
             )
@@ -726,6 +846,7 @@ class PersonalizedReviewCardUseCase:
                 snapshot_path=snapshot_path,
                 writeback_intents=[],
                 model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
             )
         if planner_output.payload.task_type == "paper_generation":
             return self._publish_paper_blueprint(
@@ -808,6 +929,7 @@ class PersonalizedReviewCardUseCase:
                 "audit": audit,
                 "trace": execution.trace,
                 "tool_trace": execution.tool_trace,
+                "communication_trace": execution.communication_trace,
                 "model_trace": self._model_trace(),
             },
         )
@@ -826,6 +948,7 @@ class PersonalizedReviewCardUseCase:
             snapshot_path=snapshot_path,
             writeback_intents=writeback_intents,
             model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
         )
 
     def _publish_paper_blueprint(
@@ -966,6 +1089,7 @@ class PersonalizedReviewCardUseCase:
                 "audit": audit,
                 "trace": execution.trace,
                 "tool_trace": execution.tool_trace,
+                "communication_trace": execution.communication_trace,
                 "model_trace": self._model_trace(),
             },
         )
@@ -980,6 +1104,7 @@ class PersonalizedReviewCardUseCase:
             snapshot_path=snapshot_path,
             writeback_intents=writeback_intents,
             model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
             ui_actions=(
                 [
                     UiAction(
@@ -1081,6 +1206,7 @@ class PersonalizedReviewCardUseCase:
                 "writeback_intents": writeback_intents,
                 "trace": execution.trace,
                 "tool_trace": execution.tool_trace,
+                "communication_trace": execution.communication_trace,
                 "model_trace": self._model_trace(),
             },
         )
@@ -1095,6 +1221,7 @@ class PersonalizedReviewCardUseCase:
             snapshot_path=snapshot_path,
             writeback_intents=writeback_intents,
             model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
             ui_actions=(
                 [
                     UiAction(
@@ -1238,6 +1365,107 @@ class PersonalizedReviewCardUseCase:
             mastery_count=len(value.get("mastery", [])),
         )
         return value
+
+    async def _load_multiscale_planning_context(
+        self,
+        learner_id: str,
+        *,
+        plan_context: dict[str, Any],
+        scope: str,
+        legacy_state: dict[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, list[dict[str, Any]]]]:
+        state = dict(legacy_state)
+        if self.multiscale_state_loader is not None:
+            try:
+                loaded = await asyncio.to_thread(
+                    self.multiscale_state_loader,
+                    learner_id,
+                    plan_context=plan_context,
+                    window_days=30,
+                )
+                if isinstance(loaded, dict):
+                    state = loaded
+            except Exception as exc:
+                emit_runtime_event(
+                    "multiscale_learning_state_unavailable",
+                    error_type=type(exc).__name__,
+                )
+                state = {
+                    "schema_version": "1.0",
+                    "learner_id": learner_id,
+                    "macro": {},
+                    "meso": {},
+                    "micro": {},
+                    "data_quality": {
+                        "coverage": 0.0,
+                        "allow_cautious_path_adjustment": False,
+                        "limitations": [
+                            "多尺度状态来源暂时不可用，禁止高风险路径调整。"
+                        ],
+                    },
+                    "hard_constraints": [],
+                    "source_refs": [],
+                    "state_digest": "",
+                }
+
+        items: list[dict[str, Any]] = []
+        if self.path_candidate_loader is not None:
+            try:
+                loaded_candidates = await asyncio.to_thread(
+                    self.path_candidate_loader,
+                    learner_id,
+                    plan_context=plan_context,
+                    scope=scope,
+                    limit=30,
+                    include_blocked=True,
+                )
+                if isinstance(loaded_candidates, dict):
+                    raw_items = loaded_candidates.get("items")
+                    if isinstance(raw_items, list):
+                        items = [
+                            item for item in raw_items if isinstance(item, dict)
+                        ]
+            except Exception as exc:
+                emit_runtime_event(
+                    "path_candidates_unavailable",
+                    error_type=type(exc).__name__,
+                )
+        return state, {
+            "eligible": [item for item in items if item.get("eligible") is True],
+            "blocked": [item for item in items if item.get("eligible") is not True],
+        }
+
+    @staticmethod
+    def _planner_multiscale_summary(
+        state: dict[str, Any],
+        *,
+        current_long_term_plan: dict[str, Any],
+        current_short_term_plan: dict[str, Any],
+    ) -> dict[str, Any]:
+        meso = state.get("meso") if isinstance(state.get("meso"), dict) else {}
+        due = meso.get("due_review_knowledge_points")
+        constraints = state.get("hard_constraints")
+        return {
+            "has_long_term_plan": bool(current_long_term_plan),
+            "has_short_term_plan": bool(current_short_term_plan),
+            "due_review_count": len(due) if isinstance(due, list) else 0,
+            "data_quality": (
+                state.get("data_quality")
+                if isinstance(state.get("data_quality"), dict)
+                else {}
+            ),
+            "hard_constraint_summary": [
+                {
+                    key: item.get(key)
+                    for key in ("key", "passed", "reason")
+                    if key in item
+                }
+                for item in constraints
+                if isinstance(item, dict)
+            ]
+            if isinstance(constraints, list)
+            else [],
+        }
 
     @classmethod
     def _merge_context_dict(

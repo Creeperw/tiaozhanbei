@@ -1,0 +1,2 @@
+ALTER TABLE app_users
+    ADD COLUMN onboarding_required BOOLEAN NOT NULL DEFAULT FALSE;

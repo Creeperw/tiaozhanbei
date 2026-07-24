@@ -3,7 +3,6 @@ import React from 'react';
 export default function KnowledgeWorkspaceNav({
   atlasEnabled = true,
   activeWorkspace,
-  activeScope,
   onSelect,
   className = '',
 }) {
@@ -16,17 +15,10 @@ export default function KnowledgeWorkspaceNav({
       )}
       <button
         type="button"
-        className={activeWorkspace === 'sources' && activeScope !== 'personal' ? 'is-active' : ''}
-        onClick={() => onSelect('sources', 'public')}
+        className={activeWorkspace === 'sources' ? 'is-active' : ''}
+        onClick={() => onSelect('sources')}
       >
-        知识资料
-      </button>
-      <button
-        type="button"
-        className={activeWorkspace === 'sources' && activeScope === 'personal' ? 'is-active' : ''}
-        onClick={() => onSelect('sources', 'personal')}
-      >
-        个性化数据
+        知识资料与个性化数据
       </button>
       <button type="button" className={activeWorkspace === 'questions' ? 'is-active' : ''} onClick={() => onSelect('questions')}>
         题目数据

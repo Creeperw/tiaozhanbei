@@ -8,7 +8,11 @@ MySQL/SQLite、Qwen 与 FAISS，负责用户认证、学习行为汇总、三层
 会使相关下层失效。自然语言请求的层级由 Planner 模型判断；前后端规则仅提供可覆盖的
 `plan_scope_hint`。
 
-中医类别报考路径按单选处理。“规定学历路径”“中医（专长）医师资格考核”和“传统医学师承/确有专长人员考核”不能合并成一条长期规划；一次输入命中多条路线时工作流会中断追问。历史版本错误选择、但原始目标仍含多条互斥路线的规划也不会继续继承，未绑定批准路线的临时规划同样不能在重规划时继续沿用“待确认教材”。仅规定学历路径绑定 `textbook_tcm_physician` 教材路线，并同步写入长期规划的结构化阶段与学习路径投影。
+新用户和新规划只支持五类教材型资格目标：中医执业医师、中医执业助理医师、
+中西医结合执业医师、中西医结合执业助理医师及执业药师职业资格考试（中药学类）。
+注册页从 `/api/v1/qualification-targets` 获取官方名称、考试轨道和教材路线映射，保存后同时
+建立可信活动学习目标。规划链路直接复用该目标，不再追问已经选择过的考试名称。中医专长、
+传统医学师承、职称、职业技能、考研与纯课程路线仅保留历史读取兼容，不能再被选作新默认规划。
 
 ## 目录与运行位置
 
@@ -50,7 +54,7 @@ Stub 模式不调用外部模型和向量服务，适合前端联调、接口契
 
 Live 模式默认使用：
 
-- 对话模型：`qwen3.7-max-2026-05-20`（阿里云兼容接口）
+- 对话模型：`qwen3.7-plus-2026-05-26`（阿里云兼容接口）
 - Embedding：`Qwen/Qwen3-Embedding-4B`（SiliconFlow）
 - 编排：LangGraph
 
@@ -141,10 +145,14 @@ fetch('/api/v1/auth/me', {
 | 对话会话 | `GET/POST /api/v1/conversations` |
 | 会话消息 | `GET /api/v1/conversations/{conversation_id}/messages` |
 | 首页摘要 | `GET /api/v1/dashboard/home` |
+| 今日任务到期轮换 | `POST /api/v1/learning-tasks/current/refresh` |
 | 普通执行 | `POST /api/v1/review-cards` |
 | 流式执行 | `POST /api/v1/review-cards/stream` |
 | 查询运行状态 | `GET /api/v1/review-cards/runs/{thread_id}` |
 | 中断后恢复 | `POST /api/v1/review-cards/runs/{thread_id}/resume/stream` |
+| 多时间尺度学情 | `GET /api/v1/learning-state/multiscale` |
+| 规划路径候选 | `GET /api/v1/learning-state/path-candidates` |
+| 执行协调摘要 | `GET /api/v1/executions/{execution_id}/coordination` |
 | 复习队列 | `GET /api/v1/learners/{learner_id}/review-queue` |
 | 平台装配状态 | `GET /api/v1/platform/status` |
 | 完整交接接口契约 | `GET /api/v1/platform/openapi.json` |
@@ -152,12 +160,19 @@ fetch('/api/v1/auth/me', {
 
 `GET /api/v1/dashboard/home` 的 `current_learning_task` 是学习工坊右栏的正式今日任务投影，包含 `learning_chapter`、`focus_knowledge_points` 与 `knowledge_cards[].action`。知识点 ID 由知识仓库解析，前端不得从自然语言任务正文自行生成 ID；点击动作后使用现有知识卡解析接口打开对应内容。
 
+正式今日任务自生成起使用滚动 24 小时刷新窗口。`dashboard/home` 和 `learning-context` 返回服务端 `daily_task_timer`，前端倒计时归零后调用刷新接口；如果用户离线，下一次读取时自动补做轮换。轮换从当前短期计划任务块中取下一项，接口幂等且按登录用户隔离。刷新时间随现有计划 JSON 持久化，不需要数据库迁移。
+
 每个 `conversation_id` 表示一个可包含多轮消息的正式会话；每次 LangGraph 执行使用独立
 `thread_id`。中断恢复复用该次 `thread_id`，不能把会话 ID 当作所有轮次共用的检查点 ID。
 
 流式接口返回 `text/event-stream`。前端应按 `event` 字段处理节点开始、模型增量、执行图、
 中断、完成和失败事件，不要依赖日志文本。收到 `run_interrupted` 后保存 `thread_id`，使用
 恢复接口继续；已完成节点由 LangGraph 检查点复用。
+
+规划追问恢复只要求提交自然语言 `answer`；`profile_updates` 仅在调用方已经掌握明确字段时选填。
+单字段画像追问会把答案写入对应字段，路线追问会由 Memory Agent 提炼后写入画像。确认目标或专业背景后，
+LangGraph 会刷新上游路线解析，包括教材路线内部的追问，不会继续复用中断前的临时路线结果。非医学背景
+确认“中医执业医师考试”后仍可能继续询问规定学历、专长或师承途径，这是报考路线单选，不是重复询问目标。
 
 学习规划请求支持两个层级字段：
 
@@ -170,6 +185,8 @@ fetch('/api/v1/auth/me', {
 ## 5. 已包含的业务能力
 
 - LangGraph 动态 Agent DAG、事件流、中断追问，以及刷新、断线和服务重启后的数据库检查点恢复；
+- 智能体按需通信、认知缺口阻断，以及 Audit 触发的一轮局部修复；协调接口只返回事实数量、证据数量、步骤、状态和审核结论等安全摘要；
+- 宏观、计划与任务、作答与掌握三层只读学情快照，以及先执行固定硬约束、再进行透明评分的规划候选；
 - 用户注册、登录、Cookie/JWT 兼容和跨用户数据隔离；
 - 长期规划、短期计划、当日任务的独立生成、版本和失效传播；
 - 学习行为、答题表现、掌握度、专注时长和学情诊断；
@@ -195,6 +212,10 @@ conda run -n torch python -m pytest -q competition_app/tests \
 python -m pytest -q competition_app/tests/services/test_plan_scope.py
 curl http://127.0.0.1:7860/health
 ```
+
+Live 页面还需用全新账号验证一次追问恢复：先提供基础和可持续时间但不提供目标；系统询问目标后仅回答
+“中医执业医师考试”。下一步必须进入报考途径确认或直接生成已批准路线，不能再次询问考试/专业方向；
+完成后长期规划应包含经典路线的五个阶段与真实教材，不能出现“待确认教材”。
 
 ## 7. 禁止提交
 

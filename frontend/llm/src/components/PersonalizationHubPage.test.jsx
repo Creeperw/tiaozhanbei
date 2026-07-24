@@ -15,25 +15,22 @@ vi.mock('./ProfileConflictList', () => ({ default: () => <div>conflicts-task</di
 vi.mock('./ReviewDashboardPanel', () => ({ default: () => <div>review-task</div> }));
 
 describe('PersonalizationHubPage task routing', () => {
-  it('opens the profile as the default single-task view', () => {
+  it('opens profile and memory as one default task view', () => {
     render(<PersonalizationHubPage navigationContext={{}} onNavigate={vi.fn()} />);
 
-    expect(screen.getByTestId('personalization-task')).toHaveTextContent('profile');
-    expect(screen.getByRole('button', { name: '学习画像' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByTestId('personalization-task')).toHaveTextContent('unified');
+    expect(screen.getByRole('button', { name: '学习画像与记忆' })).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByText('survey-task')).not.toBeInTheDocument();
   });
 
-  it('restores a memory route and keeps profile and memory as independent views', async () => {
+  it('redirects a legacy memory route into the unified view', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();
     render(<PersonalizationHubPage navigationContext={{ view: 'memory' }} onNavigate={onNavigate} />);
 
-    expect(screen.getByTestId('personalization-task')).toHaveTextContent('memory');
-    expect(screen.getByRole('button', { name: '学习记忆' })).toHaveAttribute('aria-current', 'page');
-
-    await user.click(screen.getByRole('button', { name: '学习画像' }));
-
-    expect(screen.getByTestId('personalization-task')).toHaveTextContent('profile');
+    expect(screen.getByTestId('personalization-task')).toHaveTextContent('unified');
+    expect(screen.getByRole('button', { name: '学习画像与记忆' })).toHaveAttribute('aria-current', 'page');
+    await user.click(screen.getByRole('button', { name: '学习画像与记忆' }));
     expect(onNavigate).toHaveBeenCalledWith({ page: 'personalization', params: { view: 'profile' } });
   });
 

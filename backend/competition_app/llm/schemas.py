@@ -154,6 +154,10 @@ class LongTermPlanStageModelOutput(StrictModelOutput):
 
 
 class LongTermPlanningModelOutput(StrictModelOutput):
+    selected_path_candidate_id: str | None = Field(
+        default=None,
+        description="从系统提供的路径候选中选择；不得生成候选ID。",
+    )
     long_term_plan_content: str = Field(
         min_length=1,
         max_length=12_000,
@@ -172,6 +176,10 @@ class LongTermPlanningModelOutput(StrictModelOutput):
 
 
 class ShortTermPlanningModelOutput(StrictModelOutput):
+    selected_path_candidate_id: str | None = Field(
+        default=None,
+        description="从系统提供的路径候选中选择；不得生成候选ID。",
+    )
     short_term_plan_content: str = Field(min_length=1, max_length=12_000)
     expected_output: str = Field(min_length=1, max_length=1_000)
     completion_criteria: str = Field(min_length=1, max_length=1_000)
@@ -187,6 +195,10 @@ class ShortTermPlanningModelOutput(StrictModelOutput):
 
 
 class DailyTaskPlanningModelOutput(StrictModelOutput):
+    selected_path_candidate_id: str | None = Field(
+        default=None,
+        description="从系统提供的路径候选中选择；不得生成候选ID。",
+    )
     daily_task_content: str = Field(min_length=1, max_length=6_000)
     learning_chapter: str = Field(
         default="",
@@ -211,6 +223,10 @@ class ThreeLayerPlanningModelOutput(StrictModelOutput):
     choice inside a trusted textbook route.
     """
 
+    selected_path_candidate_id: str | None = Field(
+        default=None,
+        description="从系统提供的路径候选中选择；不得生成候选ID。",
+    )
     long_term_plan_content: str = Field(min_length=1, max_length=12_000)
     short_term_plan_content: str = Field(min_length=1, max_length=12_000)
     daily_task_content: str = Field(min_length=1, max_length=6_000)

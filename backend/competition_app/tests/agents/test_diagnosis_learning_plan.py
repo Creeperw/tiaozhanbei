@@ -202,6 +202,7 @@ def approved_route_output() -> AgentEnvelope[ResolvedPlanningRoute]:
                     phase_id="P1",
                     name="基础辨析",
                     objective="建立组成、功效与配伍联系。",
+                    books=["《方剂学》"],
                     exit_evidence=["闭卷辨析记录"],
                     source_refs=["SRC_1"],
                 )
@@ -435,7 +436,8 @@ async def build_knowledge(context: dict):
 async def test_stub_diagnosis_proposes_long_short_plans_and_one_task() -> None:
     diagnosis_context = build_context("diagnosis")
     diagnosis_context["dependency_outputs"] = {
-        "knowledge": await build_knowledge(build_context("knowledge"))
+        "knowledge": await build_knowledge(build_context("knowledge")),
+        "route_resolution": approved_route_output(),
     }
 
     result = (await DiagnosisAgent(StubChatModel()).run(diagnosis_context)).payload
@@ -683,17 +685,31 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "compressed_conversation_summary",
         "user_request",
         "goals",
+        "learner_context",
         "time_constraints",
         "learning_evidence",
+        "learning_state",
+        "path_candidates",
         "default_route",
         "existing_plans",
         "plan_actions",
         "plan_scope",
         "output_schema",
     }
+    assert diagnosis_payload["learning_state"] == {}
+    assert diagnosis_payload["path_candidates"] == {
+        "eligible": [],
+        "blocked": [],
+    }
     evidence = diagnosis_payload["learning_evidence"]
     assert evidence["behavior_summary"] == {"current_stage_id": "T1", "target_difficulty": 3}
     assert diagnosis_payload["goals"] == ["掌握方剂组成与配伍"]
+    assert set(diagnosis_payload["learner_context"]) == {
+        "learning_goal",
+        "learning_background",
+        "completed_courses",
+        "learner_group",
+    }
     assert diagnosis_payload["time_constraints"]["available_minutes_today"] == 15
     assert evidence["evidence_summaries"] == ["四君子汤由人参、白术、茯苓、甘草组成。"]
     route_context = diagnosis_payload["default_route"]
@@ -754,6 +770,72 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
     assert forbidden_top_level_system_fields.isdisjoint(model_owned_data["task_proposal"])
 
 
+def test_short_term_output_repairs_only_schedule_presentation_constraints() -> None:
+    repaired = DiagnosisAgent._repair_short_term_plan_constraints(
+        (
+            "【当前主目标】掌握基础概念。\n"
+            "【具体任务块】第1-5天每日学习理论，第6-10天完成辨析。\n"
+            "【复习任务】闭卷回忆并订正；具体复习时间点由系统根据遗忘曲线另行调度。"
+        ),
+        "每周可以学习4天，每天4小时",
+    )
+
+    assert "第1-5天" not in repaired
+    assert "每日" not in repaired
+    assert "系统" not in repaired
+    assert "前段每个学习日学习理论" in repaired
+    assert "中段完成辨析" in repaired
+    assert "闭卷回忆并订正" in repaired
+
+
+def test_short_term_output_removes_per_session_review_timing() -> None:
+    repaired = DiagnosisAgent._repair_short_term_plan_constraints(
+        (
+            "【当前主目标】掌握基础概念。\n"
+            "【具体任务块】前段理解，中段辨析，验收段自测。\n"
+            "【复习任务】建议在每次新学习开始前，花10分钟快速回顾上一次的思维导图。"
+        ),
+        "每周4天、每次2小时",
+    )
+
+    assert "每次新学习开始前" not in repaired
+    assert "10分钟" not in repaired
+    assert "快速回顾上一次的思维导图" in repaired
+
+
+def test_planning_output_does_not_mandate_full_available_capacity() -> None:
+    repaired = DiagnosisAgent._repair_full_capacity_mandate(
+        (
+            "【资源预算】用户每周可投入4天，每次2小时。"
+            "建议充分利用晚间时间，保持每周4次、每次2小时的稳定投入。"
+            "每阶段保留缓冲。"
+        ),
+        "每周可以学习4天，每次2小时，主要在晚上",
+    )
+
+    assert "保持每周4次、每次2小时" not in repaired
+    assert "每周安排3个学习日" in repaired
+    assert "每次60—90分钟" in repaired
+    assert "用户每周可投入4天，每次2小时" in repaired
+
+
+def test_short_term_session_count_keeps_capacity_buffer() -> None:
+    repaired = DiagnosisAgent._repair_full_capacity_mandate(
+        (
+            "【具体任务块】前半周期（第1-4次学习）完成概念构建；"
+            "后半周期（第5-8次学习）完成辨析；第8次学习结束时验收。"
+            "【反馈指标】统计8次计划学习中实际完成的次数。"
+        ),
+        "每周可以学习4天，每次2小时",
+    )
+
+    assert "第1-3次学习" in repaired
+    assert "第4-6次学习" in repaired
+    assert "第6次学习结束时验收" in repaired
+    assert "统计6次计划学习" in repaired
+    assert "第8次" not in repaired
+
+
 @pytest.mark.asyncio
 async def test_diagnosis_merges_provisional_route_uncertainty_in_stable_order() -> None:
     model = CapturingDiagnosisModel()
@@ -794,20 +876,20 @@ async def test_stub_diagnosis_supports_approved_and_provisional_routes(
         "route_resolution": route_output,
     }
 
-    proposal = (
-        await DiagnosisAgent(StubChatModel()).run(diagnosis_context)
-    ).payload.learning_plan_proposal
+    result = (await DiagnosisAgent(StubChatModel()).run(diagnosis_context)).payload
+
+    if expected_status == "provisional":
+        assert result.requires_clarification
+        assert result.learning_plan_proposal is None
+        assert result.interrupt_type == "route_resolution"
+        return
+    proposal = result.learning_plan_proposal
 
     assert proposal.planning_route.planning_status == expected_status
     if expected_status == "approved_route":
         assert proposal.milestones[0].evidence_required
     assert proposal.daily_task_content == proposal.task_proposal.task_content
     assert proposal.task_proposal.expected_output
-    if expected_status == "provisional":
-        assert "临时规划" in proposal.long_term_plan_content
-        assert "临时规划" in proposal.short_term_plan_content
-        assert "待确认" in proposal.long_term_plan_content
-        assert proposal.planning_route.route_id is None
 
 
 def test_system_replaces_generic_long_term_milestone_with_route_evidence() -> None:
@@ -863,7 +945,7 @@ async def test_stub_diagnosis_respects_small_available_time_budget() -> None:
     diagnosis_context["available_minutes"] = 5
     diagnosis_context["dependency_outputs"] = {
         "knowledge": await build_knowledge(build_context("knowledge")),
-        "route_resolution": provisional_route_output(),
+        "route_resolution": approved_route_output(),
     }
 
     proposal = (
@@ -994,6 +1076,26 @@ async def test_diagnosis_stops_for_textbook_route_clarification_before_model() -
 
 
 @pytest.mark.asyncio
+async def test_scoped_long_plan_stops_before_model_when_route_has_no_real_books() -> None:
+    class ModelMustNotRun:
+        async def complete_json(self, role, payload, on_delta=None):
+            raise AssertionError("model must not run without publishable route stages")
+
+    diagnosis_context = build_context("diagnosis")
+    diagnosis_context["dependency_outputs"] = {
+        "route_resolution": provisional_route_output()
+    }
+    diagnosis_context["plan_scope"] = "long_term"
+
+    result = (await DiagnosisAgent(ModelMustNotRun()).run(diagnosis_context)).payload
+
+    assert result.requires_clarification
+    assert result.learning_plan_proposal is None
+    assert result.interrupt_type == "route_resolution"
+    assert "真实教材" in result.clarification_reason
+
+
+@pytest.mark.asyncio
 async def test_diagnosis_asks_user_when_model_repeatedly_skips_unknown_prerequisite() -> None:
     diagnosis_context = build_context("diagnosis")
     diagnosis_context["dependency_outputs"] = {
@@ -1014,6 +1116,32 @@ async def test_diagnosis_asks_user_when_model_repeatedly_skips_unknown_prerequis
     assert result.learning_plan_proposal is None
     assert any("中医诊断学" in question for question in result.clarification_questions)
     assert result.plan_scope == "short_term"
+
+
+@pytest.mark.asyncio
+async def test_daily_task_missing_short_plan_preserves_requested_scope() -> None:
+    diagnosis_context = build_context("diagnosis")
+    diagnosis_context.update(
+        {
+            "plan_scope": "daily_task",
+            "enforce_planning_readiness": True,
+            "current_long_term_plan": {
+                "plan_id": "LONG_1",
+                "learner_id": "L1",
+                "version": 1,
+                "status": "active",
+                "content": "有效长期规划",
+            },
+            "current_short_term_plan": {},
+        }
+    )
+
+    result = (await DiagnosisAgent(StubChatModel()).run(diagnosis_context)).payload
+
+    assert result.requires_clarification
+    assert result.interrupt_type == "planning_prerequisite"
+    assert result.plan_scope == "daily_task"
+    assert "短期计划" in result.clarification_questions[0]
 
 
 def test_confirmed_prerequisite_is_reused_from_current_conversation() -> None:
@@ -1055,6 +1183,22 @@ def test_prerequisite_confirmation_pairs_with_question_and_latest_answer_wins() 
     assert DiagnosisAgent._confirmed_prerequisite_courses(
         forgotten_context, route_context
     ) == set()
+
+
+def test_negative_prerequisite_answer_is_recorded_as_confirmed_unmet_fact() -> None:
+    route_context = DiagnosisAgent._trusted_route_context(textbook_route_output().payload)
+    context = {
+        "user_request": "没有学过，目前是零基础。",
+        "messages": [
+            {"role": "assistant", "content": "你是否完成中医诊断学？"},
+            {"role": "user", "content": "没有学过，目前是零基础。"},
+        ],
+    }
+
+    assert DiagnosisAgent._confirmed_prerequisite_courses(context, route_context) == set()
+    assert DiagnosisAgent._unmet_prerequisite_courses(
+        context, route_context
+    ) == {"中医诊断学"}
 
 
 @pytest.mark.asyncio

@@ -15,6 +15,7 @@ from APP.backend.paper_submission_service import (
     save_paper_answers,
     submit_paper,
 )
+from APP.backend.mistake_variation_service import list_available_variation_sources
 
 
 class PaperSubmissionServiceTests(unittest.TestCase):
@@ -105,6 +106,71 @@ class PaperSubmissionServiceTests(unittest.TestCase):
 
         self.assertEqual(result["score"], 25)
         self.assertEqual(result["max_score"], 25)
+
+    def test_historical_per_question_hundreds_are_normalized_to_one_paper_total(self):
+        with self.Session() as db:
+            db.add(database.PaperItemRecord(
+                paper_item_id="PI_2", paper_id="PAPER_1", position=2,
+                question_id="Q_2", question_version_id="QV_2",
+                question_type="short_answer", stem_snapshot="题干二",
+                standard_answer_snapshot="益气健脾", standard_difficulty=2,
+                max_score_snapshot=100,
+            ))
+            db.commit()
+            loaded = get_owned_paper(db, 1, "PAPER_1")
+
+        self.assertEqual(loaded["total_score"], 100)
+        self.assertEqual([item["max_score"] for item in loaded["items"]], [50, 50])
+
+    def test_historical_submission_result_is_normalized_with_paper_items(self):
+        with self.Session() as db:
+            db.add(database.PaperItemRecord(
+                paper_item_id="PI_2", paper_id="PAPER_1", position=2,
+                question_id="Q_2", question_version_id="QV_2",
+                question_type="short_answer", stem_snapshot="题干二",
+                standard_answer_snapshot="益气健脾", standard_difficulty=2,
+                max_score_snapshot=100,
+            ))
+            db.add(database.PaperSubmissionRecord(
+                paper_id="PAPER_1", learner_id=1, request_id="legacy-result",
+                status="completed",
+                result_json=json.dumps({
+                    "paper_id": "PAPER_1", "status": "completed",
+                    "score": 100, "max_score": 200,
+                    "items": [
+                        {"paper_item_id": "PI_1", "score": 100, "max_score": 100},
+                        {"paper_item_id": "PI_2", "score": 0, "max_score": 100},
+                    ],
+                }),
+            ))
+            db.commit()
+            loaded = get_owned_paper(db, 1, "PAPER_1")
+
+        self.assertEqual(loaded["result"]["max_score"], 100)
+        self.assertEqual(loaded["result"]["score"], 50)
+        self.assertEqual([row["max_score"] for row in loaded["result"]["items"]], [50, 50])
+
+    def test_wrong_paper_answer_is_available_for_audited_variation_and_has_explanation(self):
+        with self.Session() as db:
+            save_paper_answers(db, 1, "PAPER_1", {"PI_1": "错误答案"})
+            result = submit_paper(
+                db,
+                1,
+                "PAPER_1",
+                "wrong-1",
+                runner=self.runner,
+                explanation_runner=lambda **_: "脾胃气虚证的判断应结合气短乏力、面色萎黄与食少便溏。",
+            )
+            sources = list_available_variation_sources(db, 1)
+            version = db.query(database.QuestionVersionRecord).filter_by(
+                question_version_id="QV_1"
+            ).one()
+
+        self.assertFalse(result["items"][0]["is_correct"])
+        self.assertIn("脾胃气虚证", result["items"][0]["explanation"])
+        self.assertEqual(version.analysis, result["items"][0]["explanation"])
+        self.assertEqual(len(sources), 1)
+        self.assertEqual(sources[0]["question_version_id"], "QV_1")
 
     def test_submit_writes_a_completed_paper_activity_and_system_snapshot(self):
         with self.Session() as db:

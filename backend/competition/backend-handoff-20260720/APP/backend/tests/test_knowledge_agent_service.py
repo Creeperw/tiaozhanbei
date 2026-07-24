@@ -127,6 +127,27 @@ class KnowledgeAgentServiceTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_explicit_source_kps_are_resolved_for_mistake_variation(self):
+        from APP.backend.knowledge_agent_service import build_evidence_pack
+
+        db = self.Session()
+        try:
+            self._seed(db)
+            pack = build_evidence_pack(
+                db,
+                query="生成错题变式",
+                learner_context=self._brief(),
+                task_type="mistake_variation",
+                requested_kp_ids=["KP_FJ_001"],
+                rag_search=lambda *args, **kwargs: [],
+            )
+
+            self.assertIn("KP_FJ_001", pack.resolved_kp_ids)
+            self.assertIn("KP_FJ_001", pack.kp_ids)
+            self.assertEqual(pack.resolved_kp_ids, ["KP_FJ_001"])
+        finally:
+            db.close()
+
     def test_does_not_use_unrelated_profile_kp_ids_as_current_query_evidence(self):
         from APP.backend.knowledge_agent_service import build_evidence_pack
 

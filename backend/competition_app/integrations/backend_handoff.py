@@ -38,7 +38,160 @@ def _normalize_profile_memory_value(field: str, value: Any) -> Any:
         match = re.search(r"(?:我要|我想|目标是|准备)(?:考取|报考|参加)?([^，。；\n]+)", text)
         if match:
             return match.group(1).strip("：:，。； ")
+        if not any(
+            token in text
+            for token in (
+                "考试", "资格", "执业", "考研", "研究生", "课程",
+                "方剂", "中药", "中医基础", "医古文", "能力", "阅读",
+            )
+        ):
+            return ""
     return text
+
+
+def _onboarding_profile_context(onboarding: dict[str, Any] | None) -> dict[str, Any]:
+    """Translate the persisted registration survey into agent-consumable facts."""
+
+    onboarding = onboarding if isinstance(onboarding, dict) else {}
+    survey = onboarding.get("survey_answers")
+    survey = survey if isinstance(survey, dict) else {}
+    baseline = onboarding.get("l0_baseline")
+    baseline = baseline if isinstance(baseline, dict) else {}
+
+    target = str(
+        survey.get("target_exam_or_course")
+        or baseline.get("target_exam_or_course")
+        or ""
+    ).strip()
+    long_term_goal = str(survey.get("long_term_goal") or "").strip()
+    short_term_goal = str(survey.get("short_term_goal") or "").strip()
+    route_id = str(
+        survey.get("textbook_route_id")
+        or baseline.get("textbook_route_id")
+        or ""
+    ).strip()
+    route_version = int(
+        survey.get("textbook_route_version")
+        or baseline.get("textbook_route_version")
+        or 0
+    )
+    foundation = str(survey.get("tcm_foundation") or "").strip()
+    major = str(
+        survey.get("major_or_role")
+        or baseline.get("major_or_role")
+        or ""
+    ).strip()
+    education = str(survey.get("education") or "").strip()
+    learned_courses = [
+        str(item).strip()
+        for item in (survey.get("learned_courses") or [])
+        if str(item).strip()
+    ]
+    background_parts = [
+        value
+        for value in (foundation, major)
+        if value and value not in {"未填写", "暂不确定"}
+    ]
+    if learned_courses:
+        background_parts.append("已学：" + "、".join(learned_courses))
+
+    goal_text = f"{target} {long_term_goal}".strip()
+    goal_type = (
+        "credential"
+        if any(
+            marker in goal_text
+            for marker in ("执业", "资格", "认证", "职称", "证书")
+        )
+        else "learning"
+    )
+    daily_minutes = int(
+        survey.get("daily_available_minutes")
+        or baseline.get("daily_available_minutes")
+        or 0
+    )
+    resources = survey.get("resource_preference") or []
+    if not isinstance(resources, list):
+        resources = [resources] if resources else []
+
+    return {
+        "learner_group": (
+            survey.get("learner_group_title")
+            or survey.get("user_group")
+            or baseline.get("learner_group")
+            or ""
+        ),
+        "learning_goal": target or long_term_goal,
+        "learning_background": "；".join(background_parts),
+        "education": education,
+        "user_major_or_profession": major,
+        "completed_courses": learned_courses,
+        "daily_available_minutes": daily_minutes,
+        "goals": {
+            "goal_type": goal_type,
+            "goal_name": target or long_term_goal,
+            "long_term_goal": long_term_goal,
+            "short_term_goal": short_term_goal,
+            "textbook_route_id": route_id,
+            "textbook_route_version": route_version,
+        },
+        "user_preference": {
+            "resource_preference": resources,
+            "learning_periods": survey.get("preferred_time_slot") or "",
+            "difficulty_preference": survey.get("difficulty_preference") or "",
+        },
+        "onboarding_survey": survey,
+        "l0_baseline": baseline,
+    }
+
+
+def _explicit_profile_updates(user_text: str) -> dict[str, str]:
+    """Recover only profile facts stated literally when model extraction is unavailable.
+
+    This is deliberately narrower than intent classification: it never infers a
+    goal, background, or schedule.  It only preserves unmistakable first-person
+    facts so the long-term planning gate does not ask for information already in
+    the current message.
+    """
+
+    text = str(user_text or "").strip()
+    if not text:
+        return {}
+    updates: dict[str, str] = {}
+
+    if "中医" in text and "执业医师" in text:
+        updates["learning_goal"] = "中医执业医师资格考试"
+    else:
+        goal_match = re.search(
+            r"(?:我想|我要|准备|计划)(?:考取|报考|参加|学习)?([^，。；\n]{2,80})",
+            text,
+        )
+        if goal_match:
+            updates["learning_goal"] = goal_match.group(1).strip("：:，。； ")
+
+    background_parts: list[str] = []
+    if "零基础" in text or "完全不会" in text or "啥都不会" in text:
+        background_parts.append("零基础")
+    major_match = re.search(
+        r"(?:^|[，,。；;\n])\s*(?:我是|本人是|目前是)?\s*"
+        r"([^，,。；;\n]{1,40}?专业)(?:的|学生|毕业|，|,|。|；|;|\n|$)",
+        text,
+    )
+    if major_match:
+        background_parts.append(major_match.group(1).strip())
+    learned_match = re.search(r"(?:已经|曾经)?学过([^，。；\n]{1,100})", text)
+    if learned_match:
+        background_parts.append(f"学过{learned_match.group(1).strip()}")
+    if background_parts:
+        updates["learning_background"] = "，".join(dict.fromkeys(background_parts))
+
+    weekly_match = re.search(r"每周[^，。；\n]{0,30}?\d+(?:\.\d+)?\s*天", text)
+    daily_match = re.search(r"每天[^，。；\n]{0,30}?\d+(?:\.\d+)?\s*(?:小时|分钟)", text)
+    time_parts = [
+        match.group(0).strip() for match in (weekly_match, daily_match) if match is not None
+    ]
+    if time_parts:
+        updates["time_constraints"] = "，".join(dict.fromkeys(time_parts))
+    return updates
 
 
 @contextmanager
@@ -108,6 +261,16 @@ class BackendHandoffRuntime:
         except Exception:
             db.rollback()
             raise
+        finally:
+            db.close()
+
+    def get_onboarding_status(self, external_user_id: str) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return diagnosis.get_onboarding_status(db, user.id)
         finally:
             db.close()
 
@@ -191,6 +354,8 @@ class BackendHandoffRuntime:
             )
             brief_payload = learner_brief.model_dump(mode="json")
             user_profile = dict(brief_payload.get("profile", {}))
+            onboarding = diagnosis.get_onboarding_status(db, user.id)
+            user_profile.update(_onboarding_profile_context(onboarding))
             try:
                 survey = json.loads(stored_profile.survey_json or "{}")
             except (TypeError, ValueError):
@@ -259,6 +424,7 @@ class BackendHandoffRuntime:
                 "source": "frontend_backend",
                 "calculated_at": system_payload.get("calculated_at"),
                 "user_profile": user_profile,
+                "onboarding": onboarding,
                 "learning_target": learning_target,
                 "learning_profile": {
                     **profile,
@@ -297,6 +463,60 @@ class BackendHandoffRuntime:
         except Exception:
             db.rollback()
             raise
+        finally:
+            db.close()
+
+    def load_multiscale_learning_state(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any],
+        window_days: int = 30,
+    ) -> dict[str, Any]:
+        """Derive the current host user's read-only multi-scale learning state."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module(
+            "APP.backend.multiscale_learning_service"
+        )
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.build_multiscale_state(
+                db,
+                user.id,
+                plan_context=plan_context,
+                window_days=window_days,
+            )
+        finally:
+            db.close()
+
+    def load_path_candidates(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any],
+        scope: str,
+        limit: int = 10,
+        include_blocked: bool = True,
+    ) -> dict[str, Any]:
+        """Build hard-gated path candidates for the mapped workshop user."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module(
+            "APP.backend.multiscale_learning_service"
+        )
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.build_path_candidates(
+                db,
+                user.id,
+                plan_context=plan_context,
+                scope=scope,
+                limit=limit,
+                include_blocked=include_blocked,
+            )
         finally:
             db.close()
 
@@ -398,6 +618,9 @@ class BackendHandoffRuntime:
                 } for row in review_rows],
                 "review_tasks": tasks,
             }
+            difficulty_source = str(
+                question.get("difficulty_source") or "formal_question_bank"
+            ).strip()
         finally:
             db.close()
 
@@ -855,7 +1078,8 @@ class BackendHandoffRuntime:
                 db.add(bank)
             bank.stem = stem
             bank.answer = answer
-            bank.analysis = analysis
+            if analysis or not str(bank.analysis or "").strip():
+                bank.analysis = analysis
             bank.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
             bank.question_type = question_type
             bank.difficulty = difficulty
@@ -875,7 +1099,8 @@ class BackendHandoffRuntime:
                 raw_answer if isinstance(raw_answer, list) else [answer],
                 ensure_ascii=False,
             )
-            core.explanation = analysis
+            if analysis or not str(core.explanation or "").strip():
+                core.explanation = analysis
             core.difficulty = difficulty
             core.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
 
@@ -892,7 +1117,8 @@ class BackendHandoffRuntime:
             version.question_type = question_type
             version.stem = stem
             version.answer = answer
-            version.analysis = analysis
+            if analysis or not str(version.analysis or "").strip():
+                version.analysis = analysis
             version.standard_difficulty = difficulty
             version.source_kind = "formal_question_bank"
             version.status = "active"
@@ -932,7 +1158,14 @@ class BackendHandoffRuntime:
                     "stem": stem,
                     "options": options,
                     "kp_ids": kp_ids,
+                    "kp_names": [
+                        kp_names[kp_id]
+                        for kp_id in kp_ids
+                        if str(kp_names.get(kp_id) or "").strip()
+                        and kp_names[kp_id] != kp_id
+                    ],
                     "difficulty": difficulty,
+                    "difficulty_source": difficulty_source,
                     "request_id": request_id,
                     "source_scope": "formal_question_bank",
                 },
@@ -955,11 +1188,13 @@ class BackendHandoffRuntime:
             "display_name", "learner_group", "learning_goal",
             "learning_background", "time_constraints",
         }
-        normalized = {
-            str(key): _normalize_profile_memory_value(str(key), value)
-            for key, value in updates.items()
-            if key in allowed_fields and value not in (None, "")
-        }
+        normalized = {}
+        for key, value in updates.items():
+            if key not in allowed_fields or value in (None, ""):
+                continue
+            normalized_value = _normalize_profile_memory_value(str(key), value)
+            if normalized_value not in (None, ""):
+                normalized[str(key)] = normalized_value
         if set(updates) - allowed_fields:
             raise PermissionError("profile update contains unsupported fields")
         if not normalized:
@@ -1037,10 +1272,12 @@ class BackendHandoffRuntime:
         text_value = str(user_text or "").strip()
         markers = (
             "我是", "我叫", "昵称", "专业", "零基础", "学过", "基础",
-            "想考", "准备考", "目标", "每天", "每周", "小时", "分钟",
+            "想考", "准备考", "目标", "考试", "资格", "执业医师",
+            "考研", "课程", "每天", "每周", "小时", "分钟",
         )
         if not text_value or not any(marker in text_value for marker in markers):
             return {}
+        explicit_updates = _explicit_profile_updates(text_value)
         try:
             health_llm = importlib.import_module("APP.backend.health_llm")
             health_utils = importlib.import_module("APP.backend.health_utils")
@@ -1081,6 +1318,10 @@ class BackendHandoffRuntime:
                     and float(confidence) >= 0.75
                 ):
                     updates[key] = value.strip()[:1000]
+            # The model remains the primary semantic extractor.  Fill only
+            # fields that it omitted with facts whose wording is explicit in
+            # the current turn; never overwrite a model-extracted value.
+            updates = {**explicit_updates, **updates}
             if not updates:
                 return {}
             return self.update_learning_profile(
@@ -1089,7 +1330,15 @@ class BackendHandoffRuntime:
         except Exception:
             # Profile extraction enriches context but must not make the user's
             # primary workflow unavailable when the model is temporarily down.
-            return {}
+            # Explicit current-turn facts can still be persisted safely.
+            if not explicit_updates:
+                return {}
+            try:
+                return self.update_learning_profile(
+                    external_user_id, explicit_updates, execution_id
+                )
+            except Exception:
+                return {}
 
     @staticmethod
     def workshop_overview() -> dict[str, Any]:
@@ -1253,10 +1502,17 @@ class BackendHandoffRuntime:
     ) -> dict[str, Any]:
         database = importlib.import_module("APP.backend.database")
         service = importlib.import_module("APP.backend.paper_submission_service")
+        expert_service = importlib.import_module("APP.backend.expert_agent_service")
         db = database.SessionLocal()
         try:
             user = self._workshop_user(db, external_user_id)
-            return service.submit_paper(db, user.id, paper_id, request_id)
+            return service.submit_paper(
+                db,
+                user.id,
+                paper_id,
+                request_id,
+                explanation_runner=expert_service.generate_question_explanation,
+            )
         finally:
             db.close()
 
@@ -1491,10 +1747,15 @@ def _model_environment(settings: Settings) -> dict[str, str]:
         "PLANNER_EXECUTOR_MODEL": settings.chat_model,
         "MANAGER_REVIEWER_BASE_URL": settings.chat_base_url,
         "MANAGER_REVIEWER_MODEL": settings.chat_model,
-        # The delivered RAG implementation only supports a local model path.
-        # Main knowledge tools own remote embeddings, so duplicate loading stays off.
-        "EMBEDDING_MODE": "disabled",
+        "EMBEDDING_MODE": settings.embedding_mode,
         "EMBEDDING_MODEL_ID": settings.embedding_model,
+        "EMBEDDING_MODEL_PATH": (
+            str(settings.embedding_model_path)
+            if settings.embedding_model_path is not None
+            else ""
+        ),
+        "EMBEDDING_API_BASE_URL": settings.embedding_base_url,
+        "EMBEDDING_API_KEY": settings.siliconflow_api_key or "",
         # Voice migration is intentionally out of scope for this integration phase.
         "VOICE_MODE": "disabled",
     }
@@ -1528,6 +1789,10 @@ def load_backend_handoff(settings: Settings) -> BackendHandoffRuntime | None:
         "BACKEND_RUNTIME_ROOT": str(runtime_root),
         "SECRET_KEY": settings.backend_handoff_secret_key,
         "EXA_API_KEY": settings.exa_api_key or "",
+        "MINERU_TOKEN": settings.mineru_token or "",
+        "KNOWLEDGE_UPLOAD_PIPELINE_ROOT": str(
+            knowledge_component / "knowledge_upload_pipeline"
+        ),
         "KNOWLEDGE_ATLAS_DATA_ROOT": str(
             knowledge_component / "data" / "backend_delivery"
         ),

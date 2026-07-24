@@ -254,6 +254,10 @@ class VariationRepository:
                 standard_difficulty=difficulty,
                 source_kind="variation",
             ))
+            # Persist both aggregate roots before their dependent rows.  These
+            # tables intentionally use ids instead of ORM relationships, so an
+            # explicit flush is required for MySQL foreign-key enforcement.
+            session.flush()
             for index, kp_id in enumerate(kp_ids):
                 session.add(QuestionKPLinkRecord(
                     question_version_id=question_version_id,

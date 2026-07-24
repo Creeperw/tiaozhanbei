@@ -1,9 +1,11 @@
 import json
+import asyncio
 import os
 import shutil
 import time
 import uuid
 from typing import List
+from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
@@ -21,11 +23,13 @@ from APP.backend.question_ingestion_service import QuestionIngestionService
 from APP.backend.pdf_question_ingestion_service import PdfQuestionIngestionService
 from APP.backend.question_ingestion_task_service import QuestionIngestionTaskService
 from APP.backend.database import QuestionIngestionTaskRecord
+from APP.backend.mineru_pdf_service import MinerUPdfParser
 
 router = APIRouter()
 question_ingestion_service_factory = QuestionIngestionService
 question_pdf_ingestion_service_factory = PdfQuestionIngestionService
 question_ingestion_task_service_factory = QuestionIngestionTaskService
+mineru_pdf_parser_factory = MinerUPdfParser
 
 class SearchRequest(BaseModel):
     query: str
@@ -140,25 +144,64 @@ async def upload_files(
     data_dir, _ = rag_service._paths_for_scope(scope, current_user.id if scope == "personal" else None)
     os.makedirs(data_dir, exist_ok=True)
     uploaded_names = []
+    pdf_sources = []
     
     for file in files:
         safe_name = rag_service._safe_filename(file.filename)
-        file_path = os.path.join(data_dir, safe_name)
+        is_pdf = safe_name.lower().endswith(".pdf")
+        stored_name = (
+            f"{os.path.splitext(safe_name)[0]}.mineru.md"
+            if is_pdf
+            else safe_name
+        )
+        file_path = os.path.join(data_dir, stored_name)
         # 覆盖上传：如果存在旧文件，先彻底清除它的旧向量
         if os.path.exists(file_path):
-            rag_service.delete_file(safe_name, scope=scope, user_id=current_user.id if scope == "personal" else None)
+            rag_service.delete_file(stored_name, scope=scope, user_id=current_user.id if scope == "personal" else None)
             
         try:
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-            uploaded_names.append(safe_name)
-        except Exception:
-            pass
+            if is_pdf:
+                parser = mineru_pdf_parser_factory()
+                parser.validate()
+                source_path = os.path.join(
+                    data_dir,
+                    f".mineru-source-{uuid.uuid4().hex}.pdf",
+                )
+                try:
+                    with open(source_path, "wb") as buffer:
+                        shutil.copyfileobj(file.file, buffer)
+                    markdown = await asyncio.to_thread(
+                        parser.parse, Path(source_path)
+                    )
+                    Path(file_path).write_text(markdown, encoding="utf-8")
+                finally:
+                    Path(source_path).unlink(missing_ok=True)
+                pdf_sources.append({
+                    "source_filename": safe_name,
+                    "stored_filename": stored_name,
+                    "parser": "mineru_precision",
+                })
+            else:
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+            uploaded_names.append(stored_name)
+        except (ValueError, RuntimeError) as exc:
+            Path(file_path).unlink(missing_ok=True)
+            raise HTTPException(
+                status_code=502 if is_pdf else 400,
+                detail=str(exc),
+            ) from exc
             
     if not rag_service.is_processing:
         rag_service.rebuild_index(scope=scope, user_id=current_user.id if scope == "personal" else None)
         
-    return {"message": f"成功上传 {len(uploaded_names)} 个文件", "files": uploaded_names, "scope": scope}
+    return {
+        "message": f"成功上传 {len(uploaded_names)} 个文件",
+        "files": uploaded_names,
+        "scope": scope,
+        "pdf_processing": pdf_sources,
+        "embedding_enabled": True,
+    }
 
 @router.delete("/files/{filename}")
 def delete_file(

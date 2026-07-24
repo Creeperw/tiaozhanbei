@@ -15,7 +15,7 @@ REPOSITORY_ROOT = BACKEND_ROOT.parent
 CHAT_BASE_URL = (
     "https://llm-1nvjq1o5rj1bf5yi.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
-CHAT_MODEL = "qwen3.7-max-2026-05-20"
+CHAT_MODEL = "qwen3.7-plus-2026-05-26"
 EMBEDDING_BASE_URL = "https://api.siliconflow.cn/v1"
 EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-4B"
 
@@ -149,6 +149,8 @@ class Settings:
     chat_model: str = CHAT_MODEL
     embedding_base_url: str = EMBEDDING_BASE_URL
     embedding_model: str = EMBEDDING_MODEL
+    embedding_mode: Literal["enabled", "disabled"] = "enabled"
+    embedding_model_path: Path | None = None
     llm_timeout_seconds: float = 120.0
 
     # Knowledge and external assets.
@@ -216,6 +218,7 @@ class Settings:
     vision_api_key: str | None = field(default=None, repr=False)
     mail_password: str | None = field(default=None, repr=False)
     exa_api_key: str | None = field(default=None, repr=False)
+    mineru_token: str | None = field(default=None, repr=False)
     mysql_password: str | None = field(default=None, repr=False)
 
     @classmethod
@@ -251,6 +254,7 @@ class Settings:
         )
         knowledge_component = knowledge_handoff_root / "知识库管理组件"
         atlas_contract_raw = values.get("KNOWLEDGE_ATLAS_CONTRACT_PATH", "").strip()
+        embedding_model_path_raw = values.get("EMBEDDING_MODEL_PATH", "").strip()
 
         return cls(
             mode=cast(Literal["stub", "live"], mode),
@@ -268,6 +272,24 @@ class Settings:
             chat_model=values.get("CHAT_MODEL", CHAT_MODEL),
             embedding_base_url=values.get("EMBEDDING_BASE_URL", EMBEDDING_BASE_URL),
             embedding_model=values.get("EMBEDDING_MODEL", EMBEDDING_MODEL),
+            embedding_mode=cast(
+                Literal["enabled", "disabled"],
+                _parse_choice(
+                    values,
+                    "EMBEDDING_MODE",
+                    "enabled",
+                    {"enabled", "disabled"},
+                ),
+            ),
+            embedding_model_path=(
+                _parse_path(
+                    {"EMBEDDING_MODEL_PATH": embedding_model_path_raw},
+                    "EMBEDDING_MODEL_PATH",
+                    Path(embedding_model_path_raw),
+                )
+                if embedding_model_path_raw
+                else None
+            ),
             llm_timeout_seconds=_parse_float(
                 values, "LLM_TIMEOUT_SECONDS", 120.0, minimum=1.0
             ),
@@ -400,5 +422,10 @@ class Settings:
             vision_api_key=values.get("VISION_API_KEY") or None,
             mail_password=values.get("MAIL_PASSWORD") or None,
             exa_api_key=values.get("EXA_API_KEY") or None,
+            mineru_token=(
+                values.get("MINERU_TOKEN")
+                or values.get("MINERU_API_KEY")
+                or None
+            ),
             mysql_password=values.get("MYSQL_PASSWORD") or None,
         )

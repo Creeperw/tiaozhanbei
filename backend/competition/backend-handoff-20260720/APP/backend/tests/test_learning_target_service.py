@@ -64,6 +64,30 @@ class LearningTargetServiceTests(unittest.TestCase):
             with self.assertRaises(LearningTargetValidationError):
                 set_active_learning_target(db, user_id=1, target_type="other", exam_track_id="track-a", repository=self.repository)
 
+    def test_uses_official_qualification_name_instead_of_outline_title(self):
+        class QualificationRepository:
+            @staticmethod
+            def get_track(track_id):
+                self.assertEqual(track_id, "official-track")
+                return {
+                    "track_id": track_id,
+                    "title": "中医执业医师资格考试大纲（2025年版）",
+                    "title_normalized": "中医执业医师资格考试大纲（2025年版）",
+                    "qualification_name": "中医执业医师资格考试",
+                    "schema_version": "2.0.0",
+                }
+
+        with self.Session() as db:
+            target = set_active_learning_target(
+                db,
+                user_id=1,
+                target_type="certification",
+                exam_track_id="official-track",
+                repository=QualificationRepository(),
+            )
+
+        self.assertEqual(target.exam_name_snapshot, "中医执业医师资格考试")
+
     def test_locked_manual_target_rejects_automatic_overwrite(self):
         with self.Session() as db:
             set_active_learning_target(

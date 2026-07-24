@@ -23,6 +23,10 @@ from APP.backend.database import (
 )
 
 
+@unittest.skipUnless(
+    os.environ.get("DATABASE_URL"),
+    "DATABASE_URL is required for learning writeback integration tests",
+)
 class LearningWritebackIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine(os.environ["DATABASE_URL"])

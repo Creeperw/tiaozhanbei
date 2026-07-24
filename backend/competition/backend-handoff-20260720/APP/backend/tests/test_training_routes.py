@@ -102,7 +102,8 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         group_keys = [item["key"] for item in body["groups"]]
-        self.assertEqual(group_keys, ["cross_professional", "academic", "public_interest"])
+        self.assertEqual(group_keys, ["cross_professional", "academic"])
+        self.assertNotIn("public_interest", body["questions"][0]["options"])
         self.assertEqual(body["required_fields"], ["learner_group"])
         self.assertTrue(body["questions"])
         first_question = body["questions"][0]
@@ -1130,6 +1131,77 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
                 ).count(),
                 0,
             )
+
+    def test_onboarding_exam_target_is_persisted_in_survey_context(self):
+        response = self.client.post(
+            "/training/onboarding/survey",
+            json={
+                "learner_group": "academic",
+                "preferences": {"daily_available_minutes": 45},
+                "target_type": "certification",
+                "exam_track_id": "EXAM_2025_TCM_PHYSICIAN",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        exam_name = body["learning_target"]["exam_name"]
+        self.assertTrue(exam_name)
+
+        status = self.client.get("/training/onboarding/status")
+        self.assertEqual(status.status_code, 200)
+        self.assertEqual(
+            status.json()["survey_answers"]["target_exam_or_course"],
+            exam_name,
+        )
+        self.assertEqual(
+            status.json()["survey_answers"]["long_term_goal"],
+            exam_name,
+        )
+        self.assertEqual(
+            status.json()["survey_answers"]["short_term_goal"],
+            "",
+        )
+
+    def test_onboarding_classic_route_is_preserved_for_planning(self):
+        response = self.client.post(
+            "/training/onboarding/survey",
+            json={
+                "learner_group": "academic",
+                "goals": {
+                    "long_term_goal": "通过中医执业医师考试",
+                    "target_exam_or_course": "中医执业医师",
+                    "textbook_route_id": "textbook_tcm_physician",
+                    "textbook_route_version": 1,
+                },
+                "preferences": {"daily_available_minutes": 45},
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        baseline = response.json()["l0_baseline"]
+        self.assertEqual(baseline["textbook_route_id"], "textbook_tcm_physician")
+        self.assertEqual(baseline["textbook_route_version"], 1)
+
+        status = self.client.get("/training/onboarding/status")
+        self.assertEqual(status.status_code, 200)
+        survey_answers = status.json()["survey_answers"]
+        self.assertEqual(
+            survey_answers["textbook_route_id"],
+            "textbook_tcm_physician",
+        )
+        self.assertEqual(survey_answers["textbook_route_version"], 1)
+
+        profile = self.client.get("/personalization/learner-profile")
+        self.assertEqual(profile.status_code, 200)
+        self.assertEqual(profile.json()["learning_goal"], "中医执业医师")
+
+        plan = self.client.get("/training/plan/summary")
+        self.assertEqual(plan.status_code, 200)
+        self.assertEqual(
+            plan.json()["constraints"]["textbook_route_id"],
+            "textbook_tcm_physician",
+        )
 
     def test_onboarding_submit_status_and_diagnosis_summary(self):
         response = self.client.post(

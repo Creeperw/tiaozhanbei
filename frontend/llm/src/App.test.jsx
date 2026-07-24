@@ -73,6 +73,7 @@ vi.mock('./components/AppShell', () => ({
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'dashboard', params: {} })}>Go dashboard</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: {} })}>Go training overview</button>
+      <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'stages' } })}>Go learning stages</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'workspace' } })}>Go training workspace</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: {} })}>Go personalization</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: { view: 'memory' } })}>Go memory</button>
@@ -102,23 +103,16 @@ describe('authenticated application shell', () => {
     expect(sessionStorage.getItem('competition.pending-navigation')).toBeNull();
   });
 
-  it('routes the portal, training overview, training workspace, assistant, knowledge, and administration inside one AppShell', async () => {
+  it('routes the portal, training workshop, assistant, knowledge, and administration inside one AppShell', async () => {
     render(<App />);
 
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go training overview' }));
-    expect(screen.getByRole('button', { name: 'Stage landing' })).toBeInTheDocument();
+    expect(screen.getByText('Practice workspace')).toBeInTheDocument();
+    expect(screen.getByTestId('practice-page')).toHaveAttribute('data-view', '');
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'practice');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Stage landing' }));
-    expect(screen.getByText('Stage transition')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Reach flip midpoint' }));
-    expect(screen.getByText('Training overview')).toBeInTheDocument();
-    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-view', 'path');
-    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-path-mode', 'personalized');
-    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-stage-id', 'plan:LP_1:stage:stage-1');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go training workspace' }));
     expect(screen.getByText('Practice workspace')).toBeInTheDocument();
@@ -137,7 +131,7 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'admin-feedback');
   });
 
-  it('uses the current learning target for primary knowledge navigation and a textbook fallback without one', async () => {
+  it('uses a textbook fallback for primary knowledge navigation', async () => {
     render(<App />);
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
 
@@ -146,16 +140,9 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-route', 'textbook_14_5');
     expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-source', 'navigation');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go training overview' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Stage landing' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reach flip midpoint' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Publish target' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Go default knowledge' }));
-    expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-track-id', 'track-a');
-    expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-source', 'navigation');
   });
 
-  it('routes profile and memory to independent personalization views', async () => {
+  it('routes legacy memory links into the unified profile and memory view', async () => {
     render(<App />);
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
 
@@ -163,6 +150,6 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'profile');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go memory' }));
-    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'memory');
+    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'profile');
   });
 });

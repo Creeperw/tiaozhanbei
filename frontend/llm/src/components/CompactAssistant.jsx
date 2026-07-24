@@ -35,6 +35,22 @@ const assistantCharacterImages = {
   right: '/assistant-character/lizhizhen-right-cutout.png',
 };
 
+export const executionEventLabels = {
+  handoff_prepared: '按需通信',
+  handoff_blocked: '通信信息不足',
+  repair_planned: '已生成局部修复链',
+  repair_step_started: '局部修复执行中',
+  repair_completed: '局部修复完成',
+  repair_stopped: '局部修复已停止',
+};
+
+function eventStepSummary(event) {
+  if (Array.isArray(event.rerun_step_ids) && event.rerun_step_ids.length > 0) {
+    return event.rerun_step_ids.join(' → ');
+  }
+  return event.step_id || event.trigger_step_id || '';
+}
+
 export default function CompactAssistant({
   currentUser = 'User',
   dailyGoal = '',
@@ -48,6 +64,8 @@ export default function CompactAssistant({
   onCollapsedChange,
   onFloatingDockChange,
   onOpenFull,
+  characterHint = '点击问我',
+  executionEvents = [],
   className = '',
 }) {
   const [sessionId, setSessionId] = useState(null);
@@ -64,6 +82,7 @@ export default function CompactAssistant({
   const floatingRef = useRef(null);
   const dragRef = useRef(null);
   const suppressExpandRef = useRef(false);
+  const collapsedPositionRef = useRef(null);
   const sessionGenerationRef = useRef(0);
   const [dragging, setDragging] = useState(false);
   const [floatingPosition, setFloatingPosition] = useState(null);
@@ -212,17 +231,34 @@ export default function CompactAssistant({
       suppressExpandRef.current = false;
       return;
     }
-    setFloatingPosition((current) => {
-      if (!current) return current;
+    const rect = floatingRef.current?.getBoundingClientRect();
+    const collapsedPosition = floatingPosition || (rect ? {
+      left: rect.left,
+      top: rect.top,
+    } : null);
+    if (floating && collapsedPosition) {
+      collapsedPositionRef.current = collapsedPosition;
+    }
+    setFloatingPosition(() => {
+      if (!collapsedPosition) return null;
       const expandedWidth = Math.min(320, Math.max(0, window.innerWidth - 16));
       const expandedHeight = Math.min(560, Math.max(0, window.innerHeight - 16));
       return {
-        left: Math.min(Math.max(8, window.innerWidth - expandedWidth - 8), Math.max(8, current.left)),
-        top: Math.min(Math.max(8, window.innerHeight - expandedHeight - 8), Math.max(8, current.top)),
+        left: Math.min(Math.max(8, window.innerWidth - expandedWidth - 8), Math.max(8, collapsedPosition.left)),
+        top: Math.min(Math.max(8, window.innerHeight - expandedHeight - 8), Math.max(8, collapsedPosition.top)),
       };
     });
     setCollapsed(false);
     onCollapsedChange?.(false);
+  };
+
+  const collapseAssistant = () => {
+    setHistoryOpen(false);
+    if (floating && collapsedPositionRef.current) {
+      setFloatingPosition(collapsedPositionRef.current);
+    }
+    setCollapsed(true);
+    onCollapsedChange?.(true);
   };
 
   const floatingStyle = floatingPosition ? {
@@ -296,6 +332,9 @@ export default function CompactAssistant({
     goal: dailyGoal,
     focus: dailyFocus,
   });
+  const visibleExecutionEvents = executionEvents
+    .filter((event) => executionEventLabels[event?.event])
+    .slice(-6);
 
   if (collapsed) {
     return (
@@ -335,7 +374,7 @@ export default function CompactAssistant({
                   />
                 ))}
               </span>
-              <span className="compact-assistant__character-hint">点击问我</span>
+              <span className="compact-assistant__character-hint">{characterHint}</span>
             </span>
           ) : (
             <span className="compact-assistant__character-fallback" data-testid="assistant-character-fallback" aria-hidden="true">
@@ -394,11 +433,7 @@ export default function CompactAssistant({
             type="button"
             aria-label="折叠智能助教"
             title="折叠智能助教"
-            onClick={() => {
-              setHistoryOpen(false);
-              setCollapsed(true);
-              onCollapsedChange?.(true);
-            }}
+            onClick={collapseAssistant}
           ><PanelRightClose aria-hidden="true" size={15} /></button>
           <button
             type="button"
@@ -413,6 +448,21 @@ export default function CompactAssistant({
         <span>当前上下文</span>
         <strong>{contextLabel}</strong>
       </div>
+
+      {visibleExecutionEvents.length > 0 && (
+        <section className="border-b border-slate-100 px-3 py-2" aria-label="执行协调摘要">
+          <div className="space-y-1.5">
+            {visibleExecutionEvents.map((event, index) => (
+              <div key={`${event.event}-${event.repair_id || event.step_id || index}`} className="flex items-center justify-between gap-2 text-xs">
+                <span className="font-medium text-slate-700">{executionEventLabels[event.event]}</span>
+                <span className="truncate text-slate-500">
+                  {[eventStepSummary(event), event.status].filter(Boolean).join(' · ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {historyOpen && (
         <section className="compact-assistant__history" role="dialog" aria-label="历史对话">

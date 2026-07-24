@@ -12,8 +12,11 @@ from APP.backend.database import (
     AuditResultRecord,
     EvidencePackRecord,
     GradingResultRecord,
+    LearningQuestion,
     LearningAttemptItemRecord,
     LearningAttemptRecord,
+    QuestionBankItem,
+    QuestionVersionRecord,
 )
 from APP.backend.learning_writeback_service import (
     GradingWritebackCommand,
@@ -234,11 +237,88 @@ def _structured_rubric(value: str) -> dict[str, Any] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _is_usable_question_explanation(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return False
+    legacy_grading_markers = (
+        "客观题由系统依据标准答案自动判分",
+        "错因暂不自动下结论",
+        "请到错题变式中补充",
+        "回答正确。",
+        "回答错误。",
+    )
+    return not any(marker in text for marker in legacy_grading_markers)
+
+
+def _attach_cached_explanation(
+    db: Session,
+    command: GradePracticeCommand,
+    grading_payload: dict[str, Any],
+    explanation_runner: Callable[..., str] | None = None,
+) -> None:
+    version = db.query(QuestionVersionRecord).filter_by(
+        question_version_id=command.question_version_id,
+    ).one_or_none()
+    question_id = str(version.question_id if version is not None else command.question_version_id)
+    bank_item = db.query(QuestionBankItem).filter_by(question_id=question_id).one_or_none()
+    learning_question = db.query(LearningQuestion).filter_by(question_id=question_id).one_or_none()
+    caches = (
+        ("question_version_cache", version.analysis if version is not None else ""),
+        ("question_bank_cache", bank_item.analysis if bank_item is not None else ""),
+        (
+            "learning_question_cache",
+            learning_question.explanation if learning_question is not None else "",
+        ),
+    )
+    cached_source, cached = next(
+        (
+            (source, str(value or "").strip())
+            for source, value in caches
+            if _is_usable_question_explanation(value)
+        ),
+        ("", ""),
+    )
+    if cached:
+        grading_payload["question_explanation"] = cached
+        grading_payload["explanation_source"] = cached_source
+        if version is not None and not str(version.analysis or "").strip():
+            version.analysis = cached
+        if bank_item is not None and not str(bank_item.analysis or "").strip():
+            bank_item.analysis = cached
+        if learning_question is not None and not str(learning_question.explanation or "").strip():
+            learning_question.explanation = cached
+        return
+    generated = str(grading_payload.get("question_explanation") or "").strip()
+    if not generated and explanation_runner is not None:
+        generated = str(explanation_runner(submission=_submission(command)) or "").strip()
+    if not generated:
+        generated = str(
+            grading_payload.get("feedback") or grading_payload.get("error_reason") or ""
+        ).strip()
+    if generated:
+        persisted = False
+        if version is not None:
+            version.analysis = generated
+            persisted = True
+        if bank_item is not None:
+            bank_item.analysis = generated
+            persisted = True
+        if learning_question is not None:
+            learning_question.explanation = generated
+            persisted = True
+        grading_payload["question_explanation"] = generated
+        grading_payload["explanation_source"] = (
+            "generated_on_first_attempt" if persisted else "grading_generated_unpersisted"
+        )
+
+
 def apply_practice_grading(
     db: Session,
     command: GradePracticeCommand,
     *,
     runner: Callable[..., dict[str, Any]] = grade_practice_submission,
+    explanation_runner: Callable[..., str] | None = None,
     writeback: Callable[..., LearningWritebackResult] = apply_grading_writeback,
     before_commit: Callable[[GradePracticeResult], None] | None = None,
     atomic: bool = False,
@@ -314,6 +394,7 @@ def apply_practice_grading(
     audit_id = str(uuid.uuid4())
     pack_id = str(uuid.uuid4())
     grading_payload = {**grading_payload, "question_version_id": command.question_version_id}
+    _attach_cached_explanation(db, command, grading_payload, explanation_runner)
     structured_rubric = _structured_rubric(command.rubric)
     if structured_rubric is not None:
         grading_payload["rubric"] = structured_rubric

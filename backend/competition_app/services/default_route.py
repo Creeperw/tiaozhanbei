@@ -17,16 +17,32 @@ class DefaultRouteRepository:
         self,
         routes: list[DefaultLearningRoute],
         aliases_by_route_id: dict[str, list[str]],
+        selectable_route_ids: set[str] | None = None,
     ) -> None:
         self._routes = tuple(routes)
         self._aliases_by_route_id = aliases_by_route_id
+        self._selectable_route_ids = (
+            frozenset(selectable_route_ids)
+            if selectable_route_ids is not None
+            else frozenset(route.route_id for route in routes)
+        )
 
     @classmethod
     def from_directory(cls, path: Path) -> "DefaultRouteRepository":
         routes: list[DefaultLearningRoute] = []
         aliases_by_route_id: dict[str, list[str]] = {}
+        selectable_route_ids: set[str] = set()
+        has_selection_policy = False
         for seed_file in sorted(path.glob("*.json")):
             payload = cls._load_payload(seed_file)
+            selection_policy = payload.get("selection_policy")
+            if isinstance(selection_policy, dict):
+                has_selection_policy = True
+                selectable_route_ids.update(
+                    str(route_id).strip()
+                    for route_id in selection_policy.get("active_route_ids", [])
+                    if str(route_id).strip()
+                )
             normalized_routes = cls._normalized_route_payloads(payload)
             routes.extend(DefaultLearningRoute.model_validate(item) for item in normalized_routes)
             aliases_by_route_id.update(
@@ -35,7 +51,11 @@ class DefaultRouteRepository:
                     for route in normalized_routes
                 }
             )
-        return cls(routes, aliases_by_route_id)
+        return cls(
+            routes,
+            aliases_by_route_id,
+            selectable_route_ids if has_selection_policy else None,
+        )
 
     def get(
         self, route_id: str, version: str | None = None
@@ -60,7 +80,14 @@ class DefaultRouteRepository:
                 "planning_label": route.planning_label,
             }
             for route in self._approved_routes
+            if route.route_id in self._selectable_route_ids
         ]
+
+    def is_selectable(self, route_id: str) -> bool:
+        return any(
+            self._normalized(item) == self._normalized(route_id)
+            for item in self._selectable_route_ids
+        )
 
     def resolve(
         self,
@@ -92,11 +119,31 @@ class DefaultRouteRepository:
             )
         )
         if len(alias_matches) == 1:
-            return self._approved_resolution(alias_matches[0], "alias")
+            return self._approved_resolution(alias_matches[0], "alias").model_copy(
+                update={"goal_type": goal_type, "goal_name": goal_name}
+            )
         if len(alias_matches) > 1:
             return self._provisional(goal_type, goal_name, "ambiguous_alias", "Multiple approved alias matches exist.")
 
         normalized_goal_name = self._normalized(goal_name)
+        unsupported_aliases = [
+            alias
+            for route in self._approved_routes
+            if route.route_id not in self._selectable_route_ids
+            for alias in (
+                route.goal_name,
+                *self._aliases_by_route_id.get(route.route_id, []),
+            )
+            if self._normalized(alias)
+            and self._normalized(alias) in normalized_goal_name
+        ]
+        if unsupported_aliases:
+            return self._provisional(
+                goal_type,
+                goal_name,
+                "unsupported_target",
+                "该目标暂未开放默认教材规划，请从系统当前支持的资格考试中选择。",
+            )
         embedded_alias_matches = self._matches(
             lambda route: (
                 self._normalized(route.goal_type) == self._normalized(goal_type)
@@ -152,7 +199,11 @@ class DefaultRouteRepository:
         )
 
     def _matches(self, predicate: Any) -> list[DefaultLearningRoute]:
-        return [route for route in self._approved_routes if predicate(route)]
+        return [
+            route
+            for route in self._approved_routes
+            if route.route_id in self._selectable_route_ids and predicate(route)
+        ]
 
     @staticmethod
     def _load_payload(seed_file: Path) -> dict[str, Any]:

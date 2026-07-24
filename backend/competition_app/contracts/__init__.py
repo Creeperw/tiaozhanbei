@@ -1,5 +1,20 @@
 from competition_app.contracts.base import AgentEnvelope, ArtifactReference, WritebackIntent
+from competition_app.contracts.agent_communication import (
+    AgentHandoffBundle,
+    CognitiveGapResult,
+    ConfirmedFact,
+    DownstreamNeed,
+    EvidenceReference,
+    UncertaintyItem,
+)
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep, PlanValidationError
+from competition_app.contracts.local_repair import LocalRepairPlan, RepairAction, RepairIssue
+from competition_app.contracts.multiscale_learning import (
+    HardConstraintResult,
+    MetricValue,
+    MultiScaleLearningState,
+    PathCandidate,
+)
 from competition_app.contracts.knowledge import (
     LearnerQuestionView,
     QuestionBridge,
@@ -23,22 +38,35 @@ from competition_app.contracts.workshop import (
 
 __all__ = [
     "AgentEnvelope",
+    "AgentHandoffBundle",
     "ArtifactReference",
+    "CognitiveGapResult",
+    "ConfirmedFact",
+    "DownstreamNeed",
     "ExecutionPlan",
     "ExecutionStep",
+    "EvidenceReference",
     "KnowledgeCardDetail",
     "KnowledgeCardPage",
     "KnowledgeCardSummary",
     "KnowledgeResourceBundle",
     "LearnerQuestionView",
+    "LocalRepairPlan",
+    "HardConstraintResult",
+    "MetricValue",
+    "MultiScaleLearningState",
     "PaperTiming",
+    "PathCandidate",
     "PlanValidationError",
     "QuestionBridge",
     "QuestionDetail",
     "QuestionRetrievalMetadata",
     "QuestionSearchResult",
     "ResourceCoverage",
+    "RepairAction",
+    "RepairIssue",
     "UiAction",
+    "UncertaintyItem",
     "WritebackIntent",
     "WorkshopModule",
     "WorkshopOverview",

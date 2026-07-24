@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from APP.backend.config import UPLOAD_DIR
 from APP.backend.question_ingestion_service import QuestionIngestionService
 from APP.backend.store import FILES
+from APP.backend.mineru_pdf_service import MinerUPdfParser
 
 
 class PdfParser(Protocol):
@@ -25,19 +26,6 @@ class MarkdownQuestionExtractor(Protocol):
         source_type: str,
         owner_id: str | None,
     ) -> list[dict[str, Any]]: ...
-
-
-class PdfTextParser:
-    def parse(self, file_path: Path) -> str:
-        try:
-            import pdfplumber
-
-            with pdfplumber.open(file_path) as document:
-                return "\n\n".join(page.extract_text() or "" for page in document.pages)
-        except ImportError as exc:
-            raise RuntimeError("PDF parser is unavailable") from exc
-        except Exception as exc:
-            raise RuntimeError("PDF parsing failed") from exc
 
 
 def _normalize_text(value: str) -> str:
@@ -90,7 +78,7 @@ class StructuredMarkdownExtractor:
 class PdfQuestionIngestionService:
     def __init__(
         self,
-        mineru_factory: Callable[[], PdfParser] = PdfTextParser,
+        mineru_factory: Callable[[], PdfParser] = MinerUPdfParser,
         extractor_factory: Callable[[], MarkdownQuestionExtractor] | None = None,
         ingestion_service_factory: Callable[[], QuestionIngestionService] = QuestionIngestionService,
     ):

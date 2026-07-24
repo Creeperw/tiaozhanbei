@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import AuthPage from './components/AuthPage';
 import ChatInterface from './components/ChatInterface';
 import KnowledgePage from './components/KnowledgePage';
@@ -8,7 +8,10 @@ import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
+import LearningStageLanding from './components/learning-stage/LearningStageLanding';
+import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
+import OnboardingSurveyPanel from './components/OnboardingSurveyPanel';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -32,6 +35,7 @@ export default function App() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [pageIntent, setPageIntent] = useState(initialPageIntent);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
+  const [stageTransition, setStageTransition] = useState(null);
   const currentPage = getIntentPage(pageIntent);
   const selectedSessionId = pageIntent.params.sessionId || null;
 
@@ -62,6 +66,14 @@ export default function App() {
 
   const handleLogin = (user) => {
     setCurrentUser(user);
+    if (!user?.onboarding_required) navigateToPage('dashboard');
+  };
+
+  const handleOnboardingSaved = (payload) => {
+    setCurrentUser(payload?.user || {
+      ...currentUser,
+      onboarding_required: false,
+    });
     navigateToPage('dashboard');
   };
 
@@ -95,7 +107,7 @@ export default function App() {
         return;
       }
       if (destination.page === 'personalization') {
-        setPageIntent(createPageIntent(destination.page, { view: 'profile', ...params }));
+        setPageIntent(createPageIntent(destination.page, { view: 'profile', ...params, ...(params.view === 'memory' ? { view: 'profile' } : {}) }));
         return;
       }
       setPageIntent(createPageIntent(destination));
@@ -117,11 +129,29 @@ export default function App() {
       return;
     }
     if (destination === 'personalization') {
-      setPageIntent(createPageIntent(destination, { view: 'profile', ...params }));
+      setPageIntent(createPageIntent(destination, { view: params.view === 'memory' ? 'profile' : 'profile', ...params, ...(params.view === 'memory' ? { view: 'profile' } : {}) }));
       return;
     }
     setPageIntent(createPageIntent(destination, params));
   };
+
+  const startStageTransition = useCallback((selection) => {
+    setStageTransition((current) => current || selection);
+  }, []);
+
+  const openStagePathAtMidpoint = useCallback((selection) => {
+    setPageIntent(createPageIntent({
+      page: 'practice',
+      params: {
+        view: 'path',
+        pathMode: 'personalized',
+        stageId: selection.stage.nodeId || selection.stage.id,
+        stageIndex: selection.index,
+      },
+    }));
+  }, []);
+
+  const finishStageTransition = useCallback(() => setStageTransition(null), []);
 
   if (checkingAuth) {
     return <div className="flex h-screen items-center justify-center bg-[#f8fafc] text-gray-400">Loading...</div>;
@@ -129,6 +159,24 @@ export default function App() {
 
   if (!currentUser) {
     return <AuthPage onLogin={handleLogin} />;
+  }
+
+  if (currentUser.onboarding_required) {
+    return (
+      <div className="min-h-screen overflow-y-auto bg-[#f4fbf7] px-4 py-8 sm:px-8">
+        <div className="mx-auto max-w-5xl rounded-[32px] border border-emerald-100 bg-white p-6 shadow-xl shadow-emerald-100/60 sm:p-9">
+          <div className="mb-7 flex flex-wrap items-start justify-between gap-4 border-b border-emerald-100 pb-5">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">首次使用 · 必填</div>
+              <h1 className="mt-2 text-3xl font-black text-emerald-950">先完成学情调查，再进入学习页面</h1>
+              <p className="mt-2 text-sm leading-6 text-slate-600">这些基本信息会同时建立学习画像和初始学习记忆，供规划、资源推荐与学情分析统一使用。</p>
+            </div>
+            <button type="button" onClick={handleLogout} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">退出账号</button>
+          </div>
+          <OnboardingSurveyPanel required onSaved={handleOnboardingSaved} />
+        </div>
+      </div>
+    );
   }
 
   const renderAuthenticatedPage = () => {
@@ -155,13 +203,14 @@ export default function App() {
         if (pageIntent.params.view === 'workspace') {
           return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
         }
-        if (pageIntent.params.view === 'path') {
+        if (pageIntent.params.view === 'stages') {
           return (
-            <DashboardPage
-              currentUser={currentUser}
-              navigationContext={pageIntent.params}
-              onNavigate={navigateToPage}
-              onKnowledgeContextChange={setKnowledgeNavigationContext}
+            <LearningStageLanding
+              onStageSelect={startStageTransition}
+              onCreatePlan={() => navigateToPage({
+                page: 'assistant',
+                params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' },
+              })}
             />
           );
         }
@@ -197,6 +246,11 @@ export default function App() {
       onLogout={handleLogout}
     >
       {renderAuthenticatedPage()}
+      <StagePageTransition
+        selection={stageTransition}
+        onMidpoint={openStagePathAtMidpoint}
+        onComplete={finishStageTransition}
+      />
     </AppShell>
   );
 }

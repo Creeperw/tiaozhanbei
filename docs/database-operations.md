@@ -61,6 +61,12 @@ ORDER BY version;
 
 当前迁移执行器按分号拆分 MySQL 语句。迁移文件应保持简单 DDL/DML，不要加入包含内部分号的存储过程、触发器定义或依赖自定义 delimiter 的脚本。
 
+迁移 `009_registration_onboarding.sql` 为 `app_users` 增加
+`onboarding_required`。已有账号默认 `false`，避免升级后被意外锁在首次调查；新注册普通账号由
+认证服务显式写为 `true`。完成兼容业务库中的 onboarding survey 后，主接口
+`POST /api/v1/auth/onboarding/complete` 核验调查活动并将该字段改为 `false`。不要手工批量清零，
+否则会破坏“先建立画像再进入学习页”的业务门禁。
+
 ## 4. 兼容业务库初始化
 
 当 `BACKEND_HANDOFF_ENABLED=true` 且配置了 `MYSQL_PASSWORD` 时，应用装载兼容业务模块并连接
@@ -156,6 +162,12 @@ GROUP BY table_schema;
 `workflow_run_states` 的当前用户、状态和 `thread_id`，再查 LangGraph 三张表。禁止只删除其中一张表，
 否则恢复链会不完整。
 
+规划追问确认的目标、学习背景和时间条件写入现有学习者画像及其
+`survey_json.agent_confirmed_profile`，不新增数据库表。恢复时应用会把已确认画像重新注入 LangGraph
+上下文，并在目标或背景变化时刷新路线解析。若线上出现同一句或同义问题循环，先核对
+`workflow_run_states.interrupt_payload` 的 `profile_fields`/`interrupt_type`，再检查画像中的
+`learning_goal`，不要通过手工删除检查点掩盖画像写回或路线刷新问题。
+
 兼容业务库新增以下用户隔离表：
 
 - `learning_intervention_lifecycles`：干预触发快照、冷却、反馈和效果评估；
@@ -169,3 +181,20 @@ GROUP BY table_schema;
 `knowledge_mastery_states`、`learner_kp_review_states` 与 `mistake_records`。这些表不能单独清理，否则同一窗口
 内的雷达指标会失去来源或产生不完整样本。字段、公式和版本见
 [学情监测与资源匹配口径](learning-monitoring-methodology.md)。
+
+学习画像和学习记忆在前端合并展示，但数据库职责不合并成一张表：稳定、可锁定字段继续保存在
+学习者画像，Memory Agent 抽取的长期/短期事实、候选和过期状态继续保存在记忆表。统一接口按当前
+登录用户聚合两类数据；这样既可统一消费，又保留来源、置信度和冲突治理能力。
+
+### 9.1 通信、修复与多尺度状态的持久化边界
+
+- 按需通信和局部修复轨迹复用主库 `workflow_run_states.payload_json` 中的
+  `coordination.communication_trace` 与 `coordination.repair_trace`，不新建通信或修复日志表。
+- LangGraph checkpoint 只保存中断或修复进行中的运行状态，供原 `thread_id` 恢复；完成后的安全协调摘要
+  随工作流结果保存在 `workflow_run_states`，由 coordination 接口按执行所属用户读取。
+- 多时间尺度学情从现有计划、任务、答题、掌握、复习、错题和专注记录即时派生；
+  不新增第二套学习状态表，也不把候选评分持久化为权威事实。
+- 清理历史工作流前必须同时检查状态和线程。`interrupted`、`running` 以及局部修复中的线程不得删除；
+  只清理满足保留期且已终止的记录，并保持 `workflow_run_states` 与 checkpoint 的对应关系。
+- 备份恢复应覆盖主库工作流状态与 checkpoint、兼容业务库学习源数据的同一时间点，否则恢复后的
+  `state_digest`、候选解释和协调摘要可能不一致。

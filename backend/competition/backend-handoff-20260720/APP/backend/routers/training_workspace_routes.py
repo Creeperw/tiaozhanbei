@@ -39,6 +39,7 @@ from APP.backend.mistake_context_service import (
     record_mistake_context,
 )
 from APP.backend.paper_submission_service import PaperSubmissionInvalid, PaperSubmissionNotFound, get_owned_paper, pause_paper_timer, resume_paper_timer, save_paper_answers, submit_paper
+from APP.backend.expert_agent_service import generate_question_explanation
 from APP.backend.system_data_service import system_data_payload
 from APP.backend.training_workspace_service import (
     TRAINING_TASK_MAX_JSON_BYTES,
@@ -488,7 +489,13 @@ def submit_paper_answers(
     db: Session = Depends(get_db),
 ):
     try:
-        return submit_paper(db, current_user.id, paper_id, request.request_id)
+        return submit_paper(
+            db,
+            current_user.id,
+            paper_id,
+            request.request_id,
+            explanation_runner=generate_question_explanation,
+        )
     except PaperSubmissionNotFound as exc:
         raise HTTPException(status_code=404, detail="Paper was not found") from exc
     except PaperSubmissionInvalid as exc:

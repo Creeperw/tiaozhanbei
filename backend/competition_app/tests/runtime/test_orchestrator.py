@@ -3,6 +3,7 @@ import asyncio
 import pytest
 
 from competition_app.contracts.resource import AuditResult
+from competition_app.contracts.local_repair import RepairIssue
 
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.runtime.agent_registry import AgentRegistry
@@ -20,7 +21,21 @@ class AuditSequenceAgent:
         decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
         self.calls += 1
         return type("Output", (), {"payload": AuditResult(
-            audit_result_id=f"AUDIT_{self.calls}", decision=decision
+            audit_result_id=f"AUDIT_{self.calls}",
+            decision=decision,
+            structured_findings=(
+                [
+                    RepairIssue(
+                        issue_id=f"ISSUE_{self.calls}",
+                        issue_type="content_quality",
+                        message="内容质量需修订",
+                        owner_step_id="expert",
+                        affected_step_ids=["expert"],
+                    )
+                ]
+                if decision == "revise"
+                else []
+            ),
         )})()
 
 

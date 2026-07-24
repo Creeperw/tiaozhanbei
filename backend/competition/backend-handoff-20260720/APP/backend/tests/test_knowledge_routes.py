@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -93,6 +96,55 @@ class KnowledgeRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()["questions"]), 1)
         self.assertEqual(response.json()["questions"][0]["question_id"], "Q_FJ_001")
+
+    def test_pdf_upload_runs_mineru_and_indexes_generated_markdown(self):
+        from APP.backend.routers import knowledge_routes
+
+        class FakeRag:
+            is_processing = False
+
+            def __init__(self, root):
+                self.root = root
+                self.rebuilds = []
+
+            def _paths_for_scope(self, scope, user_id):
+                return str(self.root), str(self.root / "index")
+
+            def _safe_filename(self, filename):
+                return Path(filename).name
+
+            def delete_file(self, *args, **kwargs):
+                return None
+
+            def rebuild_index(self, scope, user_id):
+                self.rebuilds.append((scope, user_id))
+
+        class FakeMinerU:
+            def validate(self):
+                return None
+
+            def parse(self, path):
+                self.path = path
+                return "# 四君子汤\n\n益气健脾。"
+
+        with tempfile.TemporaryDirectory() as directory:
+            fake_rag = FakeRag(Path(directory))
+            with patch.object(knowledge_routes, "rag_service", fake_rag), patch.object(
+                knowledge_routes,
+                "mineru_pdf_parser_factory",
+                FakeMinerU,
+            ):
+                response = self.client.post(
+                    "/knowledge/upload?scope=personal",
+                    files={"files": ("tcm-formulas.pdf", b"%PDF-test", "application/pdf")},
+                )
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(payload["pdf_processing"][0]["parser"], "mineru_precision")
+            self.assertEqual(payload["files"], ["tcm-formulas.mineru.md"])
+            self.assertIn("益气健脾", (Path(directory) / "tcm-formulas.mineru.md").read_text(encoding="utf-8"))
+            self.assertEqual(fake_rag.rebuilds, [("personal", 1)])
 
 
 if __name__ == "__main__":

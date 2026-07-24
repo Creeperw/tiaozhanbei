@@ -40,6 +40,7 @@ from competition_app.services.writeback import WritebackExecutor
 from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.textbook_route import TextbookRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
+from competition_app.services.daily_task_refresh import DailyTaskRefreshService
 from competition_app.services.review import ReviewService
 from competition_app.llm.terminal import (
     terminal_agent_finished,
@@ -79,6 +80,7 @@ class ApplicationContainer:
     review_card_use_case: PersonalizedReviewCardUseCase
     review_service: ReviewService
     authentication_service: AuthenticationService
+    daily_task_refresh_service: DailyTaskRefreshService
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
     knowledge_backend: KnowledgeDeliveryBackend | None = None
     mode: str = "stub"
@@ -88,6 +90,7 @@ class ApplicationContainer:
     auth_cookie_secure: bool = False
     backend_handoff_runtime: BackendHandoffRuntime | None = None
     frontend_dist_root: Path | None = None
+    default_route_repository: DefaultRouteRepository | None = None
     textbook_route_repository: TextbookRouteRepository | None = None
 
     @classmethod
@@ -132,6 +135,7 @@ class ApplicationContainer:
         learning_plan_service = LearningPlanService(
             default_route_repository, plan_repository
         )
+        daily_task_refresh_service = DailyTaskRefreshService(plan_repository)
         review_service = ReviewService(review_repository)
         authentication_service = AuthenticationService(
             auth_repository,
@@ -166,6 +170,7 @@ class ApplicationContainer:
                 chat_base_url=settings.chat_base_url,
                 chat_model=settings.chat_model,
                 chat_api_key=settings.dashscope_api_key,
+                mineru_token=settings.mineru_token,
             )
             repository = knowledge_backend.map
             question_retriever = None
@@ -323,6 +328,16 @@ class ApplicationContainer:
                     if backend_handoff_runtime is not None
                     else None
                 ),
+                multiscale_state_loader=(
+                    backend_handoff_runtime.load_multiscale_learning_state
+                    if backend_handoff_runtime is not None
+                    else None
+                ),
+                path_candidate_loader=(
+                    backend_handoff_runtime.load_path_candidates
+                    if backend_handoff_runtime is not None
+                    else None
+                ),
                 profile_update_writer=(
                     backend_handoff_runtime.update_learning_profile
                     if backend_handoff_runtime is not None
@@ -337,6 +352,7 @@ class ApplicationContainer:
             ),
             review_service=review_service,
             authentication_service=authentication_service,
+            daily_task_refresh_service=daily_task_refresh_service,
             question_retrieval_tool=knowledge_tool,
             knowledge_backend=knowledge_backend,
             mode=settings.mode,
@@ -348,6 +364,7 @@ class ApplicationContainer:
             auth_cookie_secure=settings.auth_cookie_secure,
             backend_handoff_runtime=backend_handoff_runtime,
             frontend_dist_root=settings.frontend_dist_root,
+            default_route_repository=default_route_repository,
             textbook_route_repository=textbook_route_repository,
         )
 

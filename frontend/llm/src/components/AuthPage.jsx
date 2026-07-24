@@ -138,7 +138,7 @@ const AuthPage = ({ onLogin }) => {
   const description =
     mode === 'login'
       ? '登录后进入时珍智训首页，继续使用培训助手、知识库溯源、练习批改与学情规划。'
-      : '注册后即可建立学习画像，开始沉淀知识来源、练习记录与阶段任务。';
+      : '创建账号后需先完成基础学情调查，系统会据此建立学习画像与初始学习记忆。';
 
   return (
     <div className="auth-page min-h-screen overflow-hidden bg-[#f4fbf7] text-slate-900">

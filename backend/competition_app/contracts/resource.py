@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import Field
 
 from competition_app.contracts.base import ContractModel
+from competition_app.contracts.local_repair import RepairIssue
 
 
 class ResourceClaim(ContractModel):
@@ -36,6 +37,7 @@ class AuditResult(ContractModel):
     audit_result_id: str
     decision: Literal["pass", "revise", "reject", "needs_human_review"]
     findings: list[str] = Field(default_factory=list)
+    structured_findings: list[RepairIssue] = Field(default_factory=list)
     verified_claim_ids: list[str] = Field(default_factory=list)
 
 
