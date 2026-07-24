@@ -1,11 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { FileText } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  BookMarked,
+  ClipboardCheck,
+  FileText,
+  Files,
+  FolderHeart,
+  HeartPulse,
+  Lightbulb,
+  NotebookPen,
+  Sparkles,
+  Target,
+  UploadCloud,
+} from 'lucide-react';
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import QuestionTrainingPanel from './QuestionTrainingPanel';
 import CaseTrainingPanel from './CaseTrainingPanel';
 import MistakeVariationPanel from './MistakeVariationPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
+import QuestionWorkspacePage from './QuestionWorkspacePage';
+import KnowledgeCardLibrary from './KnowledgeCardLibrary';
 import { isTrainingTaskResultApproved } from '../pageDataLoaders.js';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
 
@@ -157,18 +173,206 @@ function ArtifactResult({ taskResult }) {
   );
 }
 
+const trainingCards = [
+  {
+    key: 'question_training',
+    initialMode: 'objective',
+    title: '综合套题',
+    description: '覆盖核心知识点，系统巩固基础能力。',
+    icon: ClipboardCheck,
+    tone: 'emerald',
+  },
+  {
+    key: 'paper_workspace',
+    title: '智能组卷',
+    description: '按学习目标组卷，灵活安排练习节奏。',
+    icon: Files,
+    tone: 'green',
+  },
+  {
+    key: 'special_training',
+    initialMode: 'case_training',
+    title: '专项训练',
+    description: '聚焦案例简答，针对题型强化训练。',
+    icon: Target,
+    tone: 'teal',
+  },
+  {
+    key: 'topic_training',
+    initialMode: 'objective',
+    title: '专题训练',
+    description: '围绕专题集中练习，突破理解难点。',
+    icon: Lightbulb,
+    tone: 'cyan',
+  },
+  {
+    key: 'ai_patient_simulation',
+    title: '模拟病患',
+    description: '置身临床情境，训练辨证与问诊思路。',
+    icon: HeartPulse,
+    tone: 'rose',
+  },
+  {
+    key: 'question_workspace',
+    title: '上传题库',
+    description: '上传学习资料，沉淀个人专属题库。',
+    icon: UploadCloud,
+    tone: 'amber',
+  },
+];
+
+const utilityCards = [
+  {
+    key: 'mistake_variation',
+    title: '错题库',
+    description: '整理错题记录，生成变式并针对性复盘。',
+    icon: FolderHeart,
+    available: true,
+  },
+  {
+    title: '知识收藏',
+    description: '汇总重点内容，随时回顾复习。',
+    icon: BookMarked,
+    available: false,
+  },
+  {
+    title: '学习笔记',
+    description: '沉淀学习心得，形成个人知识脉络。',
+    icon: NotebookPen,
+    available: false,
+  },
+];
+
+const workspaceTitles = {
+  question_training: '综合套题',
+  special_training: '专项训练',
+  topic_training: '专题训练',
+  ai_patient_simulation: '模拟病患',
+  mistake_variation: '错题库',
+  paper_workspace: '智能组卷',
+  knowledge_cards: '知识卡片',
+};
+
+const legacyTaskTypes = {
+  practice_grading: { taskType: 'question_training', initialMode: 'objective' },
+  case_training: { taskType: 'ai_patient_simulation', initialMode: 'ai_patient_simulation' },
+  knowledge_cards: { taskType: 'knowledge_cards', initialMode: 'knowledge_cards' },
+  knowledge_card_generation: { taskType: 'knowledge_cards', initialMode: 'knowledge_cards' },
+  paper_generation: { taskType: 'paper_workspace', initialMode: 'paper_workspace' },
+};
+
+const normalizeTaskIntent = (taskType = '') => legacyTaskTypes[taskType] || {
+  taskType: taskType || 'question_training',
+  initialMode: taskType,
+};
+
+function TrainingBannerIllustration() {
+  return (
+    <div className="practice-overview__illustration" aria-hidden="true">
+      <div className="practice-overview__paper practice-overview__paper--back" />
+      <div className="practice-overview__paper practice-overview__paper--front">
+        <span /><span /><span /><span />
+      </div>
+      <div className="practice-overview__pencil" />
+      <div className="practice-overview__spark practice-overview__spark--one" />
+      <div className="practice-overview__spark practice-overview__spark--two" />
+    </div>
+  );
+}
+
+function TrainingOverview({ onOpenModule }) {
+  return (
+    <section className="practice-overview" aria-labelledby="practice-overview-title">
+      <header className="practice-overview__banner">
+        <div>
+          <span className="practice-overview__eyebrow"><Sparkles size={16} aria-hidden="true" />训练中心</span>
+          <h1 id="practice-overview-title">训练工坊，实战精进</h1>
+          <p>聚焦实战训练，强化能力，在每一次复盘中稳步精进。</p>
+        </div>
+        <TrainingBannerIllustration />
+      </header>
+
+      <div className="practice-overview__layout">
+        <section className="practice-overview__main" aria-label="训练路径">
+          <div className="practice-overview__section-heading">
+            <div>
+              <span>训练路径</span>
+              <h2>选择今天的练习方式</h2>
+            </div>
+          </div>
+          <div className="practice-overview__training-grid">
+            {trainingCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <button
+                  key={`${card.title}-${card.key}`}
+                  type="button"
+                  className={`practice-overview__training-card practice-overview__training-card--${card.tone}`}
+                  onClick={() => onOpenModule(card)}
+                >
+                  <span className="practice-overview__card-icon"><Icon aria-hidden="true" size={26} /></span>
+                  <span className="practice-overview__card-copy">
+                    <strong>{card.title}</strong>
+                    <small>{card.description}</small>
+                  </span>
+                  <ArrowUpRight className="practice-overview__card-arrow" aria-hidden="true" size={20} />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <aside className="practice-overview__utilities" aria-label="常用学习工具">
+          <div className="practice-overview__section-heading">
+            <div>
+              <span>常用工具</span>
+              <h2>复盘与沉淀</h2>
+            </div>
+          </div>
+          <div className="practice-overview__utility-list">
+            {utilityCards.map((card) => {
+              const Icon = card.icon;
+              const content = <>
+                <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
+                <span><strong>{card.title}</strong><small>{card.description}</small></span>
+              </>;
+              return card.available ? (
+                <button
+                  key={card.title}
+                  type="button"
+                  className="practice-overview__utility-card"
+                  onClick={() => onOpenModule(card)}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div key={card.title} className="practice-overview__utility-card" aria-disabled="true">
+                  {content}
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+      </div>
+
+      <footer className="practice-overview__summary" aria-label="学习摘要">
+        <span><ClipboardCheck aria-hidden="true" size={18} /><b>今日练习</b><em>暂无记录</em></span>
+        <span><Target aria-hidden="true" size={18} /><b>正确率</b><em>暂无记录</em></span>
+        <span><BookMarked aria-hidden="true" size={18} /><b>累计学习</b><em>暂无记录</em></span>
+        <p>保持练习，积累每一次进步。</p>
+      </footer>
+    </section>
+  );
+}
+
 export default function PracticePage({ navigationContext = {} }) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
-  const [activeTaskType, setActiveTaskType] = useState(() => navigationContext.taskType || 'question_training');
+  const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
+  const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
+  const [activeInitialMode, setActiveInitialMode] = useState(() => initialTaskIntent.initialMode);
   const [taskResult, setTaskResult] = useState(null);
   const [mobilePage, setMobilePage] = useState('task');
-
-  const workshopModules = [
-    ['question_training', '题目训练'],
-    ['ai_patient_simulation', 'AI 病患模拟'],
-    ['mistake_variation', '错题变式'],
-    ['paper_workspace', '试卷生成'],
-  ];
+  const [view, setView] = useState(() => (navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'));
 
   useEffect(() => {
     const request = async (path, body) => {
@@ -215,32 +419,44 @@ export default function PracticePage({ navigationContext = {} }) {
     setMobilePage('result');
   };
 
-  const selectWorkshopModule = (taskType) => {
-    setActiveTaskType(taskType);
+  const openWorkshopModule = ({ key, initialMode }) => {
+    setActiveTaskType(key);
+    setActiveInitialMode(initialMode || key);
     setTaskResult(null);
     setMobilePage('task');
+    setView('workspace');
   };
 
   const taskResultApproved = isTrainingTaskResultApproved(taskResult);
 
+  if (view === 'overview') {
+    return <TrainingOverview onOpenModule={openWorkshopModule} />;
+  }
+
+  if (activeTaskType === 'question_workspace') {
+    return (
+      <div className="space-y-5 text-slate-800">
+        <div className="practice-workspace__toolbar">
+          <button type="button" className="practice-workspace__back" onClick={() => setView('overview')}>
+            <ArrowLeft aria-hidden="true" size={18} />返回训练工坊
+          </button>
+        </div>
+        <QuestionWorkspacePage />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 text-slate-800">
-      <div className="border-b border-slate-200">
-        <div className="flex flex-wrap gap-1" role="tablist" aria-label="训练工坊模块">
-          {workshopModules.map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={activeTaskType === key}
-              onClick={() => selectWorkshopModule(key)}
-              className={`border-b-2 px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 ${activeTaskType === key ? 'border-emerald-600 text-emerald-800' : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-950'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <div className="practice-workspace__toolbar">
+        <button type="button" className="practice-workspace__back" onClick={() => setView('overview')}>
+          <ArrowLeft aria-hidden="true" size={18} />返回训练工坊
+        </button>
       </div>
+      <header>
+        <span className="app-shell__section-label">训练工坊</span>
+        <h1 className="mt-1 text-2xl font-semibold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
+      </header>
 
       <div className="practice-mobile-tabs" role="tablist" aria-label="移动端训练视图">
         {[
@@ -277,11 +493,16 @@ export default function PracticePage({ navigationContext = {} }) {
               <MistakeVariationPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
               <PaperGenerationPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} />
-            ) : activeTaskType === 'question_training' ? (
+            ) : activeTaskType === 'knowledge_cards' ? (
+              <KnowledgeCardLibrary
+                cardId={navigationContext.cardId || navigationContext.card_id || ''}
+                kpId={navigationContext.kpId || navigationContext.kp_id || ''}
+              />
+            ) : ['question_training', 'special_training', 'topic_training'].includes(activeTaskType) ? (
               <QuestionTrainingPanel
                 enabled
                 selectedKnowledgePoint={selectedKnowledgePoint}
-                initialMode={navigationContext.taskType || ''}
+                initialMode={activeInitialMode}
                 onResult={handlePracticeResult}
               />
             ) : (

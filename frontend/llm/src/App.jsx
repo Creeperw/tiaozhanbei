@@ -34,9 +34,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [pageIntent, setPageIntent] = useState(initialPageIntent);
+  const [navigationRevision, setNavigationRevision] = useState(0);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const [stageTransition, setStageTransition] = useState(null);
   const currentPage = getIntentPage(pageIntent);
+  const shellPage = currentPage === 'practice' && pageIntent.params.view === 'workspace'
+    ? 'training-workshop'
+    : currentPage;
   const selectedSessionId = pageIntent.params.sessionId || null;
 
   useEffect(() => {
@@ -86,7 +90,7 @@ export default function App() {
     }
   };
 
-  const shellConfig = getAppShellConfig({ currentUser, currentPage, selectedSessionId });
+  const shellConfig = getAppShellConfig({ currentUser, currentPage: shellPage, selectedSessionId });
 
   const navigateToPage = (destination, context = null) => {
     if (typeof destination === 'object') {
@@ -110,6 +114,7 @@ export default function App() {
         setPageIntent(createPageIntent(destination.page, { view: 'profile', ...params, ...(params.view === 'memory' ? { view: 'profile' } : {}) }));
         return;
       }
+      if (destination.page === 'training-workshop') setNavigationRevision((value) => value + 1);
       setPageIntent(createPageIntent(destination));
       return;
     }
@@ -132,6 +137,7 @@ export default function App() {
       setPageIntent(createPageIntent(destination, { view: params.view === 'memory' ? 'profile' : 'profile', ...params, ...(params.view === 'memory' ? { view: 'profile' } : {}) }));
       return;
     }
+    if (destination === 'training-workshop') setNavigationRevision((value) => value + 1);
     setPageIntent(createPageIntent(destination, params));
   };
 
@@ -214,7 +220,16 @@ export default function App() {
             />
           );
         }
-        return <PracticePage navigationContext={pageIntent.params} />;
+        return (
+          <DashboardPage
+            currentUser={currentUser}
+            navigationContext={pageIntent.params}
+            onNavigate={navigateToPage}
+            onKnowledgeContextChange={setKnowledgeNavigationContext}
+          />
+        );
+      case 'training-workshop':
+        return <PracticePage key={`training-workshop-${navigationRevision}`} navigationContext={pageIntent.params} />;
       case 'knowledge':
         return (
           <KnowledgePage

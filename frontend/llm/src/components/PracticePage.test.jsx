@@ -70,6 +70,14 @@ vi.mock('./PaperGenerationPanel', () => ({
   default: () => <div data-testid="paper-generation-panel" />,
 }));
 
+vi.mock('./QuestionWorkspacePage', () => ({
+  default: () => <div data-testid="question-workspace-page" />,
+}));
+
+vi.mock('./KnowledgeCardLibrary', () => ({
+  default: () => <div data-testid="knowledge-card-library" />,
+}));
+
 vi.mock('../utils/api', () => ({
   fetchJsonWithAuthFallback: vi.fn(() => Promise.resolve({ data: {} })),
 }));
@@ -77,20 +85,77 @@ vi.mock('../utils/api', () => ({
 describe('PracticePage training modules', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('removes retired workshop header, knowledge cards, and question source controls', async () => {
+  it('shows the training workshop overview before a learner selects a module', () => {
+    render(<PracticePage />);
+
+    expect(screen.getByRole('heading', { name: '训练工坊，实战精进' })).toBeInTheDocument();
+    const trainingPath = screen.getByRole('region', { name: '训练路径' });
+    const trainingButtons = within(trainingPath).getAllByRole('button');
+    expect(trainingButtons.map((button) => button.querySelector('strong')?.textContent)).toEqual([
+      '综合套题',
+      '智能组卷',
+      '专项训练',
+      '专题训练',
+      '模拟病患',
+      '上传题库',
+    ]);
+    expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+  });
+
+  it('opens mistake variations from the mistake library and returns to the workshop overview', async () => {
+    render(<PracticePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /错题库/ }));
+
+    expect(await screen.findByRole('heading', { name: '错题库' })).toBeInTheDocument();
+    expect(screen.getByTestId('mistake-variation-panel')).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '返回训练工坊' }));
+    expect(screen.getByRole('heading', { name: '训练工坊，实战精进' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['综合套题', 'atlas-practice-scope'],
+    ['智能组卷', 'paper-generation-panel'],
+    ['专题训练', 'atlas-practice-scope'],
+    ['模拟病患', 'ai-patient-simulation-panel'],
+  ])('opens %s from the overview as a single page', async (title, panelTestId) => {
+    render(<PracticePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(title) }));
+
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.getByTestId(panelTestId)).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+  });
+
+  it('opens specialized training in the existing case-answer mode', async () => {
+    render(<PracticePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /专项训练/ }));
+
+    expect(await screen.findByTestId('atlas-practice-scope')).toHaveTextContent('public');
+    expect(screen.getByRole('tab', { name: '案例简答' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('opens a single training page without the shared module tabs', async () => {
     render(<PracticePage navigationContext={{
       trackId: 'TRACK_1',
       membershipId: 'MEM_1',
       kpId: 'KP_1',
       kpName: '阴阳学说',
+      taskType: 'question_training',
     }} />);
 
     expect(await screen.findByTestId('atlas-practice-scope')).toHaveTextContent('public');
-    expect(screen.getByRole('tablist', { name: '训练工坊模块' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '题目训练' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: 'AI 病患模拟' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '错题变式' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '试卷生成' })).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '题目训练' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'AI 病患模拟' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '试卷生成' })).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '客观题' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: '案例简答' })).toBeInTheDocument();
     expect(screen.queryByText('循证训练台')).not.toBeInTheDocument();
@@ -103,7 +168,7 @@ describe('PracticePage training modules', () => {
   });
 
   it('provides task and result views without the legacy evidence inspector', async () => {
-    render(<PracticePage />);
+    render(<PracticePage navigationContext={{ taskType: 'question_training' }} />);
 
     const viewTabs = await screen.findByRole('tablist', { name: '移动端训练视图' });
     expect(viewTabs).toBeInTheDocument();
@@ -118,7 +183,7 @@ describe('PracticePage training modules', () => {
   });
 
   it('shows the persisted question explanation separately from grading analysis', async () => {
-    render(<PracticePage />);
+    render(<PracticePage navigationContext={{ taskType: 'question_training' }} />);
 
     fireEvent.click(await screen.findByRole('button', { name: '提交模拟答案' }));
 
@@ -127,24 +192,43 @@ describe('PracticePage training modules', () => {
     expect(screen.getByText(/首次作答自动生成并保存/)).toBeInTheDocument();
   });
 
-  it('opens the mistake variation module directly from its page intent', async () => {
+  it('opens the upload question bank as its own page', async () => {
     render(<PracticePage />);
 
-    fireEvent.click(screen.getByRole('tab', { name: '错题变式' }));
+    fireEvent.click(screen.getByRole('button', { name: /上传题库/ }));
+
+    expect(await screen.findByTestId('question-workspace-page')).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '移动端训练视图' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('practice-result-panel')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['practice_grading', 'atlas-practice-scope'],
+    ['case_training', 'ai-patient-simulation-panel'],
+    ['knowledge_cards', 'knowledge-card-library'],
+  ])('keeps the legacy %s training intent functional', async (taskType, panelTestId) => {
+    render(<PracticePage navigationContext={{ taskType }} />);
+
+    expect(await screen.findByTestId(panelTestId)).toBeInTheDocument();
+    expect(screen.queryByText('此模块正在准备中，暂不支持提交任务。')).not.toBeInTheDocument();
+  });
+
+  it('opens the mistake variation module directly from its page intent', async () => {
+    render(<PracticePage navigationContext={{ taskType: 'mistake_variation' }} />);
+
     expect(await screen.findByTestId('mistake-variation-panel')).toBeInTheDocument();
   });
 
   it('opens the AI patient simulation directly from its page intent', async () => {
-    render(<PracticePage />);
+    render(<PracticePage navigationContext={{ taskType: 'ai_patient_simulation' }} />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'AI 病患模拟' }));
     expect(await screen.findByTestId('ai-patient-simulation-panel')).toBeInTheDocument();
   });
 
   it('opens paper generation from the workshop navigation', async () => {
-    render(<PracticePage />);
+    render(<PracticePage navigationContext={{ taskType: 'paper_workspace' }} />);
 
-    fireEvent.click(screen.getByRole('tab', { name: '试卷生成' }));
     expect(await screen.findByTestId('paper-generation-panel')).toBeInTheDocument();
   });
 });

@@ -36,7 +36,7 @@ describe('AppShell', () => {
     render(
       <AppShell
         currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="practice"
+        currentPage="training-workshop"
         onNavigate={vi.fn()}
         onLogout={vi.fn()}
       >
@@ -83,8 +83,10 @@ describe('AppShell', () => {
       </AppShell>,
     );
 
-    await user.click(screen.getByRole('link', { name: '训练工坊' }));
+    await user.click(screen.getByRole('link', { name: '学习工坊' }));
     expect(onNavigate).toHaveBeenCalledWith({ page: 'practice', params: {} });
+    await user.click(screen.getByRole('link', { name: '训练工坊' }));
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: {} });
   });
 
   it('starts the desktop shell collapsed and expands only from the 时珍智训 icon', async () => {

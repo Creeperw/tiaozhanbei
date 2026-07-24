@@ -13,7 +13,8 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   assert.deepEqual(config.primaryNav, [
     { key: 'dashboard', label: '平台首页' },
     { key: 'assistant', label: '智能助教' },
-    { key: 'practice', label: '训练工坊' },
+    { key: 'practice', label: '学习工坊' },
+    { key: 'training-workshop', label: '训练工坊' },
     { key: 'knowledge', label: '知识仓库' },
     { key: 'personalization', label: '画像与记忆' },
     { key: 'settings', label: '用户设置' },
@@ -43,7 +44,7 @@ test('hides support navigation for standard learners', () => {
   });
 
   assert.deepEqual(config.supportNav, []);
-  assert.equal(config.pageTitle, '训练工坊');
+  assert.equal(config.pageTitle, '学习工坊');
   assert.deepEqual(config.homeAction, { key: 'dashboard', label: '返回主页' });
 });
 
@@ -68,8 +69,9 @@ test('creates assistant navigation state that preserves a selected continue-lear
   assert.equal(config.selectedSessionId, 'session-42');
 });
 
-test('uses training workshop label and page title for practice navigation', () => {
-  assert.equal(PAGE_TITLES.practice, '训练工坊');
+test('uses separate learning and training workshop labels and page titles', () => {
+  assert.equal(PAGE_TITLES.practice, '学习工坊');
+  assert.equal(PAGE_TITLES['training-workshop'], '训练工坊');
 });
 
 test('redirects retired question and governance entries into knowledge workspace tabs', () => {
@@ -126,7 +128,7 @@ test('exposes a return-home action for assistant empty state without a current s
   assert.equal(config.assistantHomeAction.showWhenSessionMissing, true);
 });
 
-test('uses a full-width workspace shell for assistant, training workshop, and knowledge', () => {
+test('uses a full-width workspace shell for assistant, both workshops, and knowledge', () => {
   const assistant = getAppShellConfig({
     currentUser: { username: 'alice', role: 'user' },
     currentPage: 'assistant',
@@ -135,6 +137,10 @@ test('uses a full-width workspace shell for assistant, training workshop, and kn
     currentUser: { username: 'alice', role: 'user' },
     currentPage: 'practice',
   });
+  const trainingWorkshop = getAppShellConfig({
+    currentUser: { username: 'alice', role: 'user' },
+    currentPage: 'training-workshop',
+  });
   const knowledge = getAppShellConfig({
     currentUser: { username: 'alice', role: 'user' },
     currentPage: 'knowledge',
@@ -142,6 +148,7 @@ test('uses a full-width workspace shell for assistant, training workshop, and kn
 
   assert.equal(assistant.shellMode, 'workspace');
   assert.equal(practice.shellMode, 'workspace');
+  assert.equal(trainingWorkshop.shellMode, 'workspace');
   assert.equal(knowledge.shellMode, 'workspace');
   assert.equal(knowledge.primaryNav.find((item) => item.key === 'knowledge').label, '知识仓库');
 });

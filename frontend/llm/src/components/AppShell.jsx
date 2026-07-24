@@ -23,7 +23,8 @@ import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 const navIconMap = {
   dashboard: Home,
   assistant: MessageSquareMore,
-  practice: Dumbbell,
+  practice: ClipboardList,
+  'training-workshop': Dumbbell,
   knowledge: BookOpen,
   'question-workspace': ClipboardList,
   personalization: ChartNoAxesColumnIncreasing,
@@ -147,7 +148,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const drawerExitTimerRef = useRef(null);
   const displayName = currentUser?.username || 'User';
-  const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice'].includes(shell.currentPage);
+  const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice', 'training-workshop'].includes(shell.currentPage);
   const scrollRegion = ['assistant', 'knowledge'].includes(shell.currentPage) ? 'contained' : 'page';
 
   useEffect(() => () => window.clearTimeout(drawerExitTimerRef.current), []);
