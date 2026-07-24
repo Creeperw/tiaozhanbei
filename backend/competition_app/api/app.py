@@ -32,6 +32,7 @@ from competition_app.services.planning_readiness import PlanningReadinessService
 from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.workshop import WorkshopKnowledgeService
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
+from competition_app.api.simulated_patient_routes import router as sp_router, init_engine as sp_init_engine
 
 
 SESSION_COOKIE = "competition_session"
@@ -256,6 +257,15 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
+
+    # ── 模拟病患模块 ────────────────────────────────────
+    try:
+        sp_init_engine(llm_timeout_seconds=120.0)
+        app.include_router(sp_router)
+    except Exception:
+        import logging
+        _logger = logging.getLogger("competition_app.simulated_patient")
+        _logger.warning("模拟病患模块初始化失败", exc_info=True)
 
     @app.middleware("http")
     async def authentication_boundary(request: Request, call_next):
