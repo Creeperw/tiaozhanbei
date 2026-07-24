@@ -134,6 +134,7 @@ function MemoryForm({ value, onChange, onSubmit, submitText, onCancel }) {
 export default function PersonalizationPage({ onBackHome, onBack, embedded = false, view = 'profile' }) {
   const [profile, setProfile] = useState(emptyProfile);
   const [learnerProfile, setLearnerProfile] = useState({ locked_fields: [], survey: {}, lock_reason: {} });
+  const [onboarding, setOnboarding] = useState(null);
   const [overview, setOverview] = useState(null);
   const [memories, setMemories] = useState([]);
   const [candidates, setCandidates] = useState([]);
@@ -151,8 +152,9 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   const [learningTrend, setLearningTrend] = useState({ series: [] });
   const [trendError, setTrendError] = useState('');
   const trendRequestVersion = useRef(0);
-  const isProfileView = view === 'profile';
-  const isMemoryView = view === 'memory';
+  const isUnifiedView = view === 'unified';
+  const isProfileView = view === 'profile' || isUnifiedView;
+  const isMemoryView = view === 'memory' || isUnifiedView;
 
   const categoryEntries = Object.entries(overview?.stats?.by_category || {});
   const sourceEntries = Object.entries(overview?.stats?.by_source || {});
@@ -230,6 +232,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
       const confirmedProfile = learningContextData.user_profile || {};
       const confirmedGoal = confirmedProfile.learning_goal || '';
       const candidateData = await candidateRes.json();
+      setOnboarding(learningContextData.onboarding || null);
       setOverview(overviewData);
       setProfile({
         ...emptyProfile,
@@ -424,7 +427,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                   <Database size={24} />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-black tracking-tight text-slate-900">个性化数据库</h1>
+                  <h1 className="text-3xl font-black tracking-tight text-slate-900">学习画像与记忆</h1>
                   <p className="text-sm text-gray-500 mt-1">统一管理学习群体、学习目标、时间约束、资源偏好、薄弱点与智能体抽取的学习记忆。</p>
                 </div>
               </div>
@@ -515,9 +518,31 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
           )}
         </section>}
 
-        <div className={isProfileView ? 'mx-auto max-w-3xl' : ''}>
+        <div className={isUnifiedView ? 'grid gap-6 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]' : (isProfileView ? 'mx-auto max-w-3xl' : '')}>
           {isProfileView && <section className="bg-white/86 rounded-[32px] border border-white/80 shadow-lg shadow-emerald-100/45 p-6 h-fit backdrop-blur-sm">
             <h2 className="text-xl font-bold mb-4">学习者画像</h2>
+            {onboarding?.status === 'onboarding_completed' && (
+              <div className="mb-5 rounded-[24px] border border-emerald-100 bg-emerald-50/60 p-4">
+                <h3 className="text-base font-semibold text-emerald-950">注册学情调查</h3>
+                <p className="mt-1 text-xs leading-5 text-emerald-800">以下信息已写入学习画像，并作为规划智能体的可信输入。</p>
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                  {[
+                    ['用户群体', onboarding.survey_answers?.learner_group_title || onboarding.learner_group],
+                    ['学习/考试方向', onboarding.survey_answers?.target_exam_or_course],
+                    ['学历/专业', onboarding.survey_answers?.major_or_role],
+                    ['基础水平', onboarding.survey_answers?.tcm_foundation],
+                    ['每日可投入', onboarding.survey_answers?.daily_available_minutes ? `${onboarding.survey_answers.daily_available_minutes} 分钟` : ''],
+                    ['偏好时段', onboarding.survey_answers?.preferred_time_slot],
+                    ['资源偏好', Array.isArray(onboarding.survey_answers?.resource_preference) ? onboarding.survey_answers.resource_preference.join('、') : onboarding.survey_answers?.resource_preference],
+                  ].filter(([, value]) => value).map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-xs text-emerald-700">{label}</dt>
+                      <dd className="mt-1 font-medium text-slate-800">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
             <div className="space-y-3">
               {learnerProfile.learning_background && (
                 <label className="block">

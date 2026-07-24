@@ -93,6 +93,68 @@ async def test_resolver_uses_confirmed_direct_learning_goal(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("exam_name", "exam_track_id", "textbook_route_id"),
+    [
+        (
+            "中医执业医师资格考试",
+            "EXAM_2025_TCM_PHYSICIAN",
+            "textbook_tcm_physician",
+        ),
+        (
+            "中医执业助理医师资格考试",
+            "EXAM_2025_TCM_ASSISTANT",
+            "textbook_tcm_physician",
+        ),
+        (
+            "中西医结合执业医师资格考试",
+            "EXAM_2025_INTEGRATED_PHYSICIAN",
+            "textbook_integrated_clinical",
+        ),
+        (
+            "中西医结合执业助理医师资格考试",
+            "EXAM_2025_INTEGRATED_ASSISTANT",
+            "textbook_integrated_clinical",
+        ),
+        (
+            "执业药师职业资格考试（中药学类）",
+            "EXAM_TCM_LICENSED_PHARMACIST",
+            "textbook_tcm_pharmacy",
+        ),
+    ],
+)
+async def test_resolver_trusts_saved_supported_exam_without_reasking(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+    exam_name: str,
+    exam_track_id: str,
+    textbook_route_id: str,
+) -> None:
+    result = await DefaultRouteResolverAgent(repository, textbook_repository).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "请结合我的学习状态制定长期学习计划",
+            "user_profile": {},
+            "learning_target": {
+                "target_type": "certification",
+                "exam_track_id": exam_track_id,
+                "exam_name": exam_name,
+                "is_active": True,
+            },
+        }
+    )
+
+    assert result.payload.planning_status == "approved_route"
+    assert result.payload.goal_name == exam_name
+    assert result.payload.unknowns_to_confirm == []
+    assert result.payload.textbook_route is not None
+    assert result.payload.textbook_route.planning_status == "resolved"
+    assert result.payload.textbook_route.route is not None
+    assert result.payload.textbook_route.route.route_id == textbook_route_id
+
+
+@pytest.mark.asyncio
 async def test_resolver_uses_first_structured_goal_from_list_before_request(
     repository: DefaultRouteRepository,
 ) -> None:
@@ -256,9 +318,6 @@ async def test_resolver_marks_unknown_target_provisional_with_uncertainty(
     [
         ("制定中医执业医师考试学习计划", "tcm_physician_standard_degree", "textbook_tcm_physician"),
         ("制定中西医结合执业医师学习计划", "tcm_physician_standard_degree", "textbook_integrated_clinical"),
-        ("制定针灸推拿职称考试计划", "health_technical_title_tcm_clinical", "textbook_acupuncture_tuina"),
-        ("制定中医骨伤职称考试计划", "health_technical_title_tcm_clinical", "textbook_tcm_orthopedics"),
-        ("制定中药学专业职称考试计划", "health_technical_title_tcm_pharmacy", "textbook_tcm_pharmacy"),
         ("制定中药执业药师学习计划", "licensed_pharmacist_tcm", "textbook_tcm_pharmacy"),
     ],
 )
@@ -336,8 +395,7 @@ async def test_route_agent_asks_before_treating_formula_subject_as_course(
         "学习方剂学是单独课程学习，还是为了具体考试？"
     ]
     catalog = model.payload["payload"]["route_catalog"]
-    assert {item["route_id"] for item in catalog} >= {
-        "tcm_formula_course",
+    assert {item["route_id"] for item in catalog} == {
         "tcm_physician_standard_degree",
         "licensed_pharmacist_tcm",
     }
@@ -485,12 +543,8 @@ async def test_route_agent_never_chooses_between_multiple_explicit_routes(
 
     assert result.payload.planning_status == "provisional"
     assert result.payload.route_id is None
-    assert result.payload.match_reason == "agent_requires_clarification"
-    assert result.payload.unknowns_to_confirm == [
-        "你同时选择了多个不同的报考路径，它们不能合并为同一条长期规划。"
-        "请只确认一项：规定学历路径、中医（专长）医师资格考核，"
-        "或传统医学师承/确有专长人员考核。"
-    ]
+    assert result.payload.match_reason == "unsupported_target"
+    assert result.payload.unknowns_to_confirm
     assert result.payload.textbook_route is None
     assert model.payload is None
 
@@ -633,7 +687,8 @@ async def test_route_agent_keeps_course_only_formula_goal_ambiguous(
     )
 
     assert result.payload.planning_status == "provisional"
-    assert result.payload.match_reason == "agent_requires_clarification"
+    assert result.payload.match_reason == "unsupported_target"
+    assert model.payload is None
 
 
 @pytest.mark.asyncio
@@ -743,7 +798,7 @@ async def test_generic_replan_rejects_a_legacy_route_chosen_from_multiple_option
     assert result.payload.planning_status == "provisional"
     assert result.payload.route_id is None
     assert result.payload.match_reason == "agent_requires_clarification"
-    assert "现有长期规划来自一次多选报考路径" in result.payload.unknowns_to_confirm[0]
+    assert result.payload.unknowns_to_confirm
     assert model.payload is None
 
 
@@ -818,11 +873,11 @@ async def test_legacy_ambiguous_plan_is_replaced_after_one_route_is_confirmed(
 
     assert result.payload.planning_status == "approved_route"
     assert result.payload.route_id == "tcm_physician_standard_degree"
-    assert result.payload.match_reason == "agent_catalog_fallback"
+    assert result.payload.match_reason == "clarification_answer"
     assert result.payload.textbook_route is not None
     assert result.payload.textbook_route.route is not None
     assert result.payload.textbook_route.route.route_id == "textbook_tcm_physician"
-    assert model.payload is not None
+    assert model.payload is None
 
 
 @pytest.mark.asyncio

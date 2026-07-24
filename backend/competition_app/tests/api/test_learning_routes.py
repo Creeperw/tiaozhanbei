@@ -40,6 +40,29 @@ def test_lists_non_personalized_approved_learning_routes(tmp_path: Path) -> None
     assert all(item["detail_endpoint"].startswith("/api/v1/learning-routes/") for item in payload["items"])
 
 
+def test_lists_only_five_supported_qualification_targets(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    response = client.get("/api/v1/qualification-targets")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["schema_version"] == "1.0"
+    assert payload["target_kind"] == "qualification_exam"
+    assert payload["total"] == 5
+    assert [item["official_name"] for item in payload["items"]] == [
+        "中医执业医师资格考试",
+        "中医执业助理医师资格考试",
+        "中西医结合执业医师资格考试",
+        "中西医结合执业助理医师资格考试",
+        "执业药师职业资格考试（中药学类）",
+    ]
+    assert all(item["target_type"] == "certification" for item in payload["items"])
+    assert all(item["exam_track_id"] for item in payload["items"])
+    assert all(item["planning_route_id"] for item in payload["items"])
+    assert all(item["textbook_route_id"] for item in payload["items"])
+
+
 def test_learning_route_detail_exposes_ordered_stages_books_and_sources(
     tmp_path: Path,
 ) -> None:
@@ -69,6 +92,7 @@ def test_learning_routes_are_authenticated_and_unknown_route_is_404(
     )
     anonymous = TestClient(create_app(container))
     assert anonymous.get("/api/v1/learning-routes").status_code == 401
+    assert anonymous.get("/api/v1/qualification-targets").status_code == 401
 
     client = _client(tmp_path / "registered")
     assert client.get("/api/v1/learning-routes/missing").status_code == 404

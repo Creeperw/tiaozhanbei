@@ -511,6 +511,7 @@ class KnowledgeDeliveryBackend:
         chat_base_url: str = "",
         chat_model: str = "",
         chat_api_key: str | None = None,
+        mineru_token: str | None = None,
     ) -> None:
         paths.validate()
         self.paths = paths
@@ -523,10 +524,14 @@ class KnowledgeDeliveryBackend:
         self.chat_base_url = chat_base_url
         self.chat_model = chat_model
         self.chat_api_key = chat_api_key or ""
+        self.mineru_token = mineru_token or ""
         self._module_lock = threading.RLock()
         self._write_lock = threading.RLock()
         self._modules: dict[str, Any] = {}
         self._official_exam_repository: Any = None
+
+    def _mineru_token(self, override: str = "") -> str:
+        return str(override or self.mineru_token).strip()
 
     def _module(self, name: str) -> Any:
         with self._module_lock:
@@ -825,6 +830,7 @@ class KnowledgeDeliveryBackend:
         mineru_token: str = "",
     ) -> dict[str, Any]:
         owner = _safe_owner(owner_id)
+        mineru_token = self._mineru_token(mineru_token)
         path = self._save_upload(filename, content, owner, {".pdf", ".md", ".txt"})
         if path.suffix.lower() == ".pdf":
             if not mineru_token:
@@ -874,6 +880,7 @@ class KnowledgeDeliveryBackend:
         mineru_token: str = "",
     ) -> dict[str, Any]:
         owner = _safe_owner(owner_id)
+        mineru_token = self._mineru_token(mineru_token)
         path = self._save_upload(filename, content, owner, {".pdf", ".md", ".txt"})
         if path.suffix.lower() == ".pdf":
             if not mineru_token:
@@ -955,6 +962,7 @@ class KnowledgeDeliveryBackend:
         mineru_token: str = "",
     ) -> dict[str, Any]:
         owner = _safe_owner(owner_id)
+        mineru_token = self._mineru_token(mineru_token)
         path = self._save_upload(
             filename,
             content,

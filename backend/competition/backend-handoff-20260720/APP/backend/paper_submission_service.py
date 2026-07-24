@@ -372,6 +372,7 @@ def submit_paper(
     request_id: str,
     *,
     runner: Callable[..., dict[str, Any]] = grade_practice_submission,
+    explanation_runner: Callable[..., str] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 120:
         raise PaperSubmissionInvalid("request id is invalid")
@@ -429,7 +430,14 @@ def submit_paper(
                 memories=(),
                 attempt_type="paper",
             )
-            graded = apply_practice_grading(db, command, runner=runner, atomic=True, require_audit=True)
+            graded = apply_practice_grading(
+                db,
+                command,
+                runner=runner,
+                explanation_runner=explanation_runner,
+                atomic=True,
+                require_audit=True,
+            )
             grading = dict(graded.grading_payload or {})
             raw_score = float(grading.get("score") or 0.0)
             raw_maximum = float(grading.get("max_score") or 0.0)

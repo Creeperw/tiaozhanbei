@@ -99,6 +99,7 @@ def test_register_login_me_and_logout(tmp_path: Path) -> None:
     client = build_client(tmp_path)
     user = register(client, "LinStudent")
     assert user["role"] == "user"
+    assert user["onboarding_required"] is True
 
     current = client.get("/api/v1/auth/me")
     assert current.status_code == 200
@@ -125,6 +126,20 @@ def test_register_login_me_and_logout(tmp_path: Path) -> None:
     )
     assert logged_in.status_code == 200
     assert logged_in.json()["user"]["user_id"] == user["user_id"]
+
+
+def test_registration_onboarding_gate_is_persistent_until_completed(
+    tmp_path: Path,
+) -> None:
+    client = build_client(tmp_path)
+    user = register(client, "survey-required")
+    assert user["onboarding_required"] is True
+
+    completed = client.post("/api/v1/auth/onboarding/complete")
+
+    assert completed.status_code == 200
+    assert completed.json()["user"]["onboarding_required"] is False
+    assert client.get("/api/v1/auth/me").json()["user"]["onboarding_required"] is False
 
 
 def test_sqlite_auth_survives_container_rebuild(tmp_path: Path) -> None:

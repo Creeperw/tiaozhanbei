@@ -15,7 +15,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
     { key: 'assistant', label: '智能助教' },
     { key: 'practice', label: '学习工坊' },
     { key: 'knowledge', label: '知识仓库' },
-    { key: 'personalization', label: '个性数据' },
+    { key: 'personalization', label: '画像与记忆' },
     { key: 'settings', label: '用户设置' },
   ]);
   assert.equal(config.currentPage, 'dashboard');
@@ -103,7 +103,7 @@ test('exposes Phase 4 training module route bindings for real pages', () => {
 test('uses updated page titles for knowledge, personalization, and settings modules', () => {
   assert.equal(
     getAppShellConfig({ currentUser: { username: 'alice', role: 'user' }, currentPage: 'personalization' }).pageTitle,
-    '学习画像',
+    '学习画像与记忆',
   );
   assert.equal(
     getAppShellConfig({ currentUser: { username: 'alice', role: 'user' }, currentPage: 'knowledge' }).pageTitle,

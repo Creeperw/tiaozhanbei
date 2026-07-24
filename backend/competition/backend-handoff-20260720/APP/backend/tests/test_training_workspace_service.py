@@ -969,6 +969,18 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
         }
 
     @staticmethod
+    def wrong_grading_runner(*, profile, memories, submission):
+        return {
+            "score": 20,
+            "max_score": 100,
+            "is_correct": False,
+            "error_types": ["证型-方剂匹配错误"],
+            "error_reason": "将脾胃气虚证误判为中焦虚寒证。",
+            "confidence": 0.9,
+            "feedback": "请复习四君子汤与理中丸的证型区别。",
+        }
+
+    @staticmethod
     def failing_grading_runner(**_):
         raise RuntimeError("runner failed")
 
@@ -1290,7 +1302,12 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
 
     def test_wraps_practice_grading_and_persists_workspace_ledger(self):
         with self.Session() as db:
-            result = create_training_task(db, 1, self.request)
+            result = create_training_task(
+                db,
+                1,
+                self.request,
+                grading_runner=self.wrong_grading_runner,
+            )
 
             self.assertEqual(result["task_type"], "practice_grading")
             self.assertEqual(result["status"], "completed")

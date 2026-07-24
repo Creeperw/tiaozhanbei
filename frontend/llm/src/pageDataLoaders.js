@@ -13,6 +13,12 @@ export const emptyPlan = {
   long_term_plan_stages: [],
   short_term_plan_content: '',
   daily_task_timer: null,
+  multiscale: null,
+  path_candidates: {
+    schema_version: '1.0',
+    scope: '',
+    items: [],
+  },
 };
 
 export const learningTaskToDailyTasks = (learningTask) => {
@@ -56,6 +62,26 @@ export const emptyReport = {
   t_stage: { evidence: [] },
   next_actions: [],
   agent_trace: [],
+  multiscale: null,
+};
+
+export const emptyMultiscaleState = {
+  schema_version: '1.0',
+  state_id: '',
+  generated_at: null,
+  macro: {},
+  meso: {},
+  micro: {},
+  data_quality: {},
+  hard_constraints: [],
+  source_refs: [],
+  state_digest: '',
+};
+
+export const emptyPathCandidates = {
+  schema_version: '1.0',
+  scope: '',
+  items: [],
 };
 
 export const emptyTrainingWorkspace = {
@@ -222,6 +248,22 @@ export const isResourceMatchReportValid = (data) => (
   && data.target && typeof data.target === 'object'
   && data.summary && typeof data.summary === 'object'
   && hasItemsArray(data.matches)
+);
+
+export const isMultiscaleStateValid = (data) => (
+  data && typeof data === 'object'
+  && data.schema_version === '1.0'
+  && data.macro && typeof data.macro === 'object'
+  && data.meso && typeof data.meso === 'object'
+  && data.micro && typeof data.micro === 'object'
+  && hasItemsArray(data.source_refs)
+);
+
+export const isPathCandidatesValid = (data) => (
+  data && typeof data === 'object'
+  && data.schema_version === '1.0'
+  && hasNonEmptyText(data.scope)
+  && hasItemsArray(data.items)
 );
 
 export const isTrainingModulesPayloadValid = (data) => {
@@ -427,12 +469,22 @@ export const isPaperSubmissionPayloadValid = (data) => (
 
 export async function loadPlanningData({ fetcher }) {
   try {
-    const [summaryResult, contextResult] = await Promise.allSettled([
+    const [summaryResult, contextResult, multiscaleResult, candidatesResult] = await Promise.allSettled([
       fetcher({ paths: planningPaths, fallback: emptyPlan, validator: isPlanPayloadValid }),
       fetcher({
         paths: ['/v1/learning-context'],
         fallback: {},
         validator: (data) => data && typeof data === 'object',
+      }),
+      fetcher({
+        paths: ['/v1/learning-state/multiscale?window_days=30'],
+        fallback: emptyMultiscaleState,
+        validator: isMultiscaleStateValid,
+      }),
+      fetcher({
+        paths: ['/v1/learning-state/path-candidates?scope=daily_task&limit=10&include_blocked=true'],
+        fallback: emptyPathCandidates,
+        validator: isPathCandidatesValid,
       }),
     ]);
     if (summaryResult.status !== 'fulfilled' && contextResult.status !== 'fulfilled') {
@@ -440,6 +492,12 @@ export async function loadPlanningData({ fetcher }) {
     }
     const summary = summaryResult.status === 'fulfilled' ? summaryResult.value : { data: emptyPlan, source: null };
     const learningContext = contextResult.status === 'fulfilled' ? contextResult.value.data : {};
+    const multiscale = multiscaleResult.status === 'fulfilled'
+      ? multiscaleResult.value.data
+      : null;
+    const pathCandidates = candidatesResult.status === 'fulfilled'
+      ? candidatesResult.value.data
+      : emptyPathCandidates;
     const data = {
       ...emptyPlan,
       ...summary.data,
@@ -450,6 +508,8 @@ export async function loadPlanningData({ fetcher }) {
       short_term_plan_content: String(learningContext.short_term_plan?.content || ''),
       daily_tasks: learningTaskToDailyTasks(learningContext.learning_task),
       daily_task_timer: learningContext.daily_task_timer || null,
+      multiscale,
+      path_candidates: pathCandidates,
     };
     return {
       plan: data,
@@ -473,6 +533,7 @@ export async function loadReportsData({ fetcher }) {
       validator: isLearningInsightsPayloadValid,
     });
     let resourceReport = emptyReport.resource_match_report;
+    let multiscale = null;
     try {
       const resourceResult = await fetcher({
         paths: ['/v1/resource-match-report?limit=12'],
@@ -483,8 +544,23 @@ export async function loadReportsData({ fetcher }) {
     } catch {
       resourceReport = emptyReport.resource_match_report;
     }
+    try {
+      const multiscaleResult = await fetcher({
+        paths: ['/v1/learning-state/multiscale?window_days=30'],
+        fallback: emptyMultiscaleState,
+        validator: isMultiscaleStateValid,
+      });
+      multiscale = multiscaleResult.data;
+    } catch {
+      multiscale = null;
+    }
     return {
-      report: { ...emptyReport, ...data, resource_match_report: resourceReport },
+      report: {
+        ...emptyReport,
+        ...data,
+        resource_match_report: resourceReport,
+        multiscale,
+      },
       error: '',
       source,
     };
@@ -495,7 +571,18 @@ export async function loadReportsData({ fetcher }) {
         fallback: emptyReport,
         validator: isReportPayloadValid,
       });
-      return { report: { ...emptyReport, ...data }, error: '', source };
+      let multiscale = null;
+      try {
+        const multiscaleResult = await fetcher({
+          paths: ['/v1/learning-state/multiscale?window_days=30'],
+          fallback: emptyMultiscaleState,
+          validator: isMultiscaleStateValid,
+        });
+        multiscale = multiscaleResult.data;
+      } catch {
+        multiscale = null;
+      }
+      return { report: { ...emptyReport, ...data, multiscale }, error: '', source };
     } catch (legacyError) {
       return {
         report: emptyReport,

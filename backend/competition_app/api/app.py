@@ -6,6 +6,7 @@ import json
 import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import Literal
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -34,6 +35,12 @@ from competition_app.application.workflow_presentation import workflow_result_to
 
 
 SESSION_COOKIE = "competition_session"
+QUALIFICATION_TARGET_CATALOG = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "qualification_targets"
+    / "tcm_qualification_targets.v1.json"
+)
 
 _PRACTICE_TYPE_ALIASES = {
     "单项选择题": "single_choice",
@@ -360,7 +367,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         state = container.review_card_use_case.plan_repository.get_current(learner_id)
         if state is None:
             return {}
-        return {
+        context = {
             "long_term_plan": (
                 state.long_term_plan.model_dump(mode="json")
                 if state.long_term_plan is not None else {}
@@ -373,6 +380,91 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 state.learning_task.model_dump(mode="json")
                 if state.learning_task is not None else {}
             ),
+        }
+        return {
+            key: value
+            for key, value in context.items()
+            if value
+        }
+
+    def coordination_payload(
+        execution_id: str,
+        state: dict,
+    ) -> dict:
+        coordination = state.get("coordination")
+        coordination = coordination if isinstance(coordination, dict) else {}
+        communication = coordination.get("communication_trace")
+        communication = communication if isinstance(communication, list) else []
+        repairs = coordination.get("repair_trace")
+        repairs = repairs if isinstance(repairs, list) else []
+        safe_communication = [
+            {
+                key: item.get(key)
+                for key in (
+                    "schema_version",
+                    "handoff_id",
+                    "step_id",
+                    "target_agent",
+                    "fact_count",
+                    "evidence_count",
+                    "blocking_field_count",
+                    "omitted_categories",
+                    "status",
+                    "created_at",
+                )
+                if key in item
+            }
+            for item in communication
+            if isinstance(item, dict)
+        ]
+        safe_repairs = [
+            {
+                key: item.get(key)
+                for key in (
+                    "repair_id",
+                    "trigger_step_id",
+                    "issue_types",
+                    "rerun_step_ids",
+                    "preserved_step_ids",
+                    "round",
+                    "status",
+                    "final_audit_decision",
+                    "created_at",
+                )
+                if key in item
+            }
+            for item in repairs
+            if isinstance(item, dict)
+        ]
+        result = state.get("result")
+        result = result if isinstance(result, dict) else {}
+        audit = result.get("audit")
+        audit = audit if isinstance(audit, dict) else {}
+        final_audit_decision = next(
+            (
+                str(item.get("final_audit_decision"))
+                for item in reversed(safe_repairs)
+                if item.get("final_audit_decision")
+            ),
+            str(
+                state.get("final_audit_decision")
+                or audit.get("decision")
+                or ""
+            )
+            or None,
+        )
+        return {
+            "schema_version": "1.0",
+            "execution_id": execution_id,
+            "communication_summary": {
+                "total": len(safe_communication),
+                "items": safe_communication,
+            },
+            "repair_summary": {
+                "total": len(safe_repairs),
+                "items": safe_repairs,
+            },
+            "final_audit_decision": final_audit_decision,
         }
 
     def scoped_review_request(
@@ -500,6 +592,33 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         return {"user": user}
+
+    @app.post("/api/v1/auth/onboarding/complete")
+    async def complete_registration_onboarding(request: Request):
+        user = current_user(request)
+        onboarding_status: dict = {"status": "unavailable"}
+        if backend_handoff is not None:
+            try:
+                onboarding_status = await asyncio.to_thread(
+                    backend_handoff.get_onboarding_status, user.user_id
+                )
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail="学情调查状态暂时无法核验，请稍后重试",
+                ) from exc
+            if onboarding_status.get("status") != "onboarding_completed":
+                raise HTTPException(
+                    status_code=409,
+                    detail="请先完成并保存注册学情调查",
+                )
+        updated_user = container.authentication_service.complete_onboarding(
+            user.user_id
+        )
+        return {
+            "user": updated_user,
+            "onboarding_status": onboarding_status,
+        }
 
     @app.get("/users/me", include_in_schema=False)
     async def legacy_current_user(request: Request) -> dict:
@@ -640,6 +759,51 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=404, detail="前端后端兼容层未启用")
         return backend_handoff.app.openapi()
 
+    @app.get("/api/v1/qualification-targets")
+    async def list_qualification_targets(request: Request) -> dict:
+        current_user(request)
+        textbook_repository = container.textbook_route_repository
+        default_repository = container.default_route_repository
+        if textbook_repository is None or default_repository is None:
+            raise HTTPException(status_code=503, detail="经典教材路线未启用")
+        try:
+            catalog = json.loads(
+                QUALIFICATION_TARGET_CATALOG.read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=503, detail="资格考试目录不可用") from exc
+
+        textbook_routes = {
+            route.route_id: route
+            for route in textbook_repository.routes
+            if route.status == "approved"
+        }
+        items = []
+        for raw_item in catalog.get("items", []):
+            textbook_route = textbook_routes.get(raw_item.get("textbook_route_id"))
+            planning_route = default_repository.get(
+                str(raw_item.get("planning_route_id") or "")
+            )
+            if textbook_route is None or planning_route is None:
+                continue
+            items.append(
+                {
+                    **raw_item,
+                    "textbook_route_version": textbook_route.route_version,
+                    "planning_route_version": planning_route.route_version,
+                    "textbook_stage_count": len(textbook_route.stages),
+                    "textbook_route_endpoint": (
+                        f"/api/v1/learning-routes/{textbook_route.route_id}"
+                    ),
+                }
+            )
+        return {
+            "schema_version": catalog.get("schema_version", "1.0"),
+            "target_kind": catalog.get("target_kind", "qualification_exam"),
+            "items": items,
+            "total": len(items),
+        }
+
     @app.get("/api/v1/learning-routes")
     async def list_learning_routes(
         request: Request,
@@ -740,6 +904,83 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             days=days,
             recent_limit=recent_limit,
         )
+
+    @app.get("/api/v1/learning-state/multiscale")
+    async def multiscale_learning_state(
+        request: Request,
+        window_days: int = Query(default=30),
+        include_recent_events: bool = Query(default=False),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="多尺度学习状态服务未启用")
+        if window_days not in {7, 30, 90}:
+            raise HTTPException(
+                status_code=422,
+                detail="window_days 只能是 7、30 或 90",
+            )
+        state = await asyncio.to_thread(
+            backend_handoff.load_multiscale_learning_state,
+            user.user_id,
+            plan_context=current_plan_context(user.user_id),
+            window_days=window_days,
+        )
+        if include_recent_events:
+            return state
+        redacted = dict(state)
+        micro = dict(redacted.get("micro") or {})
+        for key in (
+            "recent_attempts",
+            "confirmed_mistake_reasons",
+            "recent_question_ids",
+            "recent_knowledge_point_ids",
+            "recent_resource_ids",
+        ):
+            if key in micro:
+                micro[key] = []
+        redacted["micro"] = micro
+        return redacted
+
+    @app.get("/api/v1/learning-state/path-candidates")
+    async def learning_path_candidates(
+        request: Request,
+        scope: Literal["long_term", "short_term", "daily_task"],
+        limit: int = Query(default=10, ge=1, le=30),
+        include_blocked: bool = Query(default=True),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学习路径候选服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.load_path_candidates,
+            user.user_id,
+            plan_context=current_plan_context(user.user_id),
+            scope=scope,
+            limit=limit,
+            include_blocked=include_blocked,
+        )
+
+    @app.get("/api/v1/executions/{execution_id}/coordination")
+    async def execution_coordination(
+        execution_id: str,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        state = (
+            container.review_card_use_case.run_state_repository.get_by_execution_id(
+                execution_id,
+                user.user_id,
+            )
+        )
+        if state is None:
+            raise HTTPException(status_code=404, detail="执行记录不存在")
+        return coordination_payload(execution_id, state)
 
     @app.get("/api/v1/learning-activity/trends")
     async def learning_activity_trends(

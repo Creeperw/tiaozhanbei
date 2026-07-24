@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "target_kind": "qualification_exam",
+  "items": [
+    {
+      "target_id": "tcm_physician",
+      "official_name": "中医执业医师资格考试",
+      "target_type": "certification",
+      "exam_track_id": "EXAM_2025_TCM_PHYSICIAN",
+      "planning_route_id": "tcm_physician_standard_degree",
+      "textbook_route_id": "textbook_tcm_physician",
+      "textbook_route_version": 1
+    },
+    {
+      "target_id": "tcm_assistant",
+      "official_name": "中医执业助理医师资格考试",
+      "target_type": "certification",
+      "exam_track_id": "EXAM_2025_TCM_ASSISTANT",
+      "planning_route_id": "tcm_physician_standard_degree",
+      "textbook_route_id": "textbook_tcm_physician",
+      "textbook_route_version": 1
+    },
+    {
+      "target_id": "integrated_physician",
+      "official_name": "中西医结合执业医师资格考试",
+      "target_type": "certification",
+      "exam_track_id": "EXAM_2025_INTEGRATED_PHYSICIAN",
+      "planning_route_id": "tcm_physician_standard_degree",
+      "textbook_route_id": "textbook_integrated_clinical",
+      "textbook_route_version": 1
+    },
+    {
+      "target_id": "integrated_assistant",
+      "official_name": "中西医结合执业助理医师资格考试",
+      "target_type": "certification",
+      "exam_track_id": "EXAM_2025_INTEGRATED_ASSISTANT",
+      "planning_route_id": "tcm_physician_standard_degree",
+      "textbook_route_id": "textbook_integrated_clinical",
+      "textbook_route_version": 1
+    },
+    {
+      "target_id": "licensed_pharmacist_tcm",
+      "official_name": "执业药师职业资格考试（中药学类）",
+      "target_type": "certification",
+      "exam_track_id": "EXAM_TCM_LICENSED_PHARMACIST",
+      "planning_route_id": "licensed_pharmacist_tcm",
+      "textbook_route_id": "textbook_tcm_pharmacy",
+      "textbook_route_version": 1
+    }
+  ]
+}

@@ -11,8 +11,13 @@
 - 学习行为、掌握度、复习队列和资源推送按登录用户隔离并持久化；学情诊断依赖带样本数与新鲜度的监控快照，复习队列只接纳已完成且批改通过的知识点题目作答；
 - 学情报告提供能力结构、行为趋势、薄弱知识点、错因分布和资源匹配依据；主动干预、站内通知及规划自动复盘形成可确认、可追踪的闭环；
 - 数据库模式下 LangGraph 中断检查点和恢复上下文均持久化，页面刷新、断线或服务重启后可从原节点继续；
+- 智能体间按需通信只传递下一步所需的已确认事实与证据；Audit 可触发一轮白名单内的局部修复，并保留未受影响节点结果；
+- 版本化多时间尺度学情把宏观路线、中观计划与复习、微观作答与掌握证据统一为只读快照；规划页直接消费带硬约束和透明评分的路径候选；
 - 知识库优先使用本地可信资料，资源不足时保留网络检索与专家补题能力；
-- Cookie 会话认证、注册登录、管理员权限和前后端同源部署已经接入；未登录用户先进入公开展示页，再通过登录或注册弹层进入学习工作台。
+- Cookie 会话认证、注册登录、管理员权限和前后端同源部署已经接入；新注册用户必须先完成基础学情调查，画像与初始记忆建立后才进入学习工作台；
+- 注册调查会在学情调查页回显，并同步投影到 `/api/v1/learning-context.user_profile`，供 Diagnosis、路线解析和规划智能体直接使用；学习/考试方向限定为五类教材型资格考试，保存时同时落库官方考试轨道与教材路线，避免重复询问已填写的目标、基础、专业与时间；
+- 学习画像与学习记忆合并为统一工作区，知识资料与个人知识库合并为同一入口；公共/个人数据仍按权限隔离；
+- Embedding 默认开启，支持本地模型或远程服务；PDF 由服务端 MinerU 精确解析后再进入知识抽取和向量索引。
 
 系统对外统一呈现六个智能体角色：任务规划、记忆管理、学情诊断、知识库管理、专家、审核裁判。复习调度、计划持久化等确定性能力作为后端服务运行，不额外伪装成智能体。
 
@@ -97,6 +102,10 @@ python -m competition_app.cli.app serve
 6. 普通自然语言输入只可提交 `plan_scope_hint`；只有用户明确选择长期、短期或当日层级时
    才提交强约束 `plan_scope`。
 7. 用户和学习数据以服务端登录身份隔离，前端不得用请求体中的 `learner_id` 切换用户。
+8. 学情报告与规划页直接读取 `/api/v1/learning-state/multiscale` 和
+   `/api/v1/learning-state/path-candidates`，不得解析计划正文生成阶段、知识点或评分。
+9. 执行协调展示读取 `/api/v1/executions/{execution_id}/coordination`，只显示通信、修复的安全摘要，
+   不展示或缓存原始交接正文。
 
 正式前端已使用主后端 HttpOnly Cookie，不在 localStorage 保存认证令牌。体验完整业务域时
 设置 `BACKEND_HANDOFF_ENABLED=true`。Vite 保留两类代理：`/api/v1/*` 原样转发给主 API，
@@ -120,7 +129,8 @@ npm run dev
 未登录时前端默认展示“承时珍医脉，启智慧学习”公开页，页面本身不直接暴露账号输入框。
 点击“登录”或“登录已有账号”打开登录弹层，点击“开始学习”或“开启智训之旅”打开注册弹层；
 弹层可返回展示页。登录和注册仍分别调用 `/api/v1/auth/login`、`/api/v1/auth/register`，
-不会在浏览器本地保存令牌。
+不会在浏览器本地保存令牌。新账号返回 `onboarding_required=true`，前端随即完成学情调查，
+并在 `/api/v1/auth/onboarding/complete` 核验通过后进入首页；刷新不能绕过该门禁。
 
 ## Live 环境与大体积数据
 
@@ -143,6 +153,10 @@ KNOWLEDGE_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
 KNOWLEDGE_HANDOFF_ROOT=/absolute/path/to/知识星球视频知识库_前端交接包_2026-07-18
 # 可选；留空时使用仓库内置的 2026-07-22 章节映射
 KNOWLEDGE_ATLAS_CHAPTER_ROOT=/absolute/path/to/chapter-mapping
+EMBEDDING_MODE=enabled
+# 可选本地模型；留空时使用 SILICONFLOW_API_KEY 对应的远程服务
+EMBEDDING_MODEL_PATH=
+MINERU_TOKEN=服务端密钥
 ```
 
 仓库内 `backend/competition/knowledge_atlas_chapters/2026-07-22` 保存章节顺序映射，

@@ -30,6 +30,12 @@ def _copy_json(value: dict[str, Any]) -> dict[str, Any]:
 class RunStateRepository(Protocol):
     def get(self, thread_id: str) -> dict[str, Any] | None: ...
 
+    def get_by_execution_id(
+        self,
+        execution_id: str,
+        learner_id: str,
+    ) -> dict[str, Any] | None: ...
+
     def save(self, thread_id: str, state: dict[str, Any]) -> None: ...
 
 
@@ -42,6 +48,23 @@ class InMemoryRunStateRepository:
     def get(self, thread_id: str) -> dict[str, Any] | None:
         with self._lock:
             state = self._states.get(thread_id)
+            return _copy_json(state) if state is not None else None
+
+    def get_by_execution_id(
+        self,
+        execution_id: str,
+        learner_id: str,
+    ) -> dict[str, Any] | None:
+        with self._lock:
+            state = next(
+                (
+                    value
+                    for value in self._states.values()
+                    if value.get("execution_id") == execution_id
+                    and value.get("learner_id") == learner_id
+                ),
+                None,
+            )
             return _copy_json(state) if state is not None else None
 
     def save(self, thread_id: str, state: dict[str, Any]) -> None:
@@ -64,6 +87,28 @@ class SqlRunStateRepository:
                     "WHERE thread_id=:thread_id"
                 ),
                 {"thread_id": thread_id},
+            ).scalar_one_or_none()
+        if payload is None:
+            return None
+        if isinstance(payload, (bytes, bytearray)):
+            payload = payload.decode("utf-8")
+        return json.loads(payload) if isinstance(payload, str) else dict(payload)
+
+    def get_by_execution_id(
+        self,
+        execution_id: str,
+        learner_id: str,
+    ) -> dict[str, Any] | None:
+        with self.engine.connect() as connection:
+            payload = connection.execute(
+                text(
+                    "SELECT payload_json FROM workflow_run_states "
+                    "WHERE execution_id=:execution_id AND learner_id=:learner_id"
+                ),
+                {
+                    "execution_id": execution_id,
+                    "learner_id": learner_id,
+                },
             ).scalar_one_or_none()
         if payload is None:
             return None

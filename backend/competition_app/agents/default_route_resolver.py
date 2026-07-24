@@ -90,6 +90,15 @@ class DefaultRouteResolverAgent:
                 context, fallback_goal_type=goal_type
             )
         )
+        unsupported_request = (
+            None
+            if explicit_route_id
+            or clarified_request is not None
+            or ambiguous_request is not None
+            else self._unsupported_explicit_request_resolution(
+                context, fallback_goal_type=goal_type
+            )
+        )
         model_selects_route = (
             self._chat_model is not None
             and (
@@ -101,6 +110,8 @@ class DefaultRouteResolverAgent:
             resolution = clarified_request
         elif ambiguous_request is not None:
             resolution = ambiguous_request
+        elif unsupported_request is not None:
+            resolution = unsupported_request
         elif explicit_route_id or not model_selects_route:
             resolution = self._repository.resolve(
                 goal_type=goal_type,
@@ -114,6 +125,7 @@ class DefaultRouteResolverAgent:
         if (
             self._textbook_repository is not None
             and ambiguous_request is None
+            and unsupported_request is None
             and resolution.match_reason != "agent_requires_clarification"
         ):
             request = self._optional_text(context.get("user_request")) or ""
@@ -367,6 +379,7 @@ class DefaultRouteResolverAgent:
             decision.decision == "select"
             and decision.confidence >= self._MIN_SELECTION_CONFIDENCE
             and decision.selected_route_id
+            and self._repository.is_selectable(decision.selected_route_id)
         ):
             selected = self._repository.get(decision.selected_route_id)
             if selected is not None:
@@ -490,6 +503,25 @@ class DefaultRouteResolverAgent:
             ),
         )
 
+    def _unsupported_explicit_request_resolution(
+        self,
+        context: dict[str, Any],
+        *,
+        fallback_goal_type: str,
+    ) -> ResolvedPlanningRoute | None:
+        """Prevent the model from reviving a route retired from new planning."""
+        request = self._optional_text(context.get("user_request"))
+        if request is None:
+            return None
+        request_goal_type = self._classify_goal(request) or fallback_goal_type
+        candidate = self._repository.resolve(
+            goal_type=request_goal_type,
+            goal_name=request,
+        )
+        if candidate.match_reason != "unsupported_target":
+            return None
+        return candidate
+
     def _clarified_explicit_request_resolution(
         self,
         context: dict[str, Any],
@@ -497,21 +529,11 @@ class DefaultRouteResolverAgent:
         fallback_goal_type: str,
     ) -> ResolvedPlanningRoute | None:
         """Use a unique resume answer to settle a previously ambiguous request."""
-        request = self._optional_text(context.get("user_request"))
         answer = self._optional_text(context.get("latest_resume_answer"))
-        if request is None or answer is None:
+        if answer is None:
             return None
+        request = self._optional_text(context.get("user_request")) or ""
         request_goal_type = self._classify_goal(request) or fallback_goal_type
-        previous = self._repository.resolve(
-            goal_type=request_goal_type,
-            goal_name=request,
-        )
-        if previous.match_reason not in {
-            "ambiguous_canonical_name",
-            "ambiguous_alias",
-            "ambiguous_embedded_alias",
-        }:
-            return None
         answer_goal_type = self._classify_goal(answer) or request_goal_type
         selected = self._repository.resolve(
             goal_type=answer_goal_type,

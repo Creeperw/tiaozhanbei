@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -8,11 +10,14 @@ from fastapi.testclient import TestClient
 from competition_app.api.app import create_app
 from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings
+from competition_app.integrations import backend_handoff
 from competition_app.integrations.backend_handoff import (
+    BackendHandoffRuntime,
     _explicit_profile_updates,
     _model_environment,
     _normalize_profile_memory_value,
 )
+from competition_app.services.profile_readiness import ProfileReadinessService
 
 
 def test_memory_agent_normalizes_legacy_instruction_shaped_learning_goal():
@@ -20,6 +25,42 @@ def test_memory_agent_normalizes_legacy_instruction_shaped_learning_goal():
         "learning_goal",
         "请结合我的学习状态，重新给我制定一份长期规划。我要考取中医执业医师资格证。",
     ) == "中医执业医师资格考试"
+
+
+def test_stable_paper_submission_injects_question_explanation_agent():
+    calls = []
+
+    class FakeDB:
+        def close(self):
+            calls.append("closed")
+
+    db = FakeDB()
+    explanation_runner = object()
+    modules = {
+        "APP.backend.database": SimpleNamespace(SessionLocal=lambda: db),
+        "APP.backend.paper_submission_service": SimpleNamespace(
+            submit_paper=lambda *args, **kwargs: (
+                calls.append((args, kwargs)) or {"status": "completed"}
+            )
+        ),
+        "APP.backend.expert_agent_service": SimpleNamespace(
+            generate_question_explanation=explanation_runner
+        ),
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+    runtime._workshop_user = lambda current_db, external_id: SimpleNamespace(id=7)
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        result = runtime.submit_paper("external-1", "PAPER_1", "request-1")
+
+    assert result == {"status": "completed"}
+    assert calls[0][0][1:] == (7, "PAPER_1", "request-1")
+    assert calls[0][1]["explanation_runner"] is explanation_runner
+    assert calls[-1] == "closed"
 
 
 def test_memory_agent_drops_generic_planning_instruction_as_goal():
@@ -57,6 +98,139 @@ def test_explicit_profile_fallback_keeps_major_after_zero_basis_clause():
 
 def test_explicit_profile_fallback_does_not_invent_missing_facts():
     assert _explicit_profile_updates("请结合我的学习状态制定长期规划") == {}
+
+
+def test_registration_survey_becomes_agent_ready_profile_context():
+    assert hasattr(backend_handoff, "_onboarding_profile_context")
+    onboarding = {
+        "status": "onboarding_completed",
+        "survey_answers": {
+            "learner_group": "academic",
+            "learner_group_title": "学历教育群体",
+            "major_or_role": "非医学专业",
+            "tcm_foundation": "零基础",
+            "learned_courses": [],
+            "long_term_goal": "职业技能认证",
+            "target_exam_or_course": "中医执业医师",
+            "textbook_route_id": "textbook_tcm_physician",
+            "textbook_route_version": 1,
+            "daily_available_minutes": 45,
+            "preferred_time_slot": "晚间",
+            "resource_preference": ["知识卡片", "分阶测试题"],
+        },
+        "l0_baseline": {
+            "stage_id": "L0",
+            "major_or_role": "非医学专业",
+            "target_exam_or_course": "中医执业医师",
+            "textbook_route_id": "textbook_tcm_physician",
+            "textbook_route_version": 1,
+            "daily_available_minutes": 45,
+        },
+    }
+
+    profile = backend_handoff._onboarding_profile_context(onboarding)
+
+    assert profile["learning_goal"] == "中医执业医师"
+    assert profile["learning_background"] == "零基础；非医学专业"
+    assert profile["daily_available_minutes"] == 45
+    assert profile["user_major_or_profession"] == "非医学专业"
+    assert profile["goals"] == {
+        "goal_type": "credential",
+        "goal_name": "中医执业医师",
+        "long_term_goal": "职业技能认证",
+        "short_term_goal": "",
+        "textbook_route_id": "textbook_tcm_physician",
+        "textbook_route_version": 1,
+    }
+    readiness = ProfileReadinessService().evaluate(
+        {"user_profile": profile},
+        "long_term",
+    )
+    assert readiness.can_proceed is True
+    assert readiness.questions == []
+
+
+def test_multiscale_loaders_map_external_user_and_share_the_read_transaction():
+    calls = []
+
+    class FakeDB:
+        def close(self):
+            calls.append(("close", self))
+
+    db = FakeDB()
+    state = {
+        "schema_version": "1.0",
+        "learner_id": "7",
+        "state_digest": "a" * 24,
+    }
+    candidates = {
+        "schema_version": "1.0",
+        "learner_id": "7",
+        "scope": "daily_task",
+        "items": [],
+    }
+    modules = {
+        "APP.backend.database": SimpleNamespace(SessionLocal=lambda: db),
+        "APP.backend.multiscale_learning_service": SimpleNamespace(
+            build_multiscale_state=lambda current_db, user_id, **kwargs: (
+                calls.append(("state", current_db, user_id, kwargs)) or state
+            ),
+            build_path_candidates=lambda current_db, user_id, **kwargs: (
+                calls.append(("candidates", current_db, user_id, kwargs))
+                or candidates
+            ),
+        ),
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+    runtime._workshop_user = lambda current_db, external_id: (
+        calls.append(("user", current_db, external_id))
+        or SimpleNamespace(id=7)
+    )
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        loaded_state = runtime.load_multiscale_learning_state(
+            "external-1",
+            plan_context={"long_term_plan": {"plan_id": "LONG_1"}},
+            window_days=30,
+        )
+        loaded_candidates = runtime.load_path_candidates(
+            "external-1",
+            plan_context={"short_term_plan": {"plan_id": "SHORT_1"}},
+            scope="daily_task",
+            limit=5,
+            include_blocked=False,
+        )
+
+    assert loaded_state is state
+    assert loaded_candidates is candidates
+    assert calls[0] == ("user", db, "external-1")
+    assert calls[1] == (
+        "state",
+        db,
+        7,
+        {
+            "plan_context": {"long_term_plan": {"plan_id": "LONG_1"}},
+            "window_days": 30,
+        },
+    )
+    assert calls[3] == ("user", db, "external-1")
+    assert calls[4] == (
+        "candidates",
+        db,
+        7,
+        {
+            "plan_context": {"short_term_plan": {"plan_id": "SHORT_1"}},
+            "scope": "daily_task",
+            "limit": 5,
+            "include_blocked": False,
+        },
+    )
+    assert calls[2] == ("close", db)
+    assert calls[5] == ("close", db)
 
 
 class FakeBackendHandoffRuntime:
@@ -144,7 +318,7 @@ def test_settings_parse_backend_handoff_configuration() -> None:
     assert settings.backend_handoff_secret_key == "test-secret"
 
 
-def test_handoff_uses_only_the_main_model_stack_and_disables_voice() -> None:
+def test_handoff_uses_main_model_stack_enables_embedding_and_disables_voice() -> None:
     settings = Settings(
         chat_base_url="https://main-model.test/v1",
         chat_model="deepseek-v4-flash",
@@ -159,7 +333,8 @@ def test_handoff_uses_only_the_main_model_stack_and_disables_voice() -> None:
     assert environment["PLANNER_EXECUTOR_MODEL"] == settings.chat_model
     assert environment["MANAGER_REVIEWER_MODEL"] == settings.chat_model
     assert environment["EMBEDDING_MODEL_ID"] == settings.embedding_model
-    assert environment["EMBEDDING_MODE"] == "disabled"
+    assert environment["EMBEDDING_MODE"] == "enabled"
+    assert environment["EMBEDDING_API_BASE_URL"] == settings.embedding_base_url
     assert environment["VOICE_MODE"] == "disabled"
 
 

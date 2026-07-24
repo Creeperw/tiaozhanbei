@@ -1,7 +1,4 @@
 import React from 'react';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { cwd } from 'node:process';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardPage from './DashboardPage';
@@ -57,6 +54,7 @@ const clinicalSkill = { membership_id: 'clinical-skill', parent_membership_id: '
 
 describe('DashboardPage learning workspace', () => {
   beforeEach(() => {
+    localStorage.clear();
     resolveKnowledgeAtlasEnabled.mockResolvedValue(true);
     vi.stubGlobal('fetch', vi.fn((url) => {
       const payload = url.endsWith('/training/onboarding/status')
@@ -119,13 +117,12 @@ describe('DashboardPage learning workspace', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it('renders the greeting above a real dependency tree and a persistent assistant', async () => {
+  it('renders the learning path and keeps the assistant available from the shared rail', async () => {
     const onNavigate = vi.fn();
     render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
 
     expect(await screen.findByLabelText('一级知识学习路径')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '今日核心任务' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('常驻智能助教')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /选择中医操作技能/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /选择医学综合/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /选择方剂学/ }));
@@ -137,21 +134,24 @@ describe('DashboardPage learning workspace', () => {
     expect(within(plan).getByText('学习路径')).toBeInTheDocument();
     expect(within(plan).getByRole('button', { name: '开始练习' })).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('tab', { name: 'AI 助教' }));
     fireEvent.click(screen.getByRole('button', { name: '打开完整智能助教' }));
     expect(onNavigate).toHaveBeenLastCalledWith('assistant', 'session-home');
   });
 
-  it('uses the removed focus-banner space for the learning workspace', async () => {
+  it('uses the removed focus-banner space for the learning workspace and a single right rail', async () => {
     render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={vi.fn()} />);
 
     const workspace = await screen.findByRole('region', { name: '今日学习工作区' });
-    expect(within(workspace).getByRole('complementary', { name: '今日安排' })).toBeInTheDocument();
-    expect(within(workspace).getByRole('region', { name: '智能助教栏' })).toContainElement(screen.getByLabelText('常驻智能助教'));
+    const rail = within(workspace).getByRole('complementary', { name: '学习工作栏' });
+    expect(within(rail).getByRole('tab', { name: '今日任务' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(rail).getByRole('tab', { name: 'AI 助教' })).toHaveAttribute('aria-selected', 'false');
+    expect(within(workspace).queryByRole('region', { name: '智能助教栏' })).not.toBeInTheDocument();
 
     const feedback = screen.getByRole('region', { name: '昨日学习反馈' });
     expect(within(feedback).getByText('正确率')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '今日核心任务' })).not.toBeInTheDocument();
-    expect(workspace).not.toContainElement(feedback);
+    expect(workspace).toContainElement(feedback);
   });
 
   it('shows the formal daily task in the right rail and opens pushed knowledge cards', async () => {
@@ -170,38 +170,37 @@ describe('DashboardPage learning workspace', () => {
     });
   });
 
-  it('lets today schedule reclaim the right column only after the assistant moves away', async () => {
+  it('switches the shared work rail between today task and assistant', async () => {
     render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={vi.fn()} />);
 
     const workspace = await screen.findByRole('region', { name: '今日学习工作区' });
-    expect(workspace).toHaveAttribute('data-assistant-collapsed', 'false');
-    expect(workspace).toHaveAttribute('data-assistant-docked', 'true');
-    expect(workspace).toHaveAttribute('data-right-column', 'stable');
+    const taskTab = screen.getByRole('tab', { name: '今日任务' });
+    const assistantTab = screen.getByRole('tab', { name: 'AI 助教' });
 
-    fireEvent.click(screen.getByRole('button', { name: '折叠智能助教' }));
     expect(workspace).toHaveAttribute('data-assistant-collapsed', 'true');
     expect(workspace).toHaveAttribute('data-assistant-docked', 'true');
+    expect(workspace).toHaveAttribute('data-right-column', 'stable');
+    expect(taskTab).toHaveAttribute('aria-selected', 'true');
 
-    fireEvent.click(screen.getByRole('button', { name: '移开智能助教' }));
-    expect(workspace).toHaveAttribute('data-assistant-docked', 'false');
-
-    fireEvent.click(screen.getByRole('button', { name: '展开智能助教' }));
+    fireEvent.click(assistantTab);
     expect(workspace).toHaveAttribute('data-assistant-collapsed', 'false');
-    expect(workspace).toHaveAttribute('data-assistant-docked', 'false');
+    expect(assistantTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('常驻智能助教')).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: '放回智能助教' }));
-    expect(workspace).toHaveAttribute('data-assistant-docked', 'true');
+    fireEvent.click(taskTab);
+    expect(workspace).toHaveAttribute('data-assistant-collapsed', 'true');
+    expect(taskTab).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('keeps the today column width unchanged when the docked assistant is collapsed', async () => {
+  it('keeps the right work rail width stable while switching views', async () => {
     render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={vi.fn()} />);
 
     const workspace = await screen.findByRole('region', { name: '今日学习工作区' });
-    fireEvent.click(screen.getByRole('button', { name: '折叠智能助教' }));
-
-    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
     expect(workspace).toHaveAttribute('data-right-column', 'stable');
-    expect(stylesheet).not.toMatch(/\.dashboard-daily__workspace:has\(\.compact-assistant\.is-collapsed\)/);
+    fireEvent.click(screen.getByRole('tab', { name: 'AI 助教' }));
+    expect(workspace).toHaveAttribute('data-right-column', 'stable');
+    fireEvent.click(screen.getByRole('tab', { name: '今日任务' }));
+    expect(workspace).toHaveAttribute('data-right-column', 'stable');
   });
 
   it('opens the matching training module from the learning path header', async () => {
@@ -362,23 +361,33 @@ describe('DashboardPage learning workspace', () => {
 
   it('shows non-personalized classic routes beside the learner path', async () => {
     const onNavigate = vi.fn();
+    localStorage.setItem('learning-workshop.preferences', JSON.stringify({
+      pathMode: 'classic',
+      classicRouteId: 'textbook_tcm_physician',
+      currentStageId: 's1',
+    }));
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url === '/api/v1/learning-routes') {
+      if (url === '/api/v1/qualification-targets') {
         return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({
           schema_version: '1.0',
-          route_kind: 'classic_reference',
-          personalized: false,
-          items: [{ route_id: 'classic-1', goal_name: '中医执业医师经典路线' }],
-          total: 1,
+          target_kind: 'qualification_exam',
+          items: [
+            { target_id: 'tcm_physician', official_name: '中医执业医师资格考试', textbook_route_id: 'textbook_tcm_physician' },
+            { target_id: 'tcm_assistant', official_name: '中医执业助理医师资格考试', textbook_route_id: 'textbook_tcm_physician' },
+            { target_id: 'integrated_physician', official_name: '中西医结合执业医师资格考试', textbook_route_id: 'textbook_integrated_clinical' },
+            { target_id: 'integrated_assistant', official_name: '中西医结合执业助理医师资格考试', textbook_route_id: 'textbook_integrated_clinical' },
+            { target_id: 'licensed_pharmacist_tcm', official_name: '执业药师职业资格考试（中药学类）', textbook_route_id: 'textbook_tcm_pharmacy' },
+          ],
+          total: 5,
         }) });
       }
-      if (url === '/api/v1/learning-routes/classic-1') {
+      if (url === '/api/v1/learning-routes/textbook_tcm_physician') {
         return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify({
           schema_version: '1.0',
           route_kind: 'classic_reference',
           personalized: false,
           route: {
-            route_id: 'classic-1',
+            route_id: 'textbook_tcm_physician',
             stages: [{ stage_id: 's1', order: 1, name: '中医基础阶段', objective: '建立基础', books: ['《中医学基础》'], source_refs: [] }],
           },
           navigation: { atlas_route_id: 'textbook_14_5' },
@@ -398,18 +407,21 @@ describe('DashboardPage learning workspace', () => {
     render(
       <DashboardPage
         currentUser={{ username: 'admin' }}
-        navigationContext={{ view: 'path', pathMode: 'classic', stageId: 'foundation', stageIndex: 0 }}
         onNavigate={onNavigate}
       />,
     );
 
     expect(await screen.findByRole('tab', { name: '经典路线' })).toHaveAttribute('aria-selected', 'true');
-    fireEvent.click(screen.getByRole('button', { name: '返回学习阶段' }));
-    expect(onNavigate).toHaveBeenLastCalledWith({ page: 'practice', params: { view: 'stages' } });
+    const headerControls = screen.getByRole('group', { name: '学习路径控制区' });
+    expect(within(headerControls).getByRole('heading', { name: '学习路径' })).toBeInTheDocument();
+    expect(within(headerControls).getByRole('tablist', { name: '学习路径来源' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: '我的学习路径' }));
     expect(screen.getByRole('tab', { name: '我的学习路径' })).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(screen.getByRole('tab', { name: '经典路线' }));
-    expect(await screen.findByRole('combobox', { name: '经典学习路线' })).toHaveDisplayValue('中医执业医师经典路线');
+    const classicRouteSelect = await screen.findByRole('combobox', { name: '经典学习路线' });
+    expect(classicRouteSelect).toHaveDisplayValue('中医执业医师资格考试');
+    expect(within(classicRouteSelect).getAllByRole('option')).toHaveLength(5);
+    expect(within(classicRouteSelect).getByRole('option', { name: '执业药师职业资格考试（中药学类）' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: /进入中医基础阶段/ }));
     fireEvent.click(await screen.findByRole('button', { name: /进入《中医学基础》/ }));
     expect(onNavigate).toHaveBeenLastCalledWith({
@@ -419,7 +431,7 @@ describe('DashboardPage learning workspace', () => {
         route: 'textbook_14_5',
         lv1: '中医学基础',
         source: 'classic-learning-route',
-        routeId: 'classic-1',
+        routeId: 'textbook_tcm_physician',
       },
     });
   });

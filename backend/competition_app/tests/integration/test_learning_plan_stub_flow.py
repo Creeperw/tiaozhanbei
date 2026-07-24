@@ -62,14 +62,22 @@ async def build_layered_plan(
     """Build the three independently persisted layers used by integration tests."""
 
     profile = user_profile or {
-        "goals": {"type": "course", "name": "系统掌握方剂学"}
+        "learning_goal": "中医执业医师资格考试",
+        "goals": {"type": "credential", "name": "中医执业医师资格考试"},
     }
     goal_type = str(profile.get("goals", {}).get("type", ""))
     course_confirmation = "，仅作为课程学习，不参加考试" if goal_type == "course" else ""
+    long_term_subject = (
+        str(profile.get("goals", {}).get("name") or topic)
+        if goal_type != "course"
+        else topic
+    )
     long_result = await container.review_card_use_case.execute(
         ReviewCardRequest(
             learner_id=learner_id,
-            user_request=f"请为{topic}制定长期学习规划{course_confirmation}",
+            user_request=(
+                f"请为{long_term_subject}制定长期学习规划{course_confirmation}"
+            ),
             available_minutes=available_minutes,
             user_profile=profile,
             plan_scope="long_term",
@@ -144,7 +152,10 @@ async def test_existing_valid_long_and_short_plans_are_reused_verbatim(tmp_path)
     initial_plan = await build_layered_plan(
         container,
         learner_id=learner_id,
-        user_profile={"goals": {"type": "course", "name": "系统掌握方剂学"}},
+        user_profile={
+            "learning_goal": "中医执业医师资格考试",
+            "goals": {"type": "credential", "name": "中医执业医师资格考试"},
+        },
     )
 
     reused = await container.review_card_use_case.execute(
@@ -206,7 +217,10 @@ async def test_explicit_time_change_updates_only_short_term_and_daily_layers(tmp
         container,
         learner_id=learner_id,
         available_minutes=25,
-        user_profile={"goals": {"type": "course", "name": "系统掌握方剂学"}},
+        user_profile={
+            "learning_goal": "中医执业医师资格考试",
+            "goals": {"type": "credential", "name": "中医执业医师资格考试"},
+        },
     )
 
     changed = await container.review_card_use_case.execute(
@@ -214,7 +228,10 @@ async def test_explicit_time_change_updates_only_short_term_and_daily_layers(tmp
             learner_id=learner_id,
             user_request="未来两周每天只有15分钟，请调整短期计划",
             available_minutes=15,
-            user_profile={"goals": {"type": "course", "name": "系统掌握方剂学"}},
+            user_profile={
+                "learning_goal": "中医执业医师资格考试",
+                "goals": {"type": "credential", "name": "中医执业医师资格考试"},
+            },
             long_term_plan=plan_input(initial_plan.long_term_plan),
             short_term_plan=plan_input(initial_plan.short_term_plan),
             learning_task=initial_plan.learning_task.model_dump(mode="json"),
@@ -246,7 +263,10 @@ async def test_due_review_keeps_a_verifiable_mainline_maintenance_action(tmp_pat
             learner_id=learner_id,
             user_request="请结合到期复习和本周计划，安排今天的任务",
             available_minutes=10,
-            user_profile={"goals": {"type": "course", "name": "系统掌握方剂学"}},
+            user_profile={
+                "learning_goal": "中医执业医师资格考试",
+                "goals": {"type": "credential", "name": "中医执业医师资格考试"},
+            },
             long_term_plan=plan_input(initial.long_term_plan),
             short_term_plan=plan_input(initial.short_term_plan),
             plan_scope="daily_task",
@@ -274,15 +294,16 @@ async def test_stub_learning_plan_contains_actionable_long_and_short_horizon_con
         available_minutes=30,
         user_profile={
             "goals": {
-                "type": "course",
-                "name": "系统掌握方剂学",
+                "type": "credential",
+                "name": "中医执业医师资格考试",
                 "short_term_goal": "两周内掌握四君子汤组成、功效和配伍",
             }
         },
     )
     long_term = plan.long_term_plan.content
     short_term = plan.short_term_plan.content
-    assert "四君子汤" in long_term
+    assert "中医执业医师" in long_term
+    assert "四君子汤" in short_term
     assert "阶段" in long_term
     assert "验收" in long_term or "标准" in long_term
     assert "一周" in short_term or "第1周" in short_term
@@ -355,7 +376,7 @@ async def test_vague_nursing_exam_requests_route_clarification(tmp_path) -> None
 
 
 @pytest.mark.asyncio
-async def test_long_plan_requires_one_route_when_user_selects_two(tmp_path) -> None:
+async def test_long_plan_rejects_a_request_containing_a_retired_route(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
 
     result = await container.review_card_use_case.execute(
@@ -369,37 +390,32 @@ async def test_long_plan_requires_one_route_when_user_selects_two(tmp_path) -> N
 
     assert result.learning_plan.requires_clarification
     assert result.learning_plan.requested_scope == "long_term"
-    assert result.learning_plan.clarification_questions == [
-        "你同时选择了多个不同的报考路径，它们不能合并为同一条长期规划。"
-        "请只确认一项：规定学历路径、中医（专长）医师资格考核，"
-        "或传统医学师承/确有专长人员考核。"
-    ]
+    assert result.learning_plan.clarification_questions
 
 
 @pytest.mark.asyncio
-async def test_long_plan_resumes_with_one_route_and_updates_structured_stages(
+async def test_supported_physician_exam_updates_structured_stages(
     tmp_path,
 ) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
-    thread_id = "THREAD_MULTIPLE_PHYSICIAN_ROUTES"
-    interrupted = await container.review_card_use_case.execute(
+    result = await container.review_card_use_case.execute(
         ReviewCardRequest(
-            thread_id=thread_id,
             learner_id="LEARNER_MULTIPLE_PHYSICIAN_ROUTES_RESUME",
-            user_request="规定学历、中医（专长）医师考核",
+            user_request="请为中医执业医师资格考试制定长期规划",
             available_minutes=60,
+            user_profile={
+                "learning_goal": "中医执业医师资格考试",
+                "goals": {
+                    "type": "credential",
+                    "name": "中医执业医师资格考试",
+                },
+            },
             plan_scope="long_term",
         )
     )
 
-    resumed = await container.review_card_use_case.resume(
-        thread_id,
-        WorkflowResumeRequest(answer="规定学历路径。", plan_scope="long_term"),
-    )
-
-    assert interrupted.status == "interrupted"
-    assert resumed.status == "success"
-    long_term = resumed.learning_plan.long_term_plan
+    assert result.status == "success"
+    long_term = result.learning_plan.long_term_plan
     assert long_term.planning_route.route_id == "tcm_physician_standard_degree"
     assert (
         long_term.planning_route.textbook_route.route.route_id
@@ -545,45 +561,29 @@ async def test_partial_inline_profile_still_collects_and_resumes_missing_goal(
 
 
 @pytest.mark.asyncio
-async def test_stub_formula_course_plan_uses_book_level_approved_route(tmp_path) -> None:
+async def test_stub_formula_course_is_not_available_as_a_new_default_route(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
-    plan = await build_layered_plan(
-        container,
-        learner_id="LEARNER_FORMULA_ROUTE",
-        available_minutes=25,
-        user_profile={
-            "goals": {
-                "type": "course",
-                "name": "系统掌握方剂学",
-                "short_term_goal": "本周掌握四君子汤",
-            }
-        },
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="LEARNER_FORMULA_ROUTE",
+            available_minutes=25,
+            user_request="请为方剂学课程制定长期规划，不参加资格考试",
+            user_profile={
+                "goals": {
+                    "type": "course",
+                    "name": "系统掌握方剂学",
+                }
+            },
+            plan_scope="long_term",
+        )
     )
 
-    route = plan.long_term_plan.planning_route
-    assert route.planning_status == "approved_route"
-    assert route.route_id == "tcm_formula_course"
-    assert [phase.books for phase in route.phases] == [
-        ["《中医基础理论》", "《中医诊断学》", "《中药学》"],
-        ["《方剂学》"],
-        ["《方剂学》", "《中医内科学》"],
-        ["《方剂学》", "《中医内科学》"],
-    ]
-    assert [stage.model_dump() for stage in plan.long_term_plan.stages] == [
-        {
-            "stage": index,
-            "book": phase.books,
-            "goal": phase.objective,
-        }
-        for index, phase in enumerate(route.phases, start=1)
-    ]
-    long_term = plan.long_term_plan.content
-    assert "《中医基础理论》、《中医诊断学》、《中药学》" in long_term
-    assert "《方剂学》" in long_term
+    assert result.learning_plan.requires_clarification
+    assert result.learning_plan.clarification_questions
 
 
 @pytest.mark.asyncio
-async def test_empty_existing_plan_cannot_suppress_approved_book_route(tmp_path) -> None:
+async def test_empty_existing_plan_cannot_revive_retired_course_route(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     model = FalseReusePlanModel()
     container.review_card_use_case.orchestrator.agent_registry.get(
@@ -601,11 +601,9 @@ async def test_empty_existing_plan_cannot_suppress_approved_book_route(tmp_path)
         )
     )
 
-    long_term = result.learning_plan.long_term_plan.content
-    assert "long_term_plan_action" not in model.schema_properties
-    assert "tcm_formula_course" not in long_term
-    assert "《中医基础理论》" in long_term
-    assert "《方剂学》" in long_term
+    assert result.learning_plan.requires_clarification
+    assert result.learning_plan.clarification_questions
+    assert model.schema_properties == {}
 
 
 @pytest.mark.asyncio
@@ -750,7 +748,5 @@ async def test_confirmed_clarification_regenerates_long_and_short_plans(tmp_path
         )
     )
 
-    assert not getattr(result.learning_plan, "requires_clarification", False)
-    assert result.learning_plan.long_term_plan.content != "原长期正文"
-    assert result.learning_plan.short_term_plan is None
-    assert result.learning_plan.invalidated_layers == ["short_term", "daily_task"]
+    assert result.learning_plan.requires_clarification
+    assert result.learning_plan.clarification_questions

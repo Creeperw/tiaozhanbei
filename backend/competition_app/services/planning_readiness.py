@@ -58,6 +58,20 @@ class PlanningReadinessService:
                 available_actions=actions,
             )
 
+        short_state = None
+        if requested_scope == "daily_task":
+            short_state = self._parent_state(
+                context.get("current_short_term_plan"), "short_term", learner_id
+            )
+            if not short_state.exists:
+                return self._missing_parent(
+                    requested_scope,
+                    short_state,
+                    "needs_short_term_plan",
+                    "create_short_term_plan",
+                    parents=[short_state],
+                )
+
         long_state = self._parent_state(
             context.get("current_long_term_plan"), "long_term", learner_id
         )
@@ -77,17 +91,7 @@ class PlanningReadinessService:
                 available_actions=actions,
             )
 
-        short_state = self._parent_state(
-            context.get("current_short_term_plan"), "short_term", learner_id
-        )
-        if not short_state.exists:
-            return self._missing_parent(
-                requested_scope,
-                short_state,
-                "needs_short_term_plan",
-                "create_short_term_plan",
-                parents=[long_state, short_state],
-            )
+        assert short_state is not None
         if not short_state.valid or not self._short_belongs_to_long(
             context.get("current_short_term_plan"), context.get("current_long_term_plan")
         ):

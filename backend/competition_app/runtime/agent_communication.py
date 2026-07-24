@@ -4,6 +4,8 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
 
+from pydantic import BaseModel
+
 from competition_app.contracts.agent_communication import (
     AgentHandoffBundle,
     CognitiveGapResult,
@@ -22,7 +24,11 @@ AGENT_NEED_CATALOG: dict[str, tuple[DownstreamNeed, ...]] = {
         DownstreamNeed(field="source_policy", reason="限制可信来源"),
     ),
     "diagnosis_agent": (
-        DownstreamNeed(field="learning_goal", reason="确定规划目标"),
+        DownstreamNeed(
+            field="learning_goal",
+            reason="确定规划目标；缺失时由诊断智能体追问",
+            required=False,
+        ),
         DownstreamNeed(field="time_budget", reason="约束任务量"),
         DownstreamNeed(field="multi_scale_learning_state", reason="依据真实学情"),
     ),
@@ -62,13 +68,17 @@ class CognitiveGapAnalyzer:
             "source_policy",
             "diagnosis_proposal",
             "graded_knowledge_state",
+            "user_knowledge_states",
             "formal_task",
             "artifact",
             "evidence",
             "task_constraints",
         }
     )
-    _ROOT_ALIASES = {"available_minutes": "time_budget"}
+    _ROOT_ALIASES = {
+        "available_minutes": "time_budget",
+        "user_knowledge_states": "graded_knowledge_state",
+    }
     _SECRET_MARKERS = ("api_key", "token", "password")
     _FOREIGN_USER_MARKERS = ("user_id", "user_ids", "learner_id", "learner_ids")
 
@@ -76,7 +86,7 @@ class CognitiveGapAnalyzer:
         self,
         step: ExecutionStep,
         root_context: Mapping[str, Any],
-        dependency_outputs: Mapping[str, AgentEnvelope[Any]],
+        dependency_outputs: Mapping[str, Any],
     ) -> CognitiveGapAnalysis:
         learner_id = str(root_context["learner_id"])
         direct_steps = tuple(step.depends_on)
@@ -85,9 +95,14 @@ class CognitiveGapAnalyzer:
         evidence: list[EvidenceReference] = []
 
         for field in self._ROOT_FIELDS:
-            if field in root_context and self._is_safe_field(field):
+            if field in root_context and (
+                self._is_safe_field(field) or field == "user_knowledge_states"
+            ):
                 value = self._sanitize_value(root_context[field])
-                if self._is_known(value):
+                if self._is_known(value) or (
+                    field in {"graded_knowledge_state", "user_knowledge_states"}
+                    and isinstance(value, list)
+                ):
                     known_values.setdefault(field, (value, "root_context"))
                     alias = self._ROOT_ALIASES.get(field)
                     if alias:
@@ -97,10 +112,19 @@ class CognitiveGapAnalyzer:
             output = dependency_outputs.get(step_id)
             if output is None:
                 continue
-            if output.learner_id != learner_id:
-                omitted.append(f"{step_id}:cross_user_output")
-                continue
-            self._collect_dependency_values(output, step_id, known_values, evidence, omitted)
+            if isinstance(output, AgentEnvelope):
+                if output.learner_id != learner_id:
+                    omitted.append(f"{step_id}:cross_user_output")
+                    continue
+                self._collect_dependency_values(
+                    output, step_id, known_values, evidence, omitted
+                )
+            elif isinstance(output, Mapping):
+                self._collect_plain_dependency_values(
+                    output, step_id, known_values, omitted
+                )
+            else:
+                omitted.append(f"{step_id}:unsupported_dependency_output")
 
         catalog_needs = AGENT_NEED_CATALOG.get(step.agent)
         compatibility_mode = catalog_needs is None
@@ -112,7 +136,15 @@ class CognitiveGapAnalyzer:
         ]
         missing_fields = [need.field for need in needs if need.field not in satisfied_fields]
         blocking_fields = [
-            need.field for need in needs if need.required and need.field not in satisfied_fields
+            need.field
+            for need in needs
+            if need.required
+            and need.field not in satisfied_fields
+            and not (
+                step.agent == "audit_agent"
+                and need.field == "evidence"
+                and root_context.get("task_type") == "paper_generation"
+            )
         ]
         allowed_fields = (
             {field for field, (_, source) in known_values.items() if source != "root_context"}
@@ -167,6 +199,11 @@ class CognitiveGapAnalyzer:
         )
         return CognitiveGapAnalysis(bundle=bundle, gap=gap)
 
+    def sanitize_compatibility_output(self, output: Mapping[str, Any]) -> dict[str, Any]:
+        """Return only the safe portion of a legacy plain dependency mapping."""
+        sanitized = self._sanitize_value(output)
+        return sanitized if isinstance(sanitized, dict) else {}
+
     def _collect_dependency_values(
         self,
         output: AgentEnvelope[Any],
@@ -176,21 +213,104 @@ class CognitiveGapAnalyzer:
         omitted: list[str],
     ) -> None:
         payload = output.payload
+        payload_mapping: Mapping[str, Any] | None = None
         if isinstance(payload, Mapping):
-            for field, value in payload.items():
-                field_name = str(field)
-                if not self._is_safe_field(field_name):
-                    continue
-                sanitized = self._sanitize_value(value)
-                if self._is_known(sanitized):
-                    known_values.setdefault(field_name, (sanitized, step_id))
-                    alias = self._ROOT_ALIASES.get(field_name)
-                    if alias:
-                        known_values.setdefault(alias, (sanitized, step_id))
+            payload_mapping = payload
+        elif isinstance(payload, BaseModel):
+            payload_mapping = payload.model_dump(mode="python")
+        if payload_mapping is not None:
+            self._collect_plain_dependency_values(
+                payload_mapping, step_id, known_values, omitted
+            )
+            if output.artifact_type == "diagnosis_result":
+                diagnosis_handoff = self._sanitize_value(
+                    {
+                        field: payload_mapping.get(field)
+                        for field in (
+                            "requires_clarification",
+                            "plan_scope",
+                            "learning_plan_proposal",
+                            "clarification_questions",
+                            "clarification_reason",
+                        )
+                        if field in payload_mapping
+                    }
+                )
+                if isinstance(diagnosis_handoff, dict) and diagnosis_handoff:
+                    known_values.setdefault(
+                        "diagnosis_proposal", (diagnosis_handoff, step_id)
+                    )
+            if output.artifact_type == "evidence_pack":
+                for item in payload_mapping.get("evidence_items", []):
+                    if not isinstance(item, Mapping):
+                        continue
+                    source_type = str(item.get("resource_type") or "knowledge_base")
+                    if source_type == "question":
+                        source_type = "official_question_bank"
+                    evidence_id = str(item.get("evidence_id") or "").strip()
+                    source_id = str(item.get("source_id") or evidence_id).strip()
+                    if evidence_id and source_id:
+                        evidence.append(
+                            EvidenceReference(
+                                evidence_id=evidence_id,
+                                source_type=source_type,
+                                source_id=source_id,
+                                claim=str(item.get("content_summary") or source_id),
+                            )
+                        )
+                if evidence:
+                    known_values.setdefault("evidence", (evidence, step_id))
+            if output.artifact_type == "question_candidate_pool":
+                for unit in payload_mapping.get("units", []):
+                    if not isinstance(unit, Mapping):
+                        continue
+                    for item in unit.get("items", []):
+                        if not isinstance(item, Mapping):
+                            continue
+                        if (
+                            item.get("origin") != "retrieved"
+                            or item.get("source_tier") != "textbook"
+                        ):
+                            continue
+                        question_id = str(item.get("question_id") or "").strip()
+                        if question_id:
+                            evidence.append(
+                                EvidenceReference(
+                                    evidence_id=f"question:{question_id}",
+                                    source_type="official_question_bank",
+                                    source_id=question_id,
+                                    claim=str(item.get("stem") or question_id),
+                                )
+                            )
+                if evidence:
+                    known_values.setdefault("evidence", (evidence, step_id))
+            if output.artifact_type in {"formal_learning_plan", "review_schedule"}:
+                known_values.setdefault("formal_task", (payload_mapping, step_id))
+            if output.producer == "expert_agent":
+                known_values.setdefault("artifact", (payload_mapping, step_id))
         for reference in output.evidence_refs:
             evidence.append(self._evidence_reference(reference))
         if output.evidence_refs:
             known_values.setdefault("evidence", (output.evidence_refs, step_id))
+
+    def _collect_plain_dependency_values(
+        self,
+        payload: Mapping[str, Any],
+        step_id: str,
+        known_values: dict[str, tuple[Any, str]],
+        omitted: list[str],
+    ) -> None:
+        for field, value in payload.items():
+            field_name = str(field)
+            if not self._is_safe_field(field_name):
+                omitted.append(f"{step_id}:{field_name}:unsafe_field")
+                continue
+            sanitized = self._sanitize_value(value)
+            if self._is_known(sanitized):
+                known_values.setdefault(field_name, (sanitized, step_id))
+                alias = self._ROOT_ALIASES.get(field_name)
+                if alias:
+                    known_values.setdefault(alias, (sanitized, step_id))
 
     def _omitted_root_categories(self, root_context: Mapping[str, Any]) -> list[str]:
         protected = {"trace_id", "execution_id", "learner_id", "now"}

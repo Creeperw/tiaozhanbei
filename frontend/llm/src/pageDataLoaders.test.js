@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { fetchJsonWithAuthFallback } from './utils/api.js';
 import {
+  emptyMultiscaleState,
+  emptyPathCandidates,
   emptyPlan,
   emptyReport,
   emptyTrainingTaskResult,
@@ -35,6 +37,110 @@ import {
   loadTrainingWorkspaceTask,
   submitTrainingWorkspaceTask,
 } from './pageDataLoaders.js';
+
+test('loads versioned multiscale state without parsing plan prose', async () => {
+  const multiscale = {
+    ...emptyMultiscaleState,
+    state_id: 'MSLS_1',
+    macro: { current_stage: { name: '中医基础与文化语言' } },
+  };
+  const result = await loadReportsData({
+    fetcher: async ({ paths }) => {
+      if (paths[0].startsWith('/v1/learning-insights')) {
+        return {
+          data: {
+            ...emptyReport,
+            overview: {},
+            dimensions: [],
+            activity_trends: { series: [] },
+            mastery_heatmap: [],
+            weak_points: [],
+            mistake_distribution: [],
+            data_quality: {},
+          },
+          source: paths[0],
+        };
+      }
+      if (paths[0].startsWith('/v1/resource-match-report')) {
+        return { data: emptyReport.resource_match_report, source: paths[0] };
+      }
+      assert.equal(paths[0], '/v1/learning-state/multiscale?window_days=30');
+      return { data: multiscale, source: paths[0] };
+    },
+  });
+
+  assert.equal(result.report.multiscale.schema_version, '1.0');
+  assert.equal(result.report.multiscale.macro.current_stage.name, '中医基础与文化语言');
+});
+
+test('preserves unavailable metrics instead of coercing them to zero', async () => {
+  const multiscale = {
+    ...emptyMultiscaleState,
+    micro: {
+      question_accuracy: {
+        available: false,
+        value: null,
+        unavailable_reason: 'no_question_attempts',
+        source_refs: [],
+      },
+    },
+  };
+  const result = await loadReportsData({
+    fetcher: async ({ paths }) => {
+      if (paths[0].startsWith('/v1/learning-insights')) {
+        return {
+          data: {
+            ...emptyReport,
+            overview: {},
+            dimensions: [],
+            activity_trends: { series: [] },
+            mastery_heatmap: [],
+            weak_points: [],
+            mistake_distribution: [],
+            data_quality: {},
+          },
+          source: paths[0],
+        };
+      }
+      if (paths[0].startsWith('/v1/resource-match-report')) {
+        return { data: emptyReport.resource_match_report, source: paths[0] };
+      }
+      return { data: multiscale, source: paths[0] };
+    },
+  });
+
+  assert.equal(result.report.multiscale.micro.question_accuracy.available, false);
+  assert.equal(result.report.multiscale.micro.question_accuracy.value, null);
+});
+
+test('loads structured path candidates for planning', async () => {
+  const candidates = {
+    ...emptyPathCandidates,
+    scope: 'daily_task',
+    items: [{ candidate_id: 'PATH_1', eligible: true, score: 0.8 }],
+  };
+  const result = await loadPlanningData({
+    fetcher: async ({ paths }) => {
+      if (paths[0] === '/v1/learning-context') return { data: {}, source: paths[0] };
+      if (paths[0].startsWith('/v1/learning-state/multiscale')) {
+        return { data: emptyMultiscaleState, source: paths[0] };
+      }
+      if (paths[0].startsWith('/v1/learning-state/path-candidates')) {
+        return { data: candidates, source: paths[0] };
+      }
+      return {
+        data: {
+          plan_summary: { goal: '学习目标' },
+          weekly_plan: { focus: '本周重点', evidence: [] },
+          daily_tasks: [],
+        },
+        source: paths[0],
+      };
+    },
+  });
+
+  assert.equal(result.plan.path_candidates.items[0].candidate_id, 'PATH_1');
+});
 
 test('agent paper generator posts an exact paper request and returns the published paper id', async () => {
   let received;

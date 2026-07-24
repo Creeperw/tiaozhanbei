@@ -10,6 +10,37 @@ from APP.backend.time_utils import utc_now
 
 
 VALID_TARGET_TYPES = {"graduate_entrance_exam", "certification"}
+SUPPORTED_QUALIFICATION_TRACKS = {
+    "EXAM_2025_TCM_PHYSICIAN": {
+        "qualification_name": "中医执业医师资格考试",
+        "schema_version": "2025",
+    },
+    "EXAM_2025_TCM_ASSISTANT": {
+        "qualification_name": "中医执业助理医师资格考试",
+        "schema_version": "2025",
+    },
+    "EXAM_2025_INTEGRATED_PHYSICIAN": {
+        "qualification_name": "中西医结合执业医师资格考试",
+        "schema_version": "2025",
+    },
+    "EXAM_2025_INTEGRATED_ASSISTANT": {
+        "qualification_name": "中西医结合执业助理医师资格考试",
+        "schema_version": "2025",
+    },
+    "EXAM_TCM_LICENSED_PHARMACIST": {
+        "qualification_name": "执业药师职业资格考试（中药学类）",
+        "schema_version": "current",
+    },
+}
+
+
+def requires_official_exam_repository(target_type: str, exam_track_id: str) -> bool:
+    """Return whether a target must be resolved through the legacy exam catalog."""
+    # Certification targets are a closed five-item catalog. Unknown certification
+    # IDs must fail locally instead of falling through to retired catalogs.
+    if target_type == "certification":
+        return False
+    return exam_track_id not in SUPPORTED_QUALIFICATION_TRACKS
 
 
 class LearningTargetValidationError(ValueError):
@@ -35,7 +66,7 @@ def set_active_learning_target(
     user_id: int,
     target_type: str,
     exam_track_id: str,
-    repository,
+    repository=None,
     exam_date: date | datetime | None = None,
     is_locked: bool = True,
     lock_reason: str = "用户手动选择",
@@ -44,10 +75,25 @@ def set_active_learning_target(
 ) -> UserLearningTarget:
     if target_type not in VALID_TARGET_TYPES:
         raise LearningTargetValidationError("invalid target_type")
-    try:
-        track = repository.get_track(exam_track_id)
-    except KeyError as exc:
-        raise LearningTargetValidationError("unknown exam_track_id") from exc
+    supported = (
+        SUPPORTED_QUALIFICATION_TRACKS.get(exam_track_id)
+        if target_type == "certification"
+        else None
+    )
+    if supported is not None:
+        track = {
+            "track_id": exam_track_id,
+            **supported,
+        }
+    else:
+        if repository is None:
+            raise LearningTargetValidationError(
+                "unsupported exam_track_id requires an official exam repository"
+            )
+        try:
+            track = repository.get_track(exam_track_id)
+        except KeyError as exc:
+            raise LearningTargetValidationError("unknown exam_track_id") from exc
 
     active = get_active_learning_target(db, user_id)
     if active is not None and active.is_locked and source != "manual":
@@ -78,7 +124,12 @@ def set_active_learning_target(
         user_id=user_id,
         target_type=target_type,
         exam_track_id=exam_track_id,
-        exam_name_snapshot=str(track.get("title_normalized") or track.get("title") or exam_track_id),
+        exam_name_snapshot=str(
+            track.get("qualification_name")
+            or track.get("title_normalized")
+            or track.get("title")
+            or exam_track_id
+        ),
         syllabus_version=str(track.get("schema_version") or track.get("year") or ""),
         exam_date=_as_datetime(exam_date),
         is_active=True,

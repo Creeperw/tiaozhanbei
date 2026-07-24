@@ -90,6 +90,7 @@ class ApplicationContainer:
     auth_cookie_secure: bool = False
     backend_handoff_runtime: BackendHandoffRuntime | None = None
     frontend_dist_root: Path | None = None
+    default_route_repository: DefaultRouteRepository | None = None
     textbook_route_repository: TextbookRouteRepository | None = None
 
     @classmethod
@@ -169,6 +170,7 @@ class ApplicationContainer:
                 chat_base_url=settings.chat_base_url,
                 chat_model=settings.chat_model,
                 chat_api_key=settings.dashscope_api_key,
+                mineru_token=settings.mineru_token,
             )
             repository = knowledge_backend.map
             question_retriever = None
@@ -326,6 +328,16 @@ class ApplicationContainer:
                     if backend_handoff_runtime is not None
                     else None
                 ),
+                multiscale_state_loader=(
+                    backend_handoff_runtime.load_multiscale_learning_state
+                    if backend_handoff_runtime is not None
+                    else None
+                ),
+                path_candidate_loader=(
+                    backend_handoff_runtime.load_path_candidates
+                    if backend_handoff_runtime is not None
+                    else None
+                ),
                 profile_update_writer=(
                     backend_handoff_runtime.update_learning_profile
                     if backend_handoff_runtime is not None
@@ -352,6 +364,7 @@ class ApplicationContainer:
             auth_cookie_secure=settings.auth_cookie_secure,
             backend_handoff_runtime=backend_handoff_runtime,
             frontend_dist_root=settings.frontend_dist_root,
+            default_route_repository=default_route_repository,
             textbook_route_repository=textbook_route_repository,
         )
 

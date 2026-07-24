@@ -66,6 +66,7 @@ class AuthenticationService:
             normalized_username=self.normalize_username(username),
             display_name=display_name,
             role=role,
+            onboarding_required=role == "user",
             password_hash=self._derive_password(
                 password, salt, self.password_iterations
             ).hex(),
@@ -125,6 +126,12 @@ class AuthenticationService:
                 self.hash_token(raw_token), datetime.now(timezone.utc)
             )
 
+    def complete_onboarding(self, user_id: str) -> AuthUser:
+        user = self.repository.set_onboarding_required(user_id, False)
+        if user is None:
+            raise InvalidCredentialsError("用户不存在")
+        return self._public_user(user)
+
     def _start_session(
         self, user: StoredAuthUser, now: datetime
     ) -> tuple[AuthResponse, str]:
@@ -166,7 +173,15 @@ class AuthenticationService:
     def _public_user(user: StoredAuthUser) -> AuthUser:
         return AuthUser.model_validate(
             user.model_dump(
-                include={"user_id", "username", "display_name", "role", "status", "created_at"}
+                include={
+                    "user_id",
+                    "username",
+                    "display_name",
+                    "role",
+                    "status",
+                    "onboarding_required",
+                    "created_at",
+                }
             )
         )
 

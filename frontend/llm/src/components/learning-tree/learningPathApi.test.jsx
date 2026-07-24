@@ -26,12 +26,21 @@ describe('planned learning path API', () => {
     );
   });
 
-  it('loads classic route catalog and detail from stable main endpoints', async () => {
+  it('loads the five qualification targets and resolves their textbook route detail', async () => {
     fetch
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: async () => JSON.stringify({ schema_version: '1.0', items: [] }),
+        text: async () => JSON.stringify({
+          schema_version: '1.0',
+          target_kind: 'qualification_exam',
+          items: [{
+            target_id: 'tcm_physician',
+            official_name: '中医执业医师资格考试',
+            textbook_route_id: 'textbook_tcm_physician',
+          }],
+          total: 1,
+        }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -39,10 +48,15 @@ describe('planned learning path API', () => {
         text: async () => JSON.stringify({ schema_version: '1.0', route: { route_id: 'route/a', stages: [] } }),
       });
 
-    await loadClassicLearningRoutes();
+    const catalog = await loadClassicLearningRoutes();
     await loadClassicLearningRoute('route/a');
 
-    expect(fetch.mock.calls[0][0]).toBe('/api/v1/learning-routes');
+    expect(catalog.items[0]).toMatchObject({
+      route_id: 'tcm_physician',
+      goal_name: '中医执业医师资格考试',
+      textbook_route_id: 'textbook_tcm_physician',
+    });
+    expect(fetch.mock.calls[0][0]).toBe('/api/v1/qualification-targets');
     expect(fetch.mock.calls[1][0]).toBe('/api/v1/learning-routes/route%2Fa');
   });
 

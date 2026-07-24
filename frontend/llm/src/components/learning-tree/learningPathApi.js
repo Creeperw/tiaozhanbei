@@ -26,10 +26,25 @@ async function loadLearningRoutePayload(path) {
 }
 
 export async function loadClassicLearningRoutes(query = '') {
-  const suffix = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
-  const payload = await loadLearningRoutePayload(`/learning-routes${suffix}`);
-  if (!Array.isArray(payload?.items)) throw new Error('经典路线列表格式不兼容');
-  return payload;
+  const payload = await loadLearningRoutePayload('/qualification-targets');
+  if (payload?.target_kind !== 'qualification_exam' || !Array.isArray(payload?.items)) {
+    throw new Error('经典路线列表格式不兼容');
+  }
+  const keyword = query.trim().toLocaleLowerCase();
+  const items = payload.items
+    .map((target) => ({
+      ...target,
+      route_id: String(target?.target_id || ''),
+      goal_name: String(target?.official_name || ''),
+      textbook_route_id: String(target?.textbook_route_id || ''),
+    }))
+    .filter((target) => (
+      target.route_id
+      && target.goal_name
+      && target.textbook_route_id
+      && (!keyword || target.goal_name.toLocaleLowerCase().includes(keyword))
+    ));
+  return { ...payload, items, total: items.length };
 }
 
 export async function loadClassicLearningRoute(routeId) {

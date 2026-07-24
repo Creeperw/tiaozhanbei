@@ -44,7 +44,19 @@ vi.mock('../pageDataLoaders.js', () => ({
 }));
 
 vi.mock('./exam-atlas/AtlasPracticePanel', () => ({
-  default: ({ scope }) => <div data-testid="atlas-practice-scope">{scope}</div>,
+  default: ({ scope, onResult }) => <div data-testid="atlas-practice-scope">
+    {scope}
+    <button type="button" onClick={() => onResult?.({
+      grading: {
+        score: 100,
+        is_correct: true,
+        analysis: '本次回答正确。',
+        question_explanation: '四君子汤以人参为君，配伍白术、茯苓和炙甘草，共奏益气健脾之功。',
+        explanation_source: 'generated_on_first_attempt',
+      },
+      writeback: { status: 'applied' },
+    }, { question_id: 'Q_1', question_type: 'single_choice' })}>提交模拟答案</button>
+  </div>,
 }));
 
 vi.mock('../utils/api', () => ({
@@ -86,6 +98,16 @@ describe('PracticePage personal question scope', () => {
     expect(within(viewTabs).queryByRole('tab', { name: '证据' })).not.toBeInTheDocument();
     expect(screen.queryByText('证据检查器')).not.toBeInTheDocument();
     expect(screen.queryByTestId('practice-inspector')).not.toBeInTheDocument();
+  });
+
+  it('shows the persisted question explanation separately from grading analysis', async () => {
+    render(<PracticePage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '提交模拟答案' }));
+
+    expect(await screen.findByText('题目解析')).toBeInTheDocument();
+    expect(screen.getByText(/共奏益气健脾之功/)).toBeInTheDocument();
+    expect(screen.getByText(/首次作答自动生成并保存/)).toBeInTheDocument();
   });
 
   it('selects a requested enabled training module from a workspace deep link', async () => {

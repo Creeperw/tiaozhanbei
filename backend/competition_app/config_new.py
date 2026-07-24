@@ -234,9 +234,8 @@ KNOWLEDGE_ATLAS_CONTRACT_PATH = (
 )
 
 # --- Embedding Model ---
-# Embedding/RAG 开关：disabled=禁用（本地开发默认，不加载 Embedding 模型，检索返回空）；
-# enabled=加载本地 Embedding 模型并启用知识库检索。
-EMBEDDING_MODE = os.getenv("EMBEDDING_MODE", "disabled")
+# Embedding/RAG 默认开启；可显式设为 disabled 仅用于故障隔离。
+EMBEDDING_MODE = os.getenv("EMBEDDING_MODE", "enabled")
 
 class EmbeddingConfig:
     # Index identity is stable, while the runtime model path must be provided

@@ -154,6 +154,15 @@ def normalize_onboarding_answers(survey_answers: dict[str, Any], learner_group: 
         "long_term_goal": _text(goals.get("long_term_goal") or survey_answers.get("long_term_goal")),
         "short_term_goal": _text(goals.get("short_term_goal") or survey_answers.get("short_term_goals") or survey_answers.get("short_term_goal")),
         "target_exam_or_course": _text(goals.get("target_exam_or_course") or survey_answers.get("target_exam_or_course")),
+        "textbook_route_id": _text(
+            goals.get("textbook_route_id")
+            or survey_answers.get("textbook_route_id")
+        ),
+        "textbook_route_version": int(
+            goals.get("textbook_route_version")
+            or survey_answers.get("textbook_route_version")
+            or 0
+        ),
         "current_difficulties": _choice_text(
             goals.get("current_difficulties")
             or background.get("weak_area")
@@ -197,6 +206,8 @@ def build_l0_baseline(onboarding_answers: dict[str, Any], learner_group: str = "
         "long_term_goal": normalized["long_term_goal"],
         "short_term_goal": normalized["short_term_goal"],
         "target_exam_or_course": normalized["target_exam_or_course"],
+        "textbook_route_id": normalized["textbook_route_id"],
+        "textbook_route_version": normalized["textbook_route_version"],
         "current_difficulties": normalized["current_difficulties"],
         "daily_available_minutes": normalized["daily_available_minutes"],
         "preferred_time_slot": normalized["preferred_time_slot"],
@@ -263,7 +274,7 @@ def submit_onboarding_survey(
 
     profile_update = {
         "learner_group": normalized["user_group"],
-        "learning_goal": normalized["long_term_goal"] or normalized["short_term_goal"] or normalized["target_exam_or_course"],
+        "learning_goal": normalized["target_exam_or_course"] or normalized["long_term_goal"] or normalized["short_term_goal"],
         "time_constraints": f"每天 {l0_baseline['daily_available_minutes']} 分钟；偏好时段 {l0_baseline['preferred_time_slot']}",
         "resource_preferences": "；".join(
             part

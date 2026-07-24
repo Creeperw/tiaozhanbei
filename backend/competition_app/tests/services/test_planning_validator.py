@@ -484,6 +484,27 @@ def test_validator_rejects_stage_when_prerequisite_is_unconfirmed() -> None:
     assert any("中医诊断学" in issue and "前置" in issue for issue in result.issues)
 
 
+def test_validator_accepts_declared_unmet_prerequisite_when_plan_includes_it() -> None:
+    value = output(
+        long_term_plan_content=(
+            output().long_term_plan_content
+            + "\n进入方剂学习前先补修中医诊断学，并通过基础辨证练习。"
+        ),
+        selected_textbook_route_id="textbook_formula",
+        selected_stage_id="stage-2",
+        selected_books=["《方剂学》"],
+        selection_reason="用户尚未完成中医诊断学，先补前置基础再进入本阶段。",
+    )
+
+    result = PlanningValidator().validate(
+        value,
+        textbook_bound_route(),
+        unmet_prerequisite_courses={"中医诊断学"},
+    )
+
+    assert result.valid, result.issues
+
+
 def test_validator_accepts_natural_cycle_nodes_and_classic_short_titles() -> None:
     value = output(
         long_term_plan_content=(

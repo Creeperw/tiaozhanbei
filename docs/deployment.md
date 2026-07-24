@@ -51,6 +51,10 @@ COMPETITION_EXECUTION_ENGINE=langgraph
 DASHSCOPE_API_KEY=填写真实密钥
 SILICONFLOW_API_KEY=填写真实密钥
 EXA_API_KEY=填写真实密钥
+MINERU_TOKEN=填写 MinerU 服务端密钥
+EMBEDDING_MODE=enabled
+# 有本地 Qwen3-Embedding-4B 时填写；留空则使用远程 Embedding。
+EMBEDDING_MODEL_PATH=
 
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
@@ -75,6 +79,19 @@ KNOWLEDGE_RUNTIME_ROOT=/srv/tiaozhanbei-runtime/knowledge
 # 可选；不配置时读取仓库内 backend/competition/knowledge_atlas_chapters/2026-07-22
 KNOWLEDGE_ATLAS_CHAPTER_ROOT=/srv/tiaozhanbei-assets/knowledge-atlas-chapters
 ```
+
+`MINERU_TOKEN` 也兼容旧变量名 `MINERU_API_KEY`。密钥只放在服务端配置，不传给浏览器。
+PDF 上传会调用知识库交接包中的
+`知识库管理组件/knowledge_upload_pipeline/parse_question_pdf.py`；部署机需能访问 MinerU，
+并安装交接包脚本使用的 `requests` 等依赖。解析结果和 SHA-256 缓存位于知识库 runtime，
+该目录必须持久化且可写。
+
+新用户注册调查的资格选项由主后端
+`backend/competition_app/data/qualification_targets/tcm_qualification_targets.v1.json` 提供。
+部署后检查 `GET /api/v1/qualification-targets` 应返回 `total=5`，并确保每项同时包含
+`exam_track_id`、`planning_route_id` 和 `textbook_route_id`；若数量不为 5，不要在前端
+硬编码补齐。`GET /api/v1/learning-routes` 是经典教材参考目录，不再作为注册资格目录。
+用户群体接口应只返回 `cross_professional` 和 `academic`。
 
 生产环境通过 HTTPS 对外提供服务时设置 `AUTH_COOKIE_SECURE=true`。不要启用弱默认管理员密码；若需要初始化管理员，设置一次性强密码，登录后立即更换并从环境中移除。
 
@@ -162,6 +179,15 @@ RestartSec=5
 
 - `MYSQL_PASSWORD is required`：正式持久化初始化未配置数据库密码；
 - `migration checksum changed`：已执行的 SQL 迁移被修改，应还原旧文件并新增下一编号迁移；
+- 新账号登录后始终停留在学情调查：检查
+  `/api/training/onboarding/survey` 是否成功，再调用
+  `/api/v1/auth/onboarding/complete`；不要直接改数据库绕过；
+- Embedding 状态为 `misconfigured`：确认 `EMBEDDING_MODE=enabled` 后至少配置
+  `SILICONFLOW_API_KEY`，或提供有效的 `EMBEDDING_MODEL_PATH`；
+- Embedding 状态为 `unavailable` 且提示题库契约缺失：检查活动题库索引目录是否同时包含
+  `index.faiss`、`metadata.jsonl` 和 `index_manifest.json`；清单中的模型标识、向量维度与
+  `normalized` 必须和实际索引一致，不能仅复制向量文件；
+- PDF 上传提示 MinerU 不可用：检查 `MINERU_TOKEN`/`MINERU_API_KEY`、交接包管线路径和网络；
 - 知识星球或学习工坊 404：确认 `BACKEND_HANDOFF_ENABLED=true`，再看平台状态中的 `mounted`；
 - 页面仍是旧版本：重新执行 `npm run build`，检查 `FRONTEND_DIST_ROOT`；
 - 登录成功后仍返回 401：请求需带 `credentials: 'include'`，HTTPS 环境检查安全 Cookie 与代理头；
@@ -179,6 +205,12 @@ RestartSec=5
 - 反向代理重连 SSE 时保留原 `thread_id`，不要把同一答案重新创建为新任务；
 - 学情洞察读取会执行幂等自动检查，通知、干预和每周复盘分别通过去重键、24 小时冷却和周期键防重复；
 - 升级后抽查 `/api/v1/learning-insights`、`/api/v1/notifications`、`/api/v1/plan-reviews`，并实际完成一次“中断—重启服务—恢复”验证。
+- 升级后以登录用户抽查 `/api/v1/learning-state/multiscale?window_days=30`、
+  `/api/v1/learning-state/path-candidates?scope=daily_task` 和本人执行的
+  `/api/v1/executions/{execution_id}/coordination`；另一个用户读取同一执行必须返回 `404`。
+- 确认 `workflow_run_states.payload_json` 能保存通信与修复摘要，checkpoint 能恢复
+  `interrupted`/`running` 线程；运维清理不得删除这些未终止线程。
+- 多尺度状态和路径候选由现有学习记录实时派生，部署和升级不创建第二套学习状态表。
 - 规划恢复验收应使用全新账号：先提交零基础、专业背景和每周时间，再回答目标“中医执业医师考试”；
   服务端下一步只能询问尚未确认的报考途径或生成规划，不能同义重复询问考试方向。选择“规定学历路径”后，
   检查长期规划含五阶段经典教材路线且不含“待确认教材”。

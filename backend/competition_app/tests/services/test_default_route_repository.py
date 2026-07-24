@@ -81,7 +81,7 @@ def test_repository_treats_multiple_named_credential_routes_as_ambiguous(
 
     assert result.planning_status == "provisional"
     assert result.route_id is None
-    assert result.match_reason == "ambiguous_embedded_alias"
+    assert result.match_reason == "unsupported_target"
 
 
 def test_approved_resolution_carries_trusted_route_context(
@@ -97,14 +97,14 @@ def test_approved_resolution_carries_trusted_route_context(
     assert result.runtime_checks
 
 
-def test_repository_resolves_unique_goal_type_to_approved_route(
+def test_repository_does_not_fall_back_to_an_unsupported_goal_type(
     repository: DefaultRouteRepository,
 ) -> None:
     result = repository.resolve(goal_type="vocational_skill", goal_name="不同的表达")
 
-    assert result.planning_status == "approved_route"
-    assert result.route_id == "occupational_skill_tcm_healthcare"
-    assert result.match_reason == "unique_goal_type"
+    assert result.planning_status == "provisional"
+    assert result.route_id is None
+    assert result.match_reason == "no_safe_match"
 
 
 def test_repository_returns_provisional_for_ambiguous_goal_type(
@@ -191,6 +191,30 @@ def test_repository_retains_all_route_governance_fields(
     assert route.project_import_metadata is not None
     assert route.project_import_metadata.imported_from
     assert all(phase.source_refs for phase in route.phases)
+
+
+def test_route_selection_catalog_only_exposes_supported_exam_routes(
+    repository: DefaultRouteRepository,
+) -> None:
+    assert {
+        item["route_id"] for item in repository.route_selection_catalog()
+    } == {
+        "tcm_physician_standard_degree",
+        "licensed_pharmacist_tcm",
+    }
+
+
+def test_retired_selection_targets_are_not_matched_for_new_requests(
+    repository: DefaultRouteRepository,
+) -> None:
+    result = repository.resolve(
+        goal_type="vocational_skill",
+        goal_name="保健艾灸师",
+    )
+
+    assert result.planning_status == "provisional"
+    assert result.route_id is None
+    assert result.match_reason == "unsupported_target"
 
 
 def test_application_seed_preserves_every_source_catalog_route_id() -> None:

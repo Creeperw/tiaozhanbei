@@ -72,6 +72,7 @@ async def test_stub_review_card_runs_mastery_review_agents_and_exports_snapshot(
     assert {ref.purpose for ref in scheduler_output.input_refs} == {
         "dependency:diagnosis",
         "dependency:knowledge",
+        "agent_handoff",
     }
     assert "planner" not in [step["step_id"] for step in snapshot["plan"]["steps"]]
     assert [(item["tool_name"], item["agent"], item["status"]) for item in snapshot["tool_trace"]] == [

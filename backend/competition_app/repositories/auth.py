@@ -31,6 +31,10 @@ class AuthRepository(Protocol):
 
     def get_user(self, user_id: str) -> StoredAuthUser | None: ...
 
+    def set_onboarding_required(
+        self, user_id: str, onboarding_required: bool
+    ) -> StoredAuthUser | None: ...
+
     def create_session(self, session: AuthSession) -> None: ...
 
     def get_session(self, token_hash: str) -> AuthSession | None: ...
@@ -65,6 +69,19 @@ class InMemoryAuthRepository:
             user = self._users.get(user_id)
             return user.model_copy(deep=True) if user else None
 
+    def set_onboarding_required(
+        self, user_id: str, onboarding_required: bool
+    ) -> StoredAuthUser | None:
+        with self._lock:
+            user = self._users.get(user_id)
+            if user is None:
+                return None
+            updated = user.model_copy(
+                update={"onboarding_required": bool(onboarding_required)}
+            )
+            self._users[user_id] = updated
+            return updated.model_copy(deep=True)
+
     def create_session(self, session: AuthSession) -> None:
         with self._lock:
             self._sessions[session.token_hash] = session.model_copy(deep=True)
@@ -95,9 +112,11 @@ class SqlAuthRepository:
                     text(
                         "INSERT INTO app_users "
                         "(user_id, username, normalized_username, display_name, "
-                        "password_hash, password_salt, password_iterations, role, status, created_at) "
+                        "password_hash, password_salt, password_iterations, role, status, "
+                        "onboarding_required, created_at) "
                         "VALUES (:user_id, :username, :normalized_username, :display_name, "
-                        ":password_hash, :password_salt, :password_iterations, :role, :status, :created_at)"
+                        ":password_hash, :password_salt, :password_iterations, :role, :status, "
+                        ":onboarding_required, :created_at)"
                     ),
                     values,
                 )
@@ -121,12 +140,29 @@ class SqlAuthRepository:
     def get_user(self, user_id: str) -> StoredAuthUser | None:
         return self._get_user("user_id=:identity", user_id)
 
+    def set_onboarding_required(
+        self, user_id: str, onboarding_required: bool
+    ) -> StoredAuthUser | None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE app_users SET onboarding_required=:onboarding_required "
+                    "WHERE user_id=:user_id"
+                ),
+                {
+                    "user_id": user_id,
+                    "onboarding_required": bool(onboarding_required),
+                },
+            )
+        return self.get_user(user_id)
+
     def _get_user(self, where: str, identity: str) -> StoredAuthUser | None:
         with self.engine.connect() as connection:
             row = connection.execute(
                 text(
                     "SELECT user_id, username, normalized_username, display_name, "
-                    "password_hash, password_salt, password_iterations, role, status, created_at "
+                    "password_hash, password_salt, password_iterations, role, status, "
+                    "onboarding_required, created_at "
                     f"FROM app_users WHERE {where}"
                 ),
                 {"identity": identity},

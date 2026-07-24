@@ -122,6 +122,19 @@ function ArtifactResult({ taskResult }) {
           <h4 className="text-sm font-semibold text-slate-900">分析</h4>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{displayValue(grading.analysis)}</p>
         </div>
+        {grading.question_explanation && (
+          <div className="border-l-2 border-sky-300 pl-4">
+            <h4 className="text-sm font-semibold text-slate-900">题目解析</h4>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+              {displayValue(grading.question_explanation)}
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              解析来源：{grading.explanation_source === 'generated_on_first_attempt'
+                ? '首次作答自动生成并保存'
+                : '题目解析库'}
+            </p>
+          </div>
+        )}
         {(reviewCard.title || reviewCard.content) && (
           <div className="border-l-2 border-emerald-300 pl-4">
             <h4 className="text-sm font-semibold text-slate-900">{displayValue(reviewCard.title)}</h4>
@@ -290,7 +303,7 @@ export default function PracticePage({ navigationContext = {} }) {
   const taskResultApproved = isTrainingTaskResultApproved(taskResult);
 
   return (
-    <div className="space-y-5 text-slate-800">
+    <div className="practice-page space-y-5 text-slate-800">
       <header className="border-b border-slate-200 pb-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

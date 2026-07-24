@@ -17,6 +17,15 @@ def envelope(context: dict[str, Any], producer: str, artifact_type: str, payload
         for step_id, value in dependency_outputs.items()
         if isinstance(value, AgentEnvelope)
     ]
+    handoff = context.get("agent_handoff")
+    if isinstance(handoff, dict) and handoff.get("handoff_id"):
+        input_refs.append(
+            ArtifactReference(
+                ref_type="agent_handoff",
+                ref_id=str(handoff["handoff_id"]),
+                purpose="agent_handoff",
+            )
+        )
     result = AgentEnvelope[Any](
         artifact_id=f"ART_{uuid4().hex}",
         artifact_type=artifact_type,

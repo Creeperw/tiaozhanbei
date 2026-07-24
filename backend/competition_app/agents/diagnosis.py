@@ -108,6 +108,9 @@ class DiagnosisAgent:
         confirmed_prerequisite_courses = self._confirmed_prerequisite_courses(
             context, route_context
         )
+        unmet_prerequisite_courses = self._unmet_prerequisite_courses(
+            context, route_context
+        )
         user_knowledge_states = context.get("user_knowledge_states")
         if user_knowledge_states is None:
             singular_knowledge_state = context.get("user_knowledge_state")
@@ -118,10 +121,20 @@ class DiagnosisAgent:
             )
         target_difficulty = int(system_data.get("target_difficulty", 2))
         if task_type == "learning_plan":
-            scope_clarification = self._plan_scope_clarification(
-                plan_scope,
-                context.get("current_long_term_plan"),
-                context.get("current_short_term_plan"),
+            scope_clarification = (
+                self._plan_scope_clarification(
+                    plan_scope,
+                    context.get("current_long_term_plan"),
+                    context.get("current_short_term_plan"),
+                )
+                if plan_scope == "unspecified"
+                else None
+                if context.get("enforce_planning_readiness")
+                else self._plan_scope_clarification(
+                    plan_scope,
+                    context.get("current_long_term_plan"),
+                    context.get("current_short_term_plan"),
+                )
             )
             if scope_clarification is not None:
                 questions, reason = scope_clarification
@@ -180,6 +193,10 @@ class DiagnosisAgent:
                             if planning_readiness.status == "needs_profile"
                             else "planning_prerequisite"
                         ),
+                        # Keep the user's requested layer stable. Available
+                        # prerequisite actions are guidance, not permission to
+                        # silently turn a short-term request into a long-term
+                        # planning result.
                         plan_scope=plan_scope,
                     )
                     return envelope(context, "diagnosis_agent", "diagnosis_result", result)
@@ -337,6 +354,14 @@ class DiagnosisAgent:
                 "confirmed_prerequisite_courses": sorted(
                     confirmed_prerequisite_courses
                 ),
+                "unmet_prerequisite_courses": sorted(
+                    unmet_prerequisite_courses
+                ),
+            },
+            "learning_state": context.get("multi_scale_learning_state") or {},
+            "path_candidates": context.get("path_candidates") or {
+                "eligible": [],
+                "blocked": [],
             },
             "default_route": {
                 "planning_status": route_context.get("planning_status"),
@@ -402,6 +427,8 @@ class DiagnosisAgent:
                     short_term_action=change_decision.short_term_action,
                     daily_task_action=change_decision.daily_task_action,
                     confirmed_prerequisite_courses=confirmed_prerequisite_courses,
+                    unmet_prerequisite_courses=unmet_prerequisite_courses,
+                    path_candidates=context.get("path_candidates"),
                 )
                 if not validation.valid:
                     revision_payload = {
@@ -452,6 +479,8 @@ class DiagnosisAgent:
                         short_term_action=change_decision.short_term_action,
                         daily_task_action=change_decision.daily_task_action,
                         confirmed_prerequisite_courses=confirmed_prerequisite_courses,
+                        unmet_prerequisite_courses=unmet_prerequisite_courses,
+                        path_candidates=context.get("path_candidates"),
                     )
                     if not validation.valid:
                         if any(
@@ -702,6 +731,12 @@ class DiagnosisAgent:
         context: dict[str, Any],
         route_context: dict[str, Any],
     ) -> ThreeLayerPlanningModelOutput:
+        raw_output = dict(raw_output)
+        if not raw_output.get("selected_path_candidate_id"):
+            raw_output["selected_path_candidate_id"] = (
+                raw_output.get("selected_candidate_id")
+                or raw_output.get("candidate_id")
+            )
         current_long = context.get("current_long_term_plan") or {}
         current_short = context.get("current_short_term_plan") or {}
         current_task = context.get("current_learning_task") or {}
@@ -760,6 +795,10 @@ class DiagnosisAgent:
             else 10
         )
         common = {
+            "selected_path_candidate_id": field(
+                current_task,
+                "selected_path_candidate_id",
+            ),
             "long_term_plan_content": str(
                 field(current_long, "content") or "本次未生成长期规划。"
             ),
@@ -801,6 +840,9 @@ class DiagnosisAgent:
                     "【重规划条件】",
                     "【保温底线】",
                 ),
+            )
+            common["selected_path_candidate_id"] = (
+                scoped.selected_path_candidate_id
             )
             common["long_term_plan_content"] = cls._repair_full_capacity_mandate(
                 str(common["long_term_plan_content"]),
@@ -1610,6 +1652,20 @@ class DiagnosisAgent:
     def _confirmed_prerequisite_courses(
         cls, context: dict[str, Any], route_context: dict[str, Any]
     ) -> set[str]:
+        confirmed, _ = cls._prerequisite_course_evidence(context, route_context)
+        return confirmed
+
+    @classmethod
+    def _unmet_prerequisite_courses(
+        cls, context: dict[str, Any], route_context: dict[str, Any]
+    ) -> set[str]:
+        _, unmet = cls._prerequisite_course_evidence(context, route_context)
+        return unmet
+
+    @classmethod
+    def _prerequisite_course_evidence(
+        cls, context: dict[str, Any], route_context: dict[str, Any]
+    ) -> tuple[set[str], set[str]]:
         resolution = route_context.get("textbook_route") or {}
         route = resolution.get("route") or {}
         prerequisite_courses = {
@@ -1618,7 +1674,7 @@ class DiagnosisAgent:
             if str(rule.get("course") or "").strip()
         }
         if not prerequisite_courses:
-            return set()
+            return set(), set()
 
         confirmed_texts: list[str] = []
 
@@ -1647,6 +1703,7 @@ class DiagnosisAgent:
             collect(source)
 
         confirmed: set[str] = set()
+        unmet: set[str] = set()
         for course in prerequisite_courses:
             if any(course in text for text in confirmed_texts):
                 confirmed.add(course)
@@ -1654,7 +1711,17 @@ class DiagnosisAgent:
         positive_markers = (
             "已完成", "已经完成", "已通过", "已经学完", "掌握了", "能够通过", "是的"
         )
-        negative_markers = ("忘", "未完成", "没有完成", "没学", "不会", "未通过")
+        negative_markers = (
+            "忘",
+            "未完成",
+            "没有完成",
+            "没有学过",
+            "没有学",
+            "没学",
+            "未学",
+            "不会",
+            "未通过",
+        )
 
         def apply_statement(text: str, implied_courses: set[str] | None = None) -> None:
             candidates = {
@@ -1669,8 +1736,10 @@ class DiagnosisAgent:
                 )
                 if any(marker in window for marker in negative_markers):
                     confirmed.discard(course)
+                    unmet.add(course)
                 elif any(marker in window for marker in positive_markers):
                     confirmed.add(course)
+                    unmet.discard(course)
 
         pending_courses: set[str] = set()
         for message in context.get("messages") or []:
@@ -1685,7 +1754,7 @@ class DiagnosisAgent:
                 apply_statement(text, pending_courses)
                 pending_courses = set()
         apply_statement(str(context.get("user_request") or ""))
-        return confirmed
+        return confirmed, unmet
 
     @staticmethod
     def _short_term_task_blocks(content: str) -> list[str]:

@@ -24,6 +24,7 @@ from APP.backend.learning_target_service import (
     LearningTargetLockedError,
     LearningTargetValidationError,
     get_active_learning_target,
+    requires_official_exam_repository,
     serialize_learning_target,
     set_active_learning_target,
 )
@@ -192,12 +193,17 @@ def update_learning_target(
     db: Session = Depends(get_db),
 ):
     try:
+        target_repository = (
+            exam_learning_service.get_official_exam_repository()
+            if requires_official_exam_repository(body.target_type, body.exam_track_id)
+            else None
+        )
         target = set_active_learning_target(
             db,
             user_id=current_user.id,
             target_type=body.target_type,
             exam_track_id=body.exam_track_id,
-            repository=exam_learning_service.get_official_exam_repository(),
+            repository=target_repository,
             exam_date=body.exam_date,
             is_locked=body.is_locked,
             lock_reason=body.lock_reason,

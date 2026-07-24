@@ -319,6 +319,8 @@ describe('CompactAssistant', () => {
     fireEvent.click(restoreButton);
     fireEvent.click(restoreButton);
     expect(screen.getByLabelText('常驻智能助教')).toHaveStyle({ left: '672px', top: '132px' });
+    fireEvent.click(screen.getByRole('button', { name: '折叠智能助教' }));
+    expect(screen.getByLabelText('常驻智能助教')).toHaveStyle({ left: '936px', top: '636px' });
   });
 
   it('uses one contextual workbench with reusable quick actions', async () => {
@@ -372,5 +374,29 @@ describe('CompactAssistant', () => {
 
     expect(await screen.findByText('网络中断')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText('正在思考…')).not.toBeInTheDocument());
+  });
+
+  it('shows safe summaries for communication and local repair events', async () => {
+    render(
+      <CompactAssistant
+        onOpenFull={vi.fn()}
+        executionEvents={[
+          { event: 'handoff_prepared', step_id: 'diagnosis', status: 'prepared', raw_content: '不要展示的通信原文' },
+          { event: 'handoff_blocked', step_id: 'planner', status: 'blocked', content: '不要展示的阻断原文' },
+          { event: 'repair_planned', repair_id: 'REPAIR_1', rerun_step_ids: ['diagnosis'], status: 'planned' },
+          { event: 'repair_step_started', step_id: 'diagnosis', status: 'running' },
+          { event: 'repair_completed', trigger_step_id: 'audit', status: 'pass' },
+          { event: 'repair_stopped', trigger_step_id: 'audit', status: 'needs_human_review' },
+        ]}
+      />,
+    );
+
+    expect(await screen.findByText('按需通信')).toBeInTheDocument();
+    expect(screen.getByText('通信信息不足')).toBeInTheDocument();
+    expect(screen.getByText('已生成局部修复链')).toBeInTheDocument();
+    expect(screen.getByText('局部修复执行中')).toBeInTheDocument();
+    expect(screen.getByText('局部修复完成')).toBeInTheDocument();
+    expect(screen.getByText('局部修复已停止')).toBeInTheDocument();
+    expect(screen.queryByText(/不要展示/)).not.toBeInTheDocument();
   });
 });

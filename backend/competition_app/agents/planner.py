@@ -115,6 +115,9 @@ class PlannerAgent:
                                     context.get("current_short_term_plan", {}).get("content")
                                 ),
                             },
+                            "multi_scale_learning_state": context.get(
+                                "planner_multiscale_summary", {}
+                            ),
                             "conversation_context": {
                                 "message_count": len(context.get("messages", [])),
                                 "total_characters": sum(

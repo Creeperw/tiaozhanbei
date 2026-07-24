@@ -8,6 +8,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph._internal._runnable import set_config_context
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+from langgraph.errors import GraphInterrupt
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
@@ -15,9 +16,11 @@ from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.default_route import ResolvedPlanningRoute
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.knowledge import EvidencePack
+from competition_app.contracts.local_repair import LocalRepairPlan
+from competition_app.contracts.resource import AuditResult
 from competition_app.runtime.event_stream import emit_runtime_event
 from competition_app.runtime.orchestrator import ExecutionResult, Orchestrator
-from competition_app.runtime.trace import TraceRecorder
+from competition_app.runtime.trace import CommunicationTrace, RepairTrace, TraceRecorder
 
 
 def _merge_mappings(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
@@ -25,11 +28,41 @@ def _merge_mappings(left: dict[str, Any], right: dict[str, Any]) -> dict[str, An
     return {**left, **right}
 
 
+def _merge_communication_traces(
+    left: list[CommunicationTrace], right: list[CommunicationTrace]
+) -> list[CommunicationTrace]:
+    """Keep independently completed handoffs while avoiding resume duplicates."""
+    merged: dict[tuple[str, str], CommunicationTrace] = {}
+    for item in [*left, *right]:
+        trace = (
+            item
+            if isinstance(item, CommunicationTrace)
+            else CommunicationTrace.model_validate(item)
+        )
+        merged[(trace.handoff_id, trace.status)] = trace
+    return list(merged.values())
+
+
+def _append_unique_repair_trace(
+    left: list[RepairTrace], right: list[RepairTrace]
+) -> list[RepairTrace]:
+    """Replace the current state of a repair without duplicating it after resume."""
+    merged: dict[str, RepairTrace] = {}
+    for item in [*left, *right]:
+        trace = item if isinstance(item, RepairTrace) else RepairTrace.model_validate(item)
+        merged[trace.repair_id] = trace
+    return list(merged.values())
+
+
 class LangGraphExecutionState(TypedDict):
     outputs: Annotated[dict[str, Any], _merge_mappings]
     failures: Annotated[dict[str, dict[str, str]], _merge_mappings]
     blocked_steps: Annotated[dict[str, str], _merge_mappings]
     terminal_states: Annotated[dict[str, dict[str, str | None]], _merge_mappings]
+    communication_trace: Annotated[list[CommunicationTrace], _merge_communication_traces]
+    repair_plans: Annotated[dict[str, dict[str, Any]], _merge_mappings]
+    repair_progress: Annotated[dict[str, dict[str, Any]], _merge_mappings]
+    repair_trace: Annotated[list[RepairTrace], _append_unique_repair_trace]
 
 
 @dataclass
@@ -110,6 +143,10 @@ class LangGraphOrchestrator(Orchestrator):
             "failures": {},
             "blocked_steps": {},
             "terminal_states": {},
+            "communication_trace": [],
+            "repair_plans": {},
+            "repair_progress": {},
+            "repair_trace": [],
         }
         try:
             state = await graph.ainvoke(initial_state, config=config)
@@ -120,6 +157,7 @@ class LangGraphOrchestrator(Orchestrator):
                 status="failed",
                 trace=trace.items,
                 tool_trace=trace.tool_items,
+                communication_trace=trace.communication_items,
                 error_type=type(exc).__name__,
                 error_message=f"LangGraph execution failed: {exc}",
                 thread_id=resolved_thread_id,
@@ -160,6 +198,7 @@ class LangGraphOrchestrator(Orchestrator):
                 status="failed",
                 trace=session.trace.items,
                 tool_trace=session.trace.tool_items,
+                communication_trace=session.trace.communication_items,
                 error_type=type(exc).__name__,
                 error_message=f"LangGraph resume failed: {exc}",
                 thread_id=thread_id,
@@ -206,6 +245,8 @@ class LangGraphOrchestrator(Orchestrator):
                 outputs=dict(state.get("outputs", {})),
                 trace=trace.items,
                 tool_trace=trace.tool_items,
+                communication_trace=self._communication_trace_from_state(state, trace),
+                repair_trace=self._repair_trace_from_state(state),
                 thread_id=thread_id,
                 interrupt=interrupt_payload,
             )
@@ -222,6 +263,8 @@ class LangGraphOrchestrator(Orchestrator):
                 outputs=outputs,
                 trace=trace.items,
                 tool_trace=trace.tool_items,
+                communication_trace=self._communication_trace_from_state(state, trace),
+                repair_trace=self._repair_trace_from_state(state),
                 error_type=failure["error_type"],
                 error_message=failure["error_message"],
                 thread_id=thread_id,
@@ -238,6 +281,8 @@ class LangGraphOrchestrator(Orchestrator):
                 outputs=outputs,
                 trace=trace.items,
                 tool_trace=trace.tool_items,
+                communication_trace=self._communication_trace_from_state(state, trace),
+                repair_trace=self._repair_trace_from_state(state),
                 error_type=terminal.get("error_type"),
                 error_message=terminal.get("error_message"),
                 thread_id=thread_id,
@@ -248,6 +293,8 @@ class LangGraphOrchestrator(Orchestrator):
             outputs=outputs,
             trace=trace.items,
             tool_trace=trace.tool_items,
+            communication_trace=self._communication_trace_from_state(state, trace),
+            repair_trace=self._repair_trace_from_state(state),
             thread_id=thread_id,
         )
 
@@ -267,7 +314,7 @@ class LangGraphOrchestrator(Orchestrator):
         for step in plan.steps:
             builder.add_node(
                 step.step_id,
-                self._node_for_step(step, context, recorder, steps_by_id),
+                self._node_for_step(step, context, recorder, steps_by_id, plan),
             )
             dependents.update(step.depends_on)
 
@@ -279,11 +326,28 @@ class LangGraphOrchestrator(Orchestrator):
             else:
                 builder.add_edge(step.depends_on, step.step_id)
 
+        builder.add_node(
+            "repair_execute",
+            self._repair_node(plan, context, recorder, steps_by_id),
+        )
         leaf_steps = [
             step.step_id for step in plan.steps if step.step_id not in dependents
         ]
         for step_id in leaf_steps:
-            builder.add_edge(step_id, END)
+            step = steps_by_id[step_id]
+            if self._is_audit_step(step):
+                builder.add_conditional_edges(
+                    step_id,
+                    self._route_after_audit,
+                    {"repair_execute": "repair_execute", "end": END},
+                )
+            else:
+                builder.add_edge(step_id, END)
+        builder.add_conditional_edges(
+            "repair_execute",
+            self._route_after_repair,
+            {"repair_execute": "repair_execute", "end": END},
+        )
 
         return builder.compile(
             checkpointer=self._checkpointer,
@@ -291,9 +355,72 @@ class LangGraphOrchestrator(Orchestrator):
         )
 
     @staticmethod
+    def _communication_trace_from_state(
+        state: dict[str, Any], trace: TraceRecorder
+    ) -> list[CommunicationTrace]:
+        items = state.get("communication_trace") or []
+        return _merge_communication_traces(
+            [],
+            [*items, *trace.communication_items],
+        )
+
+    @staticmethod
+    def _repair_trace_from_state(state: dict[str, Any]) -> list[RepairTrace]:
+        return _append_unique_repair_trace([], state.get("repair_trace") or [])
+
+    @staticmethod
+    def _is_audit_step(step: ExecutionStep) -> bool:
+        return step.agent == "audit_agent" or (step.action or "").lower() in {
+            "audit",
+            "review_exam_paper",
+        }
+
+    @staticmethod
+    def _route_after_audit(state: LangGraphExecutionState) -> str:
+        if state.get("terminal_states"):
+            return "end"
+        if any(
+            str(progress.get("status")) in {"planned", "running"}
+            for progress in state.get("repair_progress", {}).values()
+        ):
+            return "repair_execute"
+        return "end"
+
+    @staticmethod
+    def _route_after_repair(state: LangGraphExecutionState) -> str:
+        if state.get("terminal_states"):
+            return "end"
+        if any(
+            str(progress.get("status")) in {"planned", "running"}
+            for progress in state.get("repair_progress", {}).values()
+        ):
+            return "repair_execute"
+        return "end"
+
+    @staticmethod
+    def _communication_update(step_id: str, trace: TraceRecorder) -> dict[str, Any]:
+        return {
+            "communication_trace": [
+                item for item in trace.communication_items if item.step_id == step_id
+            ]
+        }
+
+    @staticmethod
     def _restore_checkpoint_output(value: Any) -> Any:
         """Restore typed envelopes flattened during checkpoint replay."""
-        if isinstance(value, AgentEnvelope) or not isinstance(value, dict):
+        payload_types = {
+            "resolved_planning_route": ResolvedPlanningRoute,
+            "evidence_pack": EvidencePack,
+            "audit_result": AuditResult,
+        }
+        if isinstance(value, AgentEnvelope):
+            payload_type = payload_types.get(str(value.artifact_type))
+            if payload_type is None or not isinstance(value.payload, dict):
+                return value
+            normalized = value.model_dump(mode="python")
+            normalized["payload"] = payload_type.model_validate(value.payload)
+            return AgentEnvelope[Any].model_validate(normalized)
+        if not isinstance(value, dict):
             return value
         required = {
             "artifact_id",
@@ -310,15 +437,224 @@ class LangGraphOrchestrator(Orchestrator):
         }
         if not required.issubset(value):
             return value
-        payload_types = {
-            "resolved_planning_route": ResolvedPlanningRoute,
-            "evidence_pack": EvidencePack,
-        }
         normalized = dict(value)
         payload_type = payload_types.get(str(value.get("artifact_type")))
         if payload_type is not None and isinstance(value.get("payload"), dict):
             normalized["payload"] = payload_type.model_validate(value["payload"])
         return AgentEnvelope[Any].model_validate(normalized)
+
+    def _repair_node(
+        self,
+        plan: ExecutionPlan,
+        root_context: dict[str, Any],
+        trace: TraceRecorder,
+        steps_by_id: dict[str, ExecutionStep],
+    ):
+        async def run_repair(
+            state: LangGraphExecutionState,
+            config: RunnableConfig,
+        ) -> dict[str, Any]:
+            progress_items = state.get("repair_progress", {})
+            audit_step_id = next(
+                (
+                    step_id
+                    for step_id, progress in progress_items.items()
+                    if str(progress.get("status")) in {"planned", "running"}
+                ),
+                None,
+            )
+            if audit_step_id is None:
+                return {}
+            plan_data = state.get("repair_plans", {}).get(audit_step_id)
+            if not isinstance(plan_data, dict):
+                return {
+                    "terminal_states": {
+                        audit_step_id: {
+                            "status": "waiting_human_review",
+                            "error_type": "RepairPlanUnavailable",
+                            "error_message": "repair plan was unavailable after checkpoint recovery",
+                        }
+                    }
+                }
+            repair_plan = LocalRepairPlan.model_validate(plan_data)
+            progress = dict(progress_items[audit_step_id])
+            completed = list(progress.get("completed_step_ids") or [])
+            action = next(
+                (item for item in repair_plan.actions if item.step_id not in completed),
+                None,
+            )
+            if action is None:
+                progress["status"] = "completed"
+                return {"repair_progress": {audit_step_id: progress}}
+
+            outputs = {
+                key: self._restore_checkpoint_output(value)
+                for key, value in dict(state.get("outputs", {})).items()
+            }
+            original_audit = outputs.get(audit_step_id)
+            repair_context = {**root_context, "audit_feedback": original_audit}
+            rerun_step = steps_by_id[action.step_id]
+            record_item = next(
+                (
+                    item
+                    for item in state.get("repair_trace", [])
+                    if (
+                        item.repair_id
+                        if isinstance(item, RepairTrace)
+                        else item.get("repair_id")
+                    )
+                    == repair_plan.repair_id
+                ),
+                None,
+            )
+            if record_item is None:
+                progress["status"] = "stopped"
+                emit_runtime_event(
+                    "repair_stopped",
+                    repair_id=repair_plan.repair_id,
+                    trigger_step_id=audit_step_id,
+                    status="needs_human_review",
+                )
+                return {
+                    "repair_progress": {audit_step_id: progress},
+                    "terminal_states": {
+                        audit_step_id: {
+                            "status": "waiting_human_review",
+                            "error_type": "RepairTraceUnavailable",
+                            "error_message": "repair trace was unavailable after checkpoint recovery",
+                        }
+                    },
+                }
+            record = RepairTrace.model_validate(record_item)
+            if action.step_id == audit_step_id:
+                emit_runtime_event(
+                    "repair_reaudit_started",
+                    repair_id=repair_plan.repair_id,
+                    trigger_step_id=audit_step_id,
+                    status="running",
+                )
+            else:
+                emit_runtime_event(
+                    "repair_step_started",
+                    repair_id=repair_plan.repair_id,
+                    step_id=action.step_id,
+                    status="running",
+                )
+            try:
+                result = await self._run_step(rerun_step, repair_context, outputs, trace)
+                clarification = (
+                    self._clarification_payload(result, rerun_step)
+                    if root_context.get("interruptible")
+                    else None
+                )
+                while clarification is not None:
+                    root_context.setdefault("_interrupted_dependency_outputs", {})[
+                        action.step_id
+                    ] = dict(outputs)
+                    with set_config_context(config) as interrupt_context:
+                        resume_value = interrupt_context.run(interrupt, clarification)
+                    self._apply_resume_value(
+                        root_context,
+                        resume_value,
+                        requested_scope=clarification.get("requested_scope"),
+                    )
+                    repair_context = {
+                        **root_context,
+                        "audit_feedback": original_audit,
+                    }
+                    emit_runtime_event(
+                        "graph_resumed",
+                        thread_id=config.get("configurable", {}).get("thread_id"),
+                        step_id=action.step_id,
+                    )
+                    result = await self._run_step(
+                        rerun_step, repair_context, outputs, trace
+                    )
+                    clarification = self._clarification_payload(result, rerun_step)
+            except GraphInterrupt:
+                raise
+            except Exception as exc:
+                progress["status"] = "stopped"
+                record.status = "stopped"
+                record.final_audit_decision = "failed"
+                emit_runtime_event(
+                    "repair_stopped",
+                    repair_id=repair_plan.repair_id,
+                    trigger_step_id=audit_step_id,
+                    status="failed",
+                )
+                return {
+                    "repair_progress": {audit_step_id: progress},
+                    "repair_trace": [record],
+                    "failures": {
+                        action.step_id: {
+                            "error_type": type(exc).__name__,
+                            "error_message": f"repair step {action.step_id} failed: {exc}",
+                        }
+                    },
+                    **self._communication_update(action.step_id, trace),
+                }
+
+            completed.append(action.step_id)
+            progress["completed_step_ids"] = completed
+            progress["status"] = "running"
+            record.status = "running"
+            if action.step_id != audit_step_id:
+                emit_runtime_event(
+                    "repair_step_completed",
+                    repair_id=repair_plan.repair_id,
+                    step_id=action.step_id,
+                    status="success",
+                )
+                return {
+                    "outputs": {action.step_id: result},
+                    "repair_progress": {audit_step_id: progress},
+                    "repair_trace": [record],
+                    **self._communication_update(action.step_id, trace),
+                }
+
+            decision = getattr(getattr(result, "payload", None), "decision", None)
+            record.final_audit_decision = decision
+            if decision == "pass":
+                record.status = "completed"
+                progress["status"] = "completed"
+                emit_runtime_event(
+                    "repair_completed",
+                    repair_id=repair_plan.repair_id,
+                    trigger_step_id=audit_step_id,
+                    status="pass",
+                )
+                return {
+                    "outputs": {audit_step_id: result},
+                    "repair_progress": {audit_step_id: progress},
+                    "repair_trace": [record],
+                    **self._communication_update(audit_step_id, trace),
+                }
+
+            record.status = "stopped"
+            progress["status"] = "stopped"
+            status = "failed" if decision == "reject" else "waiting_human_review"
+            emit_runtime_event(
+                "repair_stopped",
+                repair_id=repair_plan.repair_id,
+                trigger_step_id=audit_step_id,
+                status=decision or "needs_human_review",
+            )
+            return {
+                "outputs": {audit_step_id: result},
+                "repair_progress": {audit_step_id: progress},
+                "repair_trace": [record],
+                "terminal_states": {
+                    audit_step_id: {
+                        "status": status,
+                        "error_type": "AuditRevisionNeedsHumanReview",
+                        "error_message": "audit still requires review after the bounded repair",
+                    }
+                },
+                **self._communication_update(audit_step_id, trace),
+            }
+
+        return run_repair
 
     def _node_for_step(
         self,
@@ -326,11 +662,18 @@ class LangGraphOrchestrator(Orchestrator):
         root_context: dict[str, Any],
         trace: TraceRecorder,
         steps_by_id: dict[str, ExecutionStep],
+        plan: ExecutionPlan,
     ):
         async def run_node(
             state: LangGraphExecutionState,
             config: RunnableConfig,
         ) -> dict[str, Any]:
+            def with_communication(update: dict[str, Any]) -> dict[str, Any]:
+                return {
+                    **update,
+                    **self._communication_update(step.step_id, trace),
+                }
+
             failures = state.get("failures", {})
             blocked = state.get("blocked_steps", {})
             failed_dependencies = [
@@ -368,7 +711,7 @@ class LangGraphOrchestrator(Orchestrator):
                     step, root_context, outputs, trace
                 )
             except Exception as exc:
-                return {
+                return with_communication({
                     "failures": {
                         step.step_id: {
                             "error_type": type(exc).__name__,
@@ -378,7 +721,7 @@ class LangGraphOrchestrator(Orchestrator):
                             ),
                         }
                     }
-                }
+                })
 
             clarification = (
                 self._clarification_payload(result, step)
@@ -391,7 +734,11 @@ class LangGraphOrchestrator(Orchestrator):
                 ] = dict(outputs)
                 with set_config_context(config) as interrupt_context:
                     resume_value = interrupt_context.run(interrupt, clarification)
-                self._apply_resume_value(root_context, resume_value)
+                self._apply_resume_value(
+                    root_context,
+                    resume_value,
+                    requested_scope=clarification.get("requested_scope"),
+                )
                 emit_runtime_event(
                     "graph_resumed",
                     thread_id=config.get("configurable", {}).get("thread_id"),
@@ -413,7 +760,7 @@ class LangGraphOrchestrator(Orchestrator):
                         step, root_context, outputs, trace
                     )
                 except Exception as exc:
-                    return {
+                    return with_communication({
                         "failures": {
                             step.step_id: {
                                 "error_type": type(exc).__name__,
@@ -423,7 +770,7 @@ class LangGraphOrchestrator(Orchestrator):
                                 ),
                             }
                         }
-                    }
+                    })
                 clarification = self._clarification_payload(result, step)
 
             preserved_dependencies = root_context.get(
@@ -433,7 +780,7 @@ class LangGraphOrchestrator(Orchestrator):
             node_outputs = {**preserved_dependencies, step.step_id: result}
             decision = getattr(getattr(result, "payload", None), "decision", None)
             if decision == "reject":
-                return {
+                return with_communication({
                     "outputs": node_outputs,
                     "terminal_states": {
                         step.step_id: {
@@ -442,9 +789,9 @@ class LangGraphOrchestrator(Orchestrator):
                             "error_message": None,
                         }
                     },
-                }
+                })
             if decision == "needs_human_review":
-                return {
+                return with_communication({
                     "outputs": node_outputs,
                     "terminal_states": {
                         step.step_id: {
@@ -453,68 +800,93 @@ class LangGraphOrchestrator(Orchestrator):
                             "error_message": None,
                         }
                     },
-                }
+                })
             if decision != "revise":
-                return {"outputs": node_outputs}
+                return with_communication({"outputs": node_outputs})
 
             emit_runtime_event(
                 "audit_revision_started",
                 audit_step_id=step.step_id,
-                findings=getattr(getattr(result, "payload", None), "findings", []),
+                status="running",
             )
-            try:
-                revised = await self._revise_once(
-                    step.step_id, step, root_context, outputs, trace
-                )
-            except Exception as exc:
+            payload = getattr(result, "payload", None)
+            findings = list(getattr(payload, "findings", []) or [])
+            structured_findings = list(
+                getattr(payload, "structured_findings", []) or []
+            )
+            repair_plan = self.repair_controller.plan_repair(
+                plan=plan,
+                audit_step_id=step.step_id,
+                audit_findings=findings,
+                structured_findings=structured_findings,
+                outputs={**outputs, step.step_id: result},
+            )
+            rerun_step_ids = [action.step_id for action in repair_plan.actions]
+            record = RepairTrace(
+                repair_id=repair_plan.repair_id,
+                trigger_step_id=step.step_id,
+                issue_types=[issue.issue_type for issue in repair_plan.issues],
+                rerun_step_ids=rerun_step_ids,
+                preserved_step_ids=sorted(
+                    set(outputs).union(node_outputs) - set(rerun_step_ids)
+                ),
+                status=(
+                    "planned"
+                    if repair_plan.status == "planned"
+                    else "stopped"
+                ),
+                final_audit_decision=(
+                    None
+                    if repair_plan.status == "planned"
+                    else "needs_human_review"
+                ),
+            )
+            emit_runtime_event(
+                "repair_planned",
+                repair_id=record.repair_id,
+                trigger_step_id=step.step_id,
+                issue_types=record.issue_types,
+                rerun_step_ids=record.rerun_step_ids,
+                preserved_step_ids=record.preserved_step_ids,
+                status=repair_plan.status,
+            )
+            if repair_plan.status == "needs_human_review":
                 emit_runtime_event(
-                    "audit_revision_failed",
-                    audit_step_id=step.step_id,
-                    error_type=type(exc).__name__,
-                    error_message=str(exc),
+                    "repair_stopped",
+                    repair_id=record.repair_id,
+                    trigger_step_id=step.step_id,
+                    status="needs_human_review",
                 )
-                return {
-                    "outputs": {step.step_id: result},
-                    "failures": {
-                        step.step_id: {
-                            "error_type": type(exc).__name__,
-                            "error_message": f"audit revision failed: {exc}",
-                        }
-                    },
-                }
-            if revised is not None:
                 emit_runtime_event(
                     "audit_revision_completed",
                     audit_step_id=step.step_id,
-                    status="pass",
+                    status="needs_human_review",
                 )
-                return {"outputs": revised}
-
-            emit_runtime_event(
-                "audit_revision_completed",
-                audit_step_id=step.step_id,
-                status="needs_human_review",
-            )
-            revised_audit = outputs[step.step_id]
-            revised_decision = getattr(
-                getattr(revised_audit, "payload", None), "decision", None
-            )
-            return {
-                "outputs": {step.step_id: revised_audit},
-                "terminal_states": {
+                return with_communication({
+                    "outputs": node_outputs,
+                    "repair_trace": [record],
+                    "terminal_states": {
+                        step.step_id: {
+                            "status": "waiting_human_review",
+                            "error_type": "RepairPlanNeedsHumanReview",
+                            "error_message": "audit findings could not be safely repaired",
+                        }
+                    },
+                })
+            return with_communication({
+                "outputs": node_outputs,
+                "repair_plans": {
+                    step.step_id: repair_plan.model_dump(mode="json")
+                },
+                "repair_progress": {
                     step.step_id: {
-                        "status": (
-                            "failed"
-                            if revised_decision == "reject"
-                            else "waiting_human_review"
-                        ),
-                        "error_type": "AuditRevisionNeedsHumanReview",
-                        "error_message": (
-                            "audit requested revision but revised output still requires review"
-                        ),
+                        "repair_id": repair_plan.repair_id,
+                        "status": "planned",
+                        "completed_step_ids": [],
                     }
                 },
-            }
+                "repair_trace": [record],
+            })
 
         return run_node
 
@@ -621,7 +993,12 @@ class LangGraphOrchestrator(Orchestrator):
         }
 
     @staticmethod
-    def _apply_resume_value(root_context: dict[str, Any], resume_value: Any) -> None:
+    def _apply_resume_value(
+        root_context: dict[str, Any],
+        resume_value: Any,
+        *,
+        requested_scope: str | None = None,
+    ) -> None:
         value = resume_value if isinstance(resume_value, dict) else {"answer": resume_value}
         profile_updates = value.get("profile_updates")
         if isinstance(profile_updates, dict):
@@ -638,12 +1015,18 @@ class LangGraphOrchestrator(Orchestrator):
             answer = str(value.get("answer") or "").strip()
             change = {
                 "original_request": root_context.get("user_request", ""),
-                "target_layers": [value.get("plan_scope") or "long_term"],
+                "target_layers": [
+                    value.get("plan_scope")
+                    or requested_scope
+                    or root_context.get("plan_scope")
+                    or "unspecified"
+                ],
                 "change_details": answer,
             }
         details = str(change.get("change_details") or value.get("answer") or "").strip()
         if details:
             root_context["latest_resume_answer"] = details
+            root_context["learning_goal"] = details
         original_request = str(
             change.get("original_request")
             or root_context.get("original_user_request")
@@ -664,7 +1047,7 @@ class LangGraphOrchestrator(Orchestrator):
                 parts.append(f"{label}：{item}")
         root_context["user_request"] = "\n".join(dict.fromkeys(parts))
         root_context["plan_change_context"] = change
-        scope = value.get("plan_scope") or next(
+        scope = value.get("plan_scope") or requested_scope or next(
             iter(change.get("target_layers") or []), root_context.get("plan_scope")
         )
         if scope:

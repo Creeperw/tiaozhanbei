@@ -1,5 +1,7 @@
 import importlib
+import json
 import unittest
+from unittest.mock import patch
 
 from APP.backend.agent_contracts import DiagnosisReport, EvidenceItem, EvidencePack, LearnerContextBrief
 
@@ -458,21 +460,42 @@ class ExpertAgentServiceTests(unittest.TestCase):
     def test_grade_submission_returns_grading_artifact_and_preserves_existing_behavior(self):
         service = self._service()
 
-        artifact = service.grade_submission(
-            learner_context=self._learner_context(),
-            evidence_pack=self._evidence_pack(),
-            diagnosis_report=self._diagnosis_report(),
-            submission={
-                "question_id": "q_sijunzi_001",
-                "question_type": "single_choice",
-                "stem": "四君子汤主治的核心证型是？",
-                "student_answer": "中焦虚寒证",
-                "standard_answer": "脾胃气虚证",
-                "rubric": "答出脾胃气虚证得满分，混为中焦虚寒证需回看四君子汤与理中丸对比。",
-                "knowledge_points": ["四君子汤", "脾胃气虚证"],
-                "difficulty": 2,
-            },
-        )
+        with patch(
+            "APP.backend.expert_agent_service._model_grade_subjective",
+            return_value=(
+                {
+                    "is_correct": False,
+                    "score": 30.0,
+                    "max_score": 100.0,
+                    "error_types": ["证型-方剂匹配错误"],
+                    "feedback": "四君子汤对应脾胃气虚证，应与理中丸所治中焦虚寒证辨析。",
+                    "confidence": 0.9,
+                    "dimension_scores": {"accuracy": 0.3},
+                    "grading_source": "expert_agent_model",
+                },
+                {
+                    "decision": "pass",
+                    "reason": "评分符合参考答案与评分规则。",
+                    "confidence": 0.9,
+                    "audit_source": "audit_agent_model",
+                },
+            ),
+        ):
+            artifact = service.grade_submission(
+                learner_context=self._learner_context(),
+                evidence_pack=self._evidence_pack(),
+                diagnosis_report=self._diagnosis_report(),
+                submission={
+                    "question_id": "q_sijunzi_001",
+                    "question_type": "single_choice",
+                    "stem": "四君子汤主治的核心证型是？",
+                    "student_answer": "中焦虚寒证",
+                    "standard_answer": "脾胃气虚证",
+                    "rubric": "答出脾胃气虚证得满分，混为中焦虚寒证需回看四君子汤与理中丸对比。",
+                    "knowledge_points": ["四君子汤", "脾胃气虚证"],
+                    "difficulty": 2,
+                },
+            )
 
         self.assertEqual(artifact.artifact_type, "grading")
         self.assertEqual(artifact.content["source_ids"], ["SRC_FJ_001", "RES_COMPARE_001"])
@@ -482,9 +505,9 @@ class ExpertAgentServiceTests(unittest.TestCase):
         self.assertEqual(artifact.content["grading"]["is_correct"], False)
         self.assertLess(artifact.content["grading"]["score"], 100)
         self.assertEqual(artifact.content["grading"]["error_type"], "证型-方剂匹配错误")
-        self.assertEqual(artifact.content["mistake_record"]["source"], "practice_grading")
+        self.assertEqual(artifact.content["mistake_record"]["source"], "expert_agent_grading")
         self.assertIn("脾胃气虚证", artifact.content["remediation"]["review_card"]["content"])
-        self.assertGreaterEqual(len(artifact.content["remediation"]["variant_questions"]), 2)
+        self.assertEqual(artifact.content["remediation"]["variant_questions"], [])
         self.assertNotIn("decision", artifact.content)
         self.assertEqual(artifact.content["review_decision"]["decision"], "pass")
 
@@ -510,6 +533,46 @@ class ExpertAgentServiceTests(unittest.TestCase):
         self.assertIn("四君子汤", artifact.content["reference_answer"])
         self.assertIn("理中丸", "\n".join(artifact.content["remediation_suggestions"]))
         self.assertEqual(artifact.content["review_decision"]["decision"], "pass")
+
+    def test_question_explanation_is_generated_without_student_answer_and_audited(self):
+        service = self._service()
+        calls = []
+
+        class FakeClient:
+            def __init__(self, role):
+                self.role = role
+
+            def chat(self, messages, **kwargs):
+                calls.append((self.role, messages))
+                if self.role == "executor":
+                    return json.dumps({
+                        "explanation": "四君子汤以益气健脾为基本功效，判断时应联系脾胃气虚证候。"
+                    }, ensure_ascii=False)
+                return json.dumps({
+                    "decision": "pass",
+                    "reason": "解析与参考答案一致",
+                    "confidence": 0.96,
+                }, ensure_ascii=False)
+
+        with patch.object(
+            service,
+            "build_llm_client",
+            side_effect=lambda role: FakeClient(role),
+        ):
+            explanation = service.generate_question_explanation(submission={
+                "question_id": "Q_1",
+                "question_type": "single_choice",
+                "stem": "四君子汤的功效是？",
+                "student_answer": "温中散寒",
+                "standard_answer": "益气健脾",
+                "knowledge_point_names": ["四君子汤"],
+                "difficulty": 2,
+            })
+
+        self.assertIn("益气健脾", explanation)
+        self.assertEqual([role for role, _ in calls], ["executor", "reviewer"])
+        executor_material = calls[0][1][-1]["content"]
+        self.assertNotIn("温中散寒", executor_material)
 
 
 if __name__ == "__main__":

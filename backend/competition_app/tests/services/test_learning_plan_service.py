@@ -851,7 +851,7 @@ def test_service_rejects_different_approved_short_route_when_long_plan_is_reused
     service = LearningPlanService(repository)
     service.materialize("LEARNER_ROUTE_MISMATCH", structured_proposal(repository))
     other_route = repository.resolve(
-        goal_type="credential", goal_name="中医（专长）医师资格考核"
+        goal_type="credential", goal_name="执业药师职业资格考试（中药学类）"
     )
     assert other_route.planning_status == "approved_route"
     value = structured_proposal(repository, route=other_route)

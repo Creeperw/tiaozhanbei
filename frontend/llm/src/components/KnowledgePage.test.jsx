@@ -58,8 +58,7 @@ describe('KnowledgePage workspace navigation', () => {
 
     expect(await screen.findByTestId('knowledge-atlas')).toHaveTextContent('track-a');
     expect(screen.getByRole('button', { name: '知识星球' })).toHaveClass('is-active');
-    expect(screen.getByRole('button', { name: '知识资料' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '个性化数据' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '知识资料与个性化数据' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '题目数据' })).toBeInTheDocument();
     expect(within(screen.getByRole('banner', { name: '知识星球顶栏' })).getByRole('navigation', { name: '知识库内容' })).toBeInTheDocument();
   });
@@ -74,15 +73,15 @@ describe('KnowledgePage workspace navigation', () => {
     );
 
     expect(screen.getByRole('navigation', { name: '知识库内容' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '知识资料' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '个性化数据' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '知识资料与个性化数据' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '题目数据' })).toBeInTheDocument();
     expect(screen.getByText('题目内容已并入知识库')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '向量数据库状态' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '检索测试' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '知识资料' }));
+    fireEvent.click(screen.getByRole('button', { name: '知识资料与个性化数据' }));
     expect(screen.queryByText('题目内容已并入知识库')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '公共库' }));
     expect(await screen.findByRole('heading', { name: '文档、数据集与索引' })).toBeInTheDocument();
     expect(screen.getByText('Atlas 题库')).toBeInTheDocument();
     expect(screen.getByText('题库-v2')).toBeInTheDocument();

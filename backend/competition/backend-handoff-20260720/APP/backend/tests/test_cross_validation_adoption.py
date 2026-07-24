@@ -91,7 +91,34 @@ class CrossValidationAdoptionTests(unittest.TestCase):
 
     def test_grading_surface_calls_cross_validation_service(self):
         service = importlib.import_module("APP.backend.expert_agent_service")
-        with patch("APP.backend.expert_agent_service.cross_validate_grading_output", return_value=(self._review(), self._summary())) as patched:
+        model_grading = (
+            {
+                "is_correct": False,
+                "score": 0.0,
+                "max_score": 1.0,
+                "error_types": ["knowledge_gap"],
+                "feedback": "应辨析为脾胃气虚证。",
+                "confidence": 0.9,
+                "dimension_scores": {"accuracy": 0.0},
+                "grading_source": "expert_agent_model",
+            },
+            {
+                "decision": "pass",
+                "reason": "test",
+                "confidence": 0.9,
+                "audit_source": "audit_agent_model",
+            },
+        )
+        with (
+            patch(
+                "APP.backend.expert_agent_service._model_grade_subjective",
+                return_value=model_grading,
+            ),
+            patch(
+                "APP.backend.expert_agent_service.cross_validate_grading_output",
+                return_value=(self._review(), self._summary()),
+            ) as patched,
+        ):
             artifact = service.grade_submission(
                 learner_context=self._learner_context(),
                 evidence_pack=self._evidence_pack(),

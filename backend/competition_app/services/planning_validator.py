@@ -27,6 +27,8 @@ class PlanningValidator:
         short_term_action: str = "update",
         daily_task_action: str = "update",
         confirmed_prerequisite_courses: set[str] | None = None,
+        unmet_prerequisite_courses: set[str] | None = None,
+        path_candidates: dict[str, Any] | None = None,
     ) -> PlanningValidationResult:
         issues: list[str] = []
         actions = {
@@ -34,6 +36,11 @@ class PlanningValidator:
             "short": short_term_action,
             "daily": daily_task_action,
         }
+        self._validate_path_candidate_selection(
+            output,
+            path_candidates=path_candidates,
+            actions=actions,
+        )
         if actions["long"] == "update" and not self._has_groups(
             output.long_term_plan_content,
             (
@@ -220,25 +227,42 @@ class PlanningValidator:
                     self._normalized_book_name(course)
                     for course in (confirmed_prerequisite_courses or set())
                 }
+                unmet = {
+                    self._normalized_book_name(course)
+                    for course in (unmet_prerequisite_courses or set())
+                }
                 missing_prerequisites = []
+                declared_unmet_prerequisites = []
                 for rule in self._field(textbook_route, "prerequisites") or []:
                     before_stage = stages_by_id_for_order.get(
                         str(self._field(rule, "before_stage_id") or "")
                     )
                     before_order = int(self._field(before_stage, "order") or 0)
                     course = str(self._field(rule, "course") or "")
-                    if (
-                        before_order
-                        and selected_order >= before_order
-                        and self._normalized_book_name(course) not in confirmed
-                    ):
-                        missing_prerequisites.append(course)
+                    normalized_course = self._normalized_book_name(course)
+                    if before_order and selected_order >= before_order:
+                        if normalized_course in unmet:
+                            declared_unmet_prerequisites.append(course)
+                        elif normalized_course not in confirmed:
+                            missing_prerequisites.append(course)
                 if missing_prerequisites:
                     issues.append(
                         "所选阶段的强前置尚未确认："
                         + "、".join(missing_prerequisites)
                         + "。"
                     )
+                if actions["long"] == "update":
+                    omitted_unmet = [
+                        course
+                        for course in declared_unmet_prerequisites
+                        if course not in output.long_term_plan_content
+                    ]
+                    if omitted_unmet:
+                        issues.append(
+                            "用户已确认未完成的强前置课程必须纳入长期规划："
+                            + "、".join(omitted_unmet)
+                            + "。"
+                        )
                 selected_stage_mentions = self._planned_book_mentions(
                     "\n".join(
                         content
@@ -312,6 +336,131 @@ class PlanningValidator:
         ):
             issues.append("当日任务与短期计划完全失配。")
         return PlanningValidationResult(valid=not issues, issues=issues)
+
+    @classmethod
+    def _validate_path_candidate_selection(
+        cls,
+        output: ThreeLayerPlanningModelOutput,
+        *,
+        path_candidates: dict[str, Any] | None,
+        actions: dict[str, str],
+    ) -> None:
+        if not isinstance(path_candidates, dict):
+            return
+        selected_id = str(
+            cls._field(output, "selected_path_candidate_id")
+            or cls._field(output, "selected_candidate_id")
+            or cls._field(output, "candidate_id")
+            or ""
+        ).strip()
+        if not selected_id:
+            return
+        eligible = path_candidates.get("eligible")
+        blocked = path_candidates.get("blocked")
+        eligible = eligible if isinstance(eligible, list) else []
+        blocked = blocked if isinstance(blocked, list) else []
+        candidates = [
+            item
+            for item in [*eligible, *blocked]
+            if isinstance(item, dict)
+        ]
+        selected = next(
+            (
+                item
+                for item in candidates
+                if str(item.get("candidate_id") or "") == selected_id
+            ),
+            None,
+        )
+        if selected is None:
+            raise ValueError(f"unknown path candidate: {selected_id}")
+        prerequisite_results = [
+            item
+            for item in selected.get("hard_constraint_results", [])
+            if isinstance(item, dict)
+            and item.get("key") == "prerequisite_satisfied"
+        ]
+        if (
+            selected.get("eligible") is not True
+            or selected in blocked
+            or not prerequisite_results
+            or any(item.get("passed") is not True for item in prerequisite_results)
+        ):
+            raise ValueError(f"blocked path candidate: {selected_id}")
+
+        expected_scope = next(
+            (
+                scope
+                for layer, scope in (
+                    ("long", "long_term"),
+                    ("short", "short_term"),
+                    ("daily", "daily_task"),
+                )
+                if actions.get(layer) == "update"
+            ),
+            None,
+        )
+        if expected_scope and selected.get("scope") != expected_scope:
+            raise ValueError(
+                f"path candidate scope mismatch: {selected_id}"
+            )
+
+        stage = selected.get("stage")
+        stage = stage if isinstance(stage, dict) else {}
+        candidate_stage_id = str(
+            stage.get("phase_id") or stage.get("stage_id") or ""
+        )
+        selected_stage_id = str(
+            cls._field(output, "selected_stage_id") or ""
+        )
+        if (
+            selected_stage_id
+            and candidate_stage_id
+            and selected_stage_id != candidate_stage_id
+        ):
+            raise ValueError(
+                f"path candidate stage mismatch: {selected_id}"
+            )
+
+        candidate_books = [
+            str(item.get("name") or "")
+            for item in selected.get("books", [])
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        ]
+        selected_books = [
+            str(item)
+            for item in (cls._field(output, "selected_books") or [])
+            if str(item).strip()
+        ]
+        if selected_books and (
+            not candidate_books
+            or any(
+                not any(cls._book_matches(book, allowed) for allowed in candidate_books)
+                for book in selected_books
+            )
+        ):
+            raise ValueError(
+                f"path candidate textbook mismatch: {selected_id}"
+            )
+
+        candidate_kps = {
+            str(value).strip()
+            for item in selected.get("knowledge_points", [])
+            if isinstance(item, dict)
+            for value in (item.get("kp_id"), item.get("name"))
+            if str(value or "").strip()
+        }
+        selected_kps = {
+            str(item).strip()
+            for item in (cls._field(output, "focus_knowledge_points") or [])
+            if str(item).strip()
+        }
+        if selected_kps and (
+            not candidate_kps or not selected_kps.issubset(candidate_kps)
+        ):
+            raise ValueError(
+                f"path candidate knowledge point mismatch: {selected_id}"
+            )
 
     @staticmethod
     def _field(value: Any, name: str) -> Any:

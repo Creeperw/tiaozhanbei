@@ -54,9 +54,10 @@ def test_three_layer_model_boundary_is_minimal_and_has_independent_content() -> 
         "long_term_plan_stages",
         "selected_textbook_route_id",
         "selected_stage_id",
-        "selected_books",
-        "selection_reason",
-    }
+            "selected_books",
+            "selection_reason",
+            "selected_path_candidate_id",
+        }
     assert parsed.daily_task_content != parsed.short_term_plan_content
 
 

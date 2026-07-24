@@ -1,8 +1,15 @@
 import pytest
+from pydantic import BaseModel
 
 from competition_app.contracts.base import AgentEnvelope, ArtifactReference
 from competition_app.contracts.execution import ExecutionStep
 from competition_app.runtime.agent_communication import CognitiveGapAnalyzer
+
+
+class TypedDiagnosisPayload(BaseModel):
+    learning_plan_proposal: dict[str, object] | None = None
+    requires_clarification: bool = False
+    clarification_questions: list[str] = []
 
 
 def diagnosis_dependencies() -> dict[str, AgentEnvelope[dict[str, object]]]:
@@ -84,6 +91,74 @@ def test_analyzer_blocks_agent_when_required_evidence_is_missing() -> None:
     assert "evidence" in result.gap.blocking_fields
 
 
+def test_typed_diagnosis_result_satisfies_learning_plan_handoff() -> None:
+    result = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(
+            step_id="learning_plan",
+            agent="learning_plan_service",
+            depends_on=["diagnosis"],
+        ),
+        root_context=base_context(),
+        dependency_outputs={
+            "diagnosis": AgentEnvelope(
+                artifact_id="ART_DIAGNOSIS",
+                artifact_type="diagnosis_result",
+                case_id="CASE_1",
+                trace_id="TRACE_1",
+                request_id="REQ_1",
+                execution_id="EXE_1",
+                step_id="diagnosis",
+                producer="diagnosis_agent",
+                task_type="learning_plan",
+                learner_id="LEARNER_1",
+                payload=TypedDiagnosisPayload(
+                    learning_plan_proposal={
+                        "plan_scope": "long_term",
+                        "content": "通过资格考试",
+                    }
+                ),
+            )
+        },
+    )
+
+    assert result.gap.blocking_fields == []
+    assert any(
+        fact.category == "diagnosis_proposal"
+        for fact in result.bundle.confirmed_facts
+    )
+
+
+def test_typed_diagnosis_clarification_satisfies_learning_plan_handoff() -> None:
+    result = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(
+            step_id="learning_plan",
+            agent="learning_plan_service",
+            depends_on=["diagnosis"],
+        ),
+        root_context=base_context(),
+        dependency_outputs={
+            "diagnosis": AgentEnvelope(
+                artifact_id="ART_DIAGNOSIS_CLARIFY",
+                artifact_type="diagnosis_result",
+                case_id="CASE_1",
+                trace_id="TRACE_1",
+                request_id="REQ_1",
+                execution_id="EXE_1",
+                step_id="diagnosis",
+                producer="diagnosis_agent",
+                task_type="learning_plan",
+                learner_id="LEARNER_1",
+                payload=TypedDiagnosisPayload(
+                    requires_clarification=True,
+                    clarification_questions=["请补充考试名称"],
+                ),
+            )
+        },
+    )
+
+    assert result.gap.blocking_fields == []
+
+
 def test_diagnosis_does_not_treat_a_generic_request_as_a_learning_goal() -> None:
     result = CognitiveGapAnalyzer().analyze(
         step=ExecutionStep(step_id="diagnosis", agent="diagnosis_agent"),
@@ -95,7 +170,218 @@ def test_diagnosis_does_not_treat_a_generic_request_as_a_learning_goal() -> None
         dependency_outputs={},
     )
 
-    assert "learning_goal" in result.gap.blocking_fields
+    assert "learning_goal" in result.gap.missing_fields
+    assert "learning_goal" not in result.gap.blocking_fields
+
+
+def test_review_scheduler_accepts_explicit_empty_authoritative_state() -> None:
+    result = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(step_id="schedule", agent="review_scheduler"),
+        root_context=base_context(user_knowledge_states=[]),
+        dependency_outputs={},
+    )
+
+    assert result.gap.blocking_fields == []
+    assert "graded_knowledge_state" in result.gap.satisfied_fields
+
+
+def test_expert_accepts_typed_evidence_pack_and_review_schedule() -> None:
+    result = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(
+            step_id="expert",
+            agent="expert_agent",
+            depends_on=["knowledge", "schedule"],
+        ),
+        root_context=base_context(
+            source_policy={
+                "trusted_source_types": [
+                    "textbook",
+                    "knowledge_base",
+                    "official_question_bank",
+                ]
+            }
+        ),
+        dependency_outputs={
+            "knowledge": AgentEnvelope(
+                artifact_id="ART_KNOWLEDGE",
+                artifact_type="evidence_pack",
+                case_id="CASE_1",
+                trace_id="TRACE_1",
+                request_id="REQ_1",
+                execution_id="EXE_1",
+                step_id="knowledge",
+                producer="knowledge_base_agent",
+                task_type="personalized_review_card",
+                learner_id="LEARNER_1",
+                payload={
+                    "evidence_items": [
+                        {
+                            "evidence_id": "E1",
+                            "source_id": "BOOK_1",
+                            "content_summary": "教材证据",
+                            "resource_type": "textbook",
+                        }
+                    ]
+                },
+            ),
+            "schedule": AgentEnvelope(
+                artifact_id="ART_SCHEDULE",
+                artifact_type="review_schedule",
+                case_id="CASE_1",
+                trace_id="TRACE_1",
+                request_id="REQ_1",
+                execution_id="EXE_1",
+                step_id="schedule",
+                producer="review_scheduler",
+                task_type="personalized_review_card",
+                learner_id="LEARNER_1",
+                payload={"selected_task": {"primary_kp_id": "KP_1"}},
+            ),
+        },
+    )
+
+    assert result.gap.blocking_fields == []
+    assert result.gap.satisfied_fields == ["evidence", "formal_task"]
+
+
+def test_audit_accepts_expert_artifact_and_typed_evidence_pack() -> None:
+    context = base_context(
+        source_policy={"trusted_source_types": ["textbook", "knowledge_base"]}
+    )
+    expert = AgentEnvelope(
+        artifact_id="ART_EXPERT",
+        artifact_type="resource_draft",
+        case_id="CASE_1",
+        trace_id="TRACE_1",
+        request_id="REQ_1",
+        execution_id="EXE_1",
+        step_id="expert",
+        producer="expert_agent",
+        task_type="personalized_review_card",
+        learner_id="LEARNER_1",
+        payload={"body": "理中丸复习内容"},
+    )
+    knowledge = AgentEnvelope(
+        artifact_id="ART_KNOWLEDGE",
+        artifact_type="evidence_pack",
+        case_id="CASE_1",
+        trace_id="TRACE_1",
+        request_id="REQ_1",
+        execution_id="EXE_1",
+        step_id="knowledge",
+        producer="knowledge_base_agent",
+        task_type="personalized_review_card",
+        learner_id="LEARNER_1",
+        payload={
+            "evidence_items": [
+                {
+                    "evidence_id": "E1",
+                    "source_id": "BOOK_1",
+                    "content_summary": "教材证据",
+                    "resource_type": "textbook",
+                }
+            ]
+        },
+    )
+
+    result = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(
+            step_id="audit",
+            agent="audit_agent",
+            depends_on=["knowledge", "expert"],
+        ),
+        root_context=context,
+        dependency_outputs={"knowledge": knowledge, "expert": expert},
+    )
+
+    assert result.gap.blocking_fields == []
+    assert result.gap.satisfied_fields == ["artifact", "evidence"]
+
+
+def test_audit_accepts_retrieved_textbook_question_pool_as_evidence() -> None:
+    result = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(
+            step_id="audit",
+            agent="audit_agent",
+            depends_on=["knowledge", "expert"],
+        ),
+        root_context=base_context(
+            source_policy={"trusted_source_types": ["official_question_bank"]}
+        ),
+        dependency_outputs={
+            "knowledge": AgentEnvelope(
+                artifact_id="ART_POOL",
+                artifact_type="question_candidate_pool",
+                case_id="CASE_1",
+                trace_id="TRACE_1",
+                request_id="REQ_1",
+                execution_id="EXE_1",
+                step_id="knowledge",
+                producer="knowledge_base_agent",
+                task_type="paper_generation",
+                learner_id="LEARNER_1",
+                payload={
+                    "units": [
+                        {
+                            "items": [
+                                {
+                                    "question_id": "Q1",
+                                    "stem": "理中丸主治何证？",
+                                    "origin": "retrieved",
+                                    "source_tier": "textbook",
+                                }
+                            ]
+                        }
+                    ]
+                },
+            ),
+            "expert": AgentEnvelope(
+                artifact_id="ART_PAPER",
+                artifact_type="exam_paper_draft",
+                case_id="CASE_1",
+                trace_id="TRACE_1",
+                request_id="REQ_1",
+                execution_id="EXE_1",
+                step_id="expert",
+                producer="expert_agent",
+                task_type="paper_generation",
+                learner_id="LEARNER_1",
+                payload={"title": "理中丸测试卷"},
+            ),
+        },
+    )
+
+    assert result.gap.blocking_fields == []
+
+
+def test_paper_audit_records_missing_evidence_without_blocking_audit() -> None:
+    result = CognitiveGapAnalyzer().analyze(
+        step=ExecutionStep(
+            step_id="audit",
+            agent="audit_agent",
+            depends_on=["expert"],
+        ),
+        root_context=base_context(task_type="paper_generation"),
+        dependency_outputs={
+            "expert": AgentEnvelope(
+                artifact_id="ART_PAPER",
+                artifact_type="exam_paper_draft",
+                case_id="CASE_1",
+                trace_id="TRACE_1",
+                request_id="REQ_1",
+                execution_id="EXE_1",
+                step_id="expert",
+                producer="expert_agent",
+                task_type="paper_generation",
+                learner_id="LEARNER_1",
+                payload={"title": "专家补题试卷"},
+            )
+        },
+    )
+
+    assert result.gap.missing_fields == ["evidence"]
+    assert result.gap.blocking_fields == []
+    assert result.bundle.uncertainties[0].blocking is False
 
 
 def test_analyzer_preserves_zero_time_budget_without_defaulting_it() -> None:

@@ -153,15 +153,22 @@ class PaperSubmissionServiceTests(unittest.TestCase):
     def test_wrong_paper_answer_is_available_for_audited_variation_and_has_explanation(self):
         with self.Session() as db:
             save_paper_answers(db, 1, "PAPER_1", {"PI_1": "错误答案"})
-            result = submit_paper(db, 1, "PAPER_1", "wrong-1", runner=self.runner)
+            result = submit_paper(
+                db,
+                1,
+                "PAPER_1",
+                "wrong-1",
+                runner=self.runner,
+                explanation_runner=lambda **_: "脾胃气虚证的判断应结合气短乏力、面色萎黄与食少便溏。",
+            )
             sources = list_available_variation_sources(db, 1)
             version = db.query(database.QuestionVersionRecord).filter_by(
                 question_version_id="QV_1"
             ).one()
 
         self.assertFalse(result["items"][0]["is_correct"])
-        self.assertEqual(result["items"][0]["explanation"], "答案不正确")
-        self.assertEqual(version.analysis, "答案不正确")
+        self.assertIn("脾胃气虚证", result["items"][0]["explanation"])
+        self.assertEqual(version.analysis, result["items"][0]["explanation"])
         self.assertEqual(len(sources), 1)
         self.assertEqual(sources[0]["question_version_id"], "QV_1")
 

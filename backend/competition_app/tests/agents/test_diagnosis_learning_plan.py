@@ -688,11 +688,18 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "learner_context",
         "time_constraints",
         "learning_evidence",
+        "learning_state",
+        "path_candidates",
         "default_route",
         "existing_plans",
         "plan_actions",
         "plan_scope",
         "output_schema",
+    }
+    assert diagnosis_payload["learning_state"] == {}
+    assert diagnosis_payload["path_candidates"] == {
+        "eligible": [],
+        "blocked": [],
     }
     evidence = diagnosis_payload["learning_evidence"]
     assert evidence["behavior_summary"] == {"current_stage_id": "T1", "target_difficulty": 3}
@@ -1111,6 +1118,32 @@ async def test_diagnosis_asks_user_when_model_repeatedly_skips_unknown_prerequis
     assert result.plan_scope == "short_term"
 
 
+@pytest.mark.asyncio
+async def test_daily_task_missing_short_plan_preserves_requested_scope() -> None:
+    diagnosis_context = build_context("diagnosis")
+    diagnosis_context.update(
+        {
+            "plan_scope": "daily_task",
+            "enforce_planning_readiness": True,
+            "current_long_term_plan": {
+                "plan_id": "LONG_1",
+                "learner_id": "L1",
+                "version": 1,
+                "status": "active",
+                "content": "有效长期规划",
+            },
+            "current_short_term_plan": {},
+        }
+    )
+
+    result = (await DiagnosisAgent(StubChatModel()).run(diagnosis_context)).payload
+
+    assert result.requires_clarification
+    assert result.interrupt_type == "planning_prerequisite"
+    assert result.plan_scope == "daily_task"
+    assert "短期计划" in result.clarification_questions[0]
+
+
 def test_confirmed_prerequisite_is_reused_from_current_conversation() -> None:
     route = textbook_route_output().payload
     route_context = DiagnosisAgent._trusted_route_context(route)
@@ -1150,6 +1183,22 @@ def test_prerequisite_confirmation_pairs_with_question_and_latest_answer_wins() 
     assert DiagnosisAgent._confirmed_prerequisite_courses(
         forgotten_context, route_context
     ) == set()
+
+
+def test_negative_prerequisite_answer_is_recorded_as_confirmed_unmet_fact() -> None:
+    route_context = DiagnosisAgent._trusted_route_context(textbook_route_output().payload)
+    context = {
+        "user_request": "没有学过，目前是零基础。",
+        "messages": [
+            {"role": "assistant", "content": "你是否完成中医诊断学？"},
+            {"role": "user", "content": "没有学过，目前是零基础。"},
+        ],
+    }
+
+    assert DiagnosisAgent._confirmed_prerequisite_courses(context, route_context) == set()
+    assert DiagnosisAgent._unmet_prerequisite_courses(
+        context, route_context
+    ) == {"中医诊断学"}
 
 
 @pytest.mark.asyncio

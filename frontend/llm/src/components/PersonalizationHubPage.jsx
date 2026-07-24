@@ -9,8 +9,7 @@ import LearningGovernancePanel from './LearningGovernancePanel';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 
 const tabs = [
-  { key: 'profile', label: '学习画像' },
-  { key: 'memory', label: '学习记忆' },
+  { key: 'profile', label: '学习画像与记忆' },
   { key: 'planning', label: '学情规划' },
   { key: 'reports', label: '学情报告' },
   { key: 'review', label: '复习与掌握' },
@@ -21,16 +20,12 @@ const tabs = [
 
 const visualByTab = {
   survey: {
-    title: '个性化数据库',
+    title: '学情调查',
     description: '把学情调查、偏好、时间约束和目标方向沉淀为学情智能体可消费的 L0 输入。',
   },
   profile: {
-    title: '学习画像',
-    description: '维护学习目标、时间约束、资源偏好与当前薄弱点，为推荐和助教提供稳定依据。',
-  },
-  memory: {
-    title: '学习记忆',
-    description: '集中管理手动记录、智能抽取候选和过期信息，不与画像编辑混在同一屏。',
+    title: '学习画像与记忆',
+    description: '在一个视图中维护稳定画像，并查看记忆智能体抽取的长期事实、近期状态和待确认候选。',
   },
   planning: {
     title: '学情规划',
@@ -55,7 +50,9 @@ const visualByTab = {
 };
 
 const validTaskKeys = new Set(tabs.map((tab) => tab.key));
-const normalizeTask = (value) => (validTaskKeys.has(value) ? value : 'profile');
+const normalizeTask = (value) => (
+  value === 'memory' ? 'profile' : (validTaskKeys.has(value) ? value : 'profile')
+);
 
 export default function PersonalizationHubPage({ navigationContext = {}, onNavigate }) {
   const [activeTab, setActiveTab] = useState(() => normalizeTask(navigationContext.view));
@@ -119,7 +116,7 @@ export default function PersonalizationHubPage({ navigationContext = {}, onNavig
       </header>
       <main className="personalization-hub__task" aria-live="polite">
         {activeTab === 'survey' && <OnboardingSurveyPanel />}
-        {['profile', 'memory'].includes(activeTab) && <PersonalizationPage onBackHome={null} embedded view={activeTab} />}
+        {activeTab === 'profile' && <PersonalizationPage onBackHome={null} embedded view="unified" />}
         {activeTab === 'planning' && <PlanningPage />}
         {activeTab === 'reports' && <ReportsPage />}
         {activeTab === 'review' && <ReviewDashboardPanel />}

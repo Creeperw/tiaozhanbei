@@ -462,6 +462,11 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
                 "analysis": "回答正确。",
                 "standard_answer": "权威答案",
             },
+            "audit": {
+                "decision": "pass",
+                "reason": "专家评分与参考答案一致",
+                "confidence": 0.95,
+            },
         }
 
         from APP.backend.routers import training_routes
@@ -522,6 +527,11 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
                 "error_type": "知识点遗漏",
                 "analysis": "阴阳关系回答不完整。",
                 "standard_answer": "权威答案",
+            },
+            "audit": {
+                "decision": "pass",
+                "reason": "专家评分与参考答案一致",
+                "confidence": 0.95,
             },
         }
 

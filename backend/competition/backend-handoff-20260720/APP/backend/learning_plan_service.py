@@ -37,6 +37,15 @@ def _normalize_answers(onboarding_answers: dict[str, Any]) -> dict[str, Any]:
         "long_term_goal": _text(goals.get("long_term_goal") or onboarding_answers.get("long_term_goal")),
         "short_term_goal": _text(goals.get("short_term_goal") or onboarding_answers.get("short_term_goal")),
         "target_exam_or_course": _text(goals.get("target_exam_or_course") or onboarding_answers.get("target_exam_or_course")),
+        "textbook_route_id": _text(
+            goals.get("textbook_route_id")
+            or onboarding_answers.get("textbook_route_id")
+        ),
+        "textbook_route_version": int(
+            goals.get("textbook_route_version")
+            or onboarding_answers.get("textbook_route_version")
+            or 0
+        ),
         "daily_available_minutes": int(daily_available_minutes or 30),
         "preferred_time_slot": _text(
             preferences.get("preferred_time_slot") or onboarding_answers.get("preferred_time_slot"),
@@ -204,6 +213,8 @@ def generate_learning_plan(
         "preferred_time_slot": normalized["preferred_time_slot"],
         "resource_preference": normalized["resource_preference"],
         "learning_mode": normalized["learning_mode"],
+        "textbook_route_id": normalized["textbook_route_id"],
+        "textbook_route_version": normalized["textbook_route_version"],
     }
     weekly_plan_with_aliases = {
         **weekly_plan,
