@@ -13,7 +13,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   assert.deepEqual(config.primaryNav, [
     { key: 'dashboard', label: '平台首页' },
     { key: 'assistant', label: '智能助教' },
-    { key: 'practice', label: '学习工坊' },
+    { key: 'practice', label: '训练工坊' },
     { key: 'knowledge', label: '知识仓库' },
     { key: 'personalization', label: '个性数据' },
     { key: 'settings', label: '用户设置' },

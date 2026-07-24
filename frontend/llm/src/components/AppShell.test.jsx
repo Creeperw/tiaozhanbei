@@ -47,7 +47,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'true');
     expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
     expect(screen.queryByRole('heading', { name: '训练工坊' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '学习工坊' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '训练工坊' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '展开侧栏' }));
     expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false');
   });
@@ -83,7 +83,7 @@ describe('AppShell', () => {
       </AppShell>,
     );
 
-    await user.click(screen.getByRole('link', { name: '学习工坊' }));
+    await user.click(screen.getByRole('link', { name: '训练工坊' }));
     expect(onNavigate).toHaveBeenCalledWith({ page: 'practice', params: {} });
   });
 
