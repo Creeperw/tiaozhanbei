@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import AtlasPracticePanel from './exam-atlas/AtlasPracticePanel';
-import CaseTrainingPanel from './CaseTrainingPanel';
+import SimulatedPatientChat from './SimulatedPatientChat';
 import MistakeVariationPanel from './MistakeVariationPanel';
 
 const modes = [
@@ -57,7 +57,7 @@ export default function QuestionTrainingPanel({
           />
         </div>
       )}
-      {mode === 'patient' && <CaseTrainingPanel enabled />}
+      {mode === 'patient' && <SimulatedPatientChat showBack={false} />}
       {mode === 'variation' && <MistakeVariationPanel enabled />}
     </div>
   );

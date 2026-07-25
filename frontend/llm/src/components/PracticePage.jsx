@@ -18,7 +18,7 @@ import { createLearningFocusTracker } from '../learningFocusTracker.js';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import QuestionTrainingPanel from './QuestionTrainingPanel';
 import QualificationPaperPanel from './QualificationPaperPanel';
-import CaseTrainingPanel from './CaseTrainingPanel';
+import SimulatedPatientChat from './SimulatedPatientChat';
 import MistakeVariationPanel from './MistakeVariationPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
@@ -271,13 +271,12 @@ const normalizeTaskIntent = (taskType = '') => legacyTaskTypes[taskType] || {
 function TrainingBannerIllustration() {
   return (
     <div className="practice-overview__illustration" aria-hidden="true">
-      <div className="practice-overview__paper practice-overview__paper--back" />
-      <div className="practice-overview__paper practice-overview__paper--front">
-        <span /><span /><span /><span />
-      </div>
-      <div className="practice-overview__pencil" />
-      <div className="practice-overview__spark practice-overview__spark--one" />
-      <div className="practice-overview__spark practice-overview__spark--two" />
+      <div className="practice-overview__speech-bubble">快来跟我一起练习吧</div>
+      <img
+        className="practice-overview__character"
+        src="/assistant-character/lizhizhen-center-cutout.png"
+        alt=""
+      />
     </div>
   );
 }
@@ -448,6 +447,12 @@ export default function PracticePage({ navigationContext = {} }) {
     );
   }
 
+  const isSP = activeTaskType === 'ai_patient_simulation';
+
+  if (isSP) {
+    return <SimulatedPatientChat onBack={() => setView('overview')} />;
+  }
+
   return (
     <div className="space-y-5 text-slate-800">
       <div className="practice-workspace__toolbar">
@@ -491,8 +496,6 @@ export default function PracticePage({ navigationContext = {} }) {
           <section data-mobile-active={String(mobilePage === 'task')} className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
             {activeTaskType === 'question_training' ? (
               <QualificationPaperPanel enabled />
-            ) : activeTaskType === 'ai_patient_simulation' ? (
-              <CaseTrainingPanel enabled />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (

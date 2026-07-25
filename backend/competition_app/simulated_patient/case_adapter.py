@@ -85,19 +85,36 @@ class CaseAdapter:
         if "妇科" in title:
             result["gender"] = "女"
 
-        # 提取主诉/症状
-        chief_match = re.search(r'主诉[：:]\s*(.+?)(?=\n|$)', content)
+        # 提取主诉/症状 — 支持多种格式：主诉： / 主诉: / 主诉 / 主诉后接空格
+        chief_match = re.search(r'主诉[：:\s]+(.+?)(?=\n|。\s*(体格|辅助|问题|$)|$)', content)
         if chief_match:
             result["symptoms"] = chief_match.group(1).strip()
+        else:
+            # 备选：从病史摘要中提取关键描述
+            summary_match = re.search(r'病史摘要[：:\s]+(.+?)(?=\n|。\s*(主诉|体格|辅助|$))', content)
+            if summary_match:
+                result["symptoms"] = summary_match.group(1).strip()
+        # 如果仍然为空，尝试提取整个现病史段落
+        if not result["symptoms"]:
+            history_match = re.search(r'现病史[：:\s]*(.+?)(?=体格检查|辅助检查|问题|$)', content, re.DOTALL)
+            if history_match:
+                text = cls._clean_text(history_match.group(1))
+                # 去掉"病史摘要"等标签文字
+                text = re.sub(r'[（(]\d+[）)]\s*病史摘要\s*', '', text)
+                text = re.sub(r'主诉[：:\s]*', '', text)
+                result["symptoms"] = text[:300]
 
-        # 提取体格检查
+        # 提取体格检查 — 支持： / : / 空格
         signs_parts = []
-        pe_match = re.search(r'体格检查[：:]\s*(.+?)(?=辅助检查|\n\n|$)', content, re.DOTALL)
+        pe_match = re.search(r'体格检查[：:\s]+(.+?)(?=辅助检查|\n\n|问题|$)', content, re.DOTALL)
         if pe_match:
-            signs_parts.append(cls._clean_text(pe_match.group(1).strip()))
+            pe_text = cls._clean_text(pe_match.group(1).strip())
+            # 提取更多体征信息
+            if pe_text:
+                signs_parts.append(pe_text)
 
-        # 提取辅助检查
-        aux_match = re.search(r'辅助检查[：:]\s*(.+?)(?=问题|$)', content, re.DOTALL)
+        # 提取辅助检查 — 支持： / : / 空格
+        aux_match = re.search(r'辅助检查[：:\s]+(.+?)(?=问题|$)', content, re.DOTALL)
         if aux_match:
             signs_parts.append("辅助检查：" + cls._clean_text(aux_match.group(1).strip()))
 

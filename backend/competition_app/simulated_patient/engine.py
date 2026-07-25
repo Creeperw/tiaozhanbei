@@ -350,6 +350,7 @@ class SimulatedPatientEngine:
                     "age_range": basic_info["age_range"],
                     "body_type": basic_info["body_type"]
                 },
+                "case_name": adapted_case.get("name", adapted_case.get("syndrome", "")),
                 "user_profile": user_profile,
                 "learning_state": learning_state
             },
