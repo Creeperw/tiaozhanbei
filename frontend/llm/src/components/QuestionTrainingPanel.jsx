@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import AtlasPracticePanel from './exam-atlas/AtlasPracticePanel';
-import CaseTrainingPanel from './CaseTrainingPanel';
+import SimulatedPatientChat from './SimulatedPatientChat';
 import MistakeVariationPanel from './MistakeVariationPanel';
 
 const modes = [
@@ -20,7 +21,9 @@ export default function QuestionTrainingPanel({
   selectedKnowledgePoint,
   initialMode = '',
   onResult,
+  onBack,
 }) {
+  const titles = { objective: '专项训练', case: '专题训练' };
   const [mode, setMode] = useState(() => normalizeInitialMode(initialMode));
 
   useEffect(() => {
@@ -30,7 +33,13 @@ export default function QuestionTrainingPanel({
   if (!enabled) return <p className="mt-5 text-sm text-slate-600">题目训练暂未开放。</p>;
 
   return (
-    <div className="question-training-panel">
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
+        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
+        <h2 className="text-lg font-semibold text-slate-950">{titles[mode] || '题目训练'}</h2>
+      </header>
+      <div className="flex-1 overflow-y-auto">
+        <div className="question-training-panel">
       <div className="question-training-mode-tabs" role="tablist" aria-label="题目训练模式">
         {modes.map(([key, label]) => (
           <button
@@ -57,8 +66,10 @@ export default function QuestionTrainingPanel({
           />
         </div>
       )}
-      {mode === 'patient' && <CaseTrainingPanel enabled />}
+      {mode === 'patient' && <SimulatedPatientChat showBack={false} />}
       {mode === 'variation' && <MistakeVariationPanel enabled />}
+    </div>
+      </div>
     </div>
   );
 }

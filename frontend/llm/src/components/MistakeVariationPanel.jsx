@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import { loadMistakes, submitMistakeAnswerContext, submitTrainingWorkspaceTask } from '../pageDataLoaders';
 
 const requestId = () => `variation-${crypto.randomUUID()}`;
 
-export default function MistakeVariationPanel({ enabled }) {
+export default function MistakeVariationPanel({ enabled, onBack }) {
   const [mistakes, setMistakes] = useState([]);
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -132,16 +132,15 @@ export default function MistakeVariationPanel({ enabled }) {
   const selected = questions.find((item) => item.question_version_id === selectedQuestion);
   const grading = result?.artifact?.content?.grading?.grading || {};
   return (
-    <div className="mt-5 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-950">全部错题记录</h3>
-          <p className="mt-1 text-xs text-slate-500">当前筛选共 {total} 条；所有错误都会保留，满足审核条件的错题可生成变式。</p>
-        </div>
-        <button type="button" onClick={() => run(refreshMistakes)} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700">
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
+        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
+        <div className="flex-1"><h2 className="text-lg font-semibold text-slate-950">全部错题记录</h2><p className="mt-1 text-sm text-slate-600">当前筛选共 {total} 条</p></div>
+        <button type="button" onClick={() => run(refreshMistakes)} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
           <RefreshCw size={14} />刷新
         </button>
-      </div>
+      </header>
+      <div className="flex-1 overflow-y-auto px-5 py-4">
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="错题状态筛选">
         {[
@@ -231,6 +230,7 @@ export default function MistakeVariationPanel({ enabled }) {
       </div>}
       {result && <div className="border-l-2 border-emerald-300 pl-3 text-sm leading-6 text-slate-700"><p>得分：{grading.score} / {grading.max_score}</p><p>{grading.feedback || grading.error_reason || '批改已完成。'}</p></div>}
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm leading-6 text-rose-700">{error}</p>}
+      </div>
     </div>
   );
 }

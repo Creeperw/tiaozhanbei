@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Bookmark, ChevronLeft, ChevronRight, ClipboardList, LogOut, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
+import { ArrowLeft, Bookmark, ChevronLeft, ChevronRight, ClipboardList, LogOut, NotebookPen, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
 
 const request = async (path, options = {}) => {
@@ -12,19 +12,59 @@ const request = async (path, options = {}) => {
 const optionValue = (option) => option.option_id || option.id || '';
 const buttonBase = 'inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40';
 
-export default function QualificationAttemptWorkspace({ attempt: initialAttempt, onExit }) {
+export default function QualificationAttemptWorkspace({ attempt: initialAttempt, examId, onExit }) {
   const [attempt, setAttempt] = useState(initialAttempt);
   const [position, setPosition] = useState(initialAttempt.current_position || 1);
   const [answers, setAnswers] = useState(Object.fromEntries(initialAttempt.items.map((item) => [item.question_id, item.answer || ''])));
   const [marked, setMarked] = useState(initialAttempt.marked_positions || []);
   const [cardOpen, setCardOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notes, setNotes] = useState(() => { try { return JSON.parse(localStorage.getItem(`qp-notes-${initialAttempt.attempt_id}`) || '{}'); } catch { return {}; } });
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
   const [report, setReport] = useState(null);
   const [reportPosition, setReportPosition] = useState(1);
   const [error, setError] = useState('');
-  const [seconds, setSeconds] = useState(initialAttempt.answer_mode === 'test' ? (initialAttempt.remaining_seconds ?? (initialAttempt.duration_minutes || 60) * 60) : null);
+  const [seconds, setSeconds] = useState(() => {
+    if (initialAttempt.answer_mode !== 'test') return null;
+    if (initialAttempt.remaining_seconds != null && initialAttempt.remaining_seconds > 0) return initialAttempt.remaining_seconds;
+    if (initialAttempt.duration_minutes) return initialAttempt.duration_minutes * 60;
+    return 3600;
+  });
   const cardToggleRef = useRef(null);
   const current = attempt.items[position - 1];
+  const posKey = String(position);
+  const currentNote = notes[posKey] || { title: '', content: '' };
   const submitted = attempt.status === 'submitted' || Boolean(report);
+
+  // Sync notes from localStorage when position changes
+  useEffect(() => {
+    setNoteTitle(currentNote.title || '');
+    setNoteContent(currentNote.content || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [position, notesOpen]);
+
+  const saveNote = () => {
+    const paperTitle = attempt.title || '综合套题';
+    // Try to get exam name from localStorage catalog cache
+    let examName = '';
+    try {
+      const cat = JSON.parse(localStorage.getItem('qp-catalog-cache') || '{}');
+      const exam = (cat.exams || []).find(e => e.exam_id === examId);
+      if (exam) examName = exam.name;
+    } catch {}
+    const fullTitle = examName ? `${examName} ${paperTitle}` : paperTitle;
+    const next = { ...notes, [posKey]: { title: noteTitle.trim(), content: noteContent, type: '题目笔记', source: '综合套题', date: new Date().toISOString().slice(0, 10) } };
+    setNotes(next);
+    localStorage.setItem(`qp-notes-${attempt.attempt_id}`, JSON.stringify(next));
+    // Also sync to global study notes
+    const globalNotes = JSON.parse(localStorage.getItem('study-notes') || '[]');
+    const existingIdx = globalNotes.findIndex(n => n.qpKey === `${attempt.attempt_id}-${posKey}`);
+    const entry = { id: `qp-${attempt.attempt_id}-${posKey}`, qpKey: `${attempt.attempt_id}-${posKey}`, attemptId: attempt.attempt_id, title: `${fullTitle}：${noteTitle.trim() || `第${position}题`}`, content: noteContent, type: '题目笔记', source: fullTitle, question_content: current.question_content, options: current.options, standard_answer: current.standard_answer || current.answer || [], created_at: new Date().toISOString() };
+    if (existingIdx >= 0) globalNotes[existingIdx] = entry;
+    else globalNotes.unshift(entry);
+    localStorage.setItem('study-notes', JSON.stringify(globalNotes));
+  };
 
   useEffect(() => {
     if (submitted || attempt.answer_mode !== 'test' || seconds === null || seconds <= 0) return undefined;
@@ -96,14 +136,62 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 sm:px-5">
         <button type="button" onClick={async () => { try { await save(true); onExit(); } catch (reason) { setError(reason.message); } }} className={`${buttonBase} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-rose-300 hover:text-rose-700`}><LogOut size={16} />退出并保存</button>
         <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">第 {position} / {attempt.items.length} 题{seconds !== null ? ` · ${formatTime(seconds)}` : ''}</div>
-        <button ref={cardToggleRef} type="button" title={cardOpen ? '收起答题卡' : '展开答题卡'} aria-label={cardOpen ? '收起答题卡' : '展开答题卡'} aria-expanded={cardOpen} aria-controls="qualification-answer-card" onClick={() => setCardOpen(!cardOpen)} className={`${buttonBase} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-emerald-400 hover:text-emerald-800`}>{cardOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}<span className="hidden sm:inline">答题卡</span></button>
+        <button ref={cardToggleRef} type="button" title={cardOpen ? '收起答题卡' : '展开答题卡'} aria-label={cardOpen ? '收起答题卡' : '展开答题卡'} aria-expanded={cardOpen} aria-controls="qualification-answer-card" onClick={() => { setCardOpen(!cardOpen); if (notesOpen) setNotesOpen(false); }} className={`${buttonBase} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-emerald-400 hover:text-emerald-800`}>{cardOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}<span className="hidden sm:inline">答题卡</span></button>
+        <button type="button" title={notesOpen ? '收起笔记本' : '笔记本'} aria-label={notesOpen ? '收起笔记本' : '笔记本'} onClick={() => { setNotesOpen(!notesOpen); if (cardOpen) setCardOpen(false); }} className={`${buttonBase} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-emerald-400 hover:text-emerald-800`}><NotebookPen size={18} /><span className="hidden sm:inline">笔记本</span></button>
       </header>
-      <article className="mx-auto max-w-3xl px-5 py-8 sm:py-10">
-        <div className="flex gap-3 text-lg font-medium leading-8 text-slate-950"><span className="mt-0.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-sm font-bold text-emerald-800">{position}</span><span>{current.question_content}</span></div>
-        <div className="mt-6 space-y-3">{current.options.map((option) => { const value = optionValue(option); const checked = String(answers[current.question_id] || '').split(',').includes(value); return <label key={value} className={`flex cursor-pointer gap-3 rounded-xl border p-3.5 text-sm transition ${checked ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}><input type={current.question_type === 'multiple_choice' ? 'checkbox' : 'radio'} checked={checked} onChange={() => selectAnswer(value)} name={current.question_id} disabled={submitted} /><span><strong className="mr-1.5 text-slate-900">{value}.</strong>{option.content}</span></label>; })}</div>
-        {attempt.answer_mode === 'practice' && <PracticeExplanation attemptId={attempt.attempt_id} questionId={current.question_id} />}
-      </article>
-      <footer className="mx-auto flex max-w-3xl flex-wrap gap-3 border-t border-slate-200 px-5 py-4"><button type="button" disabled={position === 1} onClick={() => changePosition(position - 1)} className={`${buttonBase} border-slate-300 bg-white text-slate-700`}><ChevronLeft size={16} />上一题</button><button type="button" onClick={toggleMarked} className={`${buttonBase} ${marked.includes(position) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'}`}><Bookmark size={16} />标记本题</button><button type="button" disabled={position === attempt.items.length} onClick={() => changePosition(position + 1)} className={`${buttonBase} border-slate-300 bg-white text-slate-700`}>下一题<ChevronRight size={16} /></button><button type="button" onClick={submit} className={`${buttonBase} ml-auto border-slate-900 bg-slate-900 text-white hover:bg-slate-800`}><ClipboardList size={16} />提交答案</button></footer>
+      <div className={`flex-1 flex min-h-0 ${notesOpen ? 'flex-row' : ''}`}>
+        <article className={`${notesOpen ? 'w-3/4' : 'mx-auto max-w-3xl'} px-5 py-8 sm:py-10 overflow-y-auto`}>
+          <div className="flex gap-3 text-lg font-medium leading-8 text-slate-950"><span className="mt-0.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-sm font-bold text-emerald-800">{position}</span><span>{current.question_content}</span></div>
+          <div className="mt-6 space-y-3">{current.options.map((option) => { const value = optionValue(option); const checked = String(answers[current.question_id] || '').split(',').includes(value); return <label key={value} className={`flex cursor-pointer gap-3 rounded-xl border p-3.5 text-sm transition ${checked ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}><input type={current.question_type === 'multiple_choice' ? 'checkbox' : 'radio'} checked={checked} onChange={() => selectAnswer(value)} name={current.question_id} disabled={submitted} /><span><strong className="mr-1.5 text-slate-900">{value}.</strong>{option.content}</span></label>; })}</div>
+          {attempt.answer_mode === 'practice' && <PracticeExplanation attemptId={attempt.attempt_id} questionId={current.question_id} />}
+        </article>
+        {notesOpen && (
+          <aside className="w-1/4 border-l border-slate-200 bg-white flex flex-col min-h-0">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <h4 className="text-sm font-semibold text-slate-800">笔记本 · 第{position}题</h4>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 flex flex-col">
+              <input type="text" value={noteTitle} onChange={e => setNoteTitle(e.target.value)} placeholder="笔记标题" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" />
+              <textarea value={noteContent} onChange={e => setNoteContent(e.target.value)} placeholder="记录你的思路…" rows={10} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400 resize-none flex-1 min-h-[200px]" />
+              <button type="button" onClick={saveNote} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 w-full">保存笔记</button>
+            </div>
+          </aside>
+        )}
+      </div>
+      <footer className="mx-auto flex max-w-3xl flex-wrap gap-3 border-t border-slate-200 px-5 py-4"><button type="button" disabled={position === 1} onClick={() => changePosition(position - 1)} className={`${buttonBase} border-slate-300 bg-white text-slate-700`}><ChevronLeft size={16} />上一题</button><button type="button" onClick={toggleMarked} className={`${buttonBase} ${marked.includes(position) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'}`}><Bookmark size={16} />标记本题</button><button type="button" onClick={() => {
+    const books = JSON.parse(localStorage.getItem('qp-collection-books') || '[]');
+    const choices = ['默认'].concat(books).concat(['+ 新建收藏簿']);
+    const choice = prompt('选择收藏簿：\n' + choices.map(function(c, i) { return (i+1) + '. ' + c; }).join('\n') + '\n\n输入序号或新收藏簿名称：');
+    if (!choice) return;
+    var bookName = choice.trim();
+    var idx = parseInt(choice);
+    if (idx >= 1 && idx <= choices.length) {
+      bookName = choices[idx - 1];
+    }
+    if (bookName === '+ 新建收藏簿') {
+      bookName = prompt('请输入新收藏簿名称：');
+      if (!bookName || !bookName.trim()) return;
+      bookName = bookName.trim();
+      if (books.indexOf(bookName) === -1) { books.push(bookName); localStorage.setItem('qp-collection-books', JSON.stringify(books)); }
+    }
+    const key = 'qp-favorite-questions';
+    const favs = JSON.parse(localStorage.getItem(key) || '[]');
+    if (!favs.find(function(f) { return f.question_id === current.question_id && f.book === bookName; })) {
+      favs.unshift({
+        question_id: current.question_id,
+        question_content: current.question_content,
+        question_type: current.question_type,
+        options: current.options,
+        my_answer: String(answers[current.question_id] || ''),
+        standard_answer: current.standard_answer || current.answer || [],
+        explanation: current.explanation || '',
+        book: bookName,
+        source: '综合套题',
+        saved_at: new Date().toISOString(),
+      });
+      localStorage.setItem(key, JSON.stringify(favs.slice(0, 200)));
+    }
+  }} className={`${buttonBase} border-amber-300 bg-white text-amber-700 hover:bg-amber-50`}><Bookmark size={16} />加入收藏</button><button type="button" disabled={position === attempt.items.length} onClick={() => changePosition(position + 1)} className={`${buttonBase} border-slate-300 bg-white text-slate-700`}>下一题<ChevronRight size={16} /></button><button type="button" onClick={submit} className={`${buttonBase} ml-auto border-slate-900 bg-slate-900 text-white hover:bg-slate-800`}><ClipboardList size={16} />提交答案</button></footer>
       {cardOpen && <><button type="button" aria-label="关闭答题卡遮罩" onClick={() => setCardOpen(false)} className="absolute inset-0 z-10 bg-slate-950/10 backdrop-blur-[1px]" /><aside id="qualification-answer-card" role="complementary" aria-label="答题卡" className="absolute bottom-0 right-0 top-0 z-20 flex w-[min(20rem,88vw)] flex-col border-l border-slate-200 bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-slate-200 px-4 py-4"><div><h3 className="font-semibold text-slate-900">答题卡</h3><p className="mt-1 text-xs text-slate-500">已答 {answered.size} / {attempt.items.length}</p></div><button type="button" aria-label="收起答题卡" onClick={() => { setCardOpen(false); cardToggleRef.current?.focus(); }} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition hover:border-emerald-400 hover:text-emerald-800"><X size={17} /></button></div><div data-testid="answer-card-grid" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"><div className="grid grid-cols-5 gap-2">{attempt.items.map((item, index) => { const itemPosition = index + 1; const active = itemPosition === position; const color = active ? 'ring-2 ring-emerald-700 ring-offset-2' : marked.includes(itemPosition) ? 'bg-slate-900 text-white' : answered.has(item.question_id) ? 'bg-emerald-600 text-white' : 'border border-slate-300 bg-white text-slate-700'; return <button key={item.question_id} type="button" aria-label={`第 ${itemPosition} 题`} onClick={() => changePosition(itemPosition)} className={`h-9 rounded-full text-xs font-semibold transition hover:scale-105 ${color}`}>{itemPosition}</button>; })}</div></div></aside></>}
       {error && <p role="alert" className="mx-5 mb-4 rounded-lg border border-rose-300 bg-rose-50 p-2 text-sm text-rose-800">{error}</p>}
     </section>

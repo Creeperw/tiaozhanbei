@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   ArrowUpRight,
-  BookMarked,
+  BookMarked, Plus,
   ClipboardCheck,
   FileText,
   Files,
@@ -18,7 +18,7 @@ import { createLearningFocusTracker } from '../learningFocusTracker.js';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import QuestionTrainingPanel from './QuestionTrainingPanel';
 import QualificationPaperPanel from './QualificationPaperPanel';
-import CaseTrainingPanel from './CaseTrainingPanel';
+import SimulatedPatientChat from './SimulatedPatientChat';
 import MistakeVariationPanel from './MistakeVariationPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
@@ -232,16 +232,18 @@ const utilityCards = [
     available: true,
   },
   {
-    title: '知识收藏',
+    key: 'question_favorites',
+    title: '收藏夹',
     description: '汇总重点内容，随时回顾复习。',
     icon: BookMarked,
-    available: false,
+    available: true,
   },
   {
-    title: '学习笔记',
+    key: 'study_notes',
+    title: '笔记本',
     description: '沉淀学习心得，形成个人知识脉络。',
     icon: NotebookPen,
-    available: false,
+    available: true,
   },
 ];
 
@@ -253,6 +255,8 @@ const workspaceTitles = {
   mistake_variation: '错题库',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
+  question_favorites: '收藏夹',
+  study_notes: '笔记本',
 };
 
 const legacyTaskTypes = {
@@ -268,16 +272,194 @@ const normalizeTaskIntent = (taskType = '') => legacyTaskTypes[taskType] || {
   initialMode: taskType,
 };
 
+function QuestionFavoritesPanel({ onBack }) {
+  var _useState = useState(function() { try { return JSON.parse(localStorage.getItem('qp-favorite-questions') || '[]'); } catch(e) { return []; } });
+  var favs = _useState[0], setFavs = _useState[1];
+  var _useState2 = useState(null), expanded = _useState2[0], setExpanded = _useState2[1];
+  var _useState3 = useState(null), selectedBook = _useState3[0], setSelectedBook = _useState3[1];
+  var stdAnswer = function(item) { var ans = item.standard_answer; if (Array.isArray(ans)) return ans.join('、'); if (typeof ans === 'string') return ans; return ''; };
+  var hasCorrect = function(item) { return stdAnswer(item).length > 0; };
+  var removeFav = function(e, questionId) { e.stopPropagation(); var next = favs.filter(function(f) { return f.question_id !== questionId; }); setFavs(next); localStorage.setItem('qp-favorite-questions', JSON.stringify(next)); if (expanded === questionId) setExpanded(null); };
+  var books = {}; var bookNamesList = JSON.parse(localStorage.getItem('qp-collection-books') || '[]'); bookNamesList.forEach(function(b) { books[b] = []; }); favs.forEach(function(f) { var b = f.book || '默认'; if (!books[b]) books[b] = []; books[b].push(f); });
+  if (selectedBook) {
+    var items = books[selectedBook] || [];
+    return (
+      <div className="flex flex-col h-full">
+        <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
+          <button type="button" onClick={function() { setSelectedBook(null); }} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回收藏簿列表</button>
+          <div><h2 className="text-lg font-semibold text-slate-950">{selectedBook}</h2><p className="mt-1 text-sm text-slate-600">{items.length} 道题目</p></div>
+        </header>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {items.map(function(item, i) {
+            var isOpen = expanded === item.question_id;
+            var correct = stdAnswer(item), correctVals = correct.split(',');
+            return React.createElement('div', { key: i, className: 'rounded-xl border bg-white shadow-sm ' + (isOpen ? 'border-emerald-400 ring-1 ring-emerald-200' : 'border-slate-200') },
+              React.createElement('button', { type: 'button', onClick: function() { setExpanded(isOpen ? null : item.question_id); }, className: 'w-full text-left p-4 flex items-start gap-3' },
+                React.createElement('p', { className: 'text-sm leading-6 text-slate-800 flex-1' }, item.question_content || '（题目内容缺失）'),
+                React.createElement('span', { className: 'shrink-0 flex items-center gap-2' },
+                  React.createElement('button', { type: 'button', onClick: function(e) { removeFav(e, item.question_id); }, className: 'text-xs text-rose-500 hover:text-rose-700' }, '移除'),
+                  React.createElement('span', { className: 'text-xs text-slate-400' }, isOpen ? '收起' : '展开')
+                )
+              ),
+              isOpen && React.createElement('div', { className: 'border-t border-slate-100 px-4 pb-4 space-y-3' },
+                item.options && item.options.length > 0 && React.createElement('div', null,
+                  React.createElement('p', { className: 'text-xs font-semibold text-slate-500 mb-2' }, '选项'),
+                  React.createElement('div', { className: 'space-y-1' },
+                    item.options.map(function(opt, j) {
+                      var v = opt.option_id || opt.id || '';
+                      var my = item.my_answer && String(item.my_answer).split(',').indexOf(v) >= 0;
+                      var ok = correctVals.indexOf(v) >= 0;
+                      var c = 'text-slate-600';
+                      if (my && ok) c = 'bg-emerald-50 border border-emerald-300 text-emerald-900 font-medium';
+                      else if (my) c = 'bg-rose-50 border border-rose-300 text-rose-900 font-medium';
+                      else if (ok && hasCorrect(item)) c = 'bg-emerald-50 border border-emerald-200 text-emerald-800';
+                      return React.createElement('div', { key: j, className: 'text-sm px-3 py-1.5 rounded-lg ' + c },
+                        React.createElement('strong', null, v + '. '), opt.content,
+                        my && ok && React.createElement('span', { className: 'ml-2 text-xs text-emerald-600' }, '✓ 正确'),
+                        my && !ok && React.createElement('span', { className: 'ml-2 text-xs text-rose-600' }, '✗ 你的作答'),
+                        !my && ok && hasCorrect(item) && React.createElement('span', { className: 'ml-2 text-xs text-emerald-600' }, '✓ 正确答案')
+                      );
+                    })
+                  )
+                ),
+                item.explanation && React.createElement('div', null,
+                  React.createElement('p', { className: 'text-xs font-semibold text-slate-500 mb-1' }, '解析'),
+                  React.createElement('p', { className: 'text-sm leading-6 text-slate-700 bg-slate-50 rounded-lg p-3' }, item.explanation)
+                ),
+                React.createElement('p', { className: 'text-xs text-slate-400' }, '收藏于' + (item.source || '综合套题') + ' · ' + (item.saved_at || '').slice(0, 10))
+              )
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  var bookNames = Object.keys(books);
+  return (
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
+        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
+        <div className="flex items-center gap-5" style={{flex:1,minWidth:0}}>
+          <div><h2 className="text-lg font-semibold text-slate-950">收藏夹</h2><p className="mt-1 text-sm text-slate-600">{bookNames.length} 个收藏簿 · {favs.length} 道题目</p></div>
+          <button type="button" onClick={function() { var name = prompt('请输入新收藏簿名称：'); if (name && name.trim()) { var key = 'qp-collection-books'; var books = JSON.parse(localStorage.getItem(key) || '[]'); if (books.indexOf(name.trim()) === -1) { books.push(name.trim()); localStorage.setItem(key, JSON.stringify(books)); } var favs = JSON.parse(localStorage.getItem('qp-favorite-questions') || '[]'); setFavs(favs.slice()); } }} className="ml-auto inline-flex items-center gap-1 rounded-lg border-2 border-amber-400 bg-amber-50 px-3 py-2.5 text-base font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100"><Plus size={18} />新建收藏簿</button>
+        </div>
+      </header>
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {bookNames.length === 0 ? (
+          <p className="text-center text-slate-400 py-12">暂无收藏，在套题中点击「加入收藏」即可</p>
+        ) : (
+          <div className="space-y-3">
+            {bookNames.map(function(name, i) {
+              var gradients = ['linear-gradient(135deg, #fff 0%, #f9fdfa 100%)','linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)','linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)'];
+              return <button key={name} type="button" onClick={function() { setSelectedBook(name); }} className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-left hover:border-emerald-300 hover:shadow-md transition" style={{ background: gradients[i % 3] }}>
+                <strong className="block text-sm text-slate-900">{name}</strong>
+                <span className="text-xs text-slate-500">{books[name].length} 道题目</span>
+              </button>;
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+const STORAGE_NOTES = 'study-notes';
+const getNotes = () => { try { return JSON.parse(localStorage.getItem(STORAGE_NOTES) || '[]'); } catch { return []; } };
+
+function StudyNotesPanel({ onBack }) {
+  const [notes, setNotes] = useState(getNotes);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [expanded, setExpanded] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('全部');
+  const [dateFilter, setDateFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('全部');
+  const [search, setSearch] = useState('');
+  const sources = ['全部', '综合套题', '智能组卷', '专题训练', '专项训练', '笔记本'];
+  const types = ['全部', '心得体会', '题目笔记'];
+  const dates = [...new Set(notes.map(function(n) { return (n.created_at || n.date || '').slice(0, 10); }))].filter(Boolean).sort().reverse();
+  const filtered = notes.filter(function(n) {
+    if (sourceFilter !== '全部' && (n.source || '笔记本') !== sourceFilter) return false;
+    if (dateFilter && (n.created_at || n.date || '').slice(0, 10) !== dateFilter) return false;
+    if (typeFilter !== '全部' && (n.type || '心得体会') !== typeFilter) return false;
+    if (search && (n.title || '').indexOf(search) === -1 && (n.content || '').indexOf(search) === -1) return false;
+    return true;
+  });
+  var saveNote = function() {
+    if (!title.trim() || !content.trim()) return;
+    var next = [{ id: 'note-' + Date.now(), title: title.trim(), content: content.trim(), type: '心得体会', source: '笔记本', created_at: new Date().toISOString() }].concat(notes);
+    setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); setTitle(''); setContent('');
+  };
+  var deleteNote = function(e, note) {
+    e.stopPropagation();
+    var next = notes.filter(function(n) { return n.id !== note.id; });
+    setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next));
+    if (expanded === note.id) setExpanded(null);
+    var attId = note.attemptId || (note.qpKey ? note.qpKey.split('-').slice(0, -1).join('-') : '');
+    if (note.qpKey && attId) { try { var qpNotes = JSON.parse(localStorage.getItem('qp-notes-' + attId) || '{}'); var posKey = note.qpKey.replace(attId + '-', ''); delete qpNotes[posKey]; localStorage.setItem('qp-notes-' + attId, JSON.stringify(qpNotes)); } catch(e) {} }
+  };
+  return (
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4" style={{flexWrap:'wrap'}}>
+        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
+        <div className="flex items-center gap-5" style={{flex:1,minWidth:0,flexWrap:'wrap'}}>
+          <div><h2 className="text-lg font-semibold text-slate-950">笔记本</h2><p className="mt-1 text-sm text-slate-600">共 {filtered.length} 条笔记</p></div>
+          <label className="text-base font-semibold text-slate-900">来源<select value={sourceFilter} onChange={function(e) { setSourceFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{sources.map(function(s) { return <option key={s} value={s}>{s}</option>; })}</select></label>
+          <label className="text-base font-semibold text-slate-900">日期<select value={dateFilter} onChange={function(e) { setDateFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800"><option value="">全部</option>{dates.map(function(d) { return <option key={d} value={d}>{d}</option>; })}</select></label>
+          <label className="text-base font-semibold text-slate-900">类型<select value={typeFilter} onChange={function(e) { setTypeFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{types.map(function(t) { return <option key={t} value={t}>{t}</option>; })}</select></label>
+          <input type="text" value={search} onChange={function(e) { setSearch(e.target.value); }} placeholder="搜索笔记…" className="rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800 outline-none focus:border-emerald-500" style={{width:160}} />
+        </div>
+      </header>
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+          <input type="text" value={title} onChange={function(e) { setTitle(e.target.value); }} placeholder="笔记标题" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500" />
+          <textarea value={content} onChange={function(e) { setContent(e.target.value); }} placeholder="写下你的学习心得…" rows={3} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500" style={{resize:'none'}} />
+          <button type="button" onClick={saveNote} disabled={!title.trim() || !content.trim()} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">保存笔记</button>
+        </div>
+        {filtered.length === 0 ? (
+          <p className="text-center text-slate-400 py-8">暂无笔记，开始记录你的学习心得吧</p>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map(function(note, i) {
+              var isOpen = expanded === note.id;
+              var gradients = ['linear-gradient(135deg, #fff 0%, #f9fdfa 100%)','linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)','linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)'];
+              return (
+                <div key={note.id} className={'rounded-xl border bg-white shadow-sm transition ' + (isOpen ? 'border-emerald-400 ring-1 ring-emerald-200' : 'border-slate-200')} style={{ background: gradients[i % 3] }}>
+                  <button type="button" onClick={function() { if (isOpen) { setExpanded(null); } else { setExpanded(note.id); setEditTitle(note.title); setEditContent(note.content); } }} className="w-full text-left p-4 flex items-start gap-3">
+                    <span className="flex-1 min-w-0"><strong className="block text-sm text-slate-900">{note.title}</strong><span className="text-xs text-slate-400">{(note.source || '笔记本') + ' · ' + (note.type || '心得体会') + ' · ' + (note.created_at || note.date || '').slice(0, 10)}</span></span>
+                    <button type="button" onClick={function(e) { deleteNote(e, note); }} className="shrink-0 text-xs text-rose-500 hover:text-rose-700">删除</button>
+                    <span className="text-xs text-slate-400">{isOpen ? '收起' : '展开'}</span>
+                  </button>
+                  {isOpen && <div className="border-t border-slate-100 px-4 pb-4 space-y-3">
+                    {note.question_content && <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm leading-6 text-amber-900"><p className="text-xs font-semibold text-amber-700 mb-1">题目内容</p>{note.question_content}{note.options && note.options.length > 0 && <div className="space-y-1 mt-2"><p className="text-xs font-semibold text-amber-700">选项</p>{note.options.map(function(opt, j) { var v = opt.option_id || opt.id || ''; var ans = Array.isArray(note.standard_answer) ? note.standard_answer : []; var isCorrect = ans.indexOf(v) >= 0; return <div key={j} className={isCorrect ? 'text-emerald-800 font-medium' : ''}><strong>{v}.</strong> {opt.content}{isCorrect ? ' ✓' : ''}</div>; })}</div>}{Array.isArray(note.standard_answer) && note.standard_answer.length > 0 && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">正确答案：</span>{note.standard_answer.join('、')}</p>}{note.explanation && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">解析：</span>{note.explanation}</p>}</div>}
+                    <input type="text" value={editTitle} onChange={function(e) { setEditTitle(e.target.value); }} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" />
+                    <textarea value={editContent} onChange={function(e) { setEditContent(e.target.value); }} rows={4} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" style={{resize:'none'}} />
+                    <button type="button" onClick={function() { var next = notes.map(function(n) { return n.id === note.id ? Object.assign({}, n, { title: editTitle.trim() || n.title, content: editContent }) : n; }); setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); }} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">保存修改</button>
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TrainingBannerIllustration() {
+  const [hint, setHint] = useState('快来跟我一起练习吧');
+  const phrases = ['快来跟我一起练习吧', '今天也要加油哦', '温故而知新', '学而时习之', '坚持就是胜利'];
   return (
     <div className="practice-overview__illustration" aria-hidden="true">
-      <div className="practice-overview__paper practice-overview__paper--back" />
-      <div className="practice-overview__paper practice-overview__paper--front">
-        <span /><span /><span /><span />
-      </div>
-      <div className="practice-overview__pencil" />
-      <div className="practice-overview__spark practice-overview__spark--one" />
-      <div className="practice-overview__spark practice-overview__spark--two" />
+      <div className="practice-overview__speech-bubble">{hint}</div>
+      <img
+        className="practice-overview__character"
+        src="/assistant-character/lizhizhen-center-cutout.png"
+        alt="李时珍"
+        onClick={() => { const next = phrases.filter(function(p) { return p !== hint; }); setHint(next[Math.floor(Math.random() * next.length)]); }}
+        title="点击和李时珍互动"
+      />
     </div>
   );
 }
@@ -304,19 +486,11 @@ function TrainingOverview({ onOpenModule }) {
           </div>
           <div className="practice-overview__training-grid">
             {trainingCards.map((card) => {
-              const Icon = card.icon;
+              var Icon = card.icon;
               return (
-                <button
-                  key={`${card.title}-${card.key}`}
-                  type="button"
-                  className={`practice-overview__training-card practice-overview__training-card--${card.tone}`}
-                  onClick={() => onOpenModule(card)}
-                >
-                  <span className="practice-overview__card-icon"><Icon aria-hidden="true" size={26} /></span>
-                  <span className="practice-overview__card-copy">
-                    <strong>{card.title}</strong>
-                    <small>{card.description}</small>
-                  </span>
+                <button key={card.key} type="button" className={'practice-overview__training-card practice-overview__training-card--' + card.tone} onClick={function() { onOpenModule(card); }}>
+                  <span className="practice-overview__card-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 26 })}</span>
+                  <span className="practice-overview__card-copy"><strong>{card.title}</strong><small>{card.description}</small></span>
                   <ArrowUpRight className="practice-overview__card-arrow" aria-hidden="true" size={20} />
                 </button>
               );
@@ -326,31 +500,16 @@ function TrainingOverview({ onOpenModule }) {
 
         <aside className="practice-overview__utilities" aria-label="常用学习工具">
           <div className="practice-overview__section-heading">
-            <div>
-              <span>常用工具</span>
-              <h2>复盘与沉淀</h2>
-            </div>
+            <div><span>常用工具</span><h2>复盘与沉淀</h2></div>
           </div>
           <div className="practice-overview__utility-list">
-            {utilityCards.map((card) => {
-              const Icon = card.icon;
-              const content = <>
-                <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
-                <span><strong>{card.title}</strong><small>{card.description}</small></span>
-              </>;
-              return card.available ? (
-                <button
-                  key={card.title}
-                  type="button"
-                  className="practice-overview__utility-card"
-                  onClick={() => onOpenModule(card)}
-                >
-                  {content}
+            {utilityCards.filter(function(c) { return c.available; }).map(function(card) {
+              var Icon = card.icon;
+              return (
+                <button key={card.title} type="button" className="practice-overview__utility-card" onClick={function() { onOpenModule(card); }}>
+                  <span className="practice-overview__utility-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 22 })}</span>
+                  <span><strong>{card.title}</strong><small>{card.description}</small></span>
                 </button>
-              ) : (
-                <div key={card.title} className="practice-overview__utility-card" aria-disabled="true">
-                  {content}
-                </div>
               );
             })}
           </div>
@@ -448,6 +607,35 @@ export default function PracticePage({ navigationContext = {} }) {
     );
   }
 
+  const isSP = activeTaskType === 'ai_patient_simulation';
+  const isFullPanel = ['question_training', 'special_training', 'topic_training', 'paper_workspace', 'mistake_variation', 'question_favorites', 'study_notes'].includes(activeTaskType);
+
+  if (isSP) {
+    return <SimulatedPatientChat onBack={() => setView('overview')} />;
+  }
+
+  if (isFullPanel) {
+    return (
+      <div className="flex flex-col h-full text-slate-800">
+        <div className="flex-1 min-h-0 min-w-0">
+          {activeTaskType === 'question_training' ? (
+            <QualificationPaperPanel enabled onBack={() => setView('overview')} />
+          ) : activeTaskType === 'mistake_variation' ? (
+            <MistakeVariationPanel enabled onBack={() => setView('overview')} />
+          ) : activeTaskType === 'paper_workspace' ? (
+            <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} onBack={() => setView('overview')} />
+          ) : activeTaskType === 'question_favorites' ? (
+            <QuestionFavoritesPanel onBack={() => setView('overview')} />
+          ) : activeTaskType === 'study_notes' ? (
+            <StudyNotesPanel onBack={() => setView('overview')} />
+          ) : ['special_training', 'topic_training'].includes(activeTaskType) ? (
+            <QuestionTrainingPanel enabled selectedKnowledgePoint={selectedKnowledgePoint} initialMode={activeInitialMode} onResult={handlePracticeResult} onBack={() => setView('overview')} />
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 text-slate-800">
       <div className="practice-workspace__toolbar">
@@ -491,8 +679,6 @@ export default function PracticePage({ navigationContext = {} }) {
           <section data-mobile-active={String(mobilePage === 'task')} className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
             {activeTaskType === 'question_training' ? (
               <QualificationPaperPanel enabled />
-            ) : activeTaskType === 'ai_patient_simulation' ? (
-              <CaseTrainingPanel enabled />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (

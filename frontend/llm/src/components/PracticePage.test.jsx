@@ -58,8 +58,8 @@ vi.mock('./exam-atlas/AtlasPracticePanel', () => ({
   </div>,
 }));
 
-vi.mock('./CaseTrainingPanel', () => ({
-  default: () => <div data-testid="ai-patient-simulation-panel" />,
+vi.mock('./SimulatedPatientChat', () => ({
+  default: () => <div data-testid="simulated-patient-chat" />,
 }));
 
 vi.mock('./MistakeVariationPanel', () => ({
@@ -129,13 +129,15 @@ describe('PracticePage training modules', () => {
     ['综合套题', 'atlas-practice-scope'],
     ['智能组卷', 'paper-generation-panel'],
     ['专题训练', 'atlas-practice-scope'],
-    ['模拟病患', 'ai-patient-simulation-panel'],
+    ['模拟病患', 'simulated-patient-chat'],
   ])('opens %s from the overview as a single page', async (title, panelTestId) => {
     render(<PracticePage />);
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(title) }));
 
-    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    if (title !== '模拟病患') {
+      expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    }
     expect(screen.getByTestId(panelTestId)).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
   });
@@ -209,7 +211,7 @@ describe('PracticePage training modules', () => {
 
   it.each([
     ['practice_grading', 'atlas-practice-scope'],
-    ['case_training', 'ai-patient-simulation-panel'],
+    ['case_training', 'simulated-patient-chat'],
     ['knowledge_cards', 'knowledge-card-library'],
   ])('keeps the legacy %s training intent functional', async (taskType, panelTestId) => {
     render(<PracticePage navigationContext={{ taskType }} />);
@@ -227,7 +229,7 @@ describe('PracticePage training modules', () => {
   it('opens the AI patient simulation directly from its page intent', async () => {
     render(<PracticePage navigationContext={{ taskType: 'ai_patient_simulation' }} />);
 
-    expect(await screen.findByTestId('ai-patient-simulation-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('simulated-patient-chat')).toBeInTheDocument();
   });
 
   it('opens paper generation from the workshop navigation', async () => {
