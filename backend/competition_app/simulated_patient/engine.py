@@ -66,7 +66,7 @@ class SimulatedPatientEngine:
         self.knowledge_agent = AgentFactory.create_knowledge_base_agent()
         self.audit_agent = AgentFactory.create_audit_agent()
 
-        self.session_manager = SessionManager()
+        self.session_manager = SessionManager(data_dir=data_dir)
 
     # ============================================================
     # 唯一对外接口
@@ -351,6 +351,7 @@ class SimulatedPatientEngine:
                     "body_type": basic_info["body_type"]
                 },
                 "case_name": adapted_case.get("name", adapted_case.get("syndrome", "")),
+                "case_id": adapted_case.get("id", ""),
                 "user_profile": user_profile,
                 "learning_state": learning_state
             },
