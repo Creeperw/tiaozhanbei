@@ -13,10 +13,12 @@ import {
   Settings,
   ShieldCheck,
   Sprout,
+  UserRound,
   X,
 } from 'lucide-react';
 import { getAppShellConfig } from '../appShell';
 import HomeButton from './HomeButton';
+import UserProfileModal from './UserProfileModal';
 import { useModalFocus } from './ui/useModalFocus';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 
@@ -32,7 +34,7 @@ const navIconMap = {
   'admin-knowledge': Database,
 };
 
-function NavItems({ items, currentPage, collapsed, onNavigate }) {
+function NavItems({ items, currentPage, onNavigate }) {
   return (
     <nav aria-label="平台导航" className="app-shell__nav">
       {items.map((item) => {
@@ -44,14 +46,13 @@ function NavItems({ items, currentPage, collapsed, onNavigate }) {
             href={`#${item.key}`}
             aria-current={active ? 'page' : undefined}
             className="app-shell__nav-item"
-            title={collapsed ? item.label : undefined}
             onClick={(event) => {
               event.preventDefault();
               onNavigate({ page: item.key, params: {} });
             }}
           >
             <Icon aria-hidden="true" size={19} />
-            <span className={collapsed ? 'sr-only' : undefined}>{item.label}</span>
+            <span>{item.label}</span>
           </a>
         );
       })}
@@ -59,23 +60,12 @@ function NavItems({ items, currentPage, collapsed, onNavigate }) {
   );
 }
 
-function ShellIdentity({ collapsed, onToggleCollapsed }) {
+function ShellIdentity() {
   const mark = <Sprout aria-hidden="true" size={21} />;
   return (
     <div className="app-shell__identity">
-      {onToggleCollapsed ? (
-        <button
-          type="button"
-          className="app-shell__mark app-shell__identity-toggle"
-          aria-label={collapsed ? '展开侧栏' : '折叠侧栏'}
-          aria-expanded={!collapsed}
-          title={collapsed ? '展开侧栏' : '折叠侧栏'}
-          onClick={onToggleCollapsed}
-        >
-          {mark}
-        </button>
-      ) : <div className="app-shell__mark">{mark}</div>}
-      <div className={collapsed ? 'sr-only' : undefined}>
+      <div className="app-shell__mark">{mark}</div>
+      <div>
         <strong>时珍智训</strong>
         <span>中医药备考平台</span>
       </div>
@@ -106,7 +96,7 @@ function MobileDrawer({ mounted, open, shell, onClose, onNavigate, onLogout, dis
         }}
       >
         <div className="app-shell__drawer-head">
-          <ShellIdentity collapsed={false} />
+          <ShellIdentity />
           <button type="button" data-autofocus className="icon-button" aria-label="关闭导航菜单" onClick={onClose}>
             <X aria-hidden="true" size={20} />
           </button>
@@ -114,7 +104,6 @@ function MobileDrawer({ mounted, open, shell, onClose, onNavigate, onLogout, dis
         <NavItems
           items={shell.primaryNav}
           currentPage={shell.currentPage}
-          collapsed={false}
           onNavigate={(intent) => { onNavigate(intent); onClose(); }}
         />
         {shell.supportNav.length > 0 && (
@@ -123,7 +112,6 @@ function MobileDrawer({ mounted, open, shell, onClose, onNavigate, onLogout, dis
             <NavItems
               items={shell.supportNav}
               currentPage={shell.currentPage}
-              collapsed={false}
               onNavigate={(intent) => { onNavigate(intent); onClose(); }}
             />
           </div>
@@ -139,15 +127,21 @@ function MobileDrawer({ mounted, open, shell, onClose, onNavigate, onLogout, dis
   );
 }
 
-export default function AppShell({ currentUser, currentPage, onNavigate, onLogout, children }) {
+export default function AppShell({ currentUser, currentPage, onNavigate, onLogout, onUserUpdated, children }) {
   const shell = getAppShellConfig({ currentUser, currentPage });
-  const [collapsed, setCollapsed] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const drawerExitTimerRef = useRef(null);
-  const displayName = currentUser?.username || 'User';
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [accountProfile, setAccountProfile] = useState(null);
+  const displayName = currentUser?.display_name || currentUser?.username || 'User';
+  const avatarUrl = accountProfile?.avatar_url || null;
+  const avatarInitial = displayName.trim().slice(0, 1).toUpperCase() || '用';
   const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice'].includes(shell.currentPage);
+  const shouldShowPageHeader = shell.currentPage !== 'dashboard'
+    && shell.shellMode !== 'workspace'
+    && !['personalization', 'settings'].includes(shell.currentPage);
   const scrollRegion = ['assistant', 'knowledge'].includes(shell.currentPage) ? 'contained' : 'page';
 
   useEffect(() => () => window.clearTimeout(drawerExitTimerRef.current), []);
@@ -166,6 +160,21 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
     return () => { cancelled = true; };
   }, [currentPage]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadAccountProfile = async () => {
+      try {
+        const response = await fetchWithAuth(`${API_BASE}/v1/auth/me/profile`);
+        const payload = await readJsonResponse(response, {});
+        if (!cancelled && response.ok) setAccountProfile(payload.profile || null);
+      } catch {
+        if (!cancelled) setAccountProfile(null);
+      }
+    };
+    loadAccountProfile();
+    return () => { cancelled = true; };
+  }, [currentUser?.user_id]);
+
   const openDrawer = () => {
     window.clearTimeout(drawerExitTimerRef.current);
     setDrawerMounted(true);
@@ -178,35 +187,46 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
     drawerExitTimerRef.current = window.setTimeout(() => setDrawerMounted(false), 160);
   };
 
+  const handleProfileSaved = (updatedUser, profile) => {
+    if (profile) setAccountProfile(profile);
+    if (updatedUser) onUserUpdated?.(updatedUser);
+  };
+
   return (
     <div className="app-shell" data-mode={shell.shellMode}>
-      <aside className="app-shell__sidebar" data-collapsed={String(collapsed)}>
+      <aside className="app-shell__sidebar" data-collapsed="false">
         <div className="app-shell__sidebar-head">
-          <ShellIdentity collapsed={collapsed} onToggleCollapsed={() => setCollapsed((value) => !value)} />
+          <ShellIdentity />
         </div>
 
-        <NavItems items={shell.primaryNav} currentPage={shell.currentPage} collapsed={collapsed} onNavigate={onNavigate} />
+        <NavItems items={shell.primaryNav} currentPage={shell.currentPage} onNavigate={onNavigate} />
 
         {shell.supportNav.length > 0 && (
           <div className="app-shell__support">
-            <span className={collapsed ? 'sr-only' : 'app-shell__section-label'}>支持入口</span>
-            <NavItems items={shell.supportNav} currentPage={shell.currentPage} collapsed={collapsed} onNavigate={onNavigate} />
+            <span className="app-shell__section-label">支持入口</span>
+            <NavItems items={shell.supportNav} currentPage={shell.currentPage} onNavigate={onNavigate} />
           </div>
         )}
 
         <div className="app-shell__account">
-          <div className={collapsed ? 'sr-only' : undefined}>
+          <button type="button" className="app-shell__avatar-button" aria-label="打开个人信息" onClick={() => setProfileOpen(true)}>
+            {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{avatarInitial}</span>}
+            <i aria-hidden="true"><UserRound size={13} /></i>
+          </button>
+          <div className="app-shell__account-summary" onClick={() => setProfileOpen(true)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfileOpen(true); } }}>
             <span className="app-shell__section-label">当前用户</span>
             <strong>{displayName}</strong>
             <small>{currentUser?.role === 'admin' ? '管理员支持权限' : '个人学习者'}</small>
           </div>
-          <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'personalization', params: { view: 'governance' } })}>
-            <Bell aria-hidden="true" size={17} />
-            {unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
-          </button>
-          <button type="button" className="icon-button" aria-label="退出登录" onClick={onLogout}>
-            <LogOut aria-hidden="true" size={17} />
-          </button>
+          <div className="app-shell__account-actions">
+            <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}>
+              <Bell aria-hidden="true" size={17} />
+              {unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
+            </button>
+            <button type="button" className="icon-button" aria-label="退出登录" onClick={onLogout}>
+              <LogOut aria-hidden="true" size={17} />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -221,8 +241,8 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
           >
             <Menu aria-hidden="true" size={21} />
           </button>
-          <ShellIdentity collapsed={false} />
-          <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'personalization', params: { view: 'governance' } })}><Bell aria-hidden="true" size={18} />{unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}</button>
+          <ShellIdentity />
+          <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}><Bell aria-hidden="true" size={18} />{unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}</button>
         </header>
 
         <main
@@ -231,7 +251,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
           data-mode={shell.shellMode}
           data-scroll-region={scrollRegion}
         >
-          {shell.currentPage !== 'dashboard' && shell.shellMode !== 'workspace' && (
+          {shouldShowPageHeader && (
             <header className="app-shell__page-header">
               {shouldShowHomeButton && <HomeButton onClick={() => onNavigate({ page: shell.homeAction.key, params: {} })} label={shell.homeAction.label} />}
               <div>
@@ -252,6 +272,12 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
         onClose={closeDrawer}
         onNavigate={onNavigate}
         onLogout={onLogout}
+      />
+      <UserProfileModal
+        open={profileOpen}
+        currentUser={currentUser}
+        onClose={() => setProfileOpen(false)}
+        onSaved={handleProfileSaved}
       />
     </div>
   );

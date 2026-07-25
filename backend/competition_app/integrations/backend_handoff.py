@@ -360,7 +360,18 @@ class BackendHandoffRuntime:
                 survey = json.loads(stored_profile.survey_json or "{}")
             except (TypeError, ValueError):
                 survey = {}
+            survey = survey if isinstance(survey, dict) else {}
+            survey_background = survey.get("background") if isinstance(survey.get("background"), dict) else {}
             confirmed_profile = survey.get("agent_confirmed_profile") if isinstance(survey, dict) else {}
+            manual_education_major = str(
+                survey.get("education_major")
+                or survey.get("major_or_role")
+                or survey_background.get("education_major")
+                or survey_background.get("major_or_role")
+                or ""
+            ).strip()
+            manual_learning_background = str(survey.get("learning_background") or "").strip()
+            manual_learning_habits = str(survey.get("learning_habits") or "").strip()
             if isinstance(confirmed_profile, dict):
                 normalized_confirmed = {
                     str(key): _normalize_profile_memory_value(str(key), value)
@@ -398,6 +409,12 @@ class BackendHandoffRuntime:
                         if str(key).strip() and value not in (None, "")
                     }
                 )
+            if manual_education_major:
+                user_profile["user_major_or_profession"] = manual_education_major
+            if manual_learning_background:
+                user_profile["learning_background"] = manual_learning_background
+            if manual_learning_habits:
+                user_profile["learning_habits"] = manual_learning_habits
             if learning_target:
                 goal_name = _normalize_profile_memory_value(
                     "learning_goal", str(learning_target.get("exam_name") or "").strip()

@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Trash2, Save, Search, Edit2, X, RotateCcw, Download, RefreshCw, Database, Clock, Sparkles, UploadCloud, ArrowUpCircle, ChevronDown, LineChart } from 'lucide-react';
-import LearningTrendChart from './LearningTrendChart';
-import { buildLearningTrendCharts } from '../learningTrendDisplay.js';
+import { ArrowLeft, Trash2, Save, Search, Edit2, X, RotateCcw, Database, Clock, Sparkles, ArrowUpCircle, ChevronDown } from 'lucide-react';
 import { API_BASE, MAIN_API_BASE, fetchWithAuth } from '../utils/api';
 
 const emptyProfile = {
@@ -22,11 +20,21 @@ const categoryLabels = { long_term: '长期记忆', short_term: '短期记忆', 
 const sourceLabels = { manual: '手动录入', auto_extract: '智能体抽取', agent: '智能体', feedback: '反馈', md_upload: 'MD 导入' };
 const candidateStatusLabels = { pending: '待确认', promoted: '已晋升', ignored: '已忽略' };
 
-const profileFields = [
-  ['display_name', '昵称'], ['constitution', '用户群体'], ['health_goals', '学习目标'],
-  ['diet_restrictions', '可投入时间/节奏约束'], ['exercise_preferences', '资源偏好'],
-  ['medical_history', '当前困难/薄弱点'], ['custom_needs', '个性化学习需求']
-];
+const userProfileColumns = {
+  background: [
+    { key: 'education_major', label: '学历/专业', source: 'survey' },
+    { key: 'learning_background', label: '学习基础', source: 'context' },
+    { key: 'constitution', label: '用户群体', source: 'profile' },
+    { key: 'health_goals', label: '学习目标', source: 'profile' },
+    { key: 'diet_restrictions', label: '可投入时间', source: 'profile' },
+  ],
+  preferences: [
+    { key: 'exercise_preferences', lockKey: 'resource_preferences', label: '资源偏好' },
+    { key: 'medical_history', lockKey: 'current_difficulties', label: '当前困难/薄弱点' },
+    { key: 'custom_needs', lockKey: 'learning_needs', label: '个性化学习需求' },
+    { key: 'learning_habits', lockKey: 'learning_habits', label: '学习习惯', source: 'survey' },
+  ],
+};
 
 const formatTime = (value) => {
   if (!value) return '无';
@@ -45,6 +53,7 @@ const normalizeMemoryPayload = (item) => ({
 
 const softInputClass = "w-full rounded-2xl border border-emerald-100/80 bg-white/80 px-4 py-2.5 text-slate-700 shadow-inner shadow-emerald-50/70 outline-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-slate-300 focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100/80";
 const softTextareaClass = "w-full resize-none rounded-[22px] border border-emerald-100/80 bg-white/75 p-4 text-slate-700 shadow-inner shadow-emerald-50/80 outline-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-slate-300 focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100/80";
+const userProfileTextareaClass = `${softTextareaClass} h-[72px] px-4 py-[21px] text-[1.0625rem] leading-7`;
 const softCardClass = "rounded-[28px] border border-emerald-100/70 bg-white/82 shadow-sm shadow-emerald-100/50 backdrop-blur-sm";
 const softIconButtonClass = "rounded-xl p-2 text-slate-500 transition-[color,background-color,transform] duration-150 hover:-translate-y-0.5 hover:bg-emerald-50 hover:text-emerald-700 active:translate-y-px";
 
@@ -52,12 +61,6 @@ const toOptions = (entries) => entries.map(([value, label]) => ({ value, label }
 const categoryOptions = toOptions(Object.entries(categoryLabels));
 const memoryImportanceOptions = [{ value: 'important', label: '重要' }, { value: 'normal', label: '普通' }];
 const candidateImportanceOptions = [{ value: 'normal', label: '普通' }, { value: 'low', label: '低' }];
-const uploadCategoryOptions = [
-  { value: 'long_term', label: '长期记忆' },
-  { value: 'short_term', label: '短期记忆（7天）' },
-  { value: 'preference', label: '偏好' },
-  { value: 'note', label: '备注' },
-];
 const candidateStatusOptions = [
   { value: 'pending', label: '待确认' },
   { value: 'promoted', label: '已晋升' },
@@ -66,6 +69,12 @@ const candidateStatusOptions = [
 ];
 const filterCategoryOptions = [{ value: 'all', label: '全部分类' }, ...categoryOptions];
 const filterImportanceOptions = [{ value: 'all', label: '全部重要性' }, ...memoryImportanceOptions];
+const analysisFrequencyOptions = [
+  { value: 'daily', label: '每日一次' },
+  { value: 'weekly', label: '每周一次' },
+  { value: 'manual', label: '仅手动刷新' },
+  { value: 'paused', label: '暂停自动分析' },
+];
 
 function SoftSelect({ value, options, onChange, className = '', menuClassName = '' }) {
   const [open, setOpen] = useState(false);
@@ -134,7 +143,6 @@ function MemoryForm({ value, onChange, onSubmit, submitText, onCancel }) {
 export default function PersonalizationPage({ onBackHome, onBack, embedded = false, view = 'profile' }) {
   const [profile, setProfile] = useState(emptyProfile);
   const [learnerProfile, setLearnerProfile] = useState({ locked_fields: [], survey: {}, lock_reason: {} });
-  const [onboarding, setOnboarding] = useState(null);
   const [overview, setOverview] = useState(null);
   const [memories, setMemories] = useState([]);
   const [candidates, setCandidates] = useState([]);
@@ -143,17 +151,17 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   const [editingMemory, setEditingMemory] = useState(emptyMemory);
   const [editingCandidateId, setEditingCandidateId] = useState(null);
   const [editingCandidate, setEditingCandidate] = useState(emptyCandidate);
-  const [uploadOptions, setUploadOptions] = useState({ category: 'long_term', importance: 'important' });
   const [filters, setFilters] = useState({ q: '', category: 'all', importance: 'all', source: 'all', includeInactive: false });
   const [candidateStatus, setCandidateStatus] = useState('pending');
+  const [analysisFrequency, setAnalysisFrequency] = useState('daily');
+  const [savedAnalysisFrequency, setSavedAnalysisFrequency] = useState('daily');
+  const [isSavingAnalysisFrequency, setIsSavingAnalysisFrequency] = useState(false);
+  const analysisFrequencySaveRef = useRef(0);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [trendWindowDays, setTrendWindowDays] = useState(30);
-  const [learningTrend, setLearningTrend] = useState({ series: [] });
-  const [trendError, setTrendError] = useState('');
-  const trendRequestVersion = useRef(0);
   const isUnifiedView = view === 'unified';
-  const isProfileView = view === 'profile' || isUnifiedView;
+  const isUserProfileView = view === 'user-profile';
+  const isProfileView = view === 'profile' || isUnifiedView || isUserProfileView;
   const isMemoryView = view === 'memory' || isUnifiedView;
 
   const categoryEntries = Object.entries(overview?.stats?.by_category || {});
@@ -172,22 +180,6 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
     return false;
   }, [memories]);
 
-  const learningTrendCharts = useMemo(() => buildLearningTrendCharts(learningTrend), [learningTrend]);
-  const loadLearningTrend = async () => {
-    const requestVersion = ++trendRequestVersion.current;
-    try {
-      setTrendError('');
-      const response = await fetchWithAuth(`${API_BASE}/personalization/learning-trends?days=${trendWindowDays}`);
-      if (!response.ok) throw new Error('学情趋势加载失败');
-      const payload = await response.json();
-      if (requestVersion === trendRequestVersion.current) setLearningTrend(payload);
-    } catch (error) {
-      if (requestVersion === trendRequestVersion.current) {
-        setTrendError(error.message || '学情趋势加载失败');
-      }
-    }
-  };
-
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     if (filters.q.trim()) params.set('q', filters.q.trim());
@@ -203,14 +195,45 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
     setTimeout(() => setMessage(''), 1800);
   };
 
+  const changeAnalysisFrequency = async (nextFrequency) => {
+    if (nextFrequency === savedAnalysisFrequency || isSavingAnalysisFrequency) return;
+    const saveVersion = analysisFrequencySaveRef.current + 1;
+    analysisFrequencySaveRef.current = saveVersion;
+    setAnalysisFrequency(nextFrequency);
+    setIsSavingAnalysisFrequency(true);
+    try {
+      const response = await fetchWithAuth(`${API_BASE}/personalization/learner-settings`, {
+        method: 'PUT',
+        body: JSON.stringify({ analysis_frequency: nextFrequency }),
+      });
+      if (!response.ok) throw new Error('更新频率保存失败');
+      if (analysisFrequencySaveRef.current === saveVersion) setSavedAnalysisFrequency(nextFrequency);
+      notify('更新频率已保存');
+    } catch (error) {
+      console.error(error);
+      if (analysisFrequencySaveRef.current === saveVersion) setAnalysisFrequency(savedAnalysisFrequency);
+      notify(error.message || '更新频率保存失败');
+    } finally {
+      setIsSavingAnalysisFrequency(false);
+    }
+  };
+
   const toggleLockedField = (field) => {
     setLearnerProfile((current) => {
       const locked = current.locked_fields || [];
+      const isLocked = locked.includes(field);
+      const lockReason = { ...(current.lock_reason || {}) };
+      if (isLocked) {
+        delete lockReason[field];
+      } else if (!lockReason[field]) {
+        lockReason[field] = '用户在用户画像页锁定';
+      }
       return {
         ...current,
-        locked_fields: locked.includes(field)
+        locked_fields: isLocked
           ? locked.filter((item) => item !== field)
           : [...locked, field],
+        lock_reason: lockReason,
       };
     });
   };
@@ -218,33 +241,34 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   const load = async () => {
     setIsLoading(true);
     try {
-      const [overviewRes, memoriesRes, learnerRes, learningContextRes] = await Promise.all([
+      const [overviewRes, memoriesRes, learnerRes, learningContextRes, learnerSettingsRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/personalization/overview`),
         fetchWithAuth(`${API_BASE}/personalization/memories${queryString ? `?${queryString}` : ''}`),
         fetchWithAuth(`${API_BASE}/personalization/learner-profile`),
         fetchWithAuth(`${MAIN_API_BASE}/learning-context`),
+        fetchWithAuth(`${API_BASE}/personalization/learner-settings`),
       ]);
       const candidateRes = await fetchWithAuth(`${API_BASE}/personalization/candidates?status=${candidateStatus}`);
       const overviewData = await overviewRes.json();
       const memoryData = await memoriesRes.json();
       const learnerData = await learnerRes.json();
       const learningContextData = learningContextRes.ok ? await learningContextRes.json() : {};
+      const learnerSettingsData = learnerSettingsRes.ok ? await learnerSettingsRes.json() : {};
       const confirmedProfile = learningContextData.user_profile || {};
       const confirmedGoal = confirmedProfile.learning_goal || '';
       const candidateData = await candidateRes.json();
-      setOnboarding(learningContextData.onboarding || null);
       setOverview(overviewData);
       setProfile({
         ...emptyProfile,
         ...(overviewData.profile || {}),
-        display_name: confirmedProfile.display_name || '',
-        constitution: confirmedProfile.learner_group === '未选择用户群体'
+        display_name: overviewData.profile?.display_name || confirmedProfile.display_name || '',
+        constitution: overviewData.profile?.constitution || (confirmedProfile.learner_group === '未选择用户群体'
           ? ''
-          : (confirmedProfile.learner_group || ''),
-        health_goals: confirmedGoal
+          : (confirmedProfile.learner_group || '')),
+        health_goals: overviewData.profile?.health_goals || confirmedGoal
           || confirmedProfile.goals?.goal_name
           || '',
-        diet_restrictions: confirmedProfile.time_constraints
+        diet_restrictions: overviewData.profile?.diet_restrictions || confirmedProfile.time_constraints
           || '',
       });
       setLearnerProfile({
@@ -252,25 +276,33 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
         survey: {},
         lock_reason: {},
         ...(learnerData || {}),
-        learning_background: confirmedProfile.learning_background || '',
+        learning_background: learnerData?.learning_background || confirmedProfile.learning_background || '',
+        education_major: learnerData?.education_major
+          || learningContextData.onboarding?.survey_answers?.major_or_role
+          || learningContextData.onboarding?.survey_answers?.education_major
+          || learnerData?.survey?.background?.education_major
+          || '',
+        learning_habits: learnerData?.learning_habits
+          || learningContextData.onboarding?.survey_answers?.learning_mode
+          || learnerData?.survey?.preferences?.learning_mode
+          || '',
       });
       setMemories(Array.isArray(memoryData) ? memoryData : []);
       setCandidates(Array.isArray(candidateData) ? candidateData : []);
+      if (analysisFrequencySaveRef.current === 0) {
+        const nextAnalysisFrequency = learnerSettingsData?.settings?.analysis_frequency || 'daily';
+        setAnalysisFrequency(nextAnalysisFrequency);
+        setSavedAnalysisFrequency(nextAnalysisFrequency);
+      }
     } catch (e) {
       console.error(e);
-      notify('加载学习画像与记忆失败');
+      notify('加载学习记忆失败');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => { load(); }, [queryString, candidateStatus]);
-  useEffect(() => {
-    loadLearningTrend();
-    const refresh = window.setInterval(loadLearningTrend, 60_000);
-    return () => window.clearInterval(refresh);
-  }, [trendWindowDays]);
-
   const saveProfile = async () => {
     await fetchWithAuth(`${API_BASE}/personalization/profile`, { method: 'PUT', body: JSON.stringify(profile) });
     await fetchWithAuth(`${API_BASE}/personalization/learner-profile`, {
@@ -278,11 +310,15 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
       body: JSON.stringify({
         learner_group: profile.constitution,
         learning_goal: profile.health_goals,
+        education_major: learnerProfile.education_major,
+        learning_background: learnerProfile.learning_background,
         time_constraints: profile.diet_restrictions,
         resource_preferences: profile.exercise_preferences,
         current_difficulties: profile.medical_history,
         learning_needs: profile.custom_needs,
+        learning_habits: learnerProfile.learning_habits,
         locked_fields: learnerProfile.locked_fields || [],
+        lock_reason: learnerProfile.lock_reason || {},
       }),
     });
     notify('画像与设置已保存');
@@ -373,40 +409,6 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
     await load();
   };
 
-  const uploadMarkdown = async (file) => {
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.md')) return notify('请上传 .md 文件');
-    const formData = new FormData();
-    formData.append('file', file);
-    const params = new URLSearchParams(uploadOptions);
-    const res = await fetchWithAuth(`${API_BASE}/personalization/memories/upload-md?${params.toString()}`, { method: 'POST', body: formData });
-    if (!res.ok) return notify('MD 上传失败');
-    const data = await res.json();
-    notify(`已从 MD 导入 ${data.count || 0} 条记忆`);
-    await load();
-  };
-
-  const cleanupExpired = async () => {
-    const res = await fetchWithAuth(`${API_BASE}/personalization/memories/cleanup`, { method: 'POST' });
-    const data = await res.json();
-    notify(`已清理 ${data.cleaned || 0} 条过期记忆`);
-    await load();
-  };
-
-  const exportData = async () => {
-    const res = await fetchWithAuth(`${API_BASE}/personalization/export`);
-    const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `personalization-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const rootClassName = embedded
     ? 'text-gray-800'
     : 'min-h-screen bg-[radial-gradient(circle_at_top_left,#dcfce7,transparent_34%),radial-gradient(circle_at_top_right,#ccfbf1,transparent_30%),linear-gradient(135deg,#f8fafc_0%,#f0fdfa_46%,#ecfdf5_100%)] p-6 text-gray-800';
@@ -414,39 +416,53 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   return (
     <div className={rootClassName}>
       <div className="max-w-7xl mx-auto">
-        <div className={embedded ? 'mb-5 flex justify-end border-b border-emerald-100 pb-4' : 'relative mb-6 overflow-hidden rounded-[36px] border border-white/80 bg-white/72 p-6 shadow-xl shadow-emerald-100/50 backdrop-blur-xl'}>
+        {!(embedded && isUserProfileView) && <div className={embedded ? 'mb-6 overflow-hidden rounded-[30px] border border-emerald-100/80 bg-gradient-to-br from-white via-emerald-50/70 to-teal-50/60 p-4 shadow-sm shadow-emerald-100/45 sm:p-5' : 'relative mb-6 overflow-hidden rounded-[36px] border border-white/80 bg-white/72 p-6 shadow-xl shadow-emerald-100/50 backdrop-blur-xl'}>
           {!embedded && <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-emerald-200/40 blur-3xl" />}
           {!embedded && <div className="absolute right-24 bottom-0 w-40 h-40 rounded-full bg-teal-200/35 blur-3xl" />}
-          <div className={`relative flex flex-wrap items-start gap-4 ${embedded ? 'justify-end' : 'justify-between'}`}>
-            {!embedded && <div>
+          <div className={`relative flex flex-wrap items-start gap-5 ${embedded ? 'justify-between' : 'justify-between'}`}>
+            {!isUserProfileView && <div className="min-w-0">
               {(onBackHome || onBack) && (
                 <button onClick={onBackHome || onBack} className="mb-5 inline-flex items-center gap-2 text-gray-500 hover:text-emerald-600 transition-colors"><ArrowLeft size={18}/> 返回主页</button>
               )}
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200">
                   <Database size={24} />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-black tracking-tight text-slate-900">学习画像与记忆</h1>
-                  <p className="text-sm text-gray-500 mt-1">统一管理学习群体、学习目标、时间约束、资源偏好、薄弱点与智能体抽取的学习记忆。</p>
+                  <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">学习记忆</h1>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">集中沉淀、管理并调用影响后续学习推荐的关键信息。</p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold border border-emerald-100">画像驱动回答</span>
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold border border-emerald-100">自动记忆沉淀</span>
-                <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-semibold border border-amber-100">过期记忆治理</span>
-              </div>
             </div>}
-            <div className="flex flex-wrap items-center gap-2 justify-end">
-              {message && <span className="text-sm text-emerald-600 bg-white/80 border border-emerald-100 px-3 py-2 rounded-2xl shadow-sm">{message}</span>}
-              <button onClick={load} className="bg-white/90 border border-white px-3 py-2 rounded-2xl flex items-center gap-2 text-slate-700 hover:text-emerald-700 hover:shadow-md transition-[color,box-shadow,transform] duration-150 active:translate-y-px"><RefreshCw size={16} className={isLoading ? 'animate-spin' : ''}/>刷新</button>
-              {isMemoryView && <button onClick={cleanupExpired} className="bg-white/90 border border-white px-3 py-2 rounded-xl flex items-center gap-2 text-slate-700 hover:text-rose-700 hover:shadow-md transition-[color,box-shadow,transform] duration-150 active:translate-y-px"><Clock size={16}/>清理过期</button>}
-              <button onClick={exportData} className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-3 py-2 rounded-2xl flex items-center gap-2 hover:from-emerald-700 hover:to-teal-700 transition-[transform,box-shadow] duration-150 shadow-lg shadow-emerald-100 active:translate-y-px"><Download size={16}/>导出</button>
-            </div>
+            {message && <span className="rounded-2xl border border-emerald-100 bg-white/80 px-3 py-2 text-sm text-emerald-600 shadow-sm">{message}</span>}
           </div>
+          {isMemoryView && <section aria-label="学情分析智能体更新频率" className="relative mt-5 border-t border-emerald-100/90 pt-5">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">学情分析智能体更新频率</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">设置智能体自动汇总学习状态与更新学习记忆的节奏。</p>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {analysisFrequencyOptions.map((option) => {
+                const active = analysisFrequency === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={active}
+                    disabled={isSavingAnalysisFrequency}
+                    onClick={() => changeAnalysisFrequency(option.value)}
+                    className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition-[color,background-color,border-color,box-shadow,transform] duration-150 ${active ? 'border-emerald-300 bg-emerald-500 text-white shadow-md shadow-emerald-100' : 'border-emerald-100 bg-white/90 text-slate-600 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800'}`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>}
         </div>
+        }
 
-        {isMemoryView && <div className="grid md:grid-cols-5 gap-4 mb-6">
+        {isMemoryView && <div className="grid grid-cols-2 gap-3 mb-5 sm:grid-cols-3 xl:grid-cols-5 xl:gap-4">
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-emerald-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-100 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Database size={20}/></div><p className="text-sm text-slate-600">启用记忆</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.active_count || 0}</p></div>
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-amber-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-100 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Sparkles size={20}/></div><p className="text-sm text-slate-600">重要记忆</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.important_count || 0}</p></div>
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-emerald-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-100 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><ArrowUpCircle size={20}/></div><p className="text-sm text-slate-600">待确认候选</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.candidate_pending_count || 0}</p></div>
@@ -455,7 +471,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-rose-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-100 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Clock size={20}/></div><p className="text-sm text-gray-500">已过期</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.expired_count || 0}</p></div>
         </div>}
 
-        {isMemoryView && <div className="grid lg:grid-cols-3 gap-4 mb-6">
+        {isMemoryView && <div className="grid gap-4 mb-5 lg:grid-cols-3">
           <div className="lg:col-span-2 bg-white/82 rounded-[30px] border border-white/80 shadow-sm shadow-emerald-100/50 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-slate-800">记忆分类分布</h2>
@@ -487,135 +503,115 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
           </div>
         </div>}
 
-        {isProfileView && <section className="mb-6 rounded-[30px] border border-emerald-100 bg-emerald-50/40 p-5 shadow-sm shadow-emerald-100/50">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
+        <div className={isProfileView ? 'mx-auto max-w-7xl' : ''}>
+          {isUserProfileView && <section className="user-profile-panel bg-white/86 rounded-[32px] border border-white/80 shadow-lg shadow-emerald-100/45 p-5 backdrop-blur-sm sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-emerald-100 pb-5">
               <div className="flex items-center gap-2 text-slate-900">
-                <LineChart size={18} className="text-emerald-700" />
-                <h2 className="text-xl font-semibold">学习状态趋势</h2>
+                <Database size={22} className="text-emerald-700" />
+                <h2 className="text-2xl font-bold tracking-tight">用户画像</h2>
               </div>
-              <p className="mt-1 text-sm leading-6 text-emerald-950">按北京时间自然日汇总；切换时间段或每分钟自动刷新。</p>
+              {message && <span role="status" className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2.5 text-base text-emerald-700">{message}</span>}
             </div>
-            <div className="flex rounded-full border border-emerald-200 bg-white p-1">
-              {[7, 30, 90].map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  onClick={() => setTrendWindowDays(days)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${trendWindowDays === days ? 'bg-emerald-600 text-white' : 'text-emerald-900 hover:bg-emerald-50'}`}
-                >
-                  {days} 天
-                </button>
-              ))}
-            </div>
-          </div>
-          {trendError ? (
-            <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{trendError}</p>
-          ) : (
-            <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              {learningTrendCharts.map((chart) => <LearningTrendChart key={chart.key} chart={chart} />)}
-            </div>
-          )}
-        </section>}
 
-        <div className={isUnifiedView ? 'grid gap-6 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]' : (isProfileView ? 'mx-auto max-w-3xl' : '')}>
-          {isProfileView && <section className="bg-white/86 rounded-[32px] border border-white/80 shadow-lg shadow-emerald-100/45 p-6 h-fit backdrop-blur-sm">
-            <h2 className="text-xl font-bold mb-4">学习者画像</h2>
-            {onboarding?.status === 'onboarding_completed' && (
-              <div className="mb-5 rounded-[24px] border border-emerald-100 bg-emerald-50/60 p-4">
-                <h3 className="text-base font-semibold text-emerald-950">注册学情调查</h3>
-                <p className="mt-1 text-xs leading-5 text-emerald-800">以下信息已写入学习画像，并作为规划智能体的可信输入。</p>
-                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-                  {[
-                    ['用户群体', onboarding.survey_answers?.learner_group_title || onboarding.learner_group],
-                    ['学习/考试方向', onboarding.survey_answers?.target_exam_or_course],
-                    ['学历/专业', onboarding.survey_answers?.major_or_role],
-                    ['基础水平', onboarding.survey_answers?.tcm_foundation],
-                    ['每日可投入', onboarding.survey_answers?.daily_available_minutes ? `${onboarding.survey_answers.daily_available_minutes} 分钟` : ''],
-                    ['偏好时段', onboarding.survey_answers?.preferred_time_slot],
-                    ['资源偏好', Array.isArray(onboarding.survey_answers?.resource_preference) ? onboarding.survey_answers.resource_preference.join('、') : onboarding.survey_answers?.resource_preference],
-                  ].filter(([, value]) => value).map(([label, value]) => (
-                    <div key={label}>
-                      <dt className="text-xs text-emerald-700">{label}</dt>
-                      <dd className="mt-1 font-medium text-slate-800">{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            )}
-            <div className="space-y-3">
-              {learnerProfile.learning_background && (
-                <label className="block">
-                  <span className="text-sm text-gray-500">学习基础（记忆智能体已确认）</span>
-                  <textarea
-                    value={learnerProfile.learning_background}
-                    readOnly
-                    className={`${softTextareaClass} mt-1 min-h-[58px] bg-emerald-50/60`}
-                  />
-                </label>
-              )}
-              {profileFields.map(([key, label]) => (
-                <label key={key} className="block">
-                  <span className="text-sm text-gray-500">{label}{['display_name', 'constitution', 'health_goals'].includes(key) ? '（记忆智能体已确认）' : ''}</span>
-                  <textarea
-                    value={profile[key] || ''}
-                    readOnly={['display_name', 'constitution', 'health_goals'].includes(key)}
-                    onChange={e => setProfile({ ...profile, [key]: e.target.value })}
-                    className={`${softTextareaClass} mt-1 min-h-[58px] ${['display_name', 'constitution', 'health_goals'].includes(key) ? 'bg-emerald-50/60' : ''}`}
-                  />
-                </label>
-              ))}
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <section aria-label="学习基础画像" className="rounded-[26px] border border-emerald-100 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/35 p-4 sm:p-5">
+                <h3 className="mb-4 text-lg font-semibold leading-7 text-emerald-950">学习基础与目标</h3>
+                <div className="space-y-3">
+                  {userProfileColumns.background.map((field) => {
+                    const value = field.source === 'survey'
+                      ? learnerProfile.education_major
+                      : field.source === 'context'
+                        ? learnerProfile.learning_background
+                        : profile[field.key];
+                    return (
+                      <label key={field.key} className="block">
+                        <span className="text-base font-medium text-slate-700">{field.label}</span>
+                        <textarea
+                          rows={1}
+                          aria-label={field.label}
+                          value={value || ''}
+                          onChange={(event) => {
+                            if (field.source === 'survey') {
+                              setLearnerProfile((current) => ({ ...current, education_major: event.target.value }));
+                              return;
+                            }
+                            if (field.source === 'context') {
+                              setLearnerProfile((current) => ({ ...current, learning_background: event.target.value }));
+                              return;
+                            }
+                            setProfile((current) => ({ ...current, [field.key]: event.target.value }));
+                          }}
+                          placeholder={`请填写${field.label}`}
+                          className={`${userProfileTextareaClass} mt-1`}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section aria-label="学习偏好画像" className="rounded-[26px] border border-teal-100 bg-gradient-to-br from-teal-50/65 via-white to-emerald-50/40 p-4 sm:p-5">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold leading-7 text-emerald-950">学习偏好与需求</h3>
+                  <p className="mt-1 text-sm leading-6 text-emerald-800">勾选锁定后，智能分析只会给出更新建议，不会自动覆盖该字段。</p>
+                </div>
+                <div className="space-y-3">
+                  {userProfileColumns.preferences.map((field) => {
+                    const value = field.source === 'survey' ? learnerProfile.learning_habits : profile[field.key];
+                    const isLocked = (learnerProfile.locked_fields || []).includes(field.lockKey);
+                    return (
+                      <div key={field.key} className="rounded-2xl border border-white/90 bg-white/78 p-4 shadow-sm shadow-emerald-100/50">
+                        <div className="flex items-center justify-between gap-3">
+                          <label htmlFor={`user-profile-${field.key}`} className="text-base font-medium text-slate-700">{field.label}</label>
+                          <label className="flex shrink-0 items-center gap-2 text-sm font-medium text-emerald-800">
+                            <input
+                              aria-label={`锁定${field.label}`}
+                              type="checkbox"
+                              checked={isLocked}
+                              onChange={() => toggleLockedField(field.lockKey)}
+                              className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            锁定
+                          </label>
+                        </div>
+                        <textarea
+                          rows={1}
+                          id={`user-profile-${field.key}`}
+                          aria-label={field.label}
+                          value={value || ''}
+                          onChange={(event) => {
+                            if (field.source === 'survey') {
+                              setLearnerProfile((current) => ({ ...current, learning_habits: event.target.value }));
+                              return;
+                            }
+                            setProfile((current) => ({ ...current, [field.key]: event.target.value }));
+                          }}
+                          placeholder={`请填写${field.label}`}
+                          className={`${userProfileTextareaClass} mt-2`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
             </div>
-            <div className="mt-4 rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4">
-              <div className="text-sm font-semibold text-emerald-950">可锁定画像字段</div>
-              <p className="mt-1 text-sm leading-6 text-emerald-900">锁定后，行为日志和学情诊断只会提出更新建议，不会自动覆盖这些设置；你仍可在本页手动修改。</p>
-              <div className="mt-3 space-y-2 text-sm text-emerald-950">
-                {[
-                  ['time_constraints', '锁定可投入时间/学习时段'],
-                  ['resource_preferences', '锁定资源偏好'],
-                  ['current_difficulties', '锁定当前困难/薄弱点'],
-                ].map(([field, label]) => (
-                  <label key={field} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={(learnerProfile.locked_fields || []).includes(field)}
-                      onChange={() => toggleLockedField(field)}
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-emerald-100 bg-emerald-50/55 p-4 sm:p-5">
+              <p className="text-base leading-7 text-emerald-950">已锁定 {learnerProfile.locked_fields?.length || 0} 项。保存后，锁定设置将同步到学习计划与推荐流程。</p>
+              <button type="button" onClick={saveProfile} className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-3 text-base font-medium text-white shadow-lg shadow-emerald-100 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-emerald-200 active:translate-y-px"><Save size={18}/>保存用户画像</button>
             </div>
-            <button onClick={saveProfile} className="mt-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2 rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-100 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 active:translate-y-px"><Save size={16}/> 保存画像与设置</button>
           </section>}
 
-          {isMemoryView && <section className="bg-white/86 rounded-[32px] border border-white/80 shadow-lg shadow-emerald-100/45 p-6 backdrop-blur-sm">
-            <div className="mb-4">
+          {isMemoryView && <section className="bg-white/86 rounded-[32px] border border-white/80 shadow-lg shadow-emerald-100/45 p-5 backdrop-blur-sm sm:p-6">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div>
               <h2 className="text-xl font-bold">学习记忆数据库</h2>
               <p className="text-sm text-gray-500 mt-1">手动维护和记忆管理智能体自动抽取的学习目标、偏好、薄弱点、阶段反馈都会在这里统一管理。</p>
+              </div>
+              <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">自动沉淀 · 人工可控</span>
             </div>
 
             <MemoryForm value={newMemory} onChange={setNewMemory} onSubmit={addMemory} submitText="新增记忆" />
-
-            <div className="mt-4 rounded-[28px] border border-dashed border-emerald-200/80 bg-gradient-to-br from-white/90 to-emerald-50/70 p-4 shadow-inner shadow-emerald-50/80">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center"><UploadCloud size={20}/></div>
-                  <div>
-                    <h3 className="font-bold text-slate-800">上传 Markdown 学习资料</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">按标题分段导入，支持长期学习记忆或 7 天短期学习状态。</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <SoftSelect value={uploadOptions.category} options={uploadCategoryOptions} onChange={category => setUploadOptions({ ...uploadOptions, category })} className="min-w-[150px] text-sm" />
-                  <SoftSelect value={uploadOptions.importance} options={memoryImportanceOptions} onChange={importance => setUploadOptions({ ...uploadOptions, importance })} className="min-w-[110px] text-sm" />
-                  <label className="cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2 shadow-lg shadow-emerald-100 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:from-emerald-600 hover:to-teal-600 active:translate-y-px">
-                    <UploadCloud size={16}/> 选择 .md
-                    <input type="file" accept=".md,text/markdown" className="hidden" onChange={e => { uploadMarkdown(e.target.files?.[0]); e.target.value = ''; }} />
-                  </label>
-                </div>
-              </div>
-            </div>
 
             <div className="mt-5 rounded-[30px] border border-emerald-100/80 bg-gradient-to-br from-emerald-50/80 via-white/90 to-teal-50/45 p-5 shadow-inner shadow-emerald-50/80">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">

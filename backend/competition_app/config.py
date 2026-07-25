@@ -196,6 +196,7 @@ class Settings:
     # File, mail, image, and search configuration needed by selected incoming
     # business modules. Voice model configuration is intentionally omitted.
     upload_dir: Path = DEFAULT_RUNTIME_ROOT / "uploads"
+    avatar_dir: Path = DEFAULT_RUNTIME_ROOT / "profile_avatars"
     metadata_file: Path = DEFAULT_RUNTIME_ROOT / "file_metadata.json"
     markitdown_output_dir: Path = DEFAULT_RUNTIME_ROOT / "markitdown_output"
     markitdown_extract_timeout_seconds: int = 120
@@ -385,6 +386,12 @@ class Settings:
             ),
             upload_dir=_parse_path(
                 values, "UPLOAD_DIR", runtime_root / "uploads", base=runtime_root
+            ),
+            avatar_dir=_parse_path(
+                values,
+                "AVATAR_DIR",
+                runtime_root / "profile_avatars",
+                base=runtime_root,
             ),
             metadata_file=_parse_path(
                 values,

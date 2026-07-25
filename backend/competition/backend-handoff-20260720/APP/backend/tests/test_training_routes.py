@@ -1366,6 +1366,21 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()["locked_fields"], ["time_constraints"])
 
+    def test_learner_profile_saves_background_and_habits(self):
+        response = self.client.put(
+            "/personalization/learner-profile",
+            json={
+                "learning_background": "零基础，护理专业",
+                "learning_habits": "晚间使用知识卡片复习",
+                "locked_fields": ["learning_habits"],
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()["profile"]
+        self.assertEqual(body["learning_background"], "零基础，护理专业")
+        self.assertEqual(body["learning_habits"], "晚间使用知识卡片复习")
+        self.assertEqual(body["locked_fields"], ["learning_habits"])
+
     def test_daily_checkin_records_activity_without_refreshing_system_data(self):
         with self.Session() as db:
             db.add(database.SystemData(

@@ -10,7 +10,7 @@ from typing import Literal
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,7 +23,12 @@ from competition_app.application.personalized_review_card import (
 from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
 from competition_app.runtime.snapshot import _sanitize
 from competition_app.contracts.review import ReviewAttemptSubmission
-from competition_app.contracts.auth import AuthUser, LoginRequest, RegisterRequest
+from competition_app.contracts.auth import (
+    AccountProfileUpdateRequest,
+    AuthUser,
+    LoginRequest,
+    RegisterRequest,
+)
 from competition_app.repositories.auth import UsernameTakenError
 from competition_app.services.auth import InvalidCredentialsError
 from competition_app.services.learning_path_projection import LearningPathProjectionService
@@ -592,6 +597,67 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         return {"user": user}
+
+    def account_profile_payload(user: AuthUser, profile) -> dict:
+        data = profile.model_dump(mode="json", exclude={"avatar_key"})
+        data["avatar_url"] = (
+            f"/api/v1/auth/me/avatar?v={profile.avatar_version}"
+            if profile.avatar_key
+            else None
+        )
+        return {"user": user.model_dump(mode="json"), "profile": data}
+
+    @app.get("/api/v1/auth/me/profile")
+    async def account_profile(request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        profile = container.account_profile_service.get_profile(user)
+        return account_profile_payload(user, profile)
+
+    @app.patch("/api/v1/auth/me/profile")
+    async def update_account_profile(
+        payload: AccountProfileUpdateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            updated_user, profile = container.account_profile_service.update_profile(
+                user, payload
+            )
+        except (ValueError, LookupError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return account_profile_payload(updated_user, profile)
+
+    @app.put("/api/v1/auth/me/avatar")
+    async def update_account_avatar(
+        request: Request, file: UploadFile = File(...)
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        content = await file.read()
+        try:
+            profile = container.account_profile_service.update_avatar(user, content)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return account_profile_payload(user, profile)
+
+    @app.get("/api/v1/auth/me/avatar")
+    async def account_avatar(request: Request):
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        avatar = container.account_profile_service.avatar_file(user)
+        if avatar is None:
+            raise HTTPException(status_code=404, detail="尚未设置头像")
+        path, media_type = avatar
+        return FileResponse(
+            path,
+            media_type=media_type,
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
 
     @app.post("/api/v1/auth/onboarding/complete")
     async def complete_registration_onboarding(request: Request):

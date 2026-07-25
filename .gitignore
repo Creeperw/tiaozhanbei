@@ -210,6 +210,9 @@ backend/competition/backend-handoff-20260720/APP/backend/runtime/
 *.sqlite3
 
 # Large knowledge assets are mounted outside Git
+/runtime/
+/vdb_store/
+/知识星球视频知识库_前端交接包_2026-07-18/
 backend/competition/vdb_store
 backend/competition/vdb_store/
 backend/competition/题库与知识点库（原始）/

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from pydantic import Field, field_validator
+from pydantic import EmailStr, Field, field_validator
 
 from competition_app.contracts.base import ContractModel
 
@@ -51,6 +51,33 @@ class StoredAuthUser(AuthUser):
     password_hash: str
     password_salt: str
     password_iterations: int = Field(gt=0)
+
+
+class AccountProfile(ContractModel):
+    user_id: str
+    display_name: str
+    gender: str = "unspecified"
+    birth_date: date | None = None
+    region: str = ""
+    contact_email: EmailStr | None = None
+    signature: str = ""
+    avatar_key: str | None = None
+    avatar_version: int = Field(default=0, ge=0)
+    updated_at: datetime | None = None
+
+
+class AccountProfileUpdateRequest(ContractModel):
+    display_name: str = Field(min_length=1, max_length=64)
+    gender: str = Field(default="unspecified", pattern="^(male|female|unspecified)$")
+    birth_date: date | None = None
+    region: str = Field(default="", max_length=128)
+    contact_email: EmailStr | None = None
+    signature: str = Field(default="", max_length=240)
+
+    @field_validator("display_name", "region", "signature", mode="before")
+    @classmethod
+    def normalize_text(cls, value: str | None) -> str:
+        return str(value or "").strip()
 
 
 class AuthSession(ContractModel):

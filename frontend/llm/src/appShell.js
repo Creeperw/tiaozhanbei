@@ -3,7 +3,7 @@ const PRIMARY_NAV = [
   { key: 'assistant', label: '智能助教' },
   { key: 'practice', label: '学习工坊' },
   { key: 'knowledge', label: '知识仓库' },
-  { key: 'personalization', label: '画像与记忆' },
+  { key: 'personalization', label: '个性数据' },
   { key: 'settings', label: '用户设置' },
 ];
 const SUPPORT_NAV = [
@@ -15,8 +15,8 @@ export const PAGE_TITLES = {
   assistant: '智能助教',
   practice: '训练工坊',
   knowledge: '知识库',
-  personalization: '学习画像与记忆',
-  settings: '设置',
+  personalization: '个性数据',
+  settings: '用户设置',
   'admin-feedback': '管理入口',
 };
 const MODULE_ROUTES = {

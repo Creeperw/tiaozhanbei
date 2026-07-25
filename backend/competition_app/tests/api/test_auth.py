@@ -1,4 +1,6 @@
 from pathlib import Path
+from io import BytesIO
+import struct
 
 from fastapi.testclient import TestClient
 
@@ -126,6 +128,83 @@ def test_register_login_me_and_logout(tmp_path: Path) -> None:
     )
     assert logged_in.status_code == 200
     assert logged_in.json()["user"]["user_id"] == user["user_id"]
+
+
+def _png_bytes() -> bytes:
+    return b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + struct.pack(">IIBBBBB", 24, 24, 8, 2, 0, 0, 0) + b"\x00\x00\x00\x00"
+
+
+def test_account_profile_and_avatar_are_private_to_the_current_user(tmp_path: Path) -> None:
+    settings = Settings(
+        mode="stub",
+        use_sqlite=True,
+        sqlite_path=tmp_path / "competition_app.sqlite3",
+        avatar_dir=tmp_path / "avatars",
+    )
+    app = create_app(ApplicationContainer.build(settings, snapshot_root=tmp_path))
+    alice_client = TestClient(app)
+    bob_client = TestClient(app)
+    alice = register(alice_client, "profile-alice")
+    register(bob_client, "profile-bob")
+
+    initial = alice_client.get("/api/v1/auth/me/profile")
+    assert initial.status_code == 200
+    assert initial.json()["profile"]["display_name"] == alice["display_name"]
+    assert initial.json()["profile"]["avatar_url"] is None
+
+    saved = alice_client.patch(
+        "/api/v1/auth/me/profile",
+        json={
+            "display_name": "艾丽丝同学",
+            "gender": "female",
+            "birth_date": "2000-06-18",
+            "region": "上海市",
+            "contact_email": "alice@example.com",
+            "signature": "循序精进。",
+        },
+    )
+    assert saved.status_code == 200
+    assert saved.json()["user"]["display_name"] == "艾丽丝同学"
+    assert saved.json()["profile"]["contact_email"] == "alice@example.com"
+
+    uploaded = alice_client.put(
+        "/api/v1/auth/me/avatar",
+        files={"file": ("avatar.png", _png_bytes(), "image/png")},
+    )
+    assert uploaded.status_code == 200
+    avatar_url = uploaded.json()["profile"]["avatar_url"]
+    assert avatar_url and "v=1" in avatar_url
+    avatar = alice_client.get(avatar_url)
+    assert avatar.status_code == 200
+    assert avatar.headers["content-type"].startswith("image/png")
+
+    other_profile = bob_client.get("/api/v1/auth/me/profile")
+    assert other_profile.status_code == 200
+    assert other_profile.json()["profile"]["display_name"] != "艾丽丝同学"
+    assert bob_client.get("/api/v1/auth/me/avatar").status_code == 404
+
+    restarted = TestClient(create_app(ApplicationContainer.build(settings, snapshot_root=tmp_path / "restart")))
+    restarted.cookies.set(SESSION_COOKIE, alice_client.cookies.get(SESSION_COOKIE))
+    assert restarted.get("/api/v1/auth/me/profile").json()["profile"]["signature"] == "循序精进。"
+    assert restarted.get("/api/v1/auth/me/avatar").status_code == 200
+
+
+def test_account_profile_rejects_future_birth_date_and_invalid_avatar(tmp_path: Path) -> None:
+    client = build_client(tmp_path)
+    register(client, "profile-validation")
+
+    future = client.patch(
+        "/api/v1/auth/me/profile",
+        json={"display_name": "测试用户", "birth_date": "2999-01-01"},
+    )
+    assert future.status_code == 422
+    assert "出生日期" in future.json()["detail"]
+
+    invalid = client.put(
+        "/api/v1/auth/me/avatar",
+        files={"file": ("not-an-image.txt", b"not an image", "text/plain")},
+    )
+    assert invalid.status_code == 422
 
 
 def test_registration_onboarding_gate_is_persistent_until_completed(

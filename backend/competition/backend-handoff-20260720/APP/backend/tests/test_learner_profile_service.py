@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from APP.backend.learner_profile_service import (
@@ -81,6 +82,21 @@ class LearnerProfileServiceTests(unittest.TestCase):
         self.assertEqual(profile.diet_restrictions, "晚间20:00–21:00")
         self.assertEqual(profile.exercise_preferences, "刷题")
         self.assertEqual(build_learner_profile_payload(profile)["time_constraints"], "晚间20:00–21:00")
+
+    def test_payload_reads_manual_background_and_habits_from_survey(self):
+        profile = {
+            "survey_json": json.dumps({
+                "education_major": "护理专业",
+                "learning_background": "已学中医基础",
+                "learning_habits": "晚间复习",
+            }, ensure_ascii=False),
+        }
+
+        payload = build_learner_profile_payload(profile)
+
+        self.assertEqual(payload["education_major"], "护理专业")
+        self.assertEqual(payload["learning_background"], "已学中医基础")
+        self.assertEqual(payload["learning_habits"], "晚间复习")
 
 
 if __name__ == "__main__":

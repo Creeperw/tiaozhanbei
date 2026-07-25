@@ -69,6 +69,11 @@ from competition_app.repositories.review import (
 )
 from competition_app.repositories.auth import InMemoryAuthRepository, SqlAuthRepository
 from competition_app.services.auth import AuthenticationService
+from competition_app.repositories.account_profile import (
+    InMemoryAccountProfileRepository,
+    SqlAccountProfileRepository,
+)
+from competition_app.services.account_profile import AccountProfileService
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -80,6 +85,7 @@ class ApplicationContainer:
     review_card_use_case: PersonalizedReviewCardUseCase
     review_service: ReviewService
     authentication_service: AuthenticationService
+    account_profile_service: AccountProfileService
     daily_task_refresh_service: DailyTaskRefreshService
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
     knowledge_backend: KnowledgeDeliveryBackend | None = None
@@ -126,12 +132,14 @@ class ApplicationContainer:
             conversation_repository = SqlConversationRepository(database_engine)
             review_repository = SqlReviewRepository(database_engine)
             auth_repository = SqlAuthRepository(database_engine)
+            account_profile_repository = SqlAccountProfileRepository(database_engine)
         else:
             plan_repository = InMemoryLearningPlanRepository()
             run_state_repository = InMemoryRunStateRepository()
             conversation_repository = InMemoryConversationRepository()
             review_repository = InMemoryReviewRepository()
             auth_repository = InMemoryAuthRepository()
+            account_profile_repository = InMemoryAccountProfileRepository()
         learning_plan_service = LearningPlanService(
             default_route_repository, plan_repository
         )
@@ -142,6 +150,11 @@ class ApplicationContainer:
             session_ttl_hours=settings.auth_session_ttl_hours,
             admin_username=settings.admin_username,
             admin_password=settings.admin_default_password,
+        )
+        account_profile_service = AccountProfileService(
+            account_profile_repository,
+            auth_repository,
+            settings.avatar_dir,
         )
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
@@ -352,6 +365,7 @@ class ApplicationContainer:
             ),
             review_service=review_service,
             authentication_service=authentication_service,
+            account_profile_service=account_profile_service,
             daily_task_refresh_service=daily_task_refresh_service,
             question_retrieval_tool=knowledge_tool,
             knowledge_backend=knowledge_backend,

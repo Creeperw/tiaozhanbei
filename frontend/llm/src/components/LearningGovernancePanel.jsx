@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Bell, Check, Clock3, Inbox, Route, X } from 'lucide-react';
+import React, { useCallback, useEffect, useId, useState } from 'react';
+import { Bell, Check, Clock3, Route, Settings2, X } from 'lucide-react';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import SettingsPage from './SettingsPage';
+import { useModalFocus } from './ui/useModalFocus';
 
 async function request(path, options) {
   const response = await fetchWithAuth(`${API_BASE}${path}`, options);
@@ -16,6 +18,50 @@ const outcomeLabel = {
   long_replan_requires_confirmation: '长期规划变更待确认',
 };
 
+function NotificationSettingsDialog({ open, onClose }) {
+  const dialogRef = useModalFocus(open);
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-sm" onMouseDown={onClose}>
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="flex max-h-[min(90dvh,760px)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-white/80 bg-[#f8fbf9] shadow-2xl shadow-slate-950/20"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-emerald-100 bg-white px-5 py-5 sm:px-6">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800"><Settings2 aria-hidden="true" size={16} />通知偏好</div>
+            <h2 id={titleId} className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">通知设置</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">按你的学习节奏设置到期复习、主动干预与规划复盘提醒。</p>
+          </div>
+          <button type="button" data-autofocus className="icon-button" aria-label="关闭通知设置" onClick={onClose}>
+            <X aria-hidden="true" size={20} />
+          </button>
+        </header>
+        <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+          <SettingsPage embedded />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function LearningGovernancePanel() {
   const [notifications, setNotifications] = useState({ unread_count: 0, items: [] });
   const [interventions, setInterventions] = useState([]);
@@ -23,6 +69,7 @@ export default function LearningGovernancePanel() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,7 +132,13 @@ export default function LearningGovernancePanel() {
     <div className="space-y-6">
       <section className="rounded-[28px] bg-[#f2f8f4] p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div><div className="flex items-center gap-2 text-sm font-medium text-emerald-900"><Inbox size={16} />自动治理中心</div><h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">需要你处理的学习信号</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">系统只根据可追溯的行为数据提出建议；长期规划不会被自动覆盖。</p></div>
+          <div>
+            <button type="button" className="button button--secondary" aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>
+              <Settings2 aria-hidden="true" size={16} />通知设置
+            </button>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">需要你处理的学习信号</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">系统只根据可追溯的行为数据提出建议；长期规划不会被自动覆盖。</p>
+          </div>
           <div className="rounded-2xl bg-white px-4 py-3 text-right"><div className="font-mono text-2xl font-semibold tabular-nums text-slate-950">{notifications.unread_count || 0}</div><div className="text-xs text-slate-500">未读通知</div></div>
         </div>
       </section>
@@ -134,6 +187,7 @@ export default function LearningGovernancePanel() {
       </section>
       {loading && <div role="status" className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">正在读取通知、干预和复盘记录…</div>}
       {error && <div role="alert" className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      <NotificationSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

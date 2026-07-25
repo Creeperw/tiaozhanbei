@@ -63,7 +63,9 @@ vi.mock('./components/PersonalizationHubPage', () => ({
     <div data-testid="personalization-page" data-view={navigationContext.view || ''}>Personalization page</div>
   ),
 }));
-vi.mock('./components/SettingsPage', () => ({ default: () => <div>Settings page</div> }));
+vi.mock('./components/SettingsHubPage', () => ({
+  default: ({ navigationContext = {} }) => <div data-testid="settings-page" data-view={navigationContext.view || ''}>Settings page</div>,
+}));
 vi.mock('./components/AdminFeedbackPage', () => ({ default: () => <div>Admin page</div> }));
 vi.mock('./components/AppShell', () => ({
   default: ({ children, currentPage, onNavigate }) => (
@@ -77,6 +79,7 @@ vi.mock('./components/AppShell', () => ({
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'workspace' } })}>Go training workspace</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: {} })}>Go personalization</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: { view: 'memory' } })}>Go memory</button>
+      <button type="button" onClick={() => onNavigate({ page: 'personalization', params: { view: 'governance' } })}>Go governance</button>
       <button type="button" onClick={() => onNavigate({ page: 'admin-feedback', params: {} })}>Go admin</button>
       {children}
     </div>
@@ -160,14 +163,17 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-source', 'navigation');
   });
 
-  it('routes legacy memory links into the unified profile and memory view', async () => {
+  it('routes moved learning memory and governance links into user settings', async () => {
     render(<App />);
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Go personalization' }));
-    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'profile');
+    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'user-profile');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go memory' }));
-    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'profile');
+    expect(screen.getByTestId('settings-page')).toHaveAttribute('data-view', 'memory');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go governance' }));
+    expect(screen.getByTestId('settings-page')).toHaveAttribute('data-view', 'governance');
   });
 });

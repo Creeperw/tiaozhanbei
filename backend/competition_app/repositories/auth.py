@@ -35,6 +35,10 @@ class AuthRepository(Protocol):
         self, user_id: str, onboarding_required: bool
     ) -> StoredAuthUser | None: ...
 
+    def set_display_name(
+        self, user_id: str, display_name: str
+    ) -> StoredAuthUser | None: ...
+
     def create_session(self, session: AuthSession) -> None: ...
 
     def get_session(self, token_hash: str) -> AuthSession | None: ...
@@ -79,6 +83,17 @@ class InMemoryAuthRepository:
             updated = user.model_copy(
                 update={"onboarding_required": bool(onboarding_required)}
             )
+            self._users[user_id] = updated
+            return updated.model_copy(deep=True)
+
+    def set_display_name(
+        self, user_id: str, display_name: str
+    ) -> StoredAuthUser | None:
+        with self._lock:
+            user = self._users.get(user_id)
+            if user is None:
+                return None
+            updated = user.model_copy(update={"display_name": display_name})
             self._users[user_id] = updated
             return updated.model_copy(deep=True)
 
@@ -153,6 +168,19 @@ class SqlAuthRepository:
                     "user_id": user_id,
                     "onboarding_required": bool(onboarding_required),
                 },
+            )
+        return self.get_user(user_id)
+
+    def set_display_name(
+        self, user_id: str, display_name: str
+    ) -> StoredAuthUser | None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE app_users SET display_name=:display_name "
+                    "WHERE user_id=:user_id"
+                ),
+                {"user_id": user_id, "display_name": display_name},
             )
         return self.get_user(user_id)
 

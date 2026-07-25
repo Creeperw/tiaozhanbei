@@ -1963,7 +1963,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
           {isUserMenuOpen && (
             <div className="absolute left-4 right-4 bottom-[72px] bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100 origin-bottom-left overflow-hidden">
               <button onClick={() => { setIsUserMenuOpen(false); onOpenPersonalization?.(); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-3 transition-colors">
-                <Database size={17} /> 学习画像与记忆
+                <Database size={17} /> 学习记忆
               </button>
               <button onClick={() => { setIsUserMenuOpen(false); onOpenKnowledge?.(); }} className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-3 transition-colors">
                 <BookOpen size={17} /> 知识库管理

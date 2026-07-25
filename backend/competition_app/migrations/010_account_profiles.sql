@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS app_user_profiles (
+    user_id VARCHAR(128) PRIMARY KEY,
+    gender VARCHAR(16) NOT NULL DEFAULT 'unspecified',
+    birth_date DATE NULL,
+    region VARCHAR(128) NOT NULL DEFAULT '',
+    contact_email VARCHAR(254) NULL,
+    signature VARCHAR(240) NOT NULL DEFAULT '',
+    avatar_key VARCHAR(255) NULL,
+    avatar_version INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+        ON UPDATE CURRENT_TIMESTAMP(6)
+);
