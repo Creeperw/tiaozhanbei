@@ -1,0 +1,789 @@
+{
+  "template_id": "8a087ba277ab-1b9c0852e0",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0001",
+      "question_type": "multiple_choice",
+      "question_content": "下列药物中，属于中效局麻药的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "利多卡因"
+        },
+        {
+          "option_id": "B",
+          "content": "普鲁卡因"
+        },
+        {
+          "option_id": "C",
+          "content": "丁卡因"
+        },
+        {
+          "option_id": "D",
+          "content": "罗哌卡因"
+        },
+        {
+          "option_id": "E",
+          "content": "布比卡因  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：普鲁卡因属于短效局麻药；利多卡因为中效局麻药；丁卡因、罗哌卡因和布比卡因属于长效局麻药。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 1
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0002",
+      "question_type": "multiple_choice",
+      "question_content": "急性阑尾炎最重要的特征是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "转移性右下腹疼痛"
+        },
+        {
+          "option_id": "B",
+          "content": "右下腹包块"
+        },
+        {
+          "option_id": "C",
+          "content": "右下腹局限性显著压痛"
+        },
+        {
+          "option_id": "D",
+          "content": "腹膜刺激征"
+        },
+        {
+          "option_id": "E",
+          "content": "胃肠道症状\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：急性阑尾炎最重要的特征是右下腹局限性显著压痛。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 2
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0003",
+      "question_type": "multiple_choice",
+      "question_content": "以下属于高钾血症病因的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消化道外瘘"
+        },
+        {
+          "option_id": "B",
+          "content": "应用大剂量胰岛素"
+        },
+        {
+          "option_id": "C",
+          "content": "急性肾功能衰竭伴少尿"
+        },
+        {
+          "option_id": "D",
+          "content": "急性碱中毒"
+        },
+        {
+          "option_id": "E",
+          "content": "原发性醛固酮增多症\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：肾脏排钾减少：急、慢性肾功能衰竭伴少尿或无尿，是临床最常见且最重要的导致高钾血症的原因。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 3
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0004",
+      "question_type": "multiple_choice",
+      "question_content": "下列癌症疼痛治疗药物中，用于治疗轻度疼痛的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "曲马多"
+        },
+        {
+          "option_id": "B",
+          "content": "可待因"
+        },
+        {
+          "option_id": "C",
+          "content": "阿司匹林"
+        },
+        {
+          "option_id": "D",
+          "content": "芬太尼"
+        },
+        {
+          "option_id": "E",
+          "content": "羟考酮\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：用于治疗轻度疼痛的是阿司匹林。可待因、羟考酮以及曲马多用于中度疼痛；芬太尼用于重度疼痛。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 4
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0005",
+      "question_type": "multiple_choice",
+      "question_content": "以下关于手术区消毒的说法，正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "无菌巾铺置时，大孔单应下垂超过手术床边缘 $15\\mathrm{cm}$ 以上"
+        },
+        {
+          "option_id": "B",
+          "content": "消毒时若遗漏空白区域，可返回来消毒空白区域后继续自内向外消毒"
+        },
+        {
+          "option_id": "C",
+          "content": "消毒范围应包括手术切口周围 $15\\mathrm{cm}$ 的区域"
+        },
+        {
+          "option_id": "D",
+          "content": "消毒时，对碘过敏者，可以改用 $10\\%$ 甲醛溶液"
+        },
+        {
+          "option_id": "E",
+          "content": "对感染伤口或肛门等处手术，应自感染伤口或会阴肛门处逐渐消毒至手术区外周\n\n解析：无菌巾铺置时，大孔单应下垂超过手术床边缘 $30\\mathrm{cm}$ 以上；消毒时若遗漏空白区域，不可再返回消毒空白区域后继续自内向外消毒；消毒时，对碘过敏者，可以改用 $0.1\\%$ 新洁尔灭溶液；对感染伤口或肛门等处手术，则应自手术区外周逐渐涂向感染伤口或会阴肛门处。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 5
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0006",
+      "question_type": "multiple_choice",
+      "question_content": "切除单个、表浅的脂肪瘤时，应选择的麻醉方式为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "静脉麻醉"
+        },
+        {
+          "option_id": "B",
+          "content": "气管插管全麻"
+        },
+        {
+          "option_id": "C",
+          "content": "局部麻醉"
+        },
+        {
+          "option_id": "D",
+          "content": "硬膜外麻醉"
+        },
+        {
+          "option_id": "E",
+          "content": "蛛网膜下腔麻醉\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "解析：切除单个、表浅的脂肪瘤时，应选择的麻醉方式为局部麻醉。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 6
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0007",
+      "question_type": "multiple_choice",
+      "question_content": "下列关于前列腺炎的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "尿三杯试验有利于前列腺炎的诊断"
+        },
+        {
+          "option_id": "B",
+          "content": "急性前列腺炎时按摩可改善局部血运，排出腺体内炎性分泌物"
+        },
+        {
+          "option_id": "C",
+          "content": "前列腺炎气滞血瘀证选方为前列腺汤"
+        },
+        {
+          "option_id": "D",
+          "content": "急性细菌性前列腺炎抗生素治疗首选复方新诺明"
+        },
+        {
+          "option_id": "E",
+          "content": "慢性前列腺炎抗生素治疗用喹诺酮类效果较好\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：前列腺按摩：急性前列腺炎禁忌采用；慢性前列腺炎时按摩可改善局部血运，排出腺体内炎性分泌物。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 7
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0008",
+      "question_type": "multiple_choice",
+      "question_content": "以下哪项不属于低钾血症临床表现的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "代谢性碱中毒，同时排出反常性酸性尿"
+        },
+        {
+          "option_id": "B",
+          "content": "心电图T波高尖"
+        },
+        {
+          "option_id": "C",
+          "content": "食欲不振、呕吐、腹胀"
+        },
+        {
+          "option_id": "D",
+          "content": "肌肉软弱无力，肢体软瘫"
+        },
+        {
+          "option_id": "E",
+          "content": "严重时出现室颤，心跳停止于收缩状态\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：低钾血症的心电图：早期T波低平、双相倒置，继之S-T段下降、Q-T间期延长和U波出现，或T、U波融合。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 8
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0009",
+      "question_type": "multiple_choice",
+      "question_content": "以下不属于雌激素生理作用的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "促进子宫肌细胞增生和肥大；增加子宫平滑肌对缩宫素的敏感性"
+        },
+        {
+          "option_id": "B",
+          "content": "使子宫内膜腺体及间质增生、修复"
+        },
+        {
+          "option_id": "C",
+          "content": "使阴唇发育丰满，色素加深"
+        },
+        {
+          "option_id": "D",
+          "content": "加快阴道上皮细胞脱落"
+        },
+        {
+          "option_id": "E",
+          "content": "促进输卵管肌层发育及上皮分泌活动并可加强输卵管平滑肌节律性收缩振幅"
+        },
+        {
+          "option_id": "F",
+          "content": "促进输卵管肌层发育及上皮分泌活动并可加强输卵管平滑肌节律性收缩振幅答案："
+        },
+        {
+          "option_id": "G",
+          "content": "解析：加快阴道上皮细胞脱落属于孕激素的生理作用。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 9
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0010",
+      "question_type": "multiple_choice",
+      "question_content": "放置宫内节育器可能导致的并发症是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "子宫穿孔"
+        },
+        {
+          "option_id": "B",
+          "content": "闭经"
+        },
+        {
+          "option_id": "C",
+          "content": "体重增加"
+        },
+        {
+          "option_id": "D",
+          "content": "异位妊娠"
+        },
+        {
+          "option_id": "E",
+          "content": "接触性出血\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：放置宫内节育器的并发症包括：（1）子宫穿孔、节育器异位；（2）节育器嵌顿或断裂；（3）节育器下移或脱落；（4）带器妊娠。\n\n![](images/539a91a8d8ce95e3be032289f3415380abea5fc6b5ec686be97713d70ed2f1f4.jpg)"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 10
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0011",
+      "question_type": "multiple_choice",
+      "question_content": "崩漏的治疗原则是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "塞流、澄源、复旧"
+        },
+        {
+          "option_id": "B",
+          "content": "热者清之，逆则降之"
+        },
+        {
+          "option_id": "C",
+          "content": "调理气血冲任"
+        },
+        {
+          "option_id": "D",
+          "content": "虚者补之，实者泻之"
+        },
+        {
+          "option_id": "E",
+          "content": "急则治其标，缓则治其本\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：崩漏的治疗原则是急则治其标，缓则治其本。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 11
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0012",
+      "question_type": "multiple_choice",
+      "question_content": "盆腔积液穿刺或引流的部位是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "直肠子宫陷凹"
+        },
+        {
+          "option_id": "B",
+          "content": "盆腔"
+        },
+        {
+          "option_id": "C",
+          "content": "阴道前穹隆"
+        },
+        {
+          "option_id": "D",
+          "content": "阴道前庭"
+        },
+        {
+          "option_id": "E",
+          "content": "阴道后穹隆\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：盆腔积液穿刺或引流的部位是阴道后穹隆。\n\n![](images/80ef9effefc0badf997458235e4a88310adc462b3a8edcd3361f580e34bf0a73.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/913f5b5413ac3944e4594e4fa41fc197a0b6ea75cd4af6bc1e7ecc3ce8493d88.jpg)\n\n![](images/c546fcebfab6fae229524d8fbf982ceabac8b35684945a844a16ef92fb7c8b0e.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/58b77e4e300f8ba1b449bd372f407fa69e74ec078538e99185bb9e392c4b37b3.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/7887f09488e9cf478cb73ec096972beee62cfe526c14a88697725563676b2d78.jpg)  \n4-中西医结合妇科学辨证论治汇总  \n5-中西医结合儿科学辨证论治汇总\n\n![](images/b086036bff0c03b630a89ef5222c8c3c39402958179806387836ce5f29490e17.jpg)\n\n![](images/16721a1a58238f311bb17443c7bf00fea10cab11adc46131aabb57d6df9fed1a.jpg)  \n6-中西医结合内科学最字题\n\n![](images/4c257b0ad5e7c0180ede6edd0f4d0f643669cf8382252702ef0fd7c804d6b1a8.jpg)  \n7-中西医结合内科学首选类题目\n\n![](images/0d1758cd56eae9e81aee8b7c14ef8c18b3fb3b12601945694e854712cff2d57f.jpg)  \n8-中西医外妇儿首选类题目  \n9-经络系统常考总结\n\n![](images/89623cd0df58a7292171df35cc2a0159619c6ff134a06b2638417222e8c03bb3.jpg)  \n10-特定穴\n记忆歌诀汇总\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/bf1a9e24b36b71397845439d8dde825e7c9190b0f79d7d991f051183f4aa9b5c.jpg)\n\n![](images/f991b89f91bf273562071a1d74970f83550adbcad8263fa026fce8e2356cd7d8.jpg)\n\n![](images/577012299913eea35cfaed11c787a3c3c13e46b863a4e5064a3a5ded398e5535.jpg)  \n11-中药相同功效药物总结\n\n![](images/086e6e9429f9c135803dcf8de2e8caeeda15168f0d425ae08ea6909a43b397ef.jpg)  \n12-中药学30味中药药理作用总结  \n13-方剂学常考重点总结"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 12
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0013",
+      "question_type": "multiple_choice",
+      "question_content": "胎头跨耻征阳性提示",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "子宫收缩乏力"
+        },
+        {
+          "option_id": "B",
+          "content": "头盆不称"
+        },
+        {
+          "option_id": "C",
+          "content": "臀先露"
+        },
+        {
+          "option_id": "D",
+          "content": "胎位异常"
+        },
+        {
+          "option_id": "E",
+          "content": "子宫收缩过强\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：检查者手指轻轻向骨盆腔方向推压胎头，若胎头低于耻骨联合平面，表示胎头可以入盆，头盆相称，称胎头跨耻征阴性；若胎头与耻骨联合在同一平面，提示可疑头盆不称，跨耻征可疑阳性。若胎头高于耻骨联合，提示头盆不称，称胎头跨耻征阳性。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 13
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0014",
+      "question_type": "multiple_choice",
+      "question_content": "以下不属于胎盘早剥病因的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇年龄42岁"
+        },
+        {
+          "option_id": "B",
+          "content": "孕妇确诊子宫肌瘤"
+        },
+        {
+          "option_id": "C",
+          "content": "长期吸烟"
+        },
+        {
+          "option_id": "D",
+          "content": "孕妇长期右侧卧位"
+        },
+        {
+          "option_id": "E",
+          "content": "腹部突然受撞击\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：胎盘早剥可能与孕妇血管病变、机械因素、宫腔压力骤减及其他高危因素（如高龄产妇、吸烟、滥用可卡因、孕妇代谢异常、孕妇有血栓形成倾向、子宫肌瘤等）有关。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 14
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0015",
+      "question_type": "multiple_choice",
+      "question_content": "“新产三病”是指",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "腹痛、恶露不下、发热"
+        },
+        {
+          "option_id": "B",
+          "content": "尿失禁、缺乳、大便难"
+        },
+        {
+          "option_id": "C",
+          "content": "病痉、病郁冒、病大便难"
+        },
+        {
+          "option_id": "D",
+          "content": "血晕、发热、痉证"
+        },
+        {
+          "option_id": "E",
+          "content": "呕吐、泄泻、盗汗\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：“新产三病”是指病痉、病郁冒、病大便难。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 15
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0016",
+      "question_type": "multiple_choice",
+      "question_content": "产后避孕首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "长效避孕药"
+        },
+        {
+          "option_id": "B",
+          "content": "短效避孕药"
+        },
+        {
+          "option_id": "C",
+          "content": "输卵管结扎"
+        },
+        {
+          "option_id": "D",
+          "content": "宫内节育器"
+        },
+        {
+          "option_id": "E",
+          "content": "避孕套避孕\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：产后42日起应采取避孕措施，首选工具避孕，如男用避孕套。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 16
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0017",
+      "question_type": "multiple_choice",
+      "question_content": "妊娠合并心脏病气虚血瘀证的选方是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "理冲汤"
+        },
+        {
+          "option_id": "B",
+          "content": "补阳还五汤合瓜蒌薤白半夏汤"
+        },
+        {
+          "option_id": "C",
+          "content": "养心汤"
+        },
+        {
+          "option_id": "D",
+          "content": "归脾汤"
+        },
+        {
+          "option_id": "E",
+          "content": "真武汤合五苓散  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：妊娠合并心脏病气虚血瘀证的选方是补阳还五汤合瓜蒌薤白半夏汤。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 17
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0018",
+      "question_type": "multiple_choice",
+      "question_content": "以下不属于卵巢性闭经的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "卵巢早衰"
+        },
+        {
+          "option_id": "B",
+          "content": "运动性闭经"
+        },
+        {
+          "option_id": "C",
+          "content": "多囊卵巢综合征"
+        },
+        {
+          "option_id": "D",
+          "content": "卵巢功能性肿瘤"
+        },
+        {
+          "option_id": "E",
+          "content": "高促性腺素性闭经\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：运动性闭经属于下丘脑性闭经。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 18
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0019",
+      "question_type": "multiple_choice",
+      "question_content": "对于不协调性宫缩乏力的西医处理原则，说法错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "调节子宫收缩，恢复正常极性和节律性"
+        },
+        {
+          "option_id": "B",
+          "content": "恢复为协调性之后，可以使用宫缩剂"
+        },
+        {
+          "option_id": "C",
+          "content": "使用宫缩剂加强宫缩"
+        },
+        {
+          "option_id": "D",
+          "content": "使用哌替啶使产妇充分休息"
+        },
+        {
+          "option_id": "E",
+          "content": "充分处理后，宫缩仍不能纠正，产程无进展，宜行剖宫产术\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：不协调性宫缩乏力在宫缩未恢复为协调性之前，严禁使用宫缩剂。\n\n![](images/7bf5ec3526b37fec3cac3926cf1aeb162e14f86fb43e8a8bef08a0a92c597795.jpg)"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 19
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-1b9c0852e0-q0020",
+      "question_type": "multiple_choice",
+      "question_content": "以下属于滴虫阴道炎特点的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白带呈凝乳状"
+        },
+        {
+          "option_id": "B",
+          "content": "阴道分泌物镜检找到芽孢或假菌丝"
+        },
+        {
+          "option_id": "C",
+          "content": "后穹隆多量灰黄色稀薄脓性分泌物"
+        },
+        {
+          "option_id": "D",
+          "content": "多由雌激素水平不足引起"
+        },
+        {
+          "option_id": "E",
+          "content": "血性白带或性交后出血\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：白带呈凝乳状、阴道分泌物镜检找到芽孢或假菌丝见于外阴阴道假丝酵母菌病；多由雌激素水平不足引起属于萎缩性阴道病的病因；血性白带或性交后出血见于子宫颈炎症或宫颈癌等疾病。\n\n![](images/975fd97f5acef41e1f21e66ee27ba616b570fea2970798034804f8e072cddd8a.jpg)  \n1-内外妇儿重点疾病诊断公式  \n2-中西医结合内科学辨证论治汇总  \n3-中西医结合外科学辨证论治汇总  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/c52e262939464aa27ff004fe49205ff8eea3ba5de0c14918ecfc70bb4eb85cef.jpg)\n\n![](images/db88b69dca9f462aa2d48ed7464e30aa1bfcb1ee39426b1749ab0253919aac98.jpg)  \n6-中西医结合内科学最字题  \n7-中西医结合内科学首选类题目\n\n![](images/073b068a15c00055ef4263bb4d6a3f648d6c0ff22699d926f3325881c7be3462.jpg)  \n5-中西医结合儿科学辨证论治汇总  \n8-中西医外妇儿首选类题目\n\n![](images/4da6fe9980115a51bc7d1a2a6e213e3418dafb06d3b1859663235b2d1cc66df1.jpg)  \n9-经络系统常考总结  \n更多医考干货可扫码关注微信公众平台\n\n![](images/d4d6c132ca5c0534c5fd8aa73a56ff88b43510a7f58252a79408824a3f5630c6.jpg)\n\n![](images/d56b24f099b68797f630f3b59c35400f5f768fa9a3b18a3ad4790d1afeb57066.jpg)\n\n![](images/e73818fb10cde4499f915b7ea7321f6362d3466ebaa45846084fba4a9fa5d057.jpg)  \n11-中药相同功效药物总结  \n12-中药学30味中药药理作用总结\n\n![](images/9c40f4de762787c4dccfb62511b6111c5102f8ff7e4223907fc84f59c48fa36a.jpg)  \n10-特定穴\n记忆歌诀汇总  \n13-方剂学常考重点总结\n\n![](images/6510970557000e0245c43b910eb93ffaf7c178e857fe05ce46a4136be7ed75d2.jpg)\n\n懒人医考\nLANRENYIKAO"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+        "number": 20
+      }
+    }
+  ]
+}

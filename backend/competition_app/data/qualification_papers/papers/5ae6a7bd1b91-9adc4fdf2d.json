@@ -1,0 +1,4321 @@
+{
+  "template_id": "5ae6a7bd1b91-9adc4fdf2d",
+  "questions": [
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0001",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】辛温发散，发汗不如麻黄、桂枝，长于理气安胎、解鱼蟹毒的药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "防风"
+        },
+        {
+          "option_id": "B",
+          "content": "薄荷"
+        },
+        {
+          "option_id": "C",
+          "content": "紫苏"
+        },
+        {
+          "option_id": "D",
+          "content": "荆芥"
+        },
+        {
+          "option_id": "E",
+          "content": "西河柳 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 1
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0002",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，30 岁，患咽喉肿烂、口舌生疮医师在方中选用牛黄配珍珠，该配伍的 功效是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热解毒、活血"
+        },
+        {
+          "option_id": "B",
+          "content": "清热解毒、利尿"
+        },
+        {
+          "option_id": "C",
+          "content": "清热解毒、散结"
+        },
+        {
+          "option_id": "D",
+          "content": "清热解毒、化痰"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒、生肌 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 2
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0003",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】芫花为峻下逐水药，其主治病证不包括( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "身面浮肿"
+        },
+        {
+          "option_id": "B",
+          "content": "胸肋停饮"
+        },
+        {
+          "option_id": "C",
+          "content": "寒痰咳喘"
+        },
+        {
+          "option_id": "D",
+          "content": "癥瘕积聚"
+        },
+        {
+          "option_id": "E",
+          "content": "顽癣冻疮【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 3
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0004",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女 73 岁，10年前患风湿性关节炎，反复发作。1 月前又患急性肝炎。刻下双膝关节红肿热痛、目珠黄染、尿黄，舌红、苔黄腻。证属风湿热痹、湿热黄疸，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "独活"
+        },
+        {
+          "option_id": "B",
+          "content": "秦艽"
+        },
+        {
+          "option_id": "C",
+          "content": "青风藤"
+        },
+        {
+          "option_id": "D",
+          "content": "豨莶草"
+        },
+        {
+          "option_id": "E",
+          "content": "臭梧桐【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 4
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0005",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某医师常选用木香配砂仁治湿滞、食积之脘腹胀痛，此因二药配伍后除能化湿、 理气外又能( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消食止痛"
+        },
+        {
+          "option_id": "B",
+          "content": "健脾止痛"
+        },
+        {
+          "option_id": "C",
+          "content": "温阳止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "调中止痛"
+        },
+        {
+          "option_id": "E",
+          "content": "制酸止痛 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 5
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0006",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女 40 岁。既往患尿路感染时而发作。清明时节，因感风热，不但诱发旧疾而且引发咳嗽。经治表证已解但见尿频、尿急、尿痛、尿色红赤、咳嗽、气急、痰黄。治当利尿通淋、凉血止血、清肺止咳，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "石韦"
+        },
+        {
+          "option_id": "B",
+          "content": "通草"
+        },
+        {
+          "option_id": "C",
+          "content": "瞿麦"
+        },
+        {
+          "option_id": "D",
+          "content": "海金沙"
+        },
+        {
+          "option_id": "E",
+          "content": "车前子【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 6
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0007",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】白矾既可外用又可内服其主治病证不包括( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痰热癫狂"
+        },
+        {
+          "option_id": "B",
+          "content": "痰热喘哮"
+        },
+        {
+          "option_id": "C",
+          "content": "吐衄下血"
+        },
+        {
+          "option_id": "D",
+          "content": "湿热黄疸"
+        },
+        {
+          "option_id": "E",
+          "content": "湿疹瘙痒【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 7
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0008",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】血府逐瘀口服液是临床常用的成药，其处方组成的君药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "桃仁、红花"
+        },
+        {
+          "option_id": "B",
+          "content": "桃仁、赤芍"
+        },
+        {
+          "option_id": "C",
+          "content": "川芎、红花"
+        },
+        {
+          "option_id": "D",
+          "content": "桔梗、川芎"
+        },
+        {
+          "option_id": "E",
+          "content": "赤芍、当归【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 8
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0009",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，34 岁。体瘦弱，患十二指肠溃疡 2 年。深秋时节，突遭寒风来袭，引发脘腹疼痛并伴喜温喜按、嘈杂吞酸、食少。治当温中补虚，缓急止痛，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "良附丸"
+        },
+        {
+          "option_id": "B",
+          "content": "四逆汤"
+        },
+        {
+          "option_id": "C",
+          "content": "香砂平胃丸"
+        },
+        {
+          "option_id": "D",
+          "content": "小建中合剂"
+        },
+        {
+          "option_id": "E",
+          "content": "附子理中丸【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 9
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0010",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男 85岁。患糖尿病20年，刻下属阴阳两虚之消渴。选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄精"
+        },
+        {
+          "option_id": "B",
+          "content": "沙苑子"
+        },
+        {
+          "option_id": "C",
+          "content": "核桃仁"
+        },
+        {
+          "option_id": "D",
+          "content": "菟丝子"
+        },
+        {
+          "option_id": "E",
+          "content": "益智仁 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 10
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0011",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，57 岁。患痢疾里急后重，医师处以枳实导滞丸。其功能除消积导滞外又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "活血止痛"
+        },
+        {
+          "option_id": "B",
+          "content": "疏肝解郁"
+        },
+        {
+          "option_id": "C",
+          "content": "清利湿热"
+        },
+        {
+          "option_id": "D",
+          "content": "健牌和胃"
+        },
+        {
+          "option_id": "E",
+          "content": "化湿醒牌【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 11
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0012",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，36岁。近日出现口舌生疮、咽喉疼痛、心胸烦热、小便短赤、大便秘结。医师处以导赤丸治疗，此因该成药的功能是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热解毒，泻火通便"
+        },
+        {
+          "option_id": "B",
+          "content": "清热泻火，利尿通便"
+        },
+        {
+          "option_id": "C",
+          "content": "清热泻火，解毒敛疮"
+        },
+        {
+          "option_id": "D",
+          "content": "清热解毒，利尿通淋"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒，消肿止痛【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 12
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0013",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，50岁。体胖，久患瘰疬，近日新患肺热咳喘、痰黄，医师在处方时将海蛤壳与海浮石同用，此因二药均能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热化痰、软坚散结"
+        },
+        {
+          "option_id": "B",
+          "content": "清热化痰、活血散结"
+        },
+        {
+          "option_id": "C",
+          "content": "清宣肺气、化痰散结"
+        },
+        {
+          "option_id": "D",
+          "content": "消痰化瘀、止咳平喘"
+        },
+        {
+          "option_id": "E",
+          "content": "清肺化痰、消肿散结【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 13
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0014",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】双清口服液除能清热解毒外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "宣肺止咳"
+        },
+        {
+          "option_id": "B",
+          "content": "和解退热"
+        },
+        {
+          "option_id": "C",
+          "content": "疏透表邪"
+        },
+        {
+          "option_id": "D",
+          "content": "解表通里"
+        },
+        {
+          "option_id": "E",
+          "content": "解表化湿【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 14
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0015",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】麦芽是常用的消食药，关于其性能特点的说法错误的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甘益中"
+        },
+        {
+          "option_id": "B",
+          "content": "平不偏"
+        },
+        {
+          "option_id": "C",
+          "content": "芽生发"
+        },
+        {
+          "option_id": "D",
+          "content": "焦健胃"
+        },
+        {
+          "option_id": "E",
+          "content": "辛消散\n\n## 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 15
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0016",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，50 岁。患高血压病5 年，症见头晕目眩、耳鸣口苦、心烦难寐，医师 处以脑立清丸。此成药的功能是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "平肝潜阳，醒脑安神"
+        },
+        {
+          "option_id": "B",
+          "content": "平肝潜阳，止痉安神"
+        },
+        {
+          "option_id": "C",
+          "content": "平肝潜阳，清心安神"
+        },
+        {
+          "option_id": "D",
+          "content": "平肝息风，化痰开窍"
+        },
+        {
+          "option_id": "E",
+          "content": "平肝息风，养血安神 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 16
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0017",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】性温，单用驱杀绦虫与姜片虫，内服须用30～60g的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "雷丸"
+        },
+        {
+          "option_id": "B",
+          "content": "芦荟"
+        },
+        {
+          "option_id": "C",
+          "content": "槟榔"
+        },
+        {
+          "option_id": "D",
+          "content": "榧子"
+        },
+        {
+          "option_id": "E",
+          "content": "鹤草芽【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 17
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0018",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，6 岁。因外感冈寒、肺胃蕴热导致发热恶寒、鼻塞流涕、咳嗽有痰、 咽喉肿痛、口渴，儿科医师处以儿感清口服液。此因该成药除解表清热外又能( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "宣肺化痰"
+        },
+        {
+          "option_id": "B",
+          "content": "化痰利咽"
+        },
+        {
+          "option_id": "C",
+          "content": "解毒止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "宣肺平喘"
+        },
+        {
+          "option_id": "E",
+          "content": "泻火利咽 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 18
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0019",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某医师治热病邪入心包之高热惊厥、神昏谵语，常用安宫牛黄丸。此因该成 药除清热解毒外又能( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "镇惊开窍"
+        },
+        {
+          "option_id": "B",
+          "content": "豁痰开窍"
+        },
+        {
+          "option_id": "C",
+          "content": "活血开窍"
+        },
+        {
+          "option_id": "D",
+          "content": "行气开窍"
+        },
+        {
+          "option_id": "E",
+          "content": "化浊开窍 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 19
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0020",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，30岁。素体强健。近日，因着衣不慎而感风寒，导致感冒咳嗽，症见发热、恶寒、咳嗽、鼻塞流涕、头痛、无汗、肢体酸痛。证属风寒束表、肺气不宣宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蠲哮片"
+        },
+        {
+          "option_id": "B",
+          "content": "强力枇杷露"
+        },
+        {
+          "option_id": "C",
+          "content": "桂龙咳喘宁胶囊"
+        },
+        {
+          "option_id": "D",
+          "content": "止嗽定喘口服液"
+        },
+        {
+          "option_id": "E",
+          "content": "通宣理肺丸 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 20
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0021",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】乳癖消胶囊是治疗乳癖、乳痈的常用成药，某外科医师经常使用。此因该成药除软坚散结外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "理气化痰，清热解毒"
+        },
+        {
+          "option_id": "B",
+          "content": "活血消痈，理气止痛"
+        },
+        {
+          "option_id": "C",
+          "content": "疏肝理气，消肿止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "凉血消肿，化瘀止痛"
+        },
+        {
+          "option_id": "E",
+          "content": "活血消痈，清热解毒【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 21
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0022",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，56岁。患肾阳不足之泄泻 5 年，症见肠鸣腹胀、五更泄泻、食少不化，面黄肢冷。医师处以成药四神丸。其处方组成的臣药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "附子(制)"
+        },
+        {
+          "option_id": "B",
+          "content": "吴茱萸(制)"
+        },
+        {
+          "option_id": "C",
+          "content": "肉豆蔻(煨)"
+        },
+        {
+          "option_id": "D",
+          "content": "五味子(制)"
+        },
+        {
+          "option_id": "E",
+          "content": "补骨照(盐炒)【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 22
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0023",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，25岁。患急性咽炎2 日。症见咽痛、咽干、咽部红肿、口渴、微恶风、发热，舌边尖红、苔薄黄、脉浮数。证属外感风热，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "六神丸"
+        },
+        {
+          "option_id": "B",
+          "content": "清咽滴丸"
+        },
+        {
+          "option_id": "C",
+          "content": "锡类散"
+        },
+        {
+          "option_id": "D",
+          "content": "清音丸"
+        },
+        {
+          "option_id": "E",
+          "content": "牛黄解毒片【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 23
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0024",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】因处方中所用的香加皮含强心苷而有毒，禁与含强心苷类西药同用的成药是 ( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "跌打丸"
+        },
+        {
+          "option_id": "B",
+          "content": "舒筋活血片"
+        },
+        {
+          "option_id": "C",
+          "content": "活血止痛散"
+        },
+        {
+          "option_id": "D",
+          "content": "接骨丸"
+        },
+        {
+          "option_id": "E",
+          "content": "接骨七厘片 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 24
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0025",
+      "question_type": "single_choice",
+      "question_content": "【题干】某女，85岁，因肺肾阴亏导致潮热盛汗，咽干咳血、眩晕耳鸣，腰膝酸软，消渴。宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麦味地黄丸"
+        },
+        {
+          "option_id": "B",
+          "content": "青娥丸"
+        },
+        {
+          "option_id": "C",
+          "content": "大补阴丸"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 25
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0026",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，35 岁，行经错后，经水量少，有血块，行经小腹疼痛，经前双乳胀痛，烦躁，食欲不振。治当养血舒肝、调经止痛，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "妇科十味片"
+        },
+        {
+          "option_id": "B",
+          "content": "女金丸"
+        },
+        {
+          "option_id": "C",
+          "content": "乌鸡白凤丸"
+        },
+        {
+          "option_id": "D",
+          "content": "益母草颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "少腹逐瘀丸【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 26
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0027",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】蒺藜性平，有小毒，其不具有的功效是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "平肝"
+        },
+        {
+          "option_id": "B",
+          "content": "疏肝"
+        },
+        {
+          "option_id": "C",
+          "content": "潜阳"
+        },
+        {
+          "option_id": "D",
+          "content": "祛风明目"
+        },
+        {
+          "option_id": "E",
+          "content": "散风止痒【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 27
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0028",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，78 岁。素体虚弱，患高血压病 20年。刻下头晕目眩、心悸失眠、耳鸣如蝉、目昏、喘促。证属肝阳上亢、心神不宁、肾不纳气，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "磁石"
+        },
+        {
+          "option_id": "B",
+          "content": "赭石"
+        },
+        {
+          "option_id": "C",
+          "content": "朱砂"
+        },
+        {
+          "option_id": "D",
+          "content": "龙骨"
+        },
+        {
+          "option_id": "E",
+          "content": "珍珠母【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 28
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0029",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，38岁。既患崩漏下血，又患赤白带下，适宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "芡实"
+        },
+        {
+          "option_id": "B",
+          "content": "桑螵蛸"
+        },
+        {
+          "option_id": "C",
+          "content": "金樱子"
+        },
+        {
+          "option_id": "D",
+          "content": "海螵蛸"
+        },
+        {
+          "option_id": "E",
+          "content": "蛇床子【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 29
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0030",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】功能疏风清热、宣肺止咳的成药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "参苏胶囊"
+        },
+        {
+          "option_id": "B",
+          "content": "羚羊感冒胶囊"
+        },
+        {
+          "option_id": "C",
+          "content": "桑菊感冒片"
+        },
+        {
+          "option_id": "D",
+          "content": "午时茶颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "正柴胡饮颗粒\n\n【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 30
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0031",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，40岁。体瘦，因肝火犯胃导致脘胁疼痛、口苦嘈杂、呕吐酸水、不喜热饮。治当泻火、疏肝、和胃、止痛，宣选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "越鞠丸"
+        },
+        {
+          "option_id": "B",
+          "content": "胃苏颗粒"
+        },
+        {
+          "option_id": "C",
+          "content": "健脾消食丸"
+        },
+        {
+          "option_id": "D",
+          "content": "左金丸"
+        },
+        {
+          "option_id": "E",
+          "content": "木香顺气颗粒【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 31
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0032",
+      "question_type": "single_choice",
+      "question_content": "【题干】麝香辛香走窜，温通行散，其成人的一日内服量是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "0.01～0.015gB.0.03～0.1gC.0.02～0.025gD.0.15～0.3gE.0.5～1g【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 32
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0033",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，55岁，患冠心病心绞痛，症见胸痛胸闷，心悸气短，脉结代，证属气阴两虚、瘀血阻脉，医师处以益心舒胶囊，服药后症状缓解，此因该成药除活瘀外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "益气复脉，养阴生津"
+        },
+        {
+          "option_id": "B",
+          "content": "益气强心，清心安神"
+        },
+        {
+          "option_id": "C",
+          "content": "益气养阴，清心安神"
+        },
+        {
+          "option_id": "D",
+          "content": "益气强心，养阴生津"
+        },
+        {
+          "option_id": "E",
+          "content": "益气复脉，平肝安神【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 33
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0034",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】性寒，有毒，研末吹鼻引去湿热，口服涌吐热痰宿食的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "轻粉"
+        },
+        {
+          "option_id": "B",
+          "content": "常山"
+        },
+        {
+          "option_id": "C",
+          "content": "瓜蒂"
+        },
+        {
+          "option_id": "D",
+          "content": "藜芦"
+        },
+        {
+          "option_id": "E",
+          "content": "毛莨【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 34
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0035",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】苎麻根甘寒，除凉血止血，清热安胎外，又能( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "活血、杀虫"
+        },
+        {
+          "option_id": "B",
+          "content": "燥湿、杀虫"
+        },
+        {
+          "option_id": "C",
+          "content": "活血、利尿"
+        },
+        {
+          "option_id": "D",
+          "content": "解毒、燥湿"
+        },
+        {
+          "option_id": "E",
+          "content": "解毒、利尿 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 35
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0036",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】薤白辛散温通，苦泄滑利，善散阴寒之凝结，其主治病证是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝胃不和之脘痛"
+        },
+        {
+          "option_id": "B",
+          "content": "痰浊闭阻之胸痹"
+        },
+        {
+          "option_id": "C",
+          "content": "肝郁气滞之助痛"
+        },
+        {
+          "option_id": "D",
+          "content": "痰湿壅肺之咳喘"
+        },
+        {
+          "option_id": "E",
+          "content": "寒凝血瘀之胸腹刺痛【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 36
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0037",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某医师治热病邪入心包之高热惊厥、神昏谵语，常用安宫牛黄丸。此因该成药除清热解毒外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "豁痰开窍"
+        },
+        {
+          "option_id": "B",
+          "content": "活血开窍"
+        },
+        {
+          "option_id": "C",
+          "content": "镇惊开窍"
+        },
+        {
+          "option_id": "D",
+          "content": "行气开窍"
+        },
+        {
+          "option_id": "E",
+          "content": "化浊开窍【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 37
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0038",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，62岁。患白浊、小便频数，医师处以萆薢分清丸。此成药处方的组成除粉萆薢、盐益智仁外，还有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "车前子、滑石、乌药"
+        },
+        {
+          "option_id": "B",
+          "content": "车前子、乌药、甘草"
+        },
+        {
+          "option_id": "C",
+          "content": "石菖蒲、滑石、甘草"
+        },
+        {
+          "option_id": "D",
+          "content": "金钱草、沉香、土茯苓"
+        },
+        {
+          "option_id": "E",
+          "content": "乌药、石菖蒲、甘草【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 38
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0039",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，58 岁。素患胆囊结石，症见口苦、口黏、右胁下胀痛。5 日前又患咳嗽，咯吐黃痰、咽痛，兼见尿黄、便秘，舌红、苔黄腻。宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "郁金"
+        },
+        {
+          "option_id": "B",
+          "content": "虎杖"
+        },
+        {
+          "option_id": "C",
+          "content": "血竭"
+        },
+        {
+          "option_id": "D",
+          "content": "干漆"
+        },
+        {
+          "option_id": "E",
+          "content": "北刘寄奴【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 39
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0040",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，45岁。素体虚弱，畏寒肢冷，抑郁寡欢近日，因家庭琐事导致情志不畅，致使头痛、吐涎沫。证属中寒肝逆，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肉桂"
+        },
+        {
+          "option_id": "B",
+          "content": "干姜"
+        },
+        {
+          "option_id": "C",
+          "content": "吴茱萸"
+        },
+        {
+          "option_id": "D",
+          "content": "荜茇"
+        },
+        {
+          "option_id": "E",
+          "content": "小茴香【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "## 二、配伍选择题【41-42】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 40
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0041",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】薄荷除宣散风热、清利头目外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疏肝"
+        },
+        {
+          "option_id": "B",
+          "content": "息风止痉"
+        },
+        {
+          "option_id": "C",
+          "content": "祛风止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "明目退翳"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 41
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0042",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】升麻除发表透疹、升举阳气外，又能( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疏肝"
+        },
+        {
+          "option_id": "B",
+          "content": "息风止痉"
+        },
+        {
+          "option_id": "C",
+          "content": "祛风止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "明目退翳"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒 【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "42"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 42
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0043",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，69岁。患骨质疏松症，症见腰脊疼痛、足膝酸软、乏力。医师处以仙灵骨葆胶囊，此成药的使用注意事项是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇及肝功能失代偿者禁用"
+        },
+        {
+          "option_id": "B",
+          "content": "因含制附片而不宜长期服用"
+        },
+        {
+          "option_id": "C",
+          "content": "服药后不宜立即饮茶"
+        },
+        {
+          "option_id": "D",
+          "content": "疮疡肿痛者慎用"
+        },
+        {
+          "option_id": "E",
+          "content": "脾胃虚弱者慎用【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 43
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0044",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，75岁。患风湿性关节炎，症见关节红肿热痛，伴有发热、汗出不解、口渴心烦、小便黄，舌红、苔黄腻、脉滑数。医师处以痛风定胶囊，此成药的使用注意事项是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇及肝功能失代偿者禁用"
+        },
+        {
+          "option_id": "B",
+          "content": "因含制附片而不宜长期服用"
+        },
+        {
+          "option_id": "C",
+          "content": "服药后不宜立即饮茶"
+        },
+        {
+          "option_id": "D",
+          "content": "疮疡肿痛者慎用"
+        },
+        {
+          "option_id": "E",
+          "content": "脾胃虚弱者慎用【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "## 【45-46】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 44
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0045",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，45 岁。1 年来，潮热盗汗、口干咽痛，耳呜遗精、小便短赤。证属阴虚火旺，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "七宝美髯丸"
+        },
+        {
+          "option_id": "B",
+          "content": "桂附地黄九"
+        },
+        {
+          "option_id": "C",
+          "content": "知柏地黄丸"
+        },
+        {
+          "option_id": "D",
+          "content": "济生肾气丸"
+        },
+        {
+          "option_id": "E",
+          "content": "人参归脾丸 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 45
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0046",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，68岁。半年来，水肿、腰膝酸重、小便不利，伴痰饮喘咳。证属肾阳不足、水湿内停，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "七宝美髯丸"
+        },
+        {
+          "option_id": "B",
+          "content": "桂附地黄九"
+        },
+        {
+          "option_id": "C",
+          "content": "知柏地黄丸"
+        },
+        {
+          "option_id": "D",
+          "content": "济生肾气丸"
+        },
+        {
+          "option_id": "E",
+          "content": "人参归脾丸【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【47-49】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 46
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0047",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，25岁。患月经不调，经水量少、淋沥不净。治当活血调经，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "妇炎平胶囊"
+        },
+        {
+          "option_id": "B",
+          "content": "益母草胶囊"
+        },
+        {
+          "option_id": "C",
+          "content": "千金止带丸"
+        },
+        {
+          "option_id": "D",
+          "content": "宫血宁胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "妇科千金片【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 47
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0048",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，42岁。患慢性盆腔炎，症见少腹痛、腰骶痛、带下增多。治当清热除湿、化瘀止痛，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "妇炎平胶囊"
+        },
+        {
+          "option_id": "B",
+          "content": "益母草胶囊"
+        },
+        {
+          "option_id": "C",
+          "content": "千金止带丸"
+        },
+        {
+          "option_id": "D",
+          "content": "宫血宁胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "妇科千金片【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 48
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0049",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，35岁。患慢性宫颈炎，症见带下量多、色黄质稠、臭秽、小腹疼痛、腰骶酸痛、神疲乏力。治当清热除湿、益气化瘀，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "妇炎平胶囊"
+        },
+        {
+          "option_id": "B",
+          "content": "益母草胶囊"
+        },
+        {
+          "option_id": "C",
+          "content": "千金止带丸"
+        },
+        {
+          "option_id": "D",
+          "content": "宫血宁胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "妇科千金片【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【50-51】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 49
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0050",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，66岁。形体肥胖，既患痰湿壅肺之咳嗽气喘，又见脾胃气滞之脘腹胀满、嗳气、恶心呕吐。宜选用的药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "陈皮"
+        },
+        {
+          "option_id": "B",
+          "content": "川楝子"
+        },
+        {
+          "option_id": "C",
+          "content": "香附"
+        },
+        {
+          "option_id": "D",
+          "content": "甘松"
+        },
+        {
+          "option_id": "E",
+          "content": "乌药"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 50
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0051",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，72岁。既患肾阳不足、膀胱虚寒之小便频数，又患寒郁气滞之疝痛。宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "陈皮"
+        },
+        {
+          "option_id": "B",
+          "content": "川楝子"
+        },
+        {
+          "option_id": "C",
+          "content": "香附"
+        },
+        {
+          "option_id": "D",
+          "content": "甘松"
+        },
+        {
+          "option_id": "E",
+          "content": "乌药【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 51
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0052",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，59岁。半年来，腰酸膝软、盗汗遗精、神疲口燥。证属真阴不足，宜 选用的成药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "河车大造丸"
+        },
+        {
+          "option_id": "B",
+          "content": "大补阴九"
+        },
+        {
+          "option_id": "C",
+          "content": "薯蓣丸"
+        },
+        {
+          "option_id": "D",
+          "content": "玉泉丸"
+        },
+        {
+          "option_id": "E",
+          "content": "左归丸 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 52
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0053",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，50岁。数月来，虚劳咳嗽、骨蒸潮热、盗汗遗精、腰膝酸软。证属肺肾两亏，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "河车大造丸"
+        },
+        {
+          "option_id": "B",
+          "content": "大补阴九"
+        },
+        {
+          "option_id": "C",
+          "content": "薯蓣丸"
+        },
+        {
+          "option_id": "D",
+          "content": "玉泉丸"
+        },
+        {
+          "option_id": "E",
+          "content": "左归丸【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【54-56】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 53
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0054",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】味甘性寒，既治肠燥便秘，又治湿热淋证的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胖大海"
+        },
+        {
+          "option_id": "B",
+          "content": "冬葵子"
+        },
+        {
+          "option_id": "C",
+          "content": "马兜铃"
+        },
+        {
+          "option_id": "D",
+          "content": "车前子"
+        },
+        {
+          "option_id": "E",
+          "content": "苦杏仁【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 54
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0055",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】味甘性寒，既治燥热便秘，又治肺热声哑的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胖大海"
+        },
+        {
+          "option_id": "B",
+          "content": "冬葵子"
+        },
+        {
+          "option_id": "C",
+          "content": "马兜铃"
+        },
+        {
+          "option_id": "D",
+          "content": "车前子"
+        },
+        {
+          "option_id": "E",
+          "content": "苦杏仁【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 55
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0056",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】味苦性微温，既治肠燥便秘，又治咳嗽气喘的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胖大海"
+        },
+        {
+          "option_id": "B",
+          "content": "冬葵子"
+        },
+        {
+          "option_id": "C",
+          "content": "马兜铃"
+        },
+        {
+          "option_id": "D",
+          "content": "车前子"
+        },
+        {
+          "option_id": "E",
+          "content": "苦杏仁【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【57-59】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 56
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0057",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，30岁。颜面胸背皮肤粉刺疙瘩、红赤发热，时有脓头、硬结。证属湿热瘀阻，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消风止痒颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "连翘败毒丸"
+        },
+        {
+          "option_id": "C",
+          "content": "当归苦参丸"
+        },
+        {
+          "option_id": "D",
+          "content": "小金丸"
+        },
+        {
+          "option_id": "E",
+          "content": "消银颗粒【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 57
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0058",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，25岁。肌肤下肿块数处、推之能动、皮色不变、肿硬作痛。证属痰气凝滞，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消风止痒颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "连翘败毒丸"
+        },
+        {
+          "option_id": "C",
+          "content": "当归苦参丸"
+        },
+        {
+          "option_id": "D",
+          "content": "小金丸"
+        },
+        {
+          "option_id": "E",
+          "content": "消银颗粒【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 58
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0059",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，42岁。皮肤丘疹、水痕，瘙痒剧烈、抓痕、血痂。证属风湿热邪蕴阻 肌肤，宜选用的成药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消风止痒颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "连翘败毒丸"
+        },
+        {
+          "option_id": "C",
+          "content": "当归苦参丸"
+        },
+        {
+          "option_id": "D",
+          "content": "小金丸"
+        },
+        {
+          "option_id": "E",
+          "content": "消银颗粒 【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "## 【60-62】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 59
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0060",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，5 岁。体胖，嗜食肥甘，近日感冒发热、咳嗽痰多，证属外感风寒、痰浊阻肺，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小儿咳喘灵颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "健脾康儿片"
+        },
+        {
+          "option_id": "C",
+          "content": "解肌宁嗽丸"
+        },
+        {
+          "option_id": "D",
+          "content": "肥儿丸"
+        },
+        {
+          "option_id": "E",
+          "content": "鹭鸶咯丸【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 60
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0061",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，3 岁。半年来腹胀便溏、面黄肌瘦、食少倦怠、小便短少，证属脾胃气虚，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小儿咳喘灵颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "健脾康儿片"
+        },
+        {
+          "option_id": "C",
+          "content": "解肌宁嗽丸"
+        },
+        {
+          "option_id": "D",
+          "content": "肥儿丸"
+        },
+        {
+          "option_id": "E",
+          "content": "鹭鸶咯丸【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 61
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0062",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，4岁。2日来，发热、恶风、微有汗出、咳嗽咯痰、咳喘气促。证属外感风热，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小儿咳喘灵颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "健脾康儿片"
+        },
+        {
+          "option_id": "C",
+          "content": "解肌宁嗽丸"
+        },
+        {
+          "option_id": "D",
+          "content": "肥儿丸"
+        },
+        {
+          "option_id": "E",
+          "content": "鹭鸶咯丸【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【63-64】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 62
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0063",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】因处方组成含细辛、苍耳子，不宜过量或持久服用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "藿胆丸"
+        },
+        {
+          "option_id": "B",
+          "content": "千柏鼻炎片"
+        },
+        {
+          "option_id": "C",
+          "content": "六神丸"
+        },
+        {
+          "option_id": "D",
+          "content": "清音丸"
+        },
+        {
+          "option_id": "E",
+          "content": "鼻渊舒口服液【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 63
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0064",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】因处方组成含蟾酥、雄黄，不宜过量或持久服用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "藿胆丸"
+        },
+        {
+          "option_id": "B",
+          "content": "千柏鼻炎片"
+        },
+        {
+          "option_id": "C",
+          "content": "六神丸"
+        },
+        {
+          "option_id": "D",
+          "content": "清音丸"
+        },
+        {
+          "option_id": "E",
+          "content": "鼻渊舒口服液\n\n【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【65-67】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 64
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0065",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，32岁。因痰气阻肺导致咳嗽痰多、胸闷气急。治当化痰止咳、宽中下气，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "橘贝半夏颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "人参保肺丸"
+        },
+        {
+          "option_id": "C",
+          "content": "七味都气丸"
+        },
+        {
+          "option_id": "D",
+          "content": "二陈丸"
+        },
+        {
+          "option_id": "E",
+          "content": "橘红丸【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 65
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0066",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，50岁。因痰热壅肺导致咳嗽痰多、色黄黏稠、胸闷口干。治当清肺、化痰、止咳，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "橘贝半夏颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "人参保肺丸"
+        },
+        {
+          "option_id": "C",
+          "content": "七味都气丸"
+        },
+        {
+          "option_id": "D",
+          "content": "二陈丸"
+        },
+        {
+          "option_id": "E",
+          "content": "橘红丸【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 66
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0067",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，78岁。因肺气亏虚、肺失宣降导致虚劳久嗽、气短喘促。治当益气补肺、止嗽定喘，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "橘贝半夏颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "人参保肺丸"
+        },
+        {
+          "option_id": "C",
+          "content": "七味都气丸"
+        },
+        {
+          "option_id": "D",
+          "content": "二陈丸"
+        },
+        {
+          "option_id": "E",
+          "content": "橘红丸【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【68-70】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 67
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0068",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，38岁。因肝郁血虚、肝脾不和导致两胁胀痛、头晕目眩、月经不调、脐腹胀痛。治当疏肝清热、健脾养血，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞胃痛颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "柴胡舒肝丸"
+        },
+        {
+          "option_id": "C",
+          "content": "木香顺气丸"
+        },
+        {
+          "option_id": "D",
+          "content": "逍遥丸"
+        },
+        {
+          "option_id": "E",
+          "content": "加味逍遥丸【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 68
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0069",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，35岁。因肝气不舒导致胸胁痞闷、食滞不消、呕吐酸水。治当疏肝理气、消胀止痛，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞胃痛颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "柴胡舒肝丸"
+        },
+        {
+          "option_id": "C",
+          "content": "木香顺气丸"
+        },
+        {
+          "option_id": "D",
+          "content": "逍遥丸"
+        },
+        {
+          "option_id": "E",
+          "content": "加味逍遥丸 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 69
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0070",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，45岁。因湿阻中焦、脾胃不和导致胸膈痞闷、脘腹胀痛、恶心呕吐、 嗳气纳呆。治当行气化湿、健脾和胃，宜选用的成药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞胃痛颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "柴胡舒肝丸"
+        },
+        {
+          "option_id": "C",
+          "content": "木香顺气丸"
+        },
+        {
+          "option_id": "D",
+          "content": "逍遥丸"
+        },
+        {
+          "option_id": "E",
+          "content": "加味逍遥丸 【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "## 【71-72】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 70
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0071",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，43岁。平日因工作压力大，情志不舒，常借酒消愁，导致目赤肿痛、视物昏暗、羞明流泪。证属肝火旺盛，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "石斛夜光丸"
+        },
+        {
+          "option_id": "B",
+          "content": "明目上清片"
+        },
+        {
+          "option_id": "C",
+          "content": "黄连羊肝丸"
+        },
+        {
+          "option_id": "D",
+          "content": "消栓通络胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "复方血栓通胶囊【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 71
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0072",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，80岁。近年来，内障目暗、视物昏花。证属肝肾两亏、阴虚火旺，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "石斛夜光丸"
+        },
+        {
+          "option_id": "B",
+          "content": "明目上清片"
+        },
+        {
+          "option_id": "C",
+          "content": "黄连羊肝丸"
+        },
+        {
+          "option_id": "D",
+          "content": "消栓通络胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "复方血栓通胶囊【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【73-74】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 72
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0073",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，55岁。患热结便秘，便结如球，坚硬难下。宜选用的药组是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大黄配芒硝"
+        },
+        {
+          "option_id": "B",
+          "content": "大黄配干姜"
+        },
+        {
+          "option_id": "C",
+          "content": "白矾配雄黄"
+        },
+        {
+          "option_id": "D",
+          "content": "硫黄配大黄"
+        },
+        {
+          "option_id": "E",
+          "content": "大黄配巴豆【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 73
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0074",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，31岁。患酒皶鼻、粉刺。宜选用的外用药组是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大黄配芒硝"
+        },
+        {
+          "option_id": "B",
+          "content": "大黄配干姜"
+        },
+        {
+          "option_id": "C",
+          "content": "白矾配雄黄"
+        },
+        {
+          "option_id": "D",
+          "content": "硫黄配大黄"
+        },
+        {
+          "option_id": "E",
+          "content": "大黄配巴豆【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【75-77】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 74
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0075",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】穿山甲性微寒，除治闭经、癥瘕外，又治( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "虫积腹痛"
+        },
+        {
+          "option_id": "B",
+          "content": "疮疡不敛"
+        },
+        {
+          "option_id": "C",
+          "content": "中风瘫痪"
+        },
+        {
+          "option_id": "D",
+          "content": "赤白痢疾"
+        },
+        {
+          "option_id": "E",
+          "content": "蛇虫咬伤【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 75
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0076",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】刘寄奴性温，除治闭经、癥瘕外，又治( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "虫积腹痛"
+        },
+        {
+          "option_id": "B",
+          "content": "疮疡不敛"
+        },
+        {
+          "option_id": "C",
+          "content": "中风瘫痪"
+        },
+        {
+          "option_id": "D",
+          "content": "赤白痢疾"
+        },
+        {
+          "option_id": "E",
+          "content": "蛇虫咬伤【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 76
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0077",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】干漆性温，有小毒，除治闭经、癥瘕外，又治( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "虫积腹痛"
+        },
+        {
+          "option_id": "B",
+          "content": "疮疡不敛"
+        },
+        {
+          "option_id": "C",
+          "content": "中风瘫痪"
+        },
+        {
+          "option_id": "D",
+          "content": "赤白痢疾"
+        },
+        {
+          "option_id": "E",
+          "content": "蛇虫咬伤【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【78-80】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 77
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0078",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，50 岁。患乏力倦怠、食欲不振1 年，又见心悸气短、失眠多梦。证属脾虚气弱、心神失养，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄精"
+        },
+        {
+          "option_id": "B",
+          "content": "西洋参"
+        },
+        {
+          "option_id": "C",
+          "content": "女贞子"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芪"
+        },
+        {
+          "option_id": "E",
+          "content": "刺五加【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 78
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0079",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，70岁。患中风与子宫脱垂数年，症见乏力倦怠、半身不遂。证属中气下陷、气虚血滞，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄精"
+        },
+        {
+          "option_id": "B",
+          "content": "西洋参"
+        },
+        {
+          "option_id": "C",
+          "content": "女贞子"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芪"
+        },
+        {
+          "option_id": "E",
+          "content": "刺五加 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 79
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0080",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，45岁。患劳嗽久咳，又见腰膝酸软、须发早白、头晕乏力。证属气虚精亏，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄精"
+        },
+        {
+          "option_id": "B",
+          "content": "西洋参"
+        },
+        {
+          "option_id": "C",
+          "content": "女贞子"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芪"
+        },
+        {
+          "option_id": "E",
+          "content": "刺五加【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【81-83】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 80
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0081",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，30岁。感冒3日，症见头痛发热、恶寒身痛、鼻流清涕、咳嗽、咽干。治当疏风散寒、解表清热，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "荆防颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "感冒清热颗粒"
+        },
+        {
+          "option_id": "C",
+          "content": "九味羌活颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "双黄连颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "连花清瘟胶囊【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 81
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0082",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，40 岁。感冒6 日，症见头身疼痛、恶寒无汗、鼻塞流涕、咳嗽。治当解表散寒、祛风胜湿，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "荆防颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "感冒清热颗粒"
+        },
+        {
+          "option_id": "C",
+          "content": "九味羌活颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "双黄连颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "连花清瘟胶囊【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 82
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0083",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，46岁。感冒5日，症见发热、咳嗽、咽痛。治当疏风解表、清热解毒，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "荆防颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "感冒清热颗粒"
+        },
+        {
+          "option_id": "C",
+          "content": "九味羌活颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "双黄连颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "连花清瘟胶囊【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【84-86】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 83
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0084",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，58岁，患肝虚目暗5 年，近日又患肝热目赤、羞明多泪。治当清热养 肝明目，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大血藤"
+        },
+        {
+          "option_id": "B",
+          "content": "野菊花"
+        },
+        {
+          "option_id": "C",
+          "content": "密蒙花"
+        },
+        {
+          "option_id": "D",
+          "content": "金荞麦"
+        },
+        {
+          "option_id": "E",
+          "content": "土茯苓【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 84
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0085",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，45岁，患风湿痛 3年，近日又患肠痈腹痛，治当清热解毒，活血止痛，祛风通络，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大血藤"
+        },
+        {
+          "option_id": "B",
+          "content": "野菊花"
+        },
+        {
+          "option_id": "C",
+          "content": "密蒙花"
+        },
+        {
+          "option_id": "D",
+          "content": "金荞麦"
+        },
+        {
+          "option_id": "E",
+          "content": "土茯苓【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 85
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0086",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，54岁、患头痛眩晕4 年，近日又患风热感冒。治当清热解毒、疏风平肝，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大血藤"
+        },
+        {
+          "option_id": "B",
+          "content": "野菊花"
+        },
+        {
+          "option_id": "C",
+          "content": "密蒙花"
+        },
+        {
+          "option_id": "D",
+          "content": "金荞麦"
+        },
+        {
+          "option_id": "E",
+          "content": "土茯苓【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【87-88】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 86
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0087",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】补骨脂除补肾壮阳、固精缩尿外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "滋阴益肾"
+        },
+        {
+          "option_id": "B",
+          "content": "燥湿化痰"
+        },
+        {
+          "option_id": "C",
+          "content": "强筋健骨"
+        },
+        {
+          "option_id": "D",
+          "content": "明目止泻"
+        },
+        {
+          "option_id": "E",
+          "content": "温脾止泻【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 87
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0088",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】益智仁除暖肾固精缩尿、摄唾外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "滋阴益肾"
+        },
+        {
+          "option_id": "B",
+          "content": "燥湿化痰"
+        },
+        {
+          "option_id": "C",
+          "content": "强筋健骨"
+        },
+        {
+          "option_id": "D",
+          "content": "明目止泻"
+        },
+        {
+          "option_id": "E",
+          "content": "温脾止泻【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【89-90】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 88
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0089",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】一清颗粒主治火毒血热所致的身热烦躁、目赤口疮、大便秘结，其功能是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热泻火解毒，化瘀凉血止血"
+        },
+        {
+          "option_id": "B",
+          "content": "清胃泻火，化瘀消肿"
+        },
+        {
+          "option_id": "C",
+          "content": "清热泻火，散风止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "清热泻火，利尿通便"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒，消肿止痛【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 89
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0090",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】芩连片主治脏腑蕴热所致的头痛目赤、口鼻生疮、疮疖肿痛，其功能是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热泻火解毒，化瘀凉血止血"
+        },
+        {
+          "option_id": "B",
+          "content": "清胃泻火，化瘀消肿"
+        },
+        {
+          "option_id": "C",
+          "content": "清热泻火，散风止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "清热泻火，利尿通便"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒，消肿止痛【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【91-92】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 90
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0091",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】性平，生用治瘰疬瘿瘤，煅用治胃痛泛酸的药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "竹沥"
+        },
+        {
+          "option_id": "B",
+          "content": "洋金花"
+        },
+        {
+          "option_id": "C",
+          "content": "瓦楞子"
+        },
+        {
+          "option_id": "D",
+          "content": "百部"
+        },
+        {
+          "option_id": "E",
+          "content": "礞石 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 91
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0092",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】性温，既治咳嗽哮喘，又治小儿慢惊的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "竹沥"
+        },
+        {
+          "option_id": "B",
+          "content": "洋金花"
+        },
+        {
+          "option_id": "C",
+          "content": "瓦楞子"
+        },
+        {
+          "option_id": "D",
+          "content": "百部"
+        },
+        {
+          "option_id": "E",
+          "content": "礞石【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【93-94】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 92
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0093",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，25岁。既患血热血瘀痛经，又患痹证关节疼痛，宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "茜草"
+        },
+        {
+          "option_id": "B",
+          "content": "仙鹤草"
+        },
+        {
+          "option_id": "C",
+          "content": "艾叶"
+        },
+        {
+          "option_id": "D",
+          "content": "三七"
+        },
+        {
+          "option_id": "E",
+          "content": "槐花【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 93
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0094",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，30岁。既患崩漏下血，又患滴虫性阴道炎。宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "茜草"
+        },
+        {
+          "option_id": "B",
+          "content": "仙鹤草"
+        },
+        {
+          "option_id": "C",
+          "content": "艾叶"
+        },
+        {
+          "option_id": "D",
+          "content": "三七"
+        },
+        {
+          "option_id": "E",
+          "content": "槐花【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【95-97】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 94
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0095",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，56 岁。患风湿顽痹20 年，近日关节拘挛疼痛加重。宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "防己"
+        },
+        {
+          "option_id": "B",
+          "content": "雷公藤"
+        },
+        {
+          "option_id": "C",
+          "content": "伸筋草"
+        },
+        {
+          "option_id": "D",
+          "content": "千年健"
+        },
+        {
+          "option_id": "E",
+          "content": "徐长卿【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 95
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0096",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，45岁。患风湿痹痛10年，近日又被毒蛇咬伤。宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "防己"
+        },
+        {
+          "option_id": "B",
+          "content": "雷公藤"
+        },
+        {
+          "option_id": "C",
+          "content": "伸筋草"
+        },
+        {
+          "option_id": "D",
+          "content": "千年健"
+        },
+        {
+          "option_id": "E",
+          "content": "徐长卿【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 96
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0097",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，76岁。患风湿热痹、足踝红肿1月，近日又患脚气浮肿。宜选用的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "防己"
+        },
+        {
+          "option_id": "B",
+          "content": "雷公藤"
+        },
+        {
+          "option_id": "C",
+          "content": "伸筋草"
+        },
+        {
+          "option_id": "D",
+          "content": "千年健"
+        },
+        {
+          "option_id": "E",
+          "content": "徐长卿【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【98-100】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 97
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0098",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】既治咽喉肿痛，又治毒蛇咬伤的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "射干"
+        },
+        {
+          "option_id": "B",
+          "content": "秦皮"
+        },
+        {
+          "option_id": "C",
+          "content": "山豆根"
+        },
+        {
+          "option_id": "D",
+          "content": "白花蛇舌草"
+        },
+        {
+          "option_id": "E",
+          "content": "马齿苋【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 98
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0099",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】既治咽喉肿痛，又治痰多咳喘的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "射干"
+        },
+        {
+          "option_id": "B",
+          "content": "秦皮"
+        },
+        {
+          "option_id": "C",
+          "content": "山豆根"
+        },
+        {
+          "option_id": "D",
+          "content": "白花蛇舌草"
+        },
+        {
+          "option_id": "E",
+          "content": "马齿苋 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 99
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0100",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】既治咽喉肿痛，又治湿热黄疸的药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "射干"
+        },
+        {
+          "option_id": "B",
+          "content": "秦皮"
+        },
+        {
+          "option_id": "C",
+          "content": "山豆根"
+        },
+        {
+          "option_id": "D",
+          "content": "白花蛇舌草"
+        },
+        {
+          "option_id": "E",
+          "content": "马齿苋【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "## 三、综合案例分析题\n\n【101-103】\n\n某男，68岁。患高血压病 5 年，冠心病 1 年，服用西药血压控制尚平稳。近 1 月时有头痛头胀、面红目赤、心烦易怒，舌红、苔少、脉细弦。证属阴虚阳亢。处方：天麻9g，钩藤12g(后下)，石决明 20g(先煎)，生牡蛎30g(先煎)，栀子 6g，生白芍 12g，炒杜仲 12g，车前子 15g(包煎)，菊花 12g，川芎 10g，牛膝 12g。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 100
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0101",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】上述方中既平肝潜阳，又益阴的药组是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "石决明、生牡蛎"
+        },
+        {
+          "option_id": "B",
+          "content": "石决明、栀子"
+        },
+        {
+          "option_id": "C",
+          "content": "生牡蛎、川芎"
+        },
+        {
+          "option_id": "D",
+          "content": "生白芍、天麻"
+        },
+        {
+          "option_id": "E",
+          "content": "生白芍、炒杜仲 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 101
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0102",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】服用上方2周后，症状缓解，半年后突发脑梗死，经住院治疗后，仍有手足麻木、步履艰难、口眼㖞斜、言语不清等症状。医师诊断为瘀血阻窍、脉络失养，宜选用的成药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "抗栓再造丸"
+        },
+        {
+          "option_id": "B",
+          "content": "人参再造丸"
+        },
+        {
+          "option_id": "C",
+          "content": "复方丹参片"
+        },
+        {
+          "option_id": "D",
+          "content": "芎菊上清丸"
+        },
+        {
+          "option_id": "E",
+          "content": "松龄血脉康胶囊【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 102
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0103",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】上述所选成药的使用注意事项不包括( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇忌用"
+        },
+        {
+          "option_id": "B",
+          "content": "年老体弱者慎用"
+        },
+        {
+          "option_id": "C",
+          "content": "阴虚风动者慎用"
+        },
+        {
+          "option_id": "D",
+          "content": "大便秘结者慎用"
+        },
+        {
+          "option_id": "E",
+          "content": "不宜过量或久用\n\n【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【104-107】\n\n某男，35 岁。五一假期外出旅游，因天气忽冷忽热而感冒，症见发热、头痛、咳嗽、口干、咽喉疼痛，舌淡红、苔薄黄、脉浮数。医师诊断为风热感冒，并处以银翘解毒颗粒。服用3天，诸症悉除。银翘解毒颗粒处方的组成有金银花、连翘、薄荷、荆芥、淡豆豉、炒牛蒡子、淡竹叶、桔梗、甘草。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 103
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0104",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】银翘解毒颗粒处方的君药有2味，二药配伍后的功能是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疏散风热，宣肺止咳"
+        },
+        {
+          "option_id": "B",
+          "content": "疏散风热，清热解毒"
+        },
+        {
+          "option_id": "C",
+          "content": "解表化湿，理气和中"
+        },
+        {
+          "option_id": "D",
+          "content": "疏散解表，清热生津"
+        },
+        {
+          "option_id": "E",
+          "content": "解肌发表，调和营卫 【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 104
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0105",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】炒牛蒡子在方中除散风清热、解毒消肿、利咽外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "燥湿祛痰"
+        },
+        {
+          "option_id": "B",
+          "content": "降气祛痰"
+        },
+        {
+          "option_id": "C",
+          "content": "散结祛痰"
+        },
+        {
+          "option_id": "D",
+          "content": "敛肺祛痰"
+        },
+        {
+          "option_id": "E",
+          "content": "宣肺祛痰【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 105
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0106",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】甘草在方中除调和诸药外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "化湿解毒"
+        },
+        {
+          "option_id": "B",
+          "content": "泻火解毒"
+        },
+        {
+          "option_id": "C",
+          "content": "利尿解毒"
+        },
+        {
+          "option_id": "D",
+          "content": "散结解毒"
+        },
+        {
+          "option_id": "E",
+          "content": "凉血解毒【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 106
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0107",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】方中淡豆豉除解表外，又能( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "止痛"
+        },
+        {
+          "option_id": "B",
+          "content": "解毒"
+        },
+        {
+          "option_id": "C",
+          "content": "利尿"
+        },
+        {
+          "option_id": "D",
+          "content": "除烦"
+        },
+        {
+          "option_id": "E",
+          "content": "化湿【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "【108-110】\n\n某男，19 岁。患慢性肾炎8 年，日前突发眼睑浮肿，遂来就诊。刻下恶寒、发热、无汗、肢体酸楚、不欲饮水、脉浮滑。医师诊断为风水水肿，治当宣肺利水。处方：麻黄 9g，苦杏仁10g，防风6g，浮萍10g，茯苓10g，泽泻10g，车前子15g(包煎)，紫苏叶6g(后下)。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 107
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0108",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】上述处方中能宣肺利水的药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麻黄"
+        },
+        {
+          "option_id": "B",
+          "content": "防风"
+        },
+        {
+          "option_id": "C",
+          "content": "泽泻"
+        },
+        {
+          "option_id": "D",
+          "content": "茯苓"
+        },
+        {
+          "option_id": "E",
+          "content": "紫苏叶【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 108
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0109",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】服药2周后，恶寒、眼睑浮肿已消，又见下肢浮肿，伴倦怠、便溏，苔白、脉滑。证属脾虚水湿内停，治当补气健脾利水，处方中宜加用的药组是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "羌活、槟榔"
+        },
+        {
+          "option_id": "B",
+          "content": "连翘、赤小豆"
+        },
+        {
+          "option_id": "C",
+          "content": "白扁豆、桂枝"
+        },
+        {
+          "option_id": "D",
+          "content": "陈皮、桑白皮"
+        },
+        {
+          "option_id": "E",
+          "content": "黄芪、白术【竺安】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 109
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0110",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】治疗1 月，水肿尽消，患者自行停药。半年后水肿复发，身肿以腰以下为甚，按之凹陷不易恢复，脘腹胀闷、纳减、面色少华、神倦肢冷、小便短少，苔白滑、脉沉细，证属水肿日久、阳气已虚，处方中宜选用的药组是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "人参、白术、生姜"
+        },
+        {
+          "option_id": "B",
+          "content": "附子、白术、茯苓"
+        },
+        {
+          "option_id": "C",
+          "content": "黄柏、木通、泽泻"
+        },
+        {
+          "option_id": "D",
+          "content": "茯苓、猪苓、车前子"
+        },
+        {
+          "option_id": "E",
+          "content": "白茅根、丹参、益母草【答案】"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 110
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0111",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】天南星的性能特点有( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甘润苦降"
+        },
+        {
+          "option_id": "B",
+          "content": "善祛脾胃湿痰"
+        },
+        {
+          "option_id": "C",
+          "content": "苦燥辛散"
+        },
+        {
+          "option_id": "D",
+          "content": "温化有毒"
+        },
+        {
+          "option_id": "E",
+          "content": "善祛经络风痰 【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "DE"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 111
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0112",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】牛黄醒消丸能清热解毒、活血祛瘀、消肿止痛，其主治有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痈疽发背"
+        },
+        {
+          "option_id": "B",
+          "content": "瘰疬流注"
+        },
+        {
+          "option_id": "C",
+          "content": "乳痈乳岩"
+        },
+        {
+          "option_id": "D",
+          "content": "水火烫伤"
+        },
+        {
+          "option_id": "E",
+          "content": "无名肿毒【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "BCE"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 112
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0113",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】麻黄辛散温通，微苦略降，处方君药中含麻黄的成药有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小青龙合剂"
+        },
+        {
+          "option_id": "B",
+          "content": "苏子降气丸"
+        },
+        {
+          "option_id": "C",
+          "content": "清肺抑火丸"
+        },
+        {
+          "option_id": "D",
+          "content": "杏苏止咳颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "止嗽定喘口服液"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 113
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0114",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某女，30 岁。素体虚弱，曾经怀孕 3 次，均无果而终。如今第 4 次怀孕，妊娠2月余，行走不慎闪挫，遂致小腹隐痛阵作、有下坠感，伴见头晕耳 鸣、腰膝酸软，舌淡、苔薄、脉沉弱。治当补肝肾安胎，宜选用的药有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "杜仲"
+        },
+        {
+          "option_id": "B",
+          "content": "续断"
+        },
+        {
+          "option_id": "C",
+          "content": "白术"
+        },
+        {
+          "option_id": "D",
+          "content": "菟丝子"
+        },
+        {
+          "option_id": "E",
+          "content": "桑寄生【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "BDE"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 114
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0115",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】善于通利二便的药有( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "芦荟"
+        },
+        {
+          "option_id": "B",
+          "content": "郁李仁"
+        },
+        {
+          "option_id": "C",
+          "content": "巴豆霜"
+        },
+        {
+          "option_id": "D",
+          "content": "牵牛子"
+        },
+        {
+          "option_id": "E",
+          "content": "火麻仁 【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "D"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 115
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0116",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】逐瘀通脉胶囊的使用注意事项有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "体虚者忌用"
+        },
+        {
+          "option_id": "B",
+          "content": "过敏体质者慎用"
+        },
+        {
+          "option_id": "C",
+          "content": "脑出血患者禁用"
+        },
+        {
+          "option_id": "D",
+          "content": "肝肾功能不全者忌用"
+        },
+        {
+          "option_id": "E",
+          "content": "脑梗死急性期禁用【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "BCD"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 116
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0117",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，45 岁。自诉经常感到头晕目眩、精神欠佳，且白发日渐增多。能治疗须发早白的药有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "鳌甲"
+        },
+        {
+          "option_id": "B",
+          "content": "桑椹"
+        },
+        {
+          "option_id": "C",
+          "content": "墨旱莲"
+        },
+        {
+          "option_id": "D",
+          "content": "熟地黄"
+        },
+        {
+          "option_id": "E",
+          "content": "乌梅【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "CD"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 117
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0118",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】某男，79 岁。虚劳久咳、气短烦热、胸满郁闷、盗汗。医师处以蛤蚧定喘丸，该成药的功能有( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "滋阴清肺"
+        },
+        {
+          "option_id": "B",
+          "content": "益气补肺"
+        },
+        {
+          "option_id": "C",
+          "content": "止咳平喘"
+        },
+        {
+          "option_id": "D",
+          "content": "涤痰祛瘀"
+        },
+        {
+          "option_id": "E",
+          "content": "健脾补肾 【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "C"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 118
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0119",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】因药物组成中含朱砂，不宜过量服用或久服的成药有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "紫金锭"
+        },
+        {
+          "option_id": "B",
+          "content": "琥珀抱龙丸"
+        },
+        {
+          "option_id": "C",
+          "content": "牛黄抱龙丸"
+        },
+        {
+          "option_id": "D",
+          "content": "龙牡壮骨颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "柏子养心丸【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "BCE"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 119
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-9adc4fdf2d-q0120",
+      "question_type": "multiple_choice",
+      "question_content": "【题干】玄参的主治病证有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "温毒发斑"
+        },
+        {
+          "option_id": "B",
+          "content": "肠燥便秘"
+        },
+        {
+          "option_id": "C",
+          "content": "咽喉肿痛"
+        },
+        {
+          "option_id": "D",
+          "content": "瘰疬痰核"
+        },
+        {
+          "option_id": "E",
+          "content": "骨蒸潮热【答案】"
+        },
+        {
+          "option_id": "F",
+          "content": "BCDE"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 120
+      }
+    }
+  ]
+}

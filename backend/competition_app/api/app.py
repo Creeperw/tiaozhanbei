@@ -31,6 +31,7 @@ from competition_app.services.profile_readiness import ProfileReadinessService
 from competition_app.services.planning_readiness import PlanningReadinessService
 from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.workshop import WorkshopKnowledgeService
+from competition_app.services.qualification_papers import QualificationPaperRepository
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 from competition_app.api.simulated_patient_routes import router as sp_router, init_engine as sp_init_engine
 
@@ -189,6 +190,22 @@ class WorkshopPaperSubmitRequest(BaseModel):
     request_id: str = Field(min_length=1, max_length=120)
 
 
+class QualificationAttemptCreateRequest(BaseModel):
+    answer_mode: str = Field(pattern="^(practice|test)$")
+    duration_minutes: int | None = Field(default=None, ge=10, le=300)
+
+
+class QualificationAttemptProgressRequest(BaseModel):
+    answers: dict[str, str] = Field(default_factory=dict)
+    current_position: int = Field(default=1, ge=1)
+    marked_positions: list[int] = Field(default_factory=list)
+    paused: bool = False
+
+
+class QualificationAttemptSubmitRequest(BaseModel):
+    request_id: str = Field(min_length=1, max_length=120)
+
+
 class NotificationStatusRequest(BaseModel):
     status: str = Field(pattern="^(read|dismissed)$")
 
@@ -213,6 +230,10 @@ class PlanReviewDecisionRequest(BaseModel):
 
 def create_app(container: ApplicationContainer, *, auth_required: bool = True) -> FastAPI:
     backend_handoff = container.backend_handoff_runtime
+    qualification_papers = QualificationPaperRepository(
+        Path(__file__).resolve().parents[1] / "data" / "qualification_papers",
+        runtime_root=Path(__file__).resolve().parents[1] / "runtime" / "qualification_papers",
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -355,6 +376,86 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is not None and learner_id != user.user_id:
             raise HTTPException(status_code=403, detail="无权访问其他用户的数据")
         return user
+
+    @app.get("/api/v1/qualification-papers/catalog")
+    async def qualification_paper_catalog(
+        request: Request,
+        exam_id: str = "",
+        year: str = "",
+        paper_type: str = "",
+    ) -> dict:
+        current_user(request)
+        return qualification_papers.list_catalog(exam_id=exam_id, year=year, paper_type=paper_type)
+
+    @app.post("/api/v1/qualification-papers/{template_id}/attempts")
+    async def create_qualification_attempt(
+        template_id: str, payload: QualificationAttemptCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.create_attempt(
+                user.user_id,
+                template_id,
+                answer_mode=payload.answer_mode,
+                duration_minutes=payload.duration_minutes,
+            )
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/qualification-paper-attempts/{attempt_id}")
+    async def get_qualification_attempt(attempt_id: str, request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.get_attempt(user.user_id, attempt_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.put("/api/v1/qualification-paper-attempts/{attempt_id}/progress")
+    async def save_qualification_attempt_progress(
+        attempt_id: str, payload: QualificationAttemptProgressRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.save_progress(
+                user.user_id,
+                attempt_id,
+                answers=payload.answers,
+                current_position=payload.current_position,
+                marked_positions=payload.marked_positions,
+                paused=payload.paused,
+            )
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/qualification-paper-attempts/{attempt_id}/submit")
+    async def submit_qualification_attempt(
+        attempt_id: str, payload: QualificationAttemptSubmitRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/qualification-paper-attempts/{attempt_id}/items/{question_id}/explanation")
+    async def qualification_attempt_explanation(attempt_id: str, question_id: str, request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.get_explanation(user.user_id, attempt_id, question_id)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     def knowledge_backend():
         backend = container.knowledge_backend

@@ -1,0 +1,3801 @@
+{
+  "template_id": "bd4f84f55760-187fe471be",
+  "questions": [
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0001",
+      "question_type": "multiple_choice",
+      "question_content": "五行之中，其特性为“炎上”的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "木"
+        },
+        {
+          "option_id": "B",
+          "content": "金"
+        },
+        {
+          "option_id": "C",
+          "content": "火"
+        },
+        {
+          "option_id": "D",
+          "content": "水"
+        },
+        {
+          "option_id": "E",
+          "content": "土"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 1
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0002",
+      "question_type": "multiple_choice",
+      "question_content": "依据五行相克规律，下列说法正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "悲胜恐"
+        },
+        {
+          "option_id": "B",
+          "content": "悲胜喜"
+        },
+        {
+          "option_id": "C",
+          "content": "恐胜喜"
+        },
+        {
+          "option_id": "D",
+          "content": "怒胜喜"
+        },
+        {
+          "option_id": "E",
+          "content": "恐胜思"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 2
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0003",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，与心有关的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "生之本"
+        },
+        {
+          "option_id": "B",
+          "content": "气之本"
+        },
+        {
+          "option_id": "C",
+          "content": "后天之本"
+        },
+        {
+          "option_id": "D",
+          "content": "先天之本"
+        },
+        {
+          "option_id": "E",
+          "content": "罢极之本"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 3
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0004",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，具有统血功能的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾"
+        },
+        {
+          "option_id": "B",
+          "content": "肺"
+        },
+        {
+          "option_id": "C",
+          "content": "肝"
+        },
+        {
+          "option_id": "D",
+          "content": "心"
+        },
+        {
+          "option_id": "E",
+          "content": "脾"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 4
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0005",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，具有司眼睑开合作用的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "督脉"
+        },
+        {
+          "option_id": "B",
+          "content": "冲脉"
+        },
+        {
+          "option_id": "C",
+          "content": "任脉"
+        },
+        {
+          "option_id": "D",
+          "content": "跷脉"
+        },
+        {
+          "option_id": "E",
+          "content": "带脉"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 5
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0006",
+      "question_type": "multiple_choice",
+      "question_content": "六淫致病，其性干涩，易伤津液的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "风邪"
+        },
+        {
+          "option_id": "B",
+          "content": "寒邪"
+        },
+        {
+          "option_id": "C",
+          "content": "暑邪"
+        },
+        {
+          "option_id": "D",
+          "content": "燥邪"
+        },
+        {
+          "option_id": "E",
+          "content": "火邪"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 6
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0007",
+      "question_type": "multiple_choice",
+      "question_content": "《素问·举痛论》认为劳力过度可导致的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气上"
+        },
+        {
+          "option_id": "B",
+          "content": "气泄"
+        },
+        {
+          "option_id": "C",
+          "content": "气收"
+        },
+        {
+          "option_id": "D",
+          "content": "气耗"
+        },
+        {
+          "option_id": "E",
+          "content": "气下"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 7
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0008",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，不属于瘀血致病症状特点的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痛处固定"
+        },
+        {
+          "option_id": "B",
+          "content": "爪甲紫暗\n\n## 万题宝之考题卷-2018精选"
+        },
+        {
+          "option_id": "C",
+          "content": "肌肤甲错"
+        },
+        {
+          "option_id": "D",
+          "content": "夜间痛甚"
+        },
+        {
+          "option_id": "E",
+          "content": "疼痛胀满"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 8
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0009",
+      "question_type": "multiple_choice",
+      "question_content": "热结旁流的病机是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "真虚假实"
+        },
+        {
+          "option_id": "B",
+          "content": "因虚致实"
+        },
+        {
+          "option_id": "C",
+          "content": "由实转虚"
+        },
+        {
+          "option_id": "D",
+          "content": "真实假虚"
+        },
+        {
+          "option_id": "E",
+          "content": "实中夹虚"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 9
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0010",
+      "question_type": "multiple_choice",
+      "question_content": "阳偏衰所形成的证候性质是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "实热"
+        },
+        {
+          "option_id": "B",
+          "content": "实寒"
+        },
+        {
+          "option_id": "C",
+          "content": "虚热"
+        },
+        {
+          "option_id": "D",
+          "content": "虚寒"
+        },
+        {
+          "option_id": "E",
+          "content": "真热假寒"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 10
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0011",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，与气逆的发生有密切关系的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心、脾、肾"
+        },
+        {
+          "option_id": "B",
+          "content": "心、肝、肾"
+        },
+        {
+          "option_id": "C",
+          "content": "肺、肝、胃"
+        },
+        {
+          "option_id": "D",
+          "content": "肺、脾、肾"
+        },
+        {
+          "option_id": "E",
+          "content": "肝、胃、三焦"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 11
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0012",
+      "question_type": "multiple_choice",
+      "question_content": "气不能内守而大量亡失，以致生命机能突然衰竭的病理变化，指的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气虚"
+        },
+        {
+          "option_id": "B",
+          "content": "气逆"
+        },
+        {
+          "option_id": "C",
+          "content": "气陷"
+        },
+        {
+          "option_id": "D",
+          "content": "气闭"
+        },
+        {
+          "option_id": "E",
+          "content": "气脱"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 12
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0013",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，适用于真寒假热证的治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "以热治寒"
+        },
+        {
+          "option_id": "B",
+          "content": "以热治热"
+        },
+        {
+          "option_id": "C",
+          "content": "以寒治寒"
+        },
+        {
+          "option_id": "D",
+          "content": "用寒远寒"
+        },
+        {
+          "option_id": "E",
+          "content": "通因通用"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 13
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0014",
+      "question_type": "multiple_choice",
+      "question_content": "属于中医诊断基本原理的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "见微知著"
+        },
+        {
+          "option_id": "B",
+          "content": "四诊合参"
+        },
+        {
+          "option_id": "C",
+          "content": "辨证论治"
+        },
+        {
+          "option_id": "D",
+          "content": "整体观念"
+        },
+        {
+          "option_id": "E",
+          "content": "天人合一"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 14
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0015",
+      "question_type": "multiple_choice",
+      "question_content": "蜷卧缩足，喜加衣被的临床意义是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "虚寒证"
+        },
+        {
+          "option_id": "B",
+          "content": "实热证"
+        },
+        {
+          "option_id": "C",
+          "content": "虚热证"
+        },
+        {
+          "option_id": "D",
+          "content": "血虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "气虚证"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 15
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0016",
+      "question_type": "multiple_choice",
+      "question_content": "掩舌主要判断的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "是否属于染苔"
+        },
+        {
+          "option_id": "B",
+          "content": "是否光线影响"
+        },
+        {
+          "option_id": "C",
+          "content": "是否里有实邪"
+        },
+        {
+          "option_id": "D",
+          "content": "是否舌质润泽"
+        },
+        {
+          "option_id": "E",
+          "content": "是否运动灵活"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 16
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0017",
+      "question_type": "multiple_choice",
+      "question_content": "黄滑苔的临床意义是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "湿热痰热内蕴，食积化腐"
+        },
+        {
+          "option_id": "B",
+          "content": "阳虚寒湿内盛，痰饮内停"
+        },
+        {
+          "option_id": "C",
+          "content": "阳虚寒湿之体，痰饮化热"
+        },
+        {
+          "option_id": "D",
+          "content": "素有湿浊宿食，阻滞气机"
+        },
+        {
+          "option_id": "E",
+          "content": "气血亏虚之体，痰饮食积"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 17
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0018",
+      "question_type": "multiple_choice",
+      "question_content": "神识清楚而语言错乱，语后自知言错的临床意义是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心气不足"
+        },
+        {
+          "option_id": "B",
+          "content": "邪热扰神"
+        },
+        {
+          "option_id": "C",
+          "content": "脏气衰竭"
+        },
+        {
+          "option_id": "D",
+          "content": "热入营血"
+        },
+        {
+          "option_id": "E",
+          "content": "厥阴受寒"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 18
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0019",
+      "question_type": "multiple_choice",
+      "question_content": "突发耳鸣，声大如潮，按之不减的临床意义是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "寒水上泛"
+        },
+        {
+          "option_id": "B",
+          "content": "肝胆郁热"
+        },
+        {
+          "option_id": "C",
+          "content": "湿热蕴牌"
+        },
+        {
+          "option_id": "D",
+          "content": "风邪上袭"
+        },
+        {
+          "option_id": "E",
+          "content": "痰湿上蒙"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 19
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0020",
+      "question_type": "multiple_choice",
+      "question_content": "肛门有下坠感，劳累后加重的临床意义是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝郁气滞"
+        },
+        {
+          "option_id": "B",
+          "content": "大肠湿热"
+        },
+        {
+          "option_id": "C",
+          "content": "肾气不固"
+        },
+        {
+          "option_id": "D",
+          "content": "中气下陷"
+        },
+        {
+          "option_id": "E",
+          "content": "肠道气滞"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 20
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0021",
+      "question_type": "multiple_choice",
+      "question_content": "洪脉、实脉的共同特征是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "来盛去衰"
+        },
+        {
+          "option_id": "B",
+          "content": "如波涛汹涌"
+        },
+        {
+          "option_id": "C",
+          "content": "部位表浅"
+        },
+        {
+          "option_id": "D",
+          "content": "脉体宽大"
+        },
+        {
+          "option_id": "E",
+          "content": "端直以长"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 21
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0022",
+      "question_type": "multiple_choice",
+      "question_content": "平脉的脉动至数是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "一息五至"
+        },
+        {
+          "option_id": "B",
+          "content": "一息四至"
+        },
+        {
+          "option_id": "C",
+          "content": "一息六七至"
+        },
+        {
+          "option_id": "D",
+          "content": "一息八九至"
+        },
+        {
+          "option_id": "E",
+          "content": "一息十至"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 22
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0023",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，属实证的临床表现是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疼痛喜按"
+        },
+        {
+          "option_id": "B",
+          "content": "五心烦热"
+        },
+        {
+          "option_id": "C",
+          "content": "蒸蒸壮热"
+        },
+        {
+          "option_id": "D",
+          "content": "精神萎靡"
+        },
+        {
+          "option_id": "E",
+          "content": "舌胖淡嫩"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 23
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0024",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，属于证临床表现的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "形体肥胖，皮下多触及圆滑柔韧的包块，舌苔白腻脉滑"
+        },
+        {
+          "option_id": "B",
+          "content": "胸闷脘痞，呕吐清水，呕吐清稀痰涎"
+        },
+        {
+          "option_id": "C",
+          "content": "眼睑、颜面先肿，迅速遍及全身，小便短少，咽喉肿痛"
+        },
+        {
+          "option_id": "D",
+          "content": "下肢先肿，渐至全身，腹大痞胀，小便不利"
+        },
+        {
+          "option_id": "E",
+          "content": "身体困重，肢体酸痛，腹胀腹泻，纳呆"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 24
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0025",
+      "question_type": "multiple_choice",
+      "question_content": "鉴别肝阳上亢证与肝火炽盛证最有意义的临床表现是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "口苦口干"
+        },
+        {
+          "option_id": "B",
+          "content": "急躁易怒"
+        },
+        {
+          "option_id": "C",
+          "content": "头重脚轻"
+        },
+        {
+          "option_id": "D",
+          "content": "面红耳赤"
+        },
+        {
+          "option_id": "E",
+          "content": "头晕胀痛"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 25
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0026",
+      "question_type": "multiple_choice",
+      "question_content": "久病咳喘，呼多吸少的临床意义是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺气虚"
+        },
+        {
+          "option_id": "B",
+          "content": "心肺气虚"
+        },
+        {
+          "option_id": "C",
+          "content": "肾不纳气"
+        },
+        {
+          "option_id": "D",
+          "content": "脾肺气虚"
+        },
+        {
+          "option_id": "E",
+          "content": "肺气阴两虚"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 26
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0027",
+      "question_type": "multiple_choice",
+      "question_content": "伤寒论中，小柴胡汤证的临床表现是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "往来寒热，胸胁苦满，嘿嘿不欲饮食，心烦喜呕"
+        },
+        {
+          "option_id": "B",
+          "content": "口苦咽干，寒热往来，胸胁苦满，脉弦"
+        },
+        {
+          "option_id": "C",
+          "content": "胸烦满，烦惊谵语，小便不利，一身尽重"
+        },
+        {
+          "option_id": "D",
+          "content": "心下痞硬，呕不止，郁郁微烦"
+        },
+        {
+          "option_id": "E",
+          "content": "潮热汗出，腹满痛，狂躁谵语，不得眠"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 27
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0028",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，不属温热药的作用的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "温里散寒"
+        },
+        {
+          "option_id": "B",
+          "content": "滋阴除蒸"
+        },
+        {
+          "option_id": "C",
+          "content": "暖肝散结"
+        },
+        {
+          "option_id": "D",
+          "content": "引火归元"
+        },
+        {
+          "option_id": "E",
+          "content": "回阳救逆"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 28
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0029",
+      "question_type": "multiple_choice",
+      "question_content": "荆芥与蝉蜕的共同功效是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "透疹"
+        },
+        {
+          "option_id": "B",
+          "content": "解毒"
+        },
+        {
+          "option_id": "C",
+          "content": "消疮"
+        },
+        {
+          "option_id": "D",
+          "content": "止血"
+        },
+        {
+          "option_id": "E",
+          "content": "平肝"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 29
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0030",
+      "question_type": "multiple_choice",
+      "question_content": "患者咳嗽，干咳无痰，颧红，盗汗，午后及夜间低热，治疗方中不应出现的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "知母"
+        },
+        {
+          "option_id": "B",
+          "content": "麦冬"
+        },
+        {
+          "option_id": "C",
+          "content": "鳖甲\n\n## 历年考题卷-2018精选\n\n2024 中医医考 [一点笔记] www.yidianbiji.com\n\n<table><tr><td>"
+        },
+        {
+          "option_id": "D",
+          "content": "地骨皮"
+        },
+        {
+          "option_id": "E",
+          "content": "石膏31.连翘用治热淋涩痛的机理是"
+        },
+        {
+          "option_id": "F",
+          "content": "凉血止血"
+        },
+        {
+          "option_id": "G",
+          "content": "渗湿止痛"
+        },
+        {
+          "option_id": "H",
+          "content": "利湿去浊"
+        },
+        {
+          "option_id": "I",
+          "content": "收涩止痛"
+        },
+        {
+          "option_id": "J",
+          "content": "清心利尿32.甘遂与大戟的共同功效是"
+        },
+        {
+          "option_id": "K",
+          "content": "泻水逐饮"
+        },
+        {
+          "option_id": "L",
+          "content": "去积杀虫"
+        },
+        {
+          "option_id": "M",
+          "content": "峻下冷积"
+        },
+        {
+          "option_id": "N",
+          "content": "活血化瘀"
+        },
+        {
+          "option_id": "O",
+          "content": "润燥软坚33.具有燥湿,健脾功效的药组是"
+        },
+        {
+          "option_id": "P",
+          "content": "山药,大枣"
+        },
+        {
+          "option_id": "Q",
+          "content": "苍术,白术"
+        },
+        {
+          "option_id": "R",
+          "content": "藿香,佩兰"
+        },
+        {
+          "option_id": "S",
+          "content": "砂仁,草果"
+        },
+        {
+          "option_id": "T",
+          "content": "厚朴,茯苓34.性寒,可用治淋证,目赤肿痛的药物是"
+        },
+        {
+          "option_id": "U",
+          "content": "薏苡仁"
+        },
+        {
+          "option_id": "V",
+          "content": "海金沙"
+        },
+        {
+          "option_id": "W",
+          "content": "车前子"
+        },
+        {
+          "option_id": "X",
+          "content": "瞿麦"
+        },
+        {
+          "option_id": "Y",
+          "content": "石韦35.常与党参,白术配伍,用治脾胃虚寒腹痛的药物是"
+        },
+        {
+          "option_id": "Z",
+          "content": "干姜"
+        },
+        {
+          "option_id": "选项27",
+          "content": "附子"
+        },
+        {
+          "option_id": "选项28",
+          "content": "肉桂"
+        },
+        {
+          "option_id": "选项29",
+          "content": "生姜"
+        },
+        {
+          "option_id": "选项30",
+          "content": "吴茱萸36.治疗饮食积滞,泻痢腹痛,首选药物是"
+        },
+        {
+          "option_id": "选项31",
+          "content": "莱菔子"
+        },
+        {
+          "option_id": "选项32",
+          "content": "麦芽"
+        },
+        {
+          "option_id": "选项33",
+          "content": "神曲"
+        },
+        {
+          "option_id": "选项34",
+          "content": "山楂"
+        },
+        {
+          "option_id": "选项35",
+          "content": "鸡内金37.不具有杀虫消积功效的药物是"
+        },
+        {
+          "option_id": "选项36",
+          "content": "使君子"
+        },
+        {
+          "option_id": "选项37",
+          "content": "苦楝皮"
+        },
+        {
+          "option_id": "选项38",
+          "content": "槟榔"
+        },
+        {
+          "option_id": "选项39",
+          "content": "雷丸"
+        },
+        {
+          "option_id": "选项40",
+          "content": "榧子38.益母草治的病症是"
+        },
+        {
+          "option_id": "选项41",
+          "content": "痰瘀互阻水肿"
+        },
+        {
+          "option_id": "选项42",
+          "content": "脾肾阳虚水肿"
+        },
+        {
+          "option_id": "选项43",
+          "content": "水瘀互阻水肿</td><td>"
+        },
+        {
+          "option_id": "选项44",
+          "content": "寒湿下注水肿"
+        },
+        {
+          "option_id": "选项45",
+          "content": "风水水肿39.性平,可治疗经闭,腰膝酸痛,淋证的药物是"
+        },
+        {
+          "option_id": "选项46",
+          "content": "牛膝"
+        },
+        {
+          "option_id": "选项47",
+          "content": "桃仁"
+        },
+        {
+          "option_id": "选项48",
+          "content": "川芎"
+        },
+        {
+          "option_id": "选项49",
+          "content": "益母草"
+        },
+        {
+          "option_id": "选项50",
+          "content": "鸡血藤40.具有活血,凉血功效的药组是"
+        },
+        {
+          "option_id": "选项51",
+          "content": "延胡索,姜黄"
+        },
+        {
+          "option_id": "选项52",
+          "content": "土鳖虫,乳香"
+        },
+        {
+          "option_id": "选项53",
+          "content": "郁金,丹参"
+        },
+        {
+          "option_id": "选项54",
+          "content": "姜黄,红花"
+        },
+        {
+          "option_id": "选项55",
+          "content": "水蛭,莪术41.桔梗治疗咳嗽痰多,其机理是"
+        },
+        {
+          "option_id": "选项56",
+          "content": "降气消痰"
+        },
+        {
+          "option_id": "选项57",
+          "content": "燥湿祛痰"
+        },
+        {
+          "option_id": "选项58",
+          "content": "清肺化痰"
+        },
+        {
+          "option_id": "选项59",
+          "content": "宣肺祛痰"
+        },
+        {
+          "option_id": "选项60",
+          "content": "泻肺化痰42.半夏与天南星的共同主治是"
+        },
+        {
+          "option_id": "选项61",
+          "content": "湿痰"
+        },
+        {
+          "option_id": "选项62",
+          "content": "便秘"
+        },
+        {
+          "option_id": "选项63",
+          "content": "呕吐"
+        },
+        {
+          "option_id": "选项64",
+          "content": "吐血"
+        },
+        {
+          "option_id": "选项65",
+          "content": "中风43.泻肺中水饮及痰火而平喘咳的药物是"
+        },
+        {
+          "option_id": "选项66",
+          "content": "旋覆花"
+        },
+        {
+          "option_id": "选项67",
+          "content": "瓜蒌"
+        },
+        {
+          "option_id": "选项68",
+          "content": "紫菀"
+        },
+        {
+          "option_id": "选项69",
+          "content": "枇杷叶"
+        },
+        {
+          "option_id": "选项70",
+          "content": "葶苈子44.患者露天睡觉后出现脘腹疼痛,呕吐,肠鸣腹泻,苔白润,脉弦紧,其辨证是"
+        },
+        {
+          "option_id": "选项71",
+          "content": "风淫证"
+        },
+        {
+          "option_id": "选项72",
+          "content": "伤寒证"
+        },
+        {
+          "option_id": "选项73",
+          "content": "湿淫证"
+        },
+        {
+          "option_id": "选项74",
+          "content": "暑淫证"
+        },
+        {
+          "option_id": "选项75",
+          "content": "中寒证45.患者咳嗽,少痰难咯,微有发热恶寒,其辨证是"
+        },
+        {
+          "option_id": "选项76",
+          "content": "风热犯肺证"
+        },
+        {
+          "option_id": "选项77",
+          "content": "风寒束肺证"
+        },
+        {
+          "option_id": "选项78",
+          "content": "肺阴亏虚证"
+        },
+        {
+          "option_id": "选项79",
+          "content": "燥邪犯肺证"
+        },
+        {
+          "option_id": "选项80",
+          "content": "肺热炽盛证46.患者发热口渴,小便灼热涩痛,小腹胀痛,舌红苔黄腻,脉数,其辨证是"
+        },
+        {
+          "option_id": "选项81",
+          "content": "小肠实热证</td><td>"
+        },
+        {
+          "option_id": "选项82",
+          "content": "膀胱湿热证"
+        },
+        {
+          "option_id": "选项83",
+          "content": "湿热蕴脾证"
+        },
+        {
+          "option_id": "选项84",
+          "content": "肝胆湿热证"
+        },
+        {
+          "option_id": "选项85",
+          "content": "肠道湿热证47.温热病,低热日久,持续不退,暮热早凉,五心烦热,口干咽燥,神倦形瘦,舌绛,脉细数。宜选用的方剂是"
+        },
+        {
+          "option_id": "选项86",
+          "content": "黄连阿胶汤"
+        },
+        {
+          "option_id": "选项87",
+          "content": "大定风珠"
+        },
+        {
+          "option_id": "选项88",
+          "content": "加减复脉汤"
+        },
+        {
+          "option_id": "选项89",
+          "content": "三甲复脉汤"
+        },
+        {
+          "option_id": "选项90",
+          "content": "清营汤48.下列各项,属于消法适应证的是"
+        },
+        {
+          "option_id": "选项91",
+          "content": "脓液黄稠的溃疡"
+        },
+        {
+          "option_id": "选项92",
+          "content": "疮疡溃后"
+        },
+        {
+          "option_id": "选项93",
+          "content": "未化脓的初期肿疡"
+        },
+        {
+          "option_id": "选项94",
+          "content": "化脓性肿块"
+        },
+        {
+          "option_id": "选项95",
+          "content": "疮疡内陷49.下列关于切开法的切口选择,正确的是"
+        },
+        {
+          "option_id": "选项96",
+          "content": "手指脓肿宜在指膜切开"
+        },
+        {
+          "option_id": "选项97",
+          "content": "关节脓肿应广泛越关节切开"
+        },
+        {
+          "option_id": "选项98",
+          "content": "头面部脓肿应纵形切开"
+        },
+        {
+          "option_id": "选项99",
+          "content": "乳房脓肿以乳头为中心放射状切开"
+        },
+        {
+          "option_id": "选项100",
+          "content": "肛周脓肿应纵形切开50.治疗颈痈风热病毒证,应首选的方剂是"
+        },
+        {
+          "option_id": "选项101",
+          "content": "仙方活命饮"
+        },
+        {
+          "option_id": "选项102",
+          "content": "黄连解毒汤"
+        },
+        {
+          "option_id": "选项103",
+          "content": "五味消毒饮"
+        },
+        {
+          "option_id": "选项104",
+          "content": "牛蒡解肌汤"
+        },
+        {
+          "option_id": "选项105",
+          "content": "五神汤51.下列关于蛇串疮的叙述,正确的是"
+        },
+        {
+          "option_id": "选项106",
+          "content": "皮损对称分布"
+        },
+        {
+          "option_id": "选项107",
+          "content": "多无疼痛"
+        },
+        {
+          "option_id": "选项108",
+          "content": "皮损为红斑,风团"
+        },
+        {
+          "option_id": "选项109",
+          "content": "愈后很少复发"
+        },
+        {
+          "option_id": "选项110",
+          "content": "相当于西医的单纯疱疹52.疥疮的治疗原则是"
+        },
+        {
+          "option_id": "选项111",
+          "content": "清热解毒"
+        },
+        {
+          "option_id": "选项112",
+          "content": "清热燥湿"
+        },
+        {
+          "option_id": "选项113",
+          "content": "祛风止痒"
+        },
+        {
+          "option_id": "选项114",
+          "content": "燥湿解毒"
+        },
+        {
+          "option_id": "选项115",
+          "content": "杀毒止痒53.内痔脱出不能自行还纳,需手托,休息方能复位,其分期是"
+        },
+        {
+          "option_id": "选项116",
+          "content": "I期"
+        },
+        {
+          "option_id": "选项117",
+          "content": "II期"
+        },
+        {
+          "option_id": "选项118",
+          "content": "III期"
+        },
+        {
+          "option_id": "选项119",
+          "content": "IV期"
+        },
+        {
+          "option_id": "选项120",
+          "content": "V期</td><td>54.女性生殖器官中,防御外邪入侵的第一道门户是"
+        },
+        {
+          "option_id": "选项121",
+          "content": "子门"
+        },
+        {
+          "option_id": "选项122",
+          "content": "阴道"
+        },
+        {
+          "option_id": "选项123",
+          "content": "子宫"
+        },
+        {
+          "option_id": "选项124",
+          "content": "玉门"
+        },
+        {
+          "option_id": "选项125",
+          "content": "阴户55.下列关于妊娠期子宫的叙述,错误的是"
+        },
+        {
+          "option_id": "选项126",
+          "content": "子宫颈紫蓝色,质软"
+        },
+        {
+          "option_id": "选项127",
+          "content": "妊娠足月子宫容量约5000mlC.早孕40 多天,可扪及子宫增大变软"
+        },
+        {
+          "option_id": "选项128",
+          "content": "妊娠足月子宫较正常子宫容量增加100倍"
+        },
+        {
+          "option_id": "选项129",
+          "content": "妊娠足月子宫较正常子宫重量增加20倍56.与妇科疾病关系最为密切的脏腑是"
+        },
+        {
+          "option_id": "选项130",
+          "content": "肾、肝、心"
+        },
+        {
+          "option_id": "选项131",
+          "content": "肾、肝、脾"
+        },
+        {
+          "option_id": "选项132",
+          "content": "肾、肝、肺"
+        },
+        {
+          "option_id": "选项133",
+          "content": "肾、心、脾"
+        },
+        {
+          "option_id": "选项134",
+          "content": "肾、肺、脾57.中医妇科治法中,滋肾益阴的代表方剂是"
+        },
+        {
+          "option_id": "选项135",
+          "content": "左归丸"
+        },
+        {
+          "option_id": "选项136",
+          "content": "寿胎丸"
+        },
+        {
+          "option_id": "选项137",
+          "content": "归肾丸"
+        },
+        {
+          "option_id": "选项138",
+          "content": "大补元煎"
+        },
+        {
+          "option_id": "选项139",
+          "content": "补肾固冲丸58.闭经的治疗原则是"
+        },
+        {
+          "option_id": "选项140",
+          "content": "补而通之,泻而通之"
+        },
+        {
+          "option_id": "选项141",
+          "content": "理气活血,祛瘀通经"
+        },
+        {
+          "option_id": "选项142",
+          "content": "益气养血,以益冲任"
+        },
+        {
+          "option_id": "选项143",
+          "content": "补益肝肾,以填精血"
+        },
+        {
+          "option_id": "选项144",
+          "content": "补中有通,补而不腻59.带下过少肝肾亏损证的治法是"
+        },
+        {
+          "option_id": "选项145",
+          "content": "滋补肝肾,养精益血"
+        },
+        {
+          "option_id": "选项146",
+          "content": "滋阴补肾,调补冲任"
+        },
+        {
+          "option_id": "选项147",
+          "content": "滋肾养肝,补血益气"
+        },
+        {
+          "option_id": "选项148",
+          "content": "滋阴补肾,补益气血"
+        },
+        {
+          "option_id": "选项149",
+          "content": "滋阴养肝,疏肝理气60.按照公式计算,3岁小儿的标准身高、体重分别是"
+        },
+        {
+          "option_id": "选项150",
+          "content": "12kg,91cmB.12kg,98cmC.14kg,96cmD.14kg,98cmE.16kg,96cm61.邪热郁滞的指纹色是"
+        },
+        {
+          "option_id": "选项151",
+          "content": "深紫"
+        },
+        {
+          "option_id": "选项152",
+          "content": "紫红"
+        },
+        {
+          "option_id": "选项153",
+          "content": "青紫"
+        },
+        {
+          "option_id": "选项154",
+          "content": "淡红"
+        },
+        {
+          "option_id": "选项155",
+          "content": "鲜红浮露</td></tr></table>"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 30
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0062",
+      "question_type": "multiple_choice",
+      "question_content": "小儿遗尿的中医治疗原则是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "温补肾阳，滋补肾阴"
+        },
+        {
+          "option_id": "B",
+          "content": "滋阴潜阳，补益肾气"
+        },
+        {
+          "option_id": "C",
+          "content": "补益肾气，利尿通淋"
+        },
+        {
+          "option_id": "D",
+          "content": "温补下元，固摄膀胱"
+        },
+        {
+          "option_id": "E",
+          "content": "补益脾肾，益气温阳63.小儿水痘的皮疹特征是"
+        },
+        {
+          "option_id": "F",
+          "content": "丘疹，疱疹，结痂同时存在"
+        },
+        {
+          "option_id": "G",
+          "content": "疹退后糠麸样脱屑"
+        },
+        {
+          "option_id": "H",
+          "content": "热退疹出"
+        },
+        {
+          "option_id": "I",
+          "content": "疹退后无脱皮"
+        },
+        {
+          "option_id": "J",
+          "content": "疹退后留瘢痕"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 62
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0064",
+      "question_type": "multiple_choice",
+      "question_content": "治疗维生素",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "缺乏性佝偻病肾精亏损证，首选的方剂是"
+        },
+        {
+          "option_id": "B",
+          "content": "左归丸"
+        },
+        {
+          "option_id": "C",
+          "content": "右归丸"
+        },
+        {
+          "option_id": "D",
+          "content": "金匮肾气丸"
+        },
+        {
+          "option_id": "E",
+          "content": "补肾地黄丸"
+        },
+        {
+          "option_id": "F",
+          "content": "十全大补汤"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 64
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0066",
+      "question_type": "multiple_choice",
+      "question_content": "慢性左心衰竭最早出现的临床表现是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "咳粉红色泡沫样痰"
+        },
+        {
+          "option_id": "B",
+          "content": "心悸、胸闷"
+        },
+        {
+          "option_id": "C",
+          "content": "劳力性呼吸困难"
+        },
+        {
+          "option_id": "D",
+          "content": "尿量减少"
+        },
+        {
+          "option_id": "E",
+          "content": "下肢水肿"
+        },
+        {
+          "option_id": "F",
+          "content": "甲状腺超声改变"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 66
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0070",
+      "question_type": "multiple_choice",
+      "question_content": "尿路感染最常见的致病菌是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "变形杆菌"
+        },
+        {
+          "option_id": "B",
+          "content": "金黄色葡萄球菌"
+        },
+        {
+          "option_id": "C",
+          "content": "克雷伯杆菌"
+        },
+        {
+          "option_id": "D",
+          "content": "大肠埃希菌"
+        },
+        {
+          "option_id": "E",
+          "content": "铜绿假单胞菌"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 70
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0071",
+      "question_type": "multiple_choice",
+      "question_content": "下列各项，符合流脑",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "外观浑浊呈脓性，细胞数明显减少，氯化物降低，蛋白增高，糖降低"
+        },
+        {
+          "option_id": "B",
+          "content": "外观浑浊呈脓性，细胞数明显升高，氯化物降低，蛋白降低，糖升高"
+        },
+        {
+          "option_id": "C",
+          "content": "外观浑浊呈脓性，细胞数明显升高，氯化物降低，蛋白增高，糖降低"
+        },
+        {
+          "option_id": "D",
+          "content": "外观浑浊呈脓性，细胞数稍多，氯化物正常，蛋白轻度增高，糖正常"
+        },
+        {
+          "option_id": "E",
+          "content": "外观浑浊，细胞数明显减少，氯化物降低，蛋白增高，糖降低"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 71
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0072",
+      "question_type": "multiple_choice",
+      "question_content": "下列关于伤寒的叙述，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "由伤寒杆菌引起的急性传染病"
+        },
+        {
+          "option_id": "B",
+          "content": "传染源为患者和带菌者"
+        },
+        {
+          "option_id": "C",
+          "content": "传播途径为粪-口途径"
+        },
+        {
+          "option_id": "D",
+          "content": "夏秋季节高发"
+        },
+        {
+          "option_id": "E",
+          "content": "慢性带菌者传染性最强"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 72
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0073",
+      "question_type": "multiple_choice",
+      "question_content": "隐性感染病例增加的临床生理意义是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "典型病例增加"
+        },
+        {
+          "option_id": "B",
+          "content": "轻症病例增加"
+        },
+        {
+          "option_id": "C",
+          "content": "潜在感染病例增加"
+        },
+        {
+          "option_id": "D",
+          "content": "病原携带病例增加"
+        },
+        {
+          "option_id": "E",
+          "content": "免疫人群增加"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 73
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0074",
+      "question_type": "multiple_choice",
+      "question_content": "患者，男，65岁，咳喘20年，动则喘甚，呼多吸少，气不得续，形瘦神疲，汗出肢冷，面青唇紫，舌淡苔白，脉微细，治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "济生肾气丸合生脉散"
+        },
+        {
+          "option_id": "B",
+          "content": "七味都气丸合参附汤"
+        },
+        {
+          "option_id": "C",
+          "content": "金匮肾气丸合参蛤散"
+        },
+        {
+          "option_id": "D",
+          "content": "参附汤合黑锡丹"
+        },
+        {
+          "option_id": "E",
+          "content": "苏子降气汤合四逆汤"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 74
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0075",
+      "question_type": "multiple_choice",
+      "question_content": "患者，女，69岁，左胸部闷痛4年，近来胸闷频发，痰多气短，肢体沉重，形体肥胖，偶有心悸眩晕，纳呆便溏，咯吐痰涎，舌体胖大边有齿痕，苔白腻，脉滑，其辨证是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞心胸证"
+        },
+        {
+          "option_id": "B",
+          "content": "寒凝心脉证"
+        },
+        {
+          "option_id": "C",
+          "content": "痰浊闭阻证"
+        },
+        {
+          "option_id": "D",
+          "content": "心肾阳虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "阴虚火旺证"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 75
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0076",
+      "question_type": "single_choice",
+      "question_content": "患者，女，40岁，全身水肿3年，下肢明显，小便短少，身体困重，胸闷，纳呆，舌质淡，苔白腻，脉沉缓，其治法",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 76
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0077",
+      "question_type": "multiple_choice",
+      "question_content": "患者，女，38岁，心悸6年，善惊易恐，坐卧不安，多梦易醒，舌苔薄白，脉虚数。其辨证是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心阴亏虚证"
+        },
+        {
+          "option_id": "B",
+          "content": "阴虚火旺证"
+        },
+        {
+          "option_id": "C",
+          "content": "心虚胆怯证"
+        },
+        {
+          "option_id": "D",
+          "content": "血脉瘀阻证"
+        },
+        {
+          "option_id": "E",
+          "content": "水引凌心证"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 77
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0078",
+      "question_type": "multiple_choice",
+      "question_content": "患者，男，32岁，心胸疼痛，痛处拒按，如刺如绞，入夜尤甚，脉象沉涩，治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血府逐瘀汤"
+        },
+        {
+          "option_id": "B",
+          "content": "龙胆泻肝汤"
+        },
+        {
+          "option_id": "C",
+          "content": "一贯煎"
+        },
+        {
+          "option_id": "D",
+          "content": "柴胡疏肝散"
+        },
+        {
+          "option_id": "E",
+          "content": "黄芪建中汤"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 78
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0081",
+      "question_type": "multiple_choice",
+      "question_content": "患者，男，60岁，反复胃脘部疼痛10年，现症：胃脘疼痛，如针刺，痛有定数，按之痛苦，痛时持久，食后加剧，入夜尤甚，舌质紫黯，脉涩，治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血府逐瘀汤"
+        },
+        {
+          "option_id": "B",
+          "content": "桃仁红花煎"
+        },
+        {
+          "option_id": "C",
+          "content": "膈下逐瘀汤"
+        },
+        {
+          "option_id": "D",
+          "content": "失笑散合丹参饮"
+        },
+        {
+          "option_id": "E",
+          "content": "桃红四物汤"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 81
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0082",
+      "question_type": "multiple_choice",
+      "question_content": "患者，女，65 岁，诊断为 “类风湿性关节炎” 5 年，四肢关节疼痛，固定不移，肌肤紫暗，关节僵硬变形，屈伸不利，胸闷痰多，舌质紫暗，苔白腻，脉弦涩，其治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "祛风通络，化痰除湿"
+        },
+        {
+          "option_id": "B",
+          "content": "散寒通络，祛风除湿"
+        },
+        {
+          "option_id": "C",
+          "content": "除湿通络，活血化瘀"
+        },
+        {
+          "option_id": "D",
+          "content": "清热通络，祛风除湿"
+        },
+        {
+          "option_id": "E",
+          "content": "化痰行瘀，蠲痹通络"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 82
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0083",
+      "question_type": "multiple_choice",
+      "question_content": "患者，女，30岁，左颈部核桃大小卵圆形肿物，不红，不热，随吞咽上下移动，舌苔白腻，脉弦，治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "逍遥散合栝楼牛蒡汤"
+        },
+        {
+          "option_id": "B",
+          "content": "逍遥散合海藻玉壶汤"
+        },
+        {
+          "option_id": "C",
+          "content": "四海舒郁丸"
+        },
+        {
+          "option_id": "D",
+          "content": "逍遥萎贝散"
+        },
+        {
+          "option_id": "E",
+          "content": "柴胡疏肝散合栝楼牛蒡汤"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 83
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0084",
+      "question_type": "multiple_choice",
+      "question_content": "患者，女，30岁，突发出现斑片脱发2天，偶有头皮瘙痒，伴头皮炽热，心烦易怒，急躁不安，舌质红，舌苔薄，脉弦，其辨证是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞血瘀证"
+        },
+        {
+          "option_id": "B",
+          "content": "湿热壅盛证"
+        },
+        {
+          "option_id": "C",
+          "content": "肝肾不足证"
+        },
+        {
+          "option_id": "D",
+          "content": "气血两虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "血热风燥证"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 84
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0085",
+      "question_type": "multiple_choice",
+      "question_content": "患者，男 30 岁，不洁性交后 3 月，冠状沟出现数个菜花状丘疹，色淡红，质柔软，舌质红，苔薄白，脉弦，其诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "梅毒"
+        },
+        {
+          "option_id": "B",
+          "content": "生殖器疱疹"
+        },
+        {
+          "option_id": "C",
+          "content": "淋病"
+        },
+        {
+          "option_id": "D",
+          "content": "尖锐湿疣"
+        },
+        {
+          "option_id": "E",
+          "content": "艾滋病"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 85
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0086",
+      "question_type": "multiple_choice",
+      "question_content": "患者，男，60 岁，排便后肛门部肿物脱出反复发作 3 年，患者每次便时肿物脱出长 5cm～10cm，色淡红，伴肛门坠胀，神疲乏力，食欲不振，舌质淡，苔薄白，脉细弱，其治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热利湿"
+        },
+        {
+          "option_id": "B",
+          "content": "养阴润肠"
+        },
+        {
+          "option_id": "C",
+          "content": "补气升提"
+        },
+        {
+          "option_id": "D",
+          "content": "理气活血"
+        },
+        {
+          "option_id": "E",
+          "content": "益气温阳"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 86
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0087",
+      "question_type": "multiple_choice",
+      "question_content": "患者，女，26岁，产后15天，寒热时作，热势不退，小腹疼痛拒按，恶露量多，色紫暗，气臭秽，心烦口渴，尿少量黄，大便燥结，舌红紫，苔黄，脉涩或数，治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热解毒，凉血化瘀"
+        },
+        {
+          "option_id": "B",
+          "content": "血热逐瘀，化脓散结"
+        },
+        {
+          "option_id": "C",
+          "content": "养血祛风，疏解表邪"
+        },
+        {
+          "option_id": "D",
+          "content": "活血化瘀，和营退热"
+        },
+        {
+          "option_id": "E",
+          "content": "补血益气，和营退热"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 87
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0088",
+      "question_type": "multiple_choice",
+      "question_content": "患者，女 27 岁，已婚，产后恶露 35 天不止，量时多时少，色黯有块，小腹疼痛拒按，舌紫暗，边有瘀点，脉沉涩，治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "生化汤\n\n<table><tr><td>"
+        },
+        {
+          "option_id": "B",
+          "content": "血府逐瘀汤"
+        },
+        {
+          "option_id": "C",
+          "content": "膈下逐瘀汤"
+        },
+        {
+          "option_id": "D",
+          "content": "少腹逐瘀汤"
+        },
+        {
+          "option_id": "E",
+          "content": "桃红四物汤89. 患者女,23岁。有慢性贫血史2年,近半年乏力,心悸加重,血常规示红细胞 $22 \\times 10^{2}/L$ ,血红蛋白56g/L,白细胞 $25 \\times 10^{9}/L$ ,血小板 $48.0 \\times 10^{9}/L$ ,骨髓活组织检查示多部位增生重度低下,造血细胞减少,应首选的治疗药物是"
+        },
+        {
+          "option_id": "F",
+          "content": "促红细胞生成素"
+        },
+        {
+          "option_id": "G",
+          "content": "丙酸睾酮"
+        },
+        {
+          "option_id": "H",
+          "content": "硫酸亚铁片"
+        },
+        {
+          "option_id": "I",
+          "content": "抗胸腺球蛋白"
+        },
+        {
+          "option_id": "J",
+          "content": "泼尼松龙90. 患者,男,41岁。因眼睑浮肿4个月就诊,查体:血压140/95mmHg,尿常规检查蛋白(+),红细胞镜检10~15个/HP,白细胞0~2个/HP,尿比重1.020,尿pH6.5;血常规检查未见异常,应首先考虑的诊断是"
+        },
+        {
+          "option_id": "K",
+          "content": "慢性肾盂肾炎"
+        },
+        {
+          "option_id": "L",
+          "content": "急性肾盂肾炎"
+        },
+        {
+          "option_id": "M",
+          "content": "急性肾小球肾炎"
+        },
+        {
+          "option_id": "N",
+          "content": "慢性肾小球肾炎"
+        },
+        {
+          "option_id": "O",
+          "content": "慢病综合征91. 患者,女,因活动后心悸就诊,查血常规示血红蛋白62g/L,平均红细胞体积62f1,平均红细胞血红蛋白浓度28%,血清铁5.9μmol/L,总铁结合力68μmol/L,血清铁蛋白3μg/L,考虑的诊断是"
+        },
+        {
+          "option_id": "P",
+          "content": "缺铁性贫血"
+        },
+        {
+          "option_id": "Q",
+          "content": "再生障碍性贫血"
+        },
+        {
+          "option_id": "R",
+          "content": "溶血性贫血"
+        },
+        {
+          "option_id": "S",
+          "content": "巨幼细胞性贫血"
+        },
+        {
+          "option_id": "T",
+          "content": "铁幼粒细胞性贫血92~94(共用题干)患者,女,60岁,有反复尿路感染病史5年,3天前因劳累而复发,发症:小便淋沥不已,尿感湿痛,时作时止,伴腰膝酸软,神疲乏力,舌淡,脉细弱。92. 其辨证是"
+        },
+        {
+          "option_id": "U",
+          "content": "热淋"
+        },
+        {
+          "option_id": "V",
+          "content": "血淋"
+        },
+        {
+          "option_id": "W",
+          "content": "气淋"
+        },
+        {
+          "option_id": "X",
+          "content": "膏淋"
+        },
+        {
+          "option_id": "Y",
+          "content": "劳淋93. 其治法是"
+        },
+        {
+          "option_id": "Z",
+          "content": "补气益血"
+        },
+        {
+          "option_id": "选项27",
+          "content": "补脾益肾"
+        },
+        {
+          "option_id": "选项28",
+          "content": "补益肝肾"
+        },
+        {
+          "option_id": "选项29",
+          "content": "健脾补肺"
+        },
+        {
+          "option_id": "选项30",
+          "content": "补补益肾94. 治疗应首选的方剂是</td><td>"
+        },
+        {
+          "option_id": "选项31",
+          "content": "无比山药丸"
+        },
+        {
+          "option_id": "选项32",
+          "content": "八珍汤"
+        },
+        {
+          "option_id": "选项33",
+          "content": "河车大造丸"
+        },
+        {
+          "option_id": "选项34",
+          "content": "金匮肾气丸"
+        },
+        {
+          "option_id": "选项35",
+          "content": "附子理中丸95~97(共用题干)患者,女,28岁,已婚,近3月来每逢经前出现小腹灼热胀痛,拒按,经色暗红,质稠有块,平素带下量多色黄,小腹疼痛,经来疼痛加剧,经前低热,小便黄赤,舌紫红,苔黄而腻,脉滑数。95. 其辨证是"
+        },
+        {
+          "option_id": "选项36",
+          "content": "肝郁血热证"
+        },
+        {
+          "option_id": "选项37",
+          "content": "阳盛血热证"
+        },
+        {
+          "option_id": "选项38",
+          "content": "血热互结证"
+        },
+        {
+          "option_id": "选项39",
+          "content": "湿热瘀阻证"
+        },
+        {
+          "option_id": "选项40",
+          "content": "气滞血瘀证96. 其治法有"
+        },
+        {
+          "option_id": "选项41",
+          "content": "清热除湿,化瘀止痛"
+        },
+        {
+          "option_id": "选项42",
+          "content": "清热解毒,行气止痛"
+        },
+        {
+          "option_id": "选项43",
+          "content": "活血化瘀,理气止痛"
+        },
+        {
+          "option_id": "选项44",
+          "content": "清热利湿,化瘀散结"
+        },
+        {
+          "option_id": "选项45",
+          "content": "清热利湿,解毒排放97. 治疗应首选的方剂是"
+        },
+        {
+          "option_id": "选项46",
+          "content": "止带方"
+        },
+        {
+          "option_id": "选项47",
+          "content": "仙方活命饮"
+        },
+        {
+          "option_id": "选项48",
+          "content": "血府逐瘀汤"
+        },
+        {
+          "option_id": "选项49",
+          "content": "龙胆泻肝汤"
+        },
+        {
+          "option_id": "选项50",
+          "content": "清热调血汤98~100(共用题干)患儿,女,9个月,1个月前患肺炎一直未愈,现干咳少痰,微喘,低热盗汗,口唇干燥,大便硬结,舌红花剥,指纹淡紫显于气关。98. 其辨证是"
+        },
+        {
+          "option_id": "选项51",
+          "content": "肺脾阴虚证"
+        },
+        {
+          "option_id": "选项52",
+          "content": "营卫失调证"
+        },
+        {
+          "option_id": "选项53",
+          "content": "肺肾阳虚证"
+        },
+        {
+          "option_id": "选项54",
+          "content": "肺脾气虚证"
+        },
+        {
+          "option_id": "选项55",
+          "content": "阴虚肺热证99. 其治法是"
+        },
+        {
+          "option_id": "选项56",
+          "content": "养阴润肺,益气健脾"
+        },
+        {
+          "option_id": "选项57",
+          "content": "调和营卫,益气固表"
+        },
+        {
+          "option_id": "选项58",
+          "content": "养阴清热,敛肺止咳"
+        },
+        {
+          "option_id": "选项59",
+          "content": "养阴清肺,润肺止咳"
+        },
+        {
+          "option_id": "选项60",
+          "content": "补脾益气,健脾化瘀100. 治疗应首选的方剂是"
+        },
+        {
+          "option_id": "选项61",
+          "content": "生脉散"
+        },
+        {
+          "option_id": "选项62",
+          "content": "沙参麦冬汤"
+        },
+        {
+          "option_id": "选项63",
+          "content": "麦味地黄丸</td><td>"
+        },
+        {
+          "option_id": "选项64",
+          "content": "人参五味子汤"
+        },
+        {
+          "option_id": "选项65",
+          "content": "黄芪桂枝五物汤101~102(共用备选答案)"
+        },
+        {
+          "option_id": "选项66",
+          "content": "上午"
+        },
+        {
+          "option_id": "选项67",
+          "content": "下午"
+        },
+        {
+          "option_id": "选项68",
+          "content": "中午"
+        },
+        {
+          "option_id": "选项69",
+          "content": "前半夜"
+        },
+        {
+          "option_id": "选项70",
+          "content": "后半夜101. 上述各项,属阳中之阳的是102. 上述各项,属阴中之阴的是103~104(共用备选答案)"
+        },
+        {
+          "option_id": "选项71",
+          "content": "肺"
+        },
+        {
+          "option_id": "选项72",
+          "content": "肾"
+        },
+        {
+          "option_id": "选项73",
+          "content": "肝"
+        },
+        {
+          "option_id": "选项74",
+          "content": "心"
+        },
+        {
+          "option_id": "选项75",
+          "content": "脾103. 具有“主行水”生理功能的脏是104. 具有“主水”生理功能的脏是105~106(共用备选答案)"
+        },
+        {
+          "option_id": "选项76",
+          "content": "面"
+        },
+        {
+          "option_id": "选项77",
+          "content": "毛"
+        },
+        {
+          "option_id": "选项78",
+          "content": "唇"
+        },
+        {
+          "option_id": "选项79",
+          "content": "爪"
+        },
+        {
+          "option_id": "选项80",
+          "content": "发105. “筋之余”指的是106. “血之余”指的是107~108.(共用备选答案)"
+        },
+        {
+          "option_id": "选项81",
+          "content": "胃"
+        },
+        {
+          "option_id": "选项82",
+          "content": "小肠"
+        },
+        {
+          "option_id": "选项83",
+          "content": "大肠"
+        },
+        {
+          "option_id": "选项84",
+          "content": "膀胱"
+        },
+        {
+          "option_id": "选项85",
+          "content": "三焦107. 上述各项,具有“主津”功能的是108. 上述各项,具有“主液”功能的是109~110(共用备选答案)"
+        },
+        {
+          "option_id": "选项86",
+          "content": "中介作用"
+        },
+        {
+          "option_id": "选项87",
+          "content": "防御作用"
+        },
+        {
+          "option_id": "选项88",
+          "content": "固摄作用"
+        },
+        {
+          "option_id": "选项89",
+          "content": "推动与调控作用"
+        },
+        {
+          "option_id": "选项90",
+          "content": "温煦与凉润作用109. 气的功能中,与激发人体生长发育机能关系密切的是110. 气的功能中,与维持人体相对恒定体温关系密切的是111~112(共用备选答案)"
+        },
+        {
+          "option_id": "选项91",
+          "content": "心肺肝脾"
+        },
+        {
+          "option_id": "选项92",
+          "content": "心肾肝脾"
+        },
+        {
+          "option_id": "选项93",
+          "content": "肺肾心脾"
+        },
+        {
+          "option_id": "选项94",
+          "content": "肝肾心肺"
+        },
+        {
+          "option_id": "选项95",
+          "content": "肾脾肝肺</td><td>111. 与血液生成关系较为密切的脏是112. 与血液运行关系较为密切的脏是113~114(共用备选答案)"
+        },
+        {
+          "option_id": "选项96",
+          "content": "胸部"
+        },
+        {
+          "option_id": "选项97",
+          "content": "头面部"
+        },
+        {
+          "option_id": "选项98",
+          "content": "项背部"
+        },
+        {
+          "option_id": "选项99",
+          "content": "下肢末端"
+        },
+        {
+          "option_id": "选项100",
+          "content": "上肢末端113. 依据十二经络脉流注规律,手足阳经交接部位是114. 依据十二经脉流注规律,手足阴经交接部位是115~116(共用备选答案)"
+        },
+        {
+          "option_id": "选项101",
+          "content": "风"
+        },
+        {
+          "option_id": "选项102",
+          "content": "寒"
+        },
+        {
+          "option_id": "选项103",
+          "content": "暑"
+        },
+        {
+          "option_id": "选项104",
+          "content": "湿"
+        },
+        {
+          "option_id": "选项105",
+          "content": "火115. 上述各项,其致病易成“行痹”的是116. 上述各项,其致病易成“痛痹”的是117~118(共用备选答案)"
+        },
+        {
+          "option_id": "选项106",
+          "content": "怒"
+        },
+        {
+          "option_id": "选项107",
+          "content": "喜"
+        },
+        {
+          "option_id": "选项108",
+          "content": "悲"
+        },
+        {
+          "option_id": "选项109",
+          "content": "思"
+        },
+        {
+          "option_id": "选项110",
+          "content": "恐117. 七情内伤影响脏腑气机,导致“气上”的是118. 七情内伤影响脏腑气机,导致“气下”的是119~120(共用备选答案)"
+        },
+        {
+          "option_id": "选项111",
+          "content": "面白浮肿"
+        },
+        {
+          "option_id": "选项112",
+          "content": "面色青紫"
+        },
+        {
+          "option_id": "选项113",
+          "content": "面色苍黄"
+        },
+        {
+          "option_id": "选项114",
+          "content": "面色黧黑"
+        },
+        {
+          "option_id": "选项115",
+          "content": "面色萎黄119. 肝郁脾虚的面色是120. 脾胃气虚的面色是121~122(共用备选答案)"
+        },
+        {
+          "option_id": "选项116",
+          "content": "四肢萎缩"
+        },
+        {
+          "option_id": "选项117",
+          "content": "肢体肿胀"
+        },
+        {
+          "option_id": "选项118",
+          "content": "膝部肿大"
+        },
+        {
+          "option_id": "选项119",
+          "content": "小腿青筋"
+        },
+        {
+          "option_id": "选项120",
+          "content": "下肢畸形121. 寒湿内侵,络脉血瘀所致的临床表现是122. 气血亏虚,肢体失养所致的临床表现是123~124(共用备选答案)"
+        },
+        {
+          "option_id": "选项121",
+          "content": "气机不畅"
+        },
+        {
+          "option_id": "选项122",
+          "content": "脾虚湿侵"
+        },
+        {
+          "option_id": "选项123",
+          "content": "药物中毒"
+        },
+        {
+          "option_id": "选项124",
+          "content": "阴虚火旺"
+        },
+        {
+          "option_id": "选项125",
+          "content": "痰饮内停</td></tr></table>"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 88
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0123",
+      "question_type": "single_choice",
+      "question_content": "舌淡红中泛现青紫，其临床意义是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 123
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0124",
+      "question_type": "multiple_choice",
+      "question_content": "舌淡白胖嫩，边有齿痕和裂纹，其临床意义是 125\\~126（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "头汗"
+        },
+        {
+          "option_id": "B",
+          "content": "半身汗"
+        },
+        {
+          "option_id": "C",
+          "content": "手足心汗"
+        },
+        {
+          "option_id": "D",
+          "content": "阴汗"
+        },
+        {
+          "option_id": "E",
+          "content": "心胸汗"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 124
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0125",
+      "question_type": "single_choice",
+      "question_content": "阴经郁热熏蒸可见的汗是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 125
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0126",
+      "question_type": "multiple_choice",
+      "question_content": "上焦热盛可见的汗是 127\\~128（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "口淡乏味"
+        },
+        {
+          "option_id": "B",
+          "content": "口甜黏腻"
+        },
+        {
+          "option_id": "C",
+          "content": "口咸"
+        },
+        {
+          "option_id": "D",
+          "content": "口中泛酸"
+        },
+        {
+          "option_id": "E",
+          "content": "口苦"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 126
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0127",
+      "question_type": "single_choice",
+      "question_content": "肝胃蕴热可见的口味是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 127
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0128",
+      "question_type": "multiple_choice",
+      "question_content": "湿热蕴脾可见的口味是 129\\~130（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴虚"
+        },
+        {
+          "option_id": "B",
+          "content": "阳虚"
+        },
+        {
+          "option_id": "C",
+          "content": "寒证"
+        },
+        {
+          "option_id": "D",
+          "content": "热证"
+        },
+        {
+          "option_id": "E",
+          "content": "湿困"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 128
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0129",
+      "question_type": "single_choice",
+      "question_content": "脉沉细无力而软的临床意义是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 129
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0130",
+      "question_type": "multiple_choice",
+      "question_content": "脉浮细无力而软的临床意义是 131\\~132（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "寒证转热证"
+        },
+        {
+          "option_id": "B",
+          "content": "热证转寒证"
+        },
+        {
+          "option_id": "C",
+          "content": "真热假寒证"
+        },
+        {
+          "option_id": "D",
+          "content": "真寒假热证"
+        },
+        {
+          "option_id": "E",
+          "content": "寒热错杂证"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 130
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0131",
+      "question_type": "single_choice",
+      "question_content": "“寒包火”证属于八纲证候间的关系是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 131
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0132",
+      "question_type": "multiple_choice",
+      "question_content": "寒湿痹过服温燥药物而致局部红肿，属于八纲证候间的关系是 133\\~134（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "恶风发热，汗出，脉浮缓"
+        },
+        {
+          "option_id": "B",
+          "content": "肢体关节游走疼痛"
+        },
+        {
+          "option_id": "C",
+          "content": "肌肤麻木，口眼喎斜"
+        },
+        {
+          "option_id": "D",
+          "content": "突起面睑浮肿，晨起尤重，伴发热恶寒"
+        },
+        {
+          "option_id": "E",
+          "content": "咳嗽，咽喉痒痛，鼻塞，流鼻涕"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 132
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0133",
+      "question_type": "single_choice",
+      "question_content": "风邪中络证的临床表现是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 133
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0134",
+      "question_type": "multiple_choice",
+      "question_content": "风水相搏证的临床表现是 135\\~136（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气血两虚证"
+        },
+        {
+          "option_id": "B",
+          "content": "气不摄血证"
+        },
+        {
+          "option_id": "C",
+          "content": "气虚血瘀证"
+        },
+        {
+          "option_id": "D",
+          "content": "气随血脱证"
+        },
+        {
+          "option_id": "E",
+          "content": "气滞血瘀证"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 134
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0135",
+      "question_type": "single_choice",
+      "question_content": "表现为长期便血，神疲乏力，舌淡脉弱，其证是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 135
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0136",
+      "question_type": "multiple_choice",
+      "question_content": ".妇女痛经，经血紫暗有块，胸胁胀满疼痛，其证是 137\\~138（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心肝血虚证"
+        },
+        {
+          "option_id": "B",
+          "content": "肝肾阴虚证"
+        },
+        {
+          "option_id": "C",
+          "content": "肾肺阴虚证"
+        },
+        {
+          "option_id": "D",
+          "content": "心肾不交证"
+        },
+        {
+          "option_id": "E",
+          "content": "心脾气血虚证"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 136
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0137",
+      "question_type": "single_choice",
+      "question_content": "表现为心悸健忘，失眠多梦，头晕目眩，面色苍白，肢体麻木的是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 137
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0138",
+      "question_type": "multiple_choice",
+      "question_content": "表现为腰膝酸软，五心烦热，失眠多梦，耳鸣目涩，遗精盗汗的是 139\\~140（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "葛根"
+        },
+        {
+          "option_id": "B",
+          "content": "荆芥"
+        },
+        {
+          "option_id": "C",
+          "content": "生姜"
+        },
+        {
+          "option_id": "D",
+          "content": "白芷"
+        },
+        {
+          "option_id": "E",
+          "content": "淡豆豉"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 138
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0139",
+      "question_type": "single_choice",
+      "question_content": "治疗风寒感冒，寒湿带下，应选用的药物是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 139
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0140",
+      "question_type": "multiple_choice",
+      "question_content": "治疗风寒感冒，肺寒咳嗽，应选用的药物是 141\\~142（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "钩藤"
+        },
+        {
+          "option_id": "B",
+          "content": "熊胆粉"
+        },
+        {
+          "option_id": "C",
+          "content": "水牛角"
+        },
+        {
+          "option_id": "D",
+          "content": "决明子"
+        },
+        {
+          "option_id": "E",
+          "content": "夏枯草"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 140
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0141",
+      "question_type": "single_choice",
+      "question_content": "具有明目，散结消肿功效的药物是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 141
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0142",
+      "question_type": "multiple_choice",
+      "question_content": "具有明目，息风止痉功效的药物是 143\\~144（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "厚朴，枳实"
+        },
+        {
+          "option_id": "B",
+          "content": "紫苏，陈皮"
+        },
+        {
+          "option_id": "C",
+          "content": "石膏，知母"
+        },
+        {
+          "option_id": "D",
+          "content": "薤白，青皮"
+        },
+        {
+          "option_id": "E",
+          "content": "黄连，黄芩"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 142
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0143",
+      "question_type": "single_choice",
+      "question_content": "大黄治实热便秘，常配伍的药组是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 143
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0144",
+      "question_type": "multiple_choice",
+      "question_content": "大黄治血热吐衄，常配伍的药组是 145\\~146（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "独活"
+        },
+        {
+          "option_id": "B",
+          "content": "川乌"
+        },
+        {
+          "option_id": "C",
+          "content": "防己"
+        },
+        {
+          "option_id": "D",
+          "content": "桑寄生"
+        },
+        {
+          "option_id": "E",
+          "content": "络石藤"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 144
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0145",
+      "question_type": "single_choice",
+      "question_content": "具有祛风湿，利水消肿功效的药物是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 145
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0146",
+      "question_type": "multiple_choice",
+      "question_content": "具有祛风湿，补肾安胎功效的药物是 147\\~148（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "三七"
+        },
+        {
+          "option_id": "B",
+          "content": "地榆"
+        },
+        {
+          "option_id": "C",
+          "content": "槐花"
+        },
+        {
+          "option_id": "D",
+          "content": "仙鹤草"
+        },
+        {
+          "option_id": "E",
+          "content": "白茅根"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 146
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0147",
+      "question_type": "single_choice",
+      "question_content": "具有凉血止血，清肝泻火功效的药物是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 147
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0148",
+      "question_type": "multiple_choice",
+      "question_content": "具有凉血止血，清热利尿功效的药物是 149\\~150（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "竹茹"
+        },
+        {
+          "option_id": "B",
+          "content": "白果"
+        },
+        {
+          "option_id": "C",
+          "content": "半夏"
+        },
+        {
+          "option_id": "D",
+          "content": "瓜蒌"
+        },
+        {
+          "option_id": "E",
+          "content": "紫菀"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 148
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0149",
+      "question_type": "single_choice",
+      "question_content": "治疗肺热咳嗽，肺痈肠痈，应选用的药物是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 149
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0150",
+      "question_type": "multiple_choice",
+      "question_content": "治疗肺热咳嗽，胃热呕吐，应选用的药物是 151\\~152（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补骨脂，益智仁"
+        },
+        {
+          "option_id": "B",
+          "content": "浮羊藿，巴戟天"
+        },
+        {
+          "option_id": "C",
+          "content": "沙苑子，淫羊藿"
+        },
+        {
+          "option_id": "D",
+          "content": "杜仲，补骨脂"
+        },
+        {
+          "option_id": "E",
+          "content": "鹿茸，巴戟天"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 150
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0151",
+      "question_type": "single_choice",
+      "question_content": "具有补肾阳，益精血功效的药组是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 151
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0152",
+      "question_type": "multiple_choice",
+      "question_content": "具有补肾阳，祛风湿功效的药组是 153\\~154（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴虚燥咳"
+        },
+        {
+          "option_id": "B",
+          "content": "气虚自汗"
+        },
+        {
+          "option_id": "C",
+          "content": "胃痰呕吐"
+        },
+        {
+          "option_id": "D",
+          "content": "湿热泻痢"
+        },
+        {
+          "option_id": "E",
+          "content": "风寒湿痹"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 152
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0153",
+      "question_type": "single_choice",
+      "question_content": "阿胶的主治病症是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 153
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0154",
+      "question_type": "multiple_choice",
+      "question_content": "黄芪的主治病症是 155\\~156（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "鳖甲"
+        },
+        {
+          "option_id": "B",
+          "content": "石斛"
+        },
+        {
+          "option_id": "C",
+          "content": "百合"
+        },
+        {
+          "option_id": "D",
+          "content": "北沙参"
+        },
+        {
+          "option_id": "E",
+          "content": "何首乌"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 154
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0155",
+      "question_type": "single_choice",
+      "question_content": "兼补肺，胃之阴的药物是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 155
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0156",
+      "question_type": "multiple_choice",
+      "question_content": "兼补肝，肾之阴的药物是 157\\~158（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "控制感染，减轻外渗、改善中毒症状"
+        },
+        {
+          "option_id": "B",
+          "content": "稳定内环境、促进利尿、导泻和透析"
+        },
+        {
+          "option_id": "C",
+          "content": "补充血容量、纠正酸中毒和应用血管活性药"
+        },
+        {
+          "option_id": "D",
+          "content": "维持水与电解质平衡"
+        },
+        {
+          "option_id": "E",
+          "content": "防治继发感染"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 156
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0157",
+      "question_type": "single_choice",
+      "question_content": "流行性出血热发热期的治疗原则是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 157
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0158",
+      "question_type": "multiple_choice",
+      "question_content": "流行性出血热少尿期的治疗原则是 159\\~160（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "粪-口途径"
+        },
+        {
+          "option_id": "B",
+          "content": "输血及血液制品"
+        },
+        {
+          "option_id": "C",
+          "content": "母婴垂直传播"
+        },
+        {
+          "option_id": "D",
+          "content": "飞沫传播"
+        },
+        {
+          "option_id": "E",
+          "content": "虫媒传播"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 158
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0159",
+      "question_type": "single_choice",
+      "question_content": "丙型肝炎的主要传播途径是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 159
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0160",
+      "question_type": "multiple_choice",
+      "question_content": "戊型肝炎的主要传播途径是 161\\~162（共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "公安机关"
+        },
+        {
+          "option_id": "B",
+          "content": "人民法院"
+        },
+        {
+          "option_id": "C",
+          "content": "疾病预防控制机构"
+        },
+        {
+          "option_id": "D",
+          "content": "县级以上地方政府"
+        },
+        {
+          "option_id": "E",
+          "content": "卫生行政部门"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 160
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0161",
+      "question_type": "single_choice",
+      "question_content": "对传染病的发生、流行及影响因素进行监测的部门是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 161
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-187fe471be-q0162",
+      "question_type": "single_choice",
+      "question_content": "报上级部门决定后可以宣布本行政区域全部或部分为疫区的部门是",
+      "options": [],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\考题2018-精选\\full.md",
+        "number": 162
+      }
+    }
+  ]
+}

@@ -1,0 +1,407 @@
+{
+  "template_id": "6581a15b89f4-e1072a51ce",
+  "questions": [
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0086",
+      "question_type": "multiple_choice",
+      "question_content": "患者，男，30 岁，淋雨之后出现无汗，头痛项强，肢体酸楚疼痛，口苦微渴，苔白，脉浮。应选择的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "九味羌活汤"
+        },
+        {
+          "option_id": "B",
+          "content": "小青龙汤"
+        },
+        {
+          "option_id": "C",
+          "content": "大青龙汤"
+        },
+        {
+          "option_id": "D",
+          "content": "桂枝汤"
+        },
+        {
+          "option_id": "E",
+          "content": "柴葛解肌汤\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：九味羌活汤主治：外感风寒湿邪，内有蕴热证。恶寒发热，无汗，头痛项强，肢体酸楚疼痛，口苦微渴，舌苔白或微黄，脉浮。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 86
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0087",
+      "question_type": "multiple_choice",
+      "question_content": "症见腹中拘急疼痛，喜温喜按，神疲乏力，虚怯少气，面色无华，舌淡苔白，脉弦细。治宜首选方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "理中丸"
+        },
+        {
+          "option_id": "B",
+          "content": "小建中汤"
+        },
+        {
+          "option_id": "C",
+          "content": "吴茱萸汤"
+        },
+        {
+          "option_id": "D",
+          "content": "大建中汤"
+        },
+        {
+          "option_id": "E",
+          "content": "当归四逆汤\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：小建中汤主治：中焦虚寒，肝脾失调，阴阳不和证。腹中拘急疼痛，喜温喜按，神疲乏力，虚怯少气；或心中悸动，虚烦不宁，面色无华；兼见手足烦热，咽干口燥。舌淡苔白，脉细弦。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 87
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0088",
+      "question_type": "multiple_choice",
+      "question_content": "患者头痛时作，痛连项背，遇风尤甚，恶风寒，肢体酸楚，口不渴，舌苔薄白，脉浮。治疗应首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "川芎茶调散"
+        },
+        {
+          "option_id": "B",
+          "content": "芎芷石膏汤"
+        },
+        {
+          "option_id": "C",
+          "content": "羌活胜湿汤"
+        },
+        {
+          "option_id": "D",
+          "content": "大补元煎"
+        },
+        {
+          "option_id": "E",
+          "content": "天麻钩藤饮\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：川芎茶调散主治：外感风邪头痛。偏正头痛，或巅顶作痛，目眩鼻塞，或恶风发热，舌苔薄白，脉浮。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 88
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0089",
+      "question_type": "multiple_choice",
+      "question_content": "患者角膜边缘出现黄色或棕褐色环，环外缘清晰，内缘模糊，称为凯-费环(角膜色素环)，见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "老年人或早老症"
+        },
+        {
+          "option_id": "B",
+          "content": "严重沙眼"
+        },
+        {
+          "option_id": "C",
+          "content": "维生素"
+        },
+        {
+          "option_id": "D",
+          "content": "缺乏"
+        },
+        {
+          "option_id": "E",
+          "content": "角膜溃疡"
+        },
+        {
+          "option_id": "F",
+          "content": "肝豆状核变性\n\n答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "解析：角膜边缘出现黄色或棕褐色环，环外缘清晰，内缘模糊，是铜代谢障碍的体征，称为凯-费环(角膜色素环)，见于肝豆状核变性（Wilson病）"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 89
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0090",
+      "question_type": "multiple_choice",
+      "question_content": "患者女性，26岁，胸痛，查体可闻及胸膜摩擦音，屏住呼吸消失，可能是以下哪个疾病",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心包炎"
+        },
+        {
+          "option_id": "B",
+          "content": "干性胸膜炎"
+        },
+        {
+          "option_id": "C",
+          "content": "肺气肿"
+        },
+        {
+          "option_id": "D",
+          "content": "支气管哮喘"
+        },
+        {
+          "option_id": "E",
+          "content": "急性肺水肿  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "解析：胸膜摩擦音：是干性胸膜炎的重要体征。屏住呼吸时胸膜摩擦音消失，可借此与心包摩擦音区别。\n\n8-中西医外妇儿首选类题目\n\n6-中西医结合内科学最字题\n\n10-特定穴\n记忆歌诀汇总"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 90
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0091",
+      "question_type": "multiple_choice",
+      "question_content": "患者，女，25 岁。因腹部疼痛 1 天入院。查体：全腹压痛、反跳痛、肌紧张，移动性浊音阳性，肠鸣音消失。 可能的诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肠梗阻"
+        },
+        {
+          "option_id": "B",
+          "content": "急性腹膜炎"
+        },
+        {
+          "option_id": "C",
+          "content": "急性肠炎"
+        },
+        {
+          "option_id": "D",
+          "content": "消化性溃疡"
+        },
+        {
+          "option_id": "E",
+          "content": "幽门梗阻\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：急性腹膜炎：急性病容，强迫仰卧位，腹式呼吸消失，肠麻痹时，腹部膨隆。腹膜刺激征阳性(腹壁紧张、压痛及反跳痛)；鼓肠或有气腹时，肝浊音区缩小或消失，移动性浊音阳性；肠鸣音减弱或消失。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 91
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0092",
+      "question_type": "multiple_choice",
+      "question_content": "病人出现颈静脉怒张、肝大，应考虑为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝囊肿"
+        },
+        {
+          "option_id": "B",
+          "content": "脂肪肝"
+        },
+        {
+          "option_id": "C",
+          "content": "肝淤血"
+        },
+        {
+          "option_id": "D",
+          "content": "肝癌"
+        },
+        {
+          "option_id": "E",
+          "content": "肝硬化  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：患者出现肝大，伴随颈静脉怒张，考虑为体循环淤血导致的肝脏淤血肿大。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 92
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0093",
+      "question_type": "multiple_choice",
+      "question_content": "患者超声检查示：肝脏体积缩小，肝包膜回声增强呈锯齿状，肝内光点增粗，分布紊乱应考虑",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脂肪肝"
+        },
+        {
+          "option_id": "B",
+          "content": "肝淤血"
+        },
+        {
+          "option_id": "C",
+          "content": "肝硬化"
+        },
+        {
+          "option_id": "D",
+          "content": "肝脓肿"
+        },
+        {
+          "option_id": "E",
+          "content": "肝炎\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：肝硬化异常声像图：肝体积缩小，逐步向右上移行；肝包膜回声增强，呈锯齿样改变；肝内光点增粗增强，分布紊乱；门静脉内径增宽＞1.3cm。\n\n![](images/a31f9cbda3d808500286097f11bd32c9ded2e475ba21b0219536c7fcc5bee4b5.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/be4143451f316310da45c520ffbe0c82ad5793b856f6e62bff5886102408ebff.jpg)\n\n![](images/9fdfe0027bd0cc9a484d177a608b01f7fbb5175b80a6a87a3810690ad1521e5a.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/0949d5dbbe0c2b67b5ce820c10eaa08abf86fff55bb7dcd4c48e9882538a4ecd.jpg)\n\n![](images/54c5249bae9e8aa34ed8dea2e0a91835061120c39a9199f880d7f150b9bc8a2f.jpg)\n\n5-中西医结合儿科学辨证论治汇总\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/515eeae63c16c19d48ccaa7a87d38e300c2aee2dffa5d8601793573170a011d9.jpg)\n\n![](images/23f7f2b7487b6cc1983c689fa190fc324803f6fa81b44a86e66535455ca559fc.jpg)\n\n![](images/9f12e3991122809a2a596d3a509db27d47a91c634466753faa24ca44c2bcaef8.jpg)\n\n7-中西医结合内科学首选类题目\n\n![](images/fc7187bc9ebfc8bb4c422e01d7aab2e2ec0a75706d83fe3bc546a21e1843f530.jpg)  \n9-经络系统常考总结\n\n![](images/bca3fd81e08c876e7740ff1c278016378c18d16e2b20bd9555132d7b5d4a474d.jpg)\n\n![](images/b4c979426df3cfc625a7d2f1164fa8f49fd5c412e0fbca1f72885b8a0e6f505d.jpg)\n\n![](images/b0d43b7037769266540eaa53992da207aa0286815d4954fb80b1d4242ce4023c.jpg)  \n11-中药相同功效药物  \n总结\n\n![](images/c034fa7809e444acfe8e7ff2368c3147fb784c399a6259e452098beb7091a4ec.jpg)\n\n12-中药学30味中药药理作用总\n\n结\n\n![](images/3d3875cb941114e72211c85d89ab6fd6a5be022528bd909ef8ec49424ad0b6ed.jpg)"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 93
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0094",
+      "question_type": "multiple_choice",
+      "question_content": "慢阻肺患者，男，58 岁。运动后突发右胸疼痛，呼吸困难，查体：右上肺叩诊呈鼓音，气管左移。该患者最可能的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "左上肺炎"
+        },
+        {
+          "option_id": "B",
+          "content": "肺血栓栓塞症"
+        },
+        {
+          "option_id": "C",
+          "content": "自发性气胸"
+        },
+        {
+          "option_id": "D",
+          "content": "急性左心衰"
+        },
+        {
+          "option_id": "E",
+          "content": "支气管哮喘\n\n![](images/dceabba6dfa0d44038ada05b4bf5d0551389c8e8b7af7ad0f211e470b114dc47.jpg)\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：患者运动后突发一侧胸痛伴叩诊鼓音，气管推向健侧，考虑为慢阻肺并发自发性气胸。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 94
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-e1072a51ce-q0095",
+      "question_type": "multiple_choice",
+      "question_content": "李某, 男性, 25 岁。服用大量地西泮导致昏迷收入院。诊断为: 地西泮急性中毒。除洗胃及其他支持疗法外, 给予特异性的解毒药为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "氟马西尼"
+        },
+        {
+          "option_id": "B",
+          "content": "贝美格"
+        },
+        {
+          "option_id": "C",
+          "content": "尼可刹米"
+        },
+        {
+          "option_id": "D",
+          "content": "解磷定"
+        },
+        {
+          "option_id": "E",
+          "content": "阿托品\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "解析：地西泮为苯二氮卓类药物，主要作用于中枢神经系统，临床常用于镇静、催眠、抗焦虑、抗癫痫等。地西泮急性中毒后，除洗胃及其他支持疗法外，应给予特异性解毒药氟马西尼。氟马西尼为苯二氮卓类药物的拮抗剂，可迅速逆转苯二氮卓类药物的作用，使患者迅速苏醒。贝美格为解救巴比妥类中毒的特异性解毒药。尼可刹米是常用的呼吸中枢兴奋药，可用于中枢抑制状态的急救，不用于地西泮急性中毒的治疗。解磷定为有机磷中毒的解毒药。阿托品主要用于有机磷中毒的治疗和抢救。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+        "number": 95
+      }
+    }
+  ]
+}

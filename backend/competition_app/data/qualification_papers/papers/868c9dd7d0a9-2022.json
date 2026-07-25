@@ -1,0 +1,2286 @@
+{
+  "template_id": "868c9dd7d0a9-2022",
+  "questions": [
+    {
+      "question_id": "868c9dd7d0a9-2022-q0001",
+      "question_type": "single_choice",
+      "question_content": "I 型呼吸衰竭患者吸氧方式为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "吸入纯氧"
+        },
+        {
+          "option_id": "B",
+          "content": "4～6L/min 乙醇湿化吸氧"
+        },
+        {
+          "option_id": "C",
+          "content": "2～4L/min 鼻导管吸氧"
+        },
+        {
+          "option_id": "D",
+          "content": "1～2L/min 持续鼻导管吸氧"
+        },
+        {
+          "option_id": "E",
+          "content": "低流量间断鼻导管吸氧"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 1
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0002",
+      "question_type": "single_choice",
+      "question_content": "病程超半年以上，现有乏力，食欲不振，腹胀尿黄等，出现肝病面容，肝掌，蜘蛛痣，脾大。初步诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "慢性肝炎"
+        },
+        {
+          "option_id": "B",
+          "content": "胆囊炎"
+        },
+        {
+          "option_id": "C",
+          "content": "肝硬化"
+        },
+        {
+          "option_id": "D",
+          "content": "重型肝炎"
+        },
+        {
+          "option_id": "E",
+          "content": "慢性胰腺炎"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 2
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0003",
+      "question_type": "single_choice",
+      "question_content": "患者胃部不适 5 年余，近 2 月出现餐后不适加重，胃镜显示浅表性糜烂中心凹陷。初步诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胃溃疡"
+        },
+        {
+          "option_id": "B",
+          "content": "胃癌"
+        },
+        {
+          "option_id": "C",
+          "content": "十二指肠溃疡"
+        },
+        {
+          "option_id": "D",
+          "content": "慢性胃炎"
+        },
+        {
+          "option_id": "E",
+          "content": "胃肠道穿孔"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 3
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0004",
+      "question_type": "single_choice",
+      "question_content": "狂犬病的发病机制是狂犬病毒侵犯",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "侵犯肠黏膜上皮细胞"
+        },
+        {
+          "option_id": "B",
+          "content": "侵犯肠黏膜上皮细胞外"
+        },
+        {
+          "option_id": "C",
+          "content": "侵犯呼吸道黏膜上皮细胞"
+        },
+        {
+          "option_id": "D",
+          "content": "侵犯神经组织"
+        },
+        {
+          "option_id": "E",
+          "content": "侵犯肺组织"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 4
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0005",
+      "question_type": "single_choice",
+      "question_content": "流行性出血热少尿期的治疗原则正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "稳定内环境"
+        },
+        {
+          "option_id": "B",
+          "content": "促进利尿"
+        },
+        {
+          "option_id": "C",
+          "content": "导泻"
+        },
+        {
+          "option_id": "D",
+          "content": "透析"
+        },
+        {
+          "option_id": "E",
+          "content": "以上都是"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 5
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0006",
+      "question_type": "single_choice",
+      "question_content": "脾气虚弱，运化无力，食少，脘腹胀满，其本质是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "真实假虚"
+        },
+        {
+          "option_id": "B",
+          "content": "真虚假实"
+        },
+        {
+          "option_id": "C",
+          "content": "虚实夹杂"
+        },
+        {
+          "option_id": "D",
+          "content": "上实下虚"
+        },
+        {
+          "option_id": "E",
+          "content": "上虚下实"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 6
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0007",
+      "question_type": "single_choice",
+      "question_content": "涩脉和濡脉的共同特点是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脉形细"
+        },
+        {
+          "option_id": "B",
+          "content": "脉位浮"
+        },
+        {
+          "option_id": "C",
+          "content": "脉力强"
+        },
+        {
+          "option_id": "D",
+          "content": "脉紧"
+        },
+        {
+          "option_id": "E",
+          "content": "脉行缓慢"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 7
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0008",
+      "question_type": "single_choice",
+      "question_content": "稍微活动后气喘加重，双肺闻及响亮而弥漫的哮鸣音，提示为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "支气管哮喘"
+        },
+        {
+          "option_id": "B",
+          "content": "支气管肺炎"
+        },
+        {
+          "option_id": "C",
+          "content": "支气管异物"
+        },
+        {
+          "option_id": "D",
+          "content": "毛细支气管炎"
+        },
+        {
+          "option_id": "E",
+          "content": "支气管扩张"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 8
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0009",
+      "question_type": "single_choice",
+      "question_content": "疼痛多为刺痛，痛处固定不移，拒按，夜间尤甚，病因是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痰饮"
+        },
+        {
+          "option_id": "B",
+          "content": "寒凝"
+        },
+        {
+          "option_id": "C",
+          "content": "湿邪"
+        },
+        {
+          "option_id": "D",
+          "content": "热邪"
+        },
+        {
+          "option_id": "E",
+          "content": "瘀血"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 9
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0010",
+      "question_type": "single_choice",
+      "question_content": "伪造尸检，情节严重者，给予哪种行政处罚",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "警告"
+        },
+        {
+          "option_id": "B",
+          "content": "通报批评"
+        },
+        {
+          "option_id": "C",
+          "content": "拘留"
+        },
+        {
+          "option_id": "D",
+          "content": "罚款"
+        },
+        {
+          "option_id": "E",
+          "content": "开除"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 10
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0011",
+      "question_type": "single_choice",
+      "question_content": "下列关于病例书写错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "每项记录均应注明时间，采用 24 小时制记录"
+        },
+        {
+          "option_id": "B",
+          "content": "用蓝色笔签字"
+        },
+        {
+          "option_id": "C",
+          "content": "患者述及的既往所患疾病名应加引号"
+        },
+        {
+          "option_id": "D",
+          "content": "每张记录用纸均须填写眉栏"
+        },
+        {
+          "option_id": "E",
+          "content": "上级医师审查修改应保持原记录清楚可辨，签名并注明修改时间"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 11
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0012",
+      "question_type": "single_choice",
+      "question_content": "心包积液可见",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "靴型心"
+        },
+        {
+          "option_id": "B",
+          "content": "梨形心"
+        },
+        {
+          "option_id": "C",
+          "content": "烧瓶心"
+        },
+        {
+          "option_id": "D",
+          "content": "普大心"
+        },
+        {
+          "option_id": "E",
+          "content": "球形心"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 12
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0013",
+      "question_type": "single_choice",
+      "question_content": "咽喉肿痛实证的选穴",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "少商、合谷、尺泽、关冲"
+        },
+        {
+          "option_id": "B",
+          "content": "太溪、照海、列缺、鱼际"
+        },
+        {
+          "option_id": "C",
+          "content": "二间、照海、列缺、曲池"
+        },
+        {
+          "option_id": "D",
+          "content": "风池、合谷、太溪、外关"
+        },
+        {
+          "option_id": "E",
+          "content": "照海、少商、曲池、鱼际"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 13
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0014",
+      "question_type": "single_choice",
+      "question_content": "治疗湿痹、紧脉拘急，伴有恶寒发热的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "威灵仙"
+        },
+        {
+          "option_id": "B",
+          "content": "羌活"
+        },
+        {
+          "option_id": "C",
+          "content": "蕲蛇"
+        },
+        {
+          "option_id": "D",
+          "content": "独活"
+        },
+        {
+          "option_id": "E",
+          "content": "防己"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 14
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0015",
+      "question_type": "single_choice",
+      "question_content": "《淮南子》中“天地之袭精为”",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴阳"
+        },
+        {
+          "option_id": "B",
+          "content": "四时"
+        },
+        {
+          "option_id": "C",
+          "content": "万物"
+        },
+        {
+          "option_id": "D",
+          "content": "日"
+        },
+        {
+          "option_id": "E",
+          "content": "月"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 15
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0016",
+      "question_type": "single_choice",
+      "question_content": "3 岁以下小儿正常指纹是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "淡紫隐隐，显于风关"
+        },
+        {
+          "option_id": "B",
+          "content": "淡紫隐隐，显于气关"
+        },
+        {
+          "option_id": "C",
+          "content": "色泽青黑，显于风关"
+        },
+        {
+          "option_id": "D",
+          "content": "淡紫隐隐，显于风关之下"
+        },
+        {
+          "option_id": "E",
+          "content": "色泽鲜红，显于风关"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 16
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0017",
+      "question_type": "single_choice",
+      "question_content": "HBV 感染最早出现的血清学标志物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "HBsAg"
+        },
+        {
+          "option_id": "B",
+          "content": "抗-HBs"
+        },
+        {
+          "option_id": "C",
+          "content": "HBeAg"
+        },
+        {
+          "option_id": "D",
+          "content": "抗-HBe"
+        },
+        {
+          "option_id": "E",
+          "content": "抗-HBc"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 17
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0018",
+      "question_type": "single_choice",
+      "question_content": "白扁豆的功效是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补脾益气，祛痰止咳"
+        },
+        {
+          "option_id": "B",
+          "content": "补中益气，养血安神"
+        },
+        {
+          "option_id": "C",
+          "content": "补中润燥，止痛解毒"
+        },
+        {
+          "option_id": "D",
+          "content": "健脾化湿，和中消暑"
+        },
+        {
+          "option_id": "E",
+          "content": "缓中补虚，生津润燥"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 18
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0019",
+      "question_type": "single_choice",
+      "question_content": "白术的功效是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "健脾、祛痰、益气"
+        },
+        {
+          "option_id": "B",
+          "content": "补脾、养阴、清热"
+        },
+        {
+          "option_id": "C",
+          "content": "健脾，利水，止汗"
+        },
+        {
+          "option_id": "D",
+          "content": "益气、健脾、生津"
+        },
+        {
+          "option_id": "E",
+          "content": "益肺、健脾、化湿"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 19
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0020",
+      "question_type": "single_choice",
+      "question_content": "败毒散和补中益气汤中共有的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "柴胡、人参、甘草"
+        },
+        {
+          "option_id": "B",
+          "content": "人参、当归、陈皮"
+        },
+        {
+          "option_id": "C",
+          "content": "升麻、柴胡、陈皮"
+        },
+        {
+          "option_id": "D",
+          "content": "柴胡、前胡、桔梗"
+        },
+        {
+          "option_id": "E",
+          "content": "独活、茯苓、甘草"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 20
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0092",
+      "question_type": "single_choice",
+      "question_content": "下列哪项为伤科首选药物",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "三七"
+        },
+        {
+          "option_id": "B",
+          "content": "茜草"
+        },
+        {
+          "option_id": "C",
+          "content": "白及"
+        },
+        {
+          "option_id": "D",
+          "content": "小蓟"
+        },
+        {
+          "option_id": "E",
+          "content": "大蓟"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 94
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0093",
+      "question_type": "single_choice",
+      "question_content": "下列哪项是朱砂的功效",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清心镇惊，安神解毒"
+        },
+        {
+          "option_id": "B",
+          "content": "镇惊安神，平肝潜阳"
+        },
+        {
+          "option_id": "C",
+          "content": "镇惊安神，纳气平喘"
+        },
+        {
+          "option_id": "D",
+          "content": "镇惊安神，收敛固涩"
+        },
+        {
+          "option_id": "E",
+          "content": "镇惊安神，利尿通淋"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 95
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0094",
+      "question_type": "single_choice",
+      "question_content": "患者，男，27 岁。于 3 天前进食后受凉，腹泻不止，日行 5～8 次，水样便，微感腹痛，恶心，纳呆，小便短少，舌苔白厚腻，脉缓。其证候是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "外感寒湿证"
+        },
+        {
+          "option_id": "B",
+          "content": "寒湿困脾证"
+        },
+        {
+          "option_id": "C",
+          "content": "寒湿犯胃证"
+        },
+        {
+          "option_id": "D",
+          "content": "脾阳虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "胃阴虚证"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 96
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0095",
+      "question_type": "single_choice",
+      "question_content": "患者，女，27 岁。近日频繁出现尿急、尿频等症状，入院初步诊断为尿路感染，引起该病的病原体最常见的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "链球菌"
+        },
+        {
+          "option_id": "B",
+          "content": "变形杆菌"
+        },
+        {
+          "option_id": "C",
+          "content": "葡萄球菌"
+        },
+        {
+          "option_id": "D",
+          "content": "大肠埃希菌"
+        },
+        {
+          "option_id": "E",
+          "content": "副大肠杆菌"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 97
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0096",
+      "question_type": "single_choice",
+      "question_content": "患者，男，56 岁。既往有慢性阻塞性肺疾病病史，控制不佳，症状反复发作并加重，近期出现下肢水肿，检查可见颈静脉怒张、肝大。患者最可能的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "慢性阻塞性肺疾病伴急性加重"
+        },
+        {
+          "option_id": "B",
+          "content": "慢性肺源性心脏病失代偿期"
+        },
+        {
+          "option_id": "C",
+          "content": "慢性阻塞性肺气肿"
+        },
+        {
+          "option_id": "D",
+          "content": "慢性肺源性心脏病代偿期"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 98
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0097",
+      "question_type": "single_choice",
+      "question_content": "患者，女，43 岁。既往有蛛网膜下腔出血病史，现行 DSA 检查，提示大脑中动脉瘤，考虑为出血病灶。患者想防止再出血，则应选择的最好方法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "应用止血药物"
+        },
+        {
+          "option_id": "B",
+          "content": "严格控制血压"
+        },
+        {
+          "option_id": "C",
+          "content": "手术干预"
+        },
+        {
+          "option_id": "D",
+          "content": "绝对卧床 4～6 周"
+        },
+        {
+          "option_id": "E",
+          "content": "控制情绪、避免剧烈运动"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 99
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0098",
+      "question_type": "single_choice",
+      "question_content": "患者，女，30 岁。无明显诱因反复鼻出血。检查：眼睑苍白，血红细胞、白细胞和血小板均减少。该患者诊断应首先考虑",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "再生障碍性贫血"
+        },
+        {
+          "option_id": "B",
+          "content": "缺铁性贫血"
+        },
+        {
+          "option_id": "C",
+          "content": "溶血性贫血"
+        },
+        {
+          "option_id": "D",
+          "content": "失血性贫血"
+        },
+        {
+          "option_id": "E",
+          "content": "巨幼红细胞性贫血"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 100
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0099",
+      "question_type": "single_choice",
+      "question_content": "患者，男，65 岁。血压 210/100mmHg，伴心力衰竭，心率 110 次/分。首选的治疗药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "卡托普利"
+        },
+        {
+          "option_id": "B",
+          "content": "美托洛尔"
+        },
+        {
+          "option_id": "C",
+          "content": "氢氯噻嗪"
+        },
+        {
+          "option_id": "D",
+          "content": "硝苯地平"
+        },
+        {
+          "option_id": "E",
+          "content": "哌唑嗪"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 101
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0100",
+      "question_type": "single_choice",
+      "question_content": "患者，男，45 岁。1 个月前畏寒、腹痛、腹泻，大便带脓血，每天 10 次左右，伴里急后重，诊断为菌痢，服用甲恶唑、黄连素，1 周后好转，近 1 周来又腹泻、腹痛，大便每天 10 余次，大便常规：RBC+/HP，WBC+++/HP，PC+/HP，吞噬细胞 3～4/HP，既往无腹泻史。应诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "慢性菌痢迁延型"
+        },
+        {
+          "option_id": "B",
+          "content": "慢性菌痢隐匿型"
+        },
+        {
+          "option_id": "C",
+          "content": "慢性菌痢急性发作"
+        },
+        {
+          "option_id": "D",
+          "content": "急性菌痢典型"
+        },
+        {
+          "option_id": "E",
+          "content": "急性菌痢轻型"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 102
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0101",
+      "question_type": "single_choice",
+      "question_content": "患儿，男，4 岁。因畏寒、发热 1 天，精神萎靡 6 小时入院。查体：体温 $40^{\\circ}$ C，脉搏 126 次/分，血压 68/45 rnmHg，浅昏迷，面色苍白，全身可见瘀斑、瘀点，瞳孔等大，颈软，克氏征（-），布氏征（-），病理征（-），血常规 WBC20× $10^{9}/L$ ，NO. 90，LO. 10，对本病例有较大意义的快速确诊实验室检查是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "皮肤瘀斑、瘀点涂片找细菌"
+        },
+        {
+          "option_id": "B",
+          "content": "脑脊液常规和生化检查"
+        },
+        {
+          "option_id": "C",
+          "content": "血培养"
+        },
+        {
+          "option_id": "D",
+          "content": "脑脊液培养"
+        },
+        {
+          "option_id": "E",
+          "content": "头部 CT 检查"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 103
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0102",
+      "question_type": "single_choice",
+      "question_content": "患者，男，50 岁。突然意识不清 1 小时。头颅 CT 显示右侧大脑半球 $3cm \\times 4cm \\times 5cm$ 高密度影。最可能的诊断是 A. 昏厥",
+      "options": [
+        {
+          "option_id": "B",
+          "content": "脑出血"
+        },
+        {
+          "option_id": "C",
+          "content": "脑栓塞"
+        },
+        {
+          "option_id": "D",
+          "content": "脑血栓形成"
+        },
+        {
+          "option_id": "E",
+          "content": "高血压脑病"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 104
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0103",
+      "question_type": "single_choice",
+      "question_content": "患者，女，59 岁。反复上腹部饭后痛 10 年，每次约持续 1～2 小时。近半年疼痛加剧，食欲减退，体重减轻。检查：贫血貌，左锁骨上触及肿大淋巴结，红细胞沉降率 47mm/h，大便隐血试验持续阳性。该患者诊断应首先考虑是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胃溃疡"
+        },
+        {
+          "option_id": "B",
+          "content": "十二指肠溃疡发作"
+        },
+        {
+          "option_id": "C",
+          "content": "胃溃疡伴幽门梗阻"
+        },
+        {
+          "option_id": "D",
+          "content": "复合性溃疡病"
+        },
+        {
+          "option_id": "E",
+          "content": "胃癌"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 105
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0104",
+      "question_type": "single_choice",
+      "question_content": "患者，女，26 岁。尿痛、尿频、尿急 3 天。检查：肾区无叩击痛，尿中白细胞（++），中段尿细菌培养为大肠埃希菌。其诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性肾盂肾炎"
+        },
+        {
+          "option_id": "B",
+          "content": "肾结核"
+        },
+        {
+          "option_id": "C",
+          "content": "膀胱炎"
+        },
+        {
+          "option_id": "D",
+          "content": "肾结石"
+        },
+        {
+          "option_id": "E",
+          "content": "慢性肾盂肾炎"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 106
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0105",
+      "question_type": "single_choice",
+      "question_content": "患者，男，32 岁。近 2 年来餐后 3～4 小时反复上腹痛，持续至下次进餐后才缓解。应首先考虑的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消化性溃疡"
+        },
+        {
+          "option_id": "B",
+          "content": "慢性胃炎"
+        },
+        {
+          "option_id": "C",
+          "content": "胃癌"
+        },
+        {
+          "option_id": "D",
+          "content": "胃肠神经官能症"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 107
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0106",
+      "question_type": "single_choice",
+      "question_content": "患者，男，34 岁。注射青霉素后突发意识丧失，查体，心率 122 次/分，血压 80/50mmHg。已静脉注射肾上腺素。进一步治疗应选择的措施是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "高压氧舱"
+        },
+        {
+          "option_id": "B",
+          "content": "增强心肌收缩力"
+        },
+        {
+          "option_id": "C",
+          "content": "纠正酸碱失衡"
+        },
+        {
+          "option_id": "D",
+          "content": "应用血管活性药物"
+        },
+        {
+          "option_id": "E",
+          "content": "迅速补充血容量"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 108
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0107",
+      "question_type": "single_choice",
+      "question_content": "患者，男，60 岁。因急性一氧化碳中毒急诊入院。查体：浅昏迷状态，呼吸节律整齐，血压 110/70mmHg，为了加快一氧化碳排出，应采用的最有效的治疗方法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "高压氧舱治疗"
+        },
+        {
+          "option_id": "B",
+          "content": "持续低流量吸氧"
+        },
+        {
+          "option_id": "C",
+          "content": "静脉滴注能量合剂"
+        },
+        {
+          "option_id": "D",
+          "content": "使用呼吸机"
+        },
+        {
+          "option_id": "E",
+          "content": "注射呼吸兴奋剂"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 109
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0108",
+      "question_type": "single_choice",
+      "question_content": "患者突发呼吸困难，吸气时胸骨上窝、锁骨上窝和肋间隙明显凹陷，临床诊断可能为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "左心功能不全"
+        },
+        {
+          "option_id": "B",
+          "content": "右心功能不全"
+        },
+        {
+          "option_id": "C",
+          "content": "肺气肿"
+        },
+        {
+          "option_id": "D",
+          "content": "气管异物"
+        },
+        {
+          "option_id": "E",
+          "content": "大块肺梗死"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 110
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0109",
+      "question_type": "single_choice",
+      "question_content": "患者，女，62 岁。反复咳嗽咯痰 10 年，气短 3 年，受凉后加重，心悸，查体：T38.3℃，P105 次/分，R24 次/分，神清，口唇发绀，桶状胸，P2>A2，HR104 次/分，肝肋下 1cm，双下肢可凹性水肿，最关键的治疗措施是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "保持呼吸道通畅"
+        },
+        {
+          "option_id": "B",
+          "content": "控制感染"
+        },
+        {
+          "option_id": "C",
+          "content": "应用利尿剂"
+        },
+        {
+          "option_id": "D",
+          "content": "应用强心剂"
+        },
+        {
+          "option_id": "E",
+          "content": "抗凝"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 111
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0110",
+      "question_type": "single_choice",
+      "question_content": "患者，男，30 岁。因气急伴呼气性呼吸困难 1 日入院。查体：气管居中，两侧胸部饱满，呼吸动度减弱，两肺叩诊过清音，呼气时间延长，可闻及哮鸣音，首先考虑的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "支气管哮喘"
+        },
+        {
+          "option_id": "B",
+          "content": "胸腔积液"
+        },
+        {
+          "option_id": "C",
+          "content": "肺炎链球菌肺炎"
+        },
+        {
+          "option_id": "D",
+          "content": "自发性气胸"
+        },
+        {
+          "option_id": "E",
+          "content": "肺不张"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 112
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0111",
+      "question_type": "single_choice",
+      "question_content": "患者尿频、尿急、尿痛，并见肉眼血尿，舌质红，舌苔薄黄，脉弦数。治疗应首选的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "车前子"
+        },
+        {
+          "option_id": "B",
+          "content": "泽泻"
+        },
+        {
+          "option_id": "C",
+          "content": "石韦"
+        },
+        {
+          "option_id": "D",
+          "content": "木通"
+        },
+        {
+          "option_id": "E",
+          "content": "金钱草"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 113
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0112",
+      "question_type": "single_choice",
+      "question_content": "患者腹部膨隆呈球形，转动体位时形状改变不明显。应首先考虑的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝硬化"
+        },
+        {
+          "option_id": "B",
+          "content": "右心功能不全"
+        },
+        {
+          "option_id": "C",
+          "content": "缩窄性心包炎"
+        },
+        {
+          "option_id": "D",
+          "content": "肾病综合征"
+        },
+        {
+          "option_id": "E",
+          "content": "肠麻痹"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 114
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0113",
+      "question_type": "single_choice",
+      "question_content": "患者，女，69 岁。慢性支气管炎及高血压病史 15 年，近半年活动后自觉气短。检查：血压 160/95mmHg，心脏听诊未闻及器质性杂音，两肺听诊无异常，心电图及 X 线显示左心室增大。应首先考虑的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "冠心病"
+        },
+        {
+          "option_id": "B",
+          "content": "高血压性心脏病"
+        },
+        {
+          "option_id": "C",
+          "content": "风心病"
+        },
+        {
+          "option_id": "D",
+          "content": "肺心病"
+        },
+        {
+          "option_id": "E",
+          "content": "病毒性心肌炎"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 115
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0248",
+      "question_type": "single_choice",
+      "question_content": "患者，女，47 岁。眩晕半年，加重 1 周，伴神疲乏力，面色晄白，时有心悸，夜寐欠安，舌淡，脉细。治疗应选取的配穴是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "百会、太阳、印堂"
+        },
+        {
+          "option_id": "B",
+          "content": "气海、脾俞、胃俞"
+        },
+        {
+          "option_id": "C",
+          "content": "风池、肝俞、肾俞"
+        },
+        {
+          "option_id": "D",
+          "content": "中脘、内关、解溪"
+        },
+        {
+          "option_id": "E",
+          "content": "百会、上星、风池"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 252
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0249",
+      "question_type": "single_choice",
+      "question_content": "患者，女，46 岁。乳房肿块，月经前加重，经后缓解，伴有腰酸乏力，神疲倦怠，月经失调，量少色淡，舌淡苔白，脉沉细，辨证其治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疏肝散结"
+        },
+        {
+          "option_id": "B",
+          "content": "化痰散结"
+        },
+        {
+          "option_id": "C",
+          "content": "调摄冲任"
+        },
+        {
+          "option_id": "D",
+          "content": "调补气血"
+        },
+        {
+          "option_id": "E",
+          "content": "行气活血"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 253
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0250",
+      "question_type": "single_choice",
+      "question_content": "患者，女，32 岁，已婚。有盆腔炎病史，下腹部疼痛结块，缠绵日久，痛连腰骶，经行加重，经血量多有块，带下量多，精神不振，纳少乏力，舌质紫黯有瘀点，苔白，脉弦涩无力。治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "理冲汤"
+        },
+        {
+          "option_id": "B",
+          "content": "膈下逐瘀汤"
+        },
+        {
+          "option_id": "C",
+          "content": "少腹逐瘀汤"
+        },
+        {
+          "option_id": "D",
+          "content": "血府逐瘀汤"
+        },
+        {
+          "option_id": "E",
+          "content": "银甲丸"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 254
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0251",
+      "question_type": "single_choice",
+      "question_content": "患儿，男，5 岁。气喘，喉间哮鸣，咳嗽，痰稀色白有泡沫，流清涕，唇青，形寒肢凉，无汗，口不渴，小便清长，大便溏薄，咽不红，舌淡红，苔薄白，脉浮紧。其证候是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "寒性哮喘"
+        },
+        {
+          "option_id": "B",
+          "content": "热性哮喘"
+        },
+        {
+          "option_id": "C",
+          "content": "外寒内热证"
+        },
+        {
+          "option_id": "D",
+          "content": "肺实肾虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "肺脾气虚证"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 255
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0252",
+      "question_type": "single_choice",
+      "question_content": "患者，男，34 岁。肩背皮肤浅层肿块，与皮肤无粘连，瘤体表面中心有青黑色毛孔，挤压后有臭味的粉渣样内容物溢出，其诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脂瘤"
+        },
+        {
+          "option_id": "B",
+          "content": "肉瘤"
+        },
+        {
+          "option_id": "C",
+          "content": "流痰"
+        },
+        {
+          "option_id": "D",
+          "content": "血瘤"
+        },
+        {
+          "option_id": "E",
+          "content": "筋瘤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 256
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0253",
+      "question_type": "single_choice",
+      "question_content": "患者每至经行期间，发热，恶寒，无汗，鼻塞流涕，咽喉痒痛，咳嗽痰稀，头痛身痛，舌淡红，苔薄白，脉浮紧。经血净后，诸证渐愈。治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "桑菊饮"
+        },
+        {
+          "option_id": "B",
+          "content": "银翘散"
+        },
+        {
+          "option_id": "C",
+          "content": "荆穗四物汤"
+        },
+        {
+          "option_id": "D",
+          "content": "小柴胡汤"
+        },
+        {
+          "option_id": "E",
+          "content": "麻黄汤"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 257
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0254",
+      "question_type": "single_choice",
+      "question_content": "患儿，女，3 岁。发热日久不退，朝盛暮衰，虚烦不安，面色苍白，下肢清冷，小便清长，频数无度，大便稀溏，口渴多饮，舌质淡，苔薄黄，脉细数无力。治疗首选的方剂为A3/A4 型题共用题干：身热，微恶风，肢体酸重，鼻流浊涕、胸闷脘痞，腹胀，大便溏，小便短赤，舌苔黄腻或白腻，脉濡数。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "养阴清肺汤"
+        },
+        {
+          "option_id": "B",
+          "content": "温下清上汤"
+        },
+        {
+          "option_id": "C",
+          "content": "大补阴丸"
+        },
+        {
+          "option_id": "D",
+          "content": "增液汤"
+        },
+        {
+          "option_id": "E",
+          "content": "生脉散"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 258
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0255",
+      "question_type": "single_choice",
+      "question_content": "辨证",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "感冒-风寒束表证"
+        },
+        {
+          "option_id": "B",
+          "content": "感冒-风热犯表证"
+        },
+        {
+          "option_id": "C",
+          "content": "感冒-暑湿伤表证"
+        },
+        {
+          "option_id": "D",
+          "content": "感冒-阴虚感冒"
+        },
+        {
+          "option_id": "E",
+          "content": "感冒-气虚感冒"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 259
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0256",
+      "question_type": "single_choice",
+      "question_content": "代表方",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "新加香薷饮"
+        },
+        {
+          "option_id": "B",
+          "content": "银翘散"
+        },
+        {
+          "option_id": "C",
+          "content": "麻杏石甘汤"
+        },
+        {
+          "option_id": "D",
+          "content": "加减葳蕤汤"
+        },
+        {
+          "option_id": "E",
+          "content": "荆防达表汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 260
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0257",
+      "question_type": "single_choice",
+      "question_content": "治法共用题干：身肿日久，按之凹陷不起，纳减便溏，面色不华，神疲肢倦，苔白腻，脉沉缓。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "辛凉解表"
+        },
+        {
+          "option_id": "B",
+          "content": "辛温解表"
+        },
+        {
+          "option_id": "C",
+          "content": "清暑祛湿解表"
+        },
+        {
+          "option_id": "D",
+          "content": "益气解表"
+        },
+        {
+          "option_id": "E",
+          "content": "滋阴解表"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 261
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0258",
+      "question_type": "single_choice",
+      "question_content": "选方",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "越婢加术汤"
+        },
+        {
+          "option_id": "B",
+          "content": "五皮饮合胃苓汤"
+        },
+        {
+          "option_id": "C",
+          "content": "济生肾气丸合真武汤"
+        },
+        {
+          "option_id": "D",
+          "content": "桃红四物汤合五苓散"
+        },
+        {
+          "option_id": "E",
+          "content": "实脾饮"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 262
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0267",
+      "question_type": "single_choice",
+      "question_content": "治法",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "通阳泄浊，豁痰宣痹"
+        },
+        {
+          "option_id": "B",
+          "content": "疏肝理气，活血通络"
+        },
+        {
+          "option_id": "C",
+          "content": "活血化瘀，通脉止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "辛温散寒，宣通心阳"
+        },
+        {
+          "option_id": "E",
+          "content": "益气养阴，活血通脉"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 271
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0268",
+      "question_type": "single_choice",
+      "question_content": "若痰浊郁而化热选用共用题干：虚烦不寐，触事易惊，终日惕惕，胆怯心悸，伴气短自汗，倦怠乏力，舌淡，脉弦细。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血府逐瘀汤合失笑散"
+        },
+        {
+          "option_id": "B",
+          "content": "丹栀逍遥散"
+        },
+        {
+          "option_id": "C",
+          "content": "柴胡疏肝散"
+        },
+        {
+          "option_id": "D",
+          "content": "黄连温胆汤加郁金"
+        },
+        {
+          "option_id": "E",
+          "content": "枳实薤白桂枝汤合当归四逆汤"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 272
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0269",
+      "question_type": "single_choice",
+      "question_content": "诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "不寐肝火扰心证"
+        },
+        {
+          "option_id": "B",
+          "content": "不寐心胆气虚证"
+        },
+        {
+          "option_id": "C",
+          "content": "不寐痰热扰心证"
+        },
+        {
+          "option_id": "D",
+          "content": "不寐心脾两虚证"
+        },
+        {
+          "option_id": "E",
+          "content": "不寐心肾不交证"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 273
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0272",
+      "question_type": "single_choice",
+      "question_content": "胸痹心脾两虚证，治疗应首选（277～278 题共用备选答案）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "出疹后 5 天"
+        },
+        {
+          "option_id": "B",
+          "content": "出疹后 10 天"
+        },
+        {
+          "option_id": "C",
+          "content": "14 天"
+        },
+        {
+          "option_id": "D",
+          "content": "7 天"
+        },
+        {
+          "option_id": "E",
+          "content": "21 天"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 276
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0274",
+      "question_type": "single_choice",
+      "question_content": "麻疹合并肺炎隔离至(279\\~280 题共用备选答案)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴谷、关元"
+        },
+        {
+          "option_id": "B",
+          "content": "风门、合谷"
+        },
+        {
+          "option_id": "C",
+          "content": "气海、膻中"
+        },
+        {
+          "option_id": "D",
+          "content": "丰隆、曲池"
+        },
+        {
+          "option_id": "E",
+          "content": "天突、神阙"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 278
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0276",
+      "question_type": "single_choice",
+      "question_content": "哮喘痰热阻肺的配穴(281\\~282 题共用备选答案)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "失笑散"
+        },
+        {
+          "option_id": "B",
+          "content": "桃红四物汤"
+        },
+        {
+          "option_id": "C",
+          "content": "少腹逐瘀汤"
+        },
+        {
+          "option_id": "D",
+          "content": "温经汤"
+        },
+        {
+          "option_id": "E",
+          "content": "通瘀煎"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 280
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0278",
+      "question_type": "single_choice",
+      "question_content": "月经过少血瘀证，选方(283\\~284 题共用备选答案)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "有头疖"
+        },
+        {
+          "option_id": "B",
+          "content": "无头疖"
+        },
+        {
+          "option_id": "C",
+          "content": "暑疖"
+        },
+        {
+          "option_id": "D",
+          "content": "蜂蛄疖"
+        },
+        {
+          "option_id": "E",
+          "content": "疖病"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 282
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0280",
+      "question_type": "single_choice",
+      "question_content": "多发于项后发际的外科疾病是(285\\~286 题共用备选答案)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "灯草灸"
+        },
+        {
+          "option_id": "B",
+          "content": "隔姜灸"
+        },
+        {
+          "option_id": "C",
+          "content": "隔蒜灸"
+        },
+        {
+          "option_id": "D",
+          "content": "隔盐灸"
+        },
+        {
+          "option_id": "E",
+          "content": "隔附子饼灸"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 284
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0282",
+      "question_type": "single_choice",
+      "question_content": "治疗风寒痹痛常用(287\\~288 题共用备选答案)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "斑块状脱发"
+        },
+        {
+          "option_id": "B",
+          "content": "发根部有菌鞘"
+        },
+        {
+          "option_id": "C",
+          "content": "特殊的鼠尿臭"
+        },
+        {
+          "option_id": "D",
+          "content": "呈钱币状"
+        },
+        {
+          "option_id": "E",
+          "content": "红斑白屑"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 286
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2022-q0284",
+      "question_type": "single_choice",
+      "question_content": "肥疮的皮损特点是(289\\~290 题共用备选答案)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "短针"
+        },
+        {
+          "option_id": "B",
+          "content": "长针"
+        },
+        {
+          "option_id": "C",
+          "content": "皮肉浅薄部位"
+        },
+        {
+          "option_id": "D",
+          "content": "皮肤松弛部位"
+        },
+        {
+          "option_id": "E",
+          "content": "肌肉丰厚部位"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 288
+      }
+    }
+  ]
+}

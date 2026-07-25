@@ -955,6 +955,60 @@ AI 病患模拟使用：
 
 病例评分审核通过但答案不完整时，同样写入统一错题历史；病例错题当前只保留记录，不自动生成普通题变式。
 
+本分支同时提供统一模拟病患接口：
+
+`POST /api/v1/simulated-patient`
+
+请求体：
+
+```json
+{
+  "user_id": "兼容字段，可为空",
+  "session_id": "SP_SESSION_xxx",
+  "action": "start",
+  "user_input": "",
+  "case_id": null,
+  "practice_scope": "full",
+  "diagnosis": null,
+  "help_type": null,
+  "history_id": null,
+  "limit": 100
+}
+```
+
+`action` 支持 `start`、`dialogue`、`help`、`submit`、`stats`、`mistakes`、`collections`、`history`、`clear`、`reset`、`dialog_history` 和 `history_detail`。其中：
+
+- `start` 可选传 `case_id`，不传时由服务端选择病例；
+- `dialogue` 使用 `user_input` 继续问诊；
+- `help` 使用 `help_type=question|interpretation` 请求帮助；
+- `submit` 可传 `practice_scope` 和 `diagnosis` 提交诊断；
+- `dialog_history` 可使用 `limit=1—500`；
+- `history_detail` 使用 `history_id` 读取历史记录。
+
+响应统一包含：
+
+```json
+{
+  "session_id": "SP_SESSION_xxx",
+  "action": "start",
+  "success": true,
+  "data": {},
+  "error": null,
+  "is_complete": false,
+  "turn_count": 0,
+  "help_available": false
+}
+```
+
+用户身份规则：请求必须带当前登录会话。服务端优先使用 Cookie 对应的当前用户身份；请求体中的 `user_id` 仅保留兼容，不得用于切换用户。未登录且没有可用兼容身份时返回 `success=false`、`error=请先登录后继续`。前端新代码不得填写其他用户的 ID，也不得根据用户输入覆盖当前身份。
+
+统计与错题快捷接口仍保留路径参数以兼容旧页面：
+
+- `GET /api/v1/simulated-patient/stats/{user_id}`
+- `GET /api/v1/simulated-patient/mistakes/{user_id}`
+
+这两个接口实际查询登录态用户；路径中的 `user_id` 不参与用户切换。跨用户路径访问不会返回路径用户的数据。
+
 ### 6.3 知识卡片
 
 | 方法 | 路径 | 说明 |
@@ -1069,7 +1123,186 @@ AI 病患模拟使用：
 
 作答页固定按“单选题、多选题、填空题、简答题”分组展示；`case_quiz` 归入简答题区并保留自身题型标识。暂停与继续必须调用服务端计时接口，不能只停浏览器定时器。暂停后的剩余时长由服务端保存，刷新、离开页面或断线重连后仍保持暂停；继续后服务端基于保存的剩余秒数生成新的截止时间。交卷成功后倒计时立即停止并显示已交卷状态。
 
-### 6.5 训练任务兼容接口
+### 6.5 资格考试真题套题
+
+资格考试真题套题是独立于智能体组卷的只读题包能力。套题模板从后端发布目录读取，作答记录按当前登录用户保存。当前支持的资格考试目录与套题由
+`GET /api/v1/qualification-papers/catalog` 返回，前端不得从本地文件复制考试名称、年份或套题列表。
+
+#### 6.5.1 获取套题目录
+
+`GET /api/v1/qualification-papers/catalog`
+
+可选查询参数：
+
+| 参数 | 类型 | 说明 |
+|---|---|---|
+| `exam_id` | string | 按资格考试 ID 筛选 |
+| `year` | string | 按年份筛选 |
+| `paper_type` | string | 按套题类型筛选，例如 `真题` |
+
+响应：
+
+```json
+{
+  "schema_version": "1.0",
+  "exams": [
+    {"exam_id": "bd4f84f55760", "name": "中医执业医师资格考试"}
+  ],
+  "papers": [
+    {
+      "template_id": "bd4f84f55760-877578c095",
+      "exam_id": "bd4f84f55760",
+      "year": "2024",
+      "paper_type": "真题",
+      "title": "2024年中医执业医师（一试）题目整理",
+      "question_count": 285
+    }
+  ]
+}
+```
+
+只返回 `published=true` 的模板。`template_id` 是创建作答记录时使用的唯一标识；目录为空是正常的空结果，不应由前端补造套题。
+
+#### 6.5.2 创建作答记录
+
+`POST /api/v1/qualification-papers/{template_id}/attempts`
+
+请求：
+
+```json
+{
+  "answer_mode": "practice",
+  "duration_minutes": null
+}
+```
+
+`answer_mode` 只能是：
+
+- `practice`：练习模式，可在作答过程中查看指定题目解析；`duration_minutes` 必须为 `null`；
+- `test`：测试模式，交卷前不返回标准答案和解析；`duration_minutes` 必须为 10—300 的整数分钟。
+
+成功响应会返回 `attempt_id`、套题信息、完整题目列表、当前位置、标记题号和 `status=not_started`：
+
+```json
+{
+  "attempt_id": "qualification-xxxxxxxx",
+  "template_id": "bd4f84f55760-877578c095",
+  "source": "qualification_paper",
+  "title": "2024年中医执业医师（一试）题目整理",
+  "answer_mode": "test",
+  "duration_minutes": 60,
+  "status": "not_started",
+  "current_position": 1,
+  "marked_positions": [],
+  "created_at": "2026-07-25T08:00:00+00:00",
+  "started_at": null,
+  "submitted_at": null,
+  "items": [
+    {
+      "position": 1,
+      "question_id": "q1",
+      "question_type": "single_choice",
+      "question_content": "题目内容",
+      "options": [{"option_id": "A", "content": "选项内容"}],
+      "media": [],
+      "answer": ""
+    }
+  ]
+}
+```
+
+实际 `items` 包含 `position`、`question_id`、`question_type`、`question_content`、`options`、`media` 和当前 `answer`。测试模式在交卷前不包含 `standard_answer`、`explanation`。
+
+#### 6.5.3 读取作答记录
+
+`GET /api/v1/qualification-paper-attempts/{attempt_id}`
+
+该接口按当前登录用户读取作答记录。首次读取 `status=not_started` 的记录时会自动开始作答，并写入 `started_at`，返回的状态为 `in_progress`。状态可能为 `in_progress`、`paused` 或 `submitted`。
+
+测试模式只有 `status=submitted` 后，题目才会包含 `standard_answer` 和 `explanation`；练习模式按题目读取时可通过解析接口按需获取。其他用户的 `attempt_id` 按不存在处理并返回 `404`。
+
+#### 6.5.4 保存作答进度
+
+`PUT /api/v1/qualification-paper-attempts/{attempt_id}/progress`
+
+请求：
+
+```json
+{
+  "answers": {
+    "q1": "A",
+    "q2": "A,B"
+  },
+  "current_position": 2,
+  "marked_positions": [1, 5],
+  "paused": false
+}
+```
+
+约束：
+
+- `answers` 的键必须是当前套题中的 `question_id`；未知题目会被忽略；
+- 多选题答案使用逗号分隔的选项 ID，例如 `A,B`；
+- `current_position` 从 1 开始，超出范围时服务端截断到合法题号；
+- `marked_positions` 只保留合法题号，并由服务端去重、升序排列；
+- `paused=true` 返回 `status=paused`，否则返回 `status=in_progress`；
+- 已交卷记录不能再次保存，返回 `422`。
+
+接口返回更新后的完整作答记录。离开页面、切换题目、标记题目或提交前都应先保存最新答案；不能只依赖浏览器内存状态。
+
+#### 6.5.5 交卷与幂等
+
+`POST /api/v1/qualification-paper-attempts/{attempt_id}/submit`
+
+请求：
+
+```json
+{"request_id": "submit-由前端生成的UUID"}
+```
+
+`request_id` 必填且长度为 1—120。一次提交发生网络重试时必须复用同一个 `request_id`；服务端会返回首次提交结果，不重复计分。响应：
+
+```json
+{
+  "attempt_id": "qualification-xxxxxxxx",
+  "status": "submitted",
+  "score": 2,
+  "max_score": 2,
+  "items": [
+    {
+      "position": 1,
+      "question_id": "q1",
+      "submitted_answer": "A",
+      "standard_answer": ["A"],
+      "explanation": "题目解析",
+      "is_correct": true,
+      "answer_status": "graded"
+    }
+  ]
+}
+```
+
+标准答案存在时，服务端按选项集合进行确定性判分；未配置标准答案的题目返回 `answer_status=pending`、`is_correct=null`，不计入 `score`，但仍保留在 `items` 中。测试模式交卷前不得向用户泄露答案。
+
+#### 6.5.6 查看题目解析
+
+`GET /api/v1/qualification-paper-attempts/{attempt_id}/items/{question_id}/explanation`
+
+响应：
+
+```json
+{
+  "question_id": "q1",
+  "answer": ["A"],
+  "explanation": "题目解析"
+}
+```
+
+练习模式可直接查看；测试模式必须在交卷后查看。题目不属于该作答记录、或测试模式尚未交卷时，服务端返回 `403`；作答记录不存在返回 `404`。
+
+资格套题接口的所有作答记录都按登录用户隔离。前端不得把 `user_id` 拼入请求路径，也不得使用目录中的原始题库文件绕过作答记录读取答案。
+
+### 6.6 训练任务兼容接口
 
 尚未完全迁移的训练入口使用：
 

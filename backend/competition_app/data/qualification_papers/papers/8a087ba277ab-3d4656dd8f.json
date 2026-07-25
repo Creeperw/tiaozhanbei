@@ -1,0 +1,981 @@
+{
+  "template_id": "8a087ba277ab-3d4656dd8f",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0076",
+      "question_type": "multiple_choice",
+      "question_content": "下列方剂中，体现“降中寓升，寓补于通”的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄龙汤"
+        },
+        {
+          "option_id": "B",
+          "content": "济川煎"
+        },
+        {
+          "option_id": "C",
+          "content": "麻子仁丸"
+        },
+        {
+          "option_id": "D",
+          "content": "增液承气汤"
+        },
+        {
+          "option_id": "E",
+          "content": "温脾汤  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：济川煎既可温肾益精治其本，又能润肠通便以治标。用药灵巧，补中有泻，降中有升，寓通于补之中，寄降于升之内。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 76
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0077",
+      "question_type": "multiple_choice",
+      "question_content": "医师未按照注册执业范围执业，且造成严重后果，应处以",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "暂停3个月以上6个月以下执业活动"
+        },
+        {
+          "option_id": "B",
+          "content": "暂停6个月以上1年以下执业活动"
+        },
+        {
+          "option_id": "C",
+          "content": "吊销执照"
+        },
+        {
+          "option_id": "D",
+          "content": "罚款1万元以上3万元以下"
+        },
+        {
+          "option_id": "E",
+          "content": "责令改正  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "解析：医师未按照注册的执业地点、执业类别、执业范围执业的，由县级以上人民政府卫生健康主管部门或者中医药主管部门责令改正，给予警告，没收违法所得，并处一万元以上三万元以下的罚款；情节严重的，责令暂停六个月以上一年以下执业活动直至吊销医师执业证书。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 77
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0078",
+      "question_type": "multiple_choice",
+      "question_content": "患者治疗疾病时，自主选择看病就诊医院体现了卫生法的什么原则",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "预防为主原则"
+        },
+        {
+          "option_id": "B",
+          "content": "患者自主原则"
+        },
+        {
+          "option_id": "C",
+          "content": "公平原则"
+        },
+        {
+          "option_id": "D",
+          "content": "保护社会健康原则"
+        },
+        {
+          "option_id": "E",
+          "content": "选择权  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：卫生发的基本原则包括卫生保护原则、预防为主原则、公平原则、保护社会健康原则、患者自主原则；其中患者自主选择就医医院属于患者自主原则。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 78
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0079",
+      "question_type": "multiple_choice",
+      "question_content": "下列描述中，属于医师义务的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "从事医学教育、研究、学术交流"
+        },
+        {
+          "option_id": "B",
+          "content": "参加专业培训，接受继续医学教育"
+        },
+        {
+          "option_id": "C",
+          "content": "依法参与其民主管理，提出意见和建议"
+        },
+        {
+          "option_id": "D",
+          "content": "努力钻研业务，更新知识"
+        },
+        {
+          "option_id": "E",
+          "content": "获得劳动报酬  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：医师义务主要是指医师需要去做的事情，具体包括以下：①树立敬业精神，恪守职业道德，履行医师职责，尽职尽责救治患者，执行疫情防控等公共卫生措施。②遵守临床诊疗指南，遵守临床技术操作规范和医学伦理规范等；③尊重、关心、爱护患者，依法保护患者隐私和个人信息；④提高专业技术能力水平，提升医疗卫生服务质量；⑤宣传推广健康科普知识，对患者进行健康教育。其它选项均为医师的权利。80. 国务院卫生行政部门单独或者与国务院有关部门联合制定发布的规范性文件"
+        },
+        {
+          "option_id": "G",
+          "content": "卫生法"
+        },
+        {
+          "option_id": "H",
+          "content": "卫生规章"
+        },
+        {
+          "option_id": "I",
+          "content": "卫生行政法规"
+        },
+        {
+          "option_id": "J",
+          "content": "卫生标准\n\n懒人医考整理"
+        },
+        {
+          "option_id": "K",
+          "content": "法律  \n答案："
+        },
+        {
+          "option_id": "L",
+          "content": "解析：国务院卫生行政部门单独或联合发布的规范性文件指的是卫生规章，如《医师资格考试暂行办法》等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 79
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0081",
+      "question_type": "multiple_choice",
+      "question_content": "下列关于中医药服务说法错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "县级以上人民政府应当举办规模适宜的中医医疗机构"
+        },
+        {
+          "option_id": "B",
+          "content": "县级以上人民政府应当采取措施，增强社区卫生服务站和村卫生室提供中医药服务的能力"
+        },
+        {
+          "option_id": "C",
+          "content": "国家支持社会力量举办中医医疗机构"
+        },
+        {
+          "option_id": "D",
+          "content": "中医医疗机构备案后，中医医师可开展任何中医医疗活动"
+        },
+        {
+          "option_id": "E",
+          "content": "中医医疗机构配备医务人员应当以中医药专业技术人员为主，主要提供中医药服务\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "解析：中医诊所、中医医师不得超出备案范围开展医疗活动。其余选项描述均正确。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 81
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0082",
+      "question_type": "multiple_choice",
+      "question_content": "下列不属于特殊药品的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麻醉药品"
+        },
+        {
+          "option_id": "B",
+          "content": "精神药品"
+        },
+        {
+          "option_id": "C",
+          "content": "医疗用毒性药品"
+        },
+        {
+          "option_id": "D",
+          "content": "生物制剂"
+        },
+        {
+          "option_id": "E",
+          "content": "放射性药品\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：特殊药品包括麻醉药品、精神药品、医疗用毒性药品、放射性药品等，国家对其实行特殊管理。"
+        },
+        {
+          "option_id": "G",
+          "content": "2型题"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 82
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0083",
+      "question_type": "multiple_choice",
+      "question_content": "患者症见发热恶寒，头身痛，无汗，口渴，烦躁，尿黄，其证属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "表邪入里"
+        },
+        {
+          "option_id": "B",
+          "content": "表寒里热"
+        },
+        {
+          "option_id": "C",
+          "content": "表里俱热"
+        },
+        {
+          "option_id": "D",
+          "content": "表寒里虚"
+        },
+        {
+          "option_id": "E",
+          "content": "真热假寒\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "解析：发热恶寒，头身痛，无汗属表寒证特点，口渴，烦燥，尿黄属里热证特征。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 83
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0084",
+      "question_type": "multiple_choice",
+      "question_content": "孕妇产时大出血，面色苍白，气少息微，冷汗淋漓，舌淡，脉散大无根，临床诊断最可能是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气不摄血证"
+        },
+        {
+          "option_id": "B",
+          "content": "气血两虚证"
+        },
+        {
+          "option_id": "C",
+          "content": "气随血脱证"
+        },
+        {
+          "option_id": "D",
+          "content": "气虚血瘀证"
+        },
+        {
+          "option_id": "E",
+          "content": "肾不纳气证\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：气随血脱证是指由于大失血，导致元气外脱所产生的危重证候。临床表现：大出血时，突然面色苍白，大汗淋漓，四肢厥冷，呼吸微弱，甚至晕厥，舌淡，脉微欲绝或见芤脉。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 84
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0085",
+      "question_type": "multiple_choice",
+      "question_content": "患者素体虚弱，气短乏力，语声低微，伴有便意频频，脱肛，其病机属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞"
+        },
+        {
+          "option_id": "B",
+          "content": "气虚"
+        },
+        {
+          "option_id": "C",
+          "content": "气逆"
+        },
+        {
+          "option_id": "D",
+          "content": "气陷"
+        },
+        {
+          "option_id": "E",
+          "content": "气脱\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：气陷证是指气虚无力升举，清阳之气下陷以自觉气坠，或脏器下垂为主要表现的虚弱证候。临床表现：头晕眼花，气短疲乏，脘腹坠胀感，大便稀溏，形体消瘦，或见内脏下垂、脱肛、阴挺等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 85
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0086",
+      "question_type": "multiple_choice",
+      "question_content": "患者心神不安，惊惕不宁，胆怯烦躁，失眠眩晕伴呕恶，多见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心胆气虚"
+        },
+        {
+          "option_id": "B",
+          "content": "心血不足"
+        },
+        {
+          "option_id": "C",
+          "content": "心脾两虚"
+        },
+        {
+          "option_id": "D",
+          "content": "胆郁痰扰"
+        },
+        {
+          "option_id": "E",
+          "content": "胆经湿热\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：胆郁痰扰证：胆怯易惊，惊悸不宁，失眠多梦，烦躁不安，胸胁胀闷，善太息，头晕目眩，口苦呕恶，舌淡红或红，苔白腻或黄滑，脉弦缓或弦数。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 86
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0087",
+      "question_type": "multiple_choice",
+      "question_content": "患者经常咳嗽气喘，吐多量白稠痰，神疲乏力，食少，口淡不渴，舌质淡胖，苔白腻，脉弱。为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "寒热错杂"
+        },
+        {
+          "option_id": "B",
+          "content": "寒证化热"
+        },
+        {
+          "option_id": "C",
+          "content": "表里同病"
+        },
+        {
+          "option_id": "D",
+          "content": "虚实夹杂"
+        },
+        {
+          "option_id": "E",
+          "content": "热证转寒\n\n![](images/f80d5043ca5700851a45d8adfc2ef478072561d77dd175f06cb5fc7a794c27d2.jpg)\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：吐多量白稠痰，苔白腻，属于实证征象；神疲乏力，食少又有虚象。故为虚实夹杂。\n\n![](images/0a352214b0ef7d3bd9e38157c61433153e012f90df7fafa5f2f96f20f6b33b4f.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/4f94087f17d65a6c146d7028a1b8f635a08a1f8df89ded15f848ac0b89d4bc13.jpg)\n\n2-中西医结合内科学辨证论治汇总\n\n![](images/f5ef1ecc83cce83c4c06c819992b4042d355b724348edd347a787fec2e78ddc4.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/09e5eb5f6c598d24e3ecd6af278610267aa33c376b7ea15eafa05f5734f01fde.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/f62f5e492de8a345aea62007775a48bc1e38cc879b4945b56d5768ac71eed364.jpg)\n\n5-中西医结合儿科学辨证论治汇总\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/a631bd2e2089bf106924d3ffa059b2a9bb1d9fed1947c3092506ccaf71f716d2.jpg)\n\n![](images/0ba321bb2edbf6e9c9d2b87a2f40a44e12e5f177eda1ca2fa0cd1a9346e1c258.jpg)\n\n![](images/c9eb03222eeb6d94ed31b006b241674c390bb33e869c4b9ae0a51073f755b0c3.jpg)  \n6-中西医结合内科学最字题\n\n7-中西医结合内科学首选类题目\n\n![](images/a1d8805a2826df44144d2231aa02f4f1b62e5f2d4b6987ab2204c6a4a9af8257.jpg)\n\n8-中西医外妇儿首选类题目\n\n![](images/e801d6073aa2f54926525555c65c2a313dfd15c69e65e603ed9bdaf09fea1ac4.jpg)\n\n9-经络系统常考总结\n\n10-特定穴\n记忆歌诀汇总\n\n![](images/48009267011c13eda895d67f10e8b9c258fb1f99863fd6613a6a512e8c3a5e76.jpg)\n\n![](images/ecd79c055412d5cdc24aadb1b018eaab1db53f8de5c9d0de00ecafa2e371ff1d.jpg)\n\n![](images/89c64830ca5fd160a0dd381ce88f66f134fd1772c51a3ad3fb5e4cf0ca4c1b3b.jpg)  \n11-中药相同功效药物总结\n\n![](images/e4e19a0b7d8d63787e46c188bf0d2d5337e0d76af188c588e8c0a79d1bef53f7.jpg)\n\n12-中药学30味中药药理作用总\n\n13-方剂学常考重点总结\n\n结"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 87
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0088",
+      "question_type": "multiple_choice",
+      "question_content": "患者身热夜甚，口不渴，烦躁不安，斑疹隐隐，舌红绛，脉细数，其病机为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "风寒束表"
+        },
+        {
+          "option_id": "B",
+          "content": "风热壅盛"
+        },
+        {
+          "option_id": "C",
+          "content": "热入营分"
+        },
+        {
+          "option_id": "D",
+          "content": "热在气分"
+        },
+        {
+          "option_id": "E",
+          "content": "阳明热盛\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：营分证是指温病邪热内陷，营阴受损，心神被扰所表现的证候。临床表现：身热夜甚，口不甚渴或不渴，心烦不寐，甚或神昏谵语，斑疹隐隐，舌质红绛无苔，脉细数。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 88
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0089",
+      "question_type": "multiple_choice",
+      "question_content": "患者，男，出现脱发，头发已脱，头皮瘙痒、多屑多脂，考虑为 懒人医考整理",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾精亏损"
+        },
+        {
+          "option_id": "B",
+          "content": "气血两虚"
+        },
+        {
+          "option_id": "C",
+          "content": "久病体弱"
+        },
+        {
+          "option_id": "D",
+          "content": "血虚受风"
+        },
+        {
+          "option_id": "E",
+          "content": "血热化燥\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：脱发：①头发已脱，头皮瘙痒、多屑多脂，为血热化燥。②突然片状脱发，脱落处显露圆形或椭圆形光亮头皮而无自觉症状（斑秃），为血虚受风。③青壮年头发稀疏易落，有眩晕、健忘、腰膝酸软，为肾虚。\n\n中药方剂"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 89
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0090",
+      "question_type": "multiple_choice",
+      "question_content": "患者，男，30 岁，淋雨之后出现无汗，头痛项强，肢体酸楚疼痛，口苦微渴，苔白，脉浮。应选择的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "九味羌活汤"
+        },
+        {
+          "option_id": "B",
+          "content": "小青龙汤"
+        },
+        {
+          "option_id": "C",
+          "content": "大青龙汤"
+        },
+        {
+          "option_id": "D",
+          "content": "桂枝汤"
+        },
+        {
+          "option_id": "E",
+          "content": "柴葛解肌汤\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：九味羌活汤主治：外感风寒湿邪，内有蕴热证。恶寒发热，无汗，头痛项强，肢体酸楚疼痛，口苦微渴，舌苔白或微黄，脉浮。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 90
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0091",
+      "question_type": "multiple_choice",
+      "question_content": "患者心烦不寐，头晕目眩，耳鸣，腰酸梦遗，五心烦热，舌红，少苔，脉细数，当用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "归脾丸"
+        },
+        {
+          "option_id": "B",
+          "content": "酸枣仁汤"
+        },
+        {
+          "option_id": "C",
+          "content": "龙胆泻肝丸"
+        },
+        {
+          "option_id": "D",
+          "content": "逍遥丸"
+        },
+        {
+          "option_id": "E",
+          "content": "天王补心丹\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：天王补心丹主治：阴虚血少，神志不安证。心悸怔忡，虚烦失眠，神疲健忘，或梦遗，手足心热，口舌生疮，大便干结，舌红少苔，脉细数。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 91
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0092",
+      "question_type": "multiple_choice",
+      "question_content": "患者王某，连续熬夜 4 天，症见口眼歪斜，舌强不能言语，手足不能运动，苔白，脉弦细。治宜首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补阳还五汤"
+        },
+        {
+          "option_id": "B",
+          "content": "牵正散"
+        },
+        {
+          "option_id": "C",
+          "content": "镇肝熄风汤"
+        },
+        {
+          "option_id": "D",
+          "content": "大秦艽汤"
+        },
+        {
+          "option_id": "E",
+          "content": "川芎茶调散\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：大秦艽汤主治：风邪初中经络证。口眼喎斜，舌强不能言语，手足不能运动，或恶寒发热，苔白或黄，脉浮数或弦细。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 92
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0093",
+      "question_type": "multiple_choice",
+      "question_content": "患者症见腹中拘急疼痛，喜温喜按，神疲乏力，虚怯少气，面色无华，舌淡苔白，脉弦细。治宜首选方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "理中丸"
+        },
+        {
+          "option_id": "B",
+          "content": "小建中汤"
+        },
+        {
+          "option_id": "C",
+          "content": "吴茱萸汤"
+        },
+        {
+          "option_id": "D",
+          "content": "大建中汤"
+        },
+        {
+          "option_id": "E",
+          "content": "当归四逆汤\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：小建中汤主治：中焦虚寒，肝脾失调，阴阳不和证。腹中拘急疼痛，喜温喜按，神疲乏力，虚怯少气；或心中悸动，虚烦不宁，面色无华；兼见手足烦热，咽干口燥。舌淡苔白，脉细弦。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 93
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0094",
+      "question_type": "multiple_choice",
+      "question_content": "患者头痛时作，痛连项背，遇风尤甚，恶风寒，肢体酸楚，口不渴，舌苔薄白，脉浮。治疗应首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "川芎茶调散"
+        },
+        {
+          "option_id": "B",
+          "content": "芎芷石膏汤"
+        },
+        {
+          "option_id": "C",
+          "content": "羌活胜湿汤"
+        },
+        {
+          "option_id": "D",
+          "content": "大补元煎"
+        },
+        {
+          "option_id": "E",
+          "content": "天麻钩藤饮\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：川芎茶调散主治：外感风邪头痛。偏正头痛，或巅顶作痛，目眩鼻塞，或恶风发热，舌苔薄白，脉浮。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 94
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0095",
+      "question_type": "multiple_choice",
+      "question_content": "患儿，5 岁，天气炎热，吃雪糕之后，突然昏倒，牙关紧闭，不省人事，苔白，脉迟，治宜",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "紫雪"
+        },
+        {
+          "option_id": "B",
+          "content": "至宝丹"
+        },
+        {
+          "option_id": "C",
+          "content": "苏合香丸"
+        },
+        {
+          "option_id": "D",
+          "content": "羚角钩藤汤"
+        },
+        {
+          "option_id": "E",
+          "content": "安宫牛黄丸\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：苏合香丸主治：寒闭证。突然昏倒，牙关紧闭，不省人事，苔白，脉迟。亦治心腹卒痛，甚则昏厥，属寒凝气滞者。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 95
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0096",
+      "question_type": "multiple_choice",
+      "question_content": "患者下痢，赤多白少，或纯下赤冻，肛门灼热，口渴引饮，苔黄脉数，治疗宜选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "葛根芩连汤"
+        },
+        {
+          "option_id": "B",
+          "content": "白头翁汤"
+        },
+        {
+          "option_id": "C",
+          "content": "芍药汤"
+        },
+        {
+          "option_id": "D",
+          "content": "枳实导滞丸"
+        },
+        {
+          "option_id": "E",
+          "content": "大柴胡汤\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：白头翁汤主治：热毒痢疾。腹痛，里急后重，肛门灼热，下痢脓血，赤多白少，渴欲饮水，舌红苔黄，脉弦数。\n\n![](images/a798491304717a028b511cca9685d6a8ca7d2b55b88d91b71a5aab548d39ed98.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/ae55f310e3ff8c53f7f3f75bbf4a4293b487d8666a25e823f99b041f533f49b6.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/6b98803b450b4b2b5b782e684e71b9ef6522c516e91c4cf0699848febee8b976.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/a010be4b033900ed348eb88e567c41be4df5e806d97f1c993563e1a7212e1ef7.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/4442cf18f0ed3cae3f1f26e4608a95eef57dda95f097f2424fe6dfb6d0665bfb.jpg)  \n5-中西医结合儿科学辨证论治汇总\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/c9e6f1c1d46ad2ca68d4a917c3fc3bb030e8c104bdfb85577d599238abe9119d.jpg)  \n6-中西医结合内科学最字题\n\n![](images/d703e2ed2956c63134ac94b121f427f821c85dea8c1a532d4ec5c40561d3c59b.jpg)  \n7-中西医结合内科学首选类题目\n\n![](images/0b1fc800f9a08fc25444f7d5761e0dfa9d0e276c516781b7e014291806adaa06.jpg)  \n8-中西医外妇儿首选类题目\n\n![](images/dfa6ce263c33c635eaee6778b2abebd8c70766b8ed67bb3a94b3bb7628df4dc8.jpg)  \n9-经络系统常考总结\n\n![](images/64a7b8679b2ddc2ccd8971b87c79bb7aee79eac3a557c57b3df7ca8fb52e9736.jpg)  \n10-特定穴\n记忆歌诀汇总\n\n![](images/c6667e16b64e9f646fce553f96e2d1d6e4d42a4363b9fdf3d1145132adab532e.jpg)\n\n![](images/45ece1bf223165cbfac8cdc5302426b4585b3057e80499760f5917ac55be0161.jpg)\n\n![](images/24a18cfb144188e594caf8a64071d53cbf76badb71c04e61b44c750fa3be472e.jpg)  \n11-中药相同功效药物总结\n\n![](images/ba60d32fa80b8bc046df97cd45f95767f214c70daa63a6cc81733f5703cf3fac.jpg)  \n12-中药学30味中药药理作用总  \n结"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 96
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0097",
+      "question_type": "multiple_choice",
+      "question_content": "患者症见咳嗽痰多，色白易咯，恶心呕吐，胸膈痞闷，肢体困重，头眩心悸，舌苔白滑或腻，脉滑",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "苓甘五味姜辛汤"
+        },
+        {
+          "option_id": "B",
+          "content": "二陈汤"
+        },
+        {
+          "option_id": "C",
+          "content": "温胆汤\n\n![](images/be3a9f4fca89f0fb238aa4b5b32a21313e41640159bc0e7fabae35db3df7f984.jpg)\n\n懒人医考整理"
+        },
+        {
+          "option_id": "D",
+          "content": "藿香正气散"
+        },
+        {
+          "option_id": "E",
+          "content": "平胃散\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：二陈汤主治：湿痰证。咳嗽痰多，色白易咯，恶心呕吐，胸膈痞闷，肢体困重，或头眩心悸，舌苔白滑或腻，脉滑。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 97
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0098",
+      "question_type": "multiple_choice",
+      "question_content": "某男，29 岁。近一年来出现食积不化，消化不良。近来偶尔遗尿，遗精，检查患有轻微肝胆结石症，医生处以鸡内金，鸡内金除运脾消食外，又能",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "固精止遗"
+        },
+        {
+          "option_id": "B",
+          "content": "行气利水"
+        },
+        {
+          "option_id": "C",
+          "content": "调经止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "燥湿化痰"
+        },
+        {
+          "option_id": "E",
+          "content": "消肿排脓\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：鸡内金功效：消食健胃，固精止遗，通淋化石。  \n应用：饮食积滞，小儿疳积。肾虚遗精、遗尿。菟丝子散；砂石淋证，胆结石。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 98
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0099",
+      "question_type": "multiple_choice",
+      "question_content": "患者症见头痛目赤，胁痛，口苦，耳聋，舌红苔黄，脉弦数有力。治宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "左金丸"
+        },
+        {
+          "option_id": "B",
+          "content": "大柴胡汤"
+        },
+        {
+          "option_id": "C",
+          "content": "蒿芩清胆汤"
+        },
+        {
+          "option_id": "D",
+          "content": "龙胆泻肝汤"
+        },
+        {
+          "option_id": "E",
+          "content": "四逆散\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：龙胆泻肝汤主治：肝胆实火上炎证。头痛目赤，胁痛，口苦，耳聋，耳肿，舌红苔黄，脉弦数有力。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 99
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-3d4656dd8f-q0100",
+      "question_type": "multiple_choice",
+      "question_content": "患者男，夜间睡眠容易惊醒，偶有遗精，下列可选的中药是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "磁石"
+        },
+        {
+          "option_id": "B",
+          "content": "珍珠母"
+        },
+        {
+          "option_id": "C",
+          "content": "代赭石"
+        },
+        {
+          "option_id": "D",
+          "content": "龙骨"
+        },
+        {
+          "option_id": "E",
+          "content": "海蛤壳\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：龙骨镇惊安神，平肝淋阳，收敛固涩，收湿敛疮。用于滑脱诸证。味涩能敛，有收敛固涩功效，通过不同配伍可治疗遗精、滑精、尿频、遗尿、崩漏、带下、自汗、盗汗等多种正虚滑脱之证。\n\n![](images/43a2c153a6ead0719200c52f1236c7aa76a55a186b2db3344273b27a80ba3439.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/c646ca8ddf590f2eeec09fa4128fc69321860914b598d43a77937874cd330d3b.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/b83443d621590e63e132255eb4c95bd7135f9d15beab00184e66ad9164f9f49d.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/35ab9cec0b56a78dca5e8609226790d2e8214ce6128e6e1851b6a44ac4b2de58.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/6a2c5aee6339c1d9a3b882a59f87e09c2734884261e7980b4a23761477fbf013.jpg)  \n5-中西医结合儿科学辨证论治汇总\n\n![](images/48257182b272d1c0246c890f4a77055d9302c535bc86cd0472926544e48b9043.jpg)\n\n![](images/0aa73c56d896378e07d7915f2f5d1a3ca345559bec431f99013fa3dd1ebbc3ed.jpg)  \n6-中西医结合内科学最字题\n\n![](images/6331d4c67b5e04bf4171779d68e4fb30d9cf22eee0092d860b067128339a21c7.jpg)  \n7-中西医结合内科学首选类题目\n\n![](images/e674707e8ba130a14dca7dcbe860b0dba8c1d49fd2398ece6bace7afdde5bb3d.jpg)  \n8-中西医外妇儿首选类题目  \n9-经络系统常考总结\n\n![](images/b086407b943c99eabf3830b2c06bf01a7f2cf739a29e519aea1685166b8e4203.jpg)  \n10-特定穴\n记忆歌诀汇总  \n可扫码关注微信公众平台\n\n![](images/49c2ecc9828bc82e797996b2edad3c328ff57b8e4fe3aeb2fee41d1c78449cc3.jpg)\n\n![](images/e3fa297f5154ef8ec741ee588192a59f01462cd9e28ee4628764af3af4ccba2e.jpg)  \n11-中药相同功效药物总结\n\n![](images/3b1f703982a40b540885ddecf8fde7a7b71cdaee59dec5c8ee5bb7a2308bf9c7.jpg)  \n12-中药学30味中药药理作用总  \n结\n\n![](images/585032954b5090f48f56129f28c36a7d9f0d41a14763faa6314d6a8de6eef1b1.jpg)  \n13-方剂学常考重点总结"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+        "number": 100
+      }
+    }
+  ]
+}

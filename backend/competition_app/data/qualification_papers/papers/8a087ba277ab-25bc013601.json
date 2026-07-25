@@ -1,0 +1,438 @@
+{
+  "template_id": "8a087ba277ab-25bc013601",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0001",
+      "question_type": "multiple_choice",
+      "question_content": "下列选项为饮食不洁同时感受外邪最易发生的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "漏"
+        },
+        {
+          "option_id": "B",
+          "content": "痛"
+        },
+        {
+          "option_id": "C",
+          "content": "岩"
+        },
+        {
+          "option_id": "D",
+          "content": "痰"
+        },
+        {
+          "option_id": "E",
+          "content": "疡  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：饮食不洁，如恣食膏粱厚味、醇酒炙燠或辛辣刺激之品可使脾胃功能失调，湿热火毒内生，同时感受外邪则易发生痈、有头疽、疔疮等疾病。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 1
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0002",
+      "question_type": "multiple_choice",
+      "question_content": "除以下哪项外，均是血管瘤的治疗方法",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "穿刺"
+        },
+        {
+          "option_id": "B",
+          "content": "手术"
+        },
+        {
+          "option_id": "C",
+          "content": "放射"
+        },
+        {
+          "option_id": "D",
+          "content": "冷冻"
+        },
+        {
+          "option_id": "E",
+          "content": "硬化剂注射  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：血管瘤的西医治疗包括：手术治疗，放射治疗，硬化剂治疗，冷冻、激光、电烙等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 2
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0003",
+      "question_type": "multiple_choice",
+      "question_content": "以下情况属于补托法的适应症的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气血生化不及而致其功能失常"
+        },
+        {
+          "option_id": "B",
+          "content": "身体经络的局部虚弱"
+        },
+        {
+          "option_id": "C",
+          "content": "毒气虽盛而正气未衰"
+        },
+        {
+          "option_id": "D",
+          "content": "正虚毒盛，正气不能托毒外达"
+        },
+        {
+          "option_id": "E",
+          "content": "肿疡邪毒不致结聚成脓而得到消散\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：托法是用补益气血和透脓的药物，扶助正气，托毒外出，以免毒邪扩散和内陷的治疗法则。托法适用于外疡中期即成脓期。分为补托和透托两种方法。补托法适用于正虚毒盛，正气不能托毒外达；透托法适用于毒气虽盛而正气未衰者。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 3
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0004",
+      "question_type": "multiple_choice",
+      "question_content": "灭菌的概念为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "杀灭一切活的微生物"
+        },
+        {
+          "option_id": "B",
+          "content": "杀灭病原微生物"
+        },
+        {
+          "option_id": "C",
+          "content": "杀灭细菌"
+        },
+        {
+          "option_id": "D",
+          "content": "杀灭有害微生物"
+        },
+        {
+          "option_id": "E",
+          "content": "杀灭芽孢类微生物\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：灭菌是指杀灭一切活的微生物。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 4
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0005",
+      "question_type": "multiple_choice",
+      "question_content": "局部浸润麻醉的适应症不包括",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "鼻腔部位手术"
+        },
+        {
+          "option_id": "B",
+          "content": "皮下小囊肿摘除\n\n懒人医考整理"
+        },
+        {
+          "option_id": "C",
+          "content": "甲状腺腺瘤摘除术"
+        },
+        {
+          "option_id": "D",
+          "content": "封闭治疗"
+        },
+        {
+          "option_id": "E",
+          "content": "浅表小肿块活检  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：封闭治疗属于局部浸润麻醉的适应症。鼻腔部位手术应选择黏膜表面麻醉。皮下小囊肿摘除、浅表小肿块活检应选择区域阻滞麻醉。甲状腺腺瘤摘除术应选择神经阻滞麻醉。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 5
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0006",
+      "question_type": "multiple_choice",
+      "question_content": "关于溶血反应的治疗，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "抗休克"
+        },
+        {
+          "option_id": "B",
+          "content": "换血治疗"
+        },
+        {
+          "option_id": "C",
+          "content": "保护肾功能"
+        },
+        {
+          "option_id": "D",
+          "content": "防治弥散性血管内凝血"
+        },
+        {
+          "option_id": "E",
+          "content": "使用抗组胺药物\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：溶血反应的处理包括：（1）抗休克。（2）保护肾功能。（3）若"
+        },
+        {
+          "option_id": "G",
+          "content": "IC 明显，则使用肝素。（4）必要时行血浆交换治疗。（5）若血压低，则使用多巴胺、间羟胺升压。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 6
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0007",
+      "question_type": "multiple_choice",
+      "question_content": "适用于肿疡、溃疡、皮肤病糜烂结痂渗液不多的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "箍围药"
+        },
+        {
+          "option_id": "B",
+          "content": "油膏"
+        },
+        {
+          "option_id": "C",
+          "content": "膏药"
+        },
+        {
+          "option_id": "D",
+          "content": "掺药"
+        },
+        {
+          "option_id": "E",
+          "content": "草药  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：油膏适用于肿疡、溃疡、皮肤病糜烂结痂渗液不多者，以及肛门病等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 7
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0008",
+      "question_type": "multiple_choice",
+      "question_content": "对于高血压患者，术前应将血压维持在",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "140/90mmHg 以下"
+        },
+        {
+          "option_id": "B",
+          "content": "130/80mmHg 以下"
+        },
+        {
+          "option_id": "C",
+          "content": "130-140/80-90mmHg"
+        },
+        {
+          "option_id": "D",
+          "content": "160/100mmHg 以下"
+        },
+        {
+          "option_id": "E",
+          "content": "140/80mmHg 以下\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：手术前，高血压病人血压应维持在 $160 / 100 \\mathrm{mmHg}$ 以下。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 8
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0009",
+      "question_type": "multiple_choice",
+      "question_content": "外科常见休克厥逆型选方应为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "生脉饮"
+        },
+        {
+          "option_id": "B",
+          "content": "独参汤"
+        },
+        {
+          "option_id": "C",
+          "content": "人参养营汤"
+        },
+        {
+          "option_id": "D",
+          "content": "四味回阳汤"
+        },
+        {
+          "option_id": "E",
+          "content": "保元饮合固阴煎  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：厥逆型应选用的方药为保元汤合固阴煎。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 9
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0010",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项属于食管癌津亏热结证用方的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "二陈汤加减"
+        },
+        {
+          "option_id": "B",
+          "content": "大补元煎加减"
+        },
+        {
+          "option_id": "C",
+          "content": "五汁安中饮加味"
+        },
+        {
+          "option_id": "D",
+          "content": "启膈散合逍遥散加减"
+        },
+        {
+          "option_id": "E",
+          "content": "桃红四物汤合犀角地黄汤加减\n\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：食管癌津亏热结证选方为五汁安中饮。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 10
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-25bc013601-q0011",
+      "question_type": "multiple_choice",
+      "question_content": "肾气、天癸、气血、冲任通过何处来产生月经",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "经络"
+        },
+        {
+          "option_id": "B",
+          "content": "天癸"
+        },
+        {
+          "option_id": "C",
+          "content": "胞络"
+        },
+        {
+          "option_id": "D",
+          "content": "胞宫"
+        },
+        {
+          "option_id": "E",
+          "content": "胞脉\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：月经是肾气、天癸、冲任、气血协调作用于胞宫，并在其他脏腑、经络的协同作用下，使胞宫定期藏泻而产生的生理现象。\n\n![](images/96122a8eb2bad4404969e9195d261c04d6c09b7e197f5f657c5b48f496fdd1f3.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/8415e50f55c7e4122d4ef4ae8bde9dae1a9d73e4f91295726e83cebd2ccb64ee.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/b43c097815efc8102ae9a76e980143f679c86bd6e5555c750215266381e40168.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/93aa1f3710ec17e55fdecf542c1520e6f873dbb023a714387195bf751aea9290.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/9e98d8aa2f84a69b6b96b38cd62f380e4772bd2280851f29b9a75807eedaba8b.jpg)\n\n![](images/750f54cb1c52829c117d05e8f4b79b8969e1507293ce72d1e7400fbea067ee5c.jpg)\n\n![](images/41190b8d7b7d6bd4779639d1a2c0a8ccaef5d0dc2e28ffcf0453f557f12f3a48.jpg)  \n5-中西医结合儿科学辨证论治汇总  \n6-中西医结合内科学最字题\n\n![](images/27f5116bea54b9bbdb2a630534bec098cbf8e9bfa31839c87d7498a44a08a4db.jpg)  \n7-中西医结合内科学首选类题目\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/f14c3a8fa9ab0d0c9a2f09a824b914d9ae96b60fdb1ecc22132f8c112550bb65.jpg)  \n8-中西医外妇儿首选类题目\n\n![](images/28b744a30f2ccba8f7b800920c972c68fffb231cd915e2dcab15a99353333359.jpg)  \n9-经络系统常考总结  \n10-特定穴\n记忆歌诀汇总\n\n![](images/d1db2c395b3b20594a9188fde73c198b0e6d795b3a55c761888a9d5c303e33dd.jpg)\n\n![](images/e104a90fe73511afd62edd0f1dfa498fe9e6670a06984bc92f5203d4b5de402e.jpg)  \n11-中药相同功效药物总结\n\n![](images/ec41313d90c4c97eec04ef7aeb190fde318a5b4e9652d62de65e70227d94a484.jpg)  \n12-中药学30味中药药理作用总结\n\n![](images/f5d6fea7162a0efb672ed9f2d7e66429293b3699270a8c10a91d21e53ecfdab2.jpg)  \n13-方剂学常考重点总结\n\nLAINKENYIKAO"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+        "number": 11
+      }
+    }
+  ]
+}

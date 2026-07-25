@@ -696,13 +696,19 @@ export async function submitTrainingWorkspaceTask({ fetcher, task }) {
   });
 }
 
-export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribution }) {
+export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribution, answerMode = 'practice', durationMinutes = null }) {
   const activeDistribution = Object.fromEntries(
     Object.entries(distribution || {}).filter(([, count]) => Number.isInteger(count) && count > 0),
   );
   const questionCount = Object.values(activeDistribution).reduce((total, count) => total + count, 0);
   if (!hasNonEmptyText(topic) || questionCount < 1 || questionCount > 50) {
     return { paperId: '', result: null, error: '请填写主题，并设置 1 至 50 道题的题型分布。', source: null };
+  }
+  if (!['practice', 'test'].includes(answerMode)) {
+    return { paperId: '', result: null, error: '作答模式无效。', source: null };
+  }
+  if (answerMode === 'test' && (!Number.isInteger(durationMinutes) || durationMinutes < 10 || durationMinutes > 300)) {
+    return { paperId: '', result: null, error: '测试时长应为 10 至 300 分钟。', source: null };
   }
   const typeLabels = {
     single_choice: '单选题',
@@ -722,12 +728,14 @@ export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribu
         method: 'POST',
         body: JSON.stringify({
           learner_id: 'authenticated-user',
-          user_request: `请围绕“${topic.trim()}”生成一份练习试卷，共${questionCount}题，其中${typeRequirement}。完成审核后发布到学习工坊，不要在对话中展开试卷正文。`,
+          user_request: `请围绕“${topic.trim()}”生成一份${answerMode === 'test' ? `测试模式（${durationMinutes}分钟）` : '练习模式'}试卷，共${questionCount}题，其中${typeRequirement}。完成审核后发布到学习工坊，不要在对话中展开试卷正文。`,
           available_minutes: 60,
           exam_constraints: {
             question_count: questionCount,
             question_types: Object.keys(activeDistribution).map((type) => typeLabels[type] || type),
             question_type_distribution: activeDistribution,
+            answer_mode: answerMode,
+            duration_minutes: answerMode === 'test' ? durationMinutes : null,
           },
         }),
       },

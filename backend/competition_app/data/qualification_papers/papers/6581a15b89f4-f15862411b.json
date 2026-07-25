@@ -1,0 +1,434 @@
+{
+  "template_id": "6581a15b89f4-f15862411b",
+  "questions": [
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0075",
+      "question_type": "multiple_choice",
+      "question_content": "患者突然片状脱发，显露圆形或椭圆形光亮头皮，未有不适，其病机为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾虚"
+        },
+        {
+          "option_id": "B",
+          "content": "血虚受风"
+        },
+        {
+          "option_id": "C",
+          "content": "精血不足"
+        },
+        {
+          "option_id": "D",
+          "content": "阴虚火旺"
+        },
+        {
+          "option_id": "E",
+          "content": "津液亏损\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：脱发：①突然片状脱发，脱落处显露圆形或椭圆形光亮头皮而无自觉症状（斑秃），为血虚受风。②头发已脱，头皮瘙痒、多屑多脂，为血热化燥。③青壮年头发稀疏易落，有眩晕、健忘、腰膝酸软，为肾虚。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 75
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0076",
+      "question_type": "multiple_choice",
+      "question_content": "患者出现消谷善饥，大便溏泄，多属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾胃气虚"
+        },
+        {
+          "option_id": "B",
+          "content": "湿邪困脾"
+        },
+        {
+          "option_id": "C",
+          "content": "食滞胃脘"
+        },
+        {
+          "option_id": "D",
+          "content": "消渴病"
+        },
+        {
+          "option_id": "E",
+          "content": "胃强脾弱  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：消谷善饥兼大便溏泄，见于胃强脾弱；消谷善饥兼多饮多尿，形体消瘦，见于消渴病。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 76
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0077",
+      "question_type": "multiple_choice",
+      "question_content": "患者素体虚弱，气短乏力，语声低微，伴有便意频频，脱肛，其病机属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞"
+        },
+        {
+          "option_id": "B",
+          "content": "气虚"
+        },
+        {
+          "option_id": "C",
+          "content": "气逆"
+        },
+        {
+          "option_id": "D",
+          "content": "气陷"
+        },
+        {
+          "option_id": "E",
+          "content": "气脱  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：气陷证是指气虚无力升举，清阳之气下陷以自觉气坠，或脏器下垂为主要表现的虚弱证候。临床表现：头晕眼花，气短疲乏，脘腹坠胀感，大便稀溏，形体消瘦，或见内脏下垂、脱肛、阴挺等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 77
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0078",
+      "question_type": "multiple_choice",
+      "question_content": "患者症见发热恶寒，头身痛，无汗，口渴，烦躁，尿黄，其证属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "表邪入里"
+        },
+        {
+          "option_id": "B",
+          "content": "表寒里热"
+        },
+        {
+          "option_id": "C",
+          "content": "表里俱热"
+        },
+        {
+          "option_id": "D",
+          "content": "表寒里虚"
+        },
+        {
+          "option_id": "E",
+          "content": "真热假寒  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：发热恶寒，头身痛，无汗属表寒证特点，口渴，烦燥，尿黄属里热证特征。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 78
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0079",
+      "question_type": "multiple_choice",
+      "question_content": "患者男，夜间睡眠容易惊醒，偶有遗精，下列可选的中药是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "磁石"
+        },
+        {
+          "option_id": "B",
+          "content": "珍珠母"
+        },
+        {
+          "option_id": "C",
+          "content": "代赭石"
+        },
+        {
+          "option_id": "D",
+          "content": "龙骨"
+        },
+        {
+          "option_id": "E",
+          "content": "海蛤壳\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：龙骨镇惊安神，平肝淋阳，收敛固涩，收湿敛疮。用于滑脱诸证。味涩能敛，有收敛固涩功效，通过不同配\n\n伍可治疗遗精、滑精、尿频、遗尿、崩漏、带下、自汗、盗汗等多种正虚滑脱之证。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 79
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0080",
+      "question_type": "multiple_choice",
+      "question_content": "某男，29岁。近一年来出现食积不化，消化不良。近来偶尔遗尿，遗精，检查患有轻微肝胆结石症，医生处以鸡内金，鸡内金除运脾消食外，又能",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "固精止遗"
+        },
+        {
+          "option_id": "B",
+          "content": "行气利水"
+        },
+        {
+          "option_id": "C",
+          "content": "调经止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "燥湿化痰"
+        },
+        {
+          "option_id": "E",
+          "content": "消肿排脓\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：鸡内金功效：消食健胃，固精止遗，通淋化石。\n\n应用：饮食积滞，小儿疳积。肾虚遗精、遗尿。菟丝子散；砂石淋证，胆结石。\n\n![](images/4c71df5bf24f91f6ba6c5df940b84300cb33faca66f895e2633aa01ef41efe33.jpg)"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 80
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0081",
+      "question_type": "multiple_choice",
+      "question_content": "患者症见咳嗽量多，清稀色白，或喜唾涎沫，胸满不舒，舌苔白滑，脉弦，宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小青龙汤"
+        },
+        {
+          "option_id": "B",
+          "content": "止嗽散"
+        },
+        {
+          "option_id": "C",
+          "content": "苓甘五味姜辛汤"
+        },
+        {
+          "option_id": "D",
+          "content": "九味羌活汤"
+        },
+        {
+          "option_id": "E",
+          "content": "贝母瓜蒌散\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：苓甘五味姜辛汤主治：寒饮咳嗽。咳嗽量多，清稀色白，或喜唾涎沫，胸满不舒，舌苔白滑，脉弦滑。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 81
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0082",
+      "question_type": "multiple_choice",
+      "question_content": "患者心悸怔忡，虚烦失眠，神疲健忘，梦遗，手足心热，口舌生疮，大便干结，舌红少苔，脉细数，宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "天王补心丹"
+        },
+        {
+          "option_id": "B",
+          "content": "酸枣仁汤"
+        },
+        {
+          "option_id": "C",
+          "content": "当归六黄汤"
+        },
+        {
+          "option_id": "D",
+          "content": "朱砂安神丸"
+        },
+        {
+          "option_id": "E",
+          "content": "磁朱丸\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：天王补心丹主治：阴虚血少，神志不安证。心悸怔忡，虚烦失眠，神疲健忘，或梦遗，手足心热，口舌生疮，大便干结，舌红少苔，脉细数。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 82
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0083",
+      "question_type": "multiple_choice",
+      "question_content": "某患者, 胆郁痰扰, 胆怯易惊, 头眩心悸, 心烦不眠, 夜多异梦, 呕恶呃逆, 眩晕, 癫痫, 苔白腻, 脉弦滑。治疗宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清气化痰丸"
+        },
+        {
+          "option_id": "B",
+          "content": "小青龙汤"
+        },
+        {
+          "option_id": "C",
+          "content": "温胆汤\n\n结\n\n懒人医考整理"
+        },
+        {
+          "option_id": "D",
+          "content": "贝母瓜蒌散"
+        },
+        {
+          "option_id": "E",
+          "content": "二陈汤\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：温胆汤主治：胆胃不和，痰热内扰证。胆怯易惊，头眩心悸，心烦不眠，夜多易梦；或呕恶呃逆，眩晕，癫痫。苔白腻，脉弦滑。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 83
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0084",
+      "question_type": "multiple_choice",
+      "question_content": "患者, 腹痛, 里急后重, 肛门灼热, 下痢鲜紫脓血, 赤多白少, 渴欲饮水, 舌红苔黄, 脉弦数。辨证为热毒痢疾。方剂宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "芍药汤"
+        },
+        {
+          "option_id": "B",
+          "content": "白头翁汤"
+        },
+        {
+          "option_id": "C",
+          "content": "当归六黄汤"
+        },
+        {
+          "option_id": "D",
+          "content": "黄连解毒汤"
+        },
+        {
+          "option_id": "E",
+          "content": "清瘟败毒饮\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：白头翁汤主治：热毒痢疾。腹痛，里急后重，肛门灼热，下痢脓血，赤多白少，渴欲饮水，舌红苔黄，脉弦数。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 84
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-f15862411b-q0085",
+      "question_type": "multiple_choice",
+      "question_content": "患者，喜忘如狂，漱水不欲咽，大便色黑易解，舌绛，脉细数。辨证为热入血分证。方剂宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "竹叶石膏汤"
+        },
+        {
+          "option_id": "B",
+          "content": "普济消毒饮"
+        },
+        {
+          "option_id": "C",
+          "content": "当归六黄汤"
+        },
+        {
+          "option_id": "D",
+          "content": "犀角地黄汤"
+        },
+        {
+          "option_id": "E",
+          "content": "青蒿鳖甲汤\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：犀角地黄汤主治：热入血分证。身热谵语，斑色紫黑，或吐血、衄血、便血、尿血，舌深绛起刺，脉数；或喜忘如狂，或漱水不欲咽，或大便色黑易解。\n\n![](images/9bc83a83b2bdd1324a86d36f43218df315164189e995627d8f4e81231a28716e.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/c1024fd33bf5c9a72d7f3e762f37e766aa59d27a194f8079ff84ab610fe403ed.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/71fbe9b26e1a272d99199a95d53cf8092211f7d9a964611546bd5fa5e731836d.jpg)  \n6-中西医结合内科学最字题\n\n![](images/859c0d2583a1035138399efebf3bc11385c67c07bf6b08e7801a5cb03d73af3d.jpg)  \n7-中西医结合内科学首选类题目  \n12-中药学30味中药药理作用总\n\n![](images/d2bfab56947203a4740fda15fd15f0175ec10e7d083b1b7fb982d62d36076d30.jpg)\n\n![](images/171abb1ea5f283999c9d2ea3f0bf5a89d7f86176a7ebf183dc8cebb1fac916ea.jpg)  \n3-中西医结合外科学辨证论治汇总  \n8-中西医外妇儿首选类题目\n\n![](images/67b75d353288d04bb0f330854d15744387c348992e611a0ee6a65ac07c4adfd4.jpg)  \n11-中药相同功效药物总结\n\n![](images/de15b1dec7dbe3e2d8dc344be39007204fdf207bede813c901e06e99e4b68b8a.jpg)\n\n![](images/d58cda3c8928483be68b2ea19092719d39a04fcdf26dd5d73075414b7f548edc.jpg)\n\n![](images/d79df31c3584b3955451b3a4d93c70a38b3788ad1134d19edff88a86f4d87765.jpg)  \n9-经络系统常考总结  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/687b729f724d95a976fd735148e08e3101d8b0f3208cda969c37f820f6ed3742.jpg)  \n13-方剂学常考重点总结\n\n![](images/586524537d9082fff1d8e52e9847afb0e670bf4ec40041019c754c480f836a0e.jpg)  \n5-中西医结合儿科学辨证论治汇总  \n10-特定穴\n记忆歌诀汇总\n\n![](images/1ae68ab441b3bc5114484f50eee8cf9191cb549a6507bcf78bc24c76911c111a.jpg)\n\n可扫码关注微信公众平台\n\n![](images/d1a612a61f28fc20ceca6ad1b1dedeaa67c3cc9dec54e40038ed53759e2b6310.jpg)"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+        "number": 85
+      }
+    }
+  ]
+}

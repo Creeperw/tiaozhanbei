@@ -1,0 +1,590 @@
+{
+  "template_id": "6581a15b89f4-112646f5ab",
+  "questions": [
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0001",
+      "question_type": "multiple_choice",
+      "question_content": "“血海”指的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胆"
+        },
+        {
+          "option_id": "B",
+          "content": "脑"
+        },
+        {
+          "option_id": "C",
+          "content": "脉"
+        },
+        {
+          "option_id": "D",
+          "content": "肝脏"
+        },
+        {
+          "option_id": "E",
+          "content": "任脉  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "## 第一单元\n\n解析：肝藏血而称为“血海”，冲脉起于胞中而通于肝，与女子月经来潮密切相关，也称为“血海”。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 1
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0002",
+      "question_type": "multiple_choice",
+      "question_content": "哪个脏腑的精气盛衰及其生理机能正常与否，可以显露于面部的色泽变化",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾"
+        },
+        {
+          "option_id": "B",
+          "content": "肝"
+        },
+        {
+          "option_id": "C",
+          "content": "肾"
+        },
+        {
+          "option_id": "D",
+          "content": "心"
+        },
+        {
+          "option_id": "E",
+          "content": "肺  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：心之华在面。心血、心气的盛衰，可从面部的色泽表现出来。由于全身血气皆上注于面，故心的精气盛衰及其生理机能正常与否，可以显露于面部的色泽变化。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 2
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0003",
+      "question_type": "multiple_choice",
+      "question_content": "“决渎之官”是指",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小肠"
+        },
+        {
+          "option_id": "B",
+          "content": "大肠"
+        },
+        {
+          "option_id": "C",
+          "content": "三焦"
+        },
+        {
+          "option_id": "D",
+          "content": "胆"
+        },
+        {
+          "option_id": "E",
+          "content": "膀胱\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：六腑三焦的主要生理机能是疏通水道，运行津液。《素问·灵兰秘典论》说：“三焦者，决渎之官，水道出焉”。<nl>"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 3
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0004",
+      "question_type": "multiple_choice",
+      "question_content": "能调控腠理开阖的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "营气"
+        },
+        {
+          "option_id": "B",
+          "content": "卫气"
+        },
+        {
+          "option_id": "C",
+          "content": "谷气"
+        },
+        {
+          "option_id": "D",
+          "content": "元气"
+        },
+        {
+          "option_id": "E",
+          "content": "宗气\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：卫气的生理功能：防御外邪、温阳全身、调控腠理。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 4
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0005",
+      "question_type": "multiple_choice",
+      "question_content": "根据五行相克规律确立的治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "培土生金法"
+        },
+        {
+          "option_id": "B",
+          "content": "滋水涵木法"
+        },
+        {
+          "option_id": "C",
+          "content": "金水相生法"
+        },
+        {
+          "option_id": "D",
+          "content": "益火补土法"
+        },
+        {
+          "option_id": "E",
+          "content": "泻南补北法\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：根据相生规律确定治法包括滋水涵木法、益火补土法、培土生金法、金水相生法；根据相克规律确定治法包括抑木扶土法、培土制水法、佐金平木法、泻南补北法。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 5
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0006",
+      "question_type": "multiple_choice",
+      "question_content": "脏腑中有“主津”作用的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾"
+        },
+        {
+          "option_id": "B",
+          "content": "胃"
+        },
+        {
+          "option_id": "C",
+          "content": "大肠"
+        },
+        {
+          "option_id": "D",
+          "content": "小肠"
+        },
+        {
+          "option_id": "E",
+          "content": "三焦\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：大肠主津，小肠主液。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 6
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0007",
+      "question_type": "multiple_choice",
+      "question_content": "肾在体合",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肉"
+        },
+        {
+          "option_id": "B",
+          "content": "骨"
+        },
+        {
+          "option_id": "C",
+          "content": "皮"
+        },
+        {
+          "option_id": "D",
+          "content": "脉"
+        },
+        {
+          "option_id": "E",
+          "content": "筋\n\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：肾在体合骨。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 7
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0008",
+      "question_type": "multiple_choice",
+      "question_content": "“阴阳离决，精气乃绝”所反映的阴阳关系是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "对立制约"
+        },
+        {
+          "option_id": "B",
+          "content": "互根互用"
+        },
+        {
+          "option_id": "C",
+          "content": "相互交感"
+        },
+        {
+          "option_id": "D",
+          "content": "消长平衡"
+        },
+        {
+          "option_id": "E",
+          "content": "相互转化\n\n![](images/1d2f047be65b4df9c8c31c3c874bce3121a920b06c8a5d3105e222c560a6d49f.jpg)\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：阴阳互根互用：阴和阳任何一方都不能脱离另一方而单独存在，每一方都以相对的另一方的存在作为自己存在的前提和条件。如果由于某些原因，阴和阳之间的互根关系遭到破坏，就会导致“孤阴不生，独阳不长”，甚则“阴阳离决，精气乃绝”而死亡。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 8
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0009",
+      "question_type": "multiple_choice",
+      "question_content": "木曰",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "曲直"
+        },
+        {
+          "option_id": "B",
+          "content": "炎上"
+        },
+        {
+          "option_id": "C",
+          "content": "稼穑"
+        },
+        {
+          "option_id": "D",
+          "content": "从革"
+        },
+        {
+          "option_id": "E",
+          "content": "润下\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：五行的特性：木曰曲直，火曰炎上，土爰稼穑，金曰从革，水曰润下。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 9
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0010",
+      "question_type": "multiple_choice",
+      "question_content": "足太阴脾经与手少阴心经交接于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "目内眦"
+        },
+        {
+          "option_id": "B",
+          "content": "目外眦"
+        },
+        {
+          "option_id": "C",
+          "content": "心中"
+        },
+        {
+          "option_id": "D",
+          "content": "胸中"
+        },
+        {
+          "option_id": "E",
+          "content": "肺中  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：足手阴经在胸部交接；足太阴脾经与手少阴心经交接于心中；足少阴肾经与手厥阴心包经交接于胸中；足厥阴肝经与手太阴肺经交接于肺中。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 10
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0011",
+      "question_type": "multiple_choice",
+      "question_content": "维持人体相对恒定的体温，主要体现气的功能是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "推动作用"
+        },
+        {
+          "option_id": "B",
+          "content": "温煦作用"
+        },
+        {
+          "option_id": "C",
+          "content": "防御作用"
+        },
+        {
+          "option_id": "D",
+          "content": "固摄作用"
+        },
+        {
+          "option_id": "E",
+          "content": "中介作用  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：气的温煦作用对人体有重要的生理意义：①温煦机体，维持相对恒定的体温；②温煦各脏腑、经络、形体、官窍，助其进行正常的生理活动；③温煦精血津液，助其正常施泄、循行、输布。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 11
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0012",
+      "question_type": "multiple_choice",
+      "question_content": "偏食辛温燥热饮食，则可致",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心肝火旺"
+        },
+        {
+          "option_id": "B",
+          "content": "肺胃热盛"
+        },
+        {
+          "option_id": "C",
+          "content": "肺胃津伤"
+        },
+        {
+          "option_id": "D",
+          "content": "肝经湿热"
+        },
+        {
+          "option_id": "E",
+          "content": "肠胃积热\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：饮食的寒热偏嗜：如偏食生冷寒凉之品日久，则易损伤脾胃阳气，导致寒湿内生；如偏嗜辛温燥热饮食日久，则易致肠胃积热等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 12
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0013",
+      "question_type": "multiple_choice",
+      "question_content": "脉有胃气最主要的表现为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "不浮不沉"
+        },
+        {
+          "option_id": "B",
+          "content": "柔和有力"
+        },
+        {
+          "option_id": "C",
+          "content": "不大不小"
+        },
+        {
+          "option_id": "D",
+          "content": "从容和缓流利"
+        },
+        {
+          "option_id": "E",
+          "content": "尺脉有力\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：脉有胃气表现为：从容、和缓、流利；脉有神表现为：有力柔和、节律整齐；脉有根表现为：尺脉有力、沉取不绝。\n\n![](images/fe77abbe26664e1c3861b553b361a976e5afeab8c7387f209cb01313ae2181db.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/dc9aa3299b38fae50a126081c8177683972604a2af7d7c1c1d43a8bff6d7b88b.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/3da8418f6c4ccb7b102cf44c4c6edf2540621498eff7d82b8a4f25a78d0a9254.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/3aeb6e59169aed96fdefe9ba9771027414cbce4d26e31a9a870f7f9244460f5f.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/502c87a642036d43e65eff6faa085dad057fcb30e865b0b1b21655c1b2b1cfe0.jpg)\n\n5-中西医结合儿科学辨证论治汇总\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/01dc9f200a89bca86fd5e69fe78ff759e0abd36df8858aa2e55ee1487b769b51.jpg)  \n6-中西医结合内科学最字题\n\n![](images/e728f4cc5ba97962c56e8e17d5c5d817f6ebee8d3b8489e3900f6c2f339a0ecb.jpg)\n\n7-中西医结合内科学首选类题目\n\n![](images/b49a0bdc10420e08e35422a66e9d389feb856e7b923543367d182c87cf3b5fa1.jpg)\n\n![](images/0cdb9e886a13ea2a8fb86f19d7ed4979b4dd32358d8c3f90feda60a45f9946c3.jpg)\n\n8-中西医外妇儿首选类题目\n\n![](images/35b066c95fde66c6c9b89233da56909f5581008a02bc9781f9a0b4dd4528116f.jpg)  \n9-经络系统常考总结\n\n![](images/edd2914936e732588a8536457ddee482ff7603e84ff21b05dca2d2280103f0bf.jpg)\n\n10-特定穴\n记忆歌诀汇总\n\n![](images/ffd2895bd866b0441c7b8b6e0c6f80424e6ca1a0adae12e95f055597f8156ecf.jpg)  \n11-中药相同功效药物总结\n\n![](images/0354349af5424d54072029b9f97c01ce7dc1118b5b24a18ff8d43d649c587e21.jpg)\n\n![](images/091759dbb7bc42e881b70ecc1e167fd56ce418df2db9466c67712a880b1f30b0.jpg)\n\n13-方剂学常考重点总结"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 13
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0014",
+      "question_type": "multiple_choice",
+      "question_content": "医生将自然并拢的手指掌面或全手掌进行滑动触摸病人腹部，属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "间接叩击法"
+        },
+        {
+          "option_id": "B",
+          "content": "摸法"
+        },
+        {
+          "option_id": "C",
+          "content": "按法"
+        },
+        {
+          "option_id": "D",
+          "content": "直接叩击法\n\n懒人医考整理"
+        },
+        {
+          "option_id": "E",
+          "content": "触法  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：触法是指医生将自然并拢的第二、三、四、五手指掌面或全手掌轻轻接触或轻柔地进行滑动触摸病人局部皮肤。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 14
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-112646f5ab-q0015",
+      "question_type": "multiple_choice",
+      "question_content": "三部脉举按皆充实有力，其势来去皆盛的脉象是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "实脉"
+        },
+        {
+          "option_id": "B",
+          "content": "洪脉"
+        },
+        {
+          "option_id": "C",
+          "content": "革脉"
+        },
+        {
+          "option_id": "D",
+          "content": "弦脉"
+        },
+        {
+          "option_id": "E",
+          "content": "紧脉\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：实脉：三部脉充实有力，其势来去皆盛。见于实证，亦见于常人。\n\n医\n懒人医考\nLANRENYIKAO"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+        "number": 15
+      }
+    }
+  ]
+}

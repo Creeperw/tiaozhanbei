@@ -1,0 +1,610 @@
+{
+  "template_id": "6581a15b89f4-747303db03",
+  "questions": [
+    {
+      "question_id": "6581a15b89f4-747303db03-q0056",
+      "question_type": "multiple_choice",
+      "question_content": "抗结核病的合理化疗原则是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "早期、大剂量、联合、规律及全程用药"
+        },
+        {
+          "option_id": "B",
+          "content": "早期、适量、联合、规律及全程用药"
+        },
+        {
+          "option_id": "C",
+          "content": "早期、小剂量、联合、全程用药"
+        },
+        {
+          "option_id": "D",
+          "content": "早期、适量、联合、全程用药"
+        },
+        {
+          "option_id": "E",
+          "content": "早期、大剂量、联合、全程用药  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：合理化疗是指早期、适量、联合、规律及全程用药。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 56
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0057",
+      "question_type": "multiple_choice",
+      "question_content": "磺胺类药物作用机制是与细菌竞争",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "叶酸还原酶"
+        },
+        {
+          "option_id": "B",
+          "content": "四氢叶酸还原酶"
+        },
+        {
+          "option_id": "C",
+          "content": "二氢叶酸还原酶"
+        },
+        {
+          "option_id": "D",
+          "content": "一碳单位转移酶"
+        },
+        {
+          "option_id": "E",
+          "content": "二氢叶酸合成酶\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：磺胺类药物的结构与对氨苯甲酸（PABA）相似，可与 PABA 竞争二氢叶酸合成酶，妨碍二氢叶酸的合成，进而妨碍四氢叶酸的合成，影响核酸的合成，从而抑制细菌的生长繁殖。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 57
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0058",
+      "question_type": "multiple_choice",
+      "question_content": "下列关于对于双胍类药物的描述，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "增加胰岛素与其受体的结合"
+        },
+        {
+          "option_id": "B",
+          "content": "尤适用于肥胖性、饮食控制无效的糖尿病"
+        },
+        {
+          "option_id": "C",
+          "content": "用于轻症糖尿病"
+        },
+        {
+          "option_id": "D",
+          "content": "加速葡萄糖在肠道的吸收"
+        },
+        {
+          "option_id": "E",
+          "content": "不依赖于胰岛β细胞\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析:二甲双胍的降糖作用不依赖于胰岛β细胞的功能, 可能机制包括: ①增加肌肉组织中的无氧糖酵解。②促进组织对葡萄糖的摄取。③减少肝细胞糖异生。④减慢葡萄糖在肠道的吸收。⑤增加胰岛素与其受体结合。⑥降低血中胰高血糖素水平。此外, 还可改善血脂代谢, 降低 LDL 及 VLDL、甘油三酯及胆固醇水平。\n应用: 用于单用饮食控制无效的轻、中度 2 型糖尿病, 尤其肥胖且伴胰岛素抵抗者。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 58
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0059",
+      "question_type": "multiple_choice",
+      "question_content": "下列发疹性传染病按皮疹出现的先后次序排列，依次为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "猩红热、天花、水痘、麻疹、斑疹伤寒、伤寒"
+        },
+        {
+          "option_id": "B",
+          "content": "猩红热、风疹、水痘、麻疹、斑疹伤寒、伤寒"
+        },
+        {
+          "option_id": "C",
+          "content": "天花、水痘、猩红热、麻疹、斑疹伤寒、伤寒"
+        },
+        {
+          "option_id": "D",
+          "content": "水痘、猩红热、天花、麻疹、斑疹伤寒、伤寒"
+        },
+        {
+          "option_id": "E",
+          "content": "水痘、天花、猩红热、麻疹、斑疹伤寒、伤寒\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：水痘多于病程第1日，猩红热于第2日，天花于第3日，麻疹于第4日，斑疹伤寒于第5天，伤寒于第6日出疹。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 59
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0060",
+      "question_type": "multiple_choice",
+      "question_content": "甲型肝炎和戊型肝炎共有的主要传播途径是 懒人医考整理",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "粪-口传播"
+        },
+        {
+          "option_id": "B",
+          "content": "母婴传播"
+        },
+        {
+          "option_id": "C",
+          "content": "血液传播"
+        },
+        {
+          "option_id": "D",
+          "content": "体液传播"
+        },
+        {
+          "option_id": "E",
+          "content": "性传播\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：甲、戊型肝炎的主要传播途径是粪-口传播。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 60
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0061",
+      "question_type": "multiple_choice",
+      "question_content": "病原体侵入人体后，引起机体发生免疫应答，同时通过病原体本身的作用或机体的变态反应，导致组织损伤，引起病理改变与临床表现，此种情况是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "隐性感染"
+        },
+        {
+          "option_id": "B",
+          "content": "显性感染"
+        },
+        {
+          "option_id": "C",
+          "content": "重复感染"
+        },
+        {
+          "option_id": "D",
+          "content": "潜伏感染"
+        },
+        {
+          "option_id": "E",
+          "content": "机会性感染\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析："
+        },
+        {
+          "option_id": "G",
+          "content": "选项-隐性感染又称亚临床感染，病原体只引起特异性免疫应答，不引起或只引起轻微的组织损伤，无临床症状，只能通过免疫学检查发现。"
+        },
+        {
+          "option_id": "H",
+          "content": "选项-显性感染又称临床感染，即传染病发病。感染后不但引起机体免疫应答，还导致组织损伤，引起病理改变和临床表现。"
+        },
+        {
+          "option_id": "I",
+          "content": "选项-重复感染指在感染某种病原体基础上再次感染同一病原体。"
+        },
+        {
+          "option_id": "J",
+          "content": "选项-潜伏感染指感染者体内的病原体可以处于静止状态持续存活，如结核分枝杆菌。"
+        },
+        {
+          "option_id": "K",
+          "content": "选项-病原体与人体宿主之间达到了相互适应、互不损害的共生状态。但当某些因素导致机体免疫功能受损或机械损伤使寄生物异位寄生时，则可引起宿主的损伤，称为机会性感染。\n\n![](images/3130c385e5f5b541118ef600863ad4cc51598092704dd90a3abf1065d32baa61.jpg)"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 61
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0062",
+      "question_type": "multiple_choice",
+      "question_content": "流行性出血热的“三痛”是指",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "头痛、腰痛和身痛"
+        },
+        {
+          "option_id": "B",
+          "content": "头痛、腰痛和关节痛"
+        },
+        {
+          "option_id": "C",
+          "content": "头痛、腰痛和腓肠肌痛"
+        },
+        {
+          "option_id": "D",
+          "content": "头痛、腰痛和眼眶痛"
+        },
+        {
+          "option_id": "E",
+          "content": "头痛、腰痛和腹痛  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：流行性出血热的“三痛”是指头痛、腰痛和眼眶痛。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 62
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0063",
+      "question_type": "multiple_choice",
+      "question_content": "关于志贺菌属，下列哪项说法是正确的",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "为革兰阴性杆菌，有鞭毛"
+        },
+        {
+          "option_id": "B",
+          "content": "对化学消毒剂不敏感\n\n![](images/4e8f3d02d20a2b40b94facc6b17f696feeeabc91575ffc8518ab5e706cbbbc0b.jpg)\n\n懒人医考整理"
+        },
+        {
+          "option_id": "C",
+          "content": "在外界生存时间甚短期"
+        },
+        {
+          "option_id": "D",
+          "content": "对理化因素抵抗力强"
+        },
+        {
+          "option_id": "E",
+          "content": "产生外毒素和内毒素\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：志贺菌属，为革兰阴性杆菌，无鞭毛，对酸和消毒剂敏感，可在瓜果蔬菜上存活10-20天，可产生内毒素和外毒素。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 63
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0064",
+      "question_type": "multiple_choice",
+      "question_content": "确诊伤寒的依据是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "发热中毒症状，周围白细胞减低"
+        },
+        {
+          "option_id": "B",
+          "content": "大便培养阳性"
+        },
+        {
+          "option_id": "C",
+          "content": "血培养阳性"
+        },
+        {
+          "option_id": "D",
+          "content": "肥达反应“H”“O”滴度增高"
+        },
+        {
+          "option_id": "E",
+          "content": "嗜酸性粒细胞减少\n\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：伤寒确诊有赖于血或骨髓培养检出伤寒杆菌。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 64
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0065",
+      "question_type": "multiple_choice",
+      "question_content": "艾滋病患者在艾滋病期常见的呼吸系统并发症为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "巨细胞病毒引起的病毒性肺炎"
+        },
+        {
+          "option_id": "B",
+          "content": "肺炎链球菌肺炎"
+        },
+        {
+          "option_id": "C",
+          "content": "卡氏肺孢子菌肺炎"
+        },
+        {
+          "option_id": "D",
+          "content": "葡萄球菌肺炎"
+        },
+        {
+          "option_id": "E",
+          "content": "0念珠菌引起的肺真菌病\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：艾滋病患者在艾滋病期可并发各个系统的各种机会性感染和恶性肿瘤，呼吸系统以卡氏肺孢子菌肺炎最常见。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 65
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0066",
+      "question_type": "multiple_choice",
+      "question_content": "下列关于人禽流感病理改变的叙述，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺部病变最明显"
+        },
+        {
+          "option_id": "B",
+          "content": "肺泡内无透明膜形成"
+        },
+        {
+          "option_id": "C",
+          "content": "少数患者有广泛肝小叶中心坏死"
+        },
+        {
+          "option_id": "D",
+          "content": "少数患者有急性肾小管坏死"
+        },
+        {
+          "option_id": "E",
+          "content": "少数患者有淋巴细胞功能衰竭\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：病理改变以肺部最明显，可见到肺泡和支气管黏膜损伤严重，肺实质出血和坏死，肺泡内大量淋巴细胞浸润，肺泡内有透明膜形成，有严重的弥漫性损伤，并伴有间隔纤维形成。少数病例发现广泛肝小叶中心坏死、急性肾小管坏死、淋巴细胞功能衰竭。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 66
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0067",
+      "question_type": "multiple_choice",
+      "question_content": "足阳明经和足太阴经交接于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "足大指内端"
+        },
+        {
+          "option_id": "B",
+          "content": "足大趾外侧"
+        },
+        {
+          "option_id": "C",
+          "content": "足小趾内侧"
+        },
+        {
+          "option_id": "D",
+          "content": "足小趾外侧"
+        },
+        {
+          "option_id": "E",
+          "content": "足中指内侧\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：足阳明经和足太阴经交接于足大指内端。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 67
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0068",
+      "question_type": "multiple_choice",
+      "question_content": "位于下肢外侧中线的经脉是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胆经"
+        },
+        {
+          "option_id": "B",
+          "content": "脾经"
+        },
+        {
+          "option_id": "C",
+          "content": "胃经"
+        },
+        {
+          "option_id": "D",
+          "content": "膀胱经"
+        },
+        {
+          "option_id": "E",
+          "content": "三焦经\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：经络分布的规律符合：“内侧前中后，太阴厥少阴；外侧前中后，阳明少太阳”的规律，下肢外侧中线为足少阳胆经。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 68
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0069",
+      "question_type": "multiple_choice",
+      "question_content": "隔盐灸的作用是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热、解毒、消肿"
+        },
+        {
+          "option_id": "B",
+          "content": "回阳、救逆、固脱"
+        },
+        {
+          "option_id": "C",
+          "content": "解表、散寒、温中"
+        },
+        {
+          "option_id": "D",
+          "content": "防病、保健、益寿"
+        },
+        {
+          "option_id": "E",
+          "content": "温肾、壮阳、通脉\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：隔盐灸的作用是回阳、救逆、固脱。用于治疗伤寒阴证或吐泻并作、中风脱证等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 69
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-747303db03-q0070",
+      "question_type": "multiple_choice",
+      "question_content": "中风闭证针刺水沟的刺法",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "斜向上刺"
+        },
+        {
+          "option_id": "B",
+          "content": "斜向下刺"
+        },
+        {
+          "option_id": "C",
+          "content": "平刺"
+        },
+        {
+          "option_id": "D",
+          "content": "提插捻转"
+        },
+        {
+          "option_id": "E",
+          "content": "平补平泻\n\n![](images/7d17f926f65681bb5f97a8548c71ea8f5e9e91e74dfa00c1774e2ced10bcda81.jpg)\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：考察中风的治疗操作。水沟穴向上方斜刺，用雀啄法，以眼球湿润为度。\n\n![](images/e765605cedcfa4ee95f3065c6c730f7a7637c0f32c4a0fe9bfffbd6160ab7bf8.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/417098b39726762a4bbe399df8141d4ed83b803d65a7302968fc6a899519c25a.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/d5ebc96bec6b916a743ce14aedbb79715a0c5e9683271e85ea1c4cf7c730ac0c.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/b1320de7c014730c00f58282346539ca7bb62f0f4c7bb3cb8e745b1cf079769c.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/035843c3a038415c37b78bfc4bdb8923d51e8df123352e3f4360727a128b7cdc.jpg)  \n5-中西医结合儿科学辨证论治汇总  \n更多医考干货  \n可扫码关注微信公众平台\n\n![](images/7f51bed91ab31037da55556e79e7302275493241161e06bf9f94ec8e4846d376.jpg)  \n6-中西医结合内科学最字题\n\n![](images/9fbf246bf0aa79d2b861cbd5f79ce4a54db834f32415562d564767dd9f5891dd.jpg)  \n7-中西医结合内科学首选类题目\n\n![](images/e627a01f294ff08294ae594708482e847eec81aa1f8a236266f06ad7ff713f49.jpg)  \n8-中西医外妇儿首选类题目\n\n![](images/85d47e2c751863d2bdaec1c1da380e46a27a5b40ae266804402ac65c9644012d.jpg)  \n9-经络系统常考总结\n\n![](images/1177fa7f5c9ad2cb5f4fd50271b038829c652ee6dba38426abed288f2ca9f141.jpg)  \n10-特定穴\n记忆歌诀汇总\n\n![](images/26cd2249f4e1556198120c7513da7b23765eccaf42300f7d169e516e5a071ec6.jpg)\n\n![](images/3544623591ccac64f0c5844602dc6ffbfa24f98139feb2512a8597946fcbd2db.jpg)  \n11-中药相同功效药物总结\n\n![](images/dd5d77475f71ea35a7015175adbff6da3740fdd279df04dce139459771def7da.jpg)\n\n![](images/fde59ae2b3fe725ce59fd00a6c29632114f4c7ab7fc3fb3a398fd0bac5b1ff30.jpg)  \n12-中药学30味中药药理作用总结  \n13-方剂学常考重点总结"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+        "number": 70
+      }
+    }
+  ]
+}

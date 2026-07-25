@@ -1,0 +1,329 @@
+{
+  "template_id": "8a087ba277ab-aeeec54d97",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-aeeec54d97-q0063",
+      "question_type": "multiple_choice",
+      "question_content": "患儿，男，8 岁，既往癫痫病史，今日反复发作达 30 分钟以上，其间意识不能恢复，治疗首选",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "苯妥英钠"
+        },
+        {
+          "option_id": "B",
+          "content": "苯巴比妥"
+        },
+        {
+          "option_id": "C",
+          "content": "地西泮"
+        },
+        {
+          "option_id": "D",
+          "content": "卡马西平"
+        },
+        {
+          "option_id": "E",
+          "content": "乙琥胺\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "解析：根据患儿“既往癫痫病史，今日反复发作达30分钟以上，其间意识不能恢复”诊断为癫痫持续状态，治疗首选地西泮。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+        "number": 63
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-aeeec54d97-q0064",
+      "question_type": "multiple_choice",
+      "question_content": "患儿，男，10 个月。口颊、上颚、齿龈、口角溃烂 1 周，周围黏膜色红，疼痛严重，3 天前好转，现症：口腔溃疡较少，迁延不愈，神疲颧红，口干不渴，舌红，苔少，指纹淡紫。该患儿治疗选用的方剂为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "泻心导赤散"
+        },
+        {
+          "option_id": "B",
+          "content": "银翘散"
+        },
+        {
+          "option_id": "C",
+          "content": "六味地黄丸加肉桂"
+        },
+        {
+          "option_id": "D",
+          "content": "知柏地黄丸"
+        },
+        {
+          "option_id": "E",
+          "content": "清热泻脾散\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：根据患儿“口颊、上颚、齿龈、口角溃烂1周，周围黏膜色红，疼痛严重”诊断为疱疹性口炎，根据“口腔溃疡较少，迁延不愈，神疲颧红，口干不渴，舌红，苔少，指纹淡紫”辨证为虚火上炎证，治法为滋阴降火，引火归原，选方为六味地黄丸加肉桂。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+        "number": 64
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-aeeec54d97-q0065",
+      "question_type": "multiple_choice",
+      "question_content": "患儿, 男, 7 岁。5 天前出现发热、头痛、食欲不振, 2 天前体温升高, 出现右侧腮腺肿大, 以耳垂为中心, 边缘不清、触之有弹性感及触痛, 现症: 高热不退, 右侧腮部肿胀疼痛, 口渴引饮, 烦躁不安, 便秘溲赤。舌质红,舌苔黄, 脉滑数, 治疗选方是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "荆防败毒散"
+        },
+        {
+          "option_id": "B",
+          "content": "普济消毒饮"
+        },
+        {
+          "option_id": "C",
+          "content": "仙方活命饮"
+        },
+        {
+          "option_id": "D",
+          "content": "五味消毒饮"
+        },
+        {
+          "option_id": "E",
+          "content": "龙胆泻肝汤\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：根据患儿“5天前出现发热、头痛、食欲不振，2天前体温升高，出现右侧腮腺肿大，以耳垂为中心，边缘不清、触之有弹性感及触痛”诊断为流行性腮腺炎，根据“高热不退，右侧腮部肿胀疼痛，口渴引饮，烦躁不安，便秘溲赤。舌质红，舌苔黄，脉滑数”辨证为常证——热毒蕴结证，治法为清热解毒，软坚散结，选方为普济消毒饮。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+        "number": 65
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-aeeec54d97-q0066",
+      "question_type": "multiple_choice",
+      "question_content": "患儿, 女, 5 岁, 家长常用嘴喂饭给患儿, 1 周前患儿出现发热, 体温最高至 $38.4^{\\circ} \\mathrm{",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "}$ , 口服退烧药后效果差, 3 天前患儿自诉咽痛, 前往医院就诊, 双侧颈部淋巴结肿大, 扁桃体肿大、充血, 躯干、前臂伸侧出现风疹样红色斑丘疹, 血中发现较高比例的异常淋巴细胞, 考虑该患儿的诊断为"
+        },
+        {
+          "option_id": "B",
+          "content": "传染性单核细胞增多症"
+        },
+        {
+          "option_id": "C",
+          "content": "中毒型细菌性痢疾"
+        },
+        {
+          "option_id": "D",
+          "content": "风疹"
+        },
+        {
+          "option_id": "E",
+          "content": "荨麻疹"
+        },
+        {
+          "option_id": "F",
+          "content": "幼儿急疹  \n\n答案:"
+        },
+        {
+          "option_id": "G",
+          "content": "答案:"
+        },
+        {
+          "option_id": "H",
+          "content": "解析：根据患儿的病因、症状以及“血中发现较高比例的异常淋巴细胞”，考虑诊断为传染性单核细胞增多症。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+        "number": 66
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-aeeec54d97-q0067",
+      "question_type": "multiple_choice",
+      "question_content": "患儿，女，5岁。发热3天伴流涕、咳嗽、流泪就诊。查体：T 39.2℃，球结膜充血，心肺检查阴性，口腔两颊黏膜近臼齿处可见少许灰白色斑点，周围可见红晕。应诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "幼儿急疹"
+        },
+        {
+          "option_id": "B",
+          "content": "风疹"
+        },
+        {
+          "option_id": "C",
+          "content": "麻疹"
+        },
+        {
+          "option_id": "D",
+          "content": "猩红热"
+        },
+        {
+          "option_id": "E",
+          "content": "水痘  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：根据题干“发热3天伴流涕、咳嗽、流泪，球结膜充血，口腔两颊黏膜近臼齿处可见少许灰白色斑点，周围红晕”可诊断为麻疹。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+        "number": 67
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-aeeec54d97-q0068",
+      "question_type": "multiple_choice",
+      "question_content": "患儿, 女, 7 岁。患儿 2 周前感冒发热, 咽痛, 自服感冒药病情好转后, 3 天前双下肢和臀部出现皮疹, 皮疹呈对称性。昨日开始出现下腹部绞痛、双侧膝关节肿痛。现症: 皮疹颜色鲜红, 呈丘疹, 大小形态不一, 有痒感, 伴发热, 微恶风寒, 咳嗽, 咽痛。舌质红, 苔薄黄, 脉浮数。辅助检查: 血常规: 血小板 $241 \\times 10^{9} / \\mathrm{L}$ 。毛细血管脆性试验 (+)。该患儿中医治疗选方为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "犀角地黄汤"
+        },
+        {
+          "option_id": "B",
+          "content": "桑菊饮"
+        },
+        {
+          "option_id": "C",
+          "content": "银翘散"
+        },
+        {
+          "option_id": "D",
+          "content": "知柏地黄丸"
+        },
+        {
+          "option_id": "E",
+          "content": "补中益气汤\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：根据患儿“患儿2周前感冒发热，咽痛，自服感冒药病情好转后，3天前双下肢和臀部出现皮疹，皮疹呈对称性。昨日开始出现下腹部绞痛、双侧膝关节肿痛”，结合检查结果，考虑为过敏性紫癜，根据“皮疹颜色鲜红，呈丘疹，大小形态不一，有痒感，伴发热，微恶风寒，咳嗽，咽痛。舌质红，苔薄黄，脉浮数”辨证为风热伤络证，治法为祛风清热，凉血安络，选方为银翘散。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+        "number": 68
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-aeeec54d97-q0069",
+      "question_type": "multiple_choice",
+      "question_content": "患儿, 男, 5 岁。2 月前因晚上睡觉时未盖被子, 受凉后出现多次大便溏薄, 持续至今。现症: 久泻不止, 大便清稀, 澄澈清冷, 完谷不化, 形寒肢冷, 面色恍白, 精神萎, 睡时露睛。腹软, 无压痛, 肠鸣音稍活跃。舌淡苔白, 脉细弱。辅助检查: 血常规: 白细胞 $7.4 \\times 10^{9} / \\mathrm{L}$ , 中性粒细胞 $71\\%$ , 淋巴细胞 $27\\%$ 。大便常规: 脂肪球 $(++)$ 。该患儿辨证为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾虚泻"
+        },
+        {
+          "option_id": "B",
+          "content": "气阴两伤"
+        },
+        {
+          "option_id": "C",
+          "content": "阴竭阳脱"
+        },
+        {
+          "option_id": "D",
+          "content": "脾肾阳虚泻"
+        },
+        {
+          "option_id": "E",
+          "content": "肺脾气虚\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：根据患儿“2月前因晚上睡觉时未盖被子，受凉后出现多次大便溏薄，腹软，无压痛，肠鸣音稍活跃，”结合辅助检查结果，考虑为小儿腹泻病。根据“久泻不止，大便清稀，澄澈清冷，完谷不化，形寒肢冷，面色恍白，精神萎，睡时露睛。舌淡苔白，脉细弱”辨证为脾肾阳虚泻。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+        "number": 69
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-aeeec54d97-q0070",
+      "question_type": "multiple_choice",
+      "question_content": "患儿，女，7 岁。上小学后，老师反馈，患儿近 2 个月成绩下降，上课注意力不集中，小动作多，常打扰别的同学听课。家长发现患儿做作业时不专心，容易分神。平时一点小事就会导致患儿生气，发脾气。现症：多动多语，烦躁不宁，冲动任性，难以制约，兴趣多变，注意力不集中，胸闷烦热，懊侬不眠，口苦食少，溲赤便结，舌红，苔黄腻，脉滑数。治法为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "滋水涵木，平肝潜阳"
+        },
+        {
+          "option_id": "B",
+          "content": "清热化痰，宁心安神"
+        },
+        {
+          "option_id": "C",
+          "content": "健脾养心，益气安神"
+        },
+        {
+          "option_id": "D",
+          "content": "健脾养心，平肝潜阳"
+        },
+        {
+          "option_id": "E",
+          "content": "清热化痰，益气安神\n\n![](images/c63c86b6fe2cd3d2482b89e4f7efefe1c68f9d5e50b6e703af8a2b7b17c546e2.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/b8ef1be9e9d97dddf9782421667cf80e88ede2e0117e2ee184360304d6bc4073.jpg)  \n2-中西医结合内科学辨证论治汇总  \n3-中西医结合外科学辨证论治汇总  \n6-中西医结合内科学最字题  \n7-中西医结合内科学首选类题目  \n8-中西医外妇儿首选类题目  \n9-经络系统常考总结  \n更多医考干货可扫码关注微信公众平台\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：根据患儿“上小学后，老师反馈，患儿近2个月成绩下降，上课注意力不集中，小动作多，常打扰别的同学听课。家长发现患儿做作业时不专心，容易分神。平时一点小事就会导致患儿生气，发脾气”考虑为注意力缺陷多动障碍，根据“多动多语，烦躁不宁，冲动任性，难以制约，兴趣多变，注意力不集中，胸闷烦热，懊侬不眠，口苦食少，澳赤便结，舌红，苔黄腻，脉滑数”辨证为痰火内扰证，治法为清热化痰，宁心安神，选方为黄连温胆汤。\n\n11-中药相同功效药物总结\n\n12-中药学30味中药药理作用总结\n\n13-方剂学常考重点总结\n\n![](images/1c92c307972879e1a54ec2941f51776561bdde3fc6aa88003321c2cf58591872.jpg)\n\n# 医 懒人医考 LANRENYIKAO"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+        "number": 70
+      }
+    }
+  ]
+}

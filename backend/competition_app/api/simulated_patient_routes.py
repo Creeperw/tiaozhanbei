@@ -68,7 +68,7 @@ def _get_case_data_path() -> str:
 # ── 请求模型 ──────────────────────────────────────────
 
 class SPRequest(BaseModel):
-    user_id: str = Field(..., min_length=1, max_length=128)
+    user_id: str = Field(default="", max_length=128)
     session_id: str = Field(..., min_length=1, max_length=128)
     action: str = Field(
         ...,
@@ -99,8 +99,12 @@ async def simulated_patient_entry(request: Request, body: SPRequest):
     collections / dialog_history / history_detail / history / reset / clear
     """
     engine = _current_engine()
+    current_user = getattr(request.state, "current_user", None)
+    user_id = str(getattr(current_user, "user_id", "") or body.user_id).strip()
+    if not user_id:
+        return {"success": False, "error": "请先登录后继续"}
     sp_request = SimulatedPatientRequest(
-        user_id=body.user_id,
+        user_id=user_id,
         session_id=body.session_id,
         action=body.action,  # type: ignore[arg-type]
         user_input=body.user_input,
@@ -127,7 +131,9 @@ async def simulated_patient_entry(request: Request, body: SPRequest):
 @router.get("/stats/{user_id}")
 async def get_user_stats(user_id: str, request: Request):
     engine = _current_engine()
-    sp_req = SimulatedPatientRequest(user_id=user_id, session_id="", action="stats")
+    current_user = getattr(request.state, "current_user", None)
+    authenticated_user_id = str(getattr(current_user, "user_id", "") or user_id).strip()
+    sp_req = SimulatedPatientRequest(user_id=authenticated_user_id, session_id="", action="stats")
     result: SimulatedPatientResponse = await asyncio.to_thread(engine.execute, sp_req)
     return {"success": result.success, "data": result.data, "error": result.error}
 
@@ -135,6 +141,8 @@ async def get_user_stats(user_id: str, request: Request):
 @router.get("/mistakes/{user_id}")
 async def get_user_mistakes(user_id: str, request: Request):
     engine = _current_engine()
-    sp_req = SimulatedPatientRequest(user_id=user_id, session_id="", action="mistakes")
+    current_user = getattr(request.state, "current_user", None)
+    authenticated_user_id = str(getattr(current_user, "user_id", "") or user_id).strip()
+    sp_req = SimulatedPatientRequest(user_id=authenticated_user_id, session_id="", action="mistakes")
     result: SimulatedPatientResponse = await asyncio.to_thread(engine.execute, sp_req)
     return {"success": result.success, "data": result.data, "error": result.error}

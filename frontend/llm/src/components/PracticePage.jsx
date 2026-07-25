@@ -17,9 +17,11 @@ import {
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import QuestionTrainingPanel from './QuestionTrainingPanel';
+import QualificationPaperPanel from './QualificationPaperPanel';
 import CaseTrainingPanel from './CaseTrainingPanel';
 import MistakeVariationPanel from './MistakeVariationPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
+import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
 import KnowledgeCardLibrary from './KnowledgeCardLibrary';
 import { isTrainingTaskResultApproved } from '../pageDataLoaders.js';
@@ -487,12 +489,14 @@ export default function PracticePage({ navigationContext = {} }) {
 
       <div className="min-w-0 space-y-5">
           <section data-mobile-active={String(mobilePage === 'task')} className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
-            {activeTaskType === 'ai_patient_simulation' ? (
+            {activeTaskType === 'question_training' ? (
+              <QualificationPaperPanel enabled />
+            ) : activeTaskType === 'ai_patient_simulation' ? (
               <CaseTrainingPanel enabled />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
-              <PaperGenerationPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} />
+              <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} />
             ) : activeTaskType === 'knowledge_cards' ? (
               <KnowledgeCardLibrary
                 cardId={navigationContext.cardId || navigationContext.card_id || ''}

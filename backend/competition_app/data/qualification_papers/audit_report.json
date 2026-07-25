@@ -1,0 +1,848 @@
+{
+  "schema_version": "1.0",
+  "papers": [
+    {
+      "template_id": "bd4f84f55760-877578c095",
+      "source": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+      "parsed": 285,
+      "published": 285,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-187fe471be",
+      "source": "中医执业医师资格考试\\考题2018-精选\\full.md",
+      "parsed": 90,
+      "published": 90,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-ed17f87461",
+      "source": "中医执业医师资格考试\\考题2018年答案-解析\\full.md",
+      "parsed": 56,
+      "published": 56,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-f969f98c5a",
+      "source": "中医执业医师资格考试\\考题2019-全集\\full.md",
+      "parsed": 319,
+      "published": 319,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-0623059c03",
+      "source": "中医执业医师资格考试\\考题2019年答案-解析\\full.md",
+      "parsed": 98,
+      "published": 98,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-477e30fe54",
+      "source": "中医执业医师资格考试\\考题2020-全集\\full.md",
+      "parsed": 322,
+      "published": 322,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-5bd6cfa386",
+      "source": "中医执业医师资格考试\\考题2020年答案-解析\\full.md",
+      "parsed": 278,
+      "published": 278,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-cd404a0602",
+      "source": "中医执业医师资格考试\\考题2021-精选\\full.md",
+      "parsed": 288,
+      "published": 288,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-ea3a97e452",
+      "source": "中医执业医师资格考试\\考题2021年答案-解析\\full.md",
+      "parsed": 289,
+      "published": 289,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-bfaaf350e6",
+      "source": "中医执业医师资格考试\\考题2022-全集\\full.md",
+      "parsed": 242,
+      "published": 242,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-c96dbd0c37",
+      "source": "中医执业医师资格考试\\考题2022年答案-解析\\full.md",
+      "parsed": 192,
+      "published": 192,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-456944a2e3",
+      "source": "中医执业医师资格考试\\考题2023+答案\\full.md",
+      "parsed": 379,
+      "published": 379,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "bd4f84f55760-86fd2af226",
+      "source": "中医执业医师资格考试\\考题2023-全集\\full.md",
+      "parsed": 147,
+      "published": 147,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-dfb6ad7d6e",
+      "source": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
+      "parsed": 14,
+      "published": 14,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-747303db03",
+      "source": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟2\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-a07743b0f0",
+      "source": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟3\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-6ec6a676c9",
+      "source": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-112646f5ab",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原1\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-cb5b0c62df",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原10\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-ab7d9793bd",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-5de402e1f4",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-1d5955adf4",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-f15862411b",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原5\\full.md",
+      "parsed": 11,
+      "published": 11,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-e1072a51ce",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原6\\full.md",
+      "parsed": 10,
+      "published": 10,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-dc88d037bf",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原7\\full.md",
+      "parsed": 28,
+      "published": 28,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-907bf739be",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
+      "parsed": 12,
+      "published": 12,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "6581a15b89f4-3905ea02e2",
+      "source": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-daefd50127",
+      "source": "中西医结合执业医师资格考试\\中西医医师资格实践技能考试试卷\\2024年中西医医师资格实践技能考试试卷（一）\\full.md",
+      "parsed": 21,
+      "published": 21,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-da4e71533f",
+      "source": "中西医结合执业医师资格考试\\中西医医师资格实践技能考试试卷\\2024年中西医医师资格实践技能考试试卷（三）\\full.md",
+      "parsed": 19,
+      "published": 19,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-e490927177",
+      "source": "中西医结合执业医师资格考试\\中西医医师资格实践技能考试试卷\\2024年中西医医师资格实践技能考试试卷（二）\\full.md",
+      "parsed": 20,
+      "published": 18,
+      "rejected": {
+        "missing_stem": 2
+      },
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-2488a1e7d5",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟1\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-5953e75b33",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟2\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-61eb2d1a4a",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-39f32139fc",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟4\\full.md",
+      "parsed": 3,
+      "published": 3,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-b2c78cbe7b",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+      "parsed": 16,
+      "published": 16,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-295d433f0a",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
+      "parsed": 20,
+      "published": 20,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-36cb96b296",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟7\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-a9db0c9c8a",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-25bc013601",
+      "source": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟9\\full.md",
+      "parsed": 11,
+      "published": 11,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-b254dc0395",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原1\\full.md",
+      "parsed": 24,
+      "published": 24,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-5f37e1dcd3",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原10\\full.md",
+      "parsed": 14,
+      "published": 14,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-089bc495f0",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-1b9c0852e0",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原12\\full.md",
+      "parsed": 20,
+      "published": 20,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-f10f5a79c6",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原13\\full.md",
+      "parsed": 10,
+      "published": 10,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-aeeec54d97",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原14\\full.md",
+      "parsed": 8,
+      "published": 8,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-3f30beb990",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原2\\full.md",
+      "parsed": 23,
+      "published": 23,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-3d4656dd8f",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原3\\full.md",
+      "parsed": 24,
+      "published": 24,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-f6d34665a7",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
+      "parsed": 18,
+      "published": 18,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-7cd62626ce",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+      "parsed": 20,
+      "published": 19,
+      "rejected": {
+        "missing_stem": 1
+      },
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-e44bfa11b1",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原6\\full.md",
+      "parsed": 3,
+      "published": 3,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-2830afe9b2",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原7\\full.md",
+      "parsed": 3,
+      "published": 3,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-9110bbcce1",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原8\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "8a087ba277ab-961043e461",
+      "source": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
+      "parsed": 15,
+      "published": 15,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-7c6cbd3126",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2015年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+      "parsed": 103,
+      "published": 103,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-5d0bf39652",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2016年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+      "parsed": 154,
+      "published": 154,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-838f0c1841",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+      "parsed": 189,
+      "published": 189,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-f5c8679cd3",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2018年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+      "parsed": 106,
+      "published": 106,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-676e0bb499",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2019年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+      "parsed": 98,
+      "published": 98,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-9e7a93c0af",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2020年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+      "parsed": 98,
+      "published": 98,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-d676646cac",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+      "parsed": 118,
+      "published": 118,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-13ac0f14dc",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2022年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+      "parsed": 78,
+      "published": 78,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-a5c7fe6a9d",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2023年执业药师《中药学专业知识一》真题及答案【网友版】（120题完整版）\\full.md",
+      "parsed": 68,
+      "published": 68,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-d2ea9019af",
+      "source": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2024中药一真题解析\\full.md",
+      "parsed": 81,
+      "published": 81,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-b6736b102c",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2015年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+      "parsed": 111,
+      "published": 111,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-8687d9373a",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2016年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+      "parsed": 106,
+      "published": 106,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-de6440fff0",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+      "parsed": 106,
+      "published": 106,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-23e069ee61",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2018年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+      "parsed": 96,
+      "published": 96,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-de64548f31",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2019年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+      "parsed": 89,
+      "published": 89,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-2351793487",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2020年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+      "parsed": 109,
+      "published": 109,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-9adc4fdf2d",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2021年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+      "parsed": 120,
+      "published": 120,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-7cf808954b",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2022年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+      "parsed": 92,
+      "published": 92,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-ae594a84c9",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2023中药学专业知识二真题解析\\full.md",
+      "parsed": 91,
+      "published": 91,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-808efa6628",
+      "source": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2024中药二真题及解析\\full.md",
+      "parsed": 81,
+      "published": 81,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-092a01d866",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2015年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+      "parsed": 113,
+      "published": 113,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-2594b464c3",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+      "parsed": 126,
+      "published": 126,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-960a8a6c6c",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2017年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+      "parsed": 99,
+      "published": 99,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-5b93b050c0",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2018年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+      "parsed": 123,
+      "published": 123,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-6f5778bdb7",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2019年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+      "parsed": 194,
+      "published": 194,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-42fbefbfe3",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2020年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+      "parsed": 116,
+      "published": 116,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-c1922d8c70",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+      "parsed": 119,
+      "published": 119,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-a67020bdf0",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2022年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+      "parsed": 79,
+      "published": 79,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-dcb4e1688d",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2023中药综合真题解析\\full.md",
+      "parsed": 79,
+      "published": 79,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-df52d6f09c",
+      "source": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2024中药综合真题解析\\full.md",
+      "parsed": 83,
+      "published": 83,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-c5de5d13ee",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2015年执业药师考试《药事管理与法规》真题及解析\\full.md",
+      "parsed": 113,
+      "published": 113,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-5714f66165",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2016年执业药师考试《药事管理与法规》真题及解析\\full.md",
+      "parsed": 105,
+      "published": 105,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-7d7544613f",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2017年执业药师考试《药事管理与法规》真题及解析\\full.md",
+      "parsed": 108,
+      "published": 108,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-f85ea661d8",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2018年执业药师考试《药事管理与法规》真题及解析\\full.md",
+      "parsed": 104,
+      "published": 104,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-40c8ae25a0",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2019年执业药师考试《药事管理与法规》真题及解析\\full.md",
+      "parsed": 138,
+      "published": 138,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-e0a8df9855",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2020年执业药师考试《药事管理与法规》真题及解析\\full.md",
+      "parsed": 109,
+      "published": 109,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-56adba1859",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2021年执业药师考试《药事管理与法规》真题及解析\\full.md",
+      "parsed": 113,
+      "published": 113,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-72afff1d9a",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2022年执业药师考试《药事管理与法规》真题及解析\\full.md",
+      "parsed": 62,
+      "published": 61,
+      "rejected": {
+        "missing_stem": 1
+      },
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-906691019e",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+      "parsed": 87,
+      "published": 87,
+      "rejected": {},
+      "passed": true
+    },
+    {
+      "template_id": "5ae6a7bd1b91-1f023494f3",
+      "source": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2024法规真题及解析\\full.md",
+      "parsed": 70,
+      "published": 69,
+      "rejected": {
+        "missing_stem": 1
+      },
+      "passed": true
+    },
+    {
+      "template_id": "868c9dd7d0a9-2018",
+      "source": "中医执业助理医师资格考试_2018-2023.json",
+      "parsed": 266,
+      "published": 69,
+      "rejected": {
+        "missing_options": 61,
+        "duplicate_option_id": 3,
+        "missing_stem": 132,
+        "answer_not_in_options": 1
+      },
+      "passed": true
+    },
+    {
+      "template_id": "868c9dd7d0a9-2019",
+      "source": "中医执业助理医师资格考试_2018-2023.json",
+      "parsed": 218,
+      "published": 81,
+      "rejected": {
+        "unparsed_compound_question": 1,
+        "missing_options": 82,
+        "missing_stem": 51,
+        "duplicate_option_id": 3
+      },
+      "passed": true
+    },
+    {
+      "template_id": "868c9dd7d0a9-2020",
+      "source": "中医执业助理医师资格考试_2018-2023.json",
+      "parsed": 151,
+      "published": 51,
+      "rejected": {
+        "missing_options": 34,
+        "missing_stem": 62,
+        "duplicate_option_id": 4
+      },
+      "passed": true
+    },
+    {
+      "template_id": "868c9dd7d0a9-2021",
+      "source": "中医执业助理医师资格考试_2018-2023.json",
+      "parsed": 145,
+      "published": 0,
+      "rejected": {
+        "missing_options": 61,
+        "missing_stem": 84
+      },
+      "passed": false
+    },
+    {
+      "template_id": "868c9dd7d0a9-2022",
+      "source": "中医执业助理医师资格考试_2018-2023.json",
+      "parsed": 298,
+      "published": 63,
+      "rejected": {
+        "duplicate_option_id": 4,
+        "missing_stem": 219,
+        "answer_not_in_options": 1,
+        "missing_options": 10,
+        "unparsed_compound_question": 1
+      },
+      "passed": true
+    },
+    {
+      "template_id": "868c9dd7d0a9-2023",
+      "source": "中医执业助理医师资格考试_2018-2023.json",
+      "parsed": 142,
+      "published": 22,
+      "rejected": {
+        "missing_options": 49,
+        "duplicate_option_id": 2,
+        "missing_stem": 67,
+        "answer_not_in_options": 1,
+        "unparsed_compound_question": 1
+      },
+      "passed": true
+    },
+    {
+      "template_id": "868c9dd7d0a9-2024",
+      "source": "中医执业助理医师资格考试_2018-2023.json",
+      "parsed": 216,
+      "published": 98,
+      "rejected": {
+        "duplicate_option_id": 10,
+        "answer_leak_in_option": 2,
+        "answer_not_in_options": 2,
+        "missing_options": 104
+      },
+      "passed": true
+    }
+  ],
+  "published_count": 99
+}

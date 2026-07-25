@@ -1,0 +1,1850 @@
+{
+  "template_id": "868c9dd7d0a9-2020",
+  "questions": [
+    {
+      "question_id": "868c9dd7d0a9-2020-q0009",
+      "question_type": "single_choice",
+      "question_content": "气不摄血多与哪一脏的功能失调有关",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝"
+        },
+        {
+          "option_id": "B",
+          "content": "心"
+        },
+        {
+          "option_id": "C",
+          "content": "脾"
+        },
+        {
+          "option_id": "D",
+          "content": "肺"
+        },
+        {
+          "option_id": "E",
+          "content": "肾"
+        }
+      ],
+      "answer": [],
+      "explanation": "休息痢为病久正伤，邪恋肠腑，传导不利，治当温中清肠，调气化滞，方予连理汤加减。湿热痢之当清肠化湿，调气和血，方予芍药汤加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 8
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0010",
+      "question_type": "single_choice",
+      "question_content": "下列选项中，不属于湿邪的性质和致病特点的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "湿性凝滞"
+        },
+        {
+          "option_id": "B",
+          "content": "湿为阴邪，阻遏气机"
+        },
+        {
+          "option_id": "C",
+          "content": "湿性重浊"
+        },
+        {
+          "option_id": "D",
+          "content": "湿性黏滞"
+        },
+        {
+          "option_id": "E",
+          "content": "湿性趋下，易袭阴位"
+        }
+      ],
+      "answer": [],
+      "explanation": "治疗黄疸阴黄证，应选用能温中化湿，健脾和胃的茵陈术附汤。麻黄连翘赤小豆汤能宣肺利尿，适用于风水在表之水肿。栀子柏皮汤能清热利湿，适用于伤寒身热发黄。茵陈五苓散能利湿退黄，适用于湿重于热的阳黄。茵陈蒿汤能清热通腑，利湿退黄，适用于治疗热重于湿的阳黄。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 9
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0011",
+      "question_type": "single_choice",
+      "question_content": "结脉与代脉的主要区别在于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "节律不同"
+        },
+        {
+          "option_id": "B",
+          "content": "至数不同"
+        },
+        {
+          "option_id": "C",
+          "content": "脉力不同"
+        },
+        {
+          "option_id": "D",
+          "content": "脉位不同"
+        },
+        {
+          "option_id": "E",
+          "content": "流利度不同"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 10
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0012",
+      "question_type": "single_choice",
+      "question_content": "津液输布的主要通道是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "经络"
+        },
+        {
+          "option_id": "B",
+          "content": "腠理"
+        },
+        {
+          "option_id": "C",
+          "content": "血府"
+        },
+        {
+          "option_id": "D",
+          "content": "三焦"
+        },
+        {
+          "option_id": "E",
+          "content": "分肉"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "津液的输布和排泄,主要是通过脾的传输、肺的宣降和肾的蒸腾气化,以三焦为通道输布于全身。血府是血液运行的通路,经络是气血的通道,腠理是汗液排出的通路,卫气运行于分肉、皮肤之间。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 11
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0013",
+      "question_type": "single_choice",
+      "question_content": "“生之本”指的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝"
+        },
+        {
+          "option_id": "B",
+          "content": "肺"
+        },
+        {
+          "option_id": "C",
+          "content": "心"
+        },
+        {
+          "option_id": "D",
+          "content": "脾"
+        },
+        {
+          "option_id": "E",
+          "content": "肾"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "心肾阳虚以心悸、水肿、与虚寒证共见为主要表现。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 12
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0014",
+      "question_type": "single_choice",
+      "question_content": "邪热挟酒毒上壅的舌象是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "舌色青紫"
+        },
+        {
+          "option_id": "B",
+          "content": "舌色晦暗"
+        },
+        {
+          "option_id": "C",
+          "content": "舌紫肿胀"
+        },
+        {
+          "option_id": "D",
+          "content": "舌脉粗长"
+        },
+        {
+          "option_id": "E",
+          "content": "舌多瘀斑"
+        }
+      ],
+      "answer": [],
+      "explanation": "外感咳嗽忌过早应用敛肺、收涩的镇咳药。误用则致肺气郁遏不得宣畅，不能达邪外出，邪恋不去，反而久咳伤正。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 13
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0015",
+      "question_type": "single_choice",
+      "question_content": "“太仓”所指的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "三焦"
+        },
+        {
+          "option_id": "B",
+          "content": "胃"
+        },
+        {
+          "option_id": "C",
+          "content": "小肠"
+        },
+        {
+          "option_id": "D",
+          "content": "脾"
+        },
+        {
+          "option_id": "E",
+          "content": "大肠"
+        }
+      ],
+      "answer": [],
+      "explanation": "喘证以喘促短气，呼吸困难，甚至张口抬肩，鼻翼扇动，不能平卧，口唇发绀为特征。胸高胀满是肺胀的临床表现。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 14
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0020",
+      "question_type": "single_choice",
+      "question_content": "胸痹总属本虚标实之证，其本虚为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝肾亏虚"
+        },
+        {
+          "option_id": "B",
+          "content": "心脾亏虚"
+        },
+        {
+          "option_id": "C",
+          "content": "心气不足"
+        },
+        {
+          "option_id": "D",
+          "content": "肾阴不足"
+        },
+        {
+          "option_id": "E",
+          "content": "心脾肝肾亏虚"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "胸痹的病因主要为寒邪内侵，饮食不当，情志失调，年老体虚所致。其病机有虚实两个方面，实为寒凝，气滞血瘀痰阻，闭遏胸阳，阻滞心脉；虚为心脾、肝肾亏虚，心脉失养。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 19
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0021",
+      "question_type": "single_choice",
+      "question_content": "痴呆与脏躁的鉴别要点不包括",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "年龄或性别的差异"
+        },
+        {
+          "option_id": "B",
+          "content": "不发作时是否如常人"
+        },
+        {
+          "option_id": "C",
+          "content": "是否呈间歇性发作"
+        },
+        {
+          "option_id": "D",
+          "content": "是否沉默寡言，情感淡漠，静而多喜"
+        },
+        {
+          "option_id": "E",
+          "content": "是否出现智能、人格、情感方面的变化"
+        }
+      ],
+      "answer": [],
+      "explanation": "痴呆的神志异常需与郁证中的脏躁相鉴别。脏躁多发于青中年女性，多在精神因素的刺激下呈间歇性发作，不发作时可如常人，且无智能、人格、情感方面的变化。而痴呆多见于老年人，男女发病无明显差别，且病程迁延，其心神失常症状不能自行缓解，并伴有明显的记忆力、计算力减退甚至人格情感的变化。故正确答案为D。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 20
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0022",
+      "question_type": "single_choice",
+      "question_content": "中风之中经络与中脏腑之分在于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "有无神志不清"
+        },
+        {
+          "option_id": "B",
+          "content": "有无后遗症"
+        },
+        {
+          "option_id": "C",
+          "content": "外风与内风"
+        },
+        {
+          "option_id": "D",
+          "content": "夹痰与夹瘀"
+        },
+        {
+          "option_id": "E",
+          "content": "邪浅与邪深"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "临床按脑髓神机受损的程度与有无神识昏蒙，分为中经络与中脏腑两大类型。两者根本区别在于中经络一般无神志改变，表现为不经昏仆而突然发生口眼歪斜、言语不利、半身不遂；中脏腑则出现突然昏仆，不省人事，半身不遂、口舌歪斜、舌强言謇或不语、偏身麻木、神识恍惚或迷蒙为主症，并常遗留后遗症。中经络者，病位较浅，病情较轻；中脏腑者，病位较深，病情较重。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 21
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0023",
+      "question_type": "single_choice",
+      "question_content": "患者，男，31岁。痫证反复发作，发则突然昏动，口吐涎沫，声声尖叫，舌苔白腻，脉象弦滑当为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痰浊内阻"
+        },
+        {
+          "option_id": "B",
+          "content": "气机逆乱"
+        },
+        {
+          "option_id": "C",
+          "content": "肝风扰动"
+        },
+        {
+          "option_id": "D",
+          "content": "风痰闭阻"
+        },
+        {
+          "option_id": "E",
+          "content": "气滞血瘀"
+        }
+      ],
+      "answer": [],
+      "explanation": "胃痛瘀血停胃证，治法:化瘀通络，理气和胃。代表方:失笑散合丹参饮加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 22
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0024",
+      "question_type": "single_choice",
+      "question_content": "瘀血停滞型胃痛的主方是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "复元活血汤"
+        },
+        {
+          "option_id": "B",
+          "content": "加味四物汤"
+        },
+        {
+          "option_id": "C",
+          "content": "失笑散合丹参饮"
+        },
+        {
+          "option_id": "D",
+          "content": "当归补血汤"
+        },
+        {
+          "option_id": "E",
+          "content": "桃仁红花煎"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 23
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0025",
+      "question_type": "single_choice",
+      "question_content": "下列哪项不是脾胃阳虚型呕吐的症状",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "朝食暮吐"
+        },
+        {
+          "option_id": "B",
+          "content": "面色晄白"
+        },
+        {
+          "option_id": "C",
+          "content": "饮食稍多即吐"
+        },
+        {
+          "option_id": "D",
+          "content": "四肢不温"
+        },
+        {
+          "option_id": "E",
+          "content": "呕吐时作时止"
+        }
+      ],
+      "answer": [],
+      "explanation": "脾胃阳虚型呕吐的证候表现为饮食稍多即吐，时作时止，面色晄白，倦怠乏力，喜暖恶寒，四肢不温，大便溏薄，舌质淡，脉濡弱。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 24
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0026",
+      "question_type": "single_choice",
+      "question_content": "下列关于痢疾治疗原则的叙述中，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "热痢清之，寒痢温之"
+        },
+        {
+          "option_id": "B",
+          "content": "分利小便"
+        },
+        {
+          "option_id": "C",
+          "content": "忌过早补涩"
+        },
+        {
+          "option_id": "D",
+          "content": "寒热交错者清温并用"
+        },
+        {
+          "option_id": "E",
+          "content": "初痢实则通之，久痢虚则补之"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "分利小便并不属于痢疾治疗原则。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 25
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0095",
+      "question_type": "single_choice",
+      "question_content": "匙状甲多见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "缺铁性贫血"
+        },
+        {
+          "option_id": "B",
+          "content": "肺癌"
+        },
+        {
+          "option_id": "C",
+          "content": "发绀型先心病"
+        },
+        {
+          "option_id": "D",
+          "content": "类风湿关节炎"
+        },
+        {
+          "option_id": "E",
+          "content": "风湿热"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "略",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 94
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0096",
+      "question_type": "single_choice",
+      "question_content": "下列哪项可见血白细胞总数增多",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "伤寒杆菌感染"
+        },
+        {
+          "option_id": "B",
+          "content": "再生障碍性贫血"
+        },
+        {
+          "option_id": "C",
+          "content": "急性失血"
+        },
+        {
+          "option_id": "D",
+          "content": "使用氯霉素的影响"
+        },
+        {
+          "option_id": "E",
+          "content": "脾功能亢进"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "带下病是指带下量明显增多或减少，色、质、气味发生异常，或伴有全身或局部症状者。带下明显增多者称为带下过多；带下明显减少者称为带下过少。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 95
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0097",
+      "question_type": "single_choice",
+      "question_content": "心肌梗死的“损伤型”心电图改变主要表现在",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "R波电压降低"
+        },
+        {
+          "option_id": "B",
+          "content": "异常Q波"
+        },
+        {
+          "option_id": "C",
+          "content": "T波对称性"
+        },
+        {
+          "option_id": "D",
+          "content": "ST段抬高"
+        },
+        {
+          "option_id": "E",
+          "content": "T波直立高耸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "ST 段抬高见于急性心肌梗死(弓背向上)、急性心包炎(弓背向下)，亦可见于变异性心绞痛和室壁膨胀瘤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 96
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0098",
+      "question_type": "single_choice",
+      "question_content": "关于左心室肥大，以下错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "QRS电压增高"
+        },
+        {
+          "option_id": "B",
+          "content": "心电轴左偏"
+        },
+        {
+          "option_id": "C",
+          "content": "QRS波群时间延长"
+        },
+        {
+          "option_id": "D",
+          "content": "ST段下移 $\\geqslant 0.03\\mathrm{mV}$ E. T波低平、双向或倒置"
+        }
+      ],
+      "answer": [],
+      "explanation": "崩漏血热实热证主症为崩漏，伴阴虚内热症状。所以治宜滋阴清热，止血调经。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 97
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0099",
+      "question_type": "single_choice",
+      "question_content": "关于MRI检查安全性论述，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "带有心脏起搏器患者禁止MRI检查"
+        },
+        {
+          "option_id": "B",
+          "content": "体内有金属异物、人工铁磁性关节等不应行MRI检查"
+        },
+        {
+          "option_id": "C",
+          "content": "幽闭症患者不宜做MRI检查"
+        },
+        {
+          "option_id": "D",
+          "content": "正在进行生命监护的危重患者不能进行MRI检查"
+        },
+        {
+          "option_id": "E",
+          "content": "早期妊娠妇女接受MRI检查肯定是安全的"
+        }
+      ],
+      "answer": [],
+      "explanation": "乳痈成脓期热毒炽盛，乳络阻塞；气血凝滞。故乳房肿块渐增大，治法:清热解毒，托毒透脓，方予透脓散。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 98
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0100",
+      "question_type": "single_choice",
+      "question_content": "肺结核的干酪性病灶液化，基本X线表现是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "渗出"
+        },
+        {
+          "option_id": "B",
+          "content": "增殖"
+        },
+        {
+          "option_id": "C",
+          "content": "纤维化"
+        },
+        {
+          "option_id": "D",
+          "content": "空洞"
+        },
+        {
+          "option_id": "E",
+          "content": "钙化"
+        }
+      ],
+      "answer": [],
+      "explanation": "激经又叫“盛胎”或“垢胎”。指怀孕以后，“月经”仍按月来潮，且量、时间相对较短，而对孕妇、胎儿并无明显损害者，属生理现象。居经，又名季经、按季，是指妇女身体无病月经每三个月一行者。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 99
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0101",
+      "question_type": "single_choice",
+      "question_content": "下列疾病，立位X线透视可见膈下游离气体影的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性胃穿孔"
+        },
+        {
+          "option_id": "B",
+          "content": "肠梗阻"
+        },
+        {
+          "option_id": "C",
+          "content": "肠套叠"
+        },
+        {
+          "option_id": "D",
+          "content": "肝破裂"
+        },
+        {
+          "option_id": "E",
+          "content": "结肠肿瘤"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 100
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0110",
+      "question_type": "single_choice",
+      "question_content": "下列属于慢性肾炎患者尿液最常见的管型是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "上皮细胞管型"
+        },
+        {
+          "option_id": "B",
+          "content": "颗粒管型"
+        },
+        {
+          "option_id": "C",
+          "content": "红细胞管型"
+        },
+        {
+          "option_id": "D",
+          "content": "白细胞管型"
+        },
+        {
+          "option_id": "E",
+          "content": "类管型"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者表现辨证为带下过多脾虚证。治法:健脾益气，升阳除湿。方药:完带汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 109
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0111",
+      "question_type": "single_choice",
+      "question_content": "下列关于晚期肝硬化体征描述不正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蜘蛛痣"
+        },
+        {
+          "option_id": "B",
+          "content": "肝掌"
+        },
+        {
+          "option_id": "C",
+          "content": "黄疸"
+        },
+        {
+          "option_id": "D",
+          "content": "肝脏肿大"
+        },
+        {
+          "option_id": "E",
+          "content": "移动性浊音阳性"
+        }
+      ],
+      "answer": [],
+      "explanation": "经行感冒邪入少阳的主要症状是:每于经期即出现寒热往来,胸胁苦满,口苦咽干,心烦欲呕,头晕目眩,默默不欲饮食,舌红,苔薄白或薄黄,脉弦或弦数。故选项B经行期间,发热身痛,微恶寒,不属于其主要症状。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 110
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0112",
+      "question_type": "single_choice",
+      "question_content": "慢性支气管炎的诊断标准是在排除其他心肺疾病时，咳嗽、咳痰或伴喘息反复发作的时间是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "至少3个月并持续2年或以上"
+        },
+        {
+          "option_id": "B",
+          "content": "至少6个月并持续3年以上"
+        },
+        {
+          "option_id": "C",
+          "content": "2个月并持续3年"
+        },
+        {
+          "option_id": "D",
+          "content": "至少2个月并持续3年或以上"
+        },
+        {
+          "option_id": "E",
+          "content": "反复发病2年以上"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 111
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0113",
+      "question_type": "single_choice",
+      "question_content": "典型肺炎链球菌肺炎的痰液性状是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "粉红色泡沫样痰"
+        },
+        {
+          "option_id": "B",
+          "content": "铁锈色痰"
+        },
+        {
+          "option_id": "C",
+          "content": "脓性痰"
+        },
+        {
+          "option_id": "D",
+          "content": "黄白黏痰"
+        },
+        {
+          "option_id": "E",
+          "content": "脓臭痰"
+        }
+      ],
+      "answer": [],
+      "explanation": "根据主要症状的描述，该患者属于经行泄泻的脾虚证，故其治法是健脾渗湿，理气调经。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 112
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0114",
+      "question_type": "single_choice",
+      "question_content": "风心病并发心律失常最多见的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阵发性心动过速"
+        },
+        {
+          "option_id": "B",
+          "content": "房颤"
+        },
+        {
+          "option_id": "C",
+          "content": "早搏"
+        },
+        {
+          "option_id": "D",
+          "content": "房性心动过速"
+        },
+        {
+          "option_id": "E",
+          "content": "心房扑动"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "妊娠腹痛的发病机理主要是气郁、血瘀、血虚、虚寒，以致胞脉、胞络阻滞或失养，气血运行不畅，“不通则痛”或“不荣则痛”。其病位在胞脉、胞络，尚未损伤胎元。病情严重者，可影响到胎元，发展为胎漏、胎动不安。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 113
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0115",
+      "question_type": "single_choice",
+      "question_content": "6分钟步行试验可判断为中度心力衰竭的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "步行距离>150米"
+        },
+        {
+          "option_id": "B",
+          "content": "步行距离>425米"
+        },
+        {
+          "option_id": "C",
+          "content": "步行距离<150米"
+        },
+        {
+          "option_id": "D",
+          "content": "步行距离<425米"
+        },
+        {
+          "option_id": "E",
+          "content": "步行距离<100米"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "肝热型恶阻的临床表现为恶心呕吐酸水或苦水，恶闻油腻，胸胁胀满，嗳气叹息，心烦口苦，舌红，苔微黄，脉弦滑。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 114
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0116",
+      "question_type": "single_choice",
+      "question_content": "诊断心绞痛最常用的无创性检查方法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "放射性心肌核素"
+        },
+        {
+          "option_id": "B",
+          "content": "冠状动脉造影"
+        },
+        {
+          "option_id": "C",
+          "content": "心电图"
+        },
+        {
+          "option_id": "D",
+          "content": "超声心动图"
+        },
+        {
+          "option_id": "E",
+          "content": "动态心电图"
+        }
+      ],
+      "answer": [],
+      "explanation": "根据症状、体征及辅助检查诊断为胎动不安。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 115
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0117",
+      "question_type": "single_choice",
+      "question_content": "冠心病患者为预防发生心肌梗死，应选的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "尿激酶"
+        },
+        {
+          "option_id": "B",
+          "content": "华法林"
+        },
+        {
+          "option_id": "C",
+          "content": "肝素"
+        },
+        {
+          "option_id": "D",
+          "content": "利多卡因"
+        },
+        {
+          "option_id": "E",
+          "content": "小剂量阿司匹林"
+        }
+      ],
+      "answer": [],
+      "explanation": "该题根据描述的主要症状，考虑此患者应为产后腹痛的瘀滞子宫证，故其治法为活血化瘀，温经止痛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 116
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0118",
+      "question_type": "single_choice",
+      "question_content": "胃溃疡的临床特点是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "多见于青壮年"
+        },
+        {
+          "option_id": "B",
+          "content": "多发于球部"
+        },
+        {
+          "option_id": "C",
+          "content": "O型血者患病率比其他血型高"
+        },
+        {
+          "option_id": "D",
+          "content": "餐后腹痛明显，至下次进餐前消失"
+        },
+        {
+          "option_id": "E",
+          "content": "穿孔发生率高于十二指肠溃疡"
+        }
+      ],
+      "answer": [],
+      "explanation": "产后发热有虚有实，其证各异。在注意多虚多瘀的基础上，治疗应以调气血，和营卫为主。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 117
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0119",
+      "question_type": "single_choice",
+      "question_content": "下列不属于消化性溃疡外科治疗适应证的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "反复出血，内科治疗无效"
+        },
+        {
+          "option_id": "B",
+          "content": "瘢痕性幽门梗阻"
+        },
+        {
+          "option_id": "C",
+          "content": "急性穿孔"
+        },
+        {
+          "option_id": "D",
+          "content": "胃溃疡癌变"
+        },
+        {
+          "option_id": "E",
+          "content": "顽固性溃疡"
+        }
+      ],
+      "answer": [],
+      "explanation": "根据题干，诊断为不孕症肾阴虚证，治宜滋肾养血，调补冲任。治疗首选养精种玉汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 118
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0120",
+      "question_type": "single_choice",
+      "question_content": "下列关于肝硬化患者腹水的治疗，不正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "输注血浆提高胶体渗透压"
+        },
+        {
+          "option_id": "B",
+          "content": "快速利尿"
+        },
+        {
+          "option_id": "C",
+          "content": "限制钠的摄入"
+        },
+        {
+          "option_id": "D",
+          "content": "可选择脾切除术治疗腹水"
+        },
+        {
+          "option_id": "E",
+          "content": "利尿剂无效时可选择放腹水"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "癌前变化包括癌前病变与癌前状态。癌前病变包括异型增生及上皮内瘤变。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 119
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0121",
+      "question_type": "single_choice",
+      "question_content": "下列属于癌前病变的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "残胃炎"
+        },
+        {
+          "option_id": "B",
+          "content": "慢性胃溃疡"
+        },
+        {
+          "option_id": "C",
+          "content": "萎缩性胃炎"
+        },
+        {
+          "option_id": "D",
+          "content": "异型增生"
+        },
+        {
+          "option_id": "E",
+          "content": "腺瘤型息肉"
+        }
+      ],
+      "answer": [],
+      "explanation": "紫癜之风热伤络，治以疏风散邪，清热凉血。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 120
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0122",
+      "question_type": "single_choice",
+      "question_content": "门静脉高压症不包括下列哪个体征",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痔核形成"
+        },
+        {
+          "option_id": "B",
+          "content": "腹水"
+        },
+        {
+          "option_id": "C",
+          "content": "脾大"
+        },
+        {
+          "option_id": "D",
+          "content": "食管和胃底静脉曲张"
+        },
+        {
+          "option_id": "E",
+          "content": "肝大"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 121
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0123",
+      "question_type": "single_choice",
+      "question_content": "肝性脑病治疗中可降低血氨的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "乳果糖"
+        },
+        {
+          "option_id": "B",
+          "content": "谷氨酸钠"
+        },
+        {
+          "option_id": "C",
+          "content": "甲硝唑"
+        },
+        {
+          "option_id": "D",
+          "content": "支链氨基酸"
+        },
+        {
+          "option_id": "E",
+          "content": "甘油灌肠剂"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 122
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0124",
+      "question_type": "single_choice",
+      "question_content": "慢性肾炎的首选降压药是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "β受体阻断药"
+        },
+        {
+          "option_id": "B",
+          "content": "利尿剂"
+        },
+        {
+          "option_id": "C",
+          "content": "ACEI"
+        },
+        {
+          "option_id": "D",
+          "content": "钙拮抗药"
+        },
+        {
+          "option_id": "E",
+          "content": "α受体阻断药"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 123
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0125",
+      "question_type": "single_choice",
+      "question_content": "下列各项中，对于肾病综合征的诊断无意义的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "低蛋白血症"
+        },
+        {
+          "option_id": "B",
+          "content": "大量蛋白尿"
+        },
+        {
+          "option_id": "C",
+          "content": "高脂血症"
+        },
+        {
+          "option_id": "D",
+          "content": "全身水肿"
+        },
+        {
+          "option_id": "E",
+          "content": "肾功能正常"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 124
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0126",
+      "question_type": "single_choice",
+      "question_content": "雄激素最适合治疗",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "海洋性贫血"
+        },
+        {
+          "option_id": "B",
+          "content": "慢性失血性贫血"
+        },
+        {
+          "option_id": "C",
+          "content": "缺铁性贫血"
+        },
+        {
+          "option_id": "D",
+          "content": "铁粒幼细胞贫血"
+        },
+        {
+          "option_id": "E",
+          "content": "再生障碍性贫血"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 125
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0127",
+      "question_type": "single_choice",
+      "question_content": "治疗再障可作用于造血干细胞的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "糖皮质激素"
+        },
+        {
+          "option_id": "B",
+          "content": "输新鲜全血"
+        },
+        {
+          "option_id": "C",
+          "content": "丙酸睾酮"
+        },
+        {
+          "option_id": "D",
+          "content": "抗胸腺球蛋白"
+        },
+        {
+          "option_id": "E",
+          "content": "一叶萩碱"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "胎儿期易发生畸形的时间为怀孕前三个月。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 126
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0128",
+      "question_type": "single_choice",
+      "question_content": "对于高钾血症的患者，下列降压药中不宜使用的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阿替洛尔"
+        },
+        {
+          "option_id": "B",
+          "content": "卡托普利"
+        },
+        {
+          "option_id": "C",
+          "content": "非洛地平"
+        },
+        {
+          "option_id": "D",
+          "content": "吲达帕胺"
+        },
+        {
+          "option_id": "E",
+          "content": "硝苯地平"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "第一次高峰婴儿期;第二次高峰青春期。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 127
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0129",
+      "question_type": "single_choice",
+      "question_content": "下列关于急性一氧化碳中毒的治疗，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "保持呼吸道通畅"
+        },
+        {
+          "option_id": "B",
+          "content": "确诊一氧化碳中毒患者立即及早用高压氧(2～3个大气压)治疗"
+        },
+        {
+          "option_id": "C",
+          "content": "立即将患者移离中毒现场，至空气新鲜处"
+        },
+        {
+          "option_id": "D",
+          "content": "重度中毒者应积极防治脑水肿"
+        },
+        {
+          "option_id": "E",
+          "content": "对迟发脑病者，可给予糖皮质激素、血管扩张剂、神经细胞营养药等支持治疗"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "记忆:预防脐风最重要的措施是清洁断脐、护脐。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 128
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0130",
+      "question_type": "single_choice",
+      "question_content": "用于诊断类风湿关节炎的最常用实验室检查是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "C 反应蛋白"
+        },
+        {
+          "option_id": "B",
+          "content": "类风湿因子"
+        },
+        {
+          "option_id": "C",
+          "content": "抗核抗体"
+        },
+        {
+          "option_id": "D",
+          "content": "血沉"
+        },
+        {
+          "option_id": "E",
+          "content": "血象检查"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "喂蛋黄后出现应停止辅食。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 129
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0131",
+      "question_type": "single_choice",
+      "question_content": "消化道大出血是指短期失血量超过",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "400ml"
+        },
+        {
+          "option_id": "B",
+          "content": "800ml"
+        },
+        {
+          "option_id": "C",
+          "content": "300ml"
+        },
+        {
+          "option_id": "D",
+          "content": "1000ml"
+        },
+        {
+          "option_id": "E",
+          "content": "1500ml"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "女婴3-5天乳房隆起,蚕豆到鸽子蛋大小,忌挤压。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 130
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0132",
+      "question_type": "single_choice",
+      "question_content": "下列各项，不是类风湿关节炎的治疗药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "长效青霉素"
+        },
+        {
+          "option_id": "B",
+          "content": "非甾体抗炎药"
+        },
+        {
+          "option_id": "C",
+          "content": "糖皮质激素"
+        },
+        {
+          "option_id": "D",
+          "content": "免疫抑制剂"
+        },
+        {
+          "option_id": "E",
+          "content": "植物药制剂雷公藤多苷"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "胎黄病机:1脾胃湿热(寒湿);2肝失疏泄;3气滞血瘀。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 131
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0133",
+      "question_type": "single_choice",
+      "question_content": "鉴别多发性肌炎与类风湿关节炎、系统性红斑狼疮、硬皮病及干燥综合征等引起的肌炎，最可靠的方法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "病因学方法"
+        },
+        {
+          "option_id": "B",
+          "content": "病理学方法"
+        },
+        {
+          "option_id": "C",
+          "content": "临床症状特点"
+        },
+        {
+          "option_id": "D",
+          "content": "身体检查及肌电图"
+        },
+        {
+          "option_id": "E",
+          "content": "特异性抗体检测"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "阳虚则寒,寒凝则气滞血瘀,致肌肤僵硬,色呈紫暗。则发为硬肿症。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 132
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0134",
+      "question_type": "single_choice",
+      "question_content": "关于短暂性脑缺血发作，下列说法不正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "发作突然，历时短暂，可反复发作"
+        },
+        {
+          "option_id": "B",
+          "content": "椎-基底动脉系统 TIA 以跌倒发作为特征性症状"
+        },
+        {
+          "option_id": "C",
+          "content": "多发于中老年人"
+        },
+        {
+          "option_id": "D",
+          "content": "颈动脉系统 TIA 以发作性偏瘫或单肢轻瘫最常见"
+        },
+        {
+          "option_id": "E",
+          "content": "常遗留神经功能障碍"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "湿热郁蒸型胎黄伴呕吐,宜加竹茹和中止呕。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 133
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0135",
+      "question_type": "single_choice",
+      "question_content": "脑出血患者头颅 CT 显示为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脑实质内低密度灶"
+        },
+        {
+          "option_id": "B",
+          "content": "脑实质内高密度灶"
+        },
+        {
+          "option_id": "C",
+          "content": "蛛网膜下腔高密度影"
+        },
+        {
+          "option_id": "D",
+          "content": "蛛网膜下腔低密度影"
+        },
+        {
+          "option_id": "E",
+          "content": "无明显变化"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "肺炎喘嗽:肺部听诊可闻及中、细湿啰音。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 134
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0136",
+      "question_type": "single_choice",
+      "question_content": "下列各项中，哪项是诊断癫痫的主要依据",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "神经系统检查"
+        },
+        {
+          "option_id": "B",
+          "content": "头部 CT 扫描"
+        },
+        {
+          "option_id": "C",
+          "content": "脑电图检查"
+        },
+        {
+          "option_id": "D",
+          "content": "询问病史"
+        },
+        {
+          "option_id": "E",
+          "content": "脑脊液检查"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "外感咳嗽:风寒、风热、风燥;内伤咳嗽:痰热、痰湿、气虚、阴虚",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 135
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0137",
+      "question_type": "single_choice",
+      "question_content": "有机磷中毒引起的毒蕈碱样症状是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "流涎"
+        },
+        {
+          "option_id": "B",
+          "content": "血压升高"
+        },
+        {
+          "option_id": "C",
+          "content": "肌束颤动"
+        },
+        {
+          "option_id": "D",
+          "content": "尿潴留"
+        },
+        {
+          "option_id": "E",
+          "content": "休克"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "发热重,有汗或少汗,指纹浮紫——风热证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 136
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0138",
+      "question_type": "single_choice",
+      "question_content": "患者在路上突然昏倒，牙关紧闭，不省人事，苔白，脉迟。治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "安宫牛黄丸"
+        },
+        {
+          "option_id": "B",
+          "content": "至宝丹"
+        },
+        {
+          "option_id": "C",
+          "content": "回阳救急汤"
+        },
+        {
+          "option_id": "D",
+          "content": "紫雪丹"
+        },
+        {
+          "option_id": "E",
+          "content": "苏合香丸"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "鹅口疮,心脾积热:清热泻脾散;虚火上浮:知柏地黄丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 137
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2020-q0139",
+      "question_type": "single_choice",
+      "question_content": "患者脘腹阵痛，烦闷呕吐，时发时止，得食则呕，甚则吐蛔，手足厥冷。治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小建中汤"
+        },
+        {
+          "option_id": "B",
+          "content": "真人养脏汤"
+        },
+        {
+          "option_id": "C",
+          "content": "乌梅丸"
+        },
+        {
+          "option_id": "D",
+          "content": "木香槟榔丸"
+        },
+        {
+          "option_id": "E",
+          "content": "理中安蛔丸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "口疮:1风热乘脾:银翘散;2心火上炎:泻心导赤散;3虚火上浮:六味地黄丸加肉桂。舌边尖溃烂——心火上炎。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 138
+      }
+    }
+  ]
+}

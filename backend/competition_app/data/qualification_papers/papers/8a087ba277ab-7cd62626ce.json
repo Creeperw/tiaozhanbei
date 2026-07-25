@@ -1,0 +1,778 @@
+{
+  "template_id": "8a087ba277ab-7cd62626ce",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0022",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为治疗铜绿假单胞菌性尿道炎的首选药",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "诺氟沙星"
+        },
+        {
+          "option_id": "B",
+          "content": "氧氟沙星"
+        },
+        {
+          "option_id": "C",
+          "content": "环丙沙星"
+        },
+        {
+          "option_id": "D",
+          "content": "左氧氟沙星"
+        },
+        {
+          "option_id": "E",
+          "content": "磺胺嘧啶\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：泌尿系统感染首选环丙沙星、氧氟沙星及 $\\beta$ -内酰胺类；环丙沙星是铜绿假单胞菌性尿道炎的首选药；诺氟沙星主要用于治疗敏感菌所致的尿路感染、前列腺炎、肠道感染和伤寒。氧氟沙星主要用于治疗革兰阴性菌所致的呼吸道、胃肠道、尿路、皮肤软组织感染。左氧氟沙星属于氟喹诺酮类抗菌药，适用于呼吸系统感染、泌尿系统感染等。磺胺嘧啶常作为某些其他抗菌药过敏者的首选，常用在重症细菌性感染疾病中。\n\n![](images/7761aada5b5b46c0b8ecf419fab12fb7c4ccd4d144e6e2bfba2a3f6df2e65259.jpg)"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 22
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0023",
+      "question_type": "multiple_choice",
+      "question_content": "下列药物中，对于治疗烧伤继发铜绿假单胞菌感染最有效的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "青霉素"
+        },
+        {
+          "option_id": "B",
+          "content": "链霉素"
+        },
+        {
+          "option_id": "C",
+          "content": "卡那霉素"
+        },
+        {
+          "option_id": "D",
+          "content": "羧苄西林"
+        },
+        {
+          "option_id": "E",
+          "content": "氨苄西林\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：羧苄西林，不耐酸，不能口服，对 G-杆菌作用强，尤其是对铜绿假单胞菌有特效。常用于治疗烧伤继发铜绿假单胞菌感染。绿脓杆菌对多数抗假单胞菌青霉素类、头孢菌素类、氨基糖苷类抗生素、碳青霉烯类抗生素不敏感，仅对半合成青霉素如羧苄西林等、第三代头孢菌素（如头孢哌酮）、单环 β-内酰胺类抗生素（如氨曲南）、β-内酰胺酶抑制剂（如哌拉西林他唑巴坦）、氨基糖苷类抗生素（如妥布霉素）敏感。青霉素是治疗敏感的 G+ 球菌和杆菌、G-球菌及螺旋体所致感染的首选药，对绿脓杆菌几乎无效。链霉素、卡那霉素可作为结核病治疗药物。氨苄西林（"
+        },
+        {
+          "option_id": "G",
+          "content": "错）对 G-杆菌有较强抗菌作用，对铜绿假单胞菌无效。治疗敏感菌所致的呼吸道感染、伤寒、副伤寒、尿路感染、胃肠道感染等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 23
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0024",
+      "question_type": "multiple_choice",
+      "question_content": "下列能够引起反射性心率加快的药物是 懒人医考整理",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "可乐定"
+        },
+        {
+          "option_id": "B",
+          "content": "氢氯噻嗪"
+        },
+        {
+          "option_id": "C",
+          "content": "肼屈嗪"
+        },
+        {
+          "option_id": "D",
+          "content": "卡托普利"
+        },
+        {
+          "option_id": "E",
+          "content": "哌唑嗪\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：直接扩张小动脉，降低外周阻力而降压，降压同时伴有反射性交感神经兴奋，使心率加快，心输出量增加，从而减弱其降压作用。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 24
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0025",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为既能升高血压又可以引起反射性心率减慢的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾上腺素"
+        },
+        {
+          "option_id": "B",
+          "content": "异丙肾上腺素"
+        },
+        {
+          "option_id": "C",
+          "content": "去甲肾上腺素"
+        },
+        {
+          "option_id": "D",
+          "content": "乙酰胆碱"
+        },
+        {
+          "option_id": "E",
+          "content": "阿托品\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：去甲肾上腺素为血管收缩药，主要通过激动血管 $\\alpha 1$ 受体，引起血管收缩，血压升高；血压升高时，可通过压力感受器反射性抑制交感神经活动，引起心率减慢，故既能升高血压又可以引起反射性心率减慢。肾上腺素可激动 $\\alpha$ 、 $\\beta$ 受体，引起血压升高，同时激动 $\\beta 1$ 、 $\\beta 2$ 受体，可引起心率加快。异丙肾上腺素为 $\\beta$ 肾上腺素受体激动药，主要激动 $\\beta 2$ 受体，引起血管舒张，血压下降；同时激动 $\\beta 1$ 受体，使心率加快。乙酰胆碱为 M 胆碱受体激动药，可激动 M 受体，表现为血管舒张、心率减慢、胃肠腺体分泌增多等。阿托品为 M 胆碱受体拮抗药，可阻断 M 受体，解除迷走神经对心脏的抑制作用，使心率加快。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 25
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0026",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为美金刚治疗阿尔兹海默病的药理作用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "多巴胺受体激动剂"
+        },
+        {
+          "option_id": "B",
+          "content": "乙酰胆碱酯酶抑制剂"
+        },
+        {
+          "option_id": "C",
+          "content": "烟碱受体激动药"
+        },
+        {
+          "option_id": "D",
+          "content": "非竞争性拮抗NMDA受体"
+        },
+        {
+          "option_id": "E",
+          "content": "5-HT受体拮抗药\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：美金刚非竞争性NMDA受体拮抗药。能改善中度至重度"
+        },
+        {
+          "option_id": "G",
+          "content": "D患者的认知能力和日常生活能力；治疗中晚期重症"
+        },
+        {
+          "option_id": "H",
+          "content": "D。多巴胺受体激动剂主要应用于帕金森病的治疗。乙酰胆碱酯酶抑制剂主要是石杉碱甲（哈伯因）的药理作用。烟碱受体激动药主要用于治疗急性心肌梗死和脑卒中。5-HT受体拮抗药主要用于治疗抗肿瘤药物诱发的呕吐、室性心律失常、惊厥、偏头痛等。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 26
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0027",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为左旋多巴治疗帕金森病的药理作用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阻断中枢胆碱受体"
+        },
+        {
+          "option_id": "B",
+          "content": "直接激动中枢的多巴胺受体"
+        },
+        {
+          "option_id": "C",
+          "content": "补充纹状体中多巴胺的不足"
+        },
+        {
+          "option_id": "D",
+          "content": "抑制多巴胺的再摄取"
+        },
+        {
+          "option_id": "E",
+          "content": "抑制外周多巴胺\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：左旋多巴是一种芳香族氨基酸，可通过血脑屏障进入脑组织，脱羧后形成多巴胺，补充纹状体中多巴胺的不足，从而发挥治疗帕金森病的作用。阻断中枢胆碱受体是苯海索治疗帕金森病的药理作用。直接激动中枢的多巴胺受体是麦角类治疗帕金森病的药理作用。抑制多巴胺的再摄取是司来吉兰治疗帕金森病的药理作用。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 27
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0028",
+      "question_type": "multiple_choice",
+      "question_content": "下列降血糖口服药中，能改善血脂代谢的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "二甲双胍\n\n懒人医考整理"
+        },
+        {
+          "option_id": "B",
+          "content": "格列本脲"
+        },
+        {
+          "option_id": "C",
+          "content": "格列美脲"
+        },
+        {
+          "option_id": "D",
+          "content": "胰岛素"
+        },
+        {
+          "option_id": "E",
+          "content": "格列齐特\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：二甲双胍降糖的降糖作用不依赖于胰岛 $\\beta$ 细胞的功能，可能机制包括：（1）增加肌肉组织中的无氧糖酵解。（2）促进组织对葡萄糖的摄取。（3）减少肝细胞糖异生。（4）减慢葡萄糖在肠道的吸收。（5）增加胰岛素与其受体结合。（6）降低血中胰高血糖素水平。此外，还可改善血脂代谢，降低 LDL 及 VLDL、甘油三酯及胆固醇水平。<nl>"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 28
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0029",
+      "question_type": "multiple_choice",
+      "question_content": "下列药物中，能治疗高血压合并糖尿病肾病的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "普萘洛尔"
+        },
+        {
+          "option_id": "B",
+          "content": "卡托普利"
+        },
+        {
+          "option_id": "C",
+          "content": "硝苯地平"
+        },
+        {
+          "option_id": "D",
+          "content": "米诺地尔"
+        },
+        {
+          "option_id": "E",
+          "content": "利血平\n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：卡托普利是伴有糖尿病、左心室肥厚、左心功能障碍及急性心肌梗死的高血压患者的首选药物。普萘洛尔对伴有心输出量偏高或血浆肾素活性增高者以及伴有冠心病者更适宜。硝苯地平各型高血压，尤以低肾素性高血压疗效好。利血平不单独使用，常与其他降压药一起合用于高血压。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 29
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0030",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为速尿的作用机制",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "抑制Na-K-2C1共同转运载体"
+        },
+        {
+          "option_id": "B",
+          "content": "抑制Na通道"
+        },
+        {
+          "option_id": "C",
+          "content": "抑制肾的浓缩功能"
+        },
+        {
+          "option_id": "D",
+          "content": "抑制肾小管碳酸酐酶"
+        },
+        {
+          "option_id": "E",
+          "content": "拮抗醛固酮作用\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：速尿即呋塞米，为髓袢升支粗段（近端小管）的强效、速效利尿剂，其作用机制为抑制 Na-K-2Cl 共同转运载体，使髓袢升支粗段对 NaCl 的重吸收减少，从而增加远曲小管和集合管对水的重吸收，发挥利尿作用。抑制 Na 通道是利多卡因抗心律失常的作用机制。抑制肾小管碳酸酐酶是乙酰唑胺的作用机制。拮抗醛固酮作用是保钾利尿药的作用机制。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 30
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0031",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为强心苷中毒致室性心律失常的解救药物",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "奎尼丁"
+        },
+        {
+          "option_id": "B",
+          "content": "苯妥英钠"
+        },
+        {
+          "option_id": "C",
+          "content": "普鲁卡因胺"
+        },
+        {
+          "option_id": "D",
+          "content": "普萘洛尔"
+        },
+        {
+          "option_id": "E",
+          "content": "维拉帕米  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：强心苷中毒致室性心律失常的解救药物是苯妥英钠。奎尼丁可降低心肌的自律性，延长房室结的有效不应期，常用于室上性心动过速，室性期前收缩，难治性心力衰竭，预激综合征合并房颤时的心率减慢及洋地黄中毒。普鲁卡因胺为广谱抗心律失常药，可用于各种室上性心动过速、室性期前收缩、难治性心力衰竭等。维拉帕米主要用于室上性心动过速和后除极触发活动所致的心律失常。普萘洛尔可阻断 $\\beta$ 受体，具有降低心肌自律性、减慢传导和减弱心肌收缩力的作用，可用于心律失常的治疗。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 31
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0032",
+      "question_type": "multiple_choice",
+      "question_content": "强心苷中毒引起的窦性心动过缓和房室传导阻滞，治疗可选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "异丙肾上腺素"
+        },
+        {
+          "option_id": "B",
+          "content": "胺碘酮\n\n懒人医考整理"
+        },
+        {
+          "option_id": "C",
+          "content": "麻黄碱"
+        },
+        {
+          "option_id": "D",
+          "content": "阿托品"
+        },
+        {
+          "option_id": "E",
+          "content": "利多卡因\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：强心苷中毒的治疗：轻度中毒停用即可。对于快速型心律失常，应及时补钾，并可选用苯妥英钠、利多卡因等抗心律失常药。对于危及生命的强心苷中毒者，可静脉注射地高辛抗体"
+        },
+        {
+          "option_id": "G",
+          "content": "ab片段。对于缓慢型心律失常可用阿托品治疗。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 32
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0033",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为既能升压，又能收缩血管的药物",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "硝普钠"
+        },
+        {
+          "option_id": "B",
+          "content": "间羟胺"
+        },
+        {
+          "option_id": "C",
+          "content": "阿托品"
+        },
+        {
+          "option_id": "D",
+          "content": "东莨菪碱"
+        },
+        {
+          "option_id": "E",
+          "content": "酚妥拉明\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：间羟胺为血管收缩剂，直接兴奋 $\\alpha$ 受体收缩血管，升压作用持久其临床常用于低血压的治疗。硝普钠为动、静脉血管扩张剂，既能降低动脉血管阻力，又能扩张静脉，引起全身血管阻力下降，血压下降，临床上可用于高血压危象及高血压脑病的治疗。阿托品和东莨菪碱均为抗胆碱药，主要通过抑制胆碱能神经末梢的M-胆碱受体而改善微循环，抗休克作用较弱。酚妥拉明为血管舒张剂，大剂量时可引起血管舒张，导致血压下降"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 33
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0034",
+      "question_type": "multiple_choice",
+      "question_content": "下列不属于抗抑郁药物的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "艾司唑仑"
+        },
+        {
+          "option_id": "B",
+          "content": "氟西汀"
+        },
+        {
+          "option_id": "C",
+          "content": "舍曲林"
+        },
+        {
+          "option_id": "D",
+          "content": "帕罗西汀"
+        },
+        {
+          "option_id": "E",
+          "content": "马普替林\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：艾司唑仑属于中效苯二氮卓类镇静催眠药，抗抑郁症药包括：选择性5-HT再摄取抑制剂：氟西汀（百忧解）、舍曲林、帕罗西汀等；选择性NA再摄取抑制剂：马普替林；三环类：丙咪嗪、阿米替林；单胺氧化酶抑制剂：吗氯贝胺"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 34
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0035",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为治疗餐后血糖升高的口服降糖药",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阿卡波糖"
+        },
+        {
+          "option_id": "B",
+          "content": "二甲双胍"
+        },
+        {
+          "option_id": "C",
+          "content": "格列本脲"
+        },
+        {
+          "option_id": "D",
+          "content": "罗格列酮"
+        },
+        {
+          "option_id": "E",
+          "content": "使用胰岛素\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：阿卡波糖主要通过抑制 $\\alpha$ -葡萄糖苷酶的活性，减慢淀粉等多糖分解为葡萄糖的速度，从而减缓餐后血糖的升高，主要用于降低餐后高血糖。二甲双胍可降低肝葡萄糖的输出，改善外周组织对胰岛素的敏感性、增加对葡萄糖的摄取和利用而降低血糖，主要用于肥胖或超重的2型糖尿病患者。格列本脲属于磺酰脲类，主要通过刺激胰岛"
+        },
+        {
+          "option_id": "G",
+          "content": "细胞释放胰岛素而降低血糖，主要用于非肥胖型2型糖尿病患者。罗格列酮属于格列酮类，主要通过刺激胰岛"
+        },
+        {
+          "option_id": "H",
+          "content": "细胞释放胰岛素而降低血糖，主要用于胰岛素抵抗的T2DM患者。使用胰岛素主要用于胰岛素绝对分泌不足的患者，如1型糖尿病和部分2型糖尿病。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 35
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0036",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项为高血压危象首选药物",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "卡托普利"
+        },
+        {
+          "option_id": "B",
+          "content": "可乐定\n\n懒人医考整理"
+        },
+        {
+          "option_id": "C",
+          "content": "普萘洛尔"
+        },
+        {
+          "option_id": "D",
+          "content": "硝普钠"
+        },
+        {
+          "option_id": "E",
+          "content": "氢氯噻嗪\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：硝普钠能同时直接扩张动脉和静脉，降低前、后负荷，是高血压急症的首选药物。卡托普利属于"
+        },
+        {
+          "option_id": "G",
+          "content": "CEI类降压药，其起效慢而持久，临床可用于各型高血压，对血浆肾素活性高者疗效更好。可乐定属于中枢性降压药，对兼有溃疡病的高血压及肾性高血压尤为适宜。普萘洛尔是 $\\beta$ 受体拮抗剂，此类药物一般多用于心率过快的患者。氢氯噻嗪属于噻嗪类降压药，临床多用于单用于I级（轻度）高血压，或与其他降压药合用治疗各型高血压。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 36
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0037",
+      "question_type": "multiple_choice",
+      "question_content": "下列影响纺锤丝形成和功能的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "长春新碱"
+        },
+        {
+          "option_id": "B",
+          "content": "三尖杉生物碱类"
+        },
+        {
+          "option_id": "C",
+          "content": "门冬氨酶"
+        },
+        {
+          "option_id": "D",
+          "content": "顺铂"
+        },
+        {
+          "option_id": "E",
+          "content": "喜树碱类\n\n答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析：影响纺锤丝形成和功能的药物，如长春碱类、紫杉醇等。三尖杉生物碱类属于干扰核蛋白功能的药物。门冬氨酶属于影响氨基酸供应的药物。顺铂属于破坏"
+        },
+        {
+          "option_id": "G",
+          "content": "NA结构与功能的药物。喜树碱类抑制拓扑异构酶，使"
+        },
+        {
+          "option_id": "H",
+          "content": "NA不能修复。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 37
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0038",
+      "question_type": "multiple_choice",
+      "question_content": "下列哪项是治疗厌氧菌感染的首选药物",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甲硝唑"
+        },
+        {
+          "option_id": "B",
+          "content": "红霉素"
+        },
+        {
+          "option_id": "C",
+          "content": "乙胺丁醇"
+        },
+        {
+          "option_id": "D",
+          "content": "特布他林"
+        },
+        {
+          "option_id": "E",
+          "content": "青霉素  \n答案："
+        },
+        {
+          "option_id": "F",
+          "content": "解析：甲硝唑主要用于厌氧菌的治疗，对需氧菌和兼性厌氧菌无效。红霉素为治疗支原体、衣原体感染首选药。乙胺丁醇是抗结核一线药物。特布他林为选择性兴奋呼吸道β2受体的支气管舒张剂，仅用于β1受体有关机制而致的哮喘的治疗和防止哮喘复发。青霉素是治疗敏感的G+球菌和杆菌、G-球菌及螺旋体所致感染的首选药。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 38
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0039",
+      "question_type": "multiple_choice",
+      "question_content": "香豆素类用药过量引起的自发性出血，可选用以下哪种药物对抗",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "氨甲苯酸"
+        },
+        {
+          "option_id": "B",
+          "content": "维生素K1C.氨甲环酸"
+        },
+        {
+          "option_id": "C",
+          "content": "硫酸鱼精蛋白"
+        },
+        {
+          "option_id": "D",
+          "content": "以上均非答案："
+        },
+        {
+          "option_id": "E",
+          "content": "解析:香豆素类是维生素K拮抗剂，过量使用可引起自发性出血，可给予维生素K1、输注新鲜血、血浆或凝血酶原复合物治疗。氨甲苯酸是抗纤维蛋白溶解药，主要用于纤维蛋白溶解过程亢进所致的出血。氨甲环酸是抗纤维蛋白溶解药，作用与氨甲苯酸相似。硫酸鱼精蛋白是抗肝素药，能与肝素结合，拮抗肝素的抗凝作用。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 39
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-7cd62626ce-q0040",
+      "question_type": "multiple_choice",
+      "question_content": "下列药物中，对支气管哮喘和心源性哮喘均有效的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "异丙肾上腺素"
+        },
+        {
+          "option_id": "B",
+          "content": "哌替啶"
+        },
+        {
+          "option_id": "C",
+          "content": "吗啡"
+        },
+        {
+          "option_id": "D",
+          "content": "氨茶碱"
+        },
+        {
+          "option_id": "E",
+          "content": "沙丁胺醇\n\n## 答案:"
+        },
+        {
+          "option_id": "F",
+          "content": "解析:茶碱类（如氨茶碱）药物通过抑制磷酸二酯酶，提高平滑肌细胞内的环腺苷酸(cAMP)浓度，拮抗腺苷受体，增强呼吸肌的力量以及增强气道纤毛清除功能等，从而起到舒张支气管和气道抗炎作用，是临床治疗哮喘常用的药物。主要用于支气管哮喘和哮喘型慢性支气管炎，对于急性发作期的患者疗效较好，对心源性哮喘也有效。异丙肾上腺素为β肾上腺素受体激动药，仅用于急性支气管哮喘的应急。哌替啶为镇静药，主要用于人工冬眠。吗啡为镇痛药，可引起呼吸抑制，加重哮喘患者缺氧和二氧化碳潴留，诱发或加重肺性脑病，故禁用于支气管哮喘患者。沙丁胺醇为选择性β₂受体激动药，对心脏β₁受体的作用很小，临床主要用于治疗支气管哮喘。\n\n![](images/5c0c7dc118d6d8379aa97f22329b971ed5e02a65f4b52781eee9c4f11558bc46.jpg)  \n11-中药相同功效药物总结  \n12-中药学30味中药药理作用总结\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/cdecc3cad8c2c70c29970d3e334f251ecdbfdefdd8bceae225c98b03a3e80bfc.jpg)\n\n![](images/403f62840abd233b8dcad255f5f0710d5faae901e77797d2111e66670fba10b3.jpg)"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原5\\full.md",
+        "number": 40
+      }
+    }
+  ]
+}

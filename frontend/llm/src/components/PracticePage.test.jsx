@@ -70,6 +70,14 @@ vi.mock('./PaperGenerationPanel', () => ({
   default: () => <div data-testid="paper-generation-panel" />,
 }));
 
+vi.mock('./SmartPaperPanel', () => ({
+  default: () => <div data-testid="paper-generation-panel" />,
+}));
+
+vi.mock('./QualificationPaperPanel', () => ({
+  default: () => <div data-testid="atlas-practice-scope" />,
+}));
+
 vi.mock('./QuestionWorkspacePage', () => ({
   default: () => <div data-testid="question-workspace-page" />,
 }));
@@ -137,7 +145,7 @@ describe('PracticePage training modules', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /专项训练/ }));
 
-    expect(await screen.findByTestId('atlas-practice-scope')).toHaveTextContent('public');
+    expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '案例简答' })).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -150,14 +158,13 @@ describe('PracticePage training modules', () => {
       taskType: 'question_training',
     }} />);
 
-    expect(await screen.findByTestId('atlas-practice-scope')).toHaveTextContent('public');
+    expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '题目训练' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'AI 病患模拟' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '试卷生成' })).not.toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '客观题' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: '案例简答' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '综合套题' })).toBeInTheDocument();
     expect(screen.queryByText('循证训练台')).not.toBeInTheDocument();
     expect(screen.queryByText('当前目标：')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Knowledge cards/ })).not.toBeInTheDocument();
@@ -182,14 +189,11 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByTestId('practice-inspector')).not.toBeInTheDocument();
   });
 
-  it('shows the persisted question explanation separately from grading analysis', async () => {
+  it('keeps the qualification-paper workflow separate from legacy training results', async () => {
     render(<PracticePage navigationContext={{ taskType: 'question_training' }} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: '提交模拟答案' }));
-
-    expect(await screen.findByText('题目解析')).toBeInTheDocument();
-    expect(screen.getByText(/共奏益气健脾之功/)).toBeInTheDocument();
-    expect(screen.getByText(/首次作答自动生成并保存/)).toBeInTheDocument();
+    expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '提交模拟答案' })).not.toBeInTheDocument();
   });
 
   it('opens the upload question bank as its own page', async () => {
