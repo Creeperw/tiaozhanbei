@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0031",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "王某，女性，28 岁，3 天前确诊为急性支气管炎。现症：声重气急，咳嗽咽痒，痰稀色白，骨节酸痛，头痛鼻塞，流清涕，发热，恶寒，无汗，苔薄白，脉浮紧，该患者的中医治法为",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "温肺化饮，散寒止咳\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：患者诊断为急性支气管炎，根据“声重气急，咳嗽咽痒，痰稀色白，骨节酸痛，头痛鼻塞，流清涕，发热，恶寒，无汗，舌苔薄白，脉浮或浮紧”辨证为风寒袭肺证，治法为疏风散寒，宣肺止咳。方药为三拗汤合止嗽散。"
+          "content": "温肺化饮，散寒止咳"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "患者诊断为急性支气管炎，根据“声重气急，咳嗽咽痒，痰稀色白，骨节酸痛，头痛鼻塞，流清涕，发热，恶寒，无汗，舌苔薄白，脉浮或浮紧”辨证为风寒袭肺证，治法为疏风散寒，宣肺止咳。方药为三拗汤合止嗽散。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 31
+        "number": 31,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0032",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "李某, 男性, 36 岁, 因高热、咳嗽、咳铁锈色痰、寒战 3 天入院。查体: 血压 $112 / 74 \\mathrm{mmHg}$ , 口唇发绀, 呼吸幅度减小、听诊呼吸音减低和胸膜摩擦音、叩诊轻度浊音。X 线示: 肺段大片、均匀炎症浸润阴影, 血象: 白细胞 $18 \\times 10^{9} / \\mathrm{L}$ , 中性粒细胞 0.76。应诊断为",
       "options": [
         {
@@ -63,25 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "衣原体肺炎\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者“高热、咳嗽、咳铁锈色痰、寒战，口唇发绀，呼吸幅度减小、听诊呼吸音减低和胸膜摩擦音、叩诊轻度浊音。X线示：肺段大片、均匀炎症浸润阴影，血象：白细胞 $19 \\times 10^{9} / \\mathrm{L}$ ，中性粒细胞0.76”应诊断为肺炎链球菌肺炎。"
+          "content": "衣原体肺炎"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者“高热、咳嗽、咳铁锈色痰、寒战，口唇发绀，呼吸幅度减小、听诊呼吸音减低和胸膜摩擦音、叩诊轻度浊音。X线示：肺段大片、均匀炎症浸润阴影，血象：白细胞 $19 \\times 10^{9} / \\mathrm{L}$ ，中性粒细胞0.76”应诊断为肺炎链球菌肺炎。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 32
+        "number": 32,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0033",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "白某, 男, 50 岁, 既往吸烟史 20 年。近半年出现间断性咯血, 量少, 胸片 X 线显示左肺肺门见类圆形阴影, 边缘毛糙, 有分叶。该患者的诊断最可能是",
       "options": [
         {
@@ -102,25 +100,24 @@
         },
         {
           "option_id": "E",
-          "content": "周围型\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：患者中老年男性，根据“既往吸烟史20年。近半年出现间断性咯血，量少，胸片X线显示左肺肺门见类圆形阴影，边缘毛糙，有分叶”考虑为中央型肺癌。"
+          "content": "周围型"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "患者中老年男性，根据“既往吸烟史20年。近半年出现间断性咯血，量少，胸片X线显示左肺肺门见类圆形阴影，边缘毛糙，有分叶”考虑为中央型肺癌。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 33
+        "number": 33,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0034",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "张某，男性，51 岁，病毒性心肌炎患者，现症见：胸闷，心悸气短，口唇发绀，面色晦暗，甚则喘促不能平卧，咳嗽，吐涎痰，夜难入寐，肢冷畏寒，浮肿，大便稀溏，舌淡红，苔白，脉沉细无力。治疗方法是",
       "options": [
         {
@@ -141,25 +138,24 @@
         },
         {
           "option_id": "E",
-          "content": "补肾益气\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：该患者西医诊断为病毒性心肌炎，根据患者“胸闷，心悸气短，口唇发绀，面色晦暗，甚则喘促不能平卧，咳嗽，吐涎痰，夜难入寐，肢冷畏寒，浮肿，大便稀溏，舌淡红，苔白，脉沉细无力”辨证阴阳两虚证。治法为益气温阳，滋阴通脉。方药为参附养荣汤加味。"
+          "content": "补肾益气"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "该患者西医诊断为病毒性心肌炎，根据患者“胸闷，心悸气短，口唇发绀，面色晦暗，甚则喘促不能平卧，咳嗽，吐涎痰，夜难入寐，肢冷畏寒，浮肿，大便稀溏，舌淡红，苔白，脉沉细无力”辨证阴阳两虚证。治法为益气温阳，滋阴通脉。方药为参附养荣汤加味。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 34
+        "number": 34,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0035",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "吕某, 女, 55 岁, 由于近期劳累, 1 周前胸骨中上段突发压榨性疼痛, 波及心前区, 放射至左肩, 疼痛持续 5 分钟左右, 休息后自行缓解。今日疼痛再次发作, 为缓解症状, 应首选下列哪种药",
       "options": [
         {
@@ -180,25 +176,24 @@
         },
         {
           "option_id": "E",
-          "content": "注射苯妥英钠\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据“由于近期劳累，1周前胸骨中上段突发压榨性疼痛，波及心前区，放射至左肩，疼痛持续5分钟左右，休息后自行缓解”初步诊断为心绞痛，故舌下含服硝酸甘油可迅速缓解疼痛。"
+          "content": "注射苯妥英钠"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据“由于近期劳累，1周前胸骨中上段突发压榨性疼痛，波及心前区，放射至左肩，疼痛持续5分钟左右，休息后自行缓解”初步诊断为心绞痛，故舌下含服硝酸甘油可迅速缓解疼痛。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 35
+        "number": 35,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0036",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者, 女, 56 岁。患急性心肌梗死后第 3 天出现少尿, 血压 $75 / 50 \\mathrm{mmHg}$ , 烦躁不安, 面色苍白, 表情淡漠, 皮肤湿冷, 大汗淋漓, 脉细弱无力。应首先考虑的是",
       "options": [
         {
@@ -219,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "急性肾衰竭  \n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析: 急性心肌梗死急性期常有急性左心衰竭和心源性休克发生, 急性左心衰竭初发时往往血压升高, 除上述休克表现外多伴有严重气急、端坐呼吸、咳吐泡沫样痰等。而心肌梗死后综合征可反复发生, 表现为心包炎、胸膜炎或肺炎, 有发热、胸痛等症状, 可能为机体对坏死物质的过敏反应。结合病情, 患者症状符合心源性休克表现。\n\n![](images/c9a4d83720d15d8de8cd79e23c7812b8ba1a20e82858722269c39848ed08488d.jpg)"
+          "content": "急性肾衰竭"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "急性心肌梗死急性期常有急性左心衰竭和心源性休克发生, 急性左心衰竭初发时往往血压升高, 除上述休克表现外多伴有严重气急、端坐呼吸、咳吐泡沫样痰等。而心肌梗死后综合征可反复发生, 表现为心包炎、胸膜炎或肺炎, 有发热、胸痛等症状, 可能为机体对坏死物质的过敏反应。结合病情, 患者症状符合心源性休克表现。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 36
+        "number": 36,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0037",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "王某，男，55 岁。原发性高血压病史 3 年，现症：头晕头痛，口干口苦，面红目赤，烦躁易怒，大便秘结，小便黄赤，舌红苔黄，脉弦。其治疗方法是",
       "options": [
         {
@@ -258,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "温补肾阳\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：患者西医诊断为原发性高血压病，根据“头晕头痛，口干口苦，面红目赤，烦躁易怒，大便秘结，小便黄赤，舌红苔黄，脉弦”辨证为肝阳上亢证，治法为平肝潜阳，方药选择天麻钩藤饮加减。"
+          "content": "温补肾阳"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "患者西医诊断为原发性高血压病，根据“头晕头痛，口干口苦，面红目赤，烦躁易怒，大便秘结，小便黄赤，舌红苔黄，脉弦”辨证为肝阳上亢证，治法为平肝潜阳，方药选择天麻钩藤饮加减。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 37
+        "number": 37,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0038",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "钱某，女性，52岁。二尖瓣狭窄病史15年。现症见：心悸，喘息不能平卧，颜面及肢体浮肿，形寒肢冷，脘痞腹胀，小便短少，大便溏泻，舌体胖大，质淡，苔薄白，脉沉细无力。治疗该患者的方法是",
       "options": [
         {
@@ -297,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "温补心肾，化气行水\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：该患者西医诊断为心脏瓣膜病，根据患者“心悸，喘息不能平卧，颜面及肢体浮肿，形寒肢冷，脘痞腹胀，小便短少，大便溏泻，舌体胖大，质淡，苔薄白，脉沉细无力。”辨证为心肾阳虚证。治法为温补心肾，化气行水。方药为参附汤合五苓散加减。"
+          "content": "温补心肾，化气行水"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "该患者西医诊断为心脏瓣膜病，根据患者“心悸，喘息不能平卧，颜面及肢体浮肿，形寒肢冷，脘痞腹胀，小便短少，大便溏泻，舌体胖大，质淡，苔薄白，脉沉细无力。”辨证为心肾阳虚证。治法为温补心肾，化气行水。方药为参附汤合五苓散加减。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 38
+        "number": 38,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0039",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "于某, 男性, 48 岁, 患者 1 年来中上腹隐隐作痛, 时作时止, 消瘦 15 斤左右。近 2 周来中上腹疼痛加重遂来就诊。查体: 左锁骨上可触及一直径约 $1.5 \\mathrm{~cm}$ 淋巴结, 质硬。腹平软, 中上腹部压痛, 无肌紧张及反跳痛, 肝脾肋下未及。辅助检查: 上消化道钡餐检查示: 胃黏膜皱襞消失, 胃壁僵硬, 未见蠕动波, 胃腔明显缩小。胃镜示: 皮革胃。该患者应考虑为",
       "options": [
         {
@@ -336,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "慢性肝炎 答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者的症状、体征与实验室检查，可考虑为胃癌。"
+          "content": "慢性肝炎"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者的症状、体征与实验室检查，可考虑为胃癌。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 39
+        "number": 39,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0040",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者, 男, 46 岁。反复右胁腹疼痛 10 年。现症见胁下积块坚实, 痛定不移, 脘腹胀满, 甚则腹大如鼓, 面目发黄晦暗, 肌肤甲错, 高热烦渴, 小便黄赤, 大便干黑, 舌红有瘀斑, 苔黄腻, 脉弦数。经诊断为 “原发性肝癌”。治疗选用方药为",
       "options": [
         {
@@ -375,21 +366,22 @@
         },
         {
           "option_id": "E",
-          "content": "滋水清肝饮合鳖甲煎丸加减\n\n解析：题例中，患者已确诊为原发性肝癌，现症见“胁下积块坚实，痛定不移，脘腹胀满，甚则腹大如鼓，面目发黄晦暗，肌肤甲错，高热烦渴，小便黄赤，大便干黑，舌红有瘀斑，苔黄腻，脉弦数”，据此，辨证为湿热瘀毒证，治法：清利湿热，化瘀解毒，选用方药为茵陈蒿汤合鳖甲煎丸加减。"
+          "content": "滋水清肝饮合鳖甲煎丸加减"
         }
       ],
       "answer": [],
-      "explanation": "",
+      "explanation": "题例中，患者已确诊为原发性肝癌，现症见“胁下积块坚实，痛定不移，脘腹胀满，甚则腹大如鼓，面目发黄晦暗，肌肤甲错，高热烦渴，小便黄赤，大便干黑，舌红有瘀斑，苔黄腻，脉弦数”，据此，辨证为湿热瘀毒证，治法：清利湿热，化瘀解毒，选用方药为茵陈蒿汤合鳖甲煎丸加减。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 40
+        "number": 40,
+        "answer_source": ""
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0041",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "腹痛寒邪内阻证治疗首选方剂",
       "options": [
         {
@@ -410,25 +402,27 @@
         },
         {
           "option_id": "E",
-          "content": "温脾汤  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：寒邪内阻证的主症为腹痛拘急，遇寒痛甚，得温痛减，口淡不渴，形寒肢冷，小便清长，大便清稀或秘结，舌质淡，苔白腻，脉沉紧。治以散寒温里，理气止痛。方用良附丸合正气天香散。"
+          "content": "温脾汤"
         }
       ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
+      "answer": [
+        "A"
+      ],
+      "explanation": "寒邪内阻证的主症为腹痛拘急，遇寒痛甚，得温痛减，口淡不渴，形寒肢冷，小便清长，大便清稀或秘结，舌质淡，苔白腻，脉沉紧。治以散寒温里，理气止痛。方用良附丸合正气天香散。",
+      "kp_ids": [
+        "050294",
+        "050288"
+      ],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 41
+        "number": 41,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0042",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "马某，女，32 岁。患者 3 年前因生气出现腹痛、腹泻，夹有脓血，泻后痛减，经服用柳氮磺吡啶及激素灌肠治疗半年后症状控制, 但仍反复发作迁延未愈。现腹痛喜温喜按, 腹胀, 腰膝酸软, 食少,形寒肢冷, 神疲懒言, 舌质淡有齿痕, 脉沉细。肠镜结果示: 乙状结肠、降结肠、直肠黏膜血管纹理模糊紊乱, 黏膜充血、水肿、易脆, 多发细小溃疡。该患者治疗选方为",
       "options": [
         {
@@ -449,25 +443,24 @@
         },
         {
           "option_id": "E",
-          "content": "膈下逐瘀汤\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据“患者3年前因生气出现腹痛、腹泻，夹有脓血，泻后痛减，经服用柳氮磺吡啶及激素灌肠治疗半年后症状控制，但仍反复发作迁延未愈。肠镜结果示：乙状结肠、降结肠、直肠黏膜血管纹理模糊紊乱，黏膜充血、水肿、易脆，多发细小溃疡”诊断为溃疡性结肠炎，根据“腹痛喜温喜按，腹胀，腰膝酸软，食少，形寒肢冷，神疲懒言，舌质淡有齿痕，脉沉细”辨证为脾肾阳虚证，治疗方法为健脾温肾止泻，方药选用理中汤合四神丸加味。"
+          "content": "膈下逐瘀汤"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据“患者3年前因生气出现腹痛、腹泻，夹有脓血，泻后痛减，经服用柳氮磺吡啶及激素灌肠治疗半年后症状控制，但仍反复发作迁延未愈。肠镜结果示：乙状结肠、降结肠、直肠黏膜血管纹理模糊紊乱，黏膜充血、水肿、易脆，多发细小溃疡”诊断为溃疡性结肠炎，根据“腹痛喜温喜按，腹胀，腰膝酸软，食少，形寒肢冷，神疲懒言，舌质淡有齿痕，脉沉细”辨证为脾肾阳虚证，治疗方法为健脾温肾止泻，方药选用理中汤合四神丸加味。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 42
+        "number": 42,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0043",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "胡某, 女, 52 岁。胃部疼痛 1 月余, 现症: 胃中胀痛, 痛窜两胁, 每因情志不舒而加重, 暖气嘈杂, 舌淡, 脉弦缓。胃镜检查示: 黏膜充血, 色泽红, 局限性, 红白相间征象, 黏膜粗糙不平。治疗应首先考虑的方法是",
       "options": [
         {
@@ -488,25 +481,24 @@
         },
         {
           "option_id": "E",
-          "content": "化瘀通络, 和胃止痛\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据 “胃部疼痛 1 月余，胃镜检查示：黏膜充血，色泽红，局限性，红白相间征象，黏膜粗糙不平” 诊断为诊断慢性浅表性胃炎。根据 “胃院胀痛，痛窜两胁，因情志不舒而加重，嗳气嘈杂，舌淡，脉弦缓” 辨证为肝气郁滞证。治疗应疏肝行气，和胃止痛，选用方药为柴胡疏肝散加减。"
+          "content": "化瘀通络, 和胃止痛"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据 “胃部疼痛 1 月余，胃镜检查示：黏膜充血，色泽红，局限性，红白相间征象，黏膜粗糙不平” 诊断为诊断慢性浅表性胃炎。根据 “胃院胀痛，痛窜两胁，因情志不舒而加重，嗳气嘈杂，舌淡，脉弦缓” 辨证为肝气郁滞证。治疗应疏肝行气，和胃止痛，选用方药为柴胡疏肝散加减。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 43
+        "number": 43,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0044",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "李某，女性，32岁。因近期工作劳累，出现发热、小便不适，尿急，尿频2天，伴有小便后疼痛，腰痛，肾区叩击痛阳性，尿沉渣镜检5～8个白细胞/高倍视野。该患者最可能的诊断为",
       "options": [
         {
@@ -527,25 +519,24 @@
         },
         {
           "option_id": "E",
-          "content": "肾小球肾炎\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者发热、尿急，尿频、腰痛，肾区叩击痛阳性，尿沉渣镜检 5～8 个白细胞/高倍视野，最可能的诊断为急性肾盂肾炎。"
+          "content": "肾小球肾炎"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者发热、尿急，尿频、腰痛，肾区叩击痛阳性，尿沉渣镜检 5～8 个白细胞/高倍视野，最可能的诊断为急性肾盂肾炎。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 44
+        "number": 44,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-a9db0c9c8a-q0045",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "徐某，男性，70岁，慢性肾衰竭病史6年。现症：面色少华，神疲乏力，腰膝酸软，口干唇燥，饮水不多，手足心热，大便干燥，夜尿清长，舌淡有齿痕，脉沉细。血压升高达165/97mmHg。 治疗选方为",
       "options": [
         {
@@ -566,20 +557,19 @@
         },
         {
           "option_id": "E",
-          "content": "全鹿丸\n参考答案："
-        },
-        {
-          "option_id": "F",
-          "content": "![](images/b280dede1d108a466c1cc65852e2a398b1eeb5db77c13707bb4176ba822351e5.jpg)\n\n![](images/84f6ef04adb5ea2747a639d0741efe197dfdffaf4a5517160776e2ee4490cdcd.jpg)\n\n解析：患者西医诊断为慢性肾衰竭，根据“面色少华，神疲乏力，腰膝酸软，口干唇燥，饮水不多，手足心热，大便干燥，夜尿清长，舌淡有齿痕，脉沉细”辨证为气阴两虚证，治法为益气养阴，健脾补肾。方药为参芪地黄汤。\n\n![](images/538cdea1886cbc719e48fce722c34ed19f19f751a8df321aef2ed583b6290052.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/ef441f112a6418b4f89c99f9957c294df0360e01c733f939186662484f000db2.jpg)\n\n![](images/cbe09664d0d438fe32ca5764012495b915bff29a128adb86048fdf57e9cc4050.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/06d87feaf2f55f00067de71aa69a3d6f8a79f8953d693fa17d6b91d8608843d0.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/ac0d6bc9cb633fc2d91449acf487dec5a216ab7442fc1d9062ea674be503ba69.jpg)\n\n![](images/6a704abbc20ce107685936fbf84256659c7cba8e9d79b96f559afd85e2273169.jpg)  \n6-中西医结合内科学最字题  \n7-中西医结合内科学首选类题目  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/340d487ac5f194a1b17b57c9c2c445a4f034013ffe0c239bf5c2455146e2978b.jpg)\n\n![](images/b1dfb40b9cd339cedfb73411e450d78c2e4144c7eedddccace7f0e16a3a9ebd8.jpg)  \n8-中西医外妇儿首选类题目  \n11-中药相同功效药物总结\n\n![](images/efccc5e8b660abd845eb8db905ca3ea13fd1d19bdbf4c6b094d86d0e8349e2ac.jpg)\n\n![](images/efadd378eb7f2080aa3066234531642e7b1bcebefbb9ae4968e0bd94152f8c6d.jpg)  \n9-经络系统常考总结  \n12-中药学30味中药药理作用总结  \n13-方剂学常考重点总结  \n5-中西医结合儿科学辨证论治汇总\n\n![](images/be19c9957fcd8864b0164cd46d8e37e4cdfa429f5d32f668a5e23f04c0f4bbd7.jpg)  \n10-特定穴记忆歌诀汇总  \n更多医考干货可扫码关注微信公众平台\n\n医\n懒人医考\nLANRENYIKAO"
+          "content": "全鹿丸 参考"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "患者西医诊断为慢性肾衰竭，根据“面色少华，神疲乏力，腰膝酸软，口干唇燥，饮水不多，手足心热，大便干燥，夜尿清长，舌淡有齿痕，脉沉细”辨证为气阴两虚证，治法为益气养阴，健脾补肾。方药为参芪地黄汤。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 4-中西医结合妇科学辨证论治汇总 8-中西医外妇儿首选类题目 11-中药相同功效药物总结 9-经络系统常考总结 12-中药学30味中药药理作用总结 13-方剂学常考重点总结 5-中西医结合儿科学辨证论治汇总 10-特定穴记忆歌诀汇总 更多医考干货可扫码关注微信公众平台 医 懒人医考 LANRENYIKAO",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟8\\full.md",
-        "number": 45
+        "number": 45,
+        "answer_source": "same_document"
       }
     }
   ]

@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import json
+import re
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
 
 class QualificationPaperRepository:
+    _FORBIDDEN_TITLE = re.compile(r"答案|解析|详解|讲解")
+    _FORBIDDEN_QUESTION_CONTENT = re.compile(r"(?:^|[\s【\[])答案[】\]]?\s*[:：]?|(?:^|[\s【\[])解析[】\]]?\s*[:：]?")
+
     def __init__(self, data_root: Path, *, runtime_root: Path) -> None:
         self.data_root = Path(data_root)
         self.runtime_root = Path(runtime_root)
@@ -21,6 +25,10 @@ class QualificationPaperRepository:
         papers = []
         for paper in catalog.get("papers", []):
             if not isinstance(paper, dict) or not paper.get("published"):
+                continue
+            if self._FORBIDDEN_TITLE.search(str(paper.get("title") or "")):
+                continue
+            if int(paper.get("question_count") or 0) < 1:
                 continue
             if exam_id and paper.get("exam_id") != exam_id:
                 continue
@@ -35,7 +43,18 @@ class QualificationPaperRepository:
             if str(paper.get("availability") or "").strip():
                 summary["availability"] = paper["availability"]
             papers.append(summary)
-        return {"schema_version": "1.0", "exams": catalog.get("exams", []), "papers": papers}
+        visible_exam_ids = {str(paper.get("exam_id") or "") for paper in papers}
+        exams = []
+        for exam in catalog.get("exams", []):
+            if not isinstance(exam, dict):
+                continue
+            exam_id_value = str(exam.get("exam_id") or "")
+            exams.append({
+                **exam,
+                "available_paper_count": sum(1 for paper in papers if str(paper.get("exam_id") or "") == exam_id_value),
+                "availability": "available" if exam_id_value in visible_exam_ids else "pending_structure_cleanup",
+            })
+        return {"schema_version": "1.0", "exams": exams, "papers": papers}
 
     def create_attempt(
         self,
@@ -77,7 +96,17 @@ class QualificationPaperRepository:
             state["status"] = "in_progress"
             state["started_at"] = self._now()
             self._save_attempt(user_id, state)
+        self._ensure_test_not_expired(state)
         return self._serialize_attempt(state)
+
+    def _ensure_test_not_expired(self, state: dict) -> None:
+        if state.get("answer_mode") != "test" or not state.get("started_at"):
+            return
+        started_at = datetime.fromisoformat(str(state["started_at"]).replace("Z", "+00:00"))
+        deadline = started_at + timedelta(minutes=int(state.get("duration_minutes") or 0))
+        now = datetime.fromisoformat(self._now().replace("Z", "+00:00"))
+        if now > deadline:
+            raise ValueError("测试时间已结束，请重新开始一份试卷")
 
     def save_progress(
         self,
@@ -92,6 +121,7 @@ class QualificationPaperRepository:
         state = self._load_attempt(user_id, attempt_id)
         if state["status"] == "submitted":
             raise ValueError("试卷已提交")
+        self._ensure_test_not_expired(state)
         valid_ids = {str(item["question_id"]) for item in state["questions"]}
         state["answers"] = {
             str(key): str(value).strip() for key, value in answers.items() if str(key) in valid_ids
@@ -107,6 +137,7 @@ class QualificationPaperRepository:
         cached = state["submission_requests"].get(request_id)
         if cached:
             return cached
+        self._ensure_test_not_expired(state)
         result_items = []
         score = 0
         for position, question in enumerate(state["questions"], start=1):
@@ -160,6 +191,17 @@ class QualificationPaperRepository:
         questions = payload.get("questions", [])
         if not isinstance(questions, list) or not questions:
             raise ValueError("套题没有可用题目")
+        for question in questions:
+            if not isinstance(question, dict):
+                raise ValueError("题目内容不符合发布规范")
+            visible_values = [question.get("question_content", "")]
+            visible_values.extend(
+                option.get("content", "")
+                for option in question.get("options", [])
+                if isinstance(option, dict)
+            )
+            if any(self._FORBIDDEN_QUESTION_CONTENT.search(str(value)) for value in visible_values):
+                raise ValueError("题目内容不符合发布规范")
         return {"title": str(entry["title"]), "questions": deepcopy(questions)}
 
     def _attempt_path(self, user_id: str, attempt_id: str) -> Path:
@@ -189,7 +231,7 @@ class QualificationPaperRepository:
     @staticmethod
     def _serialize_attempt(state: dict) -> dict:
         items = []
-        show_answers = state["answer_mode"] == "practice" or state["status"] == "submitted"
+        show_answers = state["status"] == "submitted"
         for position, question in enumerate(state["questions"], start=1):
             item = {
                 "position": position,
@@ -207,4 +249,12 @@ class QualificationPaperRepository:
         return {
             key: state.get(key)
             for key in ("attempt_id", "template_id", "source", "title", "answer_mode", "duration_minutes", "status", "current_position", "marked_positions", "created_at", "started_at", "submitted_at")
-        } | {"items": items}
+        } | ({"remaining_seconds": QualificationPaperRepository._remaining_seconds(state)} if state.get("answer_mode") == "test" else {}) | {"items": items}
+
+    @staticmethod
+    def _remaining_seconds(state: dict) -> int | None:
+        if not state.get("started_at") or state.get("status") == "submitted":
+            return None
+        started_at = datetime.fromisoformat(str(state["started_at"]).replace("Z", "+00:00"))
+        deadline = started_at + timedelta(minutes=int(state.get("duration_minutes") or 0))
+        return max(0, int((deadline - datetime.now(timezone.utc)).total_seconds()))

@@ -48,6 +48,7 @@ def test_catalog_only_exposes_published_templates(tmp_path: Path) -> None:
     result = repository.list_catalog(exam_id="tcm-practitioner")
 
     assert result["exams"][0]["name"] == "中医执业医师资格考试"
+    assert result["exams"][0]["available_paper_count"] == 1
     assert result["papers"] == [
         {
             "template_id": "tcm-2024-a",
@@ -58,6 +59,65 @@ def test_catalog_only_exposes_published_templates(tmp_path: Path) -> None:
             "question_count": 2,
         }
     ]
+
+
+def test_catalog_hides_answer_material_entries(tmp_path: Path) -> None:
+    _write_catalog(tmp_path)
+    catalog_path = tmp_path / "catalog.json"
+    catalog = __import__("json").loads(catalog_path.read_text(encoding="utf-8"))
+    catalog["papers"].append({
+        "template_id": "answers-only",
+        "exam_id": "tcm-practitioner",
+        "year": "2024",
+        "paper_type": "真题",
+        "title": "2024 年真题答案及解析",
+        "question_count": 2,
+        "published": True,
+        "data_file": "papers/answers-only.json",
+    })
+    catalog_path.write_text(__import__("json").dumps(catalog, ensure_ascii=False), encoding="utf-8")
+    repository = QualificationPaperRepository(tmp_path, runtime_root=tmp_path / "runtime")
+
+    result = repository.list_catalog(exam_id="tcm-practitioner")
+
+    assert [paper["template_id"] for paper in result["papers"]] == ["tcm-2024-a"]
+
+
+def test_active_practice_attempt_does_not_embed_answers_or_explanations(tmp_path: Path) -> None:
+    _write_catalog(tmp_path)
+    repository = QualificationPaperRepository(tmp_path, runtime_root=tmp_path / "runtime")
+
+    attempt = repository.create_attempt("learner-1", "tcm-2024-a", answer_mode="practice")
+
+    assert "standard_answer" not in attempt["items"][0]
+    assert "explanation" not in attempt["items"][0]
+    assert repository.get_explanation("learner-1", attempt["attempt_id"], "q1")["answer"] == ["A"]
+
+
+def test_attempt_rejects_template_with_answer_leak_in_options(tmp_path: Path) -> None:
+    _write_catalog(tmp_path)
+    paper_path = tmp_path / "papers" / "tcm-2024-a.json"
+    payload = __import__("json").loads(paper_path.read_text(encoding="utf-8"))
+    payload["questions"][0]["options"][1]["content"] = "乙 答案：A"
+    paper_path.write_text(__import__("json").dumps(payload, ensure_ascii=False), encoding="utf-8")
+    repository = QualificationPaperRepository(tmp_path, runtime_root=tmp_path / "runtime")
+
+    with pytest.raises(ValueError, match="题目内容不符合发布规范"):
+        repository.create_attempt("learner-1", "tcm-2024-a", answer_mode="practice")
+
+
+def test_test_attempt_expires_at_the_server_deadline(tmp_path: Path) -> None:
+    _write_catalog(tmp_path)
+    repository = QualificationPaperRepository(tmp_path, runtime_root=tmp_path / "runtime")
+    repository._now = lambda: "2026-07-25T00:00:00+00:00"
+    attempt = repository.create_attempt("learner-1", "tcm-2024-a", answer_mode="test", duration_minutes=10)
+    repository.get_attempt("learner-1", attempt["attempt_id"])
+    repository._now = lambda: "2026-07-25T00:10:01+00:00"
+
+    with pytest.raises(ValueError, match="测试时间已结束"):
+        repository.save_progress("learner-1", attempt["attempt_id"], answers={}, current_position=1, marked_positions=[])
+    with pytest.raises(ValueError, match="测试时间已结束"):
+        repository.submit_attempt("learner-1", attempt["attempt_id"], "submit-expired")
 
 
 def test_test_attempt_hides_answers_until_submitted_and_scores_idempotently(tmp_path: Path) -> None:

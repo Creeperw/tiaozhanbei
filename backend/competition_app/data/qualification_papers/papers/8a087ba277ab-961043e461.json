@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "8a087ba277ab-961043e461-q0021",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "鉴别1型和2型糖尿病的主要指标是",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "空腹血糖  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：鉴别1型和2型糖尿病的主要指标是血浆胰岛素测定。"
+          "content": "空腹血糖"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "鉴别1型和2型糖尿病的主要指标是血浆胰岛素测定。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 21
+        "number": 21,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0022",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "痛风的常见中医病因病机不包括",
       "options": [
         {
@@ -63,25 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "肝肾亏虚  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：痛风的常见中医病因病机包括风寒湿阻、风湿热郁、痰瘀痹阻以及肝肾亏虚。"
+          "content": "肝肾亏虚"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "痛风的常见中医病因病机包括风寒湿阻、风湿热郁、痰瘀痹阻以及肝肾亏虚。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 22
+        "number": 22,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0023",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "类风湿关节炎，仅能生活自理，不能参加工作和其他活动，属于关节功能障碍的",
       "options": [
         {
@@ -102,25 +100,24 @@
         },
         {
           "option_id": "E",
-          "content": "IV 级\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：关节功能障碍分级，共4级：①I级：能照常进行日常生活和工作。②II级：能生活自理，并参加一定工作，但活动受限。③III级：仅能生活自理，不能参加工作和其他活动。④IV级：生活不能自理。"
+          "content": "IV 级"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "关节功能障碍分级，共4级：①I级：能照常进行日常生活和工作。②II级：能生活自理，并参加一定工作，但活动受限。③III级：仅能生活自理，不能参加工作和其他活动。④IV级：生活不能自理。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 23
+        "number": 23,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0024",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下属于阴痫证候的是",
       "options": [
         {
@@ -141,25 +138,24 @@
         },
         {
           "option_id": "E",
-          "content": "口中发怪叫\n\n![](images/1b11aafa782bd6c4538b664652deb0bbcf42d70273ef5973a2d9a766ee688d4c.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：阴痫证候：突然昏仆，不省人事，面色暗晦萎黄，手足清冷，双眼半开半闭，僵卧拘急，或颤动，抽搐时发，口吐涎沫，一般口不啼叫，或声音小，平素常有神疲乏力，恶心泛呕，胸闷纳差，舌质淡，苔白而厚腻，脉沉细或沉迟。"
+          "content": "口中发怪叫"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "阴痫证候：突然昏仆，不省人事，面色暗晦萎黄，手足清冷，双眼半开半闭，僵卧拘急，或颤动，抽搐时发，口吐涎沫，一般口不啼叫，或声音小，平素常有神疲乏力，恶心泛呕，胸闷纳差，舌质淡，苔白而厚腻，脉沉细或沉迟。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 24
+        "number": 24,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0025",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "脑出血和脑梗死最重要的危险因素是",
       "options": [
         {
@@ -180,29 +176,24 @@
         },
         {
           "option_id": "E",
-          "content": "肥胖\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "答案:"
-        },
-        {
-          "option_id": "G",
-          "content": "解析：脑出血和脑梗死最重要的危险因素是高血压。"
+          "content": "肥胖"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "脑出血和脑梗死最重要的危险因素是高血压。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 25
+        "number": 25,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0026",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "动脉粥样硬化性脑梗死根据梗死的特点进行分类，其中不包括",
       "options": [
         {
@@ -223,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "多发性脑梗死\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：动脉粥样硬化性脑梗死根据梗死的特点进行分类，分为4类，大面积脑梗死、分水岭脑梗死、出血性脑梗死以及多发性脑梗死。"
+          "content": "多发性脑梗死"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "动脉粥样硬化性脑梗死根据梗死的特点进行分类，分为4类，大面积脑梗死、分水岭脑梗死、出血性脑梗死以及多发性脑梗死。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 26
+        "number": 26,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0027",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "治疗帕金森病最基本、最有效的药物是",
       "options": [
         {
@@ -262,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "溴隐亭  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：左旋多巴是治疗帕金森病最基本、最有效的药物。"
+          "content": "溴隐亭"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "左旋多巴是治疗帕金森病最基本、最有效的药物。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 27
+        "number": 27,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0028",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "中暑类别中，以体温明显升高及意识障碍为主的是",
       "options": [
         {
@@ -301,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "脑损伤  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：中暑类别中，以体温明显升高及意识障碍为主的是热射病。"
+          "content": "脑损伤"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "中暑类别中，以体温明显升高及意识障碍为主的是热射病。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 28
+        "number": 28,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0029",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "胃痞的基本病机是",
       "options": [
         {
@@ -340,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "中焦气机不利，脾胃升降失宜\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：胃痞的基本病机是中焦气机不利，脾胃升降失宜。\n\n![](images/d95109ce1cee646464210c3706ffdb807c85791b3ed8b668c6f4d5528bb3532a.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/79652f1e7b12f3a37af4f70373ce0e58e4a958e5ce8f12defac5bf475385926f.jpg)\n\n![](images/c5f003c14a661468abbc4118c72ea7c14d4c18f0af2387be00b20f62f4dbc7fa.jpg)  \n2-中西医结合内科学辨证论治汇总  \n3-中西医结合外科学辨证论治汇总\n\n![](images/19d4137f85baf820cc1826a71645f7b042d874f88dce4ddc1aa10119114c4e89.jpg)\n\n![](images/92303c5d049ef1322aca058d7302d8dbcb8f6a5237ada222a43a5d028fb4c4a0.jpg)\n\n![](images/62df1a9b137cb069be80b44902a2bab2dd2653fdab45203bc5faaacf5dfbbe27.jpg)\n\n![](images/22af47998f13caba4401c5d5b5d05e1d1d4f3d6461d0a80ec765dee63935e7da.jpg)  \n4-中西医结合妇科学辨证论治汇总  \n5-中西医结合儿科学辨证论治汇总\n\n![](images/6fa6b020488361ebd58b0e0649d56e2cdd8134ff991c345d2de153e71e2ae8f4.jpg)  \n6-中西医结合内科学最字题  \n7-中西医结合内科学首选类题目  \n8-中西医外\n\n![](images/b0c3bea0db101632754180f05c6049abc9d7dc23e75b742727542afa3e27de19.jpg)  \n妇儿首选类\n题目\n\n![](images/b10023cfcdb3e4673ba18b52c8c973e2a32b42bb71b6ac5ceb1f5a99654759a6.jpg)  \n9-经络系统常考总结  \n10-特定穴\n记忆歌诀汇  \n总\n\n![](images/5f9010f7c1ff239c1bd9eda22190bb2c09dacea62a14dbdc14c2515d9233620f.jpg)\n\n![](images/827d13f36ec9e1c3a3ffa18e93e36de7a1749f164087115d17640b4aaf9ceaf6.jpg)\n\n![](images/ae8882d508bf4369079a08435748ab4ce92c0716da54bc7ac3465affbc90abd1.jpg)  \n11-中药相  \n12-中药学  \n同功效药物总结  \n30味中药药理作用总  \n13-方剂学常考重点总结  \n结\n\n## 更多医考干货\n\n可扫码关注微信公众平台懒人医考整理"
+          "content": "中焦气机不利，脾胃升降失宜"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "胃痞的基本病机是中焦气机不利，脾胃升降失宜。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外 妇儿首选类 题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇 总 11-中药相 12-中药学 同功效药物总结 30味中药药理作用总 13-方剂学常考重点总结 结 更多医考干货 可扫码关注微信公众平台懒人医考整理",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 29
+        "number": 29,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0030",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "鼻衄胃热炽盛证的选方为",
       "options": [
         {
@@ -379,127 +366,100 @@
         },
         {
           "option_id": "E",
-          "content": "龙胆泻肝汤\n\n![](images/f8829413cac145d54557865ff5401a2376fdcc2de21dd5391c4c9c692240dcc6.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：鼻衄胃热炽盛证的选方为玉女煎。\n\n##"
-        },
-        {
-          "option_id": "G",
-          "content": "2型题"
+          "content": "龙胆泻肝汤"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "鼻衄胃热炽盛证的选方为玉女煎。 A2型题",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 30
+        "number": 30,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0031",
-      "question_type": "multiple_choice",
-      "question_content": "患者, 女, 35 岁, 3 年前无明显诱因出现面部蝶形红斑, 日晒后加重, 时伴低热、双手关节疼痛, 未系统诊治。近半年自觉症状加重, 口腔溃疡频发, 遂来就诊。现症: 胸闷胸痛, 心悸怔忡, 时有微热, 咽干口渴, 烦热不安, 红斑皮疹, 舌红苔厚腻, 脉滑数。辅助检查: 血常规: PLT $91 \\times 10^{9} / \\mathrm{L}$ 。免疫学检查: 抗双链",
+      "question_type": "single_choice",
+      "question_content": "患者, 女, 35 岁, 3 年前无明显诱因出现面部蝶形红斑, 日晒后加重, 时伴低热、双手关节疼痛, 未系统诊治。近半年自觉症状加重, 口腔溃疡频发, 遂来就诊。现症: 胸闷胸痛, 心悸怔忡, 时有微热, 咽干口渴, 烦热不安, 红斑皮疹, 舌红苔厚腻, 脉滑数。辅助检查: 血常规: PLT $91 \\times 10^{9} / \\mathrm{L}$ 。免疫学检查: 抗双链 DNA 抗体 (+), 抗 Sm 抗体 (+); 尿蛋白 (++) 。该患者辨证为",
       "options": [
         {
           "option_id": "A",
-          "content": "NA 抗体 (+), 抗 Sm 抗体 (+); 尿蛋白 (++) 。该患者辨证为"
-        },
-        {
-          "option_id": "B",
           "content": "脑虚瘀热证"
         },
         {
-          "option_id": "C",
+          "option_id": "B",
           "content": "气营热盛证"
         },
         {
-          "option_id": "D",
+          "option_id": "C",
           "content": "瘀热痹阻证"
         },
         {
-          "option_id": "E",
+          "option_id": "D",
           "content": "热郁积饮证"
         },
         {
-          "option_id": "F",
-          "content": "瘀热伤肝证\n\n答案:"
-        },
-        {
-          "option_id": "G",
-          "content": "解析：根据患者“3年前无明显诱因出现面部蝶形红斑，日晒后加重，时伴低热、双手关节疼痛，未系统诊治。近半年自觉症状加重，口腔溃疡频发。血常规：PLT $91 \\times 10^{9} / \\mathrm{L}$ 。免疫学检查：抗双链"
-        },
-        {
-          "option_id": "H",
-          "content": "NA抗体 $(+)$ ，抗Sm抗体 $(+)$ ；尿蛋白（++）”诊断为系统性红斑狼疮。根据“胸闷胸痛，心悸怔忡，时有微热，咽干口渴，烦热不安，红斑皮疹，舌红苔厚腻，脉滑数”辨证为热郁积饮证。"
+          "option_id": "E",
+          "content": "瘀热伤肝证"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者“3年前无明显诱因出现面部蝶形红斑，日晒后加重，时伴低热、双手关节疼痛，未系统诊治。近半年自觉症状加重，口腔溃疡频发。血常规：PLT $91 \\times 10^{9} / \\mathrm{L}$ 。免疫学检查：抗双链DNA抗体 $(+)$ ，抗Sm抗体 $(+)$ ；尿蛋白（++）”诊断为系统性红斑狼疮。根据“胸闷胸痛，心悸怔忡，时有微热，咽干口渴，烦热不安，红斑皮疹，舌红苔厚腻，脉滑数”辨证为热郁积饮证。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 31
+        "number": 31,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0032",
-      "question_type": "multiple_choice",
-      "question_content": "患者，男，61 岁。右上腹疼痛 1 年余，伴身目发黄、乏力、食欲不振 4 个月。查体：肝脏增大，质地坚硬，表面凹凸不平，触痛阳性。实验室检查：甲胎球蛋白 800ng/mL，",
+      "question_type": "single_choice",
+      "question_content": "患者，男，61 岁。右上腹疼痛 1 年余，伴身目发黄、乏力、食欲不振 4 个月。查体：肝脏增大，质地坚硬，表面凹凸不平，触痛阳性。实验室检查：甲胎球蛋白 800ng/mL，B 型超声检查示：右肝占位性病变，直径 3.7cm。考虑该患者的诊断为",
       "options": [
         {
           "option_id": "A",
-          "content": "型超声检查示：右肝占位性病变，直径 3.7cm。考虑该患者的诊断为"
-        },
-        {
-          "option_id": "B",
           "content": "急性病毒性肝炎"
         },
         {
-          "option_id": "C",
+          "option_id": "B",
           "content": "肝硬化代偿期"
         },
         {
-          "option_id": "D",
+          "option_id": "C",
           "content": "肝硬化失代偿期"
         },
         {
-          "option_id": "E",
+          "option_id": "D",
           "content": "原发性肝癌"
         },
         {
-          "option_id": "F",
-          "content": "慢性肝脓肿\n\n答案:"
-        },
-        {
-          "option_id": "G",
-          "content": "解析：根据患者的症状、体征、"
-        },
-        {
-          "option_id": "H",
-          "content": "超和"
-        },
-        {
-          "option_id": "I",
-          "content": "FP结果，考虑诊断为原发性肝癌。"
+          "option_id": "E",
+          "content": "慢性肝脓肿"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者的症状、体征、B超和AFP结果，考虑诊断为原发性肝癌。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 32
+        "number": 32,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0033",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，男，71岁，原有基础疾病，近1周症状加重。现症：大汗淋漓，汗出如油，四肢厥冷，舌萎少津，脉微欲绝，该患者辨证属于",
       "options": [
         {
@@ -520,25 +480,24 @@
         },
         {
           "option_id": "E",
-          "content": "脱汗\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者“大汗淋漓”辨病为汗证，根据“大汗淋漓，汗出如油，四肢厥冷，舌萎少津，脉微欲绝”辨证为脱汗。"
+          "content": "脱汗"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据患者“大汗淋漓”辨病为汗证，根据“大汗淋漓，汗出如油，四肢厥冷，舌萎少津，脉微欲绝”辨证为脱汗。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 33
+        "number": 33,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0034",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，女，36 岁。高热咳嗽，胸痛 3 天，呼吸和咳嗽时胸痛加重，有心包摩擦音，舌下含服硝酸甘油后，症状缓解不明显，来院就诊，心电图示：除 aVR 外，ST 段弓背向下抬高，T 波倒置，无异常 Q 波出现，考虑诊断为",
       "options": [
         {
@@ -559,25 +518,24 @@
         },
         {
           "option_id": "E",
-          "content": "心脏神经症\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者症状与心电图结果，考虑诊断为急性心包炎。"
+          "content": "心脏神经症"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者症状与心电图结果，考虑诊断为急性心包炎。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 34
+        "number": 34,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-961043e461-q0035",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，男，40 岁。10 个月来持续上腹部隐痛，伴上腹胀满不适、嗳气、反酸、食欲差。查体：面色苍白，上腹部压痛，无反跳痛。胃镜示：胃窦部黏膜呈弥散性淡红、灰色，黏膜变薄，皱襞变细平坦，黏膜血管暴露，病理检查示肠上皮化生。现症：胃脘灼热胀痛，嘈杂，脘腹痞闷，口干口苦，渴不欲饮，尿黄，舌红，苔黄腻，脉滑。该患者的治疗选方是",
       "options": [
         {
@@ -598,20 +556,19 @@
         },
         {
           "option_id": "E",
-          "content": "失笑散合丹参饮\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者“10个月来持续上腹部隐痛，伴上腹胀满不适、嗳气、反酸、食欲差。查体：面色苍白，上腹部压痛，无反跳痛”以及胃镜结果，考虑为慢性萎缩性胃炎，根据“胃脘灼热胀痛，嘈杂，脘腹痞闷，口干口苦，渴不欲饮，尿黄，舌红，苔黄腻，脉滑”辨证为脾胃湿热证，治法为清利湿热，醒脾化浊，选方为三仁汤。\n\n![](images/f266c2f1bdb5283a9219378a5937efd080c0f9065d92f8fa9523a36f5756b89d.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/e248aa89d629ea7546820bd44dd9cf3b50ca31e84309abc56888acb463bc4d3e.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/f4901d4e352f9aab6625ed4d582c3f6a573b49137b08a86dd6d6ab88abcdaeae.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/131f268cbeaee904b651d8673859926f0c3fb9fb2bc2b8651363d2211a131b01.jpg)\n\n4-中西医结合妇科学辨证论治汇总\n\n![](images/a253ef67bd7f03ef74f3c36642e2fce4fd0ab28c069a8544924dbe84b0c23bf3.jpg)\n\n![](images/e34ee623aafd5ab7193cee626934316dad51b321c65f5fc94edcffff99376506.jpg)  \n6-中西医结合内科学最字题\n\n5-中西医结合儿科学辨证论治汇总\n\n![](images/f25323a742efb0fcbfd4ca3f2ee1f34ed6145104072ac8c1e4878b165079140c.jpg)\n\n![](images/59024289dde62d4490753da1aa531460a66ce8994eac69d2e40221121cda6598.jpg)  \n7-中西医结合内科学首选类题目\n\n8-中西医外妇儿首选类题目\n\n![](images/931b9271027a9c232238e8a9192582bbd1276d1982629ba2c7e90e4907f68347.jpg)  \n9-经络系统常考总结\n\n![](images/514d918596baeb9bb477a14aaae01a31d2da9c87ea7a5d53a9104e135774d0ec.jpg)\n\n![](images/edb3adb27ce008cc07fdd91271bb01b8bf192c05800f1115e65e028d162330bc.jpg)\n\n![](images/6dff800e6ca164a641dd0fc033c0b1638539e5b362471b0a88a63f9ab2edba28.jpg)  \n11-中药相同功效药物总结  \n10-特定穴\n记忆歌诀汇总\n\n![](images/0e260771af16a322a7888515dcc0cc7ac607ec0567d0c4fa706536d693532069.jpg)  \n12-中药学\n30味中药\n药理作用总\n结  \n13-方剂学常考重点总结\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/f9958d287d121724f685d744c269390923d71809f3a97efeb83bc1bbe6d1d28f.jpg)"
+          "content": "失笑散合丹参饮"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者“10个月来持续上腹部隐痛，伴上腹胀满不适、嗳气、反酸、食欲差。查体：面色苍白，上腹部压痛，无反跳痛”以及胃镜结果，考虑为慢性萎缩性胃炎，根据“胃脘灼热胀痛，嘈杂，脘腹痞闷，口干口苦，渴不欲饮，尿黄，舌红，苔黄腻，脉滑”辨证为脾胃湿热证，治法为清利湿热，醒脾化浊，选方为三仁汤。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 6-中西医结合内科学最字题 5-中西医结合儿科学辨证论治汇总 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 11-中药相同功效药物总结 10-特定穴 记忆歌诀汇总 12-中药学 30味中药 药理作用总 结 13-方剂学常考重点总结 更多医考干货可扫码关注微信公众平台",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原9\\full.md",
-        "number": 35
+        "number": 35,
+        "answer_source": "same_document"
       }
     }
   ]

@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "6581a15b89f4-907bf739be-q0001",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "工作劳累后出现一过性心绞痛，病程在2月之内，以往无心绞痛病史，属于",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "变异型心绞痛\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：初发劳力型心绞痛：病程在两个月内新发生的心绞痛（从无心绞痛或有心绞痛病史但在近半年内未发作过心绞痛）。"
+          "content": "变异型心绞痛"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "初发劳力型心绞痛：病程在两个月内新发生的心绞痛（从无心绞痛或有心绞痛病史但在近半年内未发作过心绞痛）。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 1
+        "number": 1,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0002",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "冠心病患者的低密度脂蛋白应控制在",
       "options": [
         {
@@ -63,33 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "$< 0.9\\mathrm{mmol / L}$\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：冠心病患者属于"
-        },
-        {
-          "option_id": "G",
-          "content": "SCAD 患者，即极高危患者，极高危者 LDL-"
-        },
-        {
-          "option_id": "H",
-          "content": "<1.8 mmol/L。"
+          "content": "$< 0.9\\mathrm{mmol / L}$"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "冠心病患者属于 ASCAD 患者，即极高危患者，极高危者 LDL-C<1.8 mmol/L。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 2
+        "number": 2,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0003",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "儿童中枢神经系统白血病，最常见的是",
       "options": [
         {
@@ -110,25 +100,24 @@
         },
         {
           "option_id": "E",
-          "content": "急性红白血病  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：儿童中枢神经系统白血病，最常见的是急性淋巴细胞白血病。"
+          "content": "急性红白血病"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "儿童中枢神经系统白血病，最常见的是急性淋巴细胞白血病。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 3
+        "number": 3,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0004",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "X 线胸片呈现 “S” 形征象常见于",
       "options": [
         {
@@ -149,25 +138,24 @@
         },
         {
           "option_id": "E",
-          "content": "中央型肺癌\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：“S”征是当中央型肺癌产生支气管阻塞时，远端肺叶发生肺不张，肺门区肿块和远端肺不张的凹陷边缘一起，像一个水平放置的“S”。故“S”征常见于中央型肺癌。"
+          "content": "中央型肺癌"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "“S”征是当中央型肺癌产生支气管阻塞时，远端肺叶发生肺不张，肺门区肿块和远端肺不张的凹陷边缘一起，像一个水平放置的“S”。故“S”征常见于中央型肺癌。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 4
+        "number": 4,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0005",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "缺铁性贫血若治疗有效，外周血先升高的的是",
       "options": [
         {
@@ -188,25 +176,24 @@
         },
         {
           "option_id": "E",
-          "content": "血小板  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：缺铁性贫血若治疗有效，外周血先升高的的是网织红细胞。"
+          "content": "血小板"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "缺铁性贫血若治疗有效，外周血先升高的的是网织红细胞。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 5
+        "number": 5,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0006",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "按心律失常发生机制分类，逸搏心律属于",
       "options": [
         {
@@ -227,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "传导阻滞  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：按心律失常发生机制分类，逸搏心律属于被动性异位心律。"
+          "content": "传导阻滞"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "按心律失常发生机制分类，逸搏心律属于被动性异位心律。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 6
+        "number": 6,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0007",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "脑出血最常见的部位是",
       "options": [
         {
@@ -266,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "脑桥  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：脑出血最常见的部位是基底节。"
+          "content": "脑桥"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "脑出血最常见的部位是基底节。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 7
+        "number": 7,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0008",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "慢性肺源性心脏病死亡的首要原因是",
       "options": [
         {
@@ -305,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "肺性脑病  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "![](images/3e678375b315167d4012719091625114abd764d1fbe0d9648b2335c25de74162.jpg)\n\n解析：慢性肺源性心脏病死亡的首要原因是肺性脑病。\n\n![](images/9bfa63b10f9147a94725f51ccc47b0d00e3ab6c6ef3bdce37993f09e99512996.jpg)\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/d6b3857a27b94b75a065047501cf2dae7897a0cb5d62b44e7a345fd8a0f2bba5.jpg)"
+          "content": "肺性脑病"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "慢性肺源性心脏病死亡的首要原因是肺性脑病。 更多医考干货可扫码关注微信公众平台",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 8
+        "number": 8,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0009",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下属于糖尿病微血管病变的是",
       "options": [
         {
@@ -344,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "糖尿病下肢动脉硬化性闭塞\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：以下属于糖尿病微血管病变的是糖尿病性心肌病。"
+          "content": "糖尿病下肢动脉硬化性闭塞"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "以下属于糖尿病微血管病变的是糖尿病性心肌病。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 9
+        "number": 9,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0010",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "心脏瓣膜病的中医病机是",
       "options": [
         {
@@ -383,25 +366,24 @@
         },
         {
           "option_id": "E",
-          "content": "正虚邪入，痹阻心脉\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：心脏瓣膜病的中医病机是正虚邪入，痹阻心脉。"
+          "content": "正虚邪入，痹阻心脉"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "心脏瓣膜病的中医病机是正虚邪入，痹阻心脉。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 10
+        "number": 10,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0011",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下不属于急性白血病增殖浸润表现的是",
       "options": [
         {
@@ -422,25 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "牙龈增生、肿胀\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：黄疸不属于急性白血病增殖浸润表现。"
+          "content": "牙龈增生、肿胀"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "黄疸不属于急性白血病增殖浸润表现。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 11
+        "number": 11,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-907bf739be-q0012",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "与痿证关系密切的脏腑有",
       "options": [
         {
@@ -461,20 +442,19 @@
         },
         {
           "option_id": "E",
-          "content": "肝、胆、肾、心\n\n![](images/1761bb0d098db0188ada98647359d7ed671cfc7e46c36cd43229aad18d73c15c.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：痿证病位在筋脉肌肉，与肝、肾、肺、胃关系最为密切。\n\n懒人医考\nLANRENYIKAO"
+          "content": "肝、胆、肾、心"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "痿证病位在筋脉肌肉，与肝、肾、肺、胃关系最为密切。 懒人医考 LANRENYIKAO",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原8\\full.md",
-        "number": 12
+        "number": 12,
+        "answer_source": "same_document"
       }
     }
   ]

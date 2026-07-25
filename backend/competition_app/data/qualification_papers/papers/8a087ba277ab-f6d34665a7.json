@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0001",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "在体力活动后反而减轻的胸痛，多见于",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "胸膜炎  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：心脏神经症的胸痛在体力活动后反而减轻。"
+          "content": "胸膜炎"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "心脏神经症的胸痛在体力活动后反而减轻。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 1
+        "number": 1,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0002",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "大量咯血常见于",
       "options": [
         {
@@ -63,49 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "肺气肿  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：大量咯血（每日超过 $500 \\mathrm{~mL}$ ）常见于空洞型肺结核、支气管扩张症和肺脓肿。3. Kussmaul 呼吸见于"
-        },
-        {
-          "option_id": "G",
-          "content": "OPDB. 尿毒症"
-        },
-        {
-          "option_id": "H",
-          "content": "支气管哮喘"
-        },
-        {
-          "option_id": "I",
-          "content": "癔症"
-        },
-        {
-          "option_id": "J",
-          "content": "脑炎答案："
-        },
-        {
-          "option_id": "K",
-          "content": "解析：代谢性酸中毒：呼吸深大规则，称Kussmaul呼吸，见于尿毒症、糖尿病酮症酸中毒。单侧眼睑闭合不全，常见于甲状腺功能亢进甲状腺功能低下面神经麻痹三叉神经痛动眼神经麻痹\n\n答案:"
-        },
-        {
-          "option_id": "L",
-          "content": "解析：双侧眼睑闭合不全常见于甲状腺功能亢进症；单侧眼睑闭合不全见于面神经麻痹。"
+          "content": "肺气肿"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "大量咯血（每日超过 $500 \\mathrm{~mL}$ ）常见于空洞型肺结核、支气管扩张症和肺脓肿。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 2
+        "number": 2,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0005",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "颜面部发作性电击样疼痛多见于",
       "options": [
         {
@@ -126,25 +100,24 @@
         },
         {
           "option_id": "E",
-          "content": "三叉神经痛\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：三叉神经痛表现为颜面部发作性电击样疼痛。"
+          "content": "三叉神经痛"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "三叉神经痛表现为颜面部发作性电击样疼痛。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 5
+        "number": 5,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0006",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "腹壁反射中部反射消失见于 懒人医考整理",
       "options": [
         {
@@ -165,76 +138,62 @@
         },
         {
           "option_id": "E",
-          "content": "腰髓 3～4 节病损\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：上、中、下腹壁反射减弱或消失分别对应于同侧胸髓7～8、9～10、11～12节病损。"
+          "content": "腰髓 3～4 节病损"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "上、中、下腹壁反射减弱或消失分别对应于同侧胸髓7～8、9～10、11～12节病损。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 6
+        "number": 6,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0007",
-      "question_type": "multiple_choice",
-      "question_content": "肝细胞中，大部分天门冬氨酸氨基转移酶(",
+      "question_type": "single_choice",
+      "question_content": "肝细胞中，大部分天门冬氨酸氨基转移酶(AST)存在于",
       "options": [
         {
           "option_id": "A",
-          "content": "ST)存在于"
-        },
-        {
-          "option_id": "B",
           "content": "高尔基体"
         },
         {
-          "option_id": "C",
+          "option_id": "B",
           "content": "线粒体"
         },
         {
-          "option_id": "D",
+          "option_id": "C",
           "content": "微粒体"
         },
         {
-          "option_id": "E",
+          "option_id": "D",
           "content": "细胞浆"
         },
         {
-          "option_id": "F",
-          "content": "细胞核  \n答案："
-        },
-        {
-          "option_id": "G",
-          "content": "解析："
-        },
-        {
-          "option_id": "H",
-          "content": "ST主要分布在肝细胞的线粒体中；"
-        },
-        {
-          "option_id": "I",
-          "content": "LT主要分布在肝细胞的细胞浆。"
+          "option_id": "E",
+          "content": "细胞核"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "AST主要分布在肝细胞的线粒体中；ALT主要分布在肝细胞的细胞浆。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 7
+        "number": 7,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0008",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "白细胞管型常见于",
       "options": [
         {
@@ -255,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "输尿管结石\n\n![](images/1b85a43228834a517714a0e22a10866cfcf51604fc853f3f5009ab7f91cf4343.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：白细胞管型常见于肾盂肾炎、间质性肾炎。\n\n![](images/3192cc57280b96c0e8982896d81dec82d47ed8073a3039d5dd4a5e59f369c1b6.jpg)"
+          "content": "输尿管结石"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "白细胞管型常见于肾盂肾炎、间质性肾炎。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 8
+        "number": 8,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0009",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "上消化道出血最常见的病因",
       "options": [
         {
@@ -294,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "急性胃黏膜病变\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：消化道出血最常见的病因是消化性溃疡，其次是肝硬化所致的食管静脉破裂出血。"
+          "content": "急性胃黏膜病变"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "消化道出血最常见的病因是消化性溃疡，其次是肝硬化所致的食管静脉破裂出血。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 9
+        "number": 9,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0010",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "尿液检查见大量大圆上皮细胞，提示 懒人医考整理",
       "options": [
         {
@@ -333,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "慢性肾炎  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：大圆上皮细胞偶见于正常人尿内，大量出现见于膀胱炎。"
+          "content": "慢性肾炎"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "大圆上皮细胞偶见于正常人尿内，大量出现见于膀胱炎。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 10
+        "number": 10,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0011",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "见于二尖瓣狭窄而瓣膜弹性尚好时，可作为二尖瓣分离术适应证的重要参考条件的是",
       "options": [
         {
@@ -372,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "心尖部触及舒张期震颤  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：开瓣音见于二尖瓣狭窄而瓣膜弹性尚好时，是二尖瓣分离术适应证的重要参考条件。"
+          "content": "心尖部触及舒张期震颤"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "开瓣音见于二尖瓣狭窄而瓣膜弹性尚好时，是二尖瓣分离术适应证的重要参考条件。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 11
+        "number": 11,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0012",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下关于 T 波的描述不正确的是",
       "options": [
         {
@@ -411,25 +366,24 @@
         },
         {
           "option_id": "E",
-          "content": "T 波方向与 QRS 主波方向相反\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：T波为心室复极波，反映心室晚期快速复极的电位和时间变化。正常T波是一个不对称的宽大而光滑的波，前支较长，后支较短；T波的方向与QRS波群主波方向一致；在R波为主的导联中T波电压不应低于同导联R波的1/10。"
+          "content": "T 波方向与 QRS 主波方向相反"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "T波为心室复极波，反映心室晚期快速复极的电位和时间变化。正常T波是一个不对称的宽大而光滑的波，前支较长，后支较短；T波的方向与QRS波群主波方向一致；在R波为主的导联中T波电压不应低于同导联R波的1/10。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 12
+        "number": 12,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0013",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "呼气有明显的氨味，见于",
       "options": [
         {
@@ -450,25 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "有机磷农药中毒\n\n![](images/044b95d2316884084996dbf5ffb564c9c69f97f6544cfc52ba22c9d849edd4d1.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：呼气味：刺激性蒜味见于有机磷农药中毒；烂苹果味见于糖尿病酮症酸中毒；氨味见于尿毒症；腥臭味见于肝性脑病。"
+          "content": "有机磷农药中毒"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "呼气味：刺激性蒜味见于有机磷农药中毒；烂苹果味见于糖尿病酮症酸中毒；氨味见于尿毒症；腥臭味见于肝性脑病。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 13
+        "number": 13,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0014",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列疾病中，哪种可引起肺下界下移",
       "options": [
         {
@@ -489,25 +442,24 @@
         },
         {
           "option_id": "E",
-          "content": "肺不张  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：肺下界下移见于肺气肿、腹腔内脏下垂。"
+          "content": "肺不张"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "肺下界下移见于肺气肿、腹腔内脏下垂。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 14
+        "number": 14,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0015",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "陶土样便见于懒人医考整理",
       "options": [
         {
@@ -528,25 +480,24 @@
         },
         {
           "option_id": "E",
-          "content": "直肠癌  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "![](images/0deab3f21bc005d250d55349f54678c3602a55e7dc4aabe75fd378debe5219eb.jpg)\n\n解析：灰白色，白陶土便见于阻塞性黄疸。"
+          "content": "直肠癌"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "灰白色，白陶土便见于阻塞性黄疸。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 15
+        "number": 15,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0016",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "水肿首先出现于身体低垂部，可能是",
       "options": [
         {
@@ -567,25 +518,24 @@
         },
         {
           "option_id": "E",
-          "content": "特发性水肿\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：心源性水肿首先出现于身体低垂部，由于体循环淤血，体内水钠潴留，毛细血管流体静压升高，首先出现于身体低垂部。"
+          "content": "特发性水肿"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "心源性水肿首先出现于身体低垂部，由于体循环淤血，体内水钠潴留，毛细血管流体静压升高，首先出现于身体低垂部。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 16
+        "number": 16,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0017",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "慢性萎缩性胃炎时常出现",
       "options": [
         {
@@ -606,25 +556,24 @@
         },
         {
           "option_id": "E",
-          "content": "毛舌  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：镜面舌见于缺铁性贫血、恶性贫血及慢性萎缩性胃炎。"
+          "content": "毛舌"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "镜面舌见于缺铁性贫血、恶性贫血及慢性萎缩性胃炎。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 17
+        "number": 17,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0018",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列哪项不属于锥体束损害的体征",
       "options": [
         {
@@ -645,25 +594,24 @@
         },
         {
           "option_id": "E",
-          "content": "凯尔尼格征\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：凯尔尼格征属于脑膜刺激征，脑膜刺激征阳性见于各种脑膜炎、蛛网膜下腔出血。凯尔尼格征另外可以见于坐骨神经痛、腰骶神经根炎等。"
+          "content": "凯尔尼格征"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "凯尔尼格征属于脑膜刺激征，脑膜刺激征阳性见于各种脑膜炎、蛛网膜下腔出血。凯尔尼格征另外可以见于坐骨神经痛、腰骶神经根炎等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 18
+        "number": 18,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0019",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "感染HBV后最早出现的血清学标志是",
       "options": [
         {
@@ -684,30 +632,29 @@
         },
         {
           "option_id": "E",
-          "content": "抗-HBc  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：感染HBV后最早出现的血清学标志是HBsAg。抗HBc-IgM是最早出现的抗体。"
+          "content": "抗-HBc"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "感染HBV后最早出现的血清学标志是HBsAg。抗HBc-IgM是最早出现的抗体。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 19
+        "number": 19,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-f6d34665a7-q0020",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "黏液性痰主要见于",
       "options": [
         {
           "option_id": "A",
-          "content": "支气管炎\n\n懒人医考整理"
+          "content": "支气管炎 懒人医考整理"
         },
         {
           "option_id": "B",
@@ -723,20 +670,19 @@
         },
         {
           "option_id": "E",
-          "content": "肺脓肿\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：黏液性痰见于支气管炎、肺炎早期及支气管哮喘等。\n\n![](images/5c154621d555329e8010a83e287431cba04d570479388ae29accc2231e69f3b8.jpg)\n\n![](images/803c60eba593331226b3f29390504b7d3eb8c345167a1c56079cbe900cf7610f.jpg)  \n1-内外妇儿重点疾病诊断公式  \n2-中西医结合内科学辨证论治汇总\n\n![](images/dafa4801006e330703e0b6df2eeb77a0acc0e34fce7a112c45cd95d4f4edc0dd.jpg)\n\n![](images/ffdf08726127f3a0e0cb4f659bcfb57c46dbd1d676ab98b5eab4a8b7ee288674.jpg)  \n3-中西医结合外科学辨证论治汇总  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/0ce56a077ac08cc4675e9c99784156b4cf754d4fa02d2b703bcd9e07524ab026.jpg)\n\n![](images/96b8983f32ebfeaa182f0d6ab3c78253eb1577fe115c641d2b7a43e799902b6a.jpg)\n\n![](images/807649a3dfdd34e4ee1cba774a31712f82fa2fc7b64b7f0f438974189c7b6e8b.jpg)  \n5-中西医结合儿科学辨证论治汇总\n\n![](images/69e96efa661db060673358342a244043b5496f5e16a5ee46dddaba08e8a7192c.jpg)  \n6-中西医结合内科学最字题  \n7-中西医结合内科学首选类题目  \n8-中西医外妇儿首选类题目\n\n![](images/2fb0c01afb1498364260ea91ae078f20738547e173aed8ce385cd70feca1e5c9.jpg)  \n9-经络系统常考总结\n\n![](images/e312fa660b066578652fde47b98505d3d2e675935ca9b29a9a33c28240073916.jpg)  \n10-特定穴\n记忆歌诀汇总\n\n![](images/c80cdc4513c766c000f58b99f8ec794209caf1f5eba5958c38c0a58959243d07.jpg)\n\n![](images/e9661f918449034b93f86b86db96ce6926a67ba4b5fadaa1588663c00b1666f5.jpg)\n\n![](images/569f1ff0a3a89f9b9576b14ca1815b16459d376697cef898f3feab9de2f1ef60.jpg)  \n11-中药相同功效药物总结  \n12-中药学30味中药药理作用总结  \n13-方剂学常考重点总结\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/424b649a030ba36506fccfb66bdcc857d78a46f7767219a75e6be2a18bd70a62.jpg)\n\n![](images/6cdc252c858b0d0906ad581110344459937f5e1b9ac07a2680d65c29c418acaf.jpg)"
+          "content": "肺脓肿"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "黏液性痰见于支气管炎、肺炎早期及支气管哮喘等。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 11-中药相同功效药物总结 12-中药学30味中药药理作用总结 13-方剂学常考重点总结 更多医考干货可扫码关注微信公众平台",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原4\\full.md",
-        "number": 20
+        "number": 20,
+        "answer_source": "same_document"
       }
     }
   ]

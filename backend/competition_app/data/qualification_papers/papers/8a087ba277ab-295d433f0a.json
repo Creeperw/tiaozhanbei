@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "8a087ba277ab-295d433f0a-q0041",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "足阳明经和足太阴经交接于",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "足中指内侧\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：足阳明经和足太阴经交接于足大指内端。"
+          "content": "足中指内侧"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "足阳明经和足太阴经交接于足大指内端。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 41
+        "number": 41,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0042",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "（助理不考）在八会穴中，髓会是",
       "options": [
         {
@@ -63,25 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "绝骨\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：考察八会穴。脏会章门，腑会中脘，气会膻中，血会膈俞，筋会阳陵泉，脉会太渊，骨会大杼，髓会绝骨。"
+          "content": "绝骨"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "考察八会穴。脏会章门，腑会中脘，气会膻中，血会膈俞，筋会阳陵泉，脉会太渊，骨会大杼，髓会绝骨。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 42
+        "number": 42,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0043",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "位于下肢外侧中线的经脉是",
       "options": [
         {
@@ -102,25 +100,24 @@
         },
         {
           "option_id": "E",
-          "content": "三焦经\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：经络分布的规律符合：“内侧前中后，太阴厥少阴；外侧前中后，阳明少太阳”的规律，下肢外侧中线为足少阳胆经。"
+          "content": "三焦经"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "经络分布的规律符合：“内侧前中后，太阴厥少阴；外侧前中后，阳明少太阳”的规律，下肢外侧中线为足少阳胆经。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 43
+        "number": 43,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0044",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "隔盐灸的作用是",
       "options": [
         {
@@ -141,25 +138,24 @@
         },
         {
           "option_id": "E",
-          "content": "温肾、壮阳、通脉\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：隔盐灸的作用是回阳、救逆、固脱。用于治疗伤寒阴证或吐泻并作、中风脱证等。"
+          "content": "温肾、壮阳、通脉"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "隔盐灸的作用是回阳、救逆、固脱。用于治疗伤寒阴证或吐泻并作、中风脱证等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 44
+        "number": 44,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0045",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列灸法中，属于艾炷灸的是",
       "options": [
         {
@@ -180,30 +176,29 @@
         },
         {
           "option_id": "E",
-          "content": "蒜泥灸\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：隔盐灸的作用是回阳、救逆、固脱。用于治疗伤寒阴证或吐泻并作、中风脱证等。"
+          "content": "蒜泥灸"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "隔盐灸的作用是回阳、救逆、固脱。用于治疗伤寒阴证或吐泻并作、中风脱证等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 45
+        "number": 45,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0046",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "中风闭证针刺水沟的刺法",
       "options": [
         {
           "option_id": "A",
-          "content": "斜向上刺\n\n懒人医考整理"
+          "content": "斜向上刺 懒人医考整理"
         },
         {
           "option_id": "B",
@@ -219,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "平补平泻\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：考察中风的治疗操作。水沟穴向上方斜刺，用雀啄法，以眼球湿润为度。"
+          "content": "平补平泻"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "考察中风的治疗操作。水沟穴向上方斜刺，用雀啄法，以眼球湿润为度。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 46
+        "number": 46,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0047",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "悬钟的定位",
       "options": [
         {
@@ -258,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "足背第二三趾缝间，趾蹼缘厚5分处\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：悬钟穴属于足少阳胆经，悬钟穴位于人体小腿外侧，当外踝尖上3寸，腓骨前缘。"
+          "content": "足背第二三趾缝间，趾蹼缘厚5分处"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "悬钟穴属于足少阳胆经，悬钟穴位于人体小腿外侧，当外踝尖上3寸，腓骨前缘。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 47
+        "number": 47,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0048",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "手少阴心经与手太阳小肠经的交接部位是",
       "options": [
         {
@@ -297,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "拇指端\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：十二经脉的具体衔接顺序为：手太阴肺经在食指与手阳明大肠经交接；手阳明大肠经在鼻旁和足阳明胃经交接；足阳明胃经在足大趾(内侧)与足太阴脾经交接；足太阴脾经在心中与手少阴心经交接；手少阴心经在小指与手太阳小肠经交接；手太阳小肠经在目内眦与足太阳膀胱经交接；足太阳膀胱经在足小趾与足少阴肾经交接；足少阴肾经在胸中与手厥阴心包经交接；手厥阴心包经在无名指与手少阳三焦经交接；手少阳三焦经在目外眦与足少阳胆经交接；足少阳胆经在足大趾(外侧)与足厥阴肝经交接；足厥阴肝经在肺中与手太阴肺经交接。如此\"阴阳相贯，如环无端\"。"
+          "content": "拇指端"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "十二经脉的具体衔接顺序为：手太阴肺经在食指与手阳明大肠经交接；手阳明大肠经在鼻旁和足阳明胃经交接；足阳明胃经在足大趾(内侧)与足太阴脾经交接；足太阴脾经在心中与手少阴心经交接；手少阴心经在小指与手太阳小肠经交接；手太阳小肠经在目内眦与足太阳膀胱经交接；足太阳膀胱经在足小趾与足少阴肾经交接；足少阴肾经在胸中与手厥阴心包经交接；手厥阴心包经在无名指与手少阳三焦经交接；手少阳三焦经在目外眦与足少阳胆经交接；足少阳胆经在足大趾(外侧)与足厥阴肝经交接；足厥阴肝经在肺中与手太阴肺经交接。如此\"阴阳相贯，如环无端\"。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 48
+        "number": 48,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0049",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "位于内踝尖下一寸，内踝下缘边际凹陷中的是",
       "options": [
         {
@@ -336,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "昆仑\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：考察穴位的定位。位于内踝尖下一寸，内踝下缘边际凹陷中的是照海。"
+          "content": "昆仑"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "考察穴位的定位。位于内踝尖下一寸，内踝下缘边际凹陷中的是照海。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 49
+        "number": 49,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0050",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，女，45岁。头痛多年，后头部疼痛固定不移，痛如椎刺，舌暗，脉细涩。针灸治疗除百会、风池外，宜加用下列哪组腧穴",
       "options": [
         {
@@ -375,25 +366,24 @@
         },
         {
           "option_id": "E",
-          "content": "血海、膈俞\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据题干症状诊断为：瘀血头痛。针灸治疗宜配血海、膈俞。"
+          "content": "血海、膈俞"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据题干症状诊断为：瘀血头痛。针灸治疗宜配血海、膈俞。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 50
+        "number": 50,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0051",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，长久以来低头工作，项背部强痛，低头加重，颈项后枕部疼痛，颈部僵紧不舒,针刺选用",
       "options": [
         {
@@ -414,25 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "督脉、太阴经\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：颈椎病根据疼痛部位进行经络辨证：颈项肩臂放射性疼痛、麻木，伴有拇指、食指和中指麻木者为手阳明经证；伴有无名指、小指麻木者为手太阳经证；以颈项后枕部疼痛，颈部僵紧不舒者为督脉、足太阳经证。"
+          "content": "督脉、太阴经"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "颈椎病根据疼痛部位进行经络辨证：颈项肩臂放射性疼痛、麻木，伴有拇指、食指和中指麻木者为手阳明经证；伴有无名指、小指麻木者为手太阳经证；以颈项后枕部疼痛，颈部僵紧不舒者为督脉、足太阳经证。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 51
+        "number": 51,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0052",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "痛痹除选用阿是穴和局部经穴外，主要配下列哪组经穴",
       "options": [
         {
@@ -453,25 +442,24 @@
         },
         {
           "option_id": "E",
-          "content": "阴陵泉、足三里\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：痹证针灸治疗配穴：行痹配膈俞、血海；痛痹配肾俞、关元；着痹配阴陵泉、足三里；热痹配大椎、曲池。另可根据疼痛的部位循经配穴。\n\n![](images/cb211d4c2baaa1a54711083014f9da5fdaf86c484df6abe1e1e1d66b0710df6c.jpg)"
+          "content": "阴陵泉、足三里"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "痹证针灸治疗配穴：行痹配膈俞、血海；痛痹配肾俞、关元；着痹配阴陵泉、足三里；热痹配大椎、曲池。另可根据疼痛的部位循经配穴。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 52
+        "number": 52,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0053",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "治疗饮食伤胃型胃痛，除足三里、中脘、内关等主穴外，还应加用",
       "options": [
         {
@@ -492,25 +480,24 @@
         },
         {
           "option_id": "E",
-          "content": "气海、关元  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：胃痛的处方：主穴中脘足三里内关\n\n配穴寒邪客胃配胃俞；饮食伤胃配梁门、下脘；肝气犯胃配期门、太冲；瘀血停胃配膈俞、三阴交。脾胃虚寒配关元、脾俞、胃俞；胃阴不足配胃俞、三阴交、内庭。"
+          "content": "气海、关元"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "胃痛的处方：主穴中脘足三里内关 配穴寒邪客胃配胃俞；饮食伤胃配梁门、下脘；肝气犯胃配期门、太冲；瘀血停胃配膈俞、三阴交。脾胃虚寒配关元、脾俞、胃俞；胃阴不足配胃俞、三阴交、内庭。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 53
+        "number": 53,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0054",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列发疹性传染病按皮疹出现的先后次序排列，依次为",
       "options": [
         {
@@ -531,25 +518,24 @@
         },
         {
           "option_id": "E",
-          "content": "水痘、天花、猩红热、麻疹、斑疹伤寒、伤寒\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：水痘多于病程第1日，猩红热于第2日，天花于第3日，麻疹于第4日，斑疹伤寒于第5天，伤寒于第6日出疹。"
+          "content": "水痘、天花、猩红热、麻疹、斑疹伤寒、伤寒"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "水痘多于病程第1日，猩红热于第2日，天花于第3日，麻疹于第4日，斑疹伤寒于第5天，伤寒于第6日出疹。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 54
+        "number": 54,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0055",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "甲型肝炎和戊型肝炎共有的主要传播途径是",
       "options": [
         {
@@ -570,25 +556,24 @@
         },
         {
           "option_id": "E",
-          "content": "性传播  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：甲、戊型肝炎的主要传播途径是粪-口传播。"
+          "content": "性传播"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "甲、戊型肝炎的主要传播途径是粪-口传播。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 55
+        "number": 55,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0056",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "病原体侵入人体后, 引起机体发生免疫应答, 同时通过病原体本身的作用或机体的变态反应, 导致组织损伤, 引起病理改变与临床表现, 此种情况是",
       "options": [
         {
@@ -609,45 +594,24 @@
         },
         {
           "option_id": "E",
-          "content": "机会性感染\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析："
-        },
-        {
-          "option_id": "G",
-          "content": "选项-隐性感染又称亚临床感染，病原体只引起特异性免疫应答，不引起或只引起轻微的组织损伤，无临床症状，只能通过免疫学检查发现。"
-        },
-        {
-          "option_id": "H",
-          "content": "选项-显性感染又称临床感染，即传染病发病。感染后不但引起机体免疫应答，还导致组织损伤，引起病理改变和临床表现。"
-        },
-        {
-          "option_id": "I",
-          "content": "选项-重复感染指在感染某种病原体基础上再次感染同一病原体。"
-        },
-        {
-          "option_id": "J",
-          "content": "选项-潜伏感染指感染者体内的病原体可以处于静止状态持续存活，如结核分枝杆菌。"
-        },
-        {
-          "option_id": "K",
-          "content": "选项-病原体与人体宿主之间达到了相互适应、互不损害的共生状态。但当某些因素导致机体免疫功能受损或机械损伤使寄生物异位寄生时，则可引起宿主的损伤，称为机会性感染。"
+          "content": "机会性感染"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "A 选项-隐性感染又称亚临床感染，病原体只引起特异性免疫应答，不引起或只引起轻微的组织损伤，无临床症状，只能通过免疫学检查发现。B 选项-显性感染又称临床感染，即传染病发病。感染后不但引起机体免疫应答，还导致组织损伤，引起病理改变和临床表现。C 选项-重复感染指在感染某种病原体基础上再次感染同一病原体。D 选项-潜伏感染指感染者体内的病原体可以处于静止状态持续存活，如结核分枝杆菌。E 选项-病原体与人体宿主之间达到了相互适应、互不损害的共生状态。但当某些因素导致机体免疫功能受损或机械损伤使寄生物异位寄生时，则可引起宿主的损伤，称为机会性感染。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 56
+        "number": 56,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0057",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "流行性出血热的“三痛”是指",
       "options": [
         {
@@ -668,25 +632,24 @@
         },
         {
           "option_id": "E",
-          "content": "头痛、腰痛和腹痛\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：流行性出血热的“三痛”是指头痛、腰痛和眼眶痛。"
+          "content": "头痛、腰痛和腹痛"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "流行性出血热的“三痛”是指头痛、腰痛和眼眶痛。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 57
+        "number": 57,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0058",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "关于志贺菌属，下列哪项说法是正确的",
       "options": [
         {
@@ -707,25 +670,24 @@
         },
         {
           "option_id": "E",
-          "content": "产生外毒素和内毒素\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：志贺菌属，为革兰阴性杆菌，无鞭毛，对酸和消毒剂敏感，可在瓜果蔬菜上存活 10-20 天，可\n\n懒人医考整理\n产生内毒素和外毒素。"
+          "content": "产生外毒素和内毒素"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "志贺菌属，为革兰阴性杆菌，无鞭毛，对酸和消毒剂敏感，可在瓜果蔬菜上存活 10-20 天，可 懒人医考整理 产生内毒素和外毒素。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 58
+        "number": 58,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0059",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "确诊伤寒的依据是",
       "options": [
         {
@@ -746,25 +708,24 @@
         },
         {
           "option_id": "E",
-          "content": "嗜酸性粒细胞减少\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：伤寒确诊有赖于血或骨髓培养检出伤寒杆菌。"
+          "content": "嗜酸性粒细胞减少"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "伤寒确诊有赖于血或骨髓培养检出伤寒杆菌。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 59
+        "number": 59,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-295d433f0a-q0060",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "HIV 主要感染的细胞是",
       "options": [
         {
@@ -781,28 +742,23 @@
         },
         {
           "option_id": "D",
-          "content": "细胞"
+          "content": "B 细胞"
         },
         {
           "option_id": "E",
-          "content": "D4+淋巴细胞\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析: HIV 主要感染的细胞是"
-        },
-        {
-          "option_id": "G",
-          "content": "D4+淋巴细胞\n\n![](images/929df52396b362f4506c9941dc785d447066e87a6d018c0729965098f214bc32.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/af878318b4cc4c8eda61a6a55bc7649f2a2f904633b240759ba33a6e45cbd85b.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/cae969ecba40549089d1f93b7ff388d89b7b8d35316cc51a0182e5105c75c5d8.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/78150e334b453d8d34710f8b9bc94d0c809caa9d5615aae0902fde4591ec90ba.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/e1535800d3bcd5ff5b7625325a0350bf112124bbc8f66482bea47ce55a504a46.jpg)  \n5-中西医结合儿科学辨证论治汇总\n\n![](images/f2c27dc8012565a0284f6cfa3b0b21f7527443558d7fadbf96836c304dc05af8.jpg)  \n6-中西医结合内科学最字题\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/6f3d57d2ce47a3d68e5986decf31ec3cf8650a08531f7d0d91975d945f43669c.jpg)  \n7-中西医结合内科学首选类题目\n\n![](images/a31b46face735edf0a2b09cb5e6ced40bfb879402ea5ca3b28f5a2cd07c94cee.jpg)\n\n![](images/c85d8e43188857927314b9c14889667fcb2533ad536b2ca8fb7a1637952bdd39.jpg)  \n8-中西医外妇儿首选类题目\n\n![](images/b852ebad19a5968f1afda6e7572aa543d27ae6293104d23490f3b50cb306ff81.jpg)  \n9-经络系统常考总结\n\n![](images/991dde9e97a4c6f4f35ed4e93c2ce9a96719531b2c1acd5c956072fa1d2bab12.jpg)\n\n![](images/52afccfeb007866ed53cb65a05e3defeef9134fcca6ebae8a14d3585dffc08eb.jpg)  \n11-中药相同功效药物  \n10-特定穴\n记忆歌诀汇总\n\n![](images/a966fb373b0221293f5169244727bada6bcb4f0bcd056390dec85aa4cd24610c.jpg)  \n12-中药学30味中药药理作用总结  \n13-方剂学常考重点总结\n\n![](images/c32c483cff8112d71ece53dbb97b440e80c48dc37666c8a92b64a1304e94a45d.jpg)  \n医考\n\nLANRENYIKAO"
+          "content": "CD4+淋巴细胞"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "HIV 主要感染的细胞是 CD4+淋巴细胞 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结合内科学最字题 更多医考干货可扫码关注微信公众平台 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 11-中药相同功效药物 10-特定穴 记忆歌诀汇总 12-中药学30味中药药理作用总结 13-方剂学常考重点总结 医考 LANRENYIKAO",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟6\\full.md",
-        "number": 60
+        "number": 60,
+        "answer_source": "same_document"
       }
     }
   ]

@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0016",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "小儿食指络脉浓滞而增粗多见于",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "寒证\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：淡滞定虚实：食指络脉浓滞而增粗者，多属实证。因邪正相争，气血壅滞所致。"
+          "content": "寒证"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "淡滞定虚实：食指络脉浓滞而增粗者，多属实证。因邪正相争，气血壅滞所致。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 16
+        "number": 16,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0017",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "舌体短缩，色青紫而湿润，是由于",
       "options": [
         {
@@ -63,25 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "热盛动风\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：舌短缩，色淡白或青紫而湿润，见于寒凝筋脉。"
+          "content": "热盛动风"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "舌短缩，色淡白或青紫而湿润，见于寒凝筋脉。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 17
+        "number": 17,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0018",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "痰火扰神证与痰蒙心神证的共同症状",
       "options": [
         {
@@ -102,25 +100,24 @@
         },
         {
           "option_id": "E",
-          "content": "神昏\n\n![](images/855c037436f45d05006ea4a75cfb5176210d985cbbe503bd9dae94ff5044568e.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：痰蒙心神证与痰火扰神证均有神志异常的表现，均可或见神昏，但痰蒙心神证为痰浊，其症以抑郁、痴呆、错乱为主，有痰无火，无热证表现；痰火扰神证则为痰热，其症以神志狂躁、神昏谵语为主，既有痰，又有火。"
+          "content": "神昏"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "痰蒙心神证与痰火扰神证均有神志异常的表现，均可或见神昏，但痰蒙心神证为痰浊，其症以抑郁、痴呆、错乱为主，有痰无火，无热证表现；痰火扰神证则为痰热，其症以神志狂躁、神昏谵语为主，既有痰，又有火。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 18
+        "number": 18,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0019",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "牙齿燥如枯骨，属于",
       "options": [
         {
@@ -141,25 +138,24 @@
         },
         {
           "option_id": "E",
-          "content": "热盛伤津\n\n![](images/4f72d52b37c20681400a83f552d49a2ca6f85b9fe5fc1012772234bd44ab0cc5.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：牙齿光燥如石，提示阳明热盛，津液大伤。牙齿燥如枯骨，提示肾阴枯涸，精不上荣，见于温热病的晚期。"
+          "content": "热盛伤津"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "牙齿光燥如石，提示阳明热盛，津液大伤。牙齿燥如枯骨，提示肾阴枯涸，精不上荣，见于温热病的晚期。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 19
+        "number": 19,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0020",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列各项，不属于表证与里证鉴别要点的是",
       "options": [
         {
@@ -180,34 +176,29 @@
         },
         {
           "option_id": "E",
-          "content": "表证苔薄，里证舌苔多有变化\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：发热恶寒同时并见者属表证；但热不寒或但寒不热者属里证；寒热往来者属半表半里证。故"
-        },
-        {
-          "option_id": "G",
-          "content": "选项表述错误。"
+          "content": "表证苔薄，里证舌苔多有变化"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "发热恶寒同时并见者属表证；但热不寒或但寒不热者属里证；寒热往来者属半表半里证。故D选项表述错误。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 20
+        "number": 20,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0021",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下哪些症状是心火旺的表现",
       "options": [
         {
           "option_id": "A",
-          "content": "口舌生疮\n\n懒人医考整理"
+          "content": "口舌生疮 懒人医考整理"
         },
         {
           "option_id": "B",
@@ -223,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "大便干燥\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：心火亢盛证以发热、心烦、吐血、舌赤生疮、尿赤涩灼痛等症为辨证的主要依据。"
+          "content": "大便干燥"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "心火亢盛证以发热、心烦、吐血、舌赤生疮、尿赤涩灼痛等症为辨证的主要依据。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 21
+        "number": 21,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0022",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "在目的脏腑分属中，黑睛所属的是",
       "options": [
         {
@@ -262,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "脾\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：目的脏腑分属：\n目内眦及外眦属心，称“血轮”\n黑珠属肝，称“风轮”\n白睛属肺，称“气轮”\n瞳仁属肾，称“水轮”\n眼胞属脾，称“肉轮”"
+          "content": "脾"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "目的脏腑分属： 目内眦及外眦属心，称“血轮” 黑珠属肝，称“风轮” 白睛属肺，称“气轮” 瞳仁属肾，称“水轮” 眼胞属脾，称“肉轮”",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 22
+        "number": 22,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0023",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "生姜制约半夏之毒呈现的关系是",
       "options": [
         {
@@ -301,41 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "相恶\n\n![](images/e5e373a4733937ed4d922d2094c2edde379e51c52dc3b7636a793abd0bd39e29.jpg)\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：相杀："
-        },
-        {
-          "option_id": "G",
-          "content": "消除"
-        },
-        {
-          "option_id": "H",
-          "content": "的毒副作用，如生姜杀生半夏毒\n相畏："
-        },
-        {
-          "option_id": "I",
-          "content": "毒副作用被"
-        },
-        {
-          "option_id": "J",
-          "content": "所抑制,如生半夏畏生姜。"
+          "content": "相恶"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "相杀：A消除B的毒副作用，如生姜杀生半夏毒 相畏：A毒副作用被B所抑制,如生半夏畏生姜。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 23
+        "number": 23,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0024",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "既能利尿通淋，又能活血通经的药物是",
       "options": [
         {
@@ -356,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "石韦\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：瞿麦：利尿通淋，活血通经。"
+          "content": "石韦"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "瞿麦：利尿通淋，活血通经。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 24
+        "number": 24,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0025",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "蒲公英清热解毒，消肿散结可治乳痈外，还具有的功效是",
       "options": [
         {
@@ -395,25 +366,24 @@
         },
         {
           "option_id": "E",
-          "content": "清热平肝  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：蒲公英功效：清热解毒，消肿散结，利尿通淋。\n\n9-经络系统常考总结\n\n1-内外妇儿重点疾病诊断公式"
+          "content": "清热平肝"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "蒲公英功效：清热解毒，消肿散结，利尿通淋。 9-经络系统常考总结 1-内外妇儿重点疾病诊断公式",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 25
+        "number": 25,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0026",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "肉豆蔻与豆蔻均具有的功效是",
       "options": [
         {
@@ -434,25 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "涩肠止泻，敛肺止咳\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：肉豆蔻与豆蔻：  \n二药均能温中散寒、行气消胀、开胃。  \n肉豆蔻长于涩肠止泻，多用于脾胃虚寒的久泻久痢；  \n豆蔻长于芳香化湿，多用于湿浊中阻的腕腹胀满，有呕吐者更宜。"
+          "content": "涩肠止泻，敛肺止咳"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "肉豆蔻与豆蔻： 二药均能温中散寒、行气消胀、开胃。 肉豆蔻长于涩肠止泻，多用于脾胃虚寒的久泻久痢； 豆蔻长于芳香化湿，多用于湿浊中阻的腕腹胀满，有呕吐者更宜。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 26
+        "number": 26,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0027",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列性能属甘、酸、平的中药是",
       "options": [
         {
@@ -473,25 +442,24 @@
         },
         {
           "option_id": "E",
-          "content": "乌梅\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：\n酸枣仁性能：甘、酸、平，归肝胆心经。\n功效：养心益肝，宁心安神，敛汗，生津\n\n![](images/1daae6e31fe37aef76a505de2d8d8314295642b20b8fe258274efb220ef562bb.jpg)"
+          "content": "乌梅"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "酸枣仁性能：甘、酸、平，归肝胆心经。 功效：养心益肝，宁心安神，敛汗，生津",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 27
+        "number": 27,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0028",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "治疗便血、痔血，首选药物是",
       "options": [
         {
@@ -512,25 +480,24 @@
         },
         {
           "option_id": "E",
-          "content": "侧柏叶\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：地榆。归肝、大肠经。功效：凉血止血，解毒敛疮。\n\n![](images/da1a945b0862af8ec8f7da63b96d0e8cdde96ceb9a11e1e7e4fe150fde424480.jpg)\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/0d31467be50abb1bebb673924e15b70f2b5d1d4fb3c70d343e433af7a8e00f70.jpg)"
+          "content": "侧柏叶"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "地榆。归肝、大肠经。功效：凉血止血，解毒敛疮。 更多医考干货可扫码关注微信公众平台",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 28
+        "number": 28,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0029",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列中药中，有毒，内服不宜过量，婴儿慎用的是",
       "options": [
         {
@@ -543,7 +510,7 @@
         },
         {
           "option_id": "C",
-          "content": "莱菔子\n\n懒人医考整理"
+          "content": "莱菔子 懒人医考整理"
         },
         {
           "option_id": "D",
@@ -551,21 +518,22 @@
         },
         {
           "option_id": "E",
-          "content": "葶苈子\n\n解析：苦杏仁使用注意：内服不宜过量，以免中毒。便溏者慎用。婴儿慎用。"
+          "content": "葶苈子"
         }
       ],
       "answer": [],
-      "explanation": "",
+      "explanation": "苦杏仁使用注意：内服不宜过量，以免中毒。便溏者慎用。婴儿慎用。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 29
+        "number": 29,
+        "answer_source": ""
       }
     },
     {
       "question_id": "6581a15b89f4-ab7d9793bd-q0030",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "有疏散风热，解毒透疹，消肿利咽功效的中药是",
       "options": [
         {
@@ -586,20 +554,19 @@
         },
         {
           "option_id": "E",
-          "content": "桑叶\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：薄荷功效：疏散风热，清利头目，利咽透疹，疏肝行气。\n\n医\n懒人医考\nLANRENYIKAO"
+          "content": "桑叶"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "薄荷功效：疏散风热，清利头目，利咽透疹，疏肝行气。 医 懒人医考 LANRENYIKAO",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原2\\full.md",
-        "number": 30
+        "number": 30,
+        "answer_source": "same_document"
       }
     }
   ]

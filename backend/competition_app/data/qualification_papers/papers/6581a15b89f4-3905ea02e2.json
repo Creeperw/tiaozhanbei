@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0016",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列药物中，属于中效局麻药的是",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "布比卡因\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：普鲁卡因属于短效局麻药；利多卡因为中效局麻药；丁卡因、罗哌卡因和布比卡因属于长效局麻药。"
+          "content": "布比卡因"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "普鲁卡因属于短效局麻药；利多卡因为中效局麻药；丁卡因、罗哌卡因和布比卡因属于长效局麻药。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 16
+        "number": 16,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0017",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "急性阑尾炎最重要的特征是",
       "options": [
         {
@@ -63,25 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "胃肠道症状  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：急性阑尾炎最重要的特征是右下腹局限性显著压痛。"
+          "content": "胃肠道症状"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "急性阑尾炎最重要的特征是右下腹局限性显著压痛。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 17
+        "number": 17,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0018",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下属于高钾血症病因的是",
       "options": [
         {
@@ -102,26 +100,25 @@
         },
         {
           "option_id": "E",
-          "content": "原发性醛固酮增多症\n\n![](images/9d8276ceda2f22446869c7f553d7a34b7e6c32dbcd1b662e7faaeb276aaeed45.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析肾脏排钾减少：急、慢性肾功能衰竭伴少尿或无尿，是临床最常见且最重要的导致高钾血症的原因。"
+          "content": "原发性醛固酮增多症"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "肾脏排钾减少：急、慢性肾功能衰竭伴少尿或无尿，是临床最常见且最重要的导致高钾血症的原因。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 18
+        "number": 18,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0019",
-      "question_type": "multiple_choice",
-      "question_content": "下列癌症疼痛治疗药物中，",
+      "question_type": "single_choice",
+      "question_content": "下列癌症疼痛治疗药物中",
       "options": [
         {
           "option_id": "A",
@@ -141,25 +138,24 @@
         },
         {
           "option_id": "E",
-          "content": "羟考酮\n\n用于治疗轻度疼痛的是\n\n![](images/9337a3de27cf04efe16448efb97521b048a8fff5eb459e232c58ee691d9bb96c.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：用于治疗轻度疼痛的是阿司匹林。可待因、羟考酮以及曲马多用于中度疼痛；芬太尼用于重度疼痛。"
+          "content": "羟考酮 用于治疗轻度疼痛的是"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "用于治疗轻度疼痛的是阿司匹林。可待因、羟考酮以及曲马多用于中度疼痛；芬太尼用于重度疼痛。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 19
+        "number": 19,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0020",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "切除单个、表浅的脂肪瘤时，应选择的麻醉方式为",
       "options": [
         {
@@ -180,25 +176,24 @@
         },
         {
           "option_id": "E",
-          "content": "蛛网膜下腔麻醉\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：切除单个、表浅的脂肪瘤时，应选择的麻醉方式为局部麻醉。"
+          "content": "蛛网膜下腔麻醉"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "切除单个、表浅的脂肪瘤时，应选择的麻醉方式为局部麻醉。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 20
+        "number": 20,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0021",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列关于前列腺炎的说法，错误的是",
       "options": [
         {
@@ -219,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "慢性前列腺炎抗生素治疗用喹诺酮类效果较好\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：前列腺按摩：急性前列腺炎禁忌采用；慢性前列腺炎时按摩可改善局部血运，排出腺体内炎性分泌物。"
+          "content": "慢性前列腺炎抗生素治疗用喹诺酮类效果较好"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "前列腺按摩：急性前列腺炎禁忌采用；慢性前列腺炎时按摩可改善局部血运，排出腺体内炎性分泌物。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 21
+        "number": 21,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0022",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下不属于雌激素生理作用的是",
       "options": [
         {
@@ -258,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "促进输卵管肌层发育及上皮分泌活动并可加强输卵管平滑肌节律性收缩振幅  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：加快阴道上皮细胞脱落属于孕激素的生理作用。"
+          "content": "促进输卵管肌层发育及上皮分泌活动并可加强输卵管平滑肌节律性收缩振幅"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "加快阴道上皮细胞脱落属于孕激素的生理作用。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 22
+        "number": 22,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0023",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "放置宫内节育器可能导致的并发症是",
       "options": [
         {
@@ -297,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "接触性出血\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "![](images/60243a04ead04e67eb585c26ca628b30cb2b69ba7ba0b6194daec19cde84665f.jpg)\n\n解析：放置宫内节育器的并发症包括：（1）子宫穿孔、节育器异位；（2）节育器嵌顿或断裂；（3）节育器下移或脱落；（4）带器妊娠。"
+          "content": "接触性出血"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "放置宫内节育器的并发症包括：（1）子宫穿孔、节育器异位；（2）节育器嵌顿或断裂；（3）节育器下移或脱落；（4）带器妊娠。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 23
+        "number": 23,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0024",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "崩漏的治疗原则是",
       "options": [
         {
@@ -336,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "急则治其标，缓则治其本\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：崩漏的治疗原则是急则治其标，缓则治其本。\n\n![](images/efc7d764951fcf1bacaadae609e62b22252ae7450c8b90a706e9dee540c1ee8b.jpg)\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/133c9c767ad71c9ecd597ef625dd6f64762f5f0744d0df122cdcede832984f5d.jpg)"
+          "content": "急则治其标，缓则治其本"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "崩漏的治疗原则是急则治其标，缓则治其本。 更多医考干货可扫码关注微信公众平台",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 24
+        "number": 24,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0025",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "不孕症痰湿壅阻证的治疗选方是",
       "options": [
         {
@@ -363,7 +354,7 @@
         },
         {
           "option_id": "B",
-          "content": "开郁种玉汤\n\n懒人医考整理"
+          "content": "开郁种玉汤 懒人医考整理"
         },
         {
           "option_id": "C",
@@ -375,25 +366,24 @@
         },
         {
           "option_id": "E",
-          "content": "启宫丸  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：不孕症痰湿壅阻证的治疗选方是启宫丸。"
+          "content": "启宫丸"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "不孕症痰湿壅阻证的治疗选方是启宫丸。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 25
+        "number": 25,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0026",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "“新产三病”是指",
       "options": [
         {
@@ -414,25 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "呕吐、泄泻、盗汗\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：“新产三病”是指病痉、病郁冒、病大便难。"
+          "content": "呕吐、泄泻、盗汗"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "“新产三病”是指病痉、病郁冒、病大便难。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 26
+        "number": 26,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0027",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下属于滴虫阴道炎特点的是",
       "options": [
         {
@@ -453,25 +442,24 @@
         },
         {
           "option_id": "E",
-          "content": "血性白带或性交后出血\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：白带呈凝乳状、阴道分泌物镜检找到芽孢或假菌丝见于外阴阴道假丝酵母菌病；多由雌激素水平不足引起属于萎缩性阴道病的病因；血性白带或性交后出血见于子宫颈炎症或宫颈癌等疾病。"
+          "content": "血性白带或性交后出血"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "白带呈凝乳状、阴道分泌物镜检找到芽孢或假菌丝见于外阴阴道假丝酵母菌病；多由雌激素水平不足引起属于萎缩性阴道病的病因；血性白带或性交后出血见于子宫颈炎症或宫颈癌等疾病。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 27
+        "number": 27,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0028",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下不属于流行性腮腺炎常见并发症的是",
       "options": [
         {
@@ -492,93 +480,75 @@
         },
         {
           "option_id": "E",
-          "content": "睾丸炎\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：流行性腮腺炎并发症包括脑膜脑炎、睾丸炎、卵巢炎以及胰腺炎。"
+          "content": "睾丸炎"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "流行性腮腺炎并发症包括脑膜脑炎、睾丸炎、卵巢炎以及胰腺炎。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 28
+        "number": 28,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0029",
-      "question_type": "multiple_choice",
-      "question_content": "咽分泌物中检测出",
+      "question_type": "single_choice",
+      "question_content": "咽分泌物中检测出 CoxA16、EV71 等肠道病毒出现特异性核酸检测阳性，最有可能见于",
       "options": [
         {
           "option_id": "A",
-          "content": "oxA16、"
-        },
-        {
-          "option_id": "B",
-          "content": "V71 等肠道病毒出现特异性核酸检测阳性，最有可能见于"
-        },
-        {
-          "option_id": "C",
           "content": "麻疹"
         },
         {
-          "option_id": "D",
+          "option_id": "B",
           "content": "幼儿急疹"
         },
         {
-          "option_id": "E",
+          "option_id": "C",
           "content": "猩红热"
         },
         {
-          "option_id": "F",
+          "option_id": "D",
           "content": "手足口病"
         },
         {
-          "option_id": "G",
-          "content": "水痘\n答案："
-        },
-        {
-          "option_id": "H",
-          "content": "解析：手足口病的病原学检查：取咽分泌物、疱疹液及粪便，进行肠道病毒（"
-        },
-        {
-          "option_id": "I",
-          "content": "oxA16、"
-        },
-        {
-          "option_id": "J",
-          "content": "V71等）特异性核酸检测阳性，或分离出相关肠道病毒。"
+          "option_id": "E",
+          "content": "水痘"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "手足口病的病原学检查：取咽分泌物、疱疹液及粪便，进行肠道病毒（CoxA16、EV71等）特异性核酸检测阳性，或分离出相关肠道病毒。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 29
+        "number": 29,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-3905ea02e2-q0030",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "急性免疫性血小板减少症血小板计数的诊断标准是",
       "options": [
         {
           "option_id": "A",
-          "content": "$<  100\\times 10^{9} / \\mathrm{L}$"
+          "content": "$< 100\\times 10^{9} / \\mathrm{L}$"
         },
         {
           "option_id": "B",
-          "content": "$<  80\\times 10^{9} / \\mathrm{L}$"
+          "content": "$< 80\\times 10^{9} / \\mathrm{L}$"
         },
         {
           "option_id": "C",
-          "content": "$<  60\\times 10^{9} / \\mathrm{L}$"
+          "content": "$< 60\\times 10^{9} / \\mathrm{L}$"
         },
         {
           "option_id": "D",
@@ -586,20 +556,19 @@
         },
         {
           "option_id": "E",
-          "content": "$< 20 \\times 10^{9} / \\mathrm{L}$\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：急性免疫性血小板减少症血小板计数的诊断标准是 $< 20 \\times 10^{9} / \\mathrm{L}$ 。\n\n![](images/301d2b3e5f6ee50651600ea2d9b098db36e951498d83f2cddec8b8d3d12ae50e.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/8d8bb8700db2680eee6d4fab9d5fadc2ac1ca3a20d5d8c13316b7344b3fc8ad7.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/0ac1bdeaa2378c0a80645968fe35d975c1c928ff3ee2f682d210e7f018fc8f2c.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/26105873a579bf9ef06a88a7fa04bad75cee62d589e75acbd4f8843e7949b5eb.jpg)\n\n![](images/e192e0f107b71ac8432e55a5c514aa1b0557b496cfa6b7703ae30e08e96e73cb.jpg)\n\n![](images/183c8911185cb96d46b010f46dcdbfe2f9fbb5093a7165aecb9e186a649bdecc.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/282e3f065365c8ddacf86e78b81dd176c1b593914f906debc0c11983a5dcd1cc.jpg)  \n6-中西医结合内科学最字题\n\n![](images/0f6cae3b4785f0939291e3ef6fbef713a343b2bbb1acaa86f5020f3a16617e97.jpg)  \n7-中西医结合内科学首选类题目  \n5-中西医结合儿科学辨证论治汇总\n\n![](images/59b8efa09990ddc24613fa3fda23e8d4ff63017d41b96523602e01e5cb28c706.jpg)  \n8-中西医外妇儿首选类题目  \n9-经络系统常考总结\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/1e79d14c7ff84551e763a1facb810869a4ab56f323e360ad7f5d8ffe5a06211e.jpg)  \n10-特定穴\n记忆歌诀汇总\n\n![](images/cd0f63e3c657c8c629368312e6c87ca756c1b9528be045e3de9f18acbdb0ae41.jpg)\n\n![](images/4c63836528d72655c0eb0e5c6a3c0a08992c9220fb2b798ce3f00ad71b43ba10.jpg)  \n11-中药相同功效药物总结  \n12-中药学30味中药药理作用总结\n\n![](images/405653779893397e05a43b6a657b20a0da4d564abe23fedee51a06a2750551a3.jpg)  \n13-方剂学常考重点总结\n\n![](images/16c11d5e19600069e120fbe13d0a9f8cb5eb8788c9c314e7cec2939006fefe98.jpg)\n\n![](images/5281f4d532ab388ed75b9136082aedba531eefcd1d86fbd0bd3be326c99bd41b.jpg)"
+          "content": "$< 20 \\times 10^{9} / \\mathrm{L}$"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "急性免疫性血小板减少症血小板计数的诊断标准是 $< 20 \\times 10^{9} / \\mathrm{L}$ 。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 5-中西医结合儿科学辨证论治汇总 8-中西医外妇儿首选类题目 9-经络系统常考总结 更多医考干货可扫码关注微信公众平台 10-特定穴 记忆歌诀汇总 11-中药相同功效药物总结 12-中药学30味中药药理作用总结 13-方剂学常考重点总结",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原9\\full.md",
-        "number": 30
+        "number": 30,
+        "answer_source": "same_document"
       }
     }
   ]

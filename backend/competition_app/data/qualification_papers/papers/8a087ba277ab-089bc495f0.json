@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "8a087ba277ab-089bc495f0-q0061",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者, 女性, 28 岁。身体乏力 15 天左右, 近 3 日出现咳嗽、咽痛、腹泻, 检查发现血沉增快, 肌酸磷酸激酶、肌酸激酶同工酶均有升高。现症: 心悸怔忡, 胸闷痛, 气短乏力, 自汗盗汗, 舌质红, 苔薄, 脉细数无力。该患者的治疗选方是",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "参附养荣汤\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者“身体乏力15天左右，近3日出现咳嗽、咽痛、腹泻，检查发现血沉增快，肌酸磷酸激酶、肌酸激酶同工酶均有升高”，考虑为病毒性心肌炎，根据“心悸怔忡，胸闷痛，气短乏力，自汗盗汗，舌质红，苔薄，脉细数无力”辨证为气阴两虚证，治法为益气养阴，宁心安神，选方为炙甘草汤合生脉散。"
+          "content": "参附养荣汤"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据患者“身体乏力15天左右，近3日出现咳嗽、咽痛、腹泻，检查发现血沉增快，肌酸磷酸激酶、肌酸激酶同工酶均有升高”，考虑为病毒性心肌炎，根据“心悸怔忡，胸闷痛，气短乏力，自汗盗汗，舌质红，苔薄，脉细数无力”辨证为气阴两虚证，治法为益气养阴，宁心安神，选方为炙甘草汤合生脉散。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 61
+        "number": 61,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0062",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，男性，56岁，上腹间断疼痛2年，疼痛发作与情绪、饮食有关，查体：上腹部轻压痛，胃镜：胃黏膜呈苍白色，颗粒状，透见黏膜下血管分布。现症：胃脘隐痛，喜温喜按，食后胀满痞闷，纳呆，便溏，神疲乏力，舌淡红，苔薄白，脉沉细。该患者的诊断与辨证为",
       "options": [
         {
@@ -63,111 +62,100 @@
         },
         {
           "option_id": "E",
-          "content": "慢性浅表性胃炎 肝胃不和证\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者“上腹间断疼痛2年，疼痛发作与情绪、饮食有关”，结合体征与胃镜结果，考虑为慢性萎缩性胃炎，根据“胃脘隐痛，喜温喜按，食后胀满痞闷，纳呆，便溏，神疲乏力，舌淡红，苔薄白，脉沉细”辨证为脾胃虚弱证。"
+          "content": "慢性浅表性胃炎 肝胃不和证"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据患者“上腹间断疼痛2年，疼痛发作与情绪、饮食有关”，结合体征与胃镜结果，考虑为慢性萎缩性胃炎，根据“胃脘隐痛，喜温喜按，食后胀满痞闷，纳呆，便溏，神疲乏力，舌淡红，苔薄白，脉沉细”辨证为脾胃虚弱证。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 62
+        "number": 62,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0063",
-      "question_type": "multiple_choice",
-      "question_content": "患者，男，49 岁。在高温环境中强体力劳动后，大量出汗，随即出现头痛头晕、胸闷、恶心，并有四肢肌肉、腹壁肌肉疼痛。T38.3℃，P108 次/分，",
+      "question_type": "single_choice",
+      "question_content": "患者，男，49 岁。在高温环境中强体力劳动后，大量出汗，随即出现头痛头晕、胸闷、恶心，并有四肢肌肉、腹壁肌肉疼痛。T38.3℃，P108 次/分，BP90/60mmHg。神志清楚，面色潮红，双肺未闻及干湿性啰音，心律齐。最可能的诊断是",
       "options": [
         {
           "option_id": "A",
-          "content": "P90/60mmHg。神志清楚，面色潮红，双肺未闻及干湿性啰音，心律齐。最可能的诊断是"
-        },
-        {
-          "option_id": "B",
           "content": "热痉挛"
         },
         {
-          "option_id": "C",
+          "option_id": "B",
           "content": "热衰竭"
         },
         {
-          "option_id": "D",
+          "option_id": "C",
           "content": "热射病"
         },
         {
-          "option_id": "E",
+          "option_id": "D",
           "content": "先兆中暑"
         },
         {
-          "option_id": "F",
-          "content": "轻症中暑\n\n答案:"
-        },
-        {
-          "option_id": "G",
-          "content": "解析：热痉挛即大量出汗后四肢肌肉、腹壁肌肉甚至胃肠道平滑肌发生阵发性痉挛和疼痛。根据患者“大量出汗、四肢肌肉、腹壁肌肉疼痛、神志清楚”等症状，最有可能的诊断是热痉挛。"
+          "option_id": "E",
+          "content": "轻症中暑"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "热痉挛即大量出汗后四肢肌肉、腹壁肌肉甚至胃肠道平滑肌发生阵发性痉挛和疼痛。根据患者“大量出汗、四肢肌肉、腹壁肌肉疼痛、神志清楚”等症状，最有可能的诊断是热痉挛。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 63
+        "number": 63,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0064",
-      "question_type": "multiple_choice",
-      "question_content": "患者，男，43 岁。3 个月前无明显诱因出现眼睑及双下肢水肿，休息后症状不能缓解，逐步加重，遂来诊。现症：浮肿，按之凹陷，不易恢复，腹胀纳少，面色萎黄，神疲乏力，尿少色清，大便溏。舌质淡，苔白滑，脉沉弱。尿常规：尿蛋白(++++)，红细胞(-)，透明管型 3-5 个/高倍视野；24 小时尿蛋白定量 5.0g。血浆蛋白：总蛋白 48/L，白蛋白 24g/L，球蛋白 24g/L；总胆固醇 8.36mmol/L，低密度脂蛋白 4.3mmol/L。肾功能正常。",
+      "question_type": "single_choice",
+      "question_content": "患者，男，43 岁。3 个月前无明显诱因出现眼睑及双下肢水肿，休息后症状不能缓解，逐步加重，遂来诊。现症：浮肿，按之凹陷，不易恢复，腹胀纳少，面色萎黄，神疲乏力，尿少色清，大便溏。舌质淡，苔白滑，脉沉弱。尿常规：尿蛋白(++++)，红细胞(-)，透明管型 3-5 个/高倍视野；24 小时尿蛋白定量 5.0g。血浆蛋白：总蛋白 48/L，白蛋白 24g/L，球蛋白 24g/L；总胆固醇 8.36mmol/L，低密度脂蛋白 4.3mmol/L。肾功能正常。B 超示：腹水。该患者的治疗选方是",
       "options": [
         {
           "option_id": "A",
-          "content": "超示：腹水。该患者的治疗选方是"
-        },
-        {
-          "option_id": "B",
           "content": "疏凿饮子"
         },
         {
-          "option_id": "C",
+          "option_id": "B",
           "content": "越婢加术汤"
         },
         {
-          "option_id": "D",
+          "option_id": "C",
           "content": "实脾饮"
         },
         {
-          "option_id": "E",
+          "option_id": "D",
           "content": "五皮饮合胃苓汤"
         },
         {
-          "option_id": "F",
-          "content": "真武汤合济生肾气丸\n\n1-内外妇儿重点疾病诊断公式\n\n答案:"
-        },
-        {
-          "option_id": "G",
-          "content": "解析：根据患者“3个月前无明显诱因出现眼睑及双下肢水肿，”结合“24小时尿蛋白定量5.0g，白蛋白24g/L，总胆固醇8.36mmol/L”，考虑为肾病综合征，根据“浮肿，按之凹陷，不易恢复，腹胀纳少，面色萎黄，神疲乏力，尿少色清，大便溏。舌质淡，苔白滑，脉沉弱”辨证为脾虚湿困证，治法为温运脾阳，利水消肿，选方为实脾饮。"
+          "option_id": "E",
+          "content": "真武汤合济生肾气丸 1-内外妇儿重点疾病诊断公式"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者“3个月前无明显诱因出现眼睑及双下肢水肿，”结合“24小时尿蛋白定量5.0g，白蛋白24g/L，总胆固醇8.36mmol/L”，考虑为肾病综合征，根据“浮肿，按之凹陷，不易恢复，腹胀纳少，面色萎黄，神疲乏力，尿少色清，大便溏。舌质淡，苔白滑，脉沉弱”辨证为脾虚湿困证，治法为温运脾阳，利水消肿，选方为实脾饮。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 64
+        "number": 64,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0065",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，男，28 岁。在房屋装修后立即入住，半年后出现头晕，心悸，乏力，就诊时骨髓活检示增生低下，现症：面色苍白，心悸乏力，唇甲色淡，手足心热，颧红盗汗，腰膝酸软，口渴思饮，皮肤出血，便结，舌质淡，舌苔薄、脉细数。该患者的中医治疗选方是",
       "options": [
         {
@@ -188,25 +176,24 @@
         },
         {
           "option_id": "E",
-          "content": "金匮肾气丸合桃红四物汤\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者“在房屋装修后立即入住，半年后出现头晕，心悸，乏力，就诊时骨髓活检示增生低下”诊断为再生障碍性贫血，根据“面色苍白，心悸乏力，唇甲色淡，手足心热，颧红盗汗，腰膝酸软，口渴思饮，皮肤出血，便结，舌质淡，舌苔薄、脉细数”辨证为肾阴虚证。治法为滋阴补肾，益气养血。方药为左归丸合当归补血汤。"
+          "content": "金匮肾气丸合桃红四物汤"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据患者“在房屋装修后立即入住，半年后出现头晕，心悸，乏力，就诊时骨髓活检示增生低下”诊断为再生障碍性贫血，根据“面色苍白，心悸乏力，唇甲色淡，手足心热，颧红盗汗，腰膝酸软，口渴思饮，皮肤出血，便结，舌质淡，舌苔薄、脉细数”辨证为肾阴虚证。治法为滋阴补肾，益气养血。方药为左归丸合当归补血汤。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 65
+        "number": 65,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0066",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，男性，64 岁。1 年来无诱因逐渐出现行动缓慢，行走时前倾屈曲体态，伴头摇不止，肢麻震颤，手不能持物，腰膝酸软，失眠心烦，善忘，神呆、痴傻，舌质红，红绛无苔，脉象细数。查体：面具脸，双手震颤，双侧肢体肌张力增高。无智力和感觉障碍，无锥体束损害征。该患者的中医治法是",
       "options": [
         {
@@ -227,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "育阴息风，填精补髓\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：结合患者症状与体征，可诊断为帕金森病，根据“头摇不止，肢麻震颤，手不能持物，腰膝酸软，失眠心烦，善忘，神呆、痴傻，舌质红，红绛无苔，脉象细数”辨证为髓海不足证。治法为填精补髓，育阴息风。方药为龟鹿二仙膏。\n\n![](images/364e1a0c1fda66c6c7172ac9fc330d4e63d4051f8795e8180d166e6392a41016.jpg)\n\n![](images/bf6d4a248d73407431fe0824bc692476f2cc6b37ca8240752a8e1cb192696f06.jpg)\n\n2-中西医结合内科学辨证论治汇总\n\n![](images/8057fb5116d23acfbcfc525cb936f769708b4e5de4c6c5808de2d96c42eca72d.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/2d71599be614ec12cd89c40acf0a947dcef56a2cb7c5198ff21f18f4dde34128.jpg)\n\n4-中西医结合妇科学辨证论治汇总\n\n![](images/afdc01fdfb3a02ebc89a4f741ffb3a363d7ebc9e811a04b675c59e60d07f0c39.jpg)\n\n5-中西医结合儿科学辨证论治汇总\n\n更多医考干货可扫码关注微信公众平台\n\n![](images/f7bfd8d897a9a1b857a17f3bee60c5167b520be880a187869746388a955409a0.jpg)\n\n6-中西医结合内科学最字题\n\n![](images/ebf0ea8ff802838dd473405f462a695fc1f6fa394949d9ff33563a30b54c658a.jpg)\n\n7-中西医结合内科学首选类题目\n\n![](images/6363ee15c64ff3717518d6c0603ad172e3d9f436c86ca0e90ad001b78a4e844d.jpg)\n\n![](images/d22715092ba41a0005d2a02549e64a175eccdcee33a76683e045d435c59f964c.jpg)\n\n![](images/5bc74ebe08641e3a6725c6b6bb0323442896b2bd973fcb26deadbdbc4ece1f51.jpg)\n\n8-中西医外妇儿首选类题目\n\n9-经络系统常考总结\n\n![](images/b9a1e7d46b84c144724c9e4e048f0818f9efe4cee6162cc940040280df86ee6c.jpg)  \n11-中药相同功效药物  \n总结\n\n![](images/ab06813ee76f3925bffbaab2ce0da73432835f8bac47ef4e704533ecf0f33f42.jpg)\n\n12-中药学\n30味中药\n药理作用总\n\n![](images/ef8562f28976bf116553d4350dfafcbc7d76dae410b190f95f88d1c44aaea713.jpg)  \n结\n\n![](images/02dbbddd5f803afecc95508ca70706997c213ae9069d6575a11320efbe512252.jpg)"
+          "content": "育阴息风，填精补髓"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "结合患者症状与体征，可诊断为帕金森病，根据“头摇不止，肢麻震颤，手不能持物，腰膝酸软，失眠心烦，善忘，神呆、痴傻，舌质红，红绛无苔，脉象细数”辨证为髓海不足证。治法为填精补髓，育阴息风。方药为龟鹿二仙膏。 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货可扫码关注微信公众平台 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 11-中药相同功效药物 总结 12-中药学 30味中药 药理作用总 结",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 66
+        "number": 66,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0067",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，男，50岁。反复浮肿，尿血4年。症见：恶心呕吐，胸闷纳呆，口淡黏腻。舌淡苔腻，脉弦滑。检查：血压 $145 / 95 \\mathrm{mmHg}$ ，尿蛋白（++），定量 $3 \\mathrm{~g} / \\mathrm{d}$ ，尿红细胞12个/高倍视野，内生肌酐清除率 $47 \\mathrm{~mL} / \\mathrm{min}$ ，血肌酐 $187 \\mathrm{umol} / \\mathrm{L}$ 。其诊断是",
       "options": [
         {
@@ -258,7 +244,7 @@
         },
         {
           "option_id": "C",
-          "content": "慢性肾衰竭 湿浊证\n\n懒人医考整理"
+          "content": "慢性肾衰竭 湿浊证 懒人医考整理"
         },
         {
           "option_id": "D",
@@ -266,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "慢性肾小球肾炎 湿热证\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者“反复浮肿，尿血4年，内生肌酐清除率 $47\\mathrm{mL / min}$ ，血肌酐 $187\\mathrm{umol / L}$ ”考虑为慢性肾衰竭，根据“恶心呕吐，胸闷纳呆，口淡黏腻。舌淡苔腻，脉弦滑”辨证为标实证-湿浊证。"
+          "content": "慢性肾小球肾炎 湿热证"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据患者“反复浮肿，尿血4年，内生肌酐清除率 $47\\mathrm{mL / min}$ ，血肌酐 $187\\mathrm{umol / L}$ ”考虑为慢性肾衰竭，根据“恶心呕吐，胸闷纳呆，口淡黏腻。舌淡苔腻，脉弦滑”辨证为标实证-湿浊证。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 67
+        "number": 67,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0068",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，男，60岁，饭量增大、体重减轻1年。9月前查体空腹血糖：8.4mmol/L，未予重视。近半年小便频数，混浊如膏，饮一溲一，面色黧黑，耳轮焦干，腰膝酸软，形寒畏冷，阳痿，舌淡苔白，脉沉细无力。其证型为",
       "options": [
         {
@@ -305,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "阴阳两虚证\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据 “饭量增大、体重减轻 1 年。9 月前查体空腹血糖：8.4mmol/L，未予重视。近半年小便频数，混浊如膏，饮一溲一，面色黧黑，耳轮焦干，腰膝酸软，形寒畏冷，阳痿，舌淡苔白，脉沉细无力” 可诊断为糖尿病，辨证为阴阳两虚证，治法为滋阴温阳，补肾固涩，选方为金匮肾气丸。"
+          "content": "阴阳两虚证"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据 “饭量增大、体重减轻 1 年。9 月前查体空腹血糖：8.4mmol/L，未予重视。近半年小便频数，混浊如膏，饮一溲一，面色黧黑，耳轮焦干，腰膝酸软，形寒畏冷，阳痿，舌淡苔白，脉沉细无力” 可诊断为糖尿病，辨证为阴阳两虚证，治法为滋阴温阳，补肾固涩，选方为金匮肾气丸。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 68
+        "number": 68,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0069",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者, 女, 33 岁, 近期因孩子升学考试吃不好睡不好, 每日排便次数达 10 次左右, 泄泻肠鸣, 腹痛攻窜, 矢气频作, 伴有胸胁胀闷, 嗳气食少, 舌淡红, 脉弦, 该患者治疗首选方药是",
       "options": [
         {
@@ -344,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "黄连上清丸\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据“每日排便次数达10次左右”辨病为泄泻，根据“泄泻肠鸣，腹痛攻窜，矢气频作，伴有胸胁胀闷，嗳气食少，舌淡红，脉弦”辨证为肝气乘脾证。治法为抑肝扶脾。方药为痛泻要方。"
+          "content": "黄连上清丸"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据“每日排便次数达10次左右”辨病为泄泻，根据“泄泻肠鸣，腹痛攻窜，矢气频作，伴有胸胁胀闷，嗳气食少，舌淡红，脉弦”辨证为肝气乘脾证。治法为抑肝扶脾。方药为痛泻要方。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 69
+        "number": 69,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0070",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者, 女, 42 岁。自觉心悸、胸闷半月余。心电图示: QRS 波群提早出现, 宽大、畸形, 时间 $\\geqslant 0.12$ 秒, 前无窦性 P 波。T 波亦宽大, 其方向与 QRS 主波方向相反。代偿间歇完全。现症: 心悸不宁, 善惊易恐, 坐卧不安, 失眠多梦, 恶闻声响, 舌苔薄白, 脉虚数。该患者的西医诊断与证型是",
       "options": [
         {
@@ -383,25 +366,24 @@
         },
         {
           "option_id": "E",
-          "content": "室上性心动过速 痰火扰心证\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：该患者的心电图特征符合室性早搏：①QRS波群提早出现，宽大、畸形，时间 $\\geqslant 0.12$ 秒，前无窦性P波。②T波亦宽大，其方向与QRS主波方向相反。③代偿间歇完全。根据“心悸不宁，善惊易恐，坐卧不安，失眠多梦，恶闻声响，舌苔薄白，脉虚数”辨证为心虚胆怯证。"
+          "content": "室上性心动过速 痰火扰心证"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "该患者的心电图特征符合室性早搏：①QRS波群提早出现，宽大、畸形，时间 $\\geqslant 0.12$ 秒，前无窦性P波。②T波亦宽大，其方向与QRS主波方向相反。③代偿间歇完全。根据“心悸不宁，善惊易恐，坐卧不安，失眠多梦，恶闻声响，舌苔薄白，脉虚数”辨证为心虚胆怯证。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 70
+        "number": 70,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0071",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，女，41岁，因胃脘痞闷不适半年就诊，患者近半年来经常脘腹痞闷，满闷不舒，症状时轻时重，反复发作。按之柔软、压之不痛、望无胀形。现症：恶心呕吐，口干不欲饮，口苦，纳少，舌红苔黄腻，脉滑数。治疗该患者选用的方药为",
       "options": [
         {
@@ -414,7 +396,7 @@
         },
         {
           "option_id": "C",
-          "content": "二陈汤\n\n![](images/0c7b4b62168591cf7f3f0f00ebe108f0b700cfdabac7297ce7e06d982683e15f.jpg)\n\n懒人医考整理"
+          "content": "二陈汤 懒人医考整理"
         },
         {
           "option_id": "D",
@@ -422,25 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "泻心汤合连朴饮\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据“因胃脘痞闷不适半年就诊，患者近半年来经常脘腹痞闷，满闷不舒，症状时轻时重，反复发作。按之柔软、压之不痛、望无胀形”辨病为胃痞，根据“恶心呕吐，口干不欲饮，口苦，纳少，舌红苔黄腻，脉滑数”辨证为湿热阻胃证。治法为清热化湿，和胃消痞。方药为泻心汤合连朴饮。"
+          "content": "泻心汤合连朴饮"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据“因胃脘痞闷不适半年就诊，患者近半年来经常脘腹痞闷，满闷不舒，症状时轻时重，反复发作。按之柔软、压之不痛、望无胀形”辨病为胃痞，根据“恶心呕吐，口干不欲饮，口苦，纳少，舌红苔黄腻，脉滑数”辨证为湿热阻胃证。治法为清热化湿，和胃消痞。方药为泻心汤合连朴饮。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 71
+        "number": 71,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0072",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "患者，男，60岁，慢性右心衰竭病史3年，1年前出现全身水肿，现症：水肿按之没指，小便短少，身体困重，胸闷，纳呆，泛恶，腹胀，苔白腻，脉沉缓，该患者的中医治法是",
       "options": [
         {
@@ -461,29 +442,24 @@
         },
         {
           "option_id": "E",
-          "content": "温肾助阳，化气行水\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据“慢性右心衰竭病史3年，1年前出现全身水肿”辨病为水肿，根据“水肿按之没指，小便短少，身体困重，胸闷，纳呆，泛恶，腹胀，苔白腻，脉沉缓”辨证为阳水-水湿浸渍证。治法为健脾化湿，通阳利水。方药为五皮饮合胃苓汤。\n\n![](images/2c94b519454aa8f4365e3654fb877989f0a3522db52da88aae30f0a2a35c5b64.jpg)\n\n##"
-        },
-        {
-          "option_id": "G",
-          "content": "3型题\n\n(73\\~75 题共用题干)\n\n患者，男，28岁。3小时前想不开喝了不明药物和大量白酒后出现大汗、流涎，胸闷气短，大小便失禁，全身骨骼肌强直性痉挛。生命体征较平稳。"
+          "content": "温肾助阳，化气行水"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据“慢性右心衰竭病史3年，1年前出现全身水肿”辨病为水肿，根据“水肿按之没指，小便短少，身体困重，胸闷，纳呆，泛恶，腹胀，苔白腻，脉沉缓”辨证为阳水-水湿浸渍证。治法为健脾化湿，通阳利水。方药为五皮饮合胃苓汤。 A3型题 (73\\~75 题共用题干) 患者，男，28岁。3小时前想不开喝了不明药物和大量白酒后出现大汗、流涎，胸闷气短，大小便失禁，全身骨骼肌强直性痉挛。生命体征较平稳。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 72
+        "number": 72,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0073",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "为明确诊断，该患者应检查",
       "options": [
         {
@@ -500,11 +476,7 @@
         },
         {
           "option_id": "D",
-          "content": "脑"
-        },
-        {
-          "option_id": "E",
-          "content": "TE.闻口中气味"
+          "content": "脑CTE.闻口中气味"
         }
       ],
       "answer": [],
@@ -513,12 +485,13 @@
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 73
+        "number": 73,
+        "answer_source": ""
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0074",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "该患者目前应采取的处理是",
       "options": [
         {
@@ -539,11 +512,7 @@
         },
         {
           "option_id": "E",
-          "content": "抗休克"
-        },
-        {
-          "option_id": "F",
-          "content": "NRENYIKAO\n\n![](images/d06bd9f0abb096d6633584326dc559e5eedb9398933d99f2e6aeae181f513814.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/c4fa035a779ee8c29e7d8a8cd7ecb95aed6348686dba0da92f08fe8bef7dcf38.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/aa1f29e875b7233c40be404347a23d2287125761637fc60e065d188a5009d447.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/a0d0337ce5f99fbecb7577aa9f92b37edc7edac7566f910713f1390bee56aa42.jpg)\n\n![](images/13cc4171bf369091e7ed597ef13563366874f678fd6c8839091435292e02e9f9.jpg)  \n4-中西医结合妇科学辨证论治汇总  \n5-中西医结合儿科学辨证论治汇总\n\n![](images/5aa21df51f4c98b1a544b0ebe2a08b9d8dba8d307ca0e740ef7759bea647bdb6.jpg)\n\n![](images/eac7bb4c0b320d2a548541adba096b53965af5388da57c3e6ab33c89fdca50dd.jpg)\n\n![](images/edaedb39995ae3193cb29306974008050045d7bb6296e253213e0d91052a1b1d.jpg)\n\n![](images/787bb9d63880a7edc7fbb8cff68c329461c4445d5759466f2238dffeb2211107.jpg)\n\n更多医考干货\n\n![](images/f5f6030dcb43d61361c0fad7f6b19f178e02bc365d0dad2a1b1a3545ad099b3e.jpg)  \n6-中西医结合内科学最字题  \n7-中西医结合内科学首选类题目  \n8-中西医外妇儿首选类题目  \n9-经络系统常考总结  \n10-特定穴\n记忆歌诀汇  \n总\n\n可扫码关注微信公众平台懒人医考整理"
+          "content": "抗休克 ANRENYIKAO 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇 总 可扫码关注微信公众平台懒人医考整理"
         }
       ],
       "answer": [],
@@ -552,12 +521,13 @@
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 74
+        "number": 74,
+        "answer_source": ""
       }
     },
     {
       "question_id": "8a087ba277ab-089bc495f0-q0075",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以下哪项不属于本病的临床表现",
       "options": [
         {
@@ -578,20 +548,19 @@
         },
         {
           "option_id": "E",
-          "content": "血压升高\n\n![](images/9691c10412a7e634341ac91fae8aa2e770fdf523d82dd27c358ba0bbdd2751ef.jpg)\n\n![](images/18a006dac955eaaaef8ca7aeec1fe0aecfc2083343fd3884c4b30bb5597ee2bb.jpg)\n\n![](images/2fb8b40167f2d506931f4bf77a9f894e3cd5f2fa0b93088895c58b26f080efcf.jpg)  \n11-中药相同功效药物总结\n\n![](images/8ba47f7a042c7998a5599932cd197901e30521e1f48e3cac46eca490d41eab27.jpg)  \n12-中药学\n30味中药\n药理作用总结  \n13-方剂学常考重点总结\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：根据患者的病史及临床表现，考虑该患者为有机磷农药中毒。胆碱酯酶活力是诊断有机磷农药中毒的特异性实验指标。针对本病，应清除毒物。口服中毒者应重复、彻底洗胃。中毒严重者可在彻底洗胃的前提下进行血液净化，以进一步清除血中毒物。本病的临床表现不包括瞳孔扩大，应为瞳孔缩小。\n\n## 医 懒人医考 LANRENYIKAO"
+          "content": "血压升高 11-中药相同功效药物总结 12-中药学 30味中药 药理作用总结 13-方剂学常考重点总结"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据患者的病史及临床表现，考虑该患者为有机磷农药中毒。胆碱酯酶活力是诊断有机磷农药中毒的特异性实验指标。针对本病，应清除毒物。口服中毒者应重复、彻底洗胃。中毒严重者可在彻底洗胃的前提下进行血液净化，以进一步清除血中毒物。本病的临床表现不包括瞳孔扩大，应为瞳孔缩小。 医 懒人医考 LANRENYIKAO",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原11\\full.md",
-        "number": 75
+        "number": 75,
+        "answer_source": "same_document"
       }
     }
   ]

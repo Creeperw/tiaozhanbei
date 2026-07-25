@@ -18,6 +18,16 @@ describe('QualificationPaperPanel', () => {
       }) });
   });
 
+  it('shows the mode selector directly inside the selected paper card', async () => {
+    render(<QualificationPaperPanel enabled />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '中医执业医师资格考试' }));
+    fireEvent.click(screen.getByRole('button', { name: /2024 年真题/ }));
+
+    const paperCard = screen.getByRole('article', { name: '2024 年真题' });
+    expect(paperCard).toContainElement(screen.getByRole('region', { name: '选择作答模式' }));
+  });
+
   it('filters qualification papers and creates a practice attempt', async () => {
     render(<QualificationPaperPanel enabled />);
 
@@ -27,7 +37,7 @@ describe('QualificationPaperPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /2024 年真题/ }));
     fireEvent.click(screen.getByRole('button', { name: '练习模式' }));
 
-    await screen.findByRole('button', { name: '退出考试' });
+    await screen.findByRole('button', { name: '退出并保存' });
     expect(global.fetch).toHaveBeenLastCalledWith('/api/v1/qualification-papers/p1/attempts', expect.objectContaining({ method: 'POST' }));
   });
 });

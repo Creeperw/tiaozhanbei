@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0011",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "“塞因塞用”的治法，适用于治疗",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "表虚里实证\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：塞因塞用，即以补开塞，是用补益药物来治疗具有闭塞不通症状的虚证。适用于“至虚有盛候”的真虚假实证。"
+          "content": "表虚里实证"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "塞因塞用，即以补开塞，是用补益药物来治疗具有闭塞不通症状的虚证。适用于“至虚有盛候”的真虚假实证。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 11
+        "number": 11,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0012",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "肝藏血与脾统血的共同生理功能是",
       "options": [
         {
@@ -63,25 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "化生血液  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：肝藏血与脾统血是固摄血液的重要因素。"
+          "content": "化生血液"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "肝藏血与脾统血是固摄血液的重要因素。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 12
+        "number": 12,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0013",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "“中正之官”指的是",
       "options": [
         {
@@ -102,53 +100,62 @@
         },
         {
           "option_id": "E",
-          "content": "膀胱\n\n![](images/6def154bcf9e682424bec6669826eb01f0df7ee67b20ef5a09b37a1164f5789f.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：《素问·灵兰秘典论》说：“胆者，中正之官，决断出焉。14.下列关于五脏外合五体的叙述，错误的是"
-        },
-        {
-          "option_id": "G",
-          "content": "心合脉"
-        },
-        {
-          "option_id": "H",
-          "content": "肝合爪"
-        },
-        {
-          "option_id": "I",
-          "content": "脾合肉"
-        },
-        {
-          "option_id": "J",
-          "content": "肺合皮"
-        },
-        {
-          "option_id": "K",
-          "content": "肾合骨\n\n答案："
-        },
-        {
-          "option_id": "L",
-          "content": "解析：肝合筋。故"
-        },
-        {
-          "option_id": "M",
-          "content": "错误。"
+          "content": "膀胱"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "《素问·灵兰秘典论》说：“胆者，中正之官，决断出焉。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 13
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-dfb6ad7d6e-q0014",
+      "question_type": "single_choice",
+      "question_content": "下列关于五脏外合五体的叙述，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心合脉"
+        },
+        {
+          "option_id": "B",
+          "content": "肝合爪"
+        },
+        {
+          "option_id": "C",
+          "content": "脾合肉"
+        },
+        {
+          "option_id": "D",
+          "content": "肺合皮"
+        },
+        {
+          "option_id": "E",
+          "content": "肾合骨"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "肝合筋。故B错误。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
+        "number": 14,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0015",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列哪项对诊断心肾不交证最有意义",
       "options": [
         {
@@ -169,25 +176,24 @@
         },
         {
           "option_id": "E",
-          "content": "眩晕耳鸣，腰膝酸软\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：心肾不交证是指心与肾的阴液亏虚，阳气偏亢，以心烦、失眠、梦遗、耳鸣、腰酸等为主要表现的虚热证候。"
+          "content": "眩晕耳鸣，腰膝酸软"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "心肾不交证是指心与肾的阴液亏虚，阳气偏亢，以心烦、失眠、梦遗、耳鸣、腰酸等为主要表现的虚热证候。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 15
+        "number": 15,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0016",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "痫病的病机是懒人医考整理",
       "options": [
         {
@@ -208,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "温病邪热入于心包\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：痫病多由于脏气失调，肝风夹痰上逆，蒙蔽清窍所致。"
+          "content": "温病邪热入于心包"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "痫病多由于脏气失调，肝风夹痰上逆，蒙蔽清窍所致。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 16
+        "number": 16,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0017",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "咽喉色鲜红娇嫩，肿痛不甚者的原因为",
       "options": [
         {
@@ -247,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "胃中有热  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：咽部嫩红，肿痛不显属阴虚证，多由肾水亏少、阴虚火旺所致。"
+          "content": "胃中有热"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "咽部嫩红，肿痛不显属阴虚证，多由肾水亏少、阴虚火旺所致。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 17
+        "number": 17,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0018",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "大便夹有不消化的食物，酸腐臭秽者，多因",
       "options": [
         {
@@ -286,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "肝胃不和\n\n![](images/ed15c28840695d4c76325f93da62af39d6101565d89226c73c52e6f671c2eaf1.jpg)\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：大便中含有较多未消化食物的症状，多见于脾虚、肾虚或食滞胃肠的泄泻。酸腐臭秽者，多因伤食积滞。"
+          "content": "肝胃不和"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "大便中含有较多未消化食物的症状，多见于脾虚、肾虚或食滞胃肠的泄泻。酸腐臭秽者，多因伤食积滞。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 18
+        "number": 18,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0019",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "鹤膝风的病因病机为",
       "options": [
         {
@@ -325,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "寒湿内侵，络脉血瘀\n\n懒人医考\nLANRENYIKAO\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：膝部肿大而股胫消瘦，称为“鹤膝风”，多因寒湿久留，气血亏虚所致。\n\n![](images/3ceeeddc1ecc60570ee49e709b30c0f07b58eeb7823955e4e8f4a0260bcbd344.jpg)\n\n![](images/dae0c4f8b8d26ce6fb79481e790778534c6abce90c0c1d3281cb5bd2cb15ade8.jpg)  \n1-内外妇儿重点疾病诊断公式  \n2-中西医结合内科学辨证论治汇总\n\n![](images/6b02135e55ea3748758d880e71f42f664a2b00c9bb70a4ee3296848af071d788.jpg)\n\n![](images/f9cfbf19683aef63ca9babe8f06d8d5f55b46e71b169ebc9d071ffc4262f0729.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/b1f6d2cbdd7bf4db51f2d94152c710c5723faa4b378a06afbb6957cef5d2161c.jpg)  \n4-中西医结合妇科学辨证论治汇总  \n5-中西医结合儿科学辨证论治汇总\n\n更多医考干货\n\n![](images/5085080c8dba7fa9e4d9c7c59f612e87d349a83517f22d4b5f0a1edbff81d9b8.jpg)\n\n可扫码关注微信公众平台\n\n![](images/a0c3ca3009a0f5e0e327ca7beb255221ebb110789c5a4ab7c3c3ab46163f388b.jpg)\n\n![](images/14c874fdb4718e928b5ae57d3e6454237500495f86ada181f1f2897f5c298699.jpg)\n\n![](images/a4e3ba7aefa37b01c50959e544efa5c072c3daafb2fa4bd2469afbd709c8f703.jpg)  \n6-中西医结合内科学最字题  \n7-中西医结合内科学首选类题目\n\n![](images/62ad5782aa9989dbae49fb275044c33eb9877e029d0aa2f96ac8636651b30354.jpg)  \n8-中西医外妇儿首选类题目  \n9-经络系统常考总结  \n10-特定穴记忆歌诀汇总  \n总\n\n![](images/22c8428908ee370306ec45c0927b7a8a9c3de953fad2b3127ed38d45b474509d.jpg)\n\n![](images/4f21788f0bcff21804d69de723403d7e17d2f1b03911392a7db8b2170fd15f94.jpg)\n\n![](images/3059ada5c84be01fdce89e167b3352843e2861a22d7ff4d1f40dcbf636886452.jpg)  \n11-中药相同功效药物总结\n\n![](images/1c79eeb40ee531114e95798bdbce34af106238eb25e3b6d1211b4dea56f6f6b6.jpg)  \n12-中药学30味中药药理作用总  \n结  \n13-方剂学常考重点总结"
+          "content": "寒湿内侵，络脉血瘀 懒人医考 LANRENYIKAO"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "膝部肿大而股胫消瘦，称为“鹤膝风”，多因寒湿久留，气血亏虚所致。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货 可扫码关注微信公众平台 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴记忆歌诀汇总 总 11-中药相同功效药物总结 12-中药学30味中药药理作用总 结 13-方剂学常考重点总结",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 19
+        "number": 19,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0020",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "表虚证的脉象主见",
       "options": [
         {
@@ -364,25 +366,24 @@
         },
         {
           "option_id": "E",
-          "content": "浮数  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：浮缓脉多见于风邪伤卫，营卫不和的太阳中风证，即表虚证。"
+          "content": "浮数"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "浮缓脉多见于风邪伤卫，营卫不和的太阳中风证，即表虚证。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 20
+        "number": 20,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0021",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "不出现滑苔的病证是",
       "options": [
         {
@@ -403,25 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "血瘀气滞\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：因水湿之邪内聚，主寒证、主湿证、主痰饮。外感寒邪、湿邪，或脾阳不振，寒湿、痰饮内生，均可出现滑苔。"
+          "content": "血瘀气滞"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "因水湿之邪内聚，主寒证、主湿证、主痰饮。外感寒邪、湿邪，或脾阳不振，寒湿、痰饮内生，均可出现滑苔。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 21
+        "number": 21,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0022",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "病人热入营分，气分有湿，其舌象是",
       "options": [
         {
@@ -442,25 +442,24 @@
         },
         {
           "option_id": "E",
-          "content": "舌红绛，苔黄白\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：红绛舌白滑腻苔，舌色红绛属内热盛，而白滑腻苔又常见于寒湿内阻，分析其成因可能是由于外感热病，营分有热，故舌色红绛，但气分有湿则苔白滑而腻。"
+          "content": "舌红绛，苔黄白"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "红绛舌白滑腻苔，舌色红绛属内热盛，而白滑腻苔又常见于寒湿内阻，分析其成因可能是由于外感热病，营分有热，故舌色红绛，但气分有湿则苔白滑而腻。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 22
+        "number": 22,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0023",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "身热初按热甚，久按热反轻者多属",
       "options": [
         {
@@ -481,25 +480,24 @@
         },
         {
           "option_id": "E",
-          "content": "热在半表半里\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：身热初按热甚，久按热反转轻者为热在表。"
+          "content": "热在半表半里"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "身热初按热甚，久按热反转轻者为热在表。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 23
+        "number": 23,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0024",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列哪项不是寒证与热证的鉴别要点",
       "options": [
         {
@@ -520,25 +518,24 @@
         },
         {
           "option_id": "E",
-          "content": "苔黄与苔白  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：寒证与热证的鉴别，应对疾病的全部表现进行综合观察，尤其是恶寒发热、对寒热的喜恶、口渴与否、面色的赤白、四肢的温凉、二便、舌象、脉象等，是辨别寒证与热证的重要依据。"
+          "content": "苔黄与苔白"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "寒证与热证的鉴别，应对疾病的全部表现进行综合观察，尤其是恶寒发热、对寒热的喜恶、口渴与否、面色的赤白、四肢的温凉、二便、舌象、脉象等，是辨别寒证与热证的重要依据。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 24
+        "number": 24,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-dfb6ad7d6e-q0025",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "既能解毒消痈，又能凉血止血的药物是",
       "options": [
         {
@@ -559,24 +556,19 @@
         },
         {
           "option_id": "E",
-          "content": "大蓟、小蓟\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：侧柏叶凉血止血，化痰止咳，生发乌发。茜草凉血化瘀止血，通经。艾叶温经止血，散寒调经，安胎。炮姜温经止血，温中止痛。三七化瘀止血，活血定痛。蒲黄止血，化瘀，利尿。紫草清热凉血，活血，解毒透疹。赤芍清热凉血，散瘀止痛。大蓟凉血止血，散瘀解毒消痈。小蓟凉血止血，散瘀解毒消痈。故选"
-        },
-        {
-          "option_id": "G",
-          "content": "。\n\n![](images/1abad6fa3eeb6ccf0ad97e714a5ef84cce0a0c4a9b29a9df682f10a99ad97598.jpg)\n\n懒人医考\nLANRENYIKAO"
+          "content": "大蓟、小蓟"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "侧柏叶凉血止血，化痰止咳，生发乌发。茜草凉血化瘀止血，通经。艾叶温经止血，散寒调经，安胎。炮姜温经止血，温中止痛。三七化瘀止血，活血定痛。蒲黄止血，化瘀，利尿。紫草清热凉血，活血，解毒透疹。赤芍清热凉血，散瘀止痛。大蓟凉血止血，散瘀解毒消痈。小蓟凉血止血，散瘀解毒消痈。故选E。 懒人医考 LANRENYIKAO",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟1\\full.md",
-        "number": 25
+        "number": 25,
+        "answer_source": "same_document"
       }
     }
   ]

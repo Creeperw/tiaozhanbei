@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0040",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "川芎茶调散的组成中，不含有的药物是",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "羌活\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：川芎茶调散组成：川芎 荆芥 防风 白芷 羌活 细辛 炙甘草 薄荷 清茶"
+          "content": "羌活"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "川芎茶调散组成：川芎 荆芥 防风 白芷 羌活 细辛 炙甘草 薄荷 清茶",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 40
+        "number": 40,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0041",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列哪项不属于锥体束损害的体征",
       "options": [
         {
@@ -63,25 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "凯尔尼格征\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：凯尔尼格征属于脑膜刺激征，脑膜刺激征阳性见于各种脑膜炎、蛛网膜下腔出血。凯尔尼格征另外可以见于坐骨神经痛、腰骶神经根炎等。"
+          "content": "凯尔尼格征"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "凯尔尼格征属于脑膜刺激征，脑膜刺激征阳性见于各种脑膜炎、蛛网膜下腔出血。凯尔尼格征另外可以见于坐骨神经痛、腰骶神经根炎等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 41
+        "number": 41,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0042",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "左心房肥大的心电图改变为",
       "options": [
         {
@@ -94,7 +92,7 @@
         },
         {
           "option_id": "C",
-          "content": "P波电压 $<  0.25\\mathrm{mV}$"
+          "content": "P波电压 $< 0.25\\mathrm{mV}$"
         },
         {
           "option_id": "D",
@@ -102,25 +100,24 @@
         },
         {
           "option_id": "E",
-          "content": "II、III导联P波倒置\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：左心房肥大：P波增宽（时间 $>0.11\\mathrm{s}$ ），常呈双峰，两峰距 $\\geqslant 0.04\\mathrm{s}$ ，多见于二尖瓣狭窄，故又称“二尖瓣型P波”。"
+          "content": "II、III导联P波倒置"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "左心房肥大：P波增宽（时间 $>0.11\\mathrm{s}$ ），常呈双峰，两峰距 $\\geqslant 0.04\\mathrm{s}$ ，多见于二尖瓣狭窄，故又称“二尖瓣型P波”。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 42
+        "number": 42,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0043",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "致密的实变区中可见含有液面的空洞，最可能的疾病是",
       "options": [
         {
@@ -141,25 +138,24 @@
         },
         {
           "option_id": "E",
-          "content": "间质性肺炎\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：急性肺脓肿 X 线可见肺内大片致密影，边缘模糊，密度较均匀，可侵及一个肺段或一叶的大部。在致密的实变区中可见含有液面的空洞，内壁不规整。"
+          "content": "间质性肺炎"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "急性肺脓肿 X 线可见肺内大片致密影，边缘模糊，密度较均匀，可侵及一个肺段或一叶的大部。在致密的实变区中可见含有液面的空洞，内壁不规整。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 43
+        "number": 43,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0044",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "胸部X线检查见“哑铃状”双极阴影常提示为",
       "options": [
         {
@@ -180,25 +176,24 @@
         },
         {
           "option_id": "E",
-          "content": "结核性胸膜炎\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：原发型肺结核：表现为原发综合征及胸内淋巴结结核。原发综合征：是由肺内原发灶、淋巴管炎及淋巴结炎三者组成的哑铃状双极现象。"
+          "content": "结核性胸膜炎"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "原发型肺结核：表现为原发综合征及胸内淋巴结结核。原发综合征：是由肺内原发灶、淋巴管炎及淋巴结炎三者组成的哑铃状双极现象。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 44
+        "number": 44,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0045",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "坐骨神经痛可出现的体征是",
       "options": [
         {
@@ -219,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "肌阵挛  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：拉塞格征为坐骨神经根受刺激的表现，又称坐骨神经受刺激征。阳性见于腰椎间盘突出症、坐骨神经痛、腰骶神经根炎等。"
+          "content": "肌阵挛"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "拉塞格征为坐骨神经根受刺激的表现，又称坐骨神经受刺激征。阳性见于腰椎间盘突出症、坐骨神经痛、腰骶神经根炎等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 45
+        "number": 45,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0046",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "金属调咳嗽可见于",
       "options": [
         {
@@ -258,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "白喉  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：金属调咳嗽见于纵隔肿瘤或支气管肺癌。\n\n![](images/40b00e5226676871b99635c4eddae8e846fcf3344710bc73708aa90bcfa73cf8.jpg)"
+          "content": "白喉"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "金属调咳嗽见于纵隔肿瘤或支气管肺癌。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 46
+        "number": 46,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0047",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "脊柱后凸常见的原因有",
       "options": [
         {
@@ -297,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "腹腔巨大肿瘤\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：脊柱后凸（胸段）主要见于佝偻病、强直性脊柱炎等。\n\n![](images/751b0fcd023e6fe5f8bc5aba4a0d949e2ecabb20067f120078209ab29197a67f.jpg)  \n1-内外妇儿重点疾病诊断公式\n\n![](images/9b04c6f6c01294f64d49b0813bb62b4a48263113bbdb90a6c97e67dbebc51f3b.jpg)  \n2-中西医结合内科学辨证论治汇总\n\n![](images/664c6fcabc167129f79f0a3721b2bee19e3a01c2a44d6ca21c53b04d7c9a14c5.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/b44f69ac6e5513855c561a663fa9c04fc7e2220943b9dcf9a96f16669bc25f0c.jpg)  \n4-中西医结合妇科学辨证论治汇总\n\n![](images/beabbcbfe6370514cc521aac7a6b4b3c0100afba3da000937f770b1b34714a5e.jpg)  \n5-中西医结合儿科学辨证论治汇总\n\n可扫码关注微信公众平台\n\n![](images/d50952425a285e931ec51b977a6b044162843b136ebe3dee21611f77b0d58253.jpg)  \n6-中西医结合内科学最字题\n\n![](images/4e525d0e5a487a5ab849861dd9082f445330a00d4da04f44a356fa7da5646bc4.jpg)  \n7-中西医结合内科学首选类题目\n\n![](images/5dda9c77a95caf69e67e5dadbb4d984adc6e66a256b0dfd750b28a9d3ecef39c.jpg)  \n8-中西医外妇儿首选类题目\n\n![](images/9f347a589fdbe9000ad21f9d63bc2059ea363cd6f5ad60f6bee7a40fc4fd6f8b.jpg)  \n9-经络系统常考总结\n\n![](images/939d8a7f5fac4358ad06a614d8958f18961c5daf759fd6145cc959c18e19527a.jpg)  \n10-特定穴\n记忆歌诀汇总\n\n![](images/d2bf34ecf9ce87339af40ed5da971c019d867d2a07d68508568be7339ad45364.jpg)\n\n![](images/bf7c609a13bcbf6b63b014d502272d821cfb3fb30fbfa2fd7b807414e3c50e61.jpg)\n\n![](images/33f223f8cd7fe20196146f91694c7601fd24f2025cf7c80837c1abcc18ac19b7.jpg)\n\n![](images/6954106ba95fdf5822f5de5a33a4f2c83e4714983e91fc811a9277cce609c8a1.jpg)  \n13-方剂学常考重点总结"
+          "content": "腹腔巨大肿瘤"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "脊柱后凸（胸段）主要见于佝偻病、强直性脊柱炎等。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 可扫码关注微信公众平台 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 13-方剂学常考重点总结",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 47
+        "number": 47,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0048",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "双侧眼睑下垂见于",
       "options": [
         {
@@ -336,53 +328,62 @@
         },
         {
           "option_id": "E",
-          "content": "动眼神经麻痹  \n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：双侧上睑下垂见于双侧见于重症肌无力；单侧见于各种疾病引起的动眼神经麻痹。49. 下列哪项为治疗铜绿假单胞菌性尿道炎的首选药"
-        },
-        {
-          "option_id": "G",
-          "content": "诺氟沙星"
-        },
-        {
-          "option_id": "H",
-          "content": "氧氟沙星"
-        },
-        {
-          "option_id": "I",
-          "content": "环丙沙星"
-        },
-        {
-          "option_id": "J",
-          "content": "左氧氟沙星"
-        },
-        {
-          "option_id": "K",
-          "content": "磺胺嘧啶答案："
-        },
-        {
-          "option_id": "L",
-          "content": "答案:"
-        },
-        {
-          "option_id": "M",
-          "content": "解析：泌尿系统感染首选环丙沙星、氧氟沙星及 $\\beta$ -内酰胺类；环丙沙星是铜绿假单胞菌性尿道炎的首选药；诺氟沙星主要用于治疗敏感菌所致的尿路感染、前列腺炎、肠道感染和伤寒。氧氟沙星主要用于治疗革兰阴性菌所致的呼吸道、胃肠道、尿路、皮肤软组织感染。左氧氟沙星属于氟喹诺酮类抗菌药，适用于呼吸系统感染、泌尿系统感染等。磺胺嘧啶常作为某些其他抗菌药过敏者的首选，常用在重症细菌性感染疾病中。"
+          "content": "动眼神经麻痹"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "双侧上睑下垂见于双侧见于重症肌无力；单侧见于各种疾病引起的动眼神经麻痹。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 48
+        "number": 48,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-5de402e1f4-q0049",
+      "question_type": "single_choice",
+      "question_content": "下列哪项为治疗铜绿假单胞菌性尿道炎的首选药",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "诺氟沙星"
+        },
+        {
+          "option_id": "B",
+          "content": "氧氟沙星"
+        },
+        {
+          "option_id": "C",
+          "content": "环丙沙星"
+        },
+        {
+          "option_id": "D",
+          "content": "左氧氟沙星"
+        },
+        {
+          "option_id": "E",
+          "content": "磺胺嘧啶"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "泌尿系统感染首选环丙沙星、氧氟沙星及 $\\beta$ -内酰胺类；环丙沙星是铜绿假单胞菌性尿道炎的首选药；诺氟沙星主要用于治疗敏感菌所致的尿路感染、前列腺炎、肠道感染和伤寒。氧氟沙星主要用于治疗革兰阴性菌所致的呼吸道、胃肠道、尿路、皮肤软组织感染。左氧氟沙星属于氟喹诺酮类抗菌药，适用于呼吸系统感染、泌尿系统感染等。磺胺嘧啶常作为某些其他抗菌药过敏者的首选，常用在重症细菌性感染疾病中。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
+        "number": 49,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0050",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列药物中，对于治疗烧伤继发铜绿假单胞菌感染最有效的是",
       "options": [
         {
@@ -403,33 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "氨苄西林\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "答案:"
-        },
-        {
-          "option_id": "G",
-          "content": "解析：羧苄西林，不耐酸，不能口服，对 G-杆菌作用强，尤其是对铜绿假单胞菌有特效。常用于治疗烧伤继发铜绿假单胞菌感染。绿脓杆菌对多数抗假单胞菌青霉素类、头孢菌素类、氨基糖苷类抗生素、碳青霉烯类抗生素不敏感，仅对半合成青霉素如羧苄西林等、第三代头孢菌素（如头孢哌酮）、单环 β-内酰胺类抗生素（如氨曲南）、β-内酰胺酶抑制剂（如哌拉西林他唑巴坦）、氨基糖苷类抗生素（如妥布霉素）敏感。青霉素是治疗敏感的 G+ 球菌和杆菌、G-球菌及螺旋体所致感染的首选药，对绿脓杆菌几乎无效。链霉素、卡那霉素可作为结核病治疗药物。氨苄西林（"
-        },
-        {
-          "option_id": "H",
-          "content": "错）对 G-杆菌有较强抗菌作用，对铜绿假单胞菌无效。治疗敏感菌所致的呼吸道感染、伤寒、副伤寒、尿路感染、胃肠道感染等。"
+          "content": "氨苄西林"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "羧苄西林，不耐酸，不能口服，对 G-杆菌作用强，尤其是对铜绿假单胞菌有特效。常用于治疗烧伤继发铜绿假单胞菌感染。绿脓杆菌对多数抗假单胞菌青霉素类、头孢菌素类、氨基糖苷类抗生素、碳青霉烯类抗生素不敏感，仅对半合成青霉素如羧苄西林等、第三代头孢菌素（如头孢哌酮）、单环 β-内酰胺类抗生素（如氨曲南）、β-内酰胺酶抑制剂（如哌拉西林他唑巴坦）、氨基糖苷类抗生素（如妥布霉素）敏感。青霉素是治疗敏感的 G+ 球菌和杆菌、G-球菌及螺旋体所致感染的首选药，对绿脓杆菌几乎无效。链霉素、卡那霉素可作为结核病治疗药物。氨苄西林（E 错）对 G-杆菌有较强抗菌作用，对铜绿假单胞菌无效。治疗敏感菌所致的呼吸道感染、伤寒、副伤寒、尿路感染、胃肠道感染等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 50
+        "number": 50,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0051",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列哪项为左旋多巴治疗帕金森病的药理作用",
       "options": [
         {
@@ -450,25 +442,24 @@
         },
         {
           "option_id": "E",
-          "content": "抑制外周多巴胺\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：左旋多巴是一种芳香族氨基酸，可通过血脑屏障进入脑组织，脱羧后形成多巴胺，补充纹状体中多巴胺的不足，从而发挥治疗帕金森病的作用。阻断中枢胆碱受体是苯海索治疗帕金森病的药理作用。直接激动中枢的多巴胺受体是麦角类治疗帕金森病的药理作用。抑制多巴胺的再摄取是司来吉兰治疗帕金森病的药理作用。"
+          "content": "抑制外周多巴胺"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "左旋多巴是一种芳香族氨基酸，可通过血脑屏障进入脑组织，脱羧后形成多巴胺，补充纹状体中多巴胺的不足，从而发挥治疗帕金森病的作用。阻断中枢胆碱受体是苯海索治疗帕金森病的药理作用。直接激动中枢的多巴胺受体是麦角类治疗帕金森病的药理作用。抑制多巴胺的再摄取是司来吉兰治疗帕金森病的药理作用。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 51
+        "number": 51,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0052",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列降血糖口服药中，能改善血脂代谢的是",
       "options": [
         {
@@ -489,25 +480,24 @@
         },
         {
           "option_id": "E",
-          "content": "格列齐特\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：二甲双胍降糖的降糖作用不依赖于胰岛 $\\beta$ 细胞的功能，可能机制包括：（1）增加肌肉组织中的无氧糖酵解。\n\n![](images/1d9be06dda94a3ba6738f8bb20638d8f6cb890f8fd45d2b88e0a8fee3844b50f.jpg)\n\n（2）促进组织对葡萄糖的摄取。（3）减少肝细胞糖异生。（4）减慢葡萄糖在肠道的吸收。（5）增加胰岛素与其受体结合。（6）降低血中胰高血糖素水平。此外，还可改善血脂代谢，降低LDL及VLDL、甘油三酯及胆固醇水平。"
+          "content": "格列齐特"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "二甲双胍降糖的降糖作用不依赖于胰岛 $\\beta$ 细胞的功能，可能机制包括：（1）增加肌肉组织中的无氧糖酵解。 （2）促进组织对葡萄糖的摄取。（3）减少肝细胞糖异生。（4）减慢葡萄糖在肠道的吸收。（5）增加胰岛素与其受体结合。（6）降低血中胰高血糖素水平。此外，还可改善血脂代谢，降低LDL及VLDL、甘油三酯及胆固醇水平。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 52
+        "number": 52,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0053",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列哪项为强心苷中毒致室性心律失常的解救药物",
       "options": [
         {
@@ -528,25 +518,24 @@
         },
         {
           "option_id": "E",
-          "content": "维拉帕米\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：强心苷中毒致室性心律失常的解救药物是苯妥英钠。奎尼丁可降低心肌的自律性，延长房室结的有效不应期，常用于室上性心动过速，室性期前收缩，难治性心力衰竭，预激综合征合并房颤时的心率减慢及洋地黄中毒。普鲁卡因胺为广谱抗心律失常药，可用于各种室上性心动过速、室性期前收缩、难治性心力衰竭等。维拉帕米主要用于室上性心动过速和后除极触发活动所致的心律失常。普萘洛尔可阻断 $\\beta$ 受体，具有降低心肌自律性、减慢传导和减弱心肌收缩力的作用，可用于心律失常的治疗。"
+          "content": "维拉帕米"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "强心苷中毒致室性心律失常的解救药物是苯妥英钠。奎尼丁可降低心肌的自律性，延长房室结的有效不应期，常用于室上性心动过速，室性期前收缩，难治性心力衰竭，预激综合征合并房颤时的心率减慢及洋地黄中毒。普鲁卡因胺为广谱抗心律失常药，可用于各种室上性心动过速、室性期前收缩、难治性心力衰竭等。维拉帕米主要用于室上性心动过速和后除极触发活动所致的心律失常。普萘洛尔可阻断 $\\beta$ 受体，具有降低心肌自律性、减慢传导和减弱心肌收缩力的作用，可用于心律失常的治疗。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 53
+        "number": 53,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0054",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "强心苷中引起的窦性心动过缓和房室传导阻滞，治疗可选用",
       "options": [
         {
@@ -567,29 +556,24 @@
         },
         {
           "option_id": "E",
-          "content": "利多卡因\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：强心苷中毒的治疗：轻度中毒停用即可。对于快速型心律失常，应及时补钾，并可选用苯妥英钠、利多卡因等抗心律失常药。对于危及生命的强心苷中毒者，可静脉注射地高辛抗体"
-        },
-        {
-          "option_id": "G",
-          "content": "ab 片段。对于缓慢型心律失常可用阿托品治疗。"
+          "content": "利多卡因"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "强心苷中毒的治疗：轻度中毒停用即可。对于快速型心律失常，应及时补钾，并可选用苯妥英钠、利多卡因等抗心律失常药。对于危及生命的强心苷中毒者，可静脉注射地高辛抗体 Fab 片段。对于缓慢型心律失常可用阿托品治疗。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 54
+        "number": 54,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "6581a15b89f4-5de402e1f4-q0055",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "下列不属于抗抑郁药物的是",
       "options": [
         {
@@ -610,20 +594,19 @@
         },
         {
           "option_id": "E",
-          "content": "马普替林\n\n答案:"
-        },
-        {
-          "option_id": "F",
-          "content": "解析：艾司唑仑属于中效苯二氮卓类镇静催眠药，抗抑郁症药包括：选择性5-HT再摄取抑制剂：氟西汀（百忧解）、舍曲林、帕罗西汀等；选择性NA再摄取抑制剂：马普替林；三环类：丙咪嗪、阿米替林；单胺氧化酶抑制剂：吗\n\n氯贝胺\n\n![](images/026d5d421ebe15c15f20e3ccb60af9a76677d5e61ae3d30f763633efc9ba2409.jpg)\n\n![](images/0374fa25cf0031c0aa149f12b11bbb6b901685b0484d7366dbf592f703ce1103.jpg)  \n1-内外妇儿重点疾病诊断公式  \n2-中西医结合内科学辨证论治汇总\n\n![](images/7d7cf24ad422e4e67e17012a0d52085a615d1034e42a8c11323b77335041d6bb.jpg)  \n3-中西医结合外科学辨证论治汇总\n\n![](images/251633d7ea061148ecb0448b14f37cad1786e978a7e88280d7d6f8d8b7e548d2.jpg)  \n4-中西医结合妇科学辨证论治汇总  \n5-中西医结合儿科学辨证论治汇总\n\n更多医考干货\n\n可扫码关注微信公众平台\n\n![](images/cbea36179a9e9b0d4b03f85e434f96a408e7d181e39f8bc740a343ecc28db483.jpg)\n\n![](images/4ac49395e4444df1ef4d6f3067079d7808ab7d365d965ae8d31c7fff267994a6.jpg)\n\n![](images/723e7b6e287c8390355a6f87efd106a4af52436aa83673c3b1d03c38221df62a.jpg)  \n6-中西医结合内科学最字题  \n7-中西医结合内科学首选类题目\n\n![](images/b6fff54159e3f16824f9868fde3e07088e4cbf0729133f9540e00dddff750ee7.jpg)  \n8-中西医外妇儿首选类题目\n\n![](images/4c6670b5146f597bff79b8de7e161425a6940e254bcbf289227decda2144ccd5.jpg)  \n9-经络系统常考总结  \n10-特定穴\n记忆歌诀汇\n总\n\n![](images/49fa7540f64d6d1d97452ceee95954440a300e1b4b29506f3e2c05b34fdace07.jpg)\n\n![](images/45cbb4e2814a4b011e340d80ab6426360fd246de09df4132c4b1767607cf066a.jpg)\n\n![](images/a55f63b2f5237c3d22cd43acc5e5270519eb66774b9320890997bc01e22ac271.jpg)  \n11-中药相同功效药物总结\n\n![](images/c42cdf041013b180fd1547e7dfbd7cf37b67a4a2f84effb253f1827b18940017.jpg)  \n12-中药学30味中药药理作用总  \n13-方剂学常考重点总结"
+          "content": "马普替林"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "艾司唑仑属于中效苯二氮卓类镇静催眠药，抗抑郁症药包括：选择性5-HT再摄取抑制剂：氟西汀（百忧解）、舍曲林、帕罗西汀等；选择性NA再摄取抑制剂：马普替林；三环类：丙咪嗪、阿米替林；单胺氧化酶抑制剂：吗 氯贝胺 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货 可扫码关注微信公众平台 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇 总 11-中药相同功效药物总结 12-中药学30味中药药理作用总 13-方剂学常考重点总结",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原3\\full.md",
-        "number": 55
+        "number": 55,
+        "answer_source": "same_document"
       }
     }
   ]

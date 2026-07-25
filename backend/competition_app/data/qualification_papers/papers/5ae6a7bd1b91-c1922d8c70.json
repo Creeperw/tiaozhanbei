@@ -3,7 +3,7 @@
   "questions": [
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0001",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】执业药师的基本技能是指在提供药学服务的各个环节所必须具备的专业技术方法与工作能力。不属于执业药师基本技能的是( )。【选项】",
       "options": [
         {
@@ -24,25 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "药品配送【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药药学服务对执业药师的要求"
+          "content": "药品配送"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 1
+        "number": 1,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0002",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】系统整理南北朝以前中药学资料的本草著作是( )。 【选项】",
       "options": [
         {
@@ -63,25 +62,24 @@
         },
         {
           "option_id": "E",
-          "content": "《本草纲目》 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】常用古文献典籍"
+          "content": "《本草纲目》"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 2
+        "number": 2,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0003",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】“壮水之主，以制阳光”治法的适应证是( )。【选项】",
       "options": [
         {
@@ -102,25 +100,24 @@
         },
         {
           "option_id": "E",
-          "content": "阴阳两虚【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】阴阳学说的临床应用"
+          "content": "阴阳两虚"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 3
+        "number": 3,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0004",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中医学称为“刚脏”的是( )。【选项】",
       "options": [
         {
@@ -141,25 +138,24 @@
         },
         {
           "option_id": "E",
-          "content": "肾【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】五脏"
+          "content": "肾"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 4
+        "number": 4,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0005",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，41 岁。近日因家事而情志抑郁，乳房胀痛，胃胀痞满，嗳气频作，月经延后;舌淡红,苔白，脉弦。根据藏象理论，其病机是( )。【选项】",
       "options": [
         {
@@ -180,25 +176,24 @@
         },
         {
           "option_id": "E",
-          "content": "肾藏精功能失常【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】五脏"
+          "content": "肾藏精功能失常"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 5
+        "number": 5,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0006",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】易于生风动血的外邪是( )。 【选项】",
       "options": [
         {
@@ -219,25 +214,24 @@
         },
         {
           "option_id": "E",
-          "content": "火邪 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】外感病因"
+          "content": "火邪"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 6
+        "number": 6,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0007",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】头晕耳鸣，视物旋转，闭目可缓解，恶心呕吐;舌苔白腻，脉濡，其临床意义是( )。【选项】",
       "options": [
         {
@@ -258,25 +252,24 @@
         },
         {
           "option_id": "E",
-          "content": "肾精不足【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】眩晕"
+          "content": "肾精不足"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 7
+        "number": 7,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0008",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】并开药名是指将 2～3 种疗效相似或有协同作用的饮片缩写在一起而构成的处方名称。“炒三仙”调配时应给付的饮片是( )。【选项】",
       "options": [
         {
@@ -297,25 +290,24 @@
         },
         {
           "option_id": "E",
-          "content": "炒稻芽、炒麦芽、炒山楂【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】处方审核的主要内容"
+          "content": "炒稻芽、炒麦芽、炒山楂"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 8
+        "number": 8,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0009",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】青光眼患者禁用的中药是( )。【选项】",
       "options": [
         {
@@ -336,25 +328,24 @@
         },
         {
           "option_id": "E",
-          "content": "千金子【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】饮片处方调配"
+          "content": "千金子"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 9
+        "number": 9,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0010",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，45 岁。心悸易惊，心烦失眠，五心烦热，口干，盗汗，思虑劳心则症状加重，伴耳鸣腰酸，头晕目眩，急躁易怒;舌红少津，脉细数。应采用的治法是( )。【选项】",
       "options": [
         {
@@ -375,25 +366,24 @@
         },
         {
           "option_id": "E",
-          "content": "化气行水，宁心安神【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】心悸"
+          "content": "化气行水，宁心安神"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 10
+        "number": 10,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0011",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】血清肌钙蛋白1(cTnI)增高的临床意义是( )。【选项】",
       "options": [
         {
@@ -414,25 +404,24 @@
         },
         {
           "option_id": "E",
-          "content": "急性胃肠炎【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】心肌肌钙蛋白I(cTnI)"
+          "content": "急性胃肠炎"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 11
+        "number": 11,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0012",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中药传统养护技术对抗贮存法是采用两种或两种以上药物同贮，相互克制，起到防止虫蛀、霉变作用的养护方法。采用对抗贮存法养护蛤蚧时，可同贮的中药饮片是( )。【选项】",
       "options": [
         {
@@ -453,25 +442,24 @@
         },
         {
           "option_id": "E",
-          "content": "冰片【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药养护"
+          "content": "冰片"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 12
+        "number": 12,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0013",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】维吾尔药的药性，系指根据药物作用于机体后发生的不同反应和疗效而决定的药物属性。不属于维吾尔药药性的是( )。【选项】",
       "options": [
         {
@@ -492,25 +480,24 @@
         },
         {
           "option_id": "E",
-          "content": "凉【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】维吾尔药基础知识"
+          "content": "凉"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 13
+        "number": 13,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0014",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中药饮片正名是规范化的饮片名称，除正名以外的名称为别名。“青果”的别名是( )。【选项】",
       "options": [
         {
@@ -531,48 +518,24 @@
         },
         {
           "option_id": "E",
-          "content": "玉果【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】处方审核的主要内容"
+          "content": "玉果"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 14
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-c1922d8c70-q0015",
-      "question_type": "single_choice",
-      "question_content": "【题干】中药汤剂煎药量应当根据儿童和成人分别确定。儿童每剂汤药一般煎药量为( )。【选项】",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "50～100mlB.100～300mlC.200～400mlD.300～500mlE.400～600ml【答案】"
-        },
-        {
-          "option_id": "B",
-          "content": "【考点】中药汤剂的煎煮"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 15
+        "number": 14,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0016",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，57 岁。小便不通或点滴不爽，排出无力，腰膝酸软，畏寒肢冷;舌淡 胖苔薄白，脉沉细。诊断为癃闭，证属肾阳衰惫。宜选用的中成药是( )。 【选项】",
       "options": [
         {
@@ -593,25 +556,24 @@
         },
         {
           "option_id": "E",
-          "content": "前列通瘀胶囊 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】癃闭"
+          "content": "前列通瘀胶囊"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 16
+        "number": 16,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0017",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，48 岁。诊断为原发性肝癌，证属瘀毒内结、正虚邪实。予以艾迪注射液100ml+5%葡萄糖注射液 250ml静脉滴注，一日 1 次。药师审核处方的问题是( )。【选项】",
       "options": [
         {
@@ -632,25 +594,24 @@
         },
         {
           "option_id": "E",
-          "content": "溶媒选用不当【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药注射剂的合理应用"
+          "content": "溶媒选用不当"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 17
+        "number": 17,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0018",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，75岁。近 1 月余，耳鸣如蝉昼夜不息，安静时尤甚，听力逐渐下降，伴有腰膝酸软，头晕目眩，偶有虚烦失眠，夜尿频多;舌淡红少苔，脉细弱。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -671,25 +632,24 @@
         },
         {
           "option_id": "E",
-          "content": "人参养荣汤\n\n【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】耳聋耳鸣"
+          "content": "人参养荣汤"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 18
+        "number": 18,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0019",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，35 岁。头身困重，脘腹胀满，食纳减少，便溏稀薄，带下色白;舌淡 红苔白腻，脉迟缓。辨析其证候是( )。 【选项】",
       "options": [
         {
@@ -710,25 +670,24 @@
         },
         {
           "option_id": "E",
-          "content": "脾胃湿热 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】脏腑辨证"
+          "content": "脾胃湿热"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 19
+        "number": 19,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0020",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】罂粟壳按照麻醉药管理，属于特殊管理的中药饮片。关于中药饮片罂粟壳用法用量及调配管理的说法，正确的是( )。【选项】",
       "options": [
         {
@@ -744,26 +703,25 @@
           "content": "罂粟壳的成人一次常用量为每天3～9gD.罂粟壳必须凭具有麻醉药处方权的执业医师签名的淡黄色麻醉药处方方可调配"
         },
         {
-          "option_id": "D",
-          "content": "罂粟壳应与群药一起调配，不得单方发药，每张处方不得超过二日用量【答案】"
-        },
-        {
           "option_id": "E",
-          "content": "【考点】饮片处方调配"
+          "content": "罂粟壳应与群药一起调配，不得单方发药，每张处方不得超过二日用量"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 20
+        "number": 20,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0021",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】对于临床复杂的病情，常需要选择两种或两种以上的中成药联合应用，以取得更好的疗效。下列不宜联合使用的中成药是( )。【选项】",
       "options": [
         {
@@ -784,25 +742,24 @@
         },
         {
           "option_id": "E",
-          "content": "金匮肾气丸和生脉散【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中成药的联合应用"
+          "content": "金匮肾气丸和生脉散"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 21
+        "number": 21,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0022",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，58岁。腰脊酸软，尿后余沥，小便频数，滑精早泄，听力减退;舌淡苔 白，脉细弱。辨析其证候是( )。 【选项】",
       "options": [
         {
@@ -823,25 +780,24 @@
         },
         {
           "option_id": "E",
-          "content": "心肾不交 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】脏腑辨证"
+          "content": "心肾不交"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 22
+        "number": 22,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0023",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，35岁。自觉咽喉部不适，常感咽部干燥，微痛，干痒，灼热，有异物感，干咳少痰，伴颧红潮热，耳鸣多梦;舌红苔少，脉细数。宜选用的中成药是( )。 【选项】",
       "options": [
         {
@@ -862,25 +818,24 @@
         },
         {
           "option_id": "E",
-          "content": "金嗓开音丸 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】咽喉肿痛"
+          "content": "金嗓开音丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 23
+        "number": 23,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0024",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，59岁。腰痛日久，酸软无力，缠绵不愈，局部发凉，喜温喜按，遇劳更甚，卧则减轻，少腹拘急，面色㿠白，头晕耳鸣，肢冷畏寒;舌淡，脉沉细无力。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -901,25 +856,24 @@
         },
         {
           "option_id": "E",
-          "content": "乌头汤【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】腰痛"
+          "content": "乌头汤"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 24
+        "number": 24,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0025",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，1 岁。食欲不振，嗳腐酸馊，偶见呕吐食物，脘腹胀满，大便酸臭，夜眠不安，手足心热;舌红苔黄厚腻，指纹紫滞。应采用的治法是( )。【选项】",
       "options": [
         {
@@ -940,25 +894,24 @@
         },
         {
           "option_id": "E",
-          "content": "消乳化食，和中导滞【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】积滞"
+          "content": "消乳化食，和中导滞"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 25
+        "number": 25,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0026",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，45 岁。5 年前从高处坠落导致头部外伤，虽经积极治疗，仍遗留头痛，痛处固定，如刺如锥;舌紫暗，边有瘀点，苔薄白，脉细涩。辨析其证候是( )。【选项】",
       "options": [
         {
@@ -979,21 +932,24 @@
         },
         {
           "option_id": "E",
-          "content": "血虚头痛【答案】"
+          "content": "血虚头痛"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 26
+        "number": 26,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0027",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，62岁。阳痿不举，失眠多梦，神疲乏力，食少纳呆，腹胀便溏;舌苔薄白，脉细弱。宜采用的治法是( )。【选项】",
       "options": [
         {
@@ -1014,25 +970,24 @@
         },
         {
           "option_id": "E",
-          "content": "补益心脾 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】阳痿"
+          "content": "补益心脾"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 27
+        "number": 27,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0028",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中药饮片的剂量往往因疾病种美、病情轻重、用药目的不同而呈现不同特征。关于白芍使用目的与剂量的说法，正确的( )。【选项】",
       "options": [
         {
@@ -1053,25 +1008,24 @@
         },
         {
           "option_id": "E",
-          "content": "用于缓急止痛时，用量中等【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】处方审核的主要内容"
+          "content": "用于缓急止痛时，用量中等"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 28
+        "number": 28,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0029",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，60岁。胃癌晚期，胃脘刺痛，倦怠乏力，不欲饮食，嗳气呕恶，身体消瘦;舌淡有瘀点，脉弦细弱。应采用的治疗原则是( )。【选项】",
       "options": [
         {
@@ -1092,25 +1046,24 @@
         },
         {
           "option_id": "E",
-          "content": "先祛邪后扶正【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】扶正祛邪"
+          "content": "先祛邪后扶正"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 29
+        "number": 29,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0030",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中医谴方时正确应用中药的不同炮制品有利于提高临床疗效。关于方剂选用中药炮制品的说法，错误的是( )。【选项】",
       "options": [
         {
@@ -1131,25 +1084,24 @@
         },
         {
           "option_id": "E",
-          "content": "十灰散凉血止血，方中大蓟宜选用生品【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药饮片不同炮制品的正确应用"
+          "content": "十灰散凉血止血，方中大蓟宜选用生品"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 30
+        "number": 30,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0031",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】关于中药饮片鸦胆子不良反应表现及机制的说法，错误的是( )。【选项】",
       "options": [
         {
@@ -1170,25 +1122,24 @@
         },
         {
           "option_id": "E",
-          "content": "其水溶性苦味成分对皮肤和黏膜有强烈的刺激性【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】常见中药品种不良反应案例介绍"
+          "content": "其水溶性苦味成分对皮肤和黏膜有强烈的刺激性"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 31
+        "number": 31,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0032",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】药物有升降浮沉的药性，治法亦有升降浮沉的因势利导，参合两者即为升降浮沉配伍。下列不属于升降浮沉配伍的是( )。【选项】",
       "options": [
         {
@@ -1209,25 +1160,24 @@
         },
         {
           "option_id": "E",
-          "content": "辛甘化阳【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药饮片的合理应用"
+          "content": "辛甘化阳"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 32
+        "number": 32,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0033",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，32 岁。月经周期延后，量少，色淡红，质黏稠，头晕，心悸气短，脘闷恶心，口腻多痰，带下量多黏腻;舌淡胖苔白腻，脉滑。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -1248,25 +1198,24 @@
         },
         {
           "option_id": "E",
-          "content": "大补元煎【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】月经后期"
+          "content": "大补元煎"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 33
+        "number": 33,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0034",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】胃脘疼痛，口中泛酸，嗳气则舒，其临床意义是( )。【选项】",
       "options": [
         {
@@ -1287,25 +1236,24 @@
         },
         {
           "option_id": "E",
-          "content": "食积内停【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】问诊"
+          "content": "食积内停"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 34
+        "number": 34,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0035",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，49岁。近半年经常寐中汗出，醒后汗止，时有自汗，口渴咽干，五心烦热，两颧色红;舌红少苔，脉细数。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -1326,21 +1274,24 @@
         },
         {
           "option_id": "E",
-          "content": "龙胆泻肝汤【答案】"
+          "content": "龙胆泻肝汤"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 35
+        "number": 35,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0036",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，56岁。咳嗽反复发作，咳声重浊，痰黏色白，胸闷脘痞，食少体倦，大便时溏。诊断为咳嗽，辨析其证候是( )。【选项】",
       "options": [
         {
@@ -1361,25 +1312,24 @@
         },
         {
           "option_id": "E",
-          "content": "痰热郁肺 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】咳嗽"
+          "content": "痰热郁肺"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 36
+        "number": 36,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0037",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，28岁。经期小腹灼热胀痛，拒按，经色暗红，质稠有块;平素带下量多，色黄，时常伴经前低热，小便色黄;舌红苔黄腻，脉滑数。辨析其证候是( )。【选项】",
       "options": [
         {
@@ -1400,25 +1350,24 @@
         },
         {
           "option_id": "E",
-          "content": "肝肾亏虚【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】痛经"
+          "content": "肝肾亏虚"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 37
+        "number": 37,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0038",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】具有促进其他药物透过血脑屏障作用的中药是( )。【选项】",
       "options": [
         {
@@ -1439,21 +1388,24 @@
         },
         {
           "option_id": "E",
-          "content": "银杏叶【答案】"
+          "content": "银杏叶"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 38
+        "number": 38,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0039",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，27 岁。产后2个月，乳房肿胀疼痛，皮色微红，伴恶寒发热，周身酸楚口渴，便秘;舌红苔薄，脉数。宜选用的中成药是( )。【选项】",
       "options": [
         {
@@ -1474,25 +1426,24 @@
         },
         {
           "option_id": "E",
-          "content": "当归苦参丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】乳痈"
+          "content": "当归苦参丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 39
+        "number": 39,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0040",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中药归经配伍可以使药效更加集中于某一经络、某脏腑上，从而提高临床疗效可作为手少阴引经药的是( )。【选项】",
       "options": [
         {
@@ -1513,25 +1464,24 @@
         },
         {
           "option_id": "E",
-          "content": "藁本【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药饮片的合理应用\n\n## 二、配伍选择题\n\n## 【41-43】"
+          "content": "藁本"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 40
+        "number": 40,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0041",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，40 岁。每因郁怒之后，小便涩滞，淋沥不宣，腹胀满疼痛;舌苔薄白脉弦。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -1552,25 +1502,24 @@
         },
         {
           "option_id": "E",
-          "content": "沉香散【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】淋证"
+          "content": "沉香散"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 41
+        "number": 41,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0042",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，28岁。小便频数短涩，尿色黄赤，少腹拘急胀痛，腰痛拒按，大便秘结;舌红苔黄腻，脉滑数。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -1591,25 +1540,24 @@
         },
         {
           "option_id": "E",
-          "content": "沉香散【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】淋证"
+          "content": "沉香散"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 42
+        "number": 42,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0043",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，40岁。小便浑浊如米泔水，尿时热涩疼痛，口干;舌红苔黄腻，脉濡数。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -1630,25 +1578,24 @@
         },
         {
           "option_id": "E",
-          "content": "沉香散【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】淋证【44-46】"
+          "content": "沉香散"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 43
+        "number": 43,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0044",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，36岁。月经出血量多，色淡，淋沥不尽，面色无华，气短懒言，食欲不振，大便溏泄;舌淡苔薄白，脉细弱。诊断为崩漏，辨析其证候是( )。【选项】",
       "options": [
         {
@@ -1669,25 +1616,24 @@
         },
         {
           "option_id": "E",
-          "content": "气血两虚【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】崩漏"
+          "content": "气血两虚"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 44
+        "number": 44,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0045",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，29岁。月经经血非时而下，量时多时少，时止，淋沥不断，经色暗有血块;舌紫暗苔薄白，脉涩。诊断为崩漏，辨析其证候是( )。【选项】",
       "options": [
         {
@@ -1708,25 +1654,24 @@
         },
         {
           "option_id": "E",
-          "content": "气血两虚【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】崩漏"
+          "content": "气血两虚"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 45
+        "number": 45,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0046",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，43 岁。月经提前，量多，经色深红，质稠，有血块，少腹胀痛，口苦咽干;舌红苔薄黄，脉弦数。诊断为月经先期，辨析其证候是( )。【选项】",
       "options": [
         {
@@ -1747,25 +1692,24 @@
         },
         {
           "option_id": "E",
-          "content": "气血两虚【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】月经先期【47-48】"
+          "content": "气血两虚"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 46
+        "number": 46,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0047",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】根据经脉分布，以确定病位所在，两侧头痛，所属的是( )。【选项】",
       "options": [
         {
@@ -1786,25 +1730,24 @@
         },
         {
           "option_id": "E",
-          "content": "阳明头痛【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】问诊"
+          "content": "阳明头痛"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 47
+        "number": 47,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0048",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】根据经脉分布，以确定病位所在，前额部疼痛，所属的是( )。【选项】",
       "options": [
         {
@@ -1825,25 +1768,24 @@
         },
         {
           "option_id": "E",
-          "content": "阳明头痛【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】问诊\n\n【49-50】"
+          "content": "阳明头痛"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 48
+        "number": 48,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0049",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，67岁。大便时溏时泻，水谷不化，泄泻多在黎明之前，腹痛喜暖，伴面色萎黄，肢倦乏力，形寒肢冷，腰膝酸软;舌淡苔白，脉迟弱。宜选用的中成药是( )。【选项】",
       "options": [
         {
@@ -1864,25 +1806,24 @@
         },
         {
           "option_id": "E",
-          "content": "人参健脾丸 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】泄泻"
+          "content": "人参健脾丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 49
+        "number": 49,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0050",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，72岁。大便时溏时泻，水谷不化，稍进油腻食物即泻，迁延反复，纳食减少，食后脘闷不舒，伴面色萎黄，神疲肢倦，乏力;舌淡苔白，脉细弱。宜选用的中成药是( )。【选项】",
       "options": [
         {
@@ -1903,25 +1844,24 @@
         },
         {
           "option_id": "E",
-          "content": "人参健脾丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】泄泻【51-52】"
+          "content": "人参健脾丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 50
+        "number": 50,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0051",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，3 岁，纳食减少，口渴欲饮，饮水较多，皮肤失润，烦躁少寐，手足心热，大便偏干，小短黄;舌红少津，苔花薄，脉细数。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -1942,25 +1882,24 @@
         },
         {
           "option_id": "E",
-          "content": "良附丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】厌食"
+          "content": "良附丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 51
+        "number": 51,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0052",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，4 岁。平日身体瘦弱，不思进食，食不知味，面色少华，神倦乏力，多汗，大便溏薄，多见不消化食物;舌淡苔薄白，脉缓无力。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -1981,25 +1920,24 @@
         },
         {
           "option_id": "E",
-          "content": "良附丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】厌食【53-55】"
+          "content": "良附丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 52
+        "number": 52,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0053",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】含淀粉多的药材和饮片，如天麻、山药、粉葛等，应贮于( )。【选项】",
       "options": [
         {
@@ -2020,25 +1958,24 @@
         },
         {
           "option_id": "E",
-          "content": "密封、凉暗处 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药贮藏"
+          "content": "密封、凉暗处"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 53
+        "number": 53,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0054",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】含挥发油多的药材和饮片，如薄荷、当归、川芎等，应贮于( )。【选项】",
       "options": [
         {
@@ -2059,25 +1996,24 @@
         },
         {
           "option_id": "E",
-          "content": "密封、凉暗处【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药贮藏"
+          "content": "密封、凉暗处"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 54
+        "number": 54,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0055",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】含糖分及黏液质较多的饮片，如肉苁蓉、熟地黄、天冬等，应贮于( )。【选项】",
       "options": [
         {
@@ -2098,25 +2034,24 @@
         },
         {
           "option_id": "E",
-          "content": "密封、凉暗处【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药贮藏【56-58】"
+          "content": "密封、凉暗处"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 55
+        "number": 55,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0056",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】根据临床相关不良反应报告，可能引起恶心、呕吐、皮疹、瘙痒、腹痛、腹泻、腹胀、心悸、胸闷、肝功能异常等不良反应的中成药是( )。【选项】",
       "options": [
         {
@@ -2133,33 +2068,28 @@
         },
         {
           "option_id": "D",
-          "content": "维"
+          "content": "维C银翘片"
         },
         {
           "option_id": "E",
-          "content": "银翘片"
-        },
-        {
-          "option_id": "F",
-          "content": "雷公藤多苷片【答案】"
-        },
-        {
-          "option_id": "G",
-          "content": "【考点】常见中药品种不良反应案例介绍"
+          "content": "雷公藤多苷片"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 56
+        "number": 56,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0057",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】根据临床相关不良反应报告，可能引起全身皮疹伴瘙痒、严重荨麻疹、间质性肾炎、白细胞减少、溶血性贫血、过敏性休克等不良反应的中成药是( )。【选项】",
       "options": [
         {
@@ -2176,33 +2106,28 @@
         },
         {
           "option_id": "D",
-          "content": "维"
+          "content": "维C银翘片"
         },
         {
           "option_id": "E",
-          "content": "银翘片"
-        },
-        {
-          "option_id": "F",
-          "content": "雷公藤多苷片【答案】"
-        },
-        {
-          "option_id": "G",
-          "content": "## 【考点】常见中药品种不良反应案例介绍"
+          "content": "雷公藤多苷片"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 57
+        "number": 57,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0058",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】根据临床相关不良反应报告，可能引起低钾血症、低氯血症、低钠血症、肾功能异常、心前区疼痛、心律失常、白细胞减少等不良反应的中成药是( )。 【选项】",
       "options": [
         {
@@ -2219,33 +2144,28 @@
         },
         {
           "option_id": "D",
-          "content": "维"
+          "content": "维C银翘片"
         },
         {
           "option_id": "E",
-          "content": "银翘片"
-        },
-        {
-          "option_id": "F",
-          "content": "雷公藤多苷片【答案】"
-        },
-        {
-          "option_id": "G",
-          "content": "【考点】常见中药品种不良反应案例介绍【59-61】"
+          "content": "雷公藤多苷片"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 58
+        "number": 58,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0059",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】气的推动作用失常，可见的症状是( )。【选项】",
       "options": [
         {
@@ -2266,25 +2186,24 @@
         },
         {
           "option_id": "E",
-          "content": "易于感冒【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】气"
+          "content": "易于感冒"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 59
+        "number": 59,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0060",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】气的固摄作用失常，可见的症状是( )。【选项】",
       "options": [
         {
@@ -2305,25 +2224,24 @@
         },
         {
           "option_id": "E",
-          "content": "易于感冒【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】气"
+          "content": "易于感冒"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 60
+        "number": 60,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0061",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】气的温煦作用失常，可见的症状是( )。【选项】",
       "options": [
         {
@@ -2344,25 +2262,24 @@
         },
         {
           "option_id": "E",
-          "content": "易于感冒【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】气【62-64】"
+          "content": "易于感冒"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 61
+        "number": 61,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0062",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】针对气滞血瘀痰凝等所致的癥积痞块证，应采用的治法是( )。【选项】",
       "options": [
         {
@@ -2383,25 +2300,24 @@
         },
         {
           "option_id": "E",
-          "content": "消法\n\n【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】消法"
+          "content": "消法"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 62
+        "number": 62,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0063",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】针对水饮痰湿瘀血等停留体内的里实证，应采用的治法是( )。【选项】",
       "options": [
         {
@@ -2422,25 +2338,24 @@
         },
         {
           "option_id": "E",
-          "content": "消法【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】下法"
+          "content": "消法"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 63
+        "number": 63,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0064",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】针对误食毒物，为时不久，毒物尚在胃脘的实证，应采用的治法是( )。【选项】",
       "options": [
         {
@@ -2461,25 +2376,24 @@
         },
         {
           "option_id": "E",
-          "content": "消法【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】吐法【65-66】"
+          "content": "消法"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 64
+        "number": 64,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0065",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，77岁。头昏神疲，语声低微，自汗，肢体无力;舌淡苔薄白，脉虚无力。 辨析其病机是( )。 【选项】",
       "options": [
         {
@@ -2500,25 +2414,24 @@
         },
         {
           "option_id": "E",
-          "content": "气血两虚 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】气血津液辨证"
+          "content": "气血两虚"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 65
+        "number": 65,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0066",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，49岁。形体消瘦，口干咽燥，不欲饮水;舌光红无苔，脉细数。辨析其病机是( )。【选项】",
       "options": [
         {
@@ -2539,25 +2452,24 @@
         },
         {
           "option_id": "E",
-          "content": "气血两虚【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】气血津液辨证【67-68】"
+          "content": "气血两虚"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 66
+        "number": 66,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0067",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】痰少而黏难咳者，多属( )。【选项】",
       "options": [
         {
@@ -2578,25 +2490,24 @@
         },
         {
           "option_id": "E",
-          "content": "燥痰 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】望诊"
+          "content": "燥痰"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 67
+        "number": 67,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0068",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】痰多色黄黏稠者，多属( )。【选项】",
       "options": [
         {
@@ -2617,25 +2528,24 @@
         },
         {
           "option_id": "E",
-          "content": "燥痰【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】望诊【69-71】"
+          "content": "燥痰"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 68
+        "number": 68,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0069",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】按照传统斗谱编排的基本原则，宜放置在斗架下层的饮片是( )。【选项】",
       "options": [
         {
@@ -2656,25 +2566,24 @@
         },
         {
           "option_id": "E",
-          "content": "桃仁【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】饮片处方调配"
+          "content": "桃仁"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 69
+        "number": 69,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0070",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】按照传统斗谱编排的基本原则，宜放置在斗架高层的饮片是( )。【选项】",
       "options": [
         {
@@ -2695,25 +2604,24 @@
         },
         {
           "option_id": "E",
-          "content": "桃仁【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】饮片处方调配"
+          "content": "桃仁"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 70
+        "number": 70,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0071",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】按照传统斗谱编排的基本原则，生品入煎剂应后下的饮片是( )。【选项】",
       "options": [
         {
@@ -2734,25 +2642,24 @@
         },
         {
           "option_id": "E",
-          "content": "桃仁【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药汤剂的煎煮\n\n【72-73】"
+          "content": "桃仁"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 71
+        "number": 71,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0072",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中西药合理联用可起到协同增效作用的是( )。【选项】",
       "options": [
         {
@@ -2773,25 +2680,24 @@
         },
         {
           "option_id": "E",
-          "content": "含乙醇的中成药与硝酸甘油联用【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中西药联用的例举"
+          "content": "含乙醇的中成药与硝酸甘油联用"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 72
+        "number": 72,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0073",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中西药合理联用可起到降低西药不良反应作用的是( )。【选项】",
       "options": [
         {
@@ -2812,25 +2718,24 @@
         },
         {
           "option_id": "E",
-          "content": "含乙醇的中成药与硝酸甘油联用【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中西药联用的例举【74-76】"
+          "content": "含乙醇的中成药与硝酸甘油联用"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 73
+        "number": 73,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0074",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】至宝锭常用的药引是( )。【选项】",
       "options": [
         {
@@ -2851,25 +2756,24 @@
         },
         {
           "option_id": "E",
-          "content": "黄酒或白酒【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中成药的联合应用"
+          "content": "黄酒或白酒"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 74
+        "number": 74,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0075",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】银翘解毒丸常用的药引是( )。【选项】",
       "options": [
         {
@@ -2890,25 +2794,24 @@
         },
         {
           "option_id": "E",
-          "content": "黄酒或白酒【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中成药的联合应用"
+          "content": "黄酒或白酒"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 75
+        "number": 75,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0076",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】通宣理肺丸常用的药引是( )。【选项】",
       "options": [
         {
@@ -2929,25 +2832,24 @@
         },
         {
           "option_id": "E",
-          "content": "黄酒或白酒【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中成药的联合应用【77-78】"
+          "content": "黄酒或白酒"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 76
+        "number": 76,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0077",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，40岁。虚烦不眠，触事易惊，心悸气短，自汗乏力;舌淡，脉弦细。诊断为不寐，辨析其证候是( )。【选项】",
       "options": [
         {
@@ -2968,25 +2870,24 @@
         },
         {
           "option_id": "E",
-          "content": "肝火扰心【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】不寐"
+          "content": "肝火扰心"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 77
+        "number": 77,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0078",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，35岁。入睡困难，甚则彻夜不眠，急躁易怒，头晕头胀，目赤耳鸣，口干而苦，便秘溲赤;舌红苔黄，脉弦而数。诊断为不寐，辨析其证候是( )。【选项】",
       "options": [
         {
@@ -3007,25 +2908,24 @@
         },
         {
           "option_id": "E",
-          "content": "肝火扰心【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】不寐【79-80】"
+          "content": "肝火扰心"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 78
+        "number": 78,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0079",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】寒邪的性质与致病特点是( )。【选项】",
       "options": [
         {
@@ -3046,25 +2946,24 @@
         },
         {
           "option_id": "E",
-          "content": "黏滞重浊【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】外感病因"
+          "content": "黏滞重浊"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 79
+        "number": 79,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0080",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】湿邪的性质与致病特点是( )。【选项】",
       "options": [
         {
@@ -3085,25 +2984,24 @@
         },
         {
           "option_id": "E",
-          "content": "黏滞重浊【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】外感病因【81-83】"
+          "content": "黏滞重浊"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 80
+        "number": 80,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0081",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，50岁。心悸怔忡，失眠多梦，健忘，食少便溏，倦怠乏力;舌淡嫩，脉细弱。辨析其证候是( )。【选项】",
       "options": [
         {
@@ -3124,25 +3022,24 @@
         },
         {
           "option_id": "E",
-          "content": "心肾不交【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】脏腑辨证"
+          "content": "心肾不交"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 81
+        "number": 81,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0082",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，45岁。心悸健忘，头晕耳鸣，虚烦失眠，潮热盗汗，时有梦遗;舌淡红 无苔，脉细数。辨析其证侯是( )。 【选项】",
       "options": [
         {
@@ -3163,25 +3060,24 @@
         },
         {
           "option_id": "E",
-          "content": "心肾不交 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】脏腑辨证"
+          "content": "心肾不交"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 82
+        "number": 82,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0083",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，37岁。心悸心烦，失眠健忘，眩晕，面色无华;舌淡少苔，脉细弱。辨析其证候是( )。【选项】",
       "options": [
         {
@@ -3202,25 +3098,24 @@
         },
         {
           "option_id": "E",
-          "content": "心肾不交【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】脏腑辨证【84-85】"
+          "content": "心肾不交"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 83
+        "number": 83,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0084",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，40岁。体倦乏力，少气懒言，每天苦于排便，大便并不干结，但排出困难，用力努挣则汗出短气，便后乏力更甚;舌苔淡白，脉弱。宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -3241,25 +3136,24 @@
         },
         {
           "option_id": "E",
-          "content": "黄芪汤【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】便秘"
+          "content": "黄芪汤"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 84
+        "number": 84,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0085",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某女，36岁。大便干结，腹胀腹痛，口干口臭，面红心烦，小便短赤;舌红苔黄燥，脉滑数，宜选用的基础方剂是( )。 【选项】",
       "options": [
         {
@@ -3280,25 +3174,24 @@
         },
         {
           "option_id": "E",
-          "content": "黄芪汤【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】便秘【86-88】"
+          "content": "黄芪汤"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 85
+        "number": 85,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0086",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】因含寻骨风，肾功能不全患者禁用的中成药是( )。【选项】",
       "options": [
         {
@@ -3319,25 +3212,24 @@
         },
         {
           "option_id": "E",
-          "content": "益肾蠲痹丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】痹证"
+          "content": "益肾蠲痹丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 86
+        "number": 86,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0087",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】因含马钱子，不可过量、久服的中成药是( )。【选项】",
       "options": [
         {
@@ -3358,25 +3250,24 @@
         },
         {
           "option_id": "E",
-          "content": "益肾蠲痹丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】痹证"
+          "content": "益肾蠲痹丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 87
+        "number": 87,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0088",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】因含熟大黄，脾虚便溏患者慎用的中成药是( )。【选项】",
       "options": [
         {
@@ -3397,25 +3288,24 @@
         },
         {
           "option_id": "E",
-          "content": "益肾蠲痹丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】腰痛【89-90】"
+          "content": "益肾蠲痹丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 88
+        "number": 88,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0089",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】胸闷，心前区刺痛，心悸，气短，乏力，舌紫，脉细。宜选用的中成药是( )。【选项】",
       "options": [
         {
@@ -3436,25 +3326,24 @@
         },
         {
           "option_id": "E",
-          "content": "活心丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】胸痹"
+          "content": "活心丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 89
+        "number": 89,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0090",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】胸闷隐痛，心悸气短，动则汗出，头晕乏力，心烦失眠，面色不华，舌淡红有瘀斑苔少，脉结。宜选用的中成药是( )。【选项】",
       "options": [
         {
@@ -3475,25 +3364,24 @@
         },
         {
           "option_id": "E",
-          "content": "活心丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】胸痹\n\n## 三、综合分析选择题\n\n## 【91-92】\n\n某男，17 岁，皮肤大片风团，色红，瘙痒剧烈，伴有脘腹疼痛，嗳气恶心，神疲纳呆，大便秘结;舌红苔薄黄，脉弦滑数。诊断为瘾疹。"
+          "content": "活心丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 90
+        "number": 90,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0091",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】应采用的治法是( )。【选项】",
       "options": [
         {
@@ -3514,25 +3402,24 @@
         },
         {
           "option_id": "E",
-          "content": "清热凉血，祛风止痒【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】瘾疹"
+          "content": "清热凉血，祛风止痒"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 91
+        "number": 91,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0092",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】宜选用的中成药是( )。【选项】",
       "options": [
         {
@@ -3553,25 +3440,24 @@
         },
         {
           "option_id": "E",
-          "content": "润燥止痒胶囊【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】瘾疹【93-94】\n\n某男，52 岁。肥胖，嗜好烟酒。胁肋重着疼痛，口苦口黏，胸闷纳呆，小便色黄，大便不爽;舌红苔黄腻，脉弦滑数。超声检查结果提示中度脂肪肝。血生化检验结果：总胆固醇8.2mmol/L，三酰甘油(甘油三酯)3.5mmol/L，高密度脂蛋白 0.45mmol/L，低密度脂蛋白7.1mmol/L，血清总蛋白 55g/L。"
+          "content": "润燥止痒胶囊"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 92
+        "number": 92,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0093",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】与脂肪肝发病关系密切的检验指标是( )。【选项】",
       "options": [
         {
@@ -3592,25 +3478,24 @@
         },
         {
           "option_id": "E",
-          "content": "血清总蛋白【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】三酰甘油(TG)"
+          "content": "血清总蛋白"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 93
+        "number": 93,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0094",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中医诊断为胁痛，证属肝胆湿热，宜选用的基础方剂是( )。 【选项】",
       "options": [
         {
@@ -3631,25 +3516,24 @@
         },
         {
           "option_id": "E",
-          "content": "逍遥散 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】胁痛\n\n某女，68岁。素患缺铁性贫血，常规口服硫酸亚铁片治疗。本次因失眠就诊，症见不寐，心悸易惊，多梦，健忘，神疲乏力;舌淡苔白，脉细弱。医师处方柏子养心丸(水蜜丸)，口服，一次6g，一日2 次。"
+          "content": "逍遥散"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 94
+        "number": 94,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0095",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】执业药师审核，认为处方不合理，其原因是( )。【选项】",
       "options": [
         {
@@ -3670,64 +3554,62 @@
         },
         {
           "option_id": "E",
-          "content": "柏子养心丸不宜用于不寐合并缺铁性贫血的患者【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中西药联用的例举"
+          "content": "柏子养心丸不宜用于不寐合并缺铁性贫血的患者"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 95
+        "number": 95,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0096",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】医师根据执业药师审方建议，更换处方药品为乌灵胶囊。原不合理处方中用 药错误的分级是( )。 【选项】",
       "options": [
         {
           "option_id": "A",
-          "content": "级"
+          "content": "B 级"
         },
         {
           "option_id": "B",
-          "content": "级"
+          "content": "A 级"
         },
         {
           "option_id": "C",
-          "content": "级"
+          "content": "C 级"
         },
         {
           "option_id": "D",
-          "content": "级"
+          "content": "D 级"
         },
         {
           "option_id": "E",
-          "content": "级 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中药用药错误"
+          "content": "E 级"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 96
+        "number": 96,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0097",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】患者家中备有健脾生血片，欲加服，执业药师给予建议，正确的是( )。【选项】",
       "options": [
         {
@@ -3744,33 +3626,28 @@
         },
         {
           "option_id": "D",
-          "content": "健脾生血片含维生素"
+          "content": "健脾生血片含维生素B12有利于贫血治疗，可以同用"
         },
         {
           "option_id": "E",
-          "content": "12有利于贫血治疗，可以同用"
-        },
-        {
-          "option_id": "F",
-          "content": "健脾生血片慎用于缺铁性贫血患者，不宜同用【答案】"
-        },
-        {
-          "option_id": "G",
-          "content": "【考点】含西药组分的中成药品种及使用注意事项\n\n【98-101】\n\n某男，81岁。患消渴病20年，小便频数，甚则饮一溲一，咽干舌燥，面容憔悴，耳轮干枯，腰膝酸软，畏寒肢冷;舌白少津，脉沉细无力。"
+          "content": "健脾生血片慎用于缺铁性贫血患者，不宜同用"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 97
+        "number": 97,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0098",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】四诊合参，辨析其证候是( )。 【选项】",
       "options": [
         {
@@ -3791,25 +3668,24 @@
         },
         {
           "option_id": "E",
-          "content": "阴虚燥热 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】消渴"
+          "content": "阴虚燥热"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 98
+        "number": 98,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0099",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】根据辨证，宜选用的中成药是( )。【选项】",
       "options": [
         {
@@ -3830,25 +3706,24 @@
         },
         {
           "option_id": "E",
-          "content": "知柏地黄丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】消渴"
+          "content": "知柏地黄丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 99
+        "number": 99,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0100",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】患者在服用上述中成药期间，应注意的问题是( )。【选项】",
       "options": [
         {
@@ -3869,25 +3744,24 @@
         },
         {
           "option_id": "E",
-          "content": "该药含有麦冬，若腹泻应停用【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】消渴"
+          "content": "该药含有麦冬，若腹泻应停用"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 100
+        "number": 100,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0101",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】服药1 个月上述症状缓解，停药后，近日又见溺痛，不甚赤涩，但淋沥不已，时作时止，遇劳即发，腰膝酸软，神疲乏力;舌淡，脉细弱。宜选用的中成药是( )。【选项】",
       "options": [
         {
@@ -3908,49 +3782,62 @@
         },
         {
           "option_id": "E",
-          "content": "前列回春胶囊【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】淋证【102-104】\n\n某女，33 岁。浮肿 1 年，腰以下为甚，按之凹陷，不易恢复，脘腹胀闷，纳少，面色不华，神疲乏力，四肢倦怠，畏寒，小便短少，大便溏薄;舌淡苔白腻，脉沉缓。诊断为水肿。102.【题干】四诊合参，辨析其证候是( )。\n\n【选项】"
-        },
-        {
-          "option_id": "G",
-          "content": "肾阳虚衰"
-        },
-        {
-          "option_id": "H",
-          "content": "湿热壅盛"
-        },
-        {
-          "option_id": "I",
-          "content": "水湿浸渍"
-        },
-        {
-          "option_id": "J",
-          "content": "脾阳虚衰"
-        },
-        {
-          "option_id": "K",
-          "content": "风水相搏【答案】"
-        },
-        {
-          "option_id": "L",
-          "content": "【考点】水肿"
+          "content": "前列回春胶囊"
         }
       ],
-      "answer": [],
+      "answer": [
+        "E"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 101
+        "number": 101,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-c1922d8c70-q0102",
+      "question_type": "single_choice",
+      "question_content": "【题干】四诊合参，辨析其证候是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾阳虚衰"
+        },
+        {
+          "option_id": "B",
+          "content": "湿热壅盛"
+        },
+        {
+          "option_id": "C",
+          "content": "水湿浸渍"
+        },
+        {
+          "option_id": "D",
+          "content": "脾阳虚衰"
+        },
+        {
+          "option_id": "E",
+          "content": "风水相搏"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 102,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0103",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】应采用的治法是( )。【选项】",
       "options": [
         {
@@ -3971,25 +3858,24 @@
         },
         {
           "option_id": "E",
-          "content": "分利湿热，化气行水【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】水肿"
+          "content": "分利湿热，化气行水"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 103
+        "number": 103,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0104",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -4010,25 +3896,24 @@
         },
         {
           "option_id": "E",
-          "content": "越婢加术汤【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】水肿【105-107】\n\n某男，59 岁。近 3 年经常眩晕，头胀头痛，昨日突发口眼㖞斜，舌强，语言不利，半身不遂;舌红苔黄，脉弦。诊断为中风。"
+          "content": "越婢加术汤"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 104
+        "number": 104,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0105",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】四诊合参，辨析其证候是( )。 【选项】",
       "options": [
         {
@@ -4049,25 +3934,24 @@
         },
         {
           "option_id": "E",
-          "content": "热极生风 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中风"
+          "content": "热极生风"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 105
+        "number": 105,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0106",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】应采用的治法是( )。 【选项】",
       "options": [
         {
@@ -4088,25 +3972,24 @@
         },
         {
           "option_id": "E",
-          "content": "祛风化痰，通络开窍 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中风"
+          "content": "祛风化痰，通络开窍"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 106
+        "number": 106,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0107",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】宜选用的基础方剂是( )。【选项】",
       "options": [
         {
@@ -4127,25 +4010,24 @@
         },
         {
           "option_id": "E",
-          "content": "通窍活血汤【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中风【108-110】\n\n某男，28岁。于烈日下工作后，出现高热，汗多，头痛面红，烦躁，小便赤;舌红少津，脉洪大。辨证为阳暑，治以白虎汤(石膏、知母、甘草、粳米)。"
+          "content": "通窍活血汤"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 107
+        "number": 107,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0108",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】执业药师应具有临床思维，能根据临床诊断及方药组成分析处方的合理性。此方体现的治法是( )。【选项】",
       "options": [
         {
@@ -4166,25 +4048,24 @@
         },
         {
           "option_id": "E",
-          "content": "气血两清【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】清法"
+          "content": "气血两清"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 108
+        "number": 108,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0109",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】此方中知母应选用的炮制品是( )。【选项】",
       "options": [
         {
@@ -4205,25 +4086,24 @@
         },
         {
           "option_id": "E",
-          "content": "麸炒品【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中暑"
+          "content": "麸炒品"
         }
       ],
-      "answer": [],
+      "answer": [
+        "C"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 109
+        "number": 109,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0110",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】执业药师告知患者正确的煎服方法是( )。 【选项】",
       "options": [
         {
@@ -4244,25 +4124,24 @@
         },
         {
           "option_id": "E",
-          "content": "石膏先煎;空腹服 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "【考点】中暑\n\n四、多项选择题"
+          "content": "石膏先煎;空腹服"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 110
+        "number": 110,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0111",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】在疾病的预防中，扶助正气、提高抗病能力应采取的主要方法有( )。【选项】",
       "options": [
         {
@@ -4283,25 +4162,24 @@
         },
         {
           "option_id": "E",
-          "content": "避免病邪侵害【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "BCD【考点】治未病"
+          "content": "避免病邪侵害"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 111
+        "number": 111,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0112",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，59岁。胁下积块，固定不移，胀痛拒按;舌边瘀斑苔薄，脉弦。诊断为积聚(肝硬化)，证属气滞血阻，可选用的中成药有( )。【选项】",
       "options": [
         {
@@ -4322,25 +4200,24 @@
         },
         {
           "option_id": "E",
-          "content": "中华肝灵胶囊【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "E【考点】积聚"
+          "content": "中华肝灵胶囊"
         }
       ],
-      "answer": [],
+      "answer": [
+        "D"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 112
+        "number": 112,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0113",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】关于妊娠期及哺乳期妇女用药指导的说法，正确的有( )。【选项】",
       "options": [
         {
@@ -4361,25 +4238,24 @@
         },
         {
           "option_id": "E",
-          "content": "对于—天服用多次的药物，建议哺乳后立即给药【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "BCE【考点】应用药品的特殊提示"
+          "content": "对于—天服用多次的药物，建议哺乳后立即给药"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 113
+        "number": 113,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0114",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】根据药性及治疗疾病的不同，药物的服用时间也各不相同。适宜饭前服用的中成药有( )。【选项】",
       "options": [
         {
@@ -4400,25 +4276,24 @@
         },
         {
           "option_id": "E",
-          "content": "大山楂丸【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "D【考点】用药教育服务"
+          "content": "大山楂丸"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 114
+        "number": 114,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0115",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，26岁。颜面、胸背皮疹红肿疼痛，平日皮肤油腻，伴有口臭，便秘，溲黄;舌红苔黄腻，脉滑数。诊断为粉刺，证属胃肠湿热，可选用的中成药有( )。【选项】",
       "options": [
         {
@@ -4439,25 +4314,24 @@
         },
         {
           "option_id": "E",
-          "content": "清热暗疮片 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "BE 【考点】粉刺"
+          "content": "清热暗疮片"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 115
+        "number": 115,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0116",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】根据中医“异病同治”理论，多种疾病出现心脾两虚或气血亏虚证候时，可用归脾汤治疗，该类疾病有( )。【选项】",
       "options": [
         {
@@ -4478,25 +4352,24 @@
         },
         {
           "option_id": "E",
-          "content": "喘证【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "BCD【考点】辨证论治"
+          "content": "喘证"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 116
+        "number": 116,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0117",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】中药处方对饮片的调配、煎法、用法等方面的特殊要求，常以脚注形式体现，用时需捣碎的中药饮片有( )。【选项】",
       "options": [
         {
@@ -4517,25 +4390,24 @@
         },
         {
           "option_id": "E",
-          "content": "豆蔻【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "CDE【考点】处方审核的主要内容"
+          "content": "豆蔻"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 117
+        "number": 117,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0118",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】正治是临床常用的治则，主要治法有( )。【选项】",
       "options": [
         {
@@ -4556,25 +4428,24 @@
         },
         {
           "option_id": "E",
-          "content": "以寒治热【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "E【考点】正治反治"
+          "content": "以寒治热"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 118
+        "number": 118,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0119",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】可见肾虚证的月经病有( )。 【选项】",
       "options": [
         {
@@ -4595,25 +4466,24 @@
         },
         {
           "option_id": "E",
-          "content": "崩漏 【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "BCDE\n\n【考点】中医妇科常见病的辨证论治"
+          "content": "崩漏"
         }
       ],
-      "answer": [],
+      "answer": [
+        "A"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 119
+        "number": 119,
+        "answer_source": "same_document"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-c1922d8c70-q0120",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "【题干】某男，30 岁。感冒后咳嗽，服用安嗽糖浆，因其含有西药成分盐酸麻黄碱。避免重复用药，不宜与安嗽糖浆同时服用的中成药有( )。 【选项】",
       "options": [
         {
@@ -4634,20 +4504,19 @@
         },
         {
           "option_id": "E",
-          "content": "化痰平喘片\n\n【答案】"
-        },
-        {
-          "option_id": "F",
-          "content": "CD\n\n【考点】含西药组分的中成药品种及使用注意事项"
+          "content": "化痰平喘片"
         }
       ],
-      "answer": [],
+      "answer": [
+        "B"
+      ],
       "explanation": "",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2021年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
-        "number": 120
+        "number": 120,
+        "answer_source": "same_document"
       }
     }
   ]

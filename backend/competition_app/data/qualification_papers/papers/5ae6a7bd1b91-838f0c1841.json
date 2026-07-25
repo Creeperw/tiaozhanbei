@@ -3,16 +3,16 @@
   "questions": [
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "表示药物有软坚散结，泻下通便作用的味是（ ）",
       "options": [
         {
           "option_id": "A",
-          "content": "、 辛"
+          "content": "辛"
         },
         {
           "option_id": "B",
-          "content": "、 苦"
+          "content": "苦"
         },
         {
           "option_id": "C",
@@ -24,21 +24,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 甘"
+          "content": "甘"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "1、辛味：能散、能行，有发散、行气、活血作用。 2、苦味：能泄、能燥、能坚。能泄的含义有三：通泄、降泄、清泄；能燥即是指苦能燥湿；能坚：是指苦能坚阴、坚厚肠胃。 3、酸味：能收、能涩，有收敛固涩作用。 4、咸味：能软、能下，有软坚散结、泻下通便作用。 5、甘味：能补、能缓、能和，有补虚、和中、缓急、调和药性等作用。 解析：使药：意义有二，一是引经药，即引方中诸药直达病所的药物；二是调和药，即调和诸药的作用，使其合力驱邪。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
+        "number": 1,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据方剂组方原则，下列关于使药作用的说法，正确的是（ ）",
       "options": [
         {
@@ -59,7 +62,7 @@
         },
         {
           "option_id": "E",
-          "content": "、 与君药药性相反而又能在治疗中起相成作用"
+          "content": "与君药药性相反而又能在治疗中起相成作用"
         }
       ],
       "answer": [],
@@ -68,12 +71,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
+        "number": 2,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "莪术药材的适宜采收期是（ ）",
       "options": [
         {
@@ -94,21 +98,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 花冠由黄变红时"
+          "content": "花冠由黄变红时"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "本题考查根及根茎类植物药采收时间。考生应掌握莪术属于根及根茎类中药，以及掌握根及根茎类的采收时间：一般在秋、冬两季植物地上部分将枯萎时及春初发芽前或刚露苗时采收。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
+        "number": 3,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "宜用酸水提取，加碱调至碱性后可从水中沉淀析出的成分是（ ）",
       "options": [
         {
@@ -129,21 +136,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 木脂素类"
+          "content": "木脂素类"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "利用酸碱性进行分离：对酸性、碱性或两性有机化合物来说，常可通过加入酸、碱以调节溶液的pH，改变分子的存在状态（游离型或解离型），从而改变溶解度而实现分离。例如，一些生物碱类在酸性水从药材中提出后，加碱调至碱性即可从水中沉淀析出，称为酸提碱沉法（酸/碱法）。提取黄酮、蒽醌类酚酸性成分时用氢氧化钙提取，加酸中和使其沉淀出来达到分离的目的称为碱提酸沉法，也属于这一分离类型。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
+        "number": 4,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "川乌经炮制，其生物碱类成分结构改变，毒性降低。所发生的化学反应是（ ）",
       "options": [
         {
@@ -164,21 +174,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 加成反应"
+          "content": "加成反应"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "乌头碱、次乌头碱、新乌头碱等双酯型生物碱，具麻辣味，毒性极强，是乌头的主要毒性成分。若将双酯型生物碱在碱水中加热，或将乌头直接浸泡于水中加热，或不加热仅在水中长时间浸泡，都可水解酯基，生成单酯型生物碱或无酯键的醇胺型生物碱。如乌头碱水解后生成的单酯型生物碱为乌头次碱，无酯键的醇胺型生物碱为乌头原碱。单酯型生物碱的毒性小于双酯型生物碱，而醇胺型生物碱几乎无毒性，但它们均不减低原双酯型生物碱的疗效。这就是乌头及附子经水浸、加热等炮制后毒性变小的化学原理。为川乌的水解反应。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
+        "number": 5,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0006",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "含有吡咯里西啶类生物碱，且有肝、肾毒性的中药是（ ）",
       "options": [
         {
@@ -199,21 +212,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 王不留行"
+          "content": "王不留行"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "千里光中所含有的生物碱主要为吡咯里西啶类生物碱，主要化学成分有千里光宁碱、千里光菲宁碱及痕量的阿多尼弗林碱等。千里光具有肝、肾毒性和胚胎毒性，使用时应该严格注意。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 6
+        "number": 6,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0007",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "《中国药典》规定，以苦杏仁苷为含量测定指标成分的中药是（ ）",
       "options": [
         {
@@ -234,21 +250,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 沙苑子"
+          "content": "沙苑子"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "郁李仁：《中国药典》以苦杏仁苷为指标成分进行含量测定，规定苦杏仁苷含量不低于2.0％。需熟记以苦杏仁苷为指标成分的中药有：苦杏仁、桃仁、郁李仁。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 7
+        "number": 7,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0008",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "丹参中的脂溶性有效成分是( )",
       "options": [
         {
@@ -269,20 +288,19 @@
         },
         {
           "option_id": "E",
-          "content": "、 丹参酮Ⅱ<sub>"
-        },
-        {
-          "option_id": "F",
-          "content": "</sub>"
+          "content": "丹参酮Ⅱ<sub>A</sub>"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "丹参的化学成分主要包括脂溶性成分和水溶性成分两大部分。脂溶性成分大多为共轭醌、酮类化合物。如丹参酮Ⅰ、丹参酮 $\\mathrm { I I } _ { \\mathrm { A } }$ 、丹参酮 $\\mathrm { { I I } _ { B } }$ 、隐丹参酮等。水溶性成分则包括丹参素，丹酚酸、丹酚酸B，原儿茶酸，原儿茶醛等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 8
+        "number": 8,
+        "answer_source": "paired_material"
       }
     },
     {
@@ -307,23 +325,26 @@
           "content": "柴胡皂苷dE 、 葛根素"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "肿节风主要含有酚类、鞣质、黄酮苷、香豆素和内酯类化合物。其中香豆素包括异嗪皮啶、东莨菪内酯等。《中国药典》采用高效液相色谱法测定药材中异嗪皮啶和迷迭香酸含量，其中异嗪皮啶含量不少于0.02％，迷迭香酸含量不少于0.02％。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 9
+        "number": 9,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0010",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "《中国药典》规定，以总黄酮为含量测定成分的中药是（ ）",
       "options": [
         {
           "option_id": "A",
-          "content": "、 三七"
+          "content": "三七"
         },
         {
           "option_id": "B",
@@ -339,21 +360,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 天仙子"
+          "content": "天仙子"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "《中国药典》以总黄酮为指标成分对槐米或槐花进行鉴别和含量测定。要求槐花总黄酮（以芦丁计）不少于8.0％，槐米总黄酮不少于20.0％，对照品采用芦丁。 三七在《中国药典》以人参皂苷 $\\mathrm { R g _ { 1 } }$ 、人参皂苷 $\\mathsf { R b } _ { 1 }$ 及三七皂苷 $\\mathrm { \\bf R } _ { 1 }$ 指标成分进行含量测定。细辛在《中国药典》以细辛脂素为指标成分进行含量测定。五味子在《中国药典》采用高效液相色谱法测定药材中五味子醇甲的含量，要求不得少于0.40%。天仙子在《中国药典》以东莨菪碱和莨菪碱为指标成分进行含量测定。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 10
+        "number": 10,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0011",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "具过氧桥结构，属倍半萜内酯类的化合物是( )",
       "options": [
         {
@@ -374,21 +398,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 青蒿素"
+          "content": "青蒿素"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "在青蒿所含化学成分中，青蒿素是主要抗症有效成分，系我国学者于20世纪70年代初首次从青蒿中分离得到的具有过氧基的新型倍半萜内酯。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 11
+        "number": 11,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0012",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "含胆酸的中药是( )",
       "options": [
         {
@@ -409,21 +436,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 僵蚕"
+          "content": "僵蚕"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "牛黄为牛科动物牛的干燥胆结石，少数为胆管或肝管结石，为解痉、镇静、解热、解毒中药。牛黄约含8％胆汁酸，主要成分为胆酸、去氧胆酸和石胆酸。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 12
+        "number": 12,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0013",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "山药治疗脾虚久泻，宜选用的炮制方法是( )",
       "options": [
         {
@@ -436,7 +466,7 @@
         },
         {
           "option_id": "C",
-          "content": "、 土炒"
+          "content": "土炒"
         },
         {
           "option_id": "D",
@@ -444,21 +474,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 炒焦"
+          "content": "炒焦"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "炮制作用：山药味甘，性平，归脾、胃、肾经。具有补脾益胃，生津益肺，补肾涩精的功能。 1、山药以补肾生精，益肺阴为主。用于肾虚遗精、尿频，肺虚喘咳，阴虚消渴。 2、土炒山药以补脾止泻为主，用于脾虚久泻。 3、麸炒山药以补脾健胃为主。用于脾虚食少，泄泻便溏，白带多过。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 13
+        "number": 13,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0014",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "醋炙柴胡的目的是( ）",
       "options": [
         {
@@ -479,21 +512,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 引药入肝，增强滋阴作用"
+          "content": "引药入肝，增强滋阴作用"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "醋柴胡的升散之性缓和，疏肝止痛的作用增强。多用于肝郁气滞的胁肋胀痛，腹痛及月经不调等症。故正确答案为C。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 14
+        "number": 14,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0015",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "水火共制时，采用燀法进行炮制的中药是( ）",
       "options": [
         {
@@ -514,21 +550,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 天南星"
+          "content": "天南星"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "燀法：将药物置沸水中浸煮短暂时间，取出，分离种皮的方法。燀制的主要目的：①在保持有效成分的前提下，除去非药用部分。如苦杏仁等。②分离不同药用部位。如白扁豆等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 15
+        "number": 15,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0016",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "清炒（单炒）时，采用炒黄法的中药是( )",
       "options": [
         {
@@ -545,25 +584,28 @@
         },
         {
           "option_id": "D",
-          "content": "、 荆芥"
+          "content": "荆芥"
         },
         {
           "option_id": "E",
-          "content": "、 枳壳"
+          "content": "枳壳"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "1、采用炒黄法的中药有：牛蒡子、芥子、王不留行、莱菔子、苍耳子等。 2、采用炒焦法的中药有：山楂、栀子等。 3、采用炒炭法的中药有：大蓟、蒲黄、荆芥等。4、采用麸炒法的中药有：枳壳、苍术等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 16
+        "number": 16,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0017",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "斑蝥有毒，为降低其毒性，采用的炮制方法为( )",
       "options": [
         {
@@ -584,21 +626,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 滑石粉炒"
+          "content": "滑石粉炒"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "斑蝥味辛，性热；有大毒。宜采用米炒法炮制。米炒斑蝥毒性降低，其气味得到矫正，可内服。 解析：防风药材性状鉴别：根头部有明显密集的环纹，习称“蚯蚓头”，环纹上有的有棕褐色毛状残存叶基。表面灰棕色或棕褐色，粗糙，有纵皱纹、多数横长皮孔及点状突起的细根痕。体轻、质松，易折断，断面不平坦，皮部棕黄色至棕色，有裂隙，散生黄棕色油点，木质部浅黄色，气特异，味微甘。 解析：中药制剂按给药途径与方法分类：(1)经口服给药的剂型，如汤剂、合剂、糖浆剂、颗粒剂、丸剂、片剂等。(2) 经直肠给药的剂型，如灌肠剂、栓剂等。 (3) 经注射给药的剂型，如静脉、肌内、皮下、皮内及穴位注射剂。 (4）呼吸道给药的剂型，如气雾剂、吸入剂等。 (5）经皮肤给药的剂型，如洗剂、搽剂、涂膜剂、糊剂、软膏剂、硬膏剂、贴剂、贴膏剂等。 (6）经黏膜给药的剂型，如滴眼剂、滴鼻剂、口腔膜剂、舌下片剂、含漱剂等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 17
+        "number": 17,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0018",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根头部具有横环纹，习称“蚯蚓头”的药材是( )",
       "options": [
         {
@@ -611,7 +656,7 @@
         },
         {
           "option_id": "C",
-          "content": "、 柴胡"
+          "content": "柴胡"
         },
         {
           "option_id": "D",
@@ -619,7 +664,7 @@
         },
         {
           "option_id": "E",
-          "content": "、 白术"
+          "content": "白术"
         }
       ],
       "answer": [],
@@ -628,12 +673,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 18
+        "number": 18,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0019",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "经黏膜给药的剂型是( )",
       "options": [
         {
@@ -654,7 +700,7 @@
         },
         {
           "option_id": "E",
-          "content": "、 胶囊剂"
+          "content": "胶囊剂"
         }
       ],
       "answer": [],
@@ -663,12 +709,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 19
+        "number": 19,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0020",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "关于散剂生产与贮藏有关规定的说法，错误的是( )",
       "options": [
         {
@@ -689,16 +736,19 @@
         },
         {
           "option_id": "E",
-          "content": "、 含易吸潮药物的散剂应密闭贮藏"
+          "content": "含易吸潮药物的散剂应密闭贮藏"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "散剂生产与贮藏的有关规定： 1、供制散剂的原料药均应粉碎。除另有规定外，内服散剂应为细粉；儿科用及局部用散剂应为最细粉。眼用散剂应为极细粉，且应无菌。按照《中国药典》要求，细粉系指能全部通过五号筛，并含能够通过六号筛不少于95% 的粉末；最细粉系指能全部通过六号筛，并含能够通过七号筛不少于95% 的粉末；极细粉系指能全部通过八号筛，并含能够通过九号筛不少于95%的粉末。 2、散剂应干燥、疏松、混合均匀、色泽一致。制备含有毒性药、贵重药或药物剂量小的散剂时，应采用配研法混匀并过筛。 3、多剂量包装的散剂应附分剂量的用具；含有毒性药的内服散剂应单剂量包装。 4、散剂量中可含或不含辅料。口服散剂需要时亦可加矫味剂、芳香剂、着色剂等。 5、除另有规定外，散剂应密闭贮存，含挥发性药物或易吸潮的散剂应密封贮存。生物制品应采用防潮材料包装。 6、为防止胃酸对散剂中活性成分的破坏，散剂稀释剂中可选用中和胃酸的辅料。 7、散剂用于烧伤治疗如为非无菌制剂的，应在标签上标明“非无菌制剂”；产品说明书中应注明“本品为非无菌制剂”，同时在适应症下明确“用于程度较轻的烧伤（Ⅰ度或浅Ⅱ度）”；注意事项下规定“应遵医嘱使用”。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 20
+        "number": 20,
+        "answer_source": "paired_material"
       }
     },
     {
@@ -711,30 +761,33 @@
           "content": "口服混悬剂的沉降体积比应不低于0.90B、 干混悬剂按干燥失重法测定，减失重量不得过2.0%"
         },
         {
-          "option_id": "B",
+          "option_id": "C",
           "content": "干混悬剂按各品种项下规定的比例加水振摇应均匀分散"
         },
         {
-          "option_id": "C",
+          "option_id": "D",
           "content": "凡检查含量均匀度的口服混悬剂，一般不再进行装量检查"
         },
         {
-          "option_id": "D",
-          "content": "、 凡检查含量均匀度的口服混悬剂，不再进行沉降体积比检查"
+          "option_id": "E",
+          "content": "凡检查含量均匀度的口服混悬剂，不再进行沉降体积比检查"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "口服混悬液检查与要求：口服混悬剂应分散均匀，放置后若有沉淀物，经振摇应易再分散。口服混悬剂在标签上应注明“用前摇匀＂；除另有规定外，口服混悬剂应进行以下相应检查。 1、装量：除另有规定外，单剂量包装的口服混悬液的装量，照下述方法检查，应符合规定。检查法：取供试品10 袋（支），将内容物分别倒入经标化的量入式量筒内，检视，每支装量与标示装量相比较，均不得少于其标示量。凡规定检查含量均匀度者，一般不再进行装量检查。多剂量包装的口服混悬剂和干混悬剂照最低装量检查法检查，应符合规定。 2、装量差异：除另有规定外，单剂量包装的干混悬剂照下述方法检查，应符合规定。检查法：取供试品 20 袋（支），分别精密称定内容物，计算平均装量，每袋（支）装量与平均装量相比较，装量差异限度应在平均装量的±10%以内，超出装量差异限度的不得多于2袋（支），并不得有1袋（支）超出限度1倍。 3、干燥失重：除另有规定外，干混悬剂照干燥失重测定法，减失重量不得过2.0%。 4、沉降体积比：口服混悬剂沉降体积比应不低于0.90。 5、微生物限度：除另有规定外，照非无菌产品微生物限度检查：微生物计数法和控制菌检法及非无菌药品微生物限度标准检查，应符合规定。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 21
+        "number": 21,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0022",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "注射剂中添加亚硫酸钠的目的是( )",
       "options": [
         {
@@ -755,21 +808,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 抑制微生物增殖"
+          "content": "抑制微生物增殖"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "注射剂的附加剂有： 1、常用的增溶剂有聚山梨酯80、蛋黄卵磷脂、大豆磷脂等；聚山梨酯80、大豆磷脂、蛋黄卵磷脂也可用作乳化剂；甘油可用作助悬剂。 2、防止药物氧化：常用的抗氧剂有亚硫酸钠、亚硫酸氢钠和焦亚硫酸钠等。常用的惰性气体有二氧化碳和氮气。常用的金属离子络合剂有乙二胺四乙酸（EDTA）、乙二胺四乙酸二钠（EDTA-2Na）等，常用量为0.03%\\~0.05%。 3、调节渗透压：氯化钠溶液、葡萄糖溶液。 4、调节pH：盐酸、枸橼酸、氢氧化钠、氢氧化钾、碳酸氢钠、磷酸氢二钠、磷酸二氢钠等。 5、抑制微生物增殖：0.5%苯酚、0.3%甲酚、0.5%三氯叔丁醇、0.01%硫柳汞等。 6、减轻疼痛：三氯叔丁醇、盐酸普鲁卡因、盐酸利多卡因等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 22
+        "number": 22,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0023",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "在体温下软化并可缓慢溶解于分泌液的栓剂基质是( )",
       "options": [
         {
@@ -790,21 +846,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 半合成棕榈油酯"
+          "content": "半合成棕榈油酯"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "甘油明胶属于水溶性基质，具有弹性，不易折断，在体温下能软化并缓慢溶于分泌液中。常用作阴道栓剂基质，但不适用于鞣酸等与蛋白质有配伍禁忌的药物。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 23
+        "number": 23,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0024",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "除另有定外，不需要检查溶散时限的丸剂是( )",
       "options": [
         {
@@ -825,21 +884,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 大蜜丸"
+          "content": "大蜜丸"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "溶散时限： 1、除另有规定外，小蜜丸、水蜜丸和水丸应在1小时内全部溶散；2、浓缩丸和糊丸应在2小时内全部溶散； 3、滴丸应在30分钟内全部溶散，包衣滴丸应在1小时内全部溶散。 4、大蜜丸及研碎、嚼碎后或用开水、黄酒等分散后服用的丸剂不检查溶散时限。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 24
+        "number": 24,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0025",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "除另有规定外，应检查溶出度的颗粒剂是( )",
       "options": [
         {
@@ -860,21 +922,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 混悬颗粒"
+          "content": "混悬颗粒"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "颗粒剂的质量要求： 1、除另有规定外，混悬颗粒剂应进行溶出度检查。 2、缓释颗粒、控释颗粒、肠溶颗粒应进行释放度检查。 3、可溶性颗粒、泡腾颗粒应进行溶化性检查。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 25
+        "number": 25,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0026",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "除另有规定外，应检查融变时限的片剂是( )",
       "options": [
         {
@@ -895,21 +960,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 分散片"
+          "content": "分散片"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "片剂的质量要求：阴道片应检查融变时限。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 26
+        "number": 26,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0027",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "既可内服又可外用的剂型是( )",
       "options": [
         {
@@ -930,21 +998,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 丹剂"
+          "content": "丹剂"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "锭剂系指饮片细粉加适宜黏合剂（或利用饮片细粉本身的黏性）制成不同形状的固体制剂。供内服，可吞服或研细以水或黄酒化服，外用多是研细用醋或酒调敷，也可作嗅入或外搽药用。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 27
+        "number": 27,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0028",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "用于比较药物不同制剂中吸收速度的药物动力学参数是( )",
       "options": [
         {
@@ -965,21 +1036,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 药物的血药浓度达峰时间"
+          "content": "药物的血药浓度达峰时间"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "E"
+      ],
+      "explanation": "生物利用中，常用药物血药浓度达峰时间比较药物不同制剂中吸收速度。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 28
+        "number": 28,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0029",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "主要有效成份是绿原酸，异绿原酸的清热药是( )",
       "options": [
         {
@@ -1000,21 +1074,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 连翘"
+          "content": "连翘"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "金银花主要有效成分为有机酸，普遍认为绿原酸和异绿原酸是金银花的主要抗菌有效成分。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 29
+        "number": 29,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0030",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "具有性激素样作用的补虚药是( )",
       "options": [
         {
@@ -1031,60 +1108,28 @@
         },
         {
           "option_id": "D",
-          "content": "、 龟甲"
+          "content": "龟甲"
         },
         {
           "option_id": "E",
-          "content": "、 北沙参"
+          "content": "北沙参"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "“该试题已过期，新版教材已不考，为保证试卷完整性，仅供考生参阅。”少数补虚药中所含成分本身具有性激素样的作用，如鹿茸中含有雌二醇发挥雌激素作用。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 30
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0031",
-      "question_type": "multiple_choice",
-      "question_content": "试卷附图1-5，图中所示中药为威灵仙的是( )",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "、\n\n![](images/a90d24090bcf503da19e6f935c44a5ac34b5ce074c9195ab0ae8284281fa809b.jpg)"
-        },
-        {
-          "option_id": "B",
-          "content": "、\n\n![](images/cb428ac4201e7f8fdf6881db5d033ffc20d341380a8f2fb4f23ae16a704a85a9.jpg)"
-        },
-        {
-          "option_id": "C",
-          "content": "、\n\n![](images/1ff2c1838fd3edd9e0cec073af9a8b8e2c0ad9c7507fa5f17eeb9c5332b0775d.jpg)"
-        },
-        {
-          "option_id": "D",
-          "content": "、\n\n![](images/d86d8f0e540c15ee754ff1705639601845eab2efec7ad5ce1d3e3664884a7286.jpg)"
-        },
-        {
-          "option_id": "E",
-          "content": "、\n\n![](images/e37b285d8476115f8177447064dea98df8e41b4ad0b1d06ec4a2b7f14ff3f717.jpg)"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 31
+        "number": 30,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0032",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "切面淡棕色，略呈角质样而油润，中心维管束木部较大，黄白色，其外围有多数黄白色点状维管束，断续排列成2\\~4轮的饮片是（ ）",
       "options": [
         {
@@ -1097,29 +1142,32 @@
         },
         {
           "option_id": "C",
-          "content": "、 牛膝"
+          "content": "牛膝"
         },
         {
           "option_id": "D",
-          "content": "、 白术"
+          "content": "白术"
         },
         {
           "option_id": "E",
-          "content": "、 天麻"
+          "content": "天麻"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "牛膝（饮片）：呈圆柱形的段。外表皮灰黄色或淡棕色，有微细的纵皱纹及横长皮孔。质硬脆，易折断，受潮变软。切面平坦，淡棕色或棕色，略呈角质样而油润，中心维管束木部较大，黄白色，其外围散有多数黄白色点状异型维管束，习称“筋脉点”， 断续排列成2\\~4轮。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 32
+        "number": 32,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0033",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根呈圆柱形，略扭曲，长10\\~20cm，直径0.2\\~0.5cm，上部多有显著的横皱纹，下部较细，有纵皱纹及支根痕，味甚苦的药材是（ ）",
       "options": [
         {
@@ -1140,61 +1188,29 @@
         },
         {
           "option_id": "E",
-          "content": "、 防风"
+          "content": "防风"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "龙胆（药材）：根圆柱形，略扭曲，长10\\~20cm，直径0.2\\~0.5cm；表面淡黄色或黄棕色，上部多有显著的横皱纹，下部较细，有纵皱纹及支根痕。质脆，易折断，断面略平坦，皮部黄白色或淡黄棕色，木部色较浅，呈点状环列。气微，味甚苦。抓住龙胆“味甚苦”的特征。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 33
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0034",
-      "question_type": "multiple_choice",
-      "question_content": "试卷附图中，所示中药为桑白皮的是（ ）",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "、\n\n![](images/a6903f2c07af3b8d140b8508712c5cdebdddc38eeb5301cb84eb0ee7163afaea.jpg)"
-        },
-        {
-          "option_id": "B",
-          "content": "、\n\n![](images/9c92782c66618f1084f95d8997e0ee315d687da101c864e3f7dc5e8850a89a45.jpg)"
-        },
-        {
-          "option_id": "C",
-          "content": "、\n\n![](images/22b4ffa01340cedb178c0160a28502205eb4c05ea6b68d5404daf6ccc8e2d742.jpg)"
-        },
-        {
-          "option_id": "D",
-          "content": "、\n\n![](images/f1a17230c58ceaeda17f3ab6a5b361a0a31e4a5d3703aad8fff6379c6af869ac.jpg)"
-        },
-        {
-          "option_id": "E",
-          "content": "、\n\n![](images/9277ff590c1810200a93851a5862fbff25e6399d136bb86b470afb95d5c6342f.jpg)"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 34
+        "number": 33,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0035",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "药用部位为干燥小叶的药材是( )",
       "options": [
         {
           "option_id": "A",
-          "content": "、 艾叶"
+          "content": "艾叶"
         },
         {
           "option_id": "B",
@@ -1210,21 +1226,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 蓼大青叶"
+          "content": "蓼大青叶"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "1、艾叶为菊科植物艾的干燥叶。 2、枇杷叶为蔷薇科植物枇杷的干燥叶。 3、番泻叶为豆科植物狭叶番泻或尖叶番泻的干燥小叶。 4、紫苏叶为唇形科植物紫苏的干燥叶（或带嫩枝）。 5、蓼大青叶为廖科植物蓼蓝的干燥叶。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 35
+        "number": 35,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0036",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "略呈研棒状，长1\\~2cm，花冠圆球形，花瓣4，覆瓦状抱合，萼筒圆柱状，略扁，红棕色，气芳香浓烈的药材是( )",
       "options": [
         {
@@ -1245,21 +1264,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 槐米"
+          "content": "槐米"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "丁香：略呈研棒状，长1\\~2cm。花冠圆球形，直径0.3\\~0.5cm，花瓣4，覆瓦状抱合，棕褐色至褐黄色，花瓣内为雄蕊和花柱，搓碎后可见众多黄色细粒状的花药。萼筒圆柱状，略扁，有的稍弯曲，长0.7\\~1.4cm，直径0.3\\~0.6cm，红棕色或棕褐色，上部有4枚三角状的萼片，十字状分开。质坚实，富油性。气芳香浓烈，味辛辣、有麻舌感。抓住丁香的特征“略呈研棒状”。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 36
+        "number": 36,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0037",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "呈扁圆形或扁椭圆形，表面紫红色或紫褐色，平滑有光泽，一端凹陷，可见线形种脐，另一端有细小突起合点的药材是由( )",
       "options": [
         {
@@ -1280,21 +1302,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 薏苡仁"
+          "content": "薏苡仁"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "酸枣仁（药材）：呈扁圆形或扁椭圆形，长0.5\\~0.9cm，宽0.5\\~0.7cm，厚约0.3cm。表面紫红色或紫褐色，平滑有光泽，有的有裂纹。有的两面均呈圆隆状突起；有的一面较平坦，中央有1条隆起的纵线纹，另一面微隆起，边缘略薄。一端凹陷，可见线形种脐，另一端有细小突起的合点。种皮较脆，胚乳白色，子叶2，浅黄色，富油性。气微，味淡。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 37
+        "number": 37,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0038",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "肉苁蓉饮片可见( )",
       "options": [
         {
@@ -1315,21 +1340,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 黄白色维管束，排列成双卷状"
+          "content": "黄白色维管束，排列成双卷状"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "肉苁蓉片（饮片）：呈不规则形的厚片。表面棕褐色或灰棕色。有的可见肉质鳞叶。切面有淡棕色或棕黄色点状维管束，排列成波状环纹。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 38
+        "number": 38,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0039",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "以动物的病理产物入药的药材是( )",
       "options": [
         {
@@ -1350,21 +1378,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 桑螵蛸"
+          "content": "桑螵蛸"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "以动物的病理产物入药的有：珍珠、僵蚕、牛黄、马宝、猴枣、狗宝等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 39
+        "number": 39,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0040",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "矿物药的本色指的是( )",
       "options": [
         {
@@ -1385,21 +1416,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 由晶体内部裂缝及表面氧化膜的反射光引起与入射光的干涉作用而产生的颜色\n\n## 第2题 配伍选择题 （每题1分，共60题，共60分） 二、配伍选择题(60题，每题1分。题目分为若干组。每组题目对应同一组备选项，备选项可重复选用，也可不选用。每题只有1个备选项最符合题意。)"
+          "content": "由晶体内部裂缝及表面氧化膜的反射光引起与入射光的干涉作用而产生的颜色 第2题 配伍选择题 （每题1分，共60题，共60分） 二、配伍选择题(60题，每题1分。题目分为若干组。每组题目对应同一组备选项，备选项可重复选用，也可不选用。每题只有1个备选项最符合题意。)"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "矿物药的颜色一般分为以下三种：1、本色：是由矿物的成分和内部构造所决定的颜色，如辰砂的红色，石膏的白色。2、外色：由外来的带色杂质、气泡等包裹体所引起的颜色，与矿物自身的成分和构造无关。外色的深浅除与带色杂质的量有关外，还与杂质分散的程度有关，如紫石英、大青盐等。3、假色：由晶体内部裂缝面、解理面及表面氧化膜的反射光引起的入射光波的干涉作用而产生的颜色，如云母的变彩现象。4、条痕及条痕色：矿物在白色毛瓷板上划过后所留下的粉末痕迹称为条痕，粉末的颜色。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 40
+        "number": 40,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0041",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -1423,32 +1457,21 @@
           "content": "能散、能行{TS}酸味的作用特点是"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "苦味：能泄、能燥、能坚。 酸味：能收、能涩。 辛味：能散、能行。 咸味：能软、能下。 甘味：能补、能缓、能和。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 41
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0042",
-      "question_type": "single_choice",
-      "question_content": "苦味的作用特点是43、甘味的作用特点是",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 42
+        "number": 41,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0044",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -1469,70 +1492,24 @@
         },
         {
           "option_id": "E",
-          "content": "浙江\n\n{TS}地黄的道地药材产地是 45、玄参的道地药材产地是"
+          "content": "浙江 {TS}地黄的道地药材产地是 45、玄参的道地药材产地是"
         }
       ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 44
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0046",
-      "question_type": "multiple_choice",
-      "question_content": "根据选项，回答{TSE}题",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "![](images/06dde206a84cd96e41bdcf2bd5aa47e491f42b0dbf15fb2c2e324adc4fea4bd1.jpg)"
-        },
-        {
-          "option_id": "B",
-          "content": "![](images/de6838004362db6b4c6d8a908ef2600fd41ad245cd1e23dece83c54b9823d9f7.jpg)"
-        },
-        {
-          "option_id": "C",
-          "content": "![](images/40af351a4e2925faa9de9410618b5c079534ff347564723c47be84d5af88adec.jpg)"
-        },
-        {
-          "option_id": "D",
-          "content": "![](images/d59882e5e288fbd196b9665978b658a74050090fba7b163c6ebdab76092643ec.jpg)"
-        },
-        {
-          "option_id": "E",
-          "content": "![](images/64793f0b07f17b5d92334df4f8bb118b93fc523d4e52f5a4477f2a79663089c3.jpg)\n\n{TS}麻黄的主要化学成分是（ ）"
-        }
+      "answer": [
+        "D"
       ],
-      "answer": [],
-      "explanation": "",
+      "explanation": "本题考查目前常用道地药材知识。怀药，主产地河南。如著名的“四大怀药”—地黄、牛膝、山药、菊花；天花粉、瓜蒌、白芷、辛夷、红花、金银花、山茱萸等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 46
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0047",
-      "question_type": "single_choice",
-      "question_content": "黄芩苷的苷元结构是（ ）",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 47
+        "number": 44,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0048",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -1553,21 +1530,24 @@
         },
         {
           "option_id": "E",
-          "content": "延胡索\n\n{TS}《中国药典》规定，以阿托品为质量控制成分之一的中药是（ ）49、《中国药典》规定，以苦参碱为质量控制成分之一的中药是（ ）50、《中国药典》规定，以东莨菪碱为质量控制成分之一的中药是（ ）"
+          "content": "延胡索 {TS}《中国药典》规定，以阿托品为质量控制成分之一的中药是（ ）49、《中国药典》规定，以苦参碱为质量控制成分之一的中药是（ ）50、《中国药典》规定，以东莨菪碱为质量控制成分之一的中药是（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "《中国药典》以硫酸阿托品、氢溴酸东莨菪碱为指标成分对洋金花进行鉴别和含量测定。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 48
+        "number": 48,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0051",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -1588,21 +1568,24 @@
         },
         {
           "option_id": "E",
-          "content": "士的宁\n\n{TS}结构性类型为倍半萜大环内酯生物碱的化学成分是（ ）"
+          "content": "士的宁 {TS}结构性类型为倍半萜大环内酯生物碱的化学成分是（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "1、雷公藤碱属于倍半萜大环内酯类生物碱。 2、汉防己甲素属于双苄基异喹啉类生物碱。 3、阿托品属于莨菪烷类生物碱。 4、氧化苦参碱属于吡啶类生物碱。 5、士的宁属于吲哚类生物碱。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 51
+        "number": 51,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0052",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "结构类型为苄基异喹啉衍生物的化学成分是（ ）53、根据选项，回答{TSE}题",
       "options": [
         {
@@ -1623,35 +1606,24 @@
         },
         {
           "option_id": "E",
-          "content": "大黄素\n\n{TS}大黄泻下作用的主要有效成分是（ ）"
+          "content": "大黄素 {TS}大黄泻下作用的主要有效成分是（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "1、雷公藤碱属于倍半萜大环内酯类生物碱。 2、汉防己甲素属于双苄基异喹啉类生物碱。 3、阿托品属于莨菪烷类生物碱。 4、氧化苦参碱属于吡啶类生物碱。 5、士的宁属于吲哚类生物碱。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 52
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0054",
-      "question_type": "single_choice",
-      "question_content": "黄连抗菌作用的主要有效成分是（ ）",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 54
+        "number": 52,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0055",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -1672,49 +1644,24 @@
         },
         {
           "option_id": "E",
-          "content": "连翘\n\n{TS}主要含有香豆素类成分的中药是（ ）"
+          "content": "连翘 {TS}主要含有香豆素类成分的中药是（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "含香豆素类化合物的常用中药有：秦皮、前胡、肿节风、补骨脂等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 55
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0056",
-      "question_type": "single_choice",
-      "question_content": "《中国药典》规定，检查马兜铃酸I限量的中药是（ ）",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 56
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0057",
-      "question_type": "single_choice",
-      "question_content": "主含木脂类成分，来源于木犀科的中药是（ ）",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 57
+        "number": 55,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0058",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -1735,21 +1682,24 @@
         },
         {
           "option_id": "E",
-          "content": "陈皮\n\n{TS}主要含有萘醌类成分的中药是（ ）"
+          "content": "陈皮 {TS}主要含有萘醌类成分的中药是（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "紫草的主要化学成分为萘醌类化合物。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 58
+        "number": 58,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0059",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "主要含有黄酮醇苷和萜类内酯成分的中药是（ ）60、根据选项，回答{TSE}题",
       "options": [
         {
@@ -1770,35 +1720,24 @@
         },
         {
           "option_id": "E",
-          "content": "四萜\n\n{TS}穿心莲内酯属于（ ）"
+          "content": "四萜 {TS}穿心莲内酯属于（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "《中国药典》以总黄酮醇苷和萜类内酯为指标成分对银杏叶进行鉴别和含量测定。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 59
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0061",
-      "question_type": "single_choice",
-      "question_content": "齐墩果酸属于（ ）62、薄荷醇属于（ ）",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 61
+        "number": 59,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0063",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -1819,128 +1758,19 @@
         },
         {
           "option_id": "E",
-          "content": "蛤粉\n\n{TS}具有补中益气作用的炮制辅料是（64、具有温中止泻作用的炮制辅料是（ ）"
+          "content": "蛤粉 {TS}具有补中益气作用的炮制辅料是（64、具有温中止泻作用的炮制辅料是（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 63
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0065",
-      "question_type": "single_choice",
-      "question_content": "具有化痰软坚作用的炮制辅料是（ ）",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 65
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0066",
-      "question_type": "multiple_choice",
-      "question_content": "根据选项，回答{TSE}题",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "煅石膏"
-        },
-        {
-          "option_id": "B",
-          "content": "煅牡蛎"
-        },
-        {
-          "option_id": "C",
-          "content": "煅炉甘石"
-        },
-        {
-          "option_id": "D",
-          "content": "煅石决明"
-        },
-        {
-          "option_id": "E",
-          "content": "血余炭\n\n{TS}用煅淬法炮制的饮片是（ ）"
-        }
+      "answer": [
+        "C"
       ],
-      "answer": [],
-      "explanation": "",
+      "explanation": "1、河砂：主要是作中间传热体，利用其温度高、传热快的特点，使质地坚韧的药物质地酥脆，或使药物膨大鼓起，便于粉碎和利于有效成分的溶出。此外，还可利用河砂温度高，破坏部分副作用成分而降低药物的毒副作用，去除非药用部位及矫味矫臭等。 2、滑石粉：味甘，性寒，能利尿，清热，解暑。常用作中间传热体拌炒药物，可使药物受热均匀。 3、稻米：味甘，性平。能补中益气，健脾和胃，除烦止渴，止泻痢。与药物共制，可增强药物疗效，降低刺激性和毒性。 4、灶心土：味辛，性温。能温中和胃，止血，止呕，涩肠止泻。与药物共制后可降低药物的刺激性，增强药物疗效。 5、蛤粉：味咸，性寒。能清热，利湿，化痰，软坚。与药物共制可除去药物的腥味，增强疗效。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 66
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0067",
-      "question_type": "multiple_choice",
-      "question_content": "用扣锅煅法炮制的饮片是（ ） 68、根据选项，回答{TSE}题",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "$\\cdot { \\le } { - } 4 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "B",
-          "content": "}$"
-        },
-        {
-          "option_id": "C",
-          "content": "$. { \\le } 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "D",
-          "content": "}$"
-        },
-        {
-          "option_id": "E",
-          "content": "$. 2 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "F",
-          "content": "} \\sim 1 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "G",
-          "content": "}$"
-        },
-        {
-          "option_id": "H",
-          "content": "${ . { \\leq } 2 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "I",
-          "content": "} }$"
-        },
-        {
-          "option_id": "J",
-          "content": "$1 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "K",
-          "content": "} { \\sim } 2 5 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "L",
-          "content": "}$\n\n{TS}《中国药典》规定，药物贮藏于冷处的温度为（ ）69、《中国药典》规定，药物贮藏于凉暗处的温度为（ ）70、《中国药典》规定，药物贮藏于阴凉处的温度为（"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 67
+        "number": 63,
+        "answer_source": "paired_material"
       }
     },
     {
@@ -1950,21 +1780,24 @@
       "options": [
         {
           "option_id": "A",
-          "content": "10gB.20gC.50gD.100gE.200g～500g\n\n{TS}除另外规定外，含毒性药品的中药酊剂每100ml相当于原饮片（ ）72、除另有规定外，流浸膏剂每100m相当于原饮片（ ）73、除另有规定外，浸膏剂每100g相当于原饮片（ ）"
+          "content": "10gB.20gC.50gD.100gE.200g～500g {TS}除另外规定外，含毒性药品的中药酊剂每100ml相当于原饮片（ ）72、除另有规定外，流浸膏剂每100m相当于原饮片（ ）73、除另有规定外，浸膏剂每100g相当于原饮片（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "1、除另有规定外，每100ml相当于原饮片 $2 0 \\mathrm { g } _ { \\circ }$ 。含有毒性药品的中药酊剂，每100ml相当于原饮片10g。 2、除另有规定外，流浸膏剂要求每1ml相当于饮片1g；浸膏剂分为稠膏和干膏两种，每1g相当于饮片2\\~5g。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 71
+        "number": 71,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0074",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -1985,21 +1818,24 @@
         },
         {
           "option_id": "E",
-          "content": "灭菌注射用水\n\n{TS}《中国药典》规定，可用于注射剂容器清洗的是（ ）"
+          "content": "灭菌注射用水 {TS}《中国药典》规定，可用于注射剂容器清洗的是（ ）"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "制药用水因其使用的范围不同而分为饮用水、纯化水、注射用水及灭菌注射用水。 1、饮用水：可用于药材净制时的漂洗、制药用具的粗洗用水。除另有规定外，也可作为饮片的提取溶剂。 2、纯化水：可作为配制普通药物制剂用的溶剂或试验用水；可作为中药注射剂、滴眼剂等灭菌制剂所用饮片的提取溶剂；口服、外用制剂配制用溶剂或稀释剂；非灭菌制剂用器具的精洗用水。也用作非灭菌制剂所用饮片的提取溶剂。纯化水不得用于注射剂的 配制与稀释。 3、注射用水：可作为配制注射剂、滴眼剂等的溶剂或稀释剂及容器的精洗。 4、灭菌注射用水：主要用于注射用灭菌粉末的溶剂或注射剂的稀释剂。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 74
+        "number": 74,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0075",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "《中国药典》规定，可作为中药注射剂所用饮片提取溶剂的是( )76、根据选项，回答{TSE}题",
       "options": [
         {
@@ -2020,49 +1856,24 @@
         },
         {
           "option_id": "E",
-          "content": "药物作用于细胞内的一定部位的制剂按照《中国药典》微粒制剂指导原则中靶向制剂的分类\n\n{TS}一级靶向制剂系指( )"
+          "content": "药物作用于细胞内的一定部位的制剂按照《中国药典》微粒制剂指导原则中靶向制剂的分类 {TS}一级靶向制剂系指( )"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "制药用水因其使用的范围不同而分为饮用水、纯化水、注射用水及灭菌注射用水。 1、饮用水：可用于药材净制时的漂洗、制药用具的粗洗用水。除另有规定外，也可作为饮片的提取溶剂。 2、纯化水：可作为配制普通药物制剂用的溶剂或试验用水；可作为中药注射剂、滴眼剂等灭菌制剂所用饮片的提取溶剂；口服、外用制剂配制用溶剂或稀释剂；非灭菌制剂用器具的精洗用水。也用作非灭菌制剂所用饮片的提取溶剂。纯化水不得用于注射剂的配制与稀释。 3、注射用水：可作为配制注射剂、滴眼剂等的溶剂或稀释剂及容器的精洗。 4、灭菌注射用水：主要用于注射用灭菌粉末的溶剂或注射剂的稀释剂。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 75
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0077",
-      "question_type": "single_choice",
-      "question_content": "二级靶向制剂系指( ) 2 cm",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 77
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0078",
-      "question_type": "single_choice",
-      "question_content": "三级靶向制剂系指( )",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 78
+        "number": 75,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0079",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -2086,32 +1897,21 @@
           "content": "相对生物利用度{TS}体内药量与血药浓度的比值是( )"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "表观分布容积：是体内药量与血药浓度间关系的一个比例常数。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 79
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0080",
-      "question_type": "single_choice",
-      "question_content": "描述药物转运(消除)快慢的动力学参数是( )81、试验制剂与参比制剂的血药浓度-时间曲线下面积的比率称为( )",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 80
+        "number": 79,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0082",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -2135,73 +1935,21 @@
           "content": "菊花心 {TS}商陆的断面特征( )"
         }
       ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 82
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0083",
-      "question_type": "multiple_choice",
-      "question_content": "何首乌断面特征( ) 84、根据选项，回答{TSE}题",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "![](images/78418c9f8dc93e0ef6bf6b4ecd49479800778eaf2e8befc94b70dfa1834304ec.jpg)"
-        },
-        {
-          "option_id": "B",
-          "content": "![](images/f5e6bbafe197deb67200d3057f4d952c2429a99dbf3598f4b92cb199b4671877.jpg)"
-        },
-        {
-          "option_id": "C",
-          "content": "1 cm\n\n![](images/7c60347488133b46d2eb13b2c13c97dee6aab75c56d4c56669cbf7d8dfa9fd48.jpg)  \n2 cm"
-        },
-        {
-          "option_id": "D",
-          "content": "![](images/32a844735acc02708d1136a2c65ea3f393886a28a8c1e96dfdd210bc8a16391a.jpg)"
-        },
-        {
-          "option_id": "E",
-          "content": "![](images/aac8ca2266eeb23e7165616a9f350ea5899a9f52e4752d39c378cf08d811593c.jpg)\n\n{TS}来源为百合科，药用部位为根茎的是( )85、来源为马兜铃科，药用部位为根和根茎的是( )86、根据选项，回答{TSE}题"
-        },
-        {
-          "option_id": "F",
-          "content": "![](images/d3b38dafebfd2abb8ca476221ba8f541943797e532cff764350186e9abd16f93.jpg)"
-        },
-        {
-          "option_id": "G",
-          "content": "![](images/32419a64baa6dca006222735b081191837222af0ee37b9c13ae2e4e5977b728a.jpg)"
-        },
-        {
-          "option_id": "H",
-          "content": "![](images/89ff9f49245dc9da35a8d2556b444a340bc0345f9e7a47a92f94b881e2ca7963.jpg)"
-        },
-        {
-          "option_id": "I",
-          "content": "![](images/a5f8ecca26c1f31c747a0cbca6797778ea75f23e0958d90469a008738c47ede5.jpg)"
-        },
-        {
-          "option_id": "J",
-          "content": "![](images/b52596d83978dc82e7b92629a32fd7d99ecb3333a18f72cc6d7da75d9601c2d1.jpg)\n\n{TS}党参是( ) 87、北沙参是( ) 88、板蓝根是( )"
-        }
+      "answer": [
+        "C"
       ],
-      "answer": [],
-      "explanation": "",
+      "explanation": "商陆切面浅黄棕色或黄白色，异型维管束隆起，其木部明显，形成数个突起的同 心性环轮，习称“罗盘纹。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 83
+        "number": 82,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0089",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -2222,21 +1970,24 @@
         },
         {
           "option_id": "E",
-          "content": "龙眼肉\n\n{TS}药用部位为种子的是( )90、药用部位为果实的是( )91、药用部位为种仁的是( )"
+          "content": "龙眼肉 {TS}药用部位为种子的是( )90、药用部位为果实的是( )91、药用部位为种仁的是( )"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "牛蒡子药用部位是果实；决明子药用部位是种子；肉豆蔻药用部位是种仁；山茱萸药用部位是果肉；龙眼肉药用部位是假种皮。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 89
+        "number": 89,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0092",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -2257,35 +2008,24 @@
         },
         {
           "option_id": "E",
-          "content": "斑蝥\n\n{TS}质硬而脆，断面平坦，中间有4个亮棕色或亮黑色丝腺环的药材是"
+          "content": "斑蝥 {TS}质硬而脆，断面平坦，中间有4个亮棕色或亮黑色丝腺环的药材是"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "僵蚕质硬而脆，易折断，断面平坦，外层白色，中间有亮棕色或亮黑色的丝腺环 4个。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 92
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0093",
-      "question_type": "single_choice",
-      "question_content": "呈扁圆团块状，断面沾水，即呈乳白色隆起的药材是( )",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 93
+        "number": 92,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0094",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据选项，回答{TSE}题",
       "options": [
         {
@@ -2306,172 +2046,46 @@
         },
         {
           "option_id": "E",
-          "content": "朱砂\n\n{TS}为氧化物类矿物刚玉族赤铁矿，主含 ${ \\mathrm {"
-        },
-        {
-          "option_id": "F",
-          "content": "e } } _ { 2 } { \\mathrm { O } } _ { 3 }$ 的矿物药是( )"
+          "content": "朱砂 {TS}为氧化物类矿物刚玉族赤铁矿，主含 ${ \\mathrm { F e } } _ { 2 } { \\mathrm { O } } _ { 3 }$ 的矿物药是( )"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "赭石：为氧化物类矿物刚玉族赤铁矿。主含三氧化二铁 $( \\mathrm { F e } _ { 2 } \\mathrm { O } _ { 3 } )$ o",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 94
+        "number": 94,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0095",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "为硫化物类矿物辰砂族辰砂，主含HgS的矿物药是( ) 96、根据下面选项，回答{TSE}题",
       "options": [
         {
-          "option_id": "A",
-          "content": "![](images/c67a0ac4c5827e32e654e7f228a878e7627339520c44a4e7f44636e53db4c868.jpg)"
-        },
-        {
-          "option_id": "B",
-          "content": "![](images/16fb1873b764d522c3ef4a5bba960e35d1ba47d49c1e852bdd2b2146f29fd276.jpg)"
-        },
-        {
-          "option_id": "C",
-          "content": "![](images/498dd17dbb06468ff8be710f60ddd273debe5831599d83f88a7d59c9a4f45a41.jpg)"
-        },
-        {
-          "option_id": "D",
-          "content": "![](images/53391210ec33593d855f9ca2f76bb4ce2c3d6f99de2c54a30e0fc9fbb76e1a26.jpg)"
-        },
-        {
           "option_id": "E",
-          "content": "![](images/64755b8bbb5017b0031f9f57468145e1524d5a0138a25c45f38a95d16757c43f.jpg)\n\n{TS}附图中，置沸水中煮后除去外皮或去皮后再煮，晒干的图示中药是()"
+          "content": "{TS}附图中，置沸水中煮后除去外皮或去皮后再煮，晒干的图示中药是()"
         }
       ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 95
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0097",
-      "question_type": "single_choice",
-      "question_content": "附图中，燎去毛须，置沸水中略煮或蒸透后晒干或燎后直接晒干的图示中药是( )",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 97
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0098",
-      "question_type": "multiple_choice",
-      "question_content": "根据选项，回答{TSE}题",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "桑寄生"
-        },
-        {
-          "option_id": "B",
-          "content": "大血藤"
-        },
-        {
-          "option_id": "C",
-          "content": "槲寄生"
-        },
-        {
-          "option_id": "D",
-          "content": "沉香"
-        },
-        {
-          "option_id": "E",
-          "content": "鸡血藤\n\n{TS}表面有刀削痕，可见黑褐色树脂与黄白色木部相间的斑纹的药材是( )"
-        }
+      "answer": [
+        "E"
       ],
-      "answer": [],
-      "explanation": "",
+      "explanation": "朱砂：为硫化物类矿物辰砂族辰砂。主含硫化汞（HgS）。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 98
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0099",
-      "question_type": "single_choice",
-      "question_content": "断面皮部红棕色，有数处向内嵌入木部，木部黄白色，有多数细孔状导管，射线呈放射状排列的药材是( )",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 99
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0100",
-      "question_type": "single_choice",
-      "question_content": "切面韧皮部有树脂状分泌物呈红棕色至黑棕色，与木部相间排列呈数个同心性椭圆形环 或偏心性半圆形环，髓部偏向一侧的药材是( ) 第3题 综合分析选择题 （每题1分，共10题，共10分） 三、综合分析选择题(共10题。每题1分。题目分为若干组。每组题目基于同一个临床情景、病例、实例或者案例展开。每题的备选项中，只有1个最符合题意。)",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 100
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0101",
-      "question_type": "multiple_choice",
-      "question_content": "根据材料，回答{TSE}题 补脾益肠丸为双层水蜜丸。 药物组成:外层:黄芪、党参(米炒)、砂仁、白芍、当归（土炒)、白术(土炒)、肉桂；内层:醋延胡索、荔枝核、炮姜、炙甘草、防风、木香、盐补骨脂、煅赤石脂。辅料:聚丙烯酸树脂Ⅱ、炼蜜、滑石粉、蓖麻油、乙醇、淀粉、药用炭、虫白蜡。 制法:处方中饮片15味，煅赤石脂粉碎成细粉，内层、外层药味分别粉碎成细粉，过筛，内层细粉加入煅赤石脂细粉，每100g内层细粉用炼蜜35～45g及适量水泛丸，干燥，用聚丙烯酸树脂Ⅱ等辅料包衣；每100g外层细粉用炼蜜35～50g及适量的水包裹在内层包衣丸上，以药用炭包衣，干燥，抛光，即得。 功能主治：益气养血，温阳行气，涩肠止泻。用于脾虚气滞所致的泄泻，症见腹胀疼痛，肠鸣泄泻，黏液血便；慢性结肠炎、溃疡性结肠炎、过敏性结肠炎见上述证候者。 {TS}处方中的辅料聚丙烯酸树脂Ⅱ是用作",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "包药物衣"
-        },
-        {
-          "option_id": "B",
-          "content": "包糖衣"
-        },
-        {
-          "option_id": "C",
-          "content": "包缓释衣"
-        },
-        {
-          "option_id": "D",
-          "content": "包控释衣"
-        },
-        {
-          "option_id": "E",
-          "content": "、 包肠溶衣"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 101
+        "number": 95,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0102",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "处方中用醋延胡索，其炮制的目的是",
       "options": [
         {
@@ -2492,26 +2106,29 @@
         },
         {
           "option_id": "E",
-          "content": "、 增强涩肠止泻作用"
+          "content": "增强涩肠止泻作用"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "延胡索味辛、苦，性温。归肝、脾经。具有活血、利气、止痛的功能。用于胸胁、脘腹疼痛，经闭痛经，产后瘀阻，跌打肿痛等证。①生品止痛有效成分不易煎出，效果欠佳，故临床多用醋制品。②醋延胡索行气止痛作用增强，广泛用于身体各部位的多种疼痛证候。③酒延胡索以活血、祛瘀、止痛为主。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 102
+        "number": 102,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0103",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "补脾益肠丸为水蜜丸，先在盐酸溶液中(9→1000)检查2小时，外层完全脱落溶散，内层不得有裂缝、崩解，再在酸盐缓冲溶液(pH6.8)中进行检查，其崩解时限是",
       "options": [
         {
           "option_id": "A",
-          "content": "、 0.5小时"
+          "content": "0.5小时"
         },
         {
           "option_id": "B",
@@ -2519,7 +2136,7 @@
         },
         {
           "option_id": "C",
-          "content": "、 1.5小时"
+          "content": "1.5小时"
         },
         {
           "option_id": "D",
@@ -2527,21 +2144,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 2.5小时"
+          "content": "2.5小时"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "由上题可知，补脾益肠丸的内层包肠溶衣，属于肠溶衣丸。在盐酸溶液中(9→1000)检查2小时，不得有裂缝、崩解或软化现象，再在磷酸盐缓冲溶液(pH6.8)中进行检查，1小时内应全部崩解。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 103
+        "number": 103,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0104",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "处方中主要化学成分为香豆素的补虚药是",
       "options": [
         {
@@ -2562,21 +2182,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 甘草"
+          "content": "甘草"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "黄芪、党参、当归、补骨脂、甘草均属于补虚药。黄芪、党参、甘草是补气药；补骨脂是补阳药；当归是补血药。含香豆素类化合物的常用中药有秦皮、前胡、肿节风、补骨脂等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 104
+        "number": 104,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0105",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据材料，回答{TSE}题 《中国药典》收载的生脉饮为口服液，其处方由红参、麦冬和五味子组成。具有益气复脉、养阴生津之功效。{TS}处方中红参的产地加工方法为",
       "options": [
         {
@@ -2585,11 +2208,11 @@
         },
         {
           "option_id": "B",
-          "content": "、 煮法"
+          "content": "煮法"
         },
         {
           "option_id": "C",
-          "content": "、 蜜炙法"
+          "content": "蜜炙法"
         },
         {
           "option_id": "D",
@@ -2597,21 +2220,24 @@
         },
         {
           "option_id": "E",
-          "content": "、 复制法"
+          "content": "复制法"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "D"
+      ],
+      "explanation": "红参为五加科植物人参的栽培品经蒸制后的干燥根和根茎。采收加工：秋季采挖，洗净，蒸制后，干燥。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 105
+        "number": 105,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0106",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "处方中五味子的主要成分为五味子醇甲，其结构类型是",
       "options": [
         {
@@ -2632,61 +2258,67 @@
         },
         {
           "option_id": "E",
-          "content": "、 生物碱"
+          "content": "生物碱"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "五味子中含木脂素较多，约为5％，近年来从其果实中分得了一系列联苯环辛烯型木脂素，比如五味子醇，五味子素，五味子酯甲、乙、丙、丁和戊。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 106
+        "number": 106,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0107",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "制备生脉饮口服液时可加入适量防腐剂，允许选用的品种和用量是( )",
       "options": [
         {
           "option_id": "A",
-          "content": "、 羟苯基乙酯，≤0.10%"
+          "content": "羟苯基乙酯，≤0.10%"
         },
         {
           "option_id": "B",
-          "content": "、 山梨酸，≤0.30%"
+          "content": "山梨酸，≤0.30%"
         },
         {
           "option_id": "C",
-          "content": "、 羟苯基丙酯，≤0.30%"
+          "content": "羟苯基丙酯，≤0.30%"
         },
         {
           "option_id": "D",
-          "content": "、 苯甲酸，≤0.35%"
+          "content": "苯甲酸，≤0.35%"
         },
         {
           "option_id": "E",
-          "content": "、 羟苯基甲酯，≤0.35%"
+          "content": "羟苯基甲酯，≤0.35%"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "B"
+      ],
+      "explanation": "单剂量灌装的合剂也可称为口服液。合剂可以根据需要加入适宜的附加剂。在制剂确定处方时，该处方的抑菌效力应符合《中国药典》抑菌效力检查法的规定，山梨酸和苯甲酸的用量不得超过0.3％（其钾盐、钠盐的用量分别按酸计），羟苯酯类的用量不得超过0.05％。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 107
+        "number": 107,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0108",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "根据材料，回答{TSE}题 某男，42岁。自诉感冒数日，恶寒渐轻，身热增盛，无汗头痛，目疼鼻干，心烦不眠。经中医辨证为外感风寒、郁而化热。处以柴葛解肌汤，药用柴胡、 葛根、甘草、 黄芩、羌活、白芷、白芍、桔梗、石膏，水煎服。 {TS}处方调配复核时，见有表面黑褐色，切面外侧棕褐色，木部黄白色，有的可见放射状纹理，气香的饮片是",
       "options": [
         {
           "option_id": "A",
-          "content": "、 葛根"
+          "content": "葛根"
         },
         {
           "option_id": "B",
@@ -2698,60 +2330,28 @@
         },
         {
           "option_id": "D",
-          "content": "、 白芍"
+          "content": "白芍"
         },
         {
           "option_id": "E",
-          "content": "、 桔梗"
+          "content": "桔梗"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "C"
+      ],
+      "explanation": "羌活（饮片）：为类圆形、不规则横切或斜切片。表皮棕褐色至黑褐色，切面外侧棕褐色，木部黄白色，有的可见放射状纹理。体轻，质脆。气香，味微苦而辛。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 108
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0109",
-      "question_type": "multiple_choice",
-      "question_content": "处方中葛根解肌退热，其主要成分葛根素的结构是",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "、\n\n![](images/10d0d3f6369a01563d052ccc231b823cb697e15741b735426b03ea973b9ad79e.jpg)"
-        },
-        {
-          "option_id": "B",
-          "content": "、\n\n![](images/68aaeed8b7410403abb7f5bbfbfa5f9d83bb82f2ea9129dfc3f3c5cb3c88705b.jpg)"
-        },
-        {
-          "option_id": "C",
-          "content": "、\n\n![](images/071305a38123c43edabc2b4fe4a41048fe0a305ac89ab605bdb0035fe01ad766.jpg)"
-        },
-        {
-          "option_id": "D",
-          "content": "、\n\n![](images/2754a48da6756a04829677e459e1f4f9961a3d5b13a02186a20714433bdf4fd3.jpg)"
-        },
-        {
-          "option_id": "E",
-          "content": "、\n\n![](images/46d47c951ee882d3768598fc5992e13c885ccaf5d370accd9f175b83410f5e15.jpg)"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 109
+        "number": 108,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0110",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "处方中含有三萜皂苷类成分，且具有解热、抗炎、保肝作用的饮片是",
       "options": [
         {
@@ -2764,29 +2364,32 @@
         },
         {
           "option_id": "C",
-          "content": "、 桔梗"
+          "content": "桔梗"
         },
         {
           "option_id": "D",
-          "content": "、 羌活"
+          "content": "羌活"
         },
         {
           "option_id": "E",
-          "content": "、 白芷\n\n第4题 多项选择题 （每题1分，共10题，共10分） 四、多项选择题(共10题，每题1分。每\n\n## 题的备选项中，有2个或2个以上符合题意，错选、少选均不得分。)"
+          "content": "白芷 第4题 多项选择题 （每题1分，共10题，共10分） 四、多项选择题(共10题，每题1分。每 题的备选项中，有2个或2个以上符合题意，错选、少选均不得分。)"
         }
       ],
-      "answer": [],
-      "explanation": "",
+      "answer": [
+        "A"
+      ],
+      "explanation": "柴胡中所含皂苷均为三萜皂苷；柴胡的药理作用：（1）解热、镇痛、抗炎（2）保肝、利胆、降血脂。 11 答案：1 $\\mathbf { \\delta B , C , D , E }$ 解析：1、性状：皂苷多数具有苦而辛辣味，其粉末对人体黏膜有强烈的刺激性。 2、溶解度：大多数皂苷极性较大，易溶于水、热甲醇和乙醇等极性较大的溶剂，难溶于丙酮、乙醚等有机溶剂。 3、发泡性：皂苷水溶液经强烈振荡能产生持久性的泡沫，且不 因加热而消失。 112 答案： $\\mathbf { A } , \\mathbf { B } , \\mathbf { C } , \\mathbf { D } , \\mathbf { E }$ 解析：含三萜皂苷化合物的常用中药有人参、三七、甘草、黄芪、合欢皮、商陆、柴胡等。 113 答案： $\\mathbf { B } , \\mathbf { C }$ 解析：含强心苷类化合物的常用中药有香加皮、罗布麻叶等。 114 答案： $\\mathbf { A } , \\mathbf { B } , \\mathbf { C } , \\mathbf { D } , \\mathbf { E }$ 解析：中药炮制常用液体辅料有：酒、醋、盐水、姜汁、蜂蜜、油等。还有用到其他液体辅料的主要有：吴茱萸汁、白萝卜汁、羊脂油、鳖血、山羊血、石灰水、甘草汁、黑豆汁及其他药液等。",
       "kp_ids": [],
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 110
+        "number": 110,
+        "answer_source": "paired_material"
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0111",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "关于皂苷性质的说法，正确的有( )",
       "options": [
         {
@@ -2807,7 +2410,7 @@
         },
         {
           "option_id": "E",
-          "content": "、 水溶液强烈振荡产生持久性泡沫"
+          "content": "水溶液强烈振荡产生持久性泡沫"
         }
       ],
       "answer": [],
@@ -2816,12 +2419,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 111
+        "number": 111,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0112",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "主要化学成分三萜皂苷的中药有( )",
       "options": [
         {
@@ -2838,11 +2442,11 @@
         },
         {
           "option_id": "D",
-          "content": "、 三七"
+          "content": "三七"
         },
         {
           "option_id": "E",
-          "content": "、 合欢皮"
+          "content": "合欢皮"
         }
       ],
       "answer": [],
@@ -2851,12 +2455,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 112
+        "number": 112,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0113",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "因含有强心苷，若使用不慎，容易引起不良反应的中药有( )",
       "options": [
         {
@@ -2873,11 +2478,11 @@
         },
         {
           "option_id": "D",
-          "content": "、 麝香"
+          "content": "麝香"
         },
         {
           "option_id": "E",
-          "content": "、 地骨皮"
+          "content": "地骨皮"
         }
       ],
       "answer": [],
@@ -2886,12 +2491,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 113
+        "number": 113,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0114",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "可用于中药炮制的液体辅料有( ）",
       "options": [
         {
@@ -2912,7 +2518,7 @@
         },
         {
           "option_id": "E",
-          "content": "、 石灰水"
+          "content": "石灰水"
         }
       ],
       "answer": [],
@@ -2921,110 +2527,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 114
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0115",
-      "question_type": "multiple_choice",
-      "question_content": "质硬坚实、断面角质样的药材有( )",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "郁金"
-        },
-        {
-          "option_id": "B",
-          "content": "延胡索"
-        },
-        {
-          "option_id": "C",
-          "content": "、 葛根"
-        },
-        {
-          "option_id": "D",
-          "content": "黄芪"
-        },
-        {
-          "option_id": "E",
-          "content": "、 天麻"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 115
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0116",
-      "question_type": "multiple_choice",
-      "question_content": "进口西洋参检验报告的部分项目结果如下： <table><tr><td colspan=\"2\">检验项目</td><td>标准规定</td><td>检验数据</td></tr><tr><td colspan=\"2\">[鉴别]薄层色谱</td><td>应检出与西洋参对照药材和拟人参皂苷 $",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "_{11}$ 、人参皂苷 $Rb_1$ 、Re、 $Rg_1$ 对照品相应的斑点及荧光斑点</td><td>检出与西洋参对照药材和拟人参皂苷 $"
-        },
-        {
-          "option_id": "B",
-          "content": "_{11}$ 、人参皂苷 $Rb_1$ 、Re、 $Rg_1$ 对照品相应的斑点及荧光斑点</td></tr><tr><td rowspan=\"3\">[检查]</td><td>杂质</td><td>应不得过0.5%</td><td>0.4%</td></tr><tr><td>水分</td><td>应不得过13.0%</td><td>8.0%</td></tr><tr><td>有机氯农药残留量</td><td>六六六(总"
-        },
-        {
-          "option_id": "C",
-          "content": "HC)应不得过千万分之二(0.2mg/kg)滴滴涕(总"
-        },
-        {
-          "option_id": "D",
-          "content": "DT)应不得过千万分之二(0.2mg/kg)五氯硝基苯(总PCNB)应不得过千万分之一(0.1mg/kg)</td><td>0.03mg/kg0.002mg/kg0.2mg/kg</td></tr><tr><td colspan=\"2\">[含量测定]</td><td>含人参皂苷 $Rg_1$ ( $"
-        },
-        {
-          "option_id": "E",
-          "content": "_{42}H_{72}O_{14}$ )、人参皂苷Re( $"
-        },
-        {
-          "option_id": "F",
-          "content": "_{48}H_{82}O_{18}$ )和人参皂苷 $Rb_1$ ( $"
-        },
-        {
-          "option_id": "G",
-          "content": "_{54}H_{92}O_{23}$ )的总量应不得少于2.0%</td><td>1.6%</td></tr></table>\n\n其中检验数据结果符合标准规定的项目有( )"
-        },
-        {
-          "option_id": "H",
-          "content": "薄层色谱"
-        },
-        {
-          "option_id": "I",
-          "content": "杂质"
-        },
-        {
-          "option_id": "J",
-          "content": "、 含量测定"
-        },
-        {
-          "option_id": "K",
-          "content": "水分"
-        },
-        {
-          "option_id": "L",
-          "content": "、 有机氯农药残留量"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 116
+        "number": 114,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0117",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "除另有规定，应检查崩解时限的片剂有( )",
       "options": [
         {
@@ -3045,7 +2554,7 @@
         },
         {
           "option_id": "E",
-          "content": "、 咀嚼片"
+          "content": "咀嚼片"
         }
       ],
       "answer": [],
@@ -3054,12 +2563,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 117
+        "number": 117,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0118",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "关于直肠给药栓剂中药物吸收途径及其影响因素的说法，正确的有( )",
       "options": [
         {
@@ -3080,7 +2590,7 @@
         },
         {
           "option_id": "E",
-          "content": "、 油脂性基质栓剂中的水溶性药物释放快、易吸收"
+          "content": "油脂性基质栓剂中的水溶性药物释放快、易吸收"
         }
       ],
       "answer": [],
@@ -3089,12 +2599,13 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 118
+        "number": 118,
+        "answer_source": ""
       }
     },
     {
       "question_id": "5ae6a7bd1b91-838f0c1841-q0119",
-      "question_type": "multiple_choice",
+      "question_type": "single_choice",
       "question_content": "关于气雾剂、喷雾剂质量检查项目的说法，正确的( )",
       "options": [
         {
@@ -3115,7 +2626,7 @@
         },
         {
           "option_id": "E",
-          "content": "、 定量气雾剂应检查递送剂量均一性"
+          "content": "定量气雾剂应检查递送剂量均一性"
         }
       ],
       "answer": [],
@@ -3124,2042 +2635,8 @@
       "media": [],
       "source_ref": {
         "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 119
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0120",
-      "question_type": "multiple_choice",
-      "question_content": "为动物类中药的是( )",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "、  \n![](images/2b56db1d0ac3b974e75029fbe116761e7ae3fec50aa1bbe871fbdd3825213bc7.jpg)"
-        },
-        {
-          "option_id": "B",
-          "content": "、  \n![](images/6496686550a3c51b871fb4a91ccb4ebe3a8b3fd03e00672d7a18a33c6d2233ba.jpg)"
-        },
-        {
-          "option_id": "C",
-          "content": "、  \n![](images/65d288c727bfa47a7814feab39fa7423717632a2198ce81688263681b0e13136.jpg)"
-        },
-        {
-          "option_id": "D",
-          "content": "、"
-        },
-        {
-          "option_id": "E",
-          "content": "、  \n![](images/9d2379583a85efeb8e04d2899e4cc73fdd3141b0da87268b620619a0c990a7e1.jpg)\n\n## 答案解析\n\n## 答案："
-        },
-        {
-          "option_id": "F",
-          "content": "1\n\n解析：1、辛味：能散、能行，有发散、行气、活血作用。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 120
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "苦味：能泄、能燥、能坚。能泄的含义有三：通泄、降泄、清泄；能燥即是指苦能燥湿；能坚：是指苦能坚阴、坚厚肠胃。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "酸味：能收、能涩，有收敛固涩作用。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "咸味：能软、能下，有软坚散结、泻下通便作用。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "multiple_choice",
-      "question_content": "甘味：能补、能缓、能和，有补虚、和中、缓急、调和药性等作用。 解析：使药：意义有二，一是引经药，即引方中诸药直达病所的药物；二是调和药，即调和诸药的作用，使其合力驱邪。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "3\n\n解析：本题考查根及根茎类植物药采收时间。考生应掌握莪术属于根及根茎类中药，以及掌握根及根茎类的采收时间：一般在秋、冬两季植物地上部分将枯萎时及春初发芽前或刚露苗时采收。\n\n## 答案："
-        },
-        {
-          "option_id": "B",
-          "content": "4\n\n解析：利用酸碱性进行分离：对酸性、碱性或两性有机化合物来说，常可通过加入酸、碱以调节溶液的pH，改变分子的存在状态（游离型或解离型），从而改变溶解度而实现分离。例如，一些生物碱类在酸性水从药材中提出后，加碱调至碱性即可从水中沉淀析出，称为酸提碱沉法（酸/碱法）。提取黄酮、蒽醌类酚酸性成分时用氢氧化钙提取，加酸中和使其沉淀出来达到分离的目的称为碱提酸沉法，也属于这一分离类型。\n\n## 答案："
-        },
-        {
-          "option_id": "C",
-          "content": "5\n\n解析：乌头碱、次乌头碱、新乌头碱等双酯型生物碱，具麻辣味，毒性极强，是乌头的主要毒性成分。若将双酯型生物碱在碱水中加热，或将乌头直接浸泡于水中加热，或不加热仅在水中长时间浸泡，都可水解酯基，生成单酯型生物碱或无酯键的醇胺型生物碱。如乌头碱水解后生成的单酯型生物碱为乌头次碱，无酯键的醇胺型生物碱为乌头原碱。单酯型生物碱的毒性小于双酯型生物碱，而醇胺型生物碱几乎无毒性，但它们均不减低原双酯型生物碱的疗效。这就是乌头及附子经水浸、加热等炮制后毒性变小的化学原理。为川乌的水解反应。\n\n## 答案："
-        },
-        {
-          "option_id": "D",
-          "content": "6\n\n解析：千里光中所含有的生物碱主要为吡咯里西啶类生物碱，主要化学成分有千里光宁碱、千里光菲宁碱及痕量的阿多尼弗林碱等。千里光具有肝、肾毒性和胚胎毒性，使用时应该严格注意。\n\n## 答案："
-        },
-        {
-          "option_id": "E",
-          "content": "7\n\n解析：郁李仁：《中国药典》以苦杏仁苷为指标成分进行含量测定，规定苦杏仁苷含量不低于2.0％。需熟记以苦杏仁苷为指标成分的中药有：苦杏仁、桃仁、郁李仁。\n\n## 8 答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：丹参的化学成分主要包括脂溶性成分和水溶性成分两大部分。脂溶性成分大多为共轭醌、酮类化合物。如丹参酮Ⅰ、丹参酮 $\\mathrm { I I } _ { \\mathrm {"
-        },
-        {
-          "option_id": "G",
-          "content": "} }$ 、丹参酮 $\\mathrm { { I I } _ {"
-        },
-        {
-          "option_id": "H",
-          "content": "} }$ 、隐丹参酮等。水溶性成分则包括丹参素，丹酚酸、丹酚酸"
-        },
-        {
-          "option_id": "I",
-          "content": "，原儿茶酸，原儿茶醛等。\n\n## 答案："
-        },
-        {
-          "option_id": "J",
-          "content": "9\n\n解析：肿节风主要含有酚类、鞣质、黄酮苷、香豆素和内酯类化合物。其中香豆素包括异嗪皮啶、东莨菪内酯等。《中国药典》采用高效液相色谱法测定药材中异嗪皮啶和迷迭香酸含量，其中异嗪皮啶含量不少于0.02％，迷迭香酸含量不少于0.02％。\n\n## 答案："
-        },
-        {
-          "option_id": "K",
-          "content": "10\n\n解析：《中国药典》以总黄酮为指标成分对槐米或槐花进行鉴别和含量测定。要求槐花总黄酮（以芦丁计）不少于8.0％，槐米总黄酮不少于20.0％，对照品采用芦丁。\n\n三七在《中国药典》以人参皂苷 $\\mathrm { R g _ { 1 } }$ 、人参皂苷 $\\mathsf { R b } _ { 1 }$ 及三七皂苷 $\\mathrm { \\bf R } _ { 1 }$ 指标成分进行含量测定。细辛在《中国药典》以细辛脂素为指标成分进行含量测定。五味子在《中国药典》采用高效液相色谱法测定药材中五味子醇甲的含量，要求不得少于0.40%。天仙子在《中国药典》以东莨菪碱和莨菪碱为指标成分进行含量测定。\n\n11 答案："
-        },
-        {
-          "option_id": "L",
-          "content": "解析：在青蒿所含化学成分中，青蒿素是主要抗症有效成分，系我国学者于20世纪70年代初首次从青蒿中分离得到的具有过氧基的新型倍半萜内酯。\n\n12 答案："
-        },
-        {
-          "option_id": "M",
-          "content": "解析：牛黄为牛科动物牛的干燥胆结石，少数为胆管或肝管结石，为解痉、镇静、解热、解毒中药。牛黄约含8％胆汁酸，主要成分为胆酸、去氧胆酸和石胆酸。\n\n13 答案："
-        },
-        {
-          "option_id": "N",
-          "content": "解析：炮制作用：山药味甘，性平，归脾、胃、肾经。具有补脾益胃，生津益肺，补肾涩精的功能。 1、山药以补肾生精，益肺阴为主。用于肾虚遗精、尿频，肺虚喘咳，阴虚消渴。 2、土炒山药以补脾止泻为主，用于脾虚久泻。 3、麸炒山药以补脾健胃为主。用于脾虚食少，泄泻便溏，白带多过。\n\n14 答案："
-        },
-        {
-          "option_id": "O",
-          "content": "解析：醋柴胡的升散之性缓和，疏肝止痛的作用增强。多用于肝郁气滞的胁肋胀痛，腹痛及月经不调等症。故正确答案为"
-        },
-        {
-          "option_id": "P",
-          "content": "。\n\n15 答案："
-        },
-        {
-          "option_id": "Q",
-          "content": "解析：燀法：将药物置沸水中浸煮短暂时间，取出，分离种皮的方法。燀制的主要目的：①在保持有效成分的前提下，除去非药用部分。如苦杏仁等。②分离不同药用部位。如白扁豆等。\n\n16 答案："
-        },
-        {
-          "option_id": "R",
-          "content": "解析：1、采用炒黄法的中药有：牛蒡子、芥子、王不留行、莱菔子、苍耳子等。 2、采用炒焦法的中药有：山楂、栀子等。 3、采用炒炭法的中药有：大蓟、蒲黄、荆芥等。4、采用麸炒法的中药有：枳壳、苍术等。\n\n答案："
-        },
-        {
-          "option_id": "S",
-          "content": "17解析：斑蝥味辛，性热；有大毒。宜采用米炒法炮制。米炒斑蝥毒性降低，其气味得到矫正，可内服。\n\n解析：防风药材性状鉴别：根头部有明显密集的环纹，习称“蚯蚓头”，环纹上有的有棕褐色毛状残存叶基。表面灰棕色或棕褐色，粗糙，有纵皱纹、多数横长皮孔及点状突起的细根痕。体轻、质松，易折断，断面不平坦，皮部棕黄色至棕色，有裂隙，散生黄棕色油点，木质部浅黄色，气特异，味微甘。\n\n解析：中药制剂按给药途径与方法分类：(1)经口服给药的剂型，如汤剂、合剂、糖浆剂、颗粒剂、丸剂、片剂等。(2) 经直肠给药的剂型，如灌肠剂、栓剂等。\n\n(3) 经注射给药的剂型，如静脉、肌内、皮下、皮内及穴位注射剂。\n\n(4）呼吸道给药的剂型，如气雾剂、吸入剂等。\n\n(5）经皮肤给药的剂型，如洗剂、搽剂、涂膜剂、糊剂、软膏剂、硬膏剂、贴剂、贴膏剂等。\n\n(6）经黏膜给药的剂型，如滴眼剂、滴鼻剂、口腔膜剂、舌下片剂、含漱剂等。\n\n## 答案："
-        },
-        {
-          "option_id": "T",
-          "content": "20\n\n解析：散剂生产与贮藏的有关规定："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "供制散剂的原料药均应粉碎。除另有规定外，内服散剂应为细粉；儿科用及局部用散剂应为最细粉。眼用散剂应为极细粉，且应无菌。按照《中国药典》要求，细粉系指能全部通过五号筛，并含能够通过六号筛不少于95% 的粉末；最细粉系指能全部通过六号筛，并含能够通过七号筛不少于95% 的粉末；极细粉系指能全部通过八号筛，并含能够通过九号筛不少于95%的粉末。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "散剂应干燥、疏松、混合均匀、色泽一致。制备含有毒性药、贵重药或药物剂量小的散剂时，应采用配研法混匀并过筛。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "多剂量包装的散剂应附分剂量的用具；含有毒性药的内服散剂应单剂量包装。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "散剂量中可含或不含辅料。口服散剂需要时亦可加矫味剂、芳香剂、着色剂等。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "除另有规定外，散剂应密闭贮存，含挥发性药物或易吸潮的散剂应密封贮存。生物制品应采用防潮材料包装。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0006",
-      "question_type": "single_choice",
-      "question_content": "为防止胃酸对散剂中活性成分的破坏，散剂稀释剂中可选用中和胃酸的辅料。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 6
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0007",
-      "question_type": "single_choice",
-      "question_content": "散剂用于烧伤治疗如为非无菌制剂的，应在标签上标明“非无菌制剂”；产品说明书中应注明“本品为非无菌制剂”，同时在适应症下明确“用于程度较轻的烧伤（Ⅰ度或浅Ⅱ度）”；注意事项下规定“应遵医嘱使用”。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "21\n\n解析：口服混悬液检查与要求：口服混悬剂应分散均匀，放置后若有沉淀物，经振摇应易再分散。口服混悬剂在标签上应注明“用前摇匀＂；除另有规定外，口服混悬剂应进行以下相应检查。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 7
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "装量：除另有规定外，单剂量包装的口服混悬液的装量，照下述方法检查，应符合规定。检查法：取供试品10 袋（支），将内容物分别倒入经标化的量入式量筒内，检视，每支装量与标示装量相比较，均不得少于其标示量。凡规定检查含量均匀度者，一般不再进行装量检查。多剂量包装的口服混悬剂和干混悬剂照最低装量检查法检查，应符合规定。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "装量差异：除另有规定外，单剂量包装的干混悬剂照下述方法检查，应符合规定。检查法：取供试品 20 袋（支），分别精密称定内容物，计算平均装量，每袋（支）装量与平均装量相比较，装量差异限度应在平均装量的±10%以内，超出装量差异限度的不得多于2袋（支），并不得有1袋（支）超出限度1倍。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "干燥失重：除另有规定外，干混悬剂照干燥失重测定法，减失重量不得过2.0%。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "沉降体积比：口服混悬剂沉降体积比应不低于0.90。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "微生物限度：除另有规定外，照非无菌产品微生物限度检查：微生物计数法和控制菌检法及非无菌药品微生物限度标准检查，应符合规定。 ## 22 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "解析：注射剂的附加剂有："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "常用的增溶剂有聚山梨酯80、蛋黄卵磷脂、大豆磷脂等；聚山梨酯80、大豆磷脂、蛋黄卵磷脂也可用作乳化剂；甘油可用作助悬剂。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "防止药物氧化：常用的抗氧剂有亚硫酸钠、亚硫酸氢钠和焦亚硫酸钠等。常用的惰性气体有二氧化碳和氮气。常用的金属离子络合剂有乙二胺四乙酸（",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "DTA）、乙二胺四乙酸二钠（"
-        },
-        {
-          "option_id": "B",
-          "content": "DTA-2Na）等，常用量为0.03%\\~0.05%。 3、调节渗透压：氯化钠溶液、葡萄糖溶液。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "调节pH：盐酸、枸橼酸、氢氧化钠、氢氧化钾、碳酸氢钠、磷酸氢二钠、磷酸二氢钠等。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "抑制微生物增殖：0.5%苯酚、0.3%甲酚、0.5%三氯叔丁醇、0.01%硫柳汞等。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0006",
-      "question_type": "multiple_choice",
-      "question_content": "减轻疼痛：三氯叔丁醇、盐酸普鲁卡因、盐酸利多卡因等。 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "23\n\n解析：甘油明胶属于水溶性基质，具有弹性，不易折断，在体温下能软化并缓慢溶于分泌液中。常用作阴道栓剂基质，但不适用于鞣酸等与蛋白质有配伍禁忌的药物。\n\n## 答案："
-        },
-        {
-          "option_id": "B",
-          "content": "24\n\n解析：溶散时限： 1、除另有规定外，小蜜丸、水蜜丸和水丸应在1小时内全部溶散；2、浓缩丸和糊丸应在2小时内全部溶散； 3、滴丸应在30分钟内全部溶散，包衣滴丸应在1小时内全部溶散。 4、大蜜丸及研碎、嚼碎后或用开水、黄酒等分散后服用的丸剂不检查溶散时限。\n\n25 答案："
-        },
-        {
-          "option_id": "C",
-          "content": "解析：颗粒剂的质量要求： 1、除另有规定外，混悬颗粒剂应进行溶出度检查。 2、缓释颗粒、控释颗粒、肠溶颗粒应进行释放度检查。 3、可溶性颗粒、泡腾颗粒应进行溶化性检查。\n\n26 答案："
-        },
-        {
-          "option_id": "D",
-          "content": "解析：片剂的质量要求：阴道片应检查融变时限。\n\n27 答案："
-        },
-        {
-          "option_id": "E",
-          "content": "解析：锭剂系指饮片细粉加适宜黏合剂（或利用饮片细粉本身的黏性）制成不同形状的固体制剂。供内服，可吞服或研细以水或黄酒化服，外用多是研细用醋或酒调敷，也可作嗅入或外搽药用。\n\n28 答案："
-        },
-        {
-          "option_id": "F",
-          "content": "解析：生物利用中，常用药物血药浓度达峰时间比较药物不同制剂中吸收速度。\n\n29 答案："
-        },
-        {
-          "option_id": "G",
-          "content": "解析：金银花主要有效成分为有机酸，普遍认为绿原酸和异绿原酸是金银花的主要抗菌有效成分。\n\n30 答案："
-        },
-        {
-          "option_id": "H",
-          "content": "解析：“该试题已过期，新版教材已不考，为保证试卷完整性，仅供考生参阅。”少数补虚药中所含成分本身具有性激素样的作用，如鹿茸中含有雌二醇发挥雌激素作用。\n\n答案："
-        },
-        {
-          "option_id": "I",
-          "content": "31解析：选项图中的药材分别为白前、威灵仙、百部、藁本、人参。\n\n答案："
-        },
-        {
-          "option_id": "J",
-          "content": "32\n\n解析：牛膝（饮片）：呈圆柱形的段。外表皮灰黄色或淡棕色，有微细的纵皱纹及横长皮孔。质硬脆，易折断，受潮变软。切面平坦，淡棕色或棕色，略呈角质样而油润，中心维管束木部较大，黄白色，其外围散有多数黄白色点状异型维管束，习称“筋脉点”，\n\n断续排列成2\\~4轮。\n\n33 答案："
-        },
-        {
-          "option_id": "K",
-          "content": "解析：龙胆（药材）：根圆柱形，略扭曲，长10\\~20cm，直径0.2\\~0.5cm；表面淡黄色或黄棕色，上部多有显著的横皱纹，下部较细，有纵皱纹及支根痕。质脆，易折断，断面略平坦，皮部黄白色或淡黄棕色，木部色较浅，呈点状环列。气微，味甚苦。抓住龙胆“味甚苦”的特征。\n\n答案："
-        },
-        {
-          "option_id": "L",
-          "content": "34解析：选项所示中药分别为：牡丹皮、桑白皮、白鲜皮、肉桂、秦皮。\n\n35 答案："
-        },
-        {
-          "option_id": "M",
-          "content": "解析：1、艾叶为菊科植物艾的干燥叶。 2、枇杷叶为蔷薇科植物枇杷的干燥叶。 3、番泻叶为豆科植物狭叶番泻或尖叶番泻的干燥小叶。 4、紫苏叶为唇形科植物紫苏的干燥叶（或带嫩枝）。 5、蓼大青叶为廖科植物蓼蓝的干燥叶。\n\n36 答案："
-        },
-        {
-          "option_id": "N",
-          "content": "解析：丁香：略呈研棒状，长1\\~2cm。花冠圆球形，直径0.3\\~0.5cm，花瓣4，覆瓦状抱合，棕褐色至褐黄色，花瓣内为雄蕊和花柱，搓碎后可见众多黄色细粒状的花药。萼筒圆柱状，略扁，有的稍弯曲，长0.7\\~1.4cm，直径0.3\\~0.6cm，红棕色或棕褐色，上部有4枚三角状的萼片，十字状分开。质坚实，富油性。气芳香浓烈，味辛辣、有麻舌感。抓住丁香的特征“略呈研棒状”。\n\n37 答案："
-        },
-        {
-          "option_id": "O",
-          "content": "解析：酸枣仁（药材）：呈扁圆形或扁椭圆形，长0.5\\~0.9cm，宽0.5\\~0.7cm，厚约0.3cm。表面紫红色或紫褐色，平滑有光泽，有的有裂纹。有的两面均呈圆隆状突起；有的一面较平坦，中央有1条隆起的纵线纹，另一面微隆起，边缘略薄。一端凹陷，可见线形种脐，另一端有细小突起的合点。种皮较脆，胚乳白色，子叶2，浅黄色，富油性。气微，味淡。\n\n38 答案："
-        },
-        {
-          "option_id": "P",
-          "content": "解析：肉苁蓉片（饮片）：呈不规则形的厚片。表面棕褐色或灰棕色。有的可见肉质鳞叶。切面有淡棕色或棕黄色点状维管束，排列成波状环纹。\n\n答案："
-        },
-        {
-          "option_id": "Q",
-          "content": "39解析：以动物的病理产物入药的有：珍珠、僵蚕、牛黄、马宝、猴枣、狗宝等。\n\n## 答案："
-        },
-        {
-          "option_id": "R",
-          "content": "40\n\n解析：矿物药的颜色一般分为以下三种：1、本色：是由矿物的成分和内部构造所决定的颜色，如辰砂的红色，石膏的白色。2、外色：由外来的带色杂质、气泡等包裹体所引起的颜色，与矿物自身的成分和构造无关。外色的深浅除与带色杂质的量有关外，还与杂质分散的程度有关，如紫石英、大青盐等。3、假色：由晶体内部裂缝面、解理面及表面氧化膜的反射光引起的入射光波的干涉作用而产生的颜色，如云母的变彩现象。4、条痕及条痕色：矿物在白色毛瓷板上划过后所留下的粉末痕迹称为条痕，粉末的颜色。\n\n答案："
-        },
-        {
-          "option_id": "S",
-          "content": "解析：苦味：能泄、能燥、能坚。 酸味：能收、能涩。 辛味：能散、能行。 咸味：能软、能下。 甘味：能补、能缓、能和。\n\n42 答案："
-        },
-        {
-          "option_id": "T",
-          "content": "解析：苦味：能泄、能燥、能坚。 酸味：能收、能涩。 辛味：能散、能行。 咸味：能软、能下。 甘味：能补、能缓、能和。\n\n43 答案："
-        },
-        {
-          "option_id": "U",
-          "content": "解析：苦味：能泄、能燥、能坚。 酸味：能收、能涩。 辛味：能散、能行。 咸味：能软、能下。 甘味：能补、能缓、能和。\n\n44 答案："
-        },
-        {
-          "option_id": "V",
-          "content": "解析：本题考查目前常用道地药材知识。怀药，主产地河南。如著名的“四大怀药”—地黄、牛膝、山药、菊花；天花粉、瓜蒌、白芷、辛夷、红花、金银花、山茱萸等。\n\n45 答案："
-        },
-        {
-          "option_id": "W",
-          "content": "解析：本题考查目前常用道地药材知识。浙药，主产地浙江。如传统的“浙八味”——浙贝母、白术、延胡索、温郁金、玄参、杭白芍、杭菊花、杭麦冬；以及山茱萸、莪术、杭白芷、栀子、乌梅、乌梢蛇等。\n\n46 答案："
-        },
-        {
-          "option_id": "X",
-          "content": "解析：选项所示化合物结构分别是：麻黄碱、伞形花内脂、薄荷醇、黄芩素、没食子酸。解题技巧：麻黄碱是一类含氮（N）有机化合物。\n\n答案："
-        },
-        {
-          "option_id": "Y",
-          "content": "47解析：选项"
-        },
-        {
-          "option_id": "Z",
-          "content": "所示化合物为黄芩素。黄芩苷经水解后生成黄芩素分子。\n\n48 答案："
-        },
-        {
-          "option_id": "选项27",
-          "content": "解析：《中国药典》以硫酸阿托品、氢溴酸东莨菪碱为指标成分对洋金花进行鉴别和含量测定。\n\n答案："
-        },
-        {
-          "option_id": "选项28",
-          "content": "49解析：《中国药典》以苦参碱和氧化苦参碱为指标成分对山豆根进行鉴别和含量测定。\n\n答案："
-        },
-        {
-          "option_id": "选项29",
-          "content": "50解析：《中国药典》以硫酸阿托品、氢溴酸东莨菪碱为指标成分对洋金花进行鉴别和含量测定。\n\n51 答案："
-        },
-        {
-          "option_id": "选项30",
-          "content": "解析：1、雷公藤碱属于倍半萜大环内酯类生物碱。 2、汉防己甲素属于双苄基异喹啉类生物碱。 3、阿托品属于莨菪烷类生物碱。 4、氧化苦参碱属于吡啶类生物碱。 5、士的宁属于吲哚类生物碱。\n\n52 答案："
-        },
-        {
-          "option_id": "选项31",
-          "content": "解析：1、雷公藤碱属于倍半萜大环内酯类生物碱。 2、汉防己甲素属于双苄基异喹啉类生物碱。 3、阿托品属于莨菪烷类生物碱。 4、氧化苦参碱属于吡啶类生物碱。 5、士的宁属于吲哚类生物碱。\n\n53 答案："
-        },
-        {
-          "option_id": "选项32",
-          "content": "解析：大黄泻下作用明确，致泻的主要成分为结合型蒽醌苷，其中以二蒽酮苷中的番泻苷泻下作用最强。\n\n答案："
-        },
-        {
-          "option_id": "选项33",
-          "content": "54解析：黄连的抗菌有效成分主要是小檗碱。\n\n答案："
-        },
-        {
-          "option_id": "选项34",
-          "content": "55解析：含香豆素类化合物的常用中药有：秦皮、前胡、肿节风、补骨脂等。\n\n56 答案："
-        },
-        {
-          "option_id": "选项35",
-          "content": "解析：细辛含有痕量的马兜铃酸Ⅰ，有明显的肝肾毒性，细辛1.35g/kg灌胃，连续21天，小鼠肝脏组织中活性氧含量升高，SOD活性降低。《中国药典》对马兜铃酸Ⅰ进行限量检查，要求其含量不得过0.001％。\n\n57 答案："
-        },
-        {
-          "option_id": "选项36",
-          "content": "解析：含木脂素类化合物的常用中药有：五味子（木兰科）、厚朴（木兰科）、连翘（木犀科）、细辛（马兜铃科）等。\n\n答案："
-        },
-        {
-          "option_id": "选项37",
-          "content": "58解析：紫草的主要化学成分为萘醌类化合物。\n\n59 答案："
-        },
-        {
-          "option_id": "选项38",
-          "content": "解析：《中国药典》以总黄酮醇苷和萜类内酯为指标成分对银杏叶进行鉴别和含量测定。\n\n答案："
-        },
-        {
-          "option_id": "选项39",
-          "content": "60 解析：穿心莲内酯属于双环二萜类化合物。\n\n答案："
-        },
-        {
-          "option_id": "选项40",
-          "content": "61解析：齐墩果酸属于五环三萜中的齐墩果烷型。\n\n答案："
-        },
-        {
-          "option_id": "选项41",
-          "content": "62解析：薄荷醇为单环单萜的代表化合物。\n\n63 答案："
-        },
-        {
-          "option_id": "选项42",
-          "content": "解析：1、河砂：主要是作中间传热体，利用其温度高、传热快的特点，使质地坚韧的药物质地酥脆，或使药物膨大鼓起，便于粉碎和利于有效成分的溶出。此外，还可利用河砂温度高，破坏部分副作用成分而降低药物的毒副作用，去除非药用部位及矫味矫臭等。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 6
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "滑石粉：味甘，性寒，能利尿，清热，解暑。常用作中间传热体拌炒药物，可使药物受热均匀。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "稻米：味甘，性平。能补中益气，健脾和胃，除烦止渴，止泻痢。与药物共制，可增强药物疗效，降低刺激性和毒性。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "灶心土：味辛，性温。能温中和胃，止血，止呕，涩肠止泻。与药物共制后可降低药物的刺激性，增强药物疗效。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "蛤粉：味咸，性寒。能清热，利湿，化痰，软坚。与药物共制可除去药物的腥味，增强疗效。 ## 64 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "解析：1、河砂：主要是作中间传热体，利用其温度高、传热快的特点，使质地坚韧的药物质地酥脆，或使药物膨大鼓起，便于粉碎和利于有效成分的溶出。此外，还可利用河砂温度高，破坏部分副作用成分而降低药物的毒副作用，去除非药用部位及矫味矫臭等。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "滑石粉：味甘，性寒，能利尿，清热，解暑。常用作中间传热体拌炒药物，可使药物受热均匀。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "稻米：味甘，性平。能补中益气，健脾和胃，除烦止渴，止泻痢。与药物共制，可增强药物疗效，降低刺激性和毒性。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "灶心土：味辛，性温。能温中和胃，止血，止呕，涩肠止泻。与药物共制后可降低药物的刺激性，增强药物疗效。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "蛤粉：味咸，性寒。能清热，利湿，化痰，软坚。与药物共制可除去药物的腥味，增强疗效。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "65\n\n解析：1、河砂：主要是作中间传热体，利用其温度高、传热快的特点，使质地坚韧的药物质地酥脆，或使药物膨大鼓起，便于粉碎和利于有效成分的溶出。此外，还可利用河砂温度高，破坏部分副作用成分而降低药物的毒副作用，去除非药用部位及矫味矫臭等。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "滑石粉：味甘，性寒，能利尿，清热，解暑。常用作中间传热体拌炒药物，可使药物受热均匀。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "稻米：味甘，性平。能补中益气，健脾和胃，除烦止渴，止泻痢。与药物共制，可增强药物疗效，降低刺激性和毒性。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "灶心土：味辛，性温。能温中和胃，止血，止呕，涩肠止泻。与药物共制后可降低药物的刺激性，增强药物疗效。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "蛤粉：味咸，性寒。能清热，利湿，化痰，软坚。与药物共制可除去药物的腥味，增强疗效。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "66\n\n解析：煅淬：将药物在高温有氧条件下煅烧至红透后，立即投入规定的液体辅料中骤然冷却的方法称为煅淬。宜用煅淬法炮制的中药有，如自然铜、炉甘石、赭石等。\n\n## 答案："
-        },
-        {
-          "option_id": "B",
-          "content": "67\n\n解析：扣锅煅法：药物在高温缺氧条件下煅烧成炭的方法称扣锅煅法，又称密闭煅、闷煅、暗煅。宜用扣锅煅法炮制的中药有，如血余炭、干漆等。\n\n解析：“该试题已过期，新版教材已不考，为保证试卷完整性，仅供考生参阅。”制剂的贮藏条件规定为："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "阴凉处：贮藏温度不超过 $2 0 \\mathrm { { ^ \\circ",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} }$"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "凉暗处：在避光条件下贮藏且温度不超过 $2 0 \\mathrm { { } ^ { \\circ }",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} .$"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "冷处：贮藏温度为 $2 ^ { \\circ } \\mathrm {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} { \\sim } 1 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "B",
-          "content": "} ,$"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "常温：贮藏温度为 $1 0 ^ { \\circ } \\mathrm {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} { \\sim } 3 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "B",
-          "content": "} .$"
-        },
-        {
-          "option_id": "C",
-          "content": "## 答案："
-        },
-        {
-          "option_id": "D",
-          "content": "69\n\n解析：“该试题已过期，新版教材已不考，为保证试卷完整性，仅供考生参阅。”制剂的贮藏条件规定为："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "阴凉处：贮藏温度不超过 $2 0 \\mathrm { { } ^ { \\circ }",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} .$"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "凉暗处：在避光条件下贮藏且温度不超过 $2 0 \\mathrm { { } ^ { \\circ }",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "}$"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "冷处：贮藏温度为 $2 ^ { \\circ } \\mathrm {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} { \\sim } 1 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "B",
-          "content": "} _ { \\circ }$"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "常温：贮藏温度为 $1 0 ^ { \\circ } \\mathrm {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} { \\sim } 3 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "B",
-          "content": "} ,$\n\n## 答案："
-        },
-        {
-          "option_id": "C",
-          "content": "70\n\n解析：“该试题已过期，新版教材已不考，为保证试卷完整性，仅供考生参阅。”制剂的贮藏条件规定为："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "阴凉处：贮藏温度不超过 $2 0 \\mathrm { { } ^ { \\circ }",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} .$ 0"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "凉暗处：在避光条件下贮藏且温度不超过 $2 0 ^ { \\circ } \\mathrm {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} .$"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "冷处：贮藏温度为 $2 ^ { \\circ } \\mathrm {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} { \\sim } 1 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "B",
-          "content": "} _ { \\circ }$"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "multiple_choice",
-      "question_content": "常温：贮藏温度为 $1 0 ^ { \\circ } \\mathrm {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} { \\sim } 3 0 ^ { \\circ } \\mathrm {"
-        },
-        {
-          "option_id": "B",
-          "content": "} .$"
-        },
-        {
-          "option_id": "C",
-          "content": "## 答案："
-        },
-        {
-          "option_id": "D",
-          "content": "71\n\n解析：1、除另有规定外，每100ml相当于原饮片 $2 0 \\mathrm { g } _ { \\circ }$ 。含有毒性药品的中药酊剂，每100ml相当于原饮片10g。 2、除另有规定外，流浸膏剂要求每1ml相当于饮片1g；浸膏剂分为稠膏和干膏两种，每1g相当于饮片2\\~5g。\n\n## 答案："
-        },
-        {
-          "option_id": "E",
-          "content": "72\n\n解析：1、除另有规定外，每100ml相当于原饮片20g。含有毒性药品的中药酊剂，每100ml相当于原饮片10g。 2、除另有规定外，流浸膏剂要求每1ml相当于饮片1g者；浸膏剂分为稠膏和干膏两种，每1g相当于饮片2\\~5g。\n\n## 答案："
-        },
-        {
-          "option_id": "F",
-          "content": "73\n\n解析：1、除另有规定外，每100ml相当于原饮片20g。含有毒性药品的中药酊剂，每100ml相当于原饮片10g。 2、除另有规定外，流浸膏剂要求每1ml相当于饮片1g；浸膏剂分为稠膏和干膏两种，每1g相当于饮片 $2 { \\sim } 5 \\mathrm { g }$\n\n## 74 答案："
-        },
-        {
-          "option_id": "G",
-          "content": "解析：制药用水因其使用的范围不同而分为饮用水、纯化水、注射用水及灭菌注射用水。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "饮用水：可用于药材净制时的漂洗、制药用具的粗洗用水。除另有规定外，也可作为饮片的提取溶剂。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "纯化水：可作为配制普通药物制剂用的溶剂或试验用水；可作为中药注射剂、滴眼剂等灭菌制剂所用饮片的提取溶剂；口服、外用制剂配制用溶剂或稀释剂；非灭菌制剂用器具的精洗用水。也用作非灭菌制剂所用饮片的提取溶剂。纯化水不得用于注射剂的 配制与稀释。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "注射用水：可作为配制注射剂、滴眼剂等的溶剂或稀释剂及容器的精洗。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "灭菌注射用水：主要用于注射用灭菌粉末的溶剂或注射剂的稀释剂。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "75\n\n解析：制药用水因其使用的范围不同而分为饮用水、纯化水、注射用水及灭菌注射用水。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "饮用水：可用于药材净制时的漂洗、制药用具的粗洗用水。除另有规定外，也可作为饮片的提取溶剂。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "纯化水：可作为配制普通药物制剂用的溶剂或试验用水；可作为中药注射剂、滴眼剂等灭菌制剂所用饮片的提取溶剂；口服、外用制剂配制用溶剂或稀释剂；非灭菌制剂用器具的精洗用水。也用作非灭菌制剂所用饮片的提取溶剂。纯化水不得用于注射剂的配制与稀释。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "注射用水：可作为配制注射剂、滴眼剂等的溶剂或稀释剂及容器的精洗。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "灭菌注射用水：主要用于注射用灭菌粉末的溶剂或注射剂的稀释剂。 ## 76 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "解析：按靶向的部位，靶向制剂可分为如下几种："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "一级靶向制剂：系指进入靶部位的毛细血管床释药。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "二级靶向制剂：系指进入靶部位的特殊细胞（如肿瘤细胞）释药，而不作用于正常细胞。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "三级靶向制剂：系指药物作用于细胞内的一定部位。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "77\n\n解析：按靶向的部位，靶向制剂可分为如下几种："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "一级靶向制剂：系指进入靶部位的毛细血管床释药。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "二级靶向制剂：系指进入靶部位的特殊细胞（如肿瘤细胞）释药，而不作用于正常细胞。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "三级靶向制剂：系指药物作用于细胞内的一定部位。 ## 78 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "解析：按靶向的部位，靶向制剂可分为如下几种："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "一级靶向制剂：系指进入靶部位的毛细血管床释药。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "二级靶向制剂：系指进入靶部位的特殊细胞（如肿瘤细胞）释药，而不作用于正常细胞。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "multiple_choice",
-      "question_content": "三级靶向制剂：系指药物作用于细胞内的一定部位。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "79\n\n解析：表观分布容积：是体内药量与血药浓度间关系的一个比例常数。\n\n## 答案："
-        },
-        {
-          "option_id": "B",
-          "content": "80\n\n解析：速率常数：是描述药物转运（消除）速度的重要的动力学参数。\n\n## 答案："
-        },
-        {
-          "option_id": "C",
-          "content": "81\n\n解析：试验制剂与参比制剂血药浓度-时间曲线下面积比率称为相对生物利用度。\n\n## 82 答案："
-        },
-        {
-          "option_id": "D",
-          "content": "解析：商陆切面浅黄棕色或黄白色，异型维管束隆起，其木部明显，形成数个突起的同\n\n心性环轮，习称“罗盘纹。\n\n## 答案："
-        },
-        {
-          "option_id": "E",
-          "content": "83\n\n解析：何首乌切断面浅黄棕色或浅红棕色，显粉性，皮部有4\\~11个类圆形异型维管束环列，形成云锦状花纹，中央木部较大，有的呈木心。\n\n## 答案："
-        },
-        {
-          "option_id": "F",
-          "content": "84\n\n解析：选项中所示药材分别为："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "重楼：百合科植物云南重楼或七叶一枝花的干燥根茎。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "太子参：石竹科植物孩儿参的干燥块根。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "大黄：蓼科植物掌叶大黄、唐古特大黄或药用大黄的干燥根及根茎。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "丹参：为唇形科植物丹参的干燥根及根茎。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "细辛：马兜铃科植物北细辛、汉城细辛或华细辛的干燥根和根茎。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "85\n\n解析：选项中所示药材分别为："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "重楼：百合科植物云南重楼或七叶一枝花的干燥根茎。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "太子参：石竹科植物孩儿参的干燥块根。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "大黄：蓼科植物掌叶大黄、唐古特大黄或药用大黄的干燥根及根茎。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "丹参：为唇形科植物丹参的干燥根及根茎。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "multiple_choice",
-      "question_content": "细辛：马兜铃科植物北细辛、汉城细辛或华细辛的干燥根和根茎。 86 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "解析：图中所示的药材分别是：党参、秦艽、板蓝根、柴胡、北沙参。\n\n87 答案："
-        },
-        {
-          "option_id": "B",
-          "content": "解析：图中所示的药材分别是：党参、秦艽、板蓝根、柴胡、北沙参。\n\n答案："
-        },
-        {
-          "option_id": "C",
-          "content": "88\n\n解析：图中所示的药材分别是：党参、秦艽、板蓝根、柴胡、北沙参。\n\n## 89 答案："
-        },
-        {
-          "option_id": "D",
-          "content": "解析：牛蒡子药用部位是果实；决明子药用部位是种子；肉豆蔻药用部位是种仁；山茱萸药用部位是果肉；龙眼肉药用部位是假种皮。\n\n答案："
-        },
-        {
-          "option_id": "E",
-          "content": "90\n\n解析：牛蒡子药用部位是果实；决明子药用部位是种子；肉豆蔻药用部位是种仁；山茱萸药用部位是果肉；龙眼肉药用部位是假种皮。\n\n答案："
-        },
-        {
-          "option_id": "F",
-          "content": "91\n\n解析：牛蒡子药用部位是果实；决明子药用部位是种子；肉豆蔻药用部位是种仁；山茱萸药用部位是果肉；龙眼肉药用部位是假种皮。\n\n答案："
-        },
-        {
-          "option_id": "G",
-          "content": "92\n\n解析：僵蚕质硬而脆，易折断，断面平坦，外层白色，中间有亮棕色或亮黑色的丝腺环 4个。\n\n答案："
-        },
-        {
-          "option_id": "H",
-          "content": "解析：蟾酥：呈扁圆形团块状或片状。棕褐色或红棕色。团块状者质坚，不易折断，断面棕褐色，角质状，微有光泽；片状者质脆，易碎，断面红棕色，半透明。气微腥，味初甜而后有持久的麻辣感，粉末嗅之作嚏。\n\n## 答案："
-        },
-        {
-          "option_id": "I",
-          "content": "94\n\n解析：赭石：为氧化物类矿物刚玉族赤铁矿。主含三氧化二铁 $( \\mathrm {"
-        },
-        {
-          "option_id": "J",
-          "content": "e } _ { 2 } \\mathrm { O } _ { 3 } )$ o\n\n## 95 答案："
-        },
-        {
-          "option_id": "K",
-          "content": "解析：朱砂：为硫化物类矿物辰砂族辰砂。主含硫化汞（HgS）。\n\n## 答案："
-        },
-        {
-          "option_id": "L",
-          "content": "96\n\n解析：图中所示的中药分别是：白芍、羌活、续断、香附、绵马贯众。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "白芍：夏、秋二季采挖，洗净，除去头尾及细根，置沸水中煮后除去外皮或去皮后再煮，晒干。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "香附：秋季采挖，燎去毛须，置沸水中略煮或蒸透后晒干，或燎后直接晒干。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "羌活：春、秋二季采挖，除去须根及泥沙，晒干。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "续断：秋季采挖，除去根头和须根，用微火烘至半干，堆置“发汗”至内部变绿色时，再烘干。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "绵马贯众：秋季采挖，削去叶柄，须根，除去泥沙，晒干。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "97\n\n解析：图中所示的中药分别是：白芍、香附、羌活、续断、绵马贯众。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "白芍：夏、秋二季采挖，洗净，除去头尾及细根，置沸水中煮后除去外皮或去皮后再煮，晒干。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "香附：秋季采挖，燎去毛须，置沸水中略煮或蒸透后晒干，或燎后直接晒干。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "羌活：春、秋二季采挖，除去须根及泥沙，晒干。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "续断：秋季采挖，除去根头和须根，用微火烘至半干，堆置“发汗”至内部变绿色时，再烘干。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "multiple_choice",
-      "question_content": "绵马贯众：秋季采挖，削去叶柄，须根，除去泥沙，晒干。 ## 答案：",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "98\n\n解析：沉香（药材）：呈不规则块状、片状或盔帽状，有的为小碎块。表面凹凸不平，有刀削痕，偶有孔洞，可见黑褐色树脂与黄白色木部相间的斑纹、孔洞及凹窝。表面多呈朽木状。质较坚实，断面刺状。\n\n## 答案："
-        },
-        {
-          "option_id": "B",
-          "content": "99\n\n解析：大血藤（药材）：呈圆柱形，略弯曲，长30\\~60cm，直径1\\~3cm。表面灰棕色，粗糙，外皮常呈鳞片状剥落，剥落处显暗红棕色，有的可见膨大的节及略凹陷的枝痕或叶痕。质硬，断面皮部红棕色，有数处向内嵌入木部，木部黄白色，有多数细孔状导管，射线呈放射状排列。\n\n## 答案："
-        },
-        {
-          "option_id": "C",
-          "content": "100\n\n解析：鸡血藤（药材）：呈椭圆形、长矩圆形或不规则的斜切片，厚0.3\\~1cm。栓皮灰棕色，有的可见灰白色斑块，栓皮脱落处显红棕色。质坚硬。切面木部红棕色或棕色，导管孔多数；韧皮部有树脂状分泌物呈红棕色至黑棕色，与木部相间排列呈数个同心性椭圆形或偏心性半圆形环；髓部偏向一侧。\n\n答案："
-        },
-        {
-          "option_id": "D",
-          "content": "解析：肠溶衣：选用肠溶材料（如聚丙烯酸树脂Ⅰ号、Ⅱ号、Ⅲ号，纤维醋法酯等）将丸剂包衣，使之在胃液中不溶散而能在肠液中溶散。\n\n## 答案："
-        },
-        {
-          "option_id": "E",
-          "content": "102\n\n解析：延胡索味辛、苦，性温。归肝、脾经。具有活血、利气、止痛的功能。用于胸胁、脘腹疼痛，经闭痛经，产后瘀阻，跌打肿痛等证。①生品止痛有效成分不易煎出，效果欠佳，故临床多用醋制品。②醋延胡索行气止痛作用增强，广泛用于身体各部位的多种疼痛证候。③酒延胡索以活血、祛瘀、止痛为主。\n\n## 答案："
-        },
-        {
-          "option_id": "F",
-          "content": "103\n\n解析：由上题可知，补脾益肠丸的内层包肠溶衣，属于肠溶衣丸。在盐酸溶液中(9→1000)检查2小时，不得有裂缝、崩解或软化现象，再在磷酸盐缓冲溶液(pH6.8)中进行检查，1小时内应全部崩解。\n\n## 答案："
-        },
-        {
-          "option_id": "G",
-          "content": "104\n\n解析：黄芪、党参、当归、补骨脂、甘草均属于补虚药。黄芪、党参、甘草是补气药；补骨脂是补阳药；当归是补血药。含香豆素类化合物的常用中药有秦皮、前胡、肿节风、补骨脂等。\n\n## 答案："
-        },
-        {
-          "option_id": "H",
-          "content": "105\n\n解析：红参为五加科植物人参的栽培品经蒸制后的干燥根和根茎。采收加工：秋季采挖，洗净，蒸制后，干燥。\n\n## 答案："
-        },
-        {
-          "option_id": "I",
-          "content": "106\n\n解析：五味子中含木脂素较多，约为5％，近年来从其果实中分得了一系列联苯环辛烯型木脂素，比如五味子醇，五味子素，五味子酯甲、乙、丙、丁和戊。\n\n## 答案："
-        },
-        {
-          "option_id": "J",
-          "content": "107\n\n解析：单剂量灌装的合剂也可称为口服液。合剂可以根据需要加入适宜的附加剂。在制剂确定处方时，该处方的抑菌效力应符合《中国药典》抑菌效力检查法的规定，山梨酸和苯甲酸的用量不得超过0.3％（其钾盐、钠盐的用量分别按酸计），羟苯酯类的用量不得超过0.05％。\n\n## 答案："
-        },
-        {
-          "option_id": "K",
-          "content": "108\n\n解析：羌活（饮片）：为类圆形、不规则横切或斜切片。表皮棕褐色至黑褐色，切面外侧棕褐色，木部黄白色，有的可见放射状纹理。体轻，质脆。气香，味微苦而辛。\n\n## 答案："
-        },
-        {
-          "option_id": "L",
-          "content": "109\n\n解析：葛根含异黄酮类化合物，其结构特点为有氧杂环结构。\n\n## 答案："
-        },
-        {
-          "option_id": "M",
-          "content": "110\n\n解析：柴胡中所含皂苷均为三萜皂苷；柴胡的药理作用：（1）解热、镇痛、抗炎（2）保肝、利胆、降血脂。\n\n## 11 答案：1 $\\mathbf { \\delta"
-        },
-        {
-          "option_id": "N",
-          "content": ","
-        },
-        {
-          "option_id": "O",
-          "content": ","
-        },
-        {
-          "option_id": "P",
-          "content": ","
-        },
-        {
-          "option_id": "Q",
-          "content": "}$\n\n解析：1、性状：皂苷多数具有苦而辛辣味，其粉末对人体黏膜有强烈的刺激性。 2、溶解度：大多数皂苷极性较大，易溶于水、热甲醇和乙醇等极性较大的溶剂，难溶于丙酮、乙醚等有机溶剂。 3、发泡性：皂苷水溶液经强烈振荡能产生持久性的泡沫，且不\n\n因加热而消失。\n\n## 112 答案： $\\mathbf {"
-        },
-        {
-          "option_id": "R",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "S",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "T",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "U",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "V",
-          "content": "}$\n\n解析：含三萜皂苷化合物的常用中药有人参、三七、甘草、黄芪、合欢皮、商陆、柴胡等。\n\n## 113 答案： $\\mathbf {"
-        },
-        {
-          "option_id": "W",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "X",
-          "content": "}$\n\n解析：含强心苷类化合物的常用中药有香加皮、罗布麻叶等。\n\n## 114 答案： $\\mathbf {"
-        },
-        {
-          "option_id": "Y",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "Z",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "选项27",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "选项28",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "选项29",
-          "content": "}$\n\n解析：中药炮制常用液体辅料有：酒、醋、盐水、姜汁、蜂蜜、油等。还有用到其他液体辅料的主要有：吴茱萸汁、白萝卜汁、羊脂油、鳖血、山羊血、石灰水、甘草汁、黑豆汁及其他药液等。\n\n## 答案："
-        },
-        {
-          "option_id": "选项30",
-          "content": ","
-        },
-        {
-          "option_id": "选项31",
-          "content": ","
-        },
-        {
-          "option_id": "选项32",
-          "content": "115\n\n解析：1、郁金：质坚实，横断面灰棕色，角质样。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "延胡索：质硬而脆，断面黄色，角质样，有蜡样光泽。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "天麻：质坚硬，不易折断，断面较平坦，黄白色至淡棕色，角质样。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "葛根：切面黄白色至淡黄棕色，有的纹理不明显。质韧，纤维性强。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "multiple_choice",
-      "question_content": "黄芪：质硬而韧，不易折断，断面纤维性强，并显粉性。 ## 116 答案： $\\mathbf {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "B",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "C",
-          "content": "}$\n\n解析：根据图表所知，检验数据结果符合标准规定的项目有薄层色谱、杂质、水分。\n\n## 11 答案：7 $\\mathbf {"
-        },
-        {
-          "option_id": "D",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "E",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "F",
-          "content": "}$\n\n解析：除另有规定外，药材原粉片、浸膏（半浸膏）片、糖衣片、薄膜衣片、化药片、中药片、含片、舌下片、可溶片、口崩片、肠溶片、泡腾片均应检查崩解时限。咀嚼片、以冷冻干燥法制备的口崩片以及规定检查溶出度、释放度的片剂，一般不再进行崩解时限检查。\n\n## 118 答案： $\\mathbf {"
-        },
-        {
-          "option_id": "G",
-          "content": ","
-        },
-        {
-          "option_id": "H",
-          "content": ","
-        },
-        {
-          "option_id": "I",
-          "content": ","
-        },
-        {
-          "option_id": "J",
-          "content": "}$\n\n解析：1、直肠给药栓剂中药物的吸收途径：肛门给药后，药物在直肠的吸收主要途径有：①经直肠上静脉吸收，由门静脉进入肝脏，再由肝脏进入大循环；②经直肠下静脉和肛门静脉吸收，由髂内静脉绕过肝脏，从下腔大静脉直接进入大循环；③经直肠淋巴系统吸收。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "影响直肠给药栓剂中药物吸收的因素：（1）生理因素，栓剂塞入直肠的深度影响药物的吸收。（2）药物因素：脂溶性、非解离型的药物易吸收。（3）基质因素：水溶性药物分散在油脂性基质中，药物能较快释放或分散至分泌液中，故吸收较快。 ## 119 答案： $\\mathbf {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "B",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "C",
-          "content": "} , \\mathbf {"
-        },
-        {
-          "option_id": "D",
-          "content": "}$\n\n解析：气雾剂、喷雾剂："
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0001",
-      "question_type": "single_choice",
-      "question_content": "每揿主药含量：定量气雾剂每揿主药含量应为每揿主药含量标示量的80％\\~120％。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 1
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0002",
-      "question_type": "single_choice",
-      "question_content": "每瓶总喷次：多剂量定量喷雾剂每瓶总喷次均不得少于其标示总喷次。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 2
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0003",
-      "question_type": "single_choice",
-      "question_content": "每喷主要含量：定量喷雾剂每喷主药含量应为标示含量的80％\\~120％。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 3
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0004",
-      "question_type": "single_choice",
-      "question_content": "喷射速率：非定量气雾剂每瓶的平均喷射速率 $\\bf ( \\{ g / s \\} )$ ，均应符合各品种项下的规定。",
-      "options": [],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 4
-      }
-    },
-    {
-      "question_id": "5ae6a7bd1b91-838f0c1841-q0005",
-      "question_type": "single_choice",
-      "question_content": "递送剂量均一性：定量气雾剂照吸入制剂相关下方法检查，递送剂量均一性应符合规定。 $$ \\mathbf {",
-      "options": [
-        {
-          "option_id": "A",
-          "content": "}, \\mathbf {"
-        },
-        {
-          "option_id": "B",
-          "content": "}, \\mathbf {"
-        },
-        {
-          "option_id": "C",
-          "content": "}\n$$\n\n解析：图中所示中药分别为：僵蚕、海螵蛸、冬虫夏草、牛黄、五倍子。属于动物类中药有：僵蚕、海螵蛸、牛黄。冬虫夏草属于菌类中药，五倍子属于其他类中药。"
-        }
-      ],
-      "answer": [],
-      "explanation": "",
-      "kp_ids": [],
-      "media": [],
-      "source_ref": {
-        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2017年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
-        "number": 5
+        "number": 119,
+        "answer_source": ""
       }
     }
   ]
