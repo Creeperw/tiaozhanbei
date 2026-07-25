@@ -346,9 +346,9 @@ describe('DashboardPage learning workspace', () => {
     fireEvent.click(book);
 
     expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'knowledge',
+      page: 'practice',
       params: {
-        view: 'atlas', route: 'tcm_assistant', lv1: '中医学基础', source: 'learning-plan',
+        view: 'textbook-chapters', route: 'tcm_assistant', lv1: '中医学基础', source: 'learning-plan',
       },
     });
   });
@@ -464,9 +464,9 @@ describe('DashboardPage learning workspace', () => {
     fireEvent.click(await screen.findByRole('button', { name: /进入中医基础阶段/ }));
     fireEvent.click(await screen.findByRole('button', { name: /进入《中医学基础》/ }));
     expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'knowledge',
+      page: 'practice',
       params: {
-        view: 'atlas',
+        view: 'textbook-chapters',
         route: 'textbook_14_5',
         lv1: '中医学基础',
         source: 'classic-learning-route',

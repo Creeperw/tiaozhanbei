@@ -9,6 +9,7 @@ import HomePage from './components/HomePage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
 import LearningStageLanding from './components/learning-stage/LearningStageLanding';
+import TextbookChapterLearning from './components/workshop-textbook/TextbookChapterLearning';
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
 import OnboardingSurveyPanel from './components/OnboardingSurveyPanel';
@@ -227,6 +228,14 @@ export default function App() {
           />
         );
       case 'practice':
+        if (pageIntent.params.view === 'textbook-chapters') {
+          return (
+            <TextbookChapterLearning
+              navigationContext={pageIntent.params}
+              onNavigate={navigateToPage}
+            />
+          );
+        }
         if (pageIntent.params.view === 'workspace') {
           return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
         }

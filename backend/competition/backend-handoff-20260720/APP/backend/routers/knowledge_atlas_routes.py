@@ -95,6 +95,30 @@ def get_atlas_detail(
         ) from exc
 
 
+@router.get("/section/{section_id}")
+def get_atlas_section(
+    section_id: str,
+    recommendation_limit: int = Query(6, ge=1, le=12),
+    current_user: UserModel = Depends(get_current_user),
+):
+    del current_user
+    try:
+        return {
+            "ok": True,
+            **atlas_service.section_detail(
+                section_id,
+                recommendation_limit=recommendation_limit,
+            ),
+        }
+    except AtlasUnavailableError as exc:
+        raise _unavailable(exc) from exc
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "atlas_section_not_found", "message": str(exc).strip("'\"")},
+        ) from exc
+
+
 @router.get("/images/{filename}")
 def get_atlas_image(
     filename: str,

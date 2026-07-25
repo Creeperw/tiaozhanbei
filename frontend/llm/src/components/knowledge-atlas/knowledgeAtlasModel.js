@@ -24,6 +24,8 @@ export function normalizeAtlasNode(node, index = 0) {
     question_count: Number(node?.question_count ?? node?.questions_count ?? 0),
     video_count: Number(node?.video_count ?? node?.videos_count ?? 0),
     order_index: Number(node?.order_index ?? node?.sort_index ?? index),
+    review_status: String(node?.review_status ?? 'resolved'),
+    content_status: String(node?.content_status ?? 'mapped'),
   };
 }
 

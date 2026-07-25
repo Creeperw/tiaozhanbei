@@ -15,7 +15,6 @@ test('defaults authenticated users to dashboard and exposes top-level training n
     { key: 'assistant', label: '智能助教' },
     { key: 'practice', label: '学习工坊' },
     { key: 'training-workshop', label: '训练工坊' },
-    { key: 'knowledge', label: '知识仓库' },
     { key: 'personalization', label: '个性数据' },
     { key: 'settings', label: '用户设置' },
   ]);
@@ -150,7 +149,7 @@ test('uses a full-width workspace shell for assistant, both workshops, and knowl
   assert.equal(practice.shellMode, 'workspace');
   assert.equal(trainingWorkshop.shellMode, 'workspace');
   assert.equal(knowledge.shellMode, 'workspace');
-  assert.equal(knowledge.primaryNav.find((item) => item.key === 'knowledge').label, '知识仓库');
+  assert.equal(knowledge.primaryNav.some((item) => item.key === 'knowledge'), false);
 });
 
 test('keeps dashboard, personalization, settings and admin in the standard shell', () => {

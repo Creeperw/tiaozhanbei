@@ -2727,6 +2727,8 @@ textarea:focus-visible {
 .dashboard-daily__path > header > small { align-self: center; color: #8aa098; font-size: .57rem; white-space: nowrap; }
 .dashboard-daily__path-stage { position: relative; min-height: 0; flex: 1; overflow: hidden; }
 .dashboard-daily__learning-column { display: contents; min-width: 0; min-height: 0; }
+.dashboard-daily--library-only { height: 100%; min-height: 0; padding: 12px; background: #eef7f2; }
+.dashboard-daily__library { height: 100%; min-height: 0; overflow: hidden; border: 1px solid #dceae2; border-radius: 24px; background: #f8fcfa; }
 .learning-path-content { display: flex; height: 100%; min-height: 0; flex-direction: column; }
 .learning-path-content > .learning-path-overview { min-height: 0; flex: 1; }
 .dashboard-daily__path-empty[data-state="requires-long-term-plan"] {

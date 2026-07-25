@@ -2417,6 +2417,36 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         except Exception as exc:
             raise knowledge_error(exc) from exc
 
+    @app.get("/api/v1/knowledge/content/recognition-reports")
+    async def list_knowledge_recognition_reports(
+        request: Request,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> dict:
+        try:
+            return await asyncio.to_thread(
+                knowledge_backend().list_recognition_reports,
+                knowledge_owner(request),
+                offset=max(0, offset),
+                limit=min(100, max(1, limit)),
+            )
+        except Exception as exc:
+            raise knowledge_error(exc) from exc
+
+    @app.get("/api/v1/knowledge/content/recognition-reports/{report_id}")
+    async def get_knowledge_recognition_report(
+        report_id: str,
+        request: Request,
+    ) -> dict:
+        try:
+            return await asyncio.to_thread(
+                knowledge_backend().get_recognition_report,
+                knowledge_owner(request),
+                report_id,
+            )
+        except Exception as exc:
+            raise knowledge_error(exc) from exc
+
     @app.get("/api/v1/knowledge/exams/tracks")
     async def official_exam_tracks() -> dict:
         try:
