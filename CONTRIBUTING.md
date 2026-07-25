@@ -10,6 +10,9 @@
 | sunjingyan（GitHub：[@Monologue-8106](https://github.com/Monologue-8106)） | 登录体验、顺序学习路径、知识空间和学习工坊前端交互 |
 | 11075 | 团队交接与 PowerShell 启动端口校准 |
 | noalternative9 | 模拟病患组件后端接入、SimulatedPatientChat 前端、训练工坊 UI 优化、收藏夹/笔记本/错题库功能、资格试卷数据导入、本地部署配置与调试 |
+| fxz729 | 时珍智训训练工坊主线维护与功能整合：平台导航和训练工作台、模拟病患与资格试卷流程、收藏/笔记/错题等学习闭环、智能组卷正式题库与个性化链路、前后端体验优化、Live 部署和接口文档 |
+
+`fxz729` 当前协作分支为 `fxz729/训练工坊`，也是本轮训练工坊相关功能的主要维护与整合账号。除本次智能组卷外，fxz729 还负责或参与了训练工坊页面重构、模拟病患入口与交互、资格试卷工作流和答题体验、收藏夹/笔记本/错题闭环、前后端接口适配、部署调试及相关文档维护。智能组卷部分包括：正式题库流式检索、个性化蓝图、正式题优先组装、候选题冷却去重、练习/测试模式补题边界、题量解析修复、前端题源展示以及 Live 环境启动校验。大体积题库、向量索引、运行时数据库和密钥不属于贡献内容，不应随分支提交。
 
 GitHub Contributors 页面依据 `main` 可达提交的作者邮箱统计。提交者应使用已绑定到个人 GitHub 账号的邮箱；修改历史提交作者会破坏审计链路，不应为了统计而重写已经共享的提交。
 
@@ -20,6 +23,7 @@ GitHub Contributors 页面依据 `main` 可达提交的作者邮箱统计。提�
 - `fxz/merge-sequential-learning-path-20260722`
 - `feat/chapter-hierarchy-api-settings-20260722`
 - `codex/team-handoff-2026-07-20`
+- `fxz729/训练工坊`
 
 ---
 
@@ -55,6 +59,37 @@ GitHub Contributors 页面依据 `main` 可达提交的作者邮箱统计。提�
 ### 3. 用户认证 API — `GET /api/v1/auth/me`
 
 用于 SimulatedPatientChat 欢迎页获取当前登录用户名，显示 "欢迎XX医生"。
+
+### 4. 智能组卷与 Live 正式题库
+
+本次 `fxz729/训练工坊` 分支新增/调整的智能组卷链路如下：
+
+```text
+POST /api/v1/review-cards
+  → PlannerAgent
+  → PaperBlueprintAgent
+  → KnowledgeBaseAgent
+  → PaperAssemblyAgent
+  → AuditAgent
+  → /api/v1/workshop/papers
+```
+
+关键接口：
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| `GET` | `/health` | 确认服务为 `mode=live`、`knowledge_source=formal` |
+| `POST` | `/api/v1/review-cards` | 普通组卷请求 |
+| `POST` | `/api/v1/review-cards/stream` | 流式组卷与阶段事件 |
+| `GET` | `/api/v1/review-cards/runs/{thread_id}` | 查询运行状态 |
+| `GET` | `/api/v1/workshop/papers` | 当前用户试卷列表 |
+| `GET` | `/api/v1/workshop/papers/{paper_id}` | 获取试卷、题源标签和答题内容 |
+| `PUT` | `/api/v1/workshop/papers/{paper_id}/answers` | 保存答案 |
+| `POST` | `/api/v1/workshop/papers/{paper_id}/submit` | 交卷并评分 |
+
+正式题库候选优先于模型生成题；练习模式在正式候选不足时允许审核生成补题，测试模式不会使用生成题。近期已发布题按题目 ID 和规范化题干进入冷却，回填路径同样遵守冷却规则。题目视图会显示“正式题库”“个人已确认题”或“审核生成补题”等来源标签。
+
+Live部署、模型密钥、正式知识资产、SQLite/MySQL持久化、`ijson`/`requests`依赖和队友拉取后的启动步骤见 [`backend/competition_app/docs/smart-paper-live-deployment.md`](backend/competition_app/docs/smart-paper-live-deployment.md)。
 
 ---
 
