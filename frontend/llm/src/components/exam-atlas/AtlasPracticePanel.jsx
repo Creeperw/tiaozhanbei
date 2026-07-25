@@ -8,7 +8,7 @@ import {
   PenLine,
   Send,
 } from 'lucide-react';
-import { loadPracticeQuestion, submitPracticeAnswer } from '../../pageDataLoaders';
+import { loadDailyTaskPracticeQuestion, loadPracticeQuestion, submitPracticeAnswer } from '../../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../../utils/api';
 import { Button, EmptyState, InlineError, Skeleton } from '../ui';
 
@@ -46,19 +46,12 @@ function buildGuidance({ isMultiple, isSingle, mode, kpName }) {
   return steps;
 }
 
-function difficultySourceLabel(source) {
-  if (source === 'formal_question_bank') return '正式题库标注';
-  if (source === 'question_bank_snapshot') return '题库快照';
-  if (source === 'system_default') return '题库未标注，系统默认';
-  if (source === 'variation') return '沿用原题';
-  return '题目快照';
-}
-
 export default function AtlasPracticePanel({
   knowledgePoint = null,
   scope = 'public',
   mode = 'objective',
   onResult,
+  taskItemId = '',
 }) {
   const [question, setQuestion] = useState(null);
   const [answer, setAnswer] = useState('');
@@ -68,6 +61,7 @@ export default function AtlasPracticePanel({
   const [loadingQuestion, setLoadingQuestion] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState(null);
   const [generation, setGeneration] = useState(0);
   const operationGenerationRef = useRef(0);
   const kpId = knowledgePoint?.kpId || knowledgePoint?.kp_id || '';
@@ -87,22 +81,20 @@ export default function AtlasPracticePanel({
       setHintVisible(false);
       setSubmitting(false);
       setError('');
+      setProgress(null);
       setLoadingQuestion(true);
-      const loaded = await loadPracticeQuestion({
-        fetcher: fetchJsonWithAuthFallback,
-        mode,
-        kpId,
-        topic: kpName,
-        scope,
-      });
+      const loaded = taskItemId
+        ? await loadDailyTaskPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, taskItemId })
+        : await loadPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, mode, kpId, topic: kpName, scope });
       if (cancelled || operation !== operationGenerationRef.current) return;
       setQuestion(loaded.practice.available ? loaded.practice.question : null);
+      setProgress(loaded.practice.progress || null);
       if (loaded.error) setError(loaded.error);
       setLoadingQuestion(false);
     };
     load();
     return () => { cancelled = true; };
-  }, [generation, kpId, kpName, mode, scope]);
+  }, [generation, kpId, kpName, mode, scope, taskItemId]);
 
   const questionOptions = useMemo(() => {
     const options = Array.isArray(question?.options) ? question.options : [];
@@ -135,6 +127,7 @@ export default function AtlasPracticePanel({
       fetcher: fetchJsonWithAuthFallback,
       question,
       answer: submittedAnswer,
+      taskItemId,
     });
     if (operation === operationGenerationRef.current) {
       if (response.error) setError(response.error);
@@ -151,6 +144,9 @@ export default function AtlasPracticePanel({
   if (loadingQuestion) return <Skeleton label={`正在加载${mode === 'case' ? '案例简答题' : '客观题'}`} lines={3} />;
   if (error && !question) return <InlineError message={error} />;
   if (!question) {
+    if (taskItemId && loadedProgressComplete(progress)) {
+      return <p role="status">今日知识点练习已完成</p>;
+    }
     return (
       <EmptyState
         title={mode === 'case' ? '当前暂无可用案例简答题' : '当前暂无可用客观题'}
@@ -175,7 +171,6 @@ export default function AtlasPracticePanel({
             <div className="practice-question-meta">
               <span>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</span>
               <span>{typeLabel}</span>
-              <span title={`来源：${difficultySourceLabel(question.difficulty_source)}`}>难度 D{question.difficulty || 2}</span>
             </div>
             <p id="practice-question">{question.stem}</p>
           </article>
@@ -320,7 +315,6 @@ export default function AtlasPracticePanel({
                 <h4>题目线索</h4>
                 <dl>
                   <div><dt>题型</dt><dd>{typeLabel}</dd></div>
-                  <div><dt>难度</dt><dd>D{question.difficulty || 2}（{difficultySourceLabel(question.difficulty_source)}）</dd></div>
                   <div><dt>来源</dt><dd>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</dd></div>
                 </dl>
               </section>
@@ -330,4 +324,9 @@ export default function AtlasPracticePanel({
       </div>
     </section>
   );
+}
+
+function loadedProgressComplete(value) {
+  return Number(value?.required || 0) > 0
+    && Number(value?.reviewed || 0) >= Number(value.required);
 }

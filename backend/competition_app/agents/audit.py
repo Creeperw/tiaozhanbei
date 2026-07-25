@@ -35,7 +35,6 @@ class AuditAgent:
         semantic_resource = {
             "title": expert.title,
             "content": expert.content,
-            "target_difficulty": expert.target_difficulty,
             "estimated_minutes": expert.estimated_minutes,
             "claim_texts": [claim.text for claim in expert.claims],
             "safety_notes": expert.safety_notes,
@@ -60,7 +59,6 @@ class AuditAgent:
                     "learning_profile": {
                         "summary": getattr(diagnosis, "summary", ""),
                         "risk_flags": getattr(diagnosis, "risk_flags", []),
-                        "target_difficulty": getattr(diagnosis, "target_difficulty", 2),
                     },
                     "acceptance_criteria": {
                         "available_minutes": context.get("available_minutes"),

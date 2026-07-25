@@ -1,0 +1,797 @@
+{
+  "template_id": "868c9dd7d0a9-2023",
+  "questions": [
+    {
+      "question_id": "868c9dd7d0a9-2023-q0002",
+      "question_type": "single_choice",
+      "question_content": "患者，男，48岁。近1个月来，因上腹部不适，食欲减退，体重减轻而疑诊为胃癌。为确诊，首选的检查方法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "癌胚抗原测定"
+        },
+        {
+          "option_id": "B",
+          "content": "大便隐血试验"
+        },
+        {
+          "option_id": "C",
+          "content": "胃液分析"
+        },
+        {
+          "option_id": "D",
+          "content": "钡餐检查"
+        },
+        {
+          "option_id": "E",
+          "content": "胃镜检查"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "本病的治疗以驱蛔杀虫为主，辅佐调理脾胃。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 1
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0003",
+      "question_type": "single_choice",
+      "question_content": "心电图V1～V3导联都出现异常Q波或QS波，可见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "前间壁心肌梗死"
+        },
+        {
+          "option_id": "B",
+          "content": "前侧壁心肌梗死"
+        },
+        {
+          "option_id": "C",
+          "content": "广泛前壁心肌梗死"
+        },
+        {
+          "option_id": "D",
+          "content": "下壁心肌梗死"
+        },
+        {
+          "option_id": "E",
+          "content": "正后壁心肌梗死"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 2
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0004",
+      "question_type": "single_choice",
+      "question_content": "下列各项，符合右心房肥大的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "P波振幅＞0.25mV"
+        },
+        {
+          "option_id": "B",
+          "content": "P波时间＞0.12s"
+        },
+        {
+          "option_id": "C",
+          "content": "P波呈双峰状"
+        },
+        {
+          "option_id": "D",
+          "content": "P-R间期0.20s"
+        },
+        {
+          "option_id": "E",
+          "content": "QRS波群时间0.12s"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 3
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0005",
+      "question_type": "single_choice",
+      "question_content": "可以体现心火的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肛门灼热"
+        },
+        {
+          "option_id": "B",
+          "content": "心胸刺痛"
+        },
+        {
+          "option_id": "C",
+          "content": "咳嗽无力"
+        },
+        {
+          "option_id": "D",
+          "content": "自汗气虚"
+        },
+        {
+          "option_id": "E",
+          "content": "口舌生疮"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "白虎汤主治：气分热盛证。壮热面赤，烦渴引饮，汗出恶热，脉洪大有力为主症。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 4
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0006",
+      "question_type": "single_choice",
+      "question_content": "患者，男，38岁。壮热烦渴，口干舌燥，面赤恶热，大汗，脉洪大有力，治宜用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "凉膈散"
+        },
+        {
+          "option_id": "B",
+          "content": "白虎加人参汤"
+        },
+        {
+          "option_id": "C",
+          "content": "竹叶石膏汤"
+        },
+        {
+          "option_id": "D",
+          "content": "清暑益气汤"
+        },
+        {
+          "option_id": "E",
+          "content": "白虎汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "芥穗有辛温解表、散寒的作用；熟地甘温、味厚、质柔润，起到滋阴养血的作用；当归补肝养血、活血行气；白芍滋阴养血、柔肝合营；川芎活血行气。这个方子解表散寒、和血调经，主要用于月经期出现感冒的证候比如咳嗽、流鼻涕但是不出汗。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 5
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0007",
+      "question_type": "single_choice",
+      "question_content": "小儿食指络脉浓滞而增粗，多见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "寒证"
+        },
+        {
+          "option_id": "B",
+          "content": "虚证"
+        },
+        {
+          "option_id": "C",
+          "content": "热证"
+        },
+        {
+          "option_id": "D",
+          "content": "实证"
+        },
+        {
+          "option_id": "E",
+          "content": "表证"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "指纹浅淡而纤细者，多属虚证。指纹浓滞而增粗者，多属实证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 6
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0013",
+      "question_type": "single_choice",
+      "question_content": "片状脱发，多为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "精血不足"
+        },
+        {
+          "option_id": "B",
+          "content": "肾气亏虚"
+        },
+        {
+          "option_id": "C",
+          "content": "血虚受风"
+        },
+        {
+          "option_id": "D",
+          "content": "血热"
+        },
+        {
+          "option_id": "E",
+          "content": "阴虚"
+        }
+      ],
+      "answer": [],
+      "explanation": "根据题干咳嗽喘促，气急鼻煽，咳痰黄稠，喉间痰鸣，辨病为热性哮喘，其治法是：清肺涤痰，止咳平喘。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 15
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0014",
+      "question_type": "single_choice",
+      "question_content": "关于病历资料封存错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "病例不全不能封存"
+        },
+        {
+          "option_id": "B",
+          "content": "发生医疗纠纷需要封存、启封病历资料的，应当在医患双方在场的情况下进行"
+        },
+        {
+          "option_id": "C",
+          "content": "封存的病历资料可以是原件，也可以是复制件，由医疗机构保管"
+        },
+        {
+          "option_id": "D",
+          "content": "现场实物封存后医疗纠纷已经解决，或者患者在现场实物封存满3年未再提出解决医疗纠纷要求的，医疗机构可以自行启封"
+        },
+        {
+          "option_id": "E",
+          "content": "患者可以复制法律规定的客观病例资料的权利以及对不能复印的主观病历资料要求医院进行封存"
+        }
+      ],
+      "answer": [],
+      "explanation": "养老穴的定位在前臂后区，腕背横纹上1寸，尺骨头桡侧凹陷中，属于手太阳小肠经。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 16
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0015",
+      "question_type": "single_choice",
+      "question_content": "患者，男，45岁。因突然呕血入院。10年前患乙肝，因肝功能损害曾多次住院治疗。近感腹胀，乏力。查体：脾肿大，腹水。应首先考虑的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺结核慢性空洞咯血"
+        },
+        {
+          "option_id": "B",
+          "content": "胃溃疡出血"
+        },
+        {
+          "option_id": "C",
+          "content": "急性支气管炎出血"
+        },
+        {
+          "option_id": "D",
+          "content": "肝硬化，食管下端静脉丛破裂出血"
+        },
+        {
+          "option_id": "E",
+          "content": "十二指肠溃疡出血"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 17
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0016",
+      "question_type": "single_choice",
+      "question_content": "坐骨神经痛出现的病理征是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "巴宾斯基征"
+        },
+        {
+          "option_id": "B",
+          "content": "戈登征"
+        },
+        {
+          "option_id": "C",
+          "content": "拉塞格征"
+        },
+        {
+          "option_id": "D",
+          "content": "霍夫曼征"
+        },
+        {
+          "option_id": "E",
+          "content": "布鲁津斯基征"
+        }
+      ],
+      "answer": [],
+      "explanation": "汗证营卫失调证的症状特征是以自汗为主，或伴盗汗，汗出遍身而抚之不温，畏寒恶风，不发热，或伴有低热，精神疲倦，胃纳不振。舌质淡红，苔薄白，脉缓。代表方为黄芪桂枝五物汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 18
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0017",
+      "question_type": "single_choice",
+      "question_content": "患者肝脏体积缩小，肝包膜回声增强，呈锯齿状，肝内光点增粗，分布紊乱，应考虑",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝淤血"
+        },
+        {
+          "option_id": "B",
+          "content": "脂肪肝"
+        },
+        {
+          "option_id": "C",
+          "content": "肝硬化"
+        },
+        {
+          "option_id": "D",
+          "content": "肝脓肿"
+        },
+        {
+          "option_id": "E",
+          "content": "肝炎"
+        }
+      ],
+      "answer": [],
+      "explanation": "患者食入吐蛔，可明确诊断为蛔厥证，治疗宜安蛔止痛，首选乌梅丸。乌梅丸主治：蛔厥证。脘腹阵痛，烦闷呕吐，时发时止，得食则吐，甚则吐蛔，手足厥冷，或久泻久痢。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 19
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0019",
+      "question_type": "single_choice",
+      "question_content": "患者，男，25岁。发烧、咳嗽3天。检查：气管位置居中，右胸呼吸动度减弱，右中肺语颤增强，叩诊呈浊音，听诊可闻及湿啰音及支气管肺泡呼吸音。应首先考虑的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胸膜炎"
+        },
+        {
+          "option_id": "B",
+          "content": "肺炎"
+        },
+        {
+          "option_id": "C",
+          "content": "气胸"
+        },
+        {
+          "option_id": "D",
+          "content": "肺不张"
+        },
+        {
+          "option_id": "E",
+          "content": "肺结核"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "治疗寒湿阻滞型胎黄，宜温中化湿。故首选茵陈理中汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 21
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0020",
+      "question_type": "single_choice",
+      "question_content": "急性乙型肝炎最早出现的血清学标志是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "HBsAg"
+        },
+        {
+          "option_id": "B",
+          "content": "抗-HBs"
+        },
+        {
+          "option_id": "C",
+          "content": "HBeAg"
+        },
+        {
+          "option_id": "D",
+          "content": "抗-HBe"
+        },
+        {
+          "option_id": "E",
+          "content": "抗-HBc"
+        }
+      ],
+      "answer": [],
+      "explanation": "隔附子饼灸多用于治疗命门火衰而致的阳痿、早泄或疮疡久溃不敛等病证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 22
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0021",
+      "question_type": "single_choice",
+      "question_content": "患者，男，42岁，遵医嘱做大便隐血试验，结果显示其大便隐血试验阳性，考虑其大便含血量达",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "1mL"
+        },
+        {
+          "option_id": "B",
+          "content": "3mL"
+        },
+        {
+          "option_id": "C",
+          "content": "5mL"
+        },
+        {
+          "option_id": "D",
+          "content": "10mL"
+        },
+        {
+          "option_id": "E",
+          "content": "60mL"
+        }
+      ],
+      "answer": [],
+      "explanation": "风市定位在股部，髌底上7寸；直立垂手，掌心贴于大腿时，中指尖所指凹陷中，髂胫束后缘。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 23
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0022",
+      "question_type": "single_choice",
+      "question_content": "苏子降气汤中纳气平喘，温补下元的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "当归、肉桂"
+        },
+        {
+          "option_id": "B",
+          "content": "紫苏、半夏"
+        },
+        {
+          "option_id": "C",
+          "content": "甘草、前胡"
+        },
+        {
+          "option_id": "D",
+          "content": "生姜、大枣"
+        },
+        {
+          "option_id": "E",
+          "content": "厚朴、前胡"
+        }
+      ],
+      "answer": [],
+      "explanation": "水肿的发生主要缘于肺、脾、肾三脏功能失调，水液代谢障碍。而情志内伤所及脏腑为肝，其与水液代谢障碍关系不大。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 24
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0023",
+      "question_type": "single_choice",
+      "question_content": "与人体之气生成最密切的脏是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心、脾、肝"
+        },
+        {
+          "option_id": "B",
+          "content": "肺、脾、心"
+        },
+        {
+          "option_id": "C",
+          "content": "脾、肾、肺"
+        },
+        {
+          "option_id": "D",
+          "content": "肺、肝、肾"
+        },
+        {
+          "option_id": "E",
+          "content": "肺、心、肾"
+        }
+      ],
+      "answer": [],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 25
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0024",
+      "question_type": "single_choice",
+      "question_content": "以下哪项是和甲亢无关的指标",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "TSH增高"
+        },
+        {
+          "option_id": "B",
+          "content": "TSH降低"
+        },
+        {
+          "option_id": "C",
+          "content": "FT3, FT4的增高"
+        },
+        {
+          "option_id": "D",
+          "content": "TT3升高"
+        },
+        {
+          "option_id": "E",
+          "content": "TT4升高"
+        }
+      ],
+      "answer": [],
+      "explanation": "胎黄变证辨胎黄动风和胎黄虚脱；黄疸迅速加重，伴神昏抽搐，角弓反张，为胎黄动风证；若急剧加深，四肢厥冷，神昏气促，脉微欲绝，为胎黄虚脱证。此皆为胎黄变证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 26
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0105",
+      "question_type": "single_choice",
+      "question_content": "粪检：白细胞 0～5/HP，红细胞 2～10/HP。粪便细菌培养（-），阿米巴（-）。为明确诊断，应首选下列哪项检查",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "粪便涂片找抗酸菌"
+        },
+        {
+          "option_id": "B",
+          "content": "大便细菌培养"
+        },
+        {
+          "option_id": "C",
+          "content": "纤维结肠镜检查"
+        },
+        {
+          "option_id": "D",
+          "content": "钡剂灌肠检查"
+        },
+        {
+          "option_id": "E",
+          "content": "腹部 CT"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 109
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0106",
+      "question_type": "single_choice",
+      "question_content": "该疾病的病理改变不包括（111～113 题共用题干）高血压患者，生气后，血压升至 250/120mmHg，发生癫痫样抽搐，呕吐，意识模糊等中枢神经系统功能障碍的表现，脑 CT 未见异常",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "炎性息肉"
+        },
+        {
+          "option_id": "B",
+          "content": "腺体变形"
+        },
+        {
+          "option_id": "C",
+          "content": "溃疡愈合而瘢痕形成"
+        },
+        {
+          "option_id": "D",
+          "content": "非干酪样肉芽肿"
+        },
+        {
+          "option_id": "E",
+          "content": "可见隐窝脓肿"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 110
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0107",
+      "question_type": "single_choice",
+      "question_content": "最可能的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蛛网膜下腔出血"
+        },
+        {
+          "option_id": "B",
+          "content": "高血压脑病"
+        },
+        {
+          "option_id": "C",
+          "content": "脑出血"
+        },
+        {
+          "option_id": "D",
+          "content": "脑梗死"
+        },
+        {
+          "option_id": "E",
+          "content": "高血压危象"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "患者表情呆滞，沉默寡言，记忆减退，口齿含糊为痴呆的表现，伴腰膝酸软为肾虚，食少纳呆，舌体胖大为脾虚的表现。辨为痴呆脾肾两虚证。证机概要：气血亏虚，肾精不足，髓海失养。治法：补肾健脾，益气生精。代表方：还少丹加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 111
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0108",
+      "question_type": "single_choice",
+      "question_content": "若 CT 可见颅内圆形、椭圆形的均匀密度增高影，边界清楚，周围有环形密度减低影，局部脑室受压移位，中线移位。应考虑的疾病是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脑梗死"
+        },
+        {
+          "option_id": "B",
+          "content": "蛛网膜下腔出血"
+        },
+        {
+          "option_id": "C",
+          "content": "脑出血"
+        },
+        {
+          "option_id": "D",
+          "content": "脑挫裂伤"
+        },
+        {
+          "option_id": "E",
+          "content": "腔隙性脑梗死"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 112
+      }
+    },
+    {
+      "question_id": "868c9dd7d0a9-2023-q0109",
+      "question_type": "single_choice",
+      "question_content": "此时突然感剧烈头痛和呕吐，出现全面性强直阵挛性癫痫发作一次，脑膜刺激征 (+)。最可能的诊断是（114～116 题共用题干）女，25 岁。1 周来皮肤出现紫癜来诊，无发热，大小便正常。实验室检查：血 Hb 为 120g/L，WBC 为 6.5×109/L，分类正常，血小板：85×109/L。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蛛网膜下腔出血"
+        },
+        {
+          "option_id": "B",
+          "content": "小脑出血"
+        },
+        {
+          "option_id": "C",
+          "content": "脑干出血"
+        },
+        {
+          "option_id": "D",
+          "content": "癫痫发作"
+        },
+        {
+          "option_id": "E",
+          "content": "脑膜脑炎"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "略。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业助理医师资格考试_2018-2023.json",
+        "number": 113
+      }
+    }
+  ]
+}

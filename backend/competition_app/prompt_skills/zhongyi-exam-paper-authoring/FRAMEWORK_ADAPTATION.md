@@ -17,7 +17,6 @@
 | --- | --- |
 | 范围与口径 | `user_request`、`exam_constraints.syllabus_scope` |
 | 题目候选范围 | `QuestionCandidatePool` |
-| 难度 | 可选偏好；当前题库没有统一难度字段，不作为检索硬过滤条件 |
 | 时间预算 | `available_minutes` |
 | 长短期目标与当前任务 | `short_term_plan`、`learning_task` |
 | 来源、时长、总分、题型等考试约束 | 用户请求或用户数据包；缺失时标记 `待用户确认` |

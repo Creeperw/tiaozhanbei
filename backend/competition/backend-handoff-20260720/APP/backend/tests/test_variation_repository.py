@@ -794,7 +794,7 @@ class VariationRepositoryTests(unittest.TestCase):
             session.close()
         selected = QuestionRepository(self.Session).select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         ))
 
         self.assertEqual(

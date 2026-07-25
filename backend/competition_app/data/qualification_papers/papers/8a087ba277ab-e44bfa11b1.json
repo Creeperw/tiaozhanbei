@@ -1,0 +1,119 @@
+{
+  "template_id": "8a087ba277ab-e44bfa11b1",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-e44bfa11b1-q0041",
+      "question_type": "single_choice",
+      "question_content": "百会穴位于头部正中线后发际正中上",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "4寸"
+        },
+        {
+          "option_id": "B",
+          "content": "5寸"
+        },
+        {
+          "option_id": "C",
+          "content": "6寸"
+        },
+        {
+          "option_id": "D",
+          "content": "7寸"
+        },
+        {
+          "option_id": "E",
+          "content": "8寸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "百会穴位于前发际正中上5寸。后发际正中上7寸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原6\\full.md",
+        "number": 41,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-e44bfa11b1-q0042",
+      "question_type": "single_choice",
+      "question_content": "八脉交会穴中，通于阳维脉的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "内关"
+        },
+        {
+          "option_id": "B",
+          "content": "足临泣"
+        },
+        {
+          "option_id": "C",
+          "content": "申脉"
+        },
+        {
+          "option_id": "D",
+          "content": "外关"
+        },
+        {
+          "option_id": "E",
+          "content": "列缺"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "公孙冲脉胃心胸内关阴维下总同后溪督脉内眦颈申脉阳跷络亦通临泣胆经连带脉阳维目锐外关逢列缺任脉连肺系阴跷照海膈喉咙。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原6\\full.md",
+        "number": 42,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-e44bfa11b1-q0043",
+      "question_type": "single_choice",
+      "question_content": "窦汉卿在《标幽赋》中说：“轻滑慢而未来，沉涩紧而已至……气之至也，如鱼吞钩饵之浮沉；气未至也，如闲处幽堂之深邃。”描述的是什么情况",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "进针"
+        },
+        {
+          "option_id": "B",
+          "content": "滞针"
+        },
+        {
+          "option_id": "C",
+          "content": "得气"
+        },
+        {
+          "option_id": "D",
+          "content": "补泻"
+        },
+        {
+          "option_id": "E",
+          "content": "行针"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "“轻滑慢而未来，沉涩紧而已至……气之至也，如鱼吞钩饵之浮沉，气未至也，如闲处幽堂之深邃”是对得气与否所作的形象描述。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴记忆歌诀汇总 更多医考干货 可扫码关注微信公众平台 11-中药相同功效药物总结 12-中药学30味中药药理作用总结 13-方剂学常考重点总结",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业题目真题\\执业题目还原6\\full.md",
+        "number": 43,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

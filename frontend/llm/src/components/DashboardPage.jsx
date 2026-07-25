@@ -8,6 +8,8 @@ import {
   buildDailyFeedback,
   buildDailyFocus,
   buildDailySchedule,
+  dailyTaskItems,
+  dailyTaskProgress,
 } from './dashboard/dashboardDailyModel';
 import {
   loadExamNodes,
@@ -73,6 +75,8 @@ function preferredStageId(navigationContext, preferences) {
 function TodayTaskRail({ task, timer, onExpire, onNavigate }) {
   const chapter = task?.learning_chapter || {};
   const cards = Array.isArray(task?.knowledge_cards) ? task.knowledge_cards : [];
+  const items = dailyTaskItems(task);
+  const parentProgress = dailyTaskProgress(task);
   if (!task) {
     return (
       <section className="today-task-rail" aria-label="今日任务" data-state="empty">
@@ -94,6 +98,29 @@ function TodayTaskRail({ task, timer, onExpire, onNavigate }) {
       </header>
       <DailyTaskCountdown timer={timer} onExpire={onExpire} />
       <h3>{task.title}</h3>
+      <div className="today-task-rail__progress">今日任务进度：{parentProgress.completed}/{parentProgress.total}</div>
+      {items.length > 0 && <ol className="today-task-rail__items" aria-label="今日原子任务">
+        {items.map((item, index) => {
+          const progress = item.progress || {};
+          const reviewed = Number(progress.reviewed_questions ?? progress.reviewed ?? 0);
+          const required = Number(progress.required_questions ?? progress.required ?? 0);
+          const rawCoverage = progress.coverage ?? progress.coverage_rate ?? progress.video_coverage;
+          const normalizedCoverage = Number(rawCoverage);
+          const coverage = rawCoverage == null || !Number.isFinite(normalizedCoverage)
+            ? ''
+            : ` · 视频覆盖率 ${Math.round(normalizedCoverage <= 1 ? normalizedCoverage * 100 : normalizedCoverage)}%`;
+          const itemProgress = required ? `${reviewed}/${required}` : `${item.status === 'completed' ? '已完成' : '待完成'}${coverage}`;
+          const taskType = item.item_type === 'knowledge_practice' ? 'question_training' : item.item_type === 'paper' ? 'paper_workspace' : item.item_type;
+          const actionParams = item.action?.params || {};
+          const taskItemId = actionParams.taskItemId || actionParams.task_item_id || item.task_item_id;
+          return <li key={item.task_item_id || index}>
+            <div><strong>{item.title || `任务项 ${index + 1}`}</strong><small>{item.item_type} · {item.estimated_minutes || 0} 分钟 · {itemProgress} · {item.status === 'completed' ? '已完成' : item.status === 'in_progress' ? '进行中' : '待开始'}</small></div>
+            <button type="button" disabled={item.status === 'completed'} onClick={() => onNavigate?.({ page: 'practice', params: { ...actionParams, view: 'workspace', taskType, taskItemId } })}>
+              {item.status === 'completed' ? '已完成' : '开始'}
+            </button>
+          </li>;
+        })}
+      </ol>}
       <div className="today-task-rail__chapter">
         <BookOpenText aria-hidden="true" size={16} />
         <div><span>今日章节</span><strong>{[chapter.book, chapter.title].filter(Boolean).join(' · ') || '待任务重新定位'}</strong></div>

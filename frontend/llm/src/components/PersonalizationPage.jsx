@@ -157,7 +157,6 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   const [savedAnalysisFrequency, setSavedAnalysisFrequency] = useState('daily');
   const [isSavingAnalysisFrequency, setIsSavingAnalysisFrequency] = useState(false);
   const analysisFrequencySaveRef = useRef(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const isUnifiedView = view === 'unified';
   const isUserProfileView = view === 'user-profile';
@@ -239,7 +238,6 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   };
 
   const load = async () => {
-    setIsLoading(true);
     try {
       const [overviewRes, memoriesRes, learnerRes, learningContextRes, learnerSettingsRes] = await Promise.all([
         fetchWithAuth(`${API_BASE}/personalization/overview`),
@@ -297,8 +295,6 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
     } catch (e) {
       console.error(e);
       notify('加载学习记忆失败');
-    } finally {
-      setIsLoading(false);
     }
   };
 

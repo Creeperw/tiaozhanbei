@@ -564,7 +564,6 @@ class StubChatModel:
                             "score_total": float(total_score) * 0.5,
                             "candidate_limit": 8,
                             "selection_rules": ["优先选择直接考查核心概念的题目"],
-                            "difficulty_preference": None,
                         },
                         {
                             "knowledge_module": "配伍意义与辨析",
@@ -575,7 +574,6 @@ class StubChatModel:
                             "score_total": float(total_score) * 0.5,
                             "candidate_limit": 8,
                             "selection_rules": ["与上一单元全卷去重"],
-                            "difficulty_preference": None,
                         },
                     ],
                     "assumptions": ["题型未完全指定，按候选题实际类型组卷。"],
@@ -638,9 +636,9 @@ class StubChatModel:
                     "blueprint_content": (
                         "【来源与假设】当前为教学练习蓝图，题量、分值、时长待用户确认。"
                         "【命题目标】围绕已检索教材证据考查识记、理解与辨析。"
-                        "【蓝图矩阵】核心组成模块：识记层级，单选题，中等难度，建议2题，"
-                        "建议20分；功效主治模块：理解与辨析层级，简答题，中等难度，"
-                        "建议2题，建议40分；配伍应用模块：应用层级，病例题，较难，"
+                        "【蓝图矩阵】核心组成模块：识记层级，单选题，建议2题，"
+                        "建议20分；功效主治模块：理解与辨析层级，简答题，"
+                        "建议2题，建议40分；配伍应用模块：应用层级，病例题，"
                         "建议1题，建议40分。候选不足时待补充检索。"
                         "【题型与抽题规则】单项题保持唯一最佳答案，病例题每问只考一个判断层级。"
                         "【候选题使用策略】仅从当前候选目录中后续筛选，蓝图阶段不选具体题号。"

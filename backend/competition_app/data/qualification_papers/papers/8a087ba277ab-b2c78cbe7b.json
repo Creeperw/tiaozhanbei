@@ -1,0 +1,535 @@
+{
+  "template_id": "8a087ba277ab-b2c78cbe7b",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0021",
+      "question_type": "single_choice",
+      "question_content": "病侧呼吸动度减弱伴叩诊为鼓音、呼吸音消失者，见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺实变"
+        },
+        {
+          "option_id": "B",
+          "content": "肺气肿"
+        },
+        {
+          "option_id": "C",
+          "content": "肺不张"
+        },
+        {
+          "option_id": "D",
+          "content": "气胸"
+        },
+        {
+          "option_id": "E",
+          "content": "胸膜增厚"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "肺实变听诊时为支气管呼吸音；肺气肿叩诊为过清音；压迫性肺不张可叩诊呈浊音，呼吸音是支气管呼吸音；气胸时病侧呼吸动度减弱伴叩诊为鼓音、呼吸音消失；胸膜增厚时病侧呼吸动度减弱伴叩诊为浊音、呼吸音消失。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 21,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0022",
+      "question_type": "single_choice",
+      "question_content": "肠套叠可见腹痛，并伴有",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性发热"
+        },
+        {
+          "option_id": "B",
+          "content": "黄疸"
+        },
+        {
+          "option_id": "C",
+          "content": "呕吐"
+        },
+        {
+          "option_id": "D",
+          "content": "腹泻"
+        },
+        {
+          "option_id": "E",
+          "content": "血便"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "本题考查腹痛的特点，其中肠梗阻的特点是腹痛、呕吐、腹胀，无排气排便；肠套叠特点是腹痛伴血便。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 22,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0023",
+      "question_type": "single_choice",
+      "question_content": "黏液脓血便，多见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阿米巴痢疾"
+        },
+        {
+          "option_id": "B",
+          "content": "细菌性痢疾"
+        },
+        {
+          "option_id": "C",
+          "content": "急性胃肠炎"
+        },
+        {
+          "option_id": "D",
+          "content": "疟疾"
+        },
+        {
+          "option_id": "E",
+          "content": "霍乱"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "米泔水样便，见于霍乱；黏液脓样或脓血便，见于细菌性痢疾、溃疡性结肠炎、直肠癌等。阿米巴痢疾时呈暗红色果酱样。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 23,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0024",
+      "question_type": "single_choice",
+      "question_content": "对于过敏性鼻炎患者，增高的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "lgG"
+        },
+        {
+          "option_id": "B",
+          "content": "lgA"
+        },
+        {
+          "option_id": "C",
+          "content": "lgM"
+        },
+        {
+          "option_id": "D",
+          "content": "lgD"
+        },
+        {
+          "option_id": "E",
+          "content": "lgE"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "单克隆增高，表现为5种Ig中仅有某一种增高。见于以下几种情况：①原发性巨球蛋白血症：IgM单独明显增高。②多发性骨髓瘤：可分别见到IgG，IgA，IgD，IgE增高，并以此分型。③各种过敏性疾病：如支气管哮喘、过敏性鼻炎、寄生虫感染时IgE增高。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 24,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0025",
+      "question_type": "single_choice",
+      "question_content": "药物对机体作用的两重性是指",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "过敏反应和毒性反应"
+        },
+        {
+          "option_id": "B",
+          "content": "预防作用和不良反应"
+        },
+        {
+          "option_id": "C",
+          "content": "治疗作用和不良反应"
+        },
+        {
+          "option_id": "D",
+          "content": "副作用和毒性反应"
+        },
+        {
+          "option_id": "E",
+          "content": "治疗作用和毒性反应 懒人医考整理"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "治疗作用和不良反应是药物对机体作用的两重性。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 25,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0026",
+      "question_type": "single_choice",
+      "question_content": "存在首过效应的是哪种给药途径",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "直肠给药"
+        },
+        {
+          "option_id": "B",
+          "content": "肌内注射"
+        },
+        {
+          "option_id": "C",
+          "content": "舌下给药"
+        },
+        {
+          "option_id": "D",
+          "content": "静脉注射"
+        },
+        {
+          "option_id": "E",
+          "content": "口服"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "首过效应，亦称首过消除，指药物在胃肠道吸收后要经过门静脉进入肝脏，再进入体循环，其在肠黏膜和肝脏中极易被代谢灭活，使进入体循环的药量有减少的现象。经胃肠道吸收的给药途径是口服给药。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 26,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0028",
+      "question_type": "single_choice",
+      "question_content": "毛果芸香碱的叙述，不正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "常用制剂为 $1\\%$ 滴眼液"
+        },
+        {
+          "option_id": "B",
+          "content": "可使眼内压升高"
+        },
+        {
+          "option_id": "C",
+          "content": "可用于治疗青光眼"
+        },
+        {
+          "option_id": "D",
+          "content": "能直接激动M受体，产生M样作用"
+        },
+        {
+          "option_id": "E",
+          "content": "可使汗腺和唾液腺的分泌明显增加"
+        }
+      ],
+      "answer": [],
+      "explanation": "毛果芸香碱具有缩瞳、降低眼内压的作用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 28,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0029",
+      "question_type": "single_choice",
+      "question_content": "有机磷酸酯类中毒常见的死亡原因是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "败血症"
+        },
+        {
+          "option_id": "B",
+          "content": "急性肾功能衰竭"
+        },
+        {
+          "option_id": "C",
+          "content": "呼吸麻痹"
+        },
+        {
+          "option_id": "D",
+          "content": "感染性休克 懒人医考整理"
+        },
+        {
+          "option_id": "E",
+          "content": "心力衰竭"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "有机磷酸酯类轻度中毒以 M 样症状为主；中度中毒时除 M 样症状加重外，还出现 N 样症状；严重中毒者除 M 样和 N 样症状外，还出现中枢神经系统症状。有机磷酸酯死亡的主要原因是呼吸麻痹。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 29,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0030",
+      "question_type": "single_choice",
+      "question_content": "下列哪项药物用于麻醉前，可抑制腺体分泌，保持呼吸道通畅",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "毒扁豆碱"
+        },
+        {
+          "option_id": "B",
+          "content": "毛果芸香碱"
+        },
+        {
+          "option_id": "C",
+          "content": "新斯的明"
+        },
+        {
+          "option_id": "D",
+          "content": "山莨菪碱"
+        },
+        {
+          "option_id": "E",
+          "content": "阿托品"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "阿托品用于全身麻醉前给药，能减少呼吸道腺体的分泌，防止分泌物阻塞呼吸道而引起的窒息或吸入性肺炎。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 30,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0031",
+      "question_type": "single_choice",
+      "question_content": "治疗支气管哮喘的拟肾上腺素药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "去甲肾上腺素"
+        },
+        {
+          "option_id": "B",
+          "content": "异丙肾上腺素"
+        },
+        {
+          "option_id": "C",
+          "content": "多巴胺"
+        },
+        {
+          "option_id": "D",
+          "content": "甲氧明"
+        },
+        {
+          "option_id": "E",
+          "content": "氨茶碱"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "异丙肾上腺素用于控制支气管哮喘急性发作，舌下或喷雾给药，起效快，作用强。异丙肾上腺素激动支气管平滑肌的 $\\beta_{2}$ 受体，有强大的舒张支气管平滑肌作用，支气管平滑肌处于痉挛状态时，效果尤为显著，此作用强于肾上腺素。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 31,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0032",
+      "question_type": "single_choice",
+      "question_content": "间羟胺对肾上腺素能神经受体的作用是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "直接兴奋α受体，对β₁受体作用较弱"
+        },
+        {
+          "option_id": "B",
+          "content": "直接兴奋α受体，对β₂受体作用较弱"
+        },
+        {
+          "option_id": "C",
+          "content": "直接兴奋β受体，对α受体作用较弱"
+        },
+        {
+          "option_id": "D",
+          "content": "直接兴奋β₁受体，对α受体作用较弱"
+        },
+        {
+          "option_id": "E",
+          "content": "直接兴奋α受体，对β₁受体无作用"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "间羟胺又名阿拉明，性质较稳定。直接兴奋 $\\alpha$ 受体，对 $\\beta_{1}$ 受体作用较弱。除对受体的直接作用外，还可被肾上腺素能神经末梢摄取入囊泡，通过置换作用促使囊泡中的去甲肾上腺素释放而间接发挥作用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 32,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0033",
+      "question_type": "single_choice",
+      "question_content": "卡马西平即可以用于治疗癫痫，还可以治疗",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心律失常"
+        },
+        {
+          "option_id": "B",
+          "content": "心绞痛"
+        },
+        {
+          "option_id": "C",
+          "content": "失眠"
+        },
+        {
+          "option_id": "D",
+          "content": "外周神经痛"
+        },
+        {
+          "option_id": "E",
+          "content": "帕金森病"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "卡马西平可用于治疗外周神经痛，疗效优于苯妥英钠。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 33,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0034",
+      "question_type": "single_choice",
+      "question_content": "阿司匹林的不良反应是懒人医考整理",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "水杨酸反应"
+        },
+        {
+          "option_id": "B",
+          "content": "诱发溃疡出血"
+        },
+        {
+          "option_id": "C",
+          "content": "诱发哮喘"
+        },
+        {
+          "option_id": "D",
+          "content": "凝血障碍"
+        },
+        {
+          "option_id": "E",
+          "content": "以上均是 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "阿司匹林最常见的不良反应是胃肠道反应，表现为上腹不适、恶心、呕吐，大剂量口服可加重、诱发溃疡，引起胃出血；阿司匹林较大剂量（5g/d 以上）或过敏者，可出现头痛、眩晕、恶心、呕吐、耳鸣以及听、视力减退，表现为水杨酸类中毒，即水杨酸反应；阿司匹林能抑制环氧酶，PG（前列腺素）合成受阻，使白三烯及其他脂氧酶代谢产物增多，内源性支气管收缩物质居于优势，导致支气管痉挛，诱发哮喘阿司匹林也能抑制血小板聚集，延长出血时间，导致凝血障碍。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 34,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-b2c78cbe7b-q0035",
+      "question_type": "single_choice",
+      "question_content": "抗结核病的合理化疗原则是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "早期、大剂量、联合、规律及全程用药"
+        },
+        {
+          "option_id": "B",
+          "content": "早期、适量、联合、规律及全程用药"
+        },
+        {
+          "option_id": "C",
+          "content": "早期、小剂量、联合、全程用药"
+        },
+        {
+          "option_id": "D",
+          "content": "早期、适量、联合、全程用药"
+        },
+        {
+          "option_id": "E",
+          "content": "早期、大剂量、联合、全程用药"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "合理化疗是指早期、适量、联合、规律及全程用药。 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴记忆歌诀汇总 11-中药相同功效药物总结 12-中药学30味中药药理作用总结 更多医考干货可扫码关注微信公众平台",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟5\\full.md",
+        "number": 35,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

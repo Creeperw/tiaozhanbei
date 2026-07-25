@@ -41,6 +41,7 @@ from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.textbook_route import TextbookRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
 from competition_app.services.daily_task_refresh import DailyTaskRefreshService
+from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
 from competition_app.services.review import ReviewService
 from competition_app.llm.terminal import (
     terminal_agent_finished,
@@ -87,6 +88,7 @@ class ApplicationContainer:
     authentication_service: AuthenticationService
     account_profile_service: AccountProfileService
     daily_task_refresh_service: DailyTaskRefreshService
+    daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
     knowledge_backend: KnowledgeDeliveryBackend | None = None
     mode: str = "stub"
@@ -140,10 +142,6 @@ class ApplicationContainer:
             review_repository = InMemoryReviewRepository()
             auth_repository = InMemoryAuthRepository()
             account_profile_repository = InMemoryAccountProfileRepository()
-        learning_plan_service = LearningPlanService(
-            default_route_repository, plan_repository
-        )
-        daily_task_refresh_service = DailyTaskRefreshService(plan_repository)
         review_service = ReviewService(review_repository)
         authentication_service = AuthenticationService(
             auth_repository,
@@ -201,6 +199,30 @@ class ApplicationContainer:
             question_retriever = StubQuestionRetriever()
             textbook_retriever = None
             knowledge_backend = None
+        backend_handoff_runtime = (
+            load_backend_handoff(settings) if include_backend_handoff else None
+        )
+        knowledge_point_resolver = (
+            backend_handoff_runtime.resolve_executable_knowledge_point
+            if backend_handoff_runtime is not None
+            else None
+        )
+        video_resource_resolver = (
+            knowledge_backend.map.resolve_trusted_video_resource
+            if knowledge_backend is not None
+            else None
+        )
+        learning_plan_service = LearningPlanService(
+            default_route_repository,
+            plan_repository,
+            knowledge_point_resolver=knowledge_point_resolver,
+            video_resource_resolver=video_resource_resolver,
+        )
+        daily_task_refresh_service = DailyTaskRefreshService(
+            plan_repository,
+            knowledge_point_resolver=knowledge_point_resolver,
+            video_resource_resolver=video_resource_resolver,
+        )
         exa_retriever = (
             ExaVideoRetriever(settings.exa_api_key)
             if settings.mode == "live" and settings.exa_api_key
@@ -303,8 +325,10 @@ class ApplicationContainer:
             if settings.execution_engine == "langgraph"
             else Orchestrator
         )
-        backend_handoff_runtime = (
-            load_backend_handoff(settings) if include_backend_handoff else None
+        daily_task_execution_coordinator = DailyTaskExecutionCoordinator(
+            engine=database_engine,
+            plan_repository=plan_repository,
+            backend_handoff_runtime=backend_handoff_runtime,
         )
         orchestrator = (
             orchestrator_class(
@@ -367,6 +391,7 @@ class ApplicationContainer:
             authentication_service=authentication_service,
             account_profile_service=account_profile_service,
             daily_task_refresh_service=daily_task_refresh_service,
+            daily_task_execution_coordinator=daily_task_execution_coordinator,
             question_retrieval_tool=knowledge_tool,
             knowledge_backend=knowledge_backend,
             mode=settings.mode,

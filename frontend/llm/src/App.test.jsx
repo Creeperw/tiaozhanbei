@@ -56,7 +56,16 @@ vi.mock('./components/KnowledgePage', () => ({
   ),
 }));
 vi.mock('./components/PracticePage', () => ({
-  default: ({ navigationContext = {} }) => <div data-testid="practice-page" data-view={navigationContext.view || ''} data-task-type={navigationContext.taskType || ''} data-paper-id={navigationContext.paperId || ''}>Practice workspace</div>,
+  default: function MockPracticePage({ navigationContext = {} }) {
+    const [view, setView] = React.useState('overview');
+    return (
+      <div data-testid="practice-page" data-view={navigationContext.view || ''} data-task-type={navigationContext.taskType || ''} data-paper-id={navigationContext.paperId || ''}>
+        Practice workspace
+        <span data-testid="practice-local-view">{view}</span>
+        <button type="button" onClick={() => setView('module')}>Open mock training module</button>
+      </div>
+    );
+  },
 }));
 vi.mock('./components/PersonalizationHubPage', () => ({
   default: ({ navigationContext = {} }) => (
@@ -74,9 +83,10 @@ vi.mock('./components/AppShell', () => ({
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: { view: 'atlas' } })}>Go knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'dashboard', params: {} })}>Go dashboard</button>
-      <button type="button" onClick={() => onNavigate({ page: 'practice', params: {} })}>Go training overview</button>
+      <button type="button" onClick={() => onNavigate({ page: 'practice', params: {} })}>Go learning workshop</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'stages' } })}>Go learning stages</button>
-      <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'workspace' } })}>Go training workspace</button>
+      <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'workspace' } })}>Go legacy training workspace</button>
+      <button type="button" onClick={() => onNavigate({ page: 'training-workshop', params: {} })}>Go training workshop</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: {} })}>Go personalization</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: { view: 'memory' } })}>Go memory</button>
       <button type="button" onClick={() => onNavigate({ page: 'personalization', params: { view: 'governance' } })}>Go governance</button>
@@ -106,30 +116,26 @@ describe('authenticated application shell', () => {
     expect(sessionStorage.getItem('competition.pending-navigation')).toBeNull();
   });
 
-  it('routes the portal, training overview, training workspace, assistant, knowledge, and administration inside one AppShell', async () => {
+  it('keeps the learning workshop and training workshop as separate AppShell pages', async () => {
     render(<App />);
 
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go training overview' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Go learning workshop' }));
     expect(screen.getByText('Training overview')).toBeInTheDocument();
     expect(screen.getByTestId('training-overview')).toHaveAttribute('data-view', '');
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'practice');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go learning stages' }));
-    expect(screen.getByRole('button', { name: 'Stage landing' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Stage landing' }));
-    expect(screen.getByText('Stage transition')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Reach flip midpoint' }));
-    expect(screen.getByText('Training overview')).toBeInTheDocument();
-    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-view', 'path');
-    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-path-mode', 'personalized');
-    expect(screen.getByTestId('training-overview')).toHaveAttribute('data-stage-id', 'plan:LP_1:stage:stage-1');
+    fireEvent.click(screen.getByRole('button', { name: 'Go training workshop' }));
+    expect(screen.getByText('Practice workspace')).toBeInTheDocument();
+    expect(screen.getByTestId('practice-page')).toHaveAttribute('data-view', '');
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'training-workshop');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go training workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Go legacy training workspace' }));
     expect(screen.getByText('Practice workspace')).toBeInTheDocument();
     expect(screen.getByTestId('practice-page')).toHaveAttribute('data-view', 'workspace');
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'training-workshop');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go assistant' }));
     expect(screen.getByText('Assistant page true')).toBeInTheDocument();
@@ -144,7 +150,19 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'admin-feedback');
   });
 
-  it('uses the current learning target for primary knowledge navigation and a textbook fallback without one', async () => {
+  it('resets the training workshop when its primary navigation entry is selected again', async () => {
+    render(<App />);
+    expect(await screen.findByText('Home portal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go training workshop' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open mock training module' }));
+    expect(screen.getByTestId('practice-local-view')).toHaveTextContent('module');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go training workshop' }));
+    expect(screen.getByTestId('practice-local-view')).toHaveTextContent('overview');
+  });
+
+  it('uses a textbook fallback for primary knowledge navigation', async () => {
     render(<App />);
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
 
@@ -153,14 +171,6 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-route', 'textbook_14_5');
     expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-source', 'navigation');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go training overview' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Go learning stages' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Stage landing' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reach flip midpoint' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Publish target' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Go default knowledge' }));
-    expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-track-id', 'track-a');
-    expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-source', 'navigation');
   });
 
   it('routes moved learning memory and governance links into user settings', async () => {

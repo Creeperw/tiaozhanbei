@@ -18,7 +18,6 @@ from APP.backend.tool_runtime import ToolRuntime, build_default_tool_runtime
 class OrchestrationTaskContext(BaseModel):
     correlation_id: str = Field(default="", max_length=120)
     kp_ids: list[str] = Field(default_factory=list, max_length=100)
-    difficulty: int | None = Field(default=None, ge=1, le=5)
     expected_duration_min: int | None = Field(default=None, ge=1, le=480)
     question_count: int | None = Field(default=None, ge=1, le=50)
     types: list[str] = Field(default_factory=list)
@@ -30,7 +29,6 @@ class OrchestrationTaskContext(BaseModel):
     source_answer: str = Field(default="", max_length=8000)
     source_analysis: str = Field(default="", max_length=12000)
     source_question_type: str = Field(default="single_choice", max_length=50)
-    source_difficulty: int | None = Field(default=None, ge=1, le=5)
 
     @field_validator("correlation_id")
     @classmethod
@@ -488,8 +486,6 @@ def _tool_kwargs(
         if tool_name in {"generate_handout", "generate_knowledge_card"}:
             if request.task_context.kp_ids:
                 generation_request["kp_ids"] = list(request.task_context.kp_ids)
-            if request.task_context.difficulty is not None:
-                generation_request["difficulty"] = request.task_context.difficulty
             if request.task_context.expected_duration_min is not None:
                 generation_request["expected_duration_min"] = request.task_context.expected_duration_min
         if tool_name == "generate_paper":
@@ -501,8 +497,6 @@ def _tool_kwargs(
                 generation_request["types"] = list(request.task_context.types)
             if request.task_context.distribution:
                 generation_request["distribution"] = dict(request.task_context.distribution)
-            if request.task_context.difficulty is not None:
-                generation_request["difficulty"] = request.task_context.difficulty
             if request.task_context.expected_duration_min is not None:
                 generation_request["expected_duration_min"] = request.task_context.expected_duration_min
         return {
@@ -523,7 +517,6 @@ def _tool_kwargs(
                 "source_answer": request.task_context.source_answer,
                 "source_analysis": request.task_context.source_analysis,
                 "source_question_type": request.task_context.source_question_type,
-                "source_difficulty": request.task_context.source_difficulty,
                 "kp_ids": list(request.task_context.kp_ids),
             },
         }
@@ -532,7 +525,7 @@ def _tool_kwargs(
             "learner_context": learner_context,
             "evidence_pack": evidence_pack,
             "diagnosis_report": diagnosis,
-            "submission": {"question_id": "manual", "stem": request.query, "difficulty": 2},
+            "submission": {"question_id": "manual", "stem": request.query},
         }
     if tool_name == "generate_learning_path":
         profile = getattr(learner_context, "profile", {}) or {}

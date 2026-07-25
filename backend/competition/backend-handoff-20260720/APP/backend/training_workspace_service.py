@@ -59,7 +59,6 @@ TRAINING_TASK_MAX_KNOWLEDGE_POINTS = 20
 VARIATION_CLAIM_LEASE = timedelta(minutes=5)
 VARIATION_HEARTBEAT_INTERVAL_SECONDS = 60.0
 TRAINING_TASK_OPTIONS = {
-    "difficulty",
     "duration_minutes",
     "expected_duration_min",
     "save_activity",
@@ -207,15 +206,6 @@ def _validate_training_task_request(request: Any) -> dict[str, Any]:
     for field in ("knowledge_points", "kp_ids"):
         if field in inputs:
             _validate_string_list(inputs[field], path=field)
-    for field in ("difficulty",):
-        if field in inputs:
-            _validate_integer_range(
-                inputs[field],
-                path=f"inputs.{field}",
-                type_path=field,
-                minimum=1,
-                maximum=5,
-            )
     for field in ("duration_minutes", "expected_duration_min"):
         if field in inputs:
             _validate_integer_range(inputs[field], path=f"inputs.{field}", minimum=1, maximum=180)
@@ -223,8 +213,6 @@ def _validate_training_task_request(request: Any) -> dict[str, Any]:
     unknown_options = set(options) - TRAINING_TASK_OPTIONS
     if unknown_options:
         raise InvalidTrainingTaskRequest(f"unknown option: {sorted(unknown_options)[0]}")
-    if "difficulty" in options:
-        _validate_integer_range(options["difficulty"], path="options.difficulty", minimum=1, maximum=5)
     for field in ("duration_minutes", "expected_duration_min"):
         if field in options:
             _validate_integer_range(options[field], path=f"options.{field}", minimum=1, maximum=180)
@@ -277,11 +265,6 @@ def _validate_practice_inputs(raw_inputs: Any) -> dict[str, Any]:
         ):
             raise InvalidTrainingTaskRequest("knowledge_points has invalid type")
 
-    if "difficulty" in inputs and (
-        isinstance(inputs["difficulty"], bool)
-        or not isinstance(inputs["difficulty"], int)
-    ):
-        raise InvalidTrainingTaskRequest("difficulty has invalid type")
     return inputs
 
 
@@ -318,10 +301,10 @@ def _validate_generation_request(request: Any) -> tuple[str, str, str, dict[str,
     for field in ("topic", "query"):
         if field in inputs and not isinstance(inputs[field], str):
             raise InvalidTrainingTaskRequest(f"inputs.{field} has invalid type")
-    for field in ("difficulty", "duration_minutes"):
+    for field in ("duration_minutes",):
         if field in inputs and (isinstance(inputs[field], bool) or not isinstance(inputs[field], int)):
             raise InvalidTrainingTaskRequest(f"inputs.{field} has invalid type")
-    for field in ("difficulty", "expected_duration_min"):
+    for field in ("expected_duration_min",):
         if field in options and (isinstance(options[field], bool) or not isinstance(options[field], int)):
             raise InvalidTrainingTaskRequest(f"options.{field} has invalid type")
 
@@ -442,7 +425,6 @@ def _authorized_variation_inputs(db: Session, user_id: int, inputs: dict[str, An
         "source_question_id": source.question_id,
         "source_stem": source.stem,
         "source_question_type": source.question_type,
-        "source_difficulty": source.standard_difficulty,
         "kp_ids": kp_ids,
         "attempt_item_id": attempt_item.attempt_item_id,
         "source_audit_id": audit.audit_id,
@@ -654,7 +636,6 @@ def _create_generation_task(
                     audit_id=content["audit_id"],
                     stem=content["stem"],
                     question_type=content["question_type"],
-                    difficulty=content["difficulty"],
                     kp_ids=tuple(content["kp_ids"]),
                 )
         result = execute_training_orchestration(

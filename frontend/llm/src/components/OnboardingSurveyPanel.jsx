@@ -36,7 +36,6 @@ const surveySections = [
       },
       { bucket: 'preferences', key: 'preferred_time_slot', label: '偏好学习时段', options: ['早晨', '午间', '晚间', '碎片时间'] },
       { bucket: 'preferences', key: 'resource_preference', label: '偏好资源类型', options: ['知识卡片', '讲义讲解', '分阶测试题', '案例训练'] },
-      { bucket: 'preferences', key: 'default_difficulty', label: '默认难度', options: ['基础入门', '课程学习', '案例辨证', '综合训练'] },
     ],
   },
 ];
@@ -60,7 +59,6 @@ const restoreSurveyAnswers = (survey = {}) => ({
     daily_available_minutes: survey.daily_available_minutes || '',
     preferred_time_slot: survey.preferred_time_slot || '',
     resource_preference: firstValue(survey.resource_preference),
-    default_difficulty: survey.difficulty_preference || '',
   },
   special_requirements: {},
   locked_fields: Array.isArray(survey.locked_fields) ? survey.locked_fields : [],

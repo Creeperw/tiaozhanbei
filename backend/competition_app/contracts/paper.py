@@ -19,7 +19,6 @@ class BlueprintUnit(ContractModel):
     score_total: float | None = Field(default=None, gt=0)
     candidate_limit: int = Field(default=10, ge=1, le=50)
     selection_rules: list[str] = Field(default_factory=list)
-    difficulty_preference: str | None = None
 
 
 class PaperBlueprint(ContractModel):

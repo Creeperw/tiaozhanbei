@@ -160,6 +160,8 @@ venv.bak/
 
 # Local runtime state
 /health_agent.db
+/backend/competition_app/runtime/
+/frontend/llm/test-results/
 
 # Spyder project settings
 .spyderproject

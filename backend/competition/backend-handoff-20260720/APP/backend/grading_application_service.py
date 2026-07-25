@@ -23,6 +23,7 @@ from APP.backend.learning_writeback_service import (
     LearningWritebackResult,
     apply_grading_writeback,
 )
+from APP.backend.daily_task_progress_service import record_reviewed_question
 from APP.backend.training_service import grade_practice_submission
 
 
@@ -39,13 +40,13 @@ class GradePracticeCommand:
     standard_answer: str
     rubric: str
     kp_ids: tuple[str, ...]
-    difficulty: int
     duration_sec: int | None
     hint_used: bool
     profile: dict[str, Any]
     memories: tuple[dict[str, Any], ...]
     kp_names: tuple[str, ...] = ()
     attempt_type: str = "practice"
+    daily_task_item_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -85,7 +86,6 @@ def _command(
         rubric=str(data.get("rubric") or ""),
         kp_ids=tuple(data.get("kp_ids") or data.get("knowledge_points") or ()),
         kp_names=tuple(data.get("knowledge_point_names") or ()),
-        difficulty=int(data.get("difficulty") or 1),
         duration_sec=data.get("duration_sec"),
         hint_used=bool(data.get("hint_used", False)),
         profile=dict(profile),
@@ -100,8 +100,14 @@ def from_legacy_route_request(
     profile: dict[str, Any],
     memories: list[dict[str, Any]],
     request_id: str,
+    daily_task_item_id: str | None = None,
 ) -> GradePracticeCommand:
-    return _command(learner_id, "legacy_route", None, request_id, request, profile, memories)
+    command = _command(learner_id, "legacy_route", None, request_id, request, profile, memories)
+    if daily_task_item_id is None:
+        return command
+    return GradePracticeCommand(
+        **{**command.__dict__, "daily_task_item_id": daily_task_item_id}
+    )
 
 
 def from_workspace_request(
@@ -135,7 +141,6 @@ def _submission(command: GradePracticeCommand) -> dict[str, Any]:
         "rubric": command.rubric,
         "knowledge_points": list(command.kp_ids),
         "knowledge_point_names": list(command.kp_names),
-        "difficulty": command.difficulty,
     }
 
 
@@ -348,6 +353,7 @@ def apply_practice_grading(
         learner_id=command.learner_id,
         attempt_type=command.attempt_type,
         source_task_id=command.source_task_id or "",
+        daily_task_item_id=command.daily_task_item_id,
         request_id=command.request_id,
         status="submitted",
         submitted_at=utc_now(),
@@ -440,6 +446,20 @@ def apply_practice_grading(
         db.flush()
         db.add(audit)
         db.flush()
+        if command.daily_task_item_id:
+            record_reviewed_question(
+                db,
+                command.learner_id,
+                {
+                    "task_item_id": command.daily_task_item_id,
+                    "question_version_id": command.question_version_id,
+                    "submitted_answer": command.submitted_answer,
+                    "attempt_status": "reviewed",
+                    "audit_decision": audit.decision,
+                    "audit_status": audit.status,
+                },
+                commit=False,
+            )
         writeback_result = None
         if audit.decision == "pass":
             writeback_result = writeback(

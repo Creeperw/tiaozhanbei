@@ -9,6 +9,8 @@ vi.mock('../pageDataLoaders', () => ({
   loadKnowledgeCard: vi.fn(),
   loadKnowledgeCards: vi.fn(),
   resolveKnowledgeCard: vi.fn(),
+  recordDailyTaskVideoEvidence: vi.fn(),
+  confirmDailyTaskIframeVideo: vi.fn(),
 }));
 
 vi.mock('../utils/api', () => ({
@@ -76,5 +78,24 @@ describe('KnowledgeCardLibrary', () => {
     fireEvent.change(screen.getByRole('searchbox', { name: '筛选知识卡' }), { target: { value: '理中丸' } });
     expect(screen.queryByRole('button', { name: '四君子汤' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '理中丸' })).toBeInTheDocument();
+  });
+
+  it('explains iframe evidence and disables confirmation below effective-focus threshold', async () => {
+    loadKnowledgeCards.mockResolvedValue({ cards: { items: [] }, error: '' });
+    loadKnowledgeCard.mockResolvedValue({
+      card: {
+        card_id: 'KC_VIDEO', title: '视频任务', kp_id: 'KP_VIDEO',
+        resource_bundle: {
+          videos: [{ source_id: 'V1', title: '配伍讲解', bvid: 'BV1test', start_seconds: 0, end_seconds: 100 }],
+        },
+      },
+      error: '',
+    });
+
+    render(<KnowledgeCardLibrary cardId="KC_VIDEO" taskItemId="ITEM_VIDEO" />);
+    fireEvent.click(await screen.findByRole('tab', { name: '视频资源 1' }));
+    expect(screen.getByText(/第三方播放器无法读取真实进度/)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: '有效专注进度' })).toHaveValue(0);
+    expect(screen.getByRole('button', { name: '确认看完' })).toBeDisabled();
   });
 });

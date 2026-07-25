@@ -43,7 +43,7 @@ class PaperBlueprintAgent:
                         },
                         permission_note=(
                             "只生成结构化试卷蓝图和分单元检索需求；不得检索题目、选择题目、"
-                            "生成试卷正文、答案、解析、系统ID或把难度作为必填条件。"
+                            "生成试卷正文、答案、解析、系统ID或系统未提供的评级字段。"
                         ),
                     ),
                 )
@@ -251,7 +251,6 @@ class PaperBlueprintAgent:
                         "required_question_count": 1,
                         "candidate_limit": 10,
                         "selection_rules": [f"只选择与{topic}直接相关的题目"],
-                        "difficulty_preference": None,
                     }
                 )
                 continue
@@ -475,9 +474,6 @@ class PaperBlueprintAgent:
                 "candidate_limit": candidate_limit,
                 "selection_rules": PaperBlueprintAgent._string_list(
                     unit.get("selection_rules") or unit.get("selection_rule")
-                ),
-                "difficulty_preference": PaperBlueprintAgent._optional_bounded_text(
-                    unit.get("difficulty_preference"), maximum=100
                 ),
             })
         assumptions = raw.get("assumptions", [])

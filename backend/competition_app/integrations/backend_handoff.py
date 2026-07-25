@@ -137,7 +137,6 @@ def _onboarding_profile_context(onboarding: dict[str, Any] | None) -> dict[str, 
         "user_preference": {
             "resource_preference": resources,
             "learning_periods": survey.get("preferred_time_slot") or "",
-            "difficulty_preference": survey.get("difficulty_preference") or "",
         },
         "onboarding_survey": survey,
         "l0_baseline": baseline,
@@ -284,6 +283,24 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def resolve_executable_knowledge_point(
+        self,
+        knowledge_point_name: str,
+    ) -> str | None:
+        """Resolve a formal KP only when the handoff can freeze three questions."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            return service.resolve_executable_knowledge_point(
+                db,
+                knowledge_point_name,
+                required_question_count=3,
+            )
+        finally:
+            db.close()
+
     def record_daily_checkin(self, external_user_id: str) -> dict[str, Any]:
         database = importlib.import_module("APP.backend.database")
         checkin = importlib.import_module("APP.backend.checkin_service")
@@ -298,6 +315,37 @@ class BackendHandoffRuntime:
         except Exception:
             db.rollback()
             raise
+        finally:
+            db.close()
+
+    def upsert_daily_task_execution(
+        self, external_user_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Publish one daily-task execution payload into the delivered runtime."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.upsert_daily_task_snapshot(db, user.id, payload)
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_daily_task_progress(
+        self, external_user_id: str, payload: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        """Load the server-owned daily-task progress snapshot for the mapped host user."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return service.daily_task_progress(db, user.id, payload or {})
         finally:
             db.close()
 
@@ -499,10 +547,14 @@ class BackendHandoffRuntime:
         db = database.SessionLocal()
         try:
             user = self._workshop_user(db, external_user_id)
+            verified_plan_context = service.verify_host_plan_context(
+                plan_context,
+                external_user_id=external_user_id,
+            )
             return service.build_multiscale_state(
                 db,
                 user.id,
-                plan_context=plan_context,
+                plan_context=verified_plan_context,
                 window_days=window_days,
             )
         finally:
@@ -526,10 +578,14 @@ class BackendHandoffRuntime:
         db = database.SessionLocal()
         try:
             user = self._workshop_user(db, external_user_id)
+            verified_plan_context = service.verify_host_plan_context(
+                plan_context,
+                external_user_id=external_user_id,
+            )
             return service.build_path_candidates(
                 db,
                 user.id,
-                plan_context=plan_context,
+                plan_context=verified_plan_context,
                 scope=scope,
                 limit=limit,
                 include_blocked=include_blocked,
@@ -635,9 +691,6 @@ class BackendHandoffRuntime:
                 } for row in review_rows],
                 "review_tasks": tasks,
             }
-            difficulty_source = str(
-                question.get("difficulty_source") or "formal_question_bank"
-            ).strip()
         finally:
             db.close()
 
@@ -1011,6 +1064,174 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def load_practice_selection_context(
+        self,
+        external_user_id: str,
+    ) -> dict[str, Any]:
+        """Load the small, read-only fact set needed to rank practice questions."""
+
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            now = time_utils.utc_now()
+            cutoff = now - timedelta(minutes=30)
+
+            active_tasks = (
+                db.query(database.LearningTask)
+                .filter(
+                    database.LearningTask.user_id == user.id,
+                    database.LearningTask.status.in_(("pending", "in_progress", "active")),
+                )
+                .order_by(
+                    database.LearningTask.due_at.asc(),
+                    database.LearningTask.created_at.desc(),
+                )
+                .limit(10)
+                .all()
+            )
+            current_task_kp_ids: list[str] = []
+            for task in active_tasks:
+                current_task_kp_ids.extend(self._json_list(task.kp_ids_json))
+
+            mastery_rows = (
+                db.query(database.KnowledgeMasteryState)
+                .filter(database.KnowledgeMasteryState.learner_id == user.id)
+                .all()
+            )
+            mastery = {
+                row.kp_id: {
+                    "mastery": float(row.mastery_score or 0.0),
+                    "confidence": float(row.mastery_confidence or 0.0),
+                }
+                for row in mastery_rows
+                if str(row.kp_id or "").strip()
+            }
+            for row in (
+                db.query(database.LearnerKnowledgeMastery)
+                .filter(database.LearnerKnowledgeMastery.user_id == user.id)
+                .all()
+            ):
+                mastery.setdefault(
+                    row.kp_id,
+                    {
+                        "mastery": float(row.mastery or 0.0),
+                        "confidence": float(row.confidence or 0.0),
+                    },
+                )
+
+            due_review_kp_ids = [
+                row.kp_id
+                for row in (
+                    db.query(database.LearnerKPReviewState)
+                    .filter(
+                        database.LearnerKPReviewState.learner_id == user.id,
+                        database.LearnerKPReviewState.status == "active",
+                    )
+                    .all()
+                )
+                if row.requires_remediation
+                or (row.next_review_at is not None and row.next_review_at <= now)
+            ]
+
+            attempt_history: dict[str, dict[str, Any]] = {}
+
+            def remember(question_id: Any, answered_at: Any, is_correct: Any) -> None:
+                normalized_id = str(question_id or "").strip()
+                if not normalized_id:
+                    return
+                item = attempt_history.setdefault(
+                    normalized_id,
+                    {"attempt_count": 0, "last_answered_at": None, "last_correct": None},
+                )
+                item["attempt_count"] += 1
+                if answered_at is not None and (
+                    item["last_answered_at"] is None or answered_at > item["last_answered_at"]
+                ):
+                    item["last_answered_at"] = answered_at
+                    item["last_correct"] = bool(is_correct)
+
+            for row in db.query(database.LearningQuestionAttempt).filter(
+                database.LearningQuestionAttempt.user_id == user.id,
+            ).all():
+                remember(row.question_id, row.answered_at, row.is_correct)
+            for row in db.query(database.QuestionAttempt).filter(
+                database.QuestionAttempt.user_id == user.id,
+            ).all():
+                remember(row.question_id, row.created_at, row.is_correct)
+            for attempt, item, grading in (
+                db.query(
+                    database.LearningAttemptRecord,
+                    database.LearningAttemptItemRecord,
+                    database.GradingResultRecord,
+                )
+                .join(
+                    database.LearningAttemptItemRecord,
+                    database.LearningAttemptItemRecord.attempt_id
+                    == database.LearningAttemptRecord.attempt_id,
+                )
+                .join(
+                    database.GradingResultRecord,
+                    database.GradingResultRecord.attempt_item_id
+                    == database.LearningAttemptItemRecord.attempt_item_id,
+                )
+                .filter(
+                    database.LearningAttemptRecord.learner_id == user.id,
+                    database.GradingResultRecord.status == "reviewed",
+                )
+                .all()
+            ):
+                remember(
+                    item.question_version_id,
+                    attempt.submitted_at or item.created_at,
+                    grading.is_correct,
+                )
+
+            active_claim_rows = (
+                db.query(database.CorePracticeSubmissionClaim)
+                .filter(
+                    database.CorePracticeSubmissionClaim.user_id == user.id,
+                    database.CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+                    database.CorePracticeSubmissionClaim.created_at >= cutoff,
+                )
+                .order_by(database.CorePracticeSubmissionClaim.created_at.desc())
+                .all()
+            )
+            latest_claim = active_claim_rows[0] if active_claim_rows else None
+            active_claims = [
+                {
+                    "question_id": row.question_id,
+                    "request_id": row.request_id,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                for row in active_claim_rows
+            ]
+            return {
+                "current_task_kp_ids": list(dict.fromkeys(current_task_kp_ids)),
+                "due_review_kp_ids": list(dict.fromkeys(due_review_kp_ids)),
+                "mastery": mastery,
+                "attempt_history": {
+                    question_id: {
+                        **item,
+                        "last_answered_at": item["last_answered_at"].isoformat()
+                        if item["last_answered_at"] is not None
+                        else None,
+                    }
+                    for question_id, item in attempt_history.items()
+                },
+                "active_claims": active_claims,
+                "latest_active_claim": {
+                    "question_id": latest_claim.question_id,
+                    "request_id": latest_claim.request_id,
+                    "created_at": latest_claim.created_at.isoformat()
+                    if latest_claim.created_at
+                    else None,
+                } if latest_claim is not None else None,
+            }
+        finally:
+            db.close()
+
     def issue_cached_public_practice(
         self,
         external_user_id: str,
@@ -1035,6 +1256,65 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def resume_formal_practice_claim(
+        self,
+        external_user_id: str,
+        *,
+        question_id: str,
+        request_id: str,
+    ) -> dict[str, Any] | None:
+        """Return an already-issued public question without creating another claim."""
+
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            cutoff = time_utils.utc_now() - timedelta(minutes=30)
+            claim = db.query(database.CorePracticeSubmissionClaim).filter(
+                database.CorePracticeSubmissionClaim.user_id == user.id,
+                database.CorePracticeSubmissionClaim.question_id == question_id,
+                database.CorePracticeSubmissionClaim.request_id == request_id,
+                database.CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+                database.CorePracticeSubmissionClaim.created_at >= cutoff,
+            ).one_or_none()
+            if claim is None:
+                return None
+            bank = db.query(database.QuestionBankItem).filter_by(
+                question_id=question_id,
+                status="active",
+            ).one_or_none()
+            core = db.query(database.LearningQuestion).filter_by(
+                question_id=question_id,
+            ).one_or_none()
+            if bank is None or core is None:
+                return None
+            kp_ids = self._json_list(bank.kp_ids_json)
+            kp_rows = db.query(database.KnowledgePoint).filter(
+                database.KnowledgePoint.kp_id.in_(kp_ids),
+            ).all() if kp_ids else []
+            kp_names = {
+                row.kp_id: row.name
+                for row in kp_rows
+                if str(row.name or "").strip() and row.name != row.kp_id
+            }
+            return {
+                "available": True,
+                "kp_id": kp_ids[0] if len(kp_ids) == 1 else None,
+                "question": {
+                    "question_id": question_id,
+                    "question_type": str(bank.question_type or "short_answer"),
+                    "stem": str(bank.stem or ""),
+                    "options": json.loads(core.options_json or "[]"),
+                    "kp_ids": kp_ids,
+                    "kp_names": [kp_names[kp_id] for kp_id in kp_ids if kp_id in kp_names],
+                    "request_id": request_id,
+                    "source_scope": "formal_question_bank",
+                },
+            }
+        finally:
+            db.close()
+
     def issue_formal_practice(
         self,
         external_user_id: str,
@@ -1048,6 +1328,7 @@ class BackendHandoffRuntime:
         """
 
         database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
         db = database.SessionLocal()
         try:
             user = self._workshop_user(db, external_user_id)
@@ -1064,10 +1345,18 @@ class BackendHandoffRuntime:
             ))
             if not question_id or not stem or not answer or not kp_ids:
                 raise ValueError("formal practice question is incomplete")
-            try:
-                difficulty = max(1, min(5, int(float(question.get("difficulty") or 2))))
-            except (TypeError, ValueError):
-                difficulty = 2
+            cutoff = time_utils.utc_now() - timedelta(minutes=30)
+            existing_claim = (
+                db.query(database.CorePracticeSubmissionClaim)
+                .filter(
+                    database.CorePracticeSubmissionClaim.user_id == user.id,
+                    database.CorePracticeSubmissionClaim.question_id == question_id,
+                    database.CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+                    database.CorePracticeSubmissionClaim.created_at >= cutoff,
+                )
+                .order_by(database.CorePracticeSubmissionClaim.created_at.desc())
+                .first()
+            )
             kp_names = {
                 str(key): str(value)
                 for key, value in (question.get("kp_names") or {}).items()
@@ -1099,7 +1388,7 @@ class BackendHandoffRuntime:
                 bank.analysis = analysis
             bank.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
             bank.question_type = question_type
-            bank.difficulty = difficulty
+            bank.difficulty = None
             bank.quality_score = 1.0
             bank.source = "formal_question_bank"
             bank.status = "active"
@@ -1118,7 +1407,7 @@ class BackendHandoffRuntime:
             )
             if analysis or not str(core.explanation or "").strip():
                 core.explanation = analysis
-            core.difficulty = difficulty
+            core.difficulty = None
             core.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
 
             version = db.query(database.QuestionVersionRecord).filter_by(
@@ -1136,7 +1425,7 @@ class BackendHandoffRuntime:
             version.answer = answer
             if analysis or not str(version.analysis or "").strip():
                 version.analysis = analysis
-            version.standard_difficulty = difficulty
+            version.standard_difficulty = None
             version.source_kind = "formal_question_bank"
             version.status = "active"
             db.flush()
@@ -1159,12 +1448,13 @@ class BackendHandoffRuntime:
                     link.status = "active"
                     link.is_primary = index == 0
 
-            request_id = str(uuid4())
-            db.add(database.CorePracticeSubmissionClaim(
-                user_id=user.id,
-                request_id=request_id,
-                question_id=question_id,
-            ))
+            request_id = existing_claim.request_id if existing_claim is not None else str(uuid4())
+            if existing_claim is None:
+                db.add(database.CorePracticeSubmissionClaim(
+                    user_id=user.id,
+                    request_id=request_id,
+                    question_id=question_id,
+                ))
             db.commit()
             return {
                 "available": True,
@@ -1181,8 +1471,6 @@ class BackendHandoffRuntime:
                         if str(kp_names.get(kp_id) or "").strip()
                         and kp_names[kp_id] != kp_id
                     ],
-                    "difficulty": difficulty,
-                    "difficulty_source": difficulty_source,
                     "request_id": request_id,
                     "source_scope": "formal_question_bank",
                 },
@@ -1430,6 +1718,7 @@ class BackendHandoffRuntime:
         paper: dict[str, Any],
         blueprint: dict[str, Any],
         evidence_pack: dict[str, Any],
+        daily_task_item_id: str | None = None,
     ) -> dict[str, Any]:
         database = importlib.import_module("APP.backend.database")
         service = importlib.import_module("APP.backend.learning_workshop_service")
@@ -1443,6 +1732,7 @@ class BackendHandoffRuntime:
                 paper=paper,
                 blueprint=blueprint,
                 evidence_pack=evidence_pack,
+                daily_task_item_id=daily_task_item_id,
             )
         except Exception:
             db.rollback()

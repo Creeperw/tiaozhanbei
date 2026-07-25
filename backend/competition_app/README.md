@@ -54,7 +54,7 @@ Stub 模式不调用外部模型和向量服务，适合前端联调、接口契
 
 Live 模式默认使用：
 
-- 对话模型：`qwen3.7-plus-2026-05-26`（阿里云兼容接口）
+- 对话模型：`qwen3.7-flash-2026-07-15`（阿里云兼容接口）
 - Embedding：`Qwen/Qwen3-Embedding-4B`（SiliconFlow）
 - 编排：LangGraph
 

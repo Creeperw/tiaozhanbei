@@ -557,7 +557,7 @@ function renderPaperUnitRetrieval(event) {
     .map(([channel, count]) => `${channel === 'bridge' ? '题库知识点关联' : channel.toUpperCase()} ${count}`)
     .join(' · ') || '无正式题库通道命中';
   const preferences = (event.question_type_preferences || []).join('、') || '不限题型';
-  content.textContent = `查询：${event.query}｜题型：${preferences}｜过滤前 ${event.raw_candidate_count ?? event.candidate_count} 题｜可用 ${event.candidate_count} 题｜过滤 ${event.filtered_out_count || 0} 题｜通道：${channels}｜难度过滤：未启用${event.fallback_applied ? '｜已保留正式题库近似题型' : ''}`;
+  content.textContent = `查询：${event.query}｜题型：${preferences}｜过滤前 ${event.raw_candidate_count ?? event.candidate_count} 题｜可用 ${event.candidate_count} 题｜过滤 ${event.filtered_out_count || 0} 题｜通道：${channels}${event.fallback_applied ? '｜已保留正式题库近似题型' : ''}`;
   article.append(header, content);
   const details = document.createElement('div');
   details.className = 'retrieval-candidate-details';
@@ -602,7 +602,7 @@ function renderPaperUnitRetrieval(event) {
 function summarize(producer, payload) {
   if (producer === 'planner_agent') return `工作流：${payload.task_type} · 风险：${payload.risk_level}`;
   if (producer === 'memory_agent') return payload.summary || '上下文已准备';
-  if (producer === 'knowledge_base_agent' && payload.units) return `候选池：${payload.units.length} 个蓝图单元 · 未启用难度过滤`;
+  if (producer === 'knowledge_base_agent' && payload.units) return `候选池：${payload.units.length} 个蓝图单元`;
   if (producer === 'knowledge_base_agent') return `知识点：${(payload.resolved_kp_ids || []).join('、')} · 证据 ${payload.evidence_items?.length || 0} 条`;
   if (producer === 'paper_blueprint_agent' && payload.blueprint_id) return `试卷蓝图：${payload.title} · ${payload.units.length} 个检索单元`;
   if (producer === 'paper_assembly_agent' && payload.paper_draft_id) return `完整试卷：${payload.title} · ${payload.items.length} 题`;

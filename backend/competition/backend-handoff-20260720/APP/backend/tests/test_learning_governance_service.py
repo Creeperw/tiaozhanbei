@@ -152,10 +152,89 @@ class LearningGovernanceServiceTests(unittest.TestCase):
         card_match = next(item for item in report["matches"] if item["resource_id"] == "CARD_1")
         self.assertGreater(card_match["components"]["knowledge_fit"], 0)
         question_match = next(item for item in report["matches"] if item["resource_id"] == "QUESTION_0")
-        self.assertIsNotNone(question_match["components"]["difficulty_fit"])
+        self.assertNotIn("difficulty_fit", question_match["components"])
         self.assertEqual(question_match["estimated_minutes_basis"], "user_response_time_mean_30d")
         self.assertEqual(report["summary"]["coverage"], 1.0)
         self.assertTrue(report["data_sources"])
+
+    def test_practice_score_rate_uses_passed_practice_and_paper_scores(self):
+        now = datetime.utcnow()
+
+        def add_grading(
+            suffix: str,
+            *,
+            attempt_type: str,
+            score: float,
+            max_score: float,
+            decision: str = "pass",
+        ) -> None:
+            attempt_id = f"LEARNING_ATTEMPT_{suffix}"
+            item_id = f"ATTEMPT_ITEM_{suffix}"
+            artifact_id = f"GRADING_{suffix}"
+            self.db.add(database.LearningAttemptRecord(
+                attempt_id=attempt_id,
+                learner_id=1,
+                attempt_type=attempt_type,
+                status="submitted",
+                submitted_at=now,
+            ))
+            self.db.add(database.LearningAttemptItemRecord(
+                attempt_item_id=item_id,
+                attempt_id=attempt_id,
+                question_version_id=f"QUESTION_VERSION_{suffix}",
+            ))
+            self.db.add(database.GradingResultRecord(
+                artifact_id=artifact_id,
+                attempt_item_id=item_id,
+                version=1,
+                score=score,
+                max_score=max_score,
+                status="reviewed",
+            ))
+            self.db.add(database.AuditResultRecord(
+                audit_id=f"AUDIT_{suffix}",
+                source_artifact_id=artifact_id,
+                source_artifact_version=1,
+                decision=decision,
+                status="completed",
+            ))
+
+        add_grading("PRACTICE", attempt_type="practice", score=30, max_score=100)
+        add_grading("PAPER", attempt_type="paper", score=40, max_score=50)
+        add_grading("CASE", attempt_type="case", score=100, max_score=100)
+        add_grading(
+            "REJECTED", attempt_type="practice", score=100, max_score=100,
+            decision="reject",
+        )
+        self.db.commit()
+
+        insights = build_learning_insights(self.db, 1, days=7)
+        score_rate = next(
+            item for item in insights["dimensions"] if item["key"] == "accuracy"
+        )
+
+        self.assertEqual(score_rate["label"], "练习得分率")
+        self.assertAlmostEqual(score_rate["value"], 70 / 150, places=4)
+        self.assertEqual(score_rate["evidence_count"], 2)
+        self.assertEqual(
+            score_rate["formula"],
+            "sum(passed_practice_and_paper_scores)/sum(corresponding_max_scores)",
+        )
+        self.assertEqual(
+            score_rate["source_ids"],
+            ["grading_result_records", "learning_attempts", "audit_result_records"],
+        )
+
+    def test_execution_dimension_declares_daily_atomic_task_provenance(self):
+        insights = build_learning_insights(self.db, 1, days=7)
+        execution = next(item for item in insights["dimensions"] if item["key"] == "execution")
+
+        self.assertEqual(execution["source_ids"], ["daily_task_instances", "daily_task_items"])
+        self.assertEqual(
+            execution["formula"],
+            "completed_non_cancelled_daily_items/non_cancelled_published_daily_items",
+        )
+        self.assertNotIn("learning_tasks", insights["data_quality"]["sources"])
 
     def test_resource_report_refuses_untargeted_recommendations(self):
         insights = build_learning_insights(self.db, 1, days=7)

@@ -56,7 +56,13 @@ class LearningActivityRouteTests(unittest.TestCase):
         self.assertEqual(completed.status_code, 200)
         self.assertEqual(completed.json()["status"], "completed")
         self.assertEqual(completed.json()["version"], 2)
-        self.assertEqual(completed.json()["system_data"]["task_completion_rate"]["value"], 1.0)
+        completion_rate = completed.json()["system_data"]["task_completion_rate"]
+        self.assertFalse(completion_rate["available"])
+        self.assertIsNone(completion_rate["value"])
+        self.assertEqual(
+            completion_rate["unavailable_reason"],
+            "no_planned_daily_task_items",
+        )
         with self.Session() as db:
             task = db.query(database.LearningTask).filter_by(task_id=task_id, user_id=1).one()
             self.assertEqual(task.resource_ids_json, '["VIDEO_\\\"1"]')

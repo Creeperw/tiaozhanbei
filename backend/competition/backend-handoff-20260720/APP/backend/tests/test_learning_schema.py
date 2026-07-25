@@ -2198,7 +2198,7 @@ class LearningSchemaTests(unittest.TestCase):
                         connection.execute(text(f'''CREATE TABLE "{shadow_attempts}" (
                             id INTEGER NOT NULL PRIMARY KEY, attempt_id VARCHAR(120) NOT NULL UNIQUE,
                             learner_id INTEGER NOT NULL, attempt_type VARCHAR(50), source_task_id VARCHAR(120),
-                            request_id VARCHAR(120), status VARCHAR(50), submitted_at DATETIME,
+                            daily_task_item_id VARCHAR(120), request_id VARCHAR(120), status VARCHAR(50), submitted_at DATETIME,
                             source_kind VARCHAR(80), schema_version VARCHAR(40), created_at DATETIME
                         )'''))
                         connection.execute(text(f'INSERT INTO "{shadow_attempts}" SELECT * FROM "bad_shadow"'))

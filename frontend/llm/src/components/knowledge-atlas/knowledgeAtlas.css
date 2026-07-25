@@ -332,7 +332,15 @@
 .knowledge-atlas__videos button small { margin-top: 3px; overflow: hidden; color: var(--atlas-muted); font-size: .56rem; text-overflow: ellipsis; white-space: nowrap; }
 .knowledge-atlas__player { position: relative; margin-bottom: 10px; overflow: hidden; border: 1px solid rgba(24,49,42,.12); border-radius: 15px; background: #10221c; aspect-ratio: 16 / 9; }
 .knowledge-atlas__player iframe { width: 100%; height: 100%; border: 0; }
+.knowledge-atlas__player.has-task-evidence { aspect-ratio: auto; }
+.knowledge-atlas__player.has-task-evidence iframe { display: block; height: auto; aspect-ratio: 16 / 9; }
+.knowledge-atlas__video-evidence { display: grid; gap: .55rem; padding: .8rem; background: #eff6ff; color: #0c4a6e; font-size: .8rem; line-height: 1.5; }
+.knowledge-atlas__video-evidence label { display: grid; grid-template-columns: 1fr auto; gap: .35rem; }
+.knowledge-atlas__video-evidence progress { grid-column: 1 / -1; width: 100%; }
+.knowledge-atlas__video-evidence button { justify-self: start; border: 0; border-radius: .55rem; padding: .45rem .75rem; background: #047857; color: white; font-weight: 700; }
+.knowledge-atlas__video-evidence button:disabled { cursor: not-allowed; opacity: .5; }
 .knowledge-atlas__player a { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; padding: 5px 8px; color: #fff; background: rgba(15,31,26,.78); font-size: .58rem; text-decoration: none; }
+.knowledge-atlas__player.has-task-evidence > a { position: static; float: right; margin: 8px; }
 .knowledge-atlas__chunks { display: grid; gap: 11px; }
 .knowledge-atlas__chunks > article,
 .knowledge-atlas__question-card { overflow: hidden; border: 1px solid rgba(24,49,42,.09); border-radius: 15px; padding: 14px 15px; background: rgba(255,255,255,.79); box-shadow: 0 7px 20px rgba(24,49,42,.035); }

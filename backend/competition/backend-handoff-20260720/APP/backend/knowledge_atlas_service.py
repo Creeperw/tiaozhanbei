@@ -764,7 +764,6 @@ class KnowledgeAtlasStore:
             "options": options,
             "answer": answer,
             "explanation": str(_question_value(row, "explanation", "explaination", "题目解析", "analysis")),
-            "difficulty": _question_value(row, "difficulty", default=""),
             "kp_ids": [str(value) for value in kp_ids if value not in (None, "")],
             "source": str(row.get("source") or row.get("source_file") or "knowledge_atlas"),
         }

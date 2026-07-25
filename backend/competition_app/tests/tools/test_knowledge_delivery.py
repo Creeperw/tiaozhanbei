@@ -72,7 +72,6 @@ def build_backend(tmp_path: Path) -> KnowledgeDeliveryBackend:
                 ],
                 "answer": ["A", "B"],
                 "explanation": "两者均属于四君子汤。",
-                "difficulty": "基础",
                 "kp_ids": ["KP_1"],
                 "tokenized_content": ["四君子汤", "人参", "白术"],
             }
@@ -180,6 +179,42 @@ def test_topic_resolution_accepts_model_query_with_qualifiers(tmp_path: Path) ->
     matches = backend.map.resolve_topic("四君子汤 人参 君药 方义；理中丸 核心区别 病机")
 
     assert [item["kp_id"] for item in matches[:2]] == ["KP_1", "KP_2"]
+
+
+def test_trusted_video_resolver_returns_only_published_canonical_segment(tmp_path: Path) -> None:
+    backend = build_backend(tmp_path)
+
+    resolved = backend.map.resolve_trusted_video_resource({
+        "provider": "bilibili",
+        "bvid": "BV_TEST",
+        "page": 1,
+        "start_seconds": 12,
+        "end_seconds": 42,
+        "url": "https://untrusted.example/video.mp4",
+    })
+
+    assert resolved == {
+        "source": "knowledge_atlas",
+        "provider": "bilibili",
+        "bvid": "BV_TEST",
+        "aid": None,
+        "cid": None,
+        "page": 1,
+        "start_seconds": 12.0,
+        "end_seconds": 42.0,
+        "video_title": "方剂学课程",
+        "part_title": "四君子汤",
+        "topic": "组成",
+    }
+    assert backend.map.resolve_trusted_video_resource({
+        "provider": "bilibili",
+        "bvid": "BV_TEST",
+        "page": 1,
+        "start_seconds": 12,
+        "end_seconds": 43,
+    }) is None
+    assert backend.map.resolve_trusted_video_resource({"kp_id": "KP_1"}) == resolved
+    assert backend.map.resolve_trusted_video_resource({"kp_id": "KP_UNKNOWN"}) is None
 
 
 def test_exam_adapter_reads_nested_customer_delivery(tmp_path: Path) -> None:

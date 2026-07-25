@@ -213,6 +213,163 @@ def test_service_persists_daily_chapter_and_focus_knowledge_points() -> None:
     assert result.learning_task.focus_knowledge_points == ["四君子汤", "君臣佐使配伍"]
 
 
+def test_service_materializes_stable_system_owned_video_and_practice_items(
+    repository: DefaultRouteRepository,
+) -> None:
+    formal_ids = {
+        "四君子汤": "KP_1",
+        "君臣佐使配伍": "KP_2",
+        "补气剂适应证": "KP_3",
+    }
+    service = LearningPlanService(
+        repository,
+        knowledge_point_resolver=formal_ids.get,
+        video_resource_resolver=lambda resource_ref: (
+            resource_ref if resource_ref.get("trusted_resource_id") else None
+        ),
+    )
+    value = structured_proposal(repository)
+    value.task_proposal.estimated_minutes = 20
+    value.task_proposal.task_content = "观看补气剂视频片段"
+    value.task_proposal.focus_knowledge_points = [
+        "四君子汤",
+        "君臣佐使配伍",
+        "补气剂适应证",
+    ]
+    value.short_term_learning_package = ShortTermLearningPackage(
+        current_goal="观看视频并完成三个知识点练习",
+        task_blocks=[
+            {
+                "content": "观看补气剂视频片段",
+                "estimated_minutes": 5,
+                "item_type": "video_section",
+                "resource_ref": {
+                    "trusted_resource_id": "VIDEO_SECTION_1",
+                    "provider": "bilibili",
+                    "bvid": "BV1TEST",
+                    "page": 1,
+                    "start_seconds": 10,
+                    "end_seconds": 70,
+                },
+            }
+        ],
+        expected_output="完成视频和练习",
+        completion_criteria="四项全部完成",
+    )
+
+    first = service.materialize("LEARNER_ATOMIC", value)
+    reusable = value.model_copy(deep=True)
+    reusable.daily_task_action = "reuse"
+    reused = service.materialize("LEARNER_ATOMIC", reusable)
+    updated = service.materialize("LEARNER_ATOMIC", value)
+
+    assert len(first.learning_task.items) == 4
+    assert [item.item_type for item in first.learning_task.items] == [
+        "video_section",
+        "knowledge_practice",
+        "knowledge_practice",
+        "knowledge_practice",
+    ]
+    assert all(item.task_item_id.startswith("DTI_") for item in first.learning_task.items)
+    assert [item.kp_id for item in first.learning_task.items[1:]] == [
+        "KP_1",
+        "KP_2",
+        "KP_3",
+    ]
+    assert [item.task_item_id for item in reused.learning_task.items] == [
+        item.task_item_id for item in first.learning_task.items
+    ]
+    assert [item.task_item_id for item in updated.learning_task.items] != [
+        item.task_item_id for item in first.learning_task.items
+    ]
+
+
+def test_service_does_not_persist_model_knowledge_point_names_as_ids() -> None:
+    value = proposal()
+    value.task_proposal.focus_knowledge_points = ["四君子汤", "君臣佐使配伍"]
+
+    task = LearningPlanService().materialize("LEARNER_MODEL_SHAPE", value).learning_task
+
+    assert [item.item_type for item in task.items] == ["recall", "recall"]
+    assert [item.knowledge_point_name for item in task.items] == [
+        "四君子汤",
+        "君臣佐使配伍",
+    ]
+    assert all(item.kp_id is None for item in task.items)
+
+
+def test_service_downgrades_unverified_video_resource_to_reading(
+    repository: DefaultRouteRepository,
+) -> None:
+    value = structured_proposal(repository)
+    value.task_proposal.task_content = "观看模型推荐的视频"
+    value.short_term_learning_package = ShortTermLearningPackage(
+        current_goal="学习补气剂",
+        task_blocks=[
+            {
+                "content": "观看模型推荐的视频",
+                "estimated_minutes": 10,
+                "item_type": "video_section",
+                "resource_ref": {"url": "https://example.invalid/model-output"},
+            }
+        ],
+        expected_output="学习记录",
+        completion_criteria="完成学习",
+    )
+
+    item = LearningPlanService(repository).materialize(
+        "LEARNER_UNVERIFIED_VIDEO", value
+    ).learning_task.items[0]
+
+    assert item.item_type == "reading"
+    assert item.resource_ref == {}
+
+
+def test_service_selects_published_video_for_legacy_model_block_from_formal_kp(
+    repository: DefaultRouteRepository,
+) -> None:
+    value = structured_proposal(repository)
+    value.task_proposal.task_content = "观看四君子汤视频并完成练习"
+    value.task_proposal.estimated_minutes = 10
+    value.task_proposal.focus_knowledge_points = ["四君子汤"]
+    value.short_term_learning_package = ShortTermLearningPackage(
+        current_goal="学习四君子汤",
+        task_blocks=["观看四君子汤视频并完成练习"],
+        expected_output="完成视频和练习",
+        completion_criteria="两项全部完成",
+    )
+    observed_refs = []
+
+    def resolve_video(resource_ref):
+        observed_refs.append(resource_ref)
+        if resource_ref == {"kp_id": "KP_FORMAL_1"}:
+            return {
+                "source": "knowledge_atlas",
+                "provider": "bilibili",
+                "bvid": "BV_REAL",
+                "page": 1,
+                "start_seconds": 12,
+                "end_seconds": 42,
+            }
+        return None
+
+    task = LearningPlanService(
+        repository,
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else None
+        ),
+        video_resource_resolver=resolve_video,
+    ).materialize("LEARNER_PUBLISHED_VIDEO", value).learning_task
+
+    assert observed_refs == [{"kp_id": "KP_FORMAL_1"}]
+    assert [item.item_type for item in task.items] == [
+        "video_section",
+        "knowledge_practice",
+    ]
+    assert task.items[0].resource_ref["bvid"] == "BV_REAL"
+    assert task.items[0].completion_policy["policy"] == "iframe_focus_and_confirmation"
+
+
 def test_service_updates_only_target_layer_versions() -> None:
     service = LearningPlanService()
     first = service.materialize("LEARNER_LAYER_VERSION", proposal())
@@ -945,3 +1102,31 @@ def test_container_shares_route_repository_between_resolver_and_service(tmp_path
     adapter = registry.get("learning_plan_service")
 
     assert resolver._repository is adapter.service.route_repository
+
+
+def test_container_injects_same_production_resolvers_into_plan_and_refresh(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    formal_resolver = lambda name: "KP_FORMAL" if name == "四君子汤" else None
+    class Runtime:
+        resolve_executable_knowledge_point = staticmethod(formal_resolver)
+
+        def __getattr__(self, name: str):
+            return lambda *args, **kwargs: None
+
+    runtime = Runtime()
+    monkeypatch.setattr(
+        "competition_app.application.container.load_backend_handoff",
+        lambda settings: runtime,
+    )
+
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    adapter = container.review_card_use_case.orchestrator.agent_registry.get(
+        "learning_plan_service"
+    )
+
+    assert adapter.service.knowledge_point_resolver is formal_resolver
+    assert container.daily_task_refresh_service.knowledge_point_resolver is formal_resolver
+    assert adapter.service.video_resource_resolver is None
+    assert container.daily_task_refresh_service.video_resource_resolver is None

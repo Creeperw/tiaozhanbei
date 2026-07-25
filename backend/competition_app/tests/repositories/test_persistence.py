@@ -45,6 +45,21 @@ def build_engine():
             "learner_id TEXT, invalidated_layer TEXT, reason TEXT)"
         ))
         connection.execute(text(
+            "CREATE TABLE learning_task_sync_outbox (event_id TEXT PRIMARY KEY, "
+            "learner_id TEXT NOT NULL, task_id TEXT NOT NULL, task_version INTEGER NOT NULL, "
+            "event_type TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL "
+            "DEFAULT 'pending', attempt_count INTEGER NOT NULL DEFAULT 0, last_error TEXT, "
+            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, delivered_at TIMESTAMP, "
+            "UNIQUE(task_id, task_version, event_type))"
+        ))
+        connection.execute(text(
+            "CREATE TABLE learning_task_refresh_claims (learner_id TEXT NOT NULL, "
+            "prior_task_id TEXT NOT NULL, prior_task_version INTEGER NOT NULL, "
+            "replacement_task_id TEXT NOT NULL, replacement_task_version INTEGER NOT NULL, "
+            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, "
+            "PRIMARY KEY(learner_id, prior_task_id, prior_task_version))"
+        ))
+        connection.execute(text(
             "CREATE TABLE workflow_run_states (thread_id TEXT PRIMARY KEY, execution_id TEXT, "
             "case_id TEXT, learner_id TEXT, status TEXT, payload_json TEXT, "
             "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
@@ -117,6 +132,79 @@ def test_sql_learning_plan_repository_survives_repository_recreation() -> None:
         assert connection.execute(text("SELECT COUNT(*) FROM long_term_plan_versions")).scalar_one() == 1
         assert connection.execute(text("SELECT COUNT(*) FROM short_term_plan_versions")).scalar_one() == 1
         assert connection.execute(text("SELECT COUNT(*) FROM learning_task_versions")).scalar_one() == 1
+
+
+def test_task_version_and_outbox_are_saved_atomically_and_idempotently() -> None:
+    engine = build_engine()
+    repository = SqlLearningPlanRepository(engine)
+    value = plan_result()
+
+    repository.save_current("L1", value)
+    repository.save_current("L1", value)
+    replacement = value.model_copy(
+        update={
+            "learning_task": value.learning_task.model_copy(
+                update={"task_id": "TASK_2", "version": 2}
+            )
+        }
+    )
+    repository.save_current("L1", replacement, sync_event_type="replace")
+
+    with engine.connect() as connection:
+        rows = list(connection.execute(text(
+            "SELECT task_id, task_version, event_type, status "
+            "FROM learning_task_sync_outbox ORDER BY task_version"
+        )))
+    assert rows == [
+        ("TASK_1", 1, "publish", "pending"),
+        ("TASK_2", 2, "replace", "pending"),
+    ]
+
+
+def test_sql_refresh_cas_publishes_only_one_replacement_for_same_prior_task() -> None:
+    engine = build_engine()
+    first_repository = SqlLearningPlanRepository(engine)
+    second_repository = SqlLearningPlanRepository(engine)
+    original = plan_result()
+    first_repository.save_current("L1", original)
+    replacement_a = original.model_copy(
+        update={
+            "learning_task": original.learning_task.model_copy(
+                update={"task_id": "TASK_A", "version": 2}
+            )
+        }
+    )
+    replacement_b = original.model_copy(
+        update={
+            "learning_task": original.learning_task.model_copy(
+                update={"task_id": "TASK_B", "version": 2}
+            )
+        }
+    )
+
+    first_saved = first_repository.save_current(
+        "L1",
+        replacement_a,
+        sync_event_type="replace",
+        expected_task_id="TASK_1",
+        expected_task_version=1,
+    )
+    second_saved = second_repository.save_current(
+        "L1",
+        replacement_b,
+        sync_event_type="replace",
+        expected_task_id="TASK_1",
+        expected_task_version=1,
+    )
+
+    assert first_saved is True
+    assert second_saved is False
+    assert first_repository.get_current("L1").learning_task.task_id == "TASK_A"
+    with engine.connect() as connection:
+        replacements = list(connection.execute(text(
+            "SELECT task_id FROM learning_task_sync_outbox WHERE event_type='replace'"
+        )))
+    assert replacements == [("TASK_A",)]
 
 
 def test_plan_repository_retains_history_and_records_lower_layer_invalidation() -> None:

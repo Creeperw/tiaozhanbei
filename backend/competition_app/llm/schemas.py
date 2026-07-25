@@ -595,11 +595,6 @@ class BlueprintUnitModelOutput(StrictModelOutput):
     score_total: float | None = Field(default=None, gt=0)
     candidate_limit: int = Field(default=10, ge=1, le=50)
     selection_rules: list[str] = Field(default_factory=list)
-    difficulty_preference: str | None = Field(
-        default=None,
-        max_length=100,
-        description="可选命题偏好；题库无标准难度字段时必须允许为空，且不能成为检索硬过滤条件。",
-    )
 
     @field_validator("required_question_count", "candidate_limit", mode="before")
     @classmethod

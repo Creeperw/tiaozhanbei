@@ -80,7 +80,6 @@ class QuestionIngestRequest(BaseModel):
     analysis: str = Field(default="", max_length=20000)
     options: list[str] = Field(default_factory=list, max_length=10)
     question_type: str = Field(default="short_answer", max_length=50)
-    difficulty: float = Field(default=2.0, ge=0, le=5)
     requested_kp_ids: list[str] = Field(default_factory=list, max_length=20)
 
     @field_validator("stem")

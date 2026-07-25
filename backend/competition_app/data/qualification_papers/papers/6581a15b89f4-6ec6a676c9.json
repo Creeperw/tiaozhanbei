@@ -1,0 +1,575 @@
+{
+  "template_id": "6581a15b89f4-6ec6a676c9",
+  "questions": [
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0036",
+      "question_type": "single_choice",
+      "question_content": "患者，女，54岁，面部出现有红、肿、热、痛的小结节，逐渐肿大并隆起，出现脓栓，应诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痰核"
+        },
+        {
+          "option_id": "B",
+          "content": "疖"
+        },
+        {
+          "option_id": "C",
+          "content": "痈"
+        },
+        {
+          "option_id": "D",
+          "content": "丹毒"
+        },
+        {
+          "option_id": "E",
+          "content": "疽"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据患者“面部出现有红、肿、热、痛的小结节，逐渐肿大并隆起，出现脓栓”考虑该患者为疖。疖初起毛囊处有红、肿、热、痛的小结节，逐渐肿大并隆起，数天后中央部组织坏死，出现脓栓。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 36,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0037",
+      "question_type": "single_choice",
+      "question_content": "患者, 女, 35 岁, 不慎被热水烫伤双足, 患处现有水疱, 创面微湿, 红白相间, 痛觉较迟钝。初步估计烫伤面积和烧伤深度为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "6% 浅 II°"
+        },
+        {
+          "option_id": "B",
+          "content": "7% I°"
+        },
+        {
+          "option_id": "C",
+          "content": "6% 浅 II°"
+        },
+        {
+          "option_id": "D",
+          "content": "7% 深 II°"
+        },
+        {
+          "option_id": "E",
+          "content": "8% III°"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "按体表面积划分为 11 个 9% 的等份，另加 1%，构成 100% 的体表面积，即头颈部：1×9%；躯干：3×9%；两上肢：2×9%；双下肢：5×9%+1%，共为 11×9%+1%。头颈面 333（9%\\*1）；手臂肱 567（9%\\*2）；躯干会阴 27（9%\\*3）；臀为 5、足为 7，小腿大腿 13，21（9%\\*5+1%）。故烧伤面积为 7%。患处现有水疱，创面微湿，红白相间，痛觉较迟钝属于深 II° 烧伤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 37,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0038",
+      "question_type": "single_choice",
+      "question_content": "患者，女性，26岁，初产妇，产后3周双乳出现红肿热痛，可触及包块，现症：肿块逐渐增大，皮肤瘀红灼热，疼痛剧烈，呈持续性搏动性疼痛，壮热不退，口渴喜饮，患部拒按，按之应指。舌质红，苔黄腻，脉滑数。首选治疗为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "瓜蒌牛蒡汤 维生素 E"
+        },
+        {
+          "option_id": "B",
+          "content": "五味消毒饮合透脓散 青霉素"
+        },
+        {
+          "option_id": "C",
+          "content": "托里消毒散 青霉素"
+        },
+        {
+          "option_id": "D",
+          "content": "逍遥散 切开排脓"
+        },
+        {
+          "option_id": "E",
+          "content": "五味消毒饮合透脓散 切开排脓"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据 “初产妇，产后 3 周双乳出现红肿热痛，可触及包块” 诊断为急性乳腺炎。根据 “肿块逐渐增大，皮肤焮红灼热，疼痛剧烈，呈持续性搏动性疼痛，壮热不退，口渴喜饮，患部拒按，按之应指。舌质红，苔黄腻，脉滑数” 辨证为热毒炽盛证，治法为清热解毒，托里透脓。方药为五味消毒饮合透脓散。因患者患部按之应指，脓已成，故西医治疗应选择切开排脓。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 38,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0039",
+      "question_type": "single_choice",
+      "question_content": "患者, 男, 53 岁, 消化性溃疡反复发作 17 年, 近 1 周有溃疡病活动症状, 今日突然出现持续性上腹部剧烈疼痛、恶心呕吐, 伴轻度休克症状, 查体: 腹部压痛及腹肌强直, 腹腔内积气积液, 为明确诊断需进行的检查为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "腹部 CT"
+        },
+        {
+          "option_id": "B",
+          "content": "腹部 B 超发现包块"
+        },
+        {
+          "option_id": "C",
+          "content": "立位腹部透视"
+        },
+        {
+          "option_id": "D",
+          "content": "血常规"
+        },
+        {
+          "option_id": "E",
+          "content": "血淀粉酶测定"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据“消化性溃疡反复发作17年，近1周有溃疡病活动症状，今日突然出现持续性上腹部剧烈疼痛、恶心呕吐，伴轻度休克症状，查体：腹部压痛及腹肌强直，腹腔内积气积液”考虑该患者为胃十二指肠溃疡急性穿孔。在立位腹部透视或摄片时可见半月形的膈下游离气体影，对诊断有重要意义。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 39,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0040",
+      "question_type": "single_choice",
+      "question_content": "患者，女，31岁，妊娠中晚期出现肢体面目肿胀，可能诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "子冒"
+        },
+        {
+          "option_id": "B",
+          "content": "子晕"
+        },
+        {
+          "option_id": "C",
+          "content": "子痫"
+        },
+        {
+          "option_id": "D",
+          "content": "子肿"
+        },
+        {
+          "option_id": "E",
+          "content": "晕厥"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "子肿：妊娠中晚期，孕妇出现肢体面目肿胀。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 40,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0041",
+      "question_type": "single_choice",
+      "question_content": "患者，女，61岁。近2年劳动、行走或咳嗽时阴道内有物脱出，妇科检查发现：子宫颈已脱出阴道口，但宫体仍在阴道内。现症：阴中有物脱出，腰酸腿软，头晕耳鸣，小便频数，小腹下坠；舌质淡，苔薄，脉沉弱。治疗应首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "归脾汤"
+        },
+        {
+          "option_id": "B",
+          "content": "补中益气汤"
+        },
+        {
+          "option_id": "C",
+          "content": "大补元煎"
+        },
+        {
+          "option_id": "D",
+          "content": "八珍汤"
+        },
+        {
+          "option_id": "E",
+          "content": "举元煎"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据 “近 2 年劳动、行走或咳嗽时阴道内有物脱出，妇科检查发现：子宫颈已脱出阴道口，但宫体仍在阴道内” 诊断为 II 度轻型子宫脱垂。根据 “阴中有物脱出，腰酸腿软，头晕耳鸣，小便频数，小腹下坠；舌质淡，苔薄，脉沉弱” 辨证为肾气亏虚证，治法为补肾固脱，益气升提，方药为大补元煎。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 41,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0042",
+      "question_type": "single_choice",
+      "question_content": "患者, 女, 33 岁。近 2 年经前小腹疼痛, 有灼热感, 拒按, 遇热痛增, 月经先期、量多、经色深红、质黏稠夹血块, 心烦口渴, 溴黄便结, 性交疼痛, 盆腔结节包块触痛明显; 舌红有瘀点, 苔黄,脉弦数, 诊断为子宫内膜异位症。治疗首选的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "少腹逐瘀汤"
+        },
+        {
+          "option_id": "B",
+          "content": "膈下逐瘀汤"
+        },
+        {
+          "option_id": "C",
+          "content": "血府逐瘀汤"
+        },
+        {
+          "option_id": "D",
+          "content": "理冲汤"
+        },
+        {
+          "option_id": "E",
+          "content": "清热调血汤"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "患者西医诊断为子宫内膜异位症，根据“近2年经前小腹疼痛，有灼热感，拒按，遇热痛增，月经先期、量多、经色深红、质黏稠夹血块，心烦口渴，溲黄便结，性交疼痛，盆腔结节包块触痛明显；舌红有瘀点，苔黄，脉弦数”辨证为瘀热互结证，治法为清热凉血，活血祛瘀。方药为清热调血汤加红藤、薏苡仁、败酱草。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 42,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0043",
+      "question_type": "single_choice",
+      "question_content": "患者，女，26岁，孕51天，近3天出现阴道下血，腰酸腹痛下坠，色暗红；舌边有瘀点，脉弦滑。 B 超示宫内胚胎存活。治疗选用的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "寿胎丸"
+        },
+        {
+          "option_id": "B",
+          "content": "胎元饮"
+        },
+        {
+          "option_id": "C",
+          "content": "桂枝茯苓丸合寿胎丸"
+        },
+        {
+          "option_id": "D",
+          "content": "补肾固冲丸"
+        },
+        {
+          "option_id": "E",
+          "content": "当归散"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据 “孕 51 天，近 3 天出现阴道下血，腰酸腹痛下坠。B 超示宫内胚胎存活” 诊断为先兆流产。根据 “阴道下血，色暗红；舌边有瘀点，脉弦滑” 辨证为血瘀证，治法为活血消癥，补肾安胎。方药为桂枝茯苓丸加菟丝子、桑寄生、续断。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 43,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0044",
+      "question_type": "single_choice",
+      "question_content": "张某，女，18岁，月经停闭，第二性征已发育，但月经尚未来潮，现症：小腹冷痛拒按，得热痛减，面色青白、形寒肢冷；舌紫黯，苔白，脉沉紧。治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "温经散寒，活血通经"
+        },
+        {
+          "option_id": "B",
+          "content": "益气健脾，养血调经"
+        },
+        {
+          "option_id": "C",
+          "content": "燥湿化痰，活血通经"
+        },
+        {
+          "option_id": "D",
+          "content": "养阴清热，养血调经"
+        },
+        {
+          "option_id": "E",
+          "content": "行气活血，祛瘀通经"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据 “月经停闭，第二性征已发育，但月经尚未来潮” 诊断为原发性闭经，根据 “小腹冷痛拒按，得热痛减，面色青白、形寒肢冷；舌紫黯，苔白，脉沉紧” 辨证为寒凝血瘀证。治法为温经散寒，活血通经。方药为温经汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 44,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0045",
+      "question_type": "single_choice",
+      "question_content": "张某, 初产妇, 29 岁, 产后小便不通, 小腹胀急疼痛, 伴腰膝酸软, 面色晦暗, 舌淡, 苔润, 脉沉细迟弱。可辨证为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气滞证"
+        },
+        {
+          "option_id": "B",
+          "content": "肺脾气虚证"
+        },
+        {
+          "option_id": "C",
+          "content": "肾阳亏虚证"
+        },
+        {
+          "option_id": "D",
+          "content": "血瘀证"
+        },
+        {
+          "option_id": "E",
+          "content": "气虚证"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "根据 “产后小便不通” 诊断为产后小便不通，根据 “小腹胀急疼痛，伴腰膝酸软，面色晦暗，舌淡，苔润，脉沉细迟弱” 辨证为肾阳亏虚证。治法为补肾温阳，化气利水。方药为济生肾气丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 45,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0046",
+      "question_type": "single_choice",
+      "question_content": "男婴, 足月产, 先天性胆道闭锁, 出生后 6 小时即出现身黄、目黄、哭闹不安、呕吐、乳食不思, 3 周后仍未消退, 血清总胆红素 $133.4 \\mathrm{umol} / \\mathrm{L}$ 。现症: 面目皮肤发黄, 色泽晦暗, 精神倦怠, 四肢欠温, 不欲吮乳, 时时啼哭, 大便溏薄, 小便短少, 舌质偏淡, 舌苔白腻。诊断为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "生理性黄疸 寒湿阻滞证 懒人医考整理"
+        },
+        {
+          "option_id": "B",
+          "content": "病理性黄疸 湿热蕴蒸证"
+        },
+        {
+          "option_id": "C",
+          "content": "生理性黄疸 气滞血瘀证"
+        },
+        {
+          "option_id": "D",
+          "content": "病理性黄疸 寒湿阻滞证"
+        },
+        {
+          "option_id": "E",
+          "content": "病理性黄疸 气滞血瘀证"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据“先天性胆道闭锁，出生后6小时即出现身黄、目黄、哭闹不安、呕吐、乳食不思，3周后仍未消退，血清总胆红素 $133.4\\mathrm{umol / L}$ ”诊断为病理性黄疸。根据“面目皮肤发黄，色泽晦暗，精神倦怠，四肢欠温，不欲吮乳，时时啼哭，大便溏薄，小便短少，舌质偏淡，舌苔白腻”辨证为寒湿阻滞证，治法为福中化湿退黄。方药为茵陈理中汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 46,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0047",
+      "question_type": "single_choice",
+      "question_content": "患儿，4岁。于秋季，发热咽痛2天，体温达39.1℃，遂就诊，检查发现：咽部充血，软腭上有2～4mm大小的疱疹，疱疹周围有红晕。心肺听诊正常。可能的诊断是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "咽结合膜"
+        },
+        {
+          "option_id": "B",
+          "content": "疱疹性咽峡炎"
+        },
+        {
+          "option_id": "C",
+          "content": "急性化脓性扁桃体炎"
+        },
+        {
+          "option_id": "D",
+          "content": "支气管炎"
+        },
+        {
+          "option_id": "E",
+          "content": "支气管肺炎"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "疱疹性咽峡炎：由柯萨奇 A 组病毒所致。好发于夏秋季。表现为急性发热，体温大多在 $39^{\\circ}$ C 以上，流涎、咽痛等。体检时可见咽部红肿，咽腭弓、悬雍垂、软腭等处可见 2～4mm 大小的疱疹，周围红晕，疱疹破溃后形成小溃疡。病程约 1 周左右。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 47,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0048",
+      "question_type": "single_choice",
+      "question_content": "赵某, 女, 5 岁, 1 周前出现上呼吸道感染症状。现头痛 2 天, 呕吐伴血压增高 1 天, 嗜睡。脑膜刺激征阳性。现症: 表情淡漠, 目光呆滞, 喃喃自语, 神识不清, 口角流涎, 纳差乏力, 舌质胖嫩, 苔白, 脉弦滑。治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "涤痰开窍"
+        },
+        {
+          "option_id": "B",
+          "content": "黏痰化瘀"
+        },
+        {
+          "option_id": "C",
+          "content": "健脾化痰"
+        },
+        {
+          "option_id": "D",
+          "content": "泻火涤痰"
+        },
+        {
+          "option_id": "E",
+          "content": "涤痰通络"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "根据 “1 周前出现上呼吸道感染症状。现头痛 2 天，呕吐伴血压增高 1 天，嗜睡。脑膜刺激征阳性” 诊断为病毒性脑炎。根据 “表情淡漠，目光呆滞，喃喃自语，神识不清，口角流涎，纳差乏力，舌质胖嫩，苔白，脉弦滑” 辨证为痰蒙清窍证，治法为涤痰开窍，方药为涤痰汤。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 48,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0049",
+      "question_type": "single_choice",
+      "question_content": "纪某, 女, 2 岁。平素喜食米饭等以碳水化合物为主的食物, 外表似 “泥膏样”, 四肢水肿。现症: 四肢浮肿, 按之凹陷, 面色无华, 神疲乏力, 四肢欠温, 小便短少, 舌质淡嫩, 苔薄白, 脉沉缓无力。治疗方剂为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肥儿丸"
+        },
+        {
+          "option_id": "B",
+          "content": "防己黄芪汤合五苓散"
+        },
+        {
+          "option_id": "C",
+          "content": "参苓白术散"
+        },
+        {
+          "option_id": "D",
+          "content": "资生健脾丸"
+        },
+        {
+          "option_id": "E",
+          "content": "石斛夜光丸"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "根据 “平素喜食米饭等以碳水化合物为主的食物，外表似“泥膏样”，四肢水肿” 诊断为水肿型营养不良。根据“四肢浮肿，按之凹陷，面色无华，神疲乏力，四肢欠温，小便短少，舌质淡嫩，苔薄白，脉沉缓无力”诊断为疳肿胀。治法为健脾温阳，利水消肿。方药为防己黄芪汤合五苓散。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 49,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-6ec6a676c9-q0050",
+      "question_type": "single_choice",
+      "question_content": "刘某, 男, 4 岁。1 周前出现结膜充血、流泪、畏光, 口腔两颊黏膜近臼齿处出现直径约 $0.5 \\sim 1 \\mathrm{~mm}$ 的灰白色斑点, 周围有红晕。3 天前开始出疹, 出疹时热象高达 $38.6^{\\circ} \\mathrm{C}$ , 皮疹先见于耳后、发际, 最后在手心、足心及鼻准部见疹点。现症: 高热不退, 咳嗽气急, 鼻翼扇动, 口渴烦躁, 疹点密集色暗,舌红苔黄, 脉数。可辨证为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麻疹顺证, 初热期"
+        },
+        {
+          "option_id": "B",
+          "content": "风疹逆证, 邪毒闭肺证"
+        },
+        {
+          "option_id": "C",
+          "content": "麻疹逆证, 热毒攻喉证"
+        },
+        {
+          "option_id": "D",
+          "content": "风疹逆证, 邪陷心肝证"
+        },
+        {
+          "option_id": "E",
+          "content": "麻疹逆证, 邪毒闭肺证"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "根据 “1 周前出现结膜充血、流泪、畏光，口腔两颊黏膜近臼齿处出现直径约 0.5～1mm 的灰白色斑点，周围有红晕。3 天前开始出疹，出疹时热象高达 38.6℃，皮疹先见于耳后、发际，最后在手心、足心及鼻准部见疹点” 诊断为麻疹，根据 “高热不退，咳嗽气急，鼻翼扇动，口渴烦躁，疹点密集色暗，舌红苔黄，脉数”，辨证为麻疹邪毒闭肺证。治法为宣肺开闭，清热解毒。方药为麻杏石甘汤。 LANKENYIKAO",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理模拟题\\助理模拟4\\full.md",
+        "number": 50,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

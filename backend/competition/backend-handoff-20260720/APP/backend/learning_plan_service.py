@@ -141,27 +141,23 @@ def _build_daily_task_cards(
 ) -> list[dict[str, Any]]:
     daily_minutes = max(10, min(normalized["daily_available_minutes"], 180))
     focus = _current_focus(normalized, learning_profile)
-    preferred_difficulty = learning_profile.get("preferred_difficulty", "D2")
     cards = [
         {
             "type": "micro_lesson",
             "title": f"学习卡：{focus}",
             "duration_min": _duration(daily_minutes, 15),
-            "difficulty": preferred_difficulty,
             "acceptance": "完成 1 张知识卡并复述关键概念",
         },
         {
             "type": "practice",
             "title": "短练：完成 5 道分阶练习",
             "duration_min": _duration(daily_minutes // 2, 20),
-            "difficulty": preferred_difficulty,
             "acceptance": "完成练习并查看解析",
         },
         {
             "type": "reflection",
             "title": "复盘：记录 1 条今日困惑或收获",
             "duration_min": 5,
-            "difficulty": "D1",
             "acceptance": "留下 1 条可复用复盘结论",
         },
     ]
@@ -172,7 +168,6 @@ def _build_daily_task_cards(
                 "type": "mistake_review",
                 "title": "错题复盘：回看薄弱知识点并做变式题",
                 "duration_min": _duration(daily_minutes // 3, 15),
-                "difficulty": "D1" if diagnosis_report.stage_id in {"T1", "T5"} else preferred_difficulty,
                 "acceptance": "完成 1 轮错题复盘并做 1 道变式题",
             },
         )
@@ -187,7 +182,6 @@ def _legacy_daily_tasks(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "type": card.get("type", "task"),
             "title": card.get("title", "未命名任务"),
             "duration_min": card.get("duration_min", 10),
-            "difficulty": card.get("difficulty", "D2"),
             "reason": card.get("acceptance", "按计划完成本任务。"),
             "acceptance": card.get("acceptance", "按计划完成本任务。"),
         })

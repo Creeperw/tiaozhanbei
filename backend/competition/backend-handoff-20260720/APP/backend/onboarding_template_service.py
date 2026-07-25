@@ -21,7 +21,6 @@ GROUP_TEMPLATES: list[dict[str, Any]] = [
             "preferred_time_slot": "晚间或碎片化时间",
             "resource_preference": ["对比卡", "案例辨证", "考点速记"],
             "learning_mode": "案例优先",
-            "preferred_difficulty": "D2",
             "current_difficulties": ["术语记不住", "证型容易混淆"],
         },
     },
@@ -37,7 +36,6 @@ GROUP_TEMPLATES: list[dict[str, Any]] = [
             "preferred_time_slot": "晚间固定学习时段",
             "resource_preference": ["章节讲义", "方剂/中诊/中药练习", "阶段测评"],
             "learning_mode": "章节训练",
-            "preferred_difficulty": "D3",
             "current_difficulties": ["方剂组成混淆", "缺少练习反馈"],
         },
     },
@@ -58,7 +56,6 @@ LEGACY_GROUP_TEMPLATES: list[dict[str, Any]] = [
             "preferred_time_slot": "碎片化不固定",
             "resource_preference": ["知识卡片", "药食同源科普", "生活场景问答"],
             "learning_mode": "科普入门",
-            "preferred_difficulty": "D1",
             "current_difficulties": ["术语记不住", "资料太分散"],
         },
     }
@@ -282,10 +279,6 @@ def apply_onboarding_defaults(payload: dict[str, Any]) -> dict[str, Any]:
             preferences.get("learning_mode"),
             normalized.get("learning_mode"),
         ),
-        "preferences.difficulty_preference": _field_source(
-            preferences.get("difficulty_preference"),
-            normalized.get("difficulty_preference"),
-        ),
     }
 
     goals["target_exam_or_course"] = _first_answered(
@@ -337,11 +330,8 @@ def apply_onboarding_defaults(payload: dict[str, Any]) -> dict[str, Any]:
         normalized.get("learning_mode"),
         default_profile["learning_mode"],
     )
-    preferences["difficulty_preference"] = _first_answered(
-        preferences.get("difficulty_preference"),
-        normalized.get("difficulty_preference"),
-        default_profile["preferred_difficulty"],
-    )
+    preferences.pop("difficulty_preference", None)
+    normalized.pop("difficulty_preference", None)
 
     survey_locked_fields = normalize_survey_locked_fields(normalized.get("locked_fields"))
     normalized["learner_group"] = group["key"]

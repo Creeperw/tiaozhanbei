@@ -1,0 +1,2245 @@
+{
+  "template_id": "5ae6a7bd1b91-906691019e",
+  "questions": [
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0001",
+      "question_type": "single_choice",
+      "question_content": "根据“十四五”国民健康规划，下列不属于保障药品质量安全重点任务的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "加快古代经典名方制剂研发，夯实中医药高质量发展基础"
+        },
+        {
+          "option_id": "B",
+          "content": "建立符合中药特点的质量和疗效评价体系"
+        },
+        {
+          "option_id": "C",
+          "content": "构建药品和疫苗全生命周期质量管理机制"
+        },
+        {
+          "option_id": "D",
+          "content": "完善国家药品标准体系，推进仿制药质量和疗效一致性评价正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 1,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0002",
+      "question_type": "single_choice",
+      "question_content": "关于国家基本药物目录遴选管理的说法，正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "国家基本药物遴选原则是临床急需、安全有效、价格合理、中西药并重、基本保障、指南推荐和基层能够配备"
+        },
+        {
+          "option_id": "B",
+          "content": "独家生产品种纳入国家基本药物目录应当经过单独论证和价格谈判"
+        },
+        {
+          "option_id": "C",
+          "content": "含有国家濒危野生动植物药材的，不纳入国家基本药物目录遴选范围"
+        },
+        {
+          "option_id": "D",
+          "content": "药品有被召回记录的，不纳入国家基本药物目录遴选范围 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 2,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0003",
+      "question_type": "single_choice",
+      "question_content": "根据《执业药师注册管理办法》，不属于执业药师执业范围的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药品研制"
+        },
+        {
+          "option_id": "B",
+          "content": "药品生产"
+        },
+        {
+          "option_id": "C",
+          "content": "药品经营"
+        },
+        {
+          "option_id": "D",
+          "content": "药品使用 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 3,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0004",
+      "question_type": "single_choice",
+      "question_content": "根据《行政处罚法》，违法行为事实确凿、有法定依据、拟作出数额较小的罚款时，可以适用简易程序。其中，对法人的罚款数额为(C)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "5000 元以下"
+        },
+        {
+          "option_id": "B",
+          "content": "1000 元以下"
+        },
+        {
+          "option_id": "C",
+          "content": "3000 元以下"
+        },
+        {
+          "option_id": "D",
+          "content": "10000 元以下 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 4,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0005",
+      "question_type": "single_choice",
+      "question_content": "下列行为由省级药品监督管理部门负责监督管理的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药品上市许可持有人依法申请从事药品零售活动"
+        },
+        {
+          "option_id": "B",
+          "content": "疫苗配送企业接受县级疾病预防控制机构委托，向接种单位配送疫苗"
+        },
+        {
+          "option_id": "C",
+          "content": "药品零售连锁企业门店在网络药品交易第三方平台开展经营活动"
+        },
+        {
+          "option_id": "D",
+          "content": "血液制品的进出口审批及监督管理正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 5,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0006",
+      "question_type": "single_choice",
+      "question_content": "关于药品标准的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "国务院药品监督管理部门颁布的《中华人民共和国药典》和药品标准为国家药品标准"
+        },
+        {
+          "option_id": "B",
+          "content": "药品标准分为法定标准和非法定标准，其中法定标准是药品质量的最高标准"
+        },
+        {
+          "option_id": "C",
+          "content": "非法定标准包括行业标准、团体标准、企业标准等"
+        },
+        {
+          "option_id": "D",
+          "content": "《中华人民共和国药典》的现行版本为2020年版 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 6,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0007",
+      "question_type": "single_choice",
+      "question_content": "根据蛋白同化制剂、肽类激素管理规定，下列经营行为错误的是（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蛋白同化制剂批发企业可以向综合医院销售该类产品"
+        },
+        {
+          "option_id": "B",
+          "content": "拟经营肽类激素的批发企业应当向所在地省级药品监督管理部门申请批准"
+        },
+        {
+          "option_id": "C",
+          "content": "进口蛋白同化制剂的，进口单位应当向国家药品监督管理局申请《进口准许证》"
+        },
+        {
+          "option_id": "D",
+          "content": "除胰岛素外，药品零售企业不得经营蛋白同化制剂或者其他肽类激素正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 7,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0008",
+      "question_type": "single_choice",
+      "question_content": "根据《药品、医疗器械、保健食品、特殊医学用途配方食品广告市查管理暂行办法》，关于药品广告监督管理的说法，错误的是（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "经审查批准的药品广告，广告申查机关应当在 10 个工作日内向社会公开，包括广告批准文号和广告批准文号有效期等内容"
+        },
+        {
+          "option_id": "B",
+          "content": "产品注册证明文件或者生产许可文件未规定有效期的，广告批准文号有效期为 3年"
+        },
+        {
+          "option_id": "C",
+          "content": "药品广告批准文号的有效期与产品注册证明文件或者生产许可文件最短的有效期一致"
+        },
+        {
+          "option_id": "D",
+          "content": "广告批准文号的文书格式:药广审(视/声/文)第 000000-00000 号。空格内为省份简称，数字前6位是有效期截止日正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 8,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0009",
+      "question_type": "single_choice",
+      "question_content": "根据《医疗机构药事管理规定》和《二、三级综合医院药学部门基本标准》二级综合医院药剂科的药学人员中，具有高等医药院校临床药学专业或者业全日制本科毕业以上半历的，应当不低于药学专业技术人员总数的比例",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "13%"
+        },
+        {
+          "option_id": "B",
+          "content": "15%"
+        },
+        {
+          "option_id": "C",
+          "content": "20%"
+        },
+        {
+          "option_id": "D",
+          "content": "6% 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 9,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0010",
+      "question_type": "single_choice",
+      "question_content": "关于药品注册管理基本制度的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "国家药品监督管理局建立药品加快上市注册制度，包括突破性治疗药物、附条件批准、关联审批、特别审批及应急审批程序等5种"
+        },
+        {
+          "option_id": "B",
+          "content": "变更原药品批准证明文件及其附件载明事项的，申请人应当对药品变更进行充分研究和验证"
+        },
+        {
+          "option_id": "C",
+          "content": "药品注册证书有效期内，药上市许可持有人应当持续保证上市药品的安全性、有效性和质量可控性"
+        },
+        {
+          "option_id": "D",
+          "content": "我国对处方药和非处方药实行分类注册和转换管理，相关机构分别制定非处方药上市注册指导原则、上市后转换技术要求等正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 10,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0011",
+      "question_type": "single_choice",
+      "question_content": "关于药物临床试验的说法，错误的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "是以人体(患者或健康受试者)为对象的"
+        },
+        {
+          "option_id": "B",
+          "content": "是确定药物疗效与安全性的系统性试验"
+        },
+        {
+          "option_id": "C",
+          "content": "新药在批准上市前，申请新药注册应当完成 I，IV ，III 和IV期临床试验"
+        },
+        {
+          "option_id": "D",
+          "content": "属于决定候选药物能否成为新药上市销售的关键阶段 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 11,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0012",
+      "question_type": "single_choice",
+      "question_content": "负责制定本医疗机构药品处方集和基本用药供应目录的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "医疗机构学术委员会"
+        },
+        {
+          "option_id": "B",
+          "content": "医疗机构医务部门"
+        },
+        {
+          "option_id": "C",
+          "content": "医疗机构药事管理与药物治疗学委员会(组）"
+        },
+        {
+          "option_id": "D",
+          "content": "医疗机构药学部门正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 12,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0013",
+      "question_type": "single_choice",
+      "question_content": "国家鼓励培育道地中药材。对集中规模化栽培养殖，质量可以控制并符合国家药品监督管理局规定条件的中药材品种，实行",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "生产批号管理"
+        },
+        {
+          "option_id": "B",
+          "content": "第三方认证管理"
+        },
+        {
+          "option_id": "C",
+          "content": "生产许可管理"
+        },
+        {
+          "option_id": "D",
+          "content": "批准文号管理 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0014",
+      "question_type": "single_choice",
+      "question_content": "根据《关于“十四五”时期促进药品流通行业高质量发展的指异意见，我国鼓励药品流流通行业高质量发展的指导意见》，我国鼓励药品流通行业兼并重组，推进药品零售连锁化经营:实现到2025年末，零售连锁率接近()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "60%"
+        },
+        {
+          "option_id": "B",
+          "content": "70%"
+        },
+        {
+          "option_id": "C",
+          "content": "80%"
+        },
+        {
+          "option_id": "D",
+          "content": "90% 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 14,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0015",
+      "question_type": "single_choice",
+      "question_content": "根据短缺药品报告制度，列入国家实施停产报告的短缺药品清单的药品上市许可持有人停止生产的，应当向所在地省级药品监督管理部门报告的计划停产实施",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "3 个月前"
+        },
+        {
+          "option_id": "B",
+          "content": "6 个月前"
+        },
+        {
+          "option_id": "C",
+          "content": "1 个月前"
+        },
+        {
+          "option_id": "D",
+          "content": "2 个月前 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 15,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0016",
+      "question_type": "single_choice",
+      "question_content": "关于中药饮片管理的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "没有国家药品标准的中药饮片应当按照省级药品监督管理部门范炮制"
+        },
+        {
+          "option_id": "B",
+          "content": "具有中医学专业中专学历的，可从事中药饮片验收工作"
+        },
+        {
+          "option_id": "C",
+          "content": "中药饮片生产企业向医疗机构销售中药饮片无需持有《药品经营许可证》"
+        },
+        {
+          "option_id": "D",
+          "content": "医疗机构炮制中药饮片应当是该中药饮片临床需要且市场上没有供应的正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 16,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0017",
+      "question_type": "single_choice",
+      "question_content": "据据《长期处方管理规\\~(试行)》、对临床诊断明确、用药方容稳定，他从性良好，病情控制平稳、需长期药物治疗的慢性病患者，使用一般常用药品可开具长期处方，处方量最长不超过",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "12 周"
+        },
+        {
+          "option_id": "B",
+          "content": "4 周"
+        },
+        {
+          "option_id": "C",
+          "content": "8 周"
+        },
+        {
+          "option_id": "D",
+          "content": "24 周 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 17,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0018",
+      "question_type": "single_choice",
+      "question_content": "根据《疫苗管理法》，疫苗上市许可持有人在销售疫苗时，应当按照规定建立真实、准确.完整的销售记录，并保存备查的时限为疫苗有效期满后不少于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "5 年"
+        },
+        {
+          "option_id": "B",
+          "content": "2 年"
+        },
+        {
+          "option_id": "C",
+          "content": "3 年"
+        },
+        {
+          "option_id": "D",
+          "content": "1 年 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 18,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0019",
+      "question_type": "single_choice",
+      "question_content": "国家建立医药价格和招采信用评价制度，根据法律依据纳入评价范围的具体事项中，禁止给予医药回扣等不正当利益的法律依据是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "《基本医疗卫生与健康促进法》"
+        },
+        {
+          "option_id": "B",
+          "content": "《药品管理法》"
+        },
+        {
+          "option_id": "C",
+          "content": "《价格法》"
+        },
+        {
+          "option_id": "D",
+          "content": "《反垄断法》 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 19,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0020",
+      "question_type": "single_choice",
+      "question_content": "下列医疗器械产品上市实行备案管理的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "国产第三类医疗器械"
+        },
+        {
+          "option_id": "B",
+          "content": "国产第二类医疗器械"
+        },
+        {
+          "option_id": "C",
+          "content": "进口第二类医疗器械"
+        },
+        {
+          "option_id": "D",
+          "content": "国产第一类医疗器械 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 20,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0021",
+      "question_type": "single_choice",
+      "question_content": "关于药品上市许可持有人委托药品生产企业生产药品的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药品上市许可持有人应当配备依法经过资格认定的药学技术人员"
+        },
+        {
+          "option_id": "B",
+          "content": "药品上市许可持有人有能对所生产药品进行质量管理和质量检验的机构、人员"
+        },
+        {
+          "option_id": "C",
+          "content": "药品上市许可持有人应当与符合条件的药品生产企业签订委托生产销售协议和质量协议"
+        },
+        {
+          "option_id": "D",
+          "content": "药品上市许可持有人有保证药品质量的规章制度，并符合药品生产质量管理规范要求正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 21,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0022",
+      "question_type": "single_choice",
+      "question_content": "关于特殊医学用途配方食品的说法,正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "特殊医学用途配方食品的广告参照药品广告有关规定严格监管"
+        },
+        {
+          "option_id": "B",
+          "content": "包括2岁以上婴幼儿适用的特殊医学用途婴幼儿配方食品"
+        },
+        {
+          "option_id": "C",
+          "content": "按照药品管理的要求由药品监督管理部门注册"
+        },
+        {
+          "option_id": "D",
+          "content": "特殊医学用途配方食品的注册证书有效期为 3年 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 22,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0023",
+      "question_type": "single_choice",
+      "question_content": "根据《处方药与非处方药分类管理办法(试行)》，经国家药品监督管理局论证和审核，处为药可转换为非处为药，下列药品中未践行非处方药转换的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "潞党参口服液"
+        },
+        {
+          "option_id": "B",
+          "content": "保妇康凝胶"
+        },
+        {
+          "option_id": "C",
+          "content": "蒲地蓝消炎片"
+        },
+        {
+          "option_id": "D",
+          "content": "血府逐瘀丸 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 23,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0024",
+      "question_type": "single_choice",
+      "question_content": "关于仿制药注册要求的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "仿制药分为两类，一是仿制境外已上市境内未上市原研药品。二是仿制境内已上市原研药品"
+        },
+        {
+          "option_id": "B",
+          "content": "符合豁免药物临床试验条件的仿制药，申请人可以直接提出药品上市许可申请"
+        },
+        {
+          "option_id": "C",
+          "content": "仿制药按照与原研药品质量和疗效一致的原则受理和审评审批"
+        },
+        {
+          "option_id": "D",
+          "content": "仿制药应当与原研药品具有相同的活性成分、剂型、规格、适应症、给药途径和用法用量，且处方工艺一致正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 24,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0025",
+      "question_type": "single_choice",
+      "question_content": "根据《药品经营质量管理规范》，关于冷藏药品储存、运输管理的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "冷藏车厢内，药品与厢内板需保持10厘米以上"
+        },
+        {
+          "option_id": "B",
+          "content": "药品批发企业应当由专人负责对冷库储存的冷藏药品进行重点养护检查"
+        },
+        {
+          "option_id": "C",
+          "content": "运输冷藏药品的冷藏箱应当具备自动调控温度的功能"
+        },
+        {
+          "option_id": "D",
+          "content": "未经验证的新购进蓄冷剂不得用于疫苗运输 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 25,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0026",
+      "question_type": "single_choice",
+      "question_content": "药品上市许可持有人对药品监督管理部门抽查检验结果有异议的，可以自收到药品检验结果之日起向原药品检验机构申请复验的时限是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "7 日内"
+        },
+        {
+          "option_id": "B",
+          "content": "3 日内"
+        },
+        {
+          "option_id": "C",
+          "content": "5 日内"
+        },
+        {
+          "option_id": "D",
+          "content": "10 日内 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 26,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0027",
+      "question_type": "single_choice",
+      "question_content": "药品零售许可申批时，药品监督管理部门应当先核定的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "经营地址"
+        },
+        {
+          "option_id": "B",
+          "content": "经营类别"
+        },
+        {
+          "option_id": "C",
+          "content": "经营条件"
+        },
+        {
+          "option_id": "D",
+          "content": "经营范围 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 27,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0028",
+      "question_type": "single_choice",
+      "question_content": "《《药品经营质量管理规范现场检查指导原则)下列药品零售企业经营行为药品经营质量管理规范》，应当认定为严重缺陷项目的是(A)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "销售胰岛素未配备冷藏设备"
+        },
+        {
+          "option_id": "B",
+          "content": "销售药品，但未设置拆零销售专区"
+        },
+        {
+          "option_id": "C",
+          "content": "消费者销售药品未开具发票"
+        },
+        {
+          "option_id": "D",
+          "content": "处方药与非处方药未做到分区陈列 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 28,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0029",
+      "question_type": "single_choice",
+      "question_content": "不属于药品召回计划内容的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药品生产销售情况及拟召回的数量"
+        },
+        {
+          "option_id": "B",
+          "content": "药品召回后的处理猎施"
+        },
+        {
+          "option_id": "C",
+          "content": "召回药品存在的质量问题或者安全隐患"
+        },
+        {
+          "option_id": "D",
+          "content": "召回信息的公布选径和范围正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 29,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0030",
+      "question_type": "single_choice",
+      "question_content": "根据《关于加强注射用A 型肉毒毒素管理的通知》，关于生产经营使用A 型肉毒毒素的说法，正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药品生产企业生产注射用 A型肉毒毒素应当制定季度生产计划"
+        },
+        {
+          "option_id": "B",
+          "content": "药品零售连锁企业门店不得经营注射用A型肉毒毒素"
+        },
+        {
+          "option_id": "C",
+          "content": "具有麻醉药品定点经营资格的药品批发企业可以经营注射用A型肉毒毒责"
+        },
+        {
+          "option_id": "D",
+          "content": "药品批发企业可以将注射用A 型肉毒毒素销售至美容机构 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 30,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0032",
+      "question_type": "single_choice",
+      "question_content": "根据《药品经营质量管理规范附录 6:药品零售配送质量管理》，关于开展配送活动的主体在包装等具体配送操作流程要求的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药品需独立包装，不得与保健食品合并包装B,根据药品体积、重量、诸存条件等选取适宜的包装物及填充材料"
+        },
+        {
+          "option_id": "C",
+          "content": "使用封签在封口处或者其他适当位置进行封口操作"
+        },
+        {
+          "option_id": "D",
+          "content": "在包装件外部加贴寄递配送单，寄递配送单可做封签使用正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 32,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0033",
+      "question_type": "single_choice",
+      "question_content": "关于已上市中药变更的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "应当遵循中药自身特点和规律，符合必要性、科学性、合理性的要求"
+        },
+        {
+          "option_id": "B",
+          "content": "药品规格变更应当遵循与处方药味相对应的原则以及与适用人群、用法用量装量规格相协"
+        },
+        {
+          "option_id": "C",
+          "content": "对功能主治或者适用人群范围进行删除的，应当开展药物临床试验后，说明删除相关内容的合理性"
+        },
+        {
+          "option_id": "D",
+          "content": "生产工艺及辅料等的变更不应当引起药用物质或者药物吸收、利用的明显改变正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 33,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0034",
+      "question_type": "single_choice",
+      "question_content": "根据药品经营质量管理规范》，验证温湿度自动监测系统测量设备温度传感器最大允许误差是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "±0.1℃"
+        },
+        {
+          "option_id": "B",
+          "content": "±1.0℃"
+        },
+        {
+          "option_id": "C",
+          "content": "±1.5℃"
+        },
+        {
+          "option_id": "D",
+          "content": "±0.5℃ 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 34,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0035",
+      "question_type": "single_choice",
+      "question_content": "根据《进口药材管理办法》，主管全国进口药材监督管理工作的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "国家市场监督管理总局"
+        },
+        {
+          "option_id": "B",
+          "content": "国家卫生健康委员会"
+        },
+        {
+          "option_id": "C",
+          "content": "国家中医药管理局"
+        },
+        {
+          "option_id": "D",
+          "content": "国家药品监督管理局正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 35,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0036",
+      "question_type": "single_choice",
+      "question_content": "关于药品召回管理的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "境内代理人在境内实施药品召回的，应当按照《药品召回管理办法》规定组织实施召回，并向其所在地省级药品监督管理部门和卫生健康主管部门报告药品召回和处理情况"
+        },
+        {
+          "option_id": "B",
+          "content": "召回药品需要销毁的，应当在药品上市许可持有人、药品生产企业或者召回药品所在地县级以上药品监督管理部门或者公证机构监督下销毁"
+        },
+        {
+          "option_id": "C",
+          "content": "药品上市许可持有人对召回药品的处理应当有详细的记录，记录应当保存5年且不得少于药品有效期后1年"
+        },
+        {
+          "option_id": "D",
+          "content": "实施药品一级召回的，药品上市许可持有人应当申请在国家药品监督管理局网站发布召回信息正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 36,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0037",
+      "question_type": "single_choice",
+      "question_content": "根据《关于发布<上市中药说明书安全信息项内容修订技术指导原则(试行)》的通告》,“本品含xxx，不可超剂量或长期服用\"的表述属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "特殊用药人群有关的警示语"
+        },
+        {
+          "option_id": "B",
+          "content": "与成分、剂量、疗程有关的警示语"
+        },
+        {
+          "option_id": "C",
+          "content": "与不良反应有关的警示语"
+        },
+        {
+          "option_id": "D",
+          "content": "与注意事项有关的警示语 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 37,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0038",
+      "question_type": "single_choice",
+      "question_content": "根据《关印发国家重点监控合理用药药品目录调整工作规程的通知》，关于国家重点监控合理用药药品目录的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "纳入目录管理的药品重点包括辅助用药、抗肿瘤药物、抗微生物药物、质子泵抑制剂、糖皮质激素、肠外营养药物等"
+        },
+        {
+          "option_id": "B",
+          "content": "目录更新调整的时间原则上不短于3年，纳入目录管理的药品品种一般为30个"
+        },
+        {
+          "option_id": "C",
+          "content": "对于调整出原目录的药品，地方卫生健康行政部门应当继续监控至少满 1年掌握其处方点评、使用量.使用金额等情况，促进临床合理用药水平的提高"
+        },
+        {
+          "option_id": "D",
+          "content": "纳入目录管理的药品应当是临床使用不合理问题较多、使用金额异常、临床对用药合理性影响较大的中药饮片、中成药、化学药品和生物制品正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 38,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0039",
+      "question_type": "single_choice",
+      "question_content": "关于药品研制管理的说法，错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药品研制管理是保障群众用药安全、有效、可及的前提与基础工作之一"
+        },
+        {
+          "option_id": "B",
+          "content": "国家支持研制基于古代经典名方、名老中医经验方、医疗机构配制的中药制剂等具有丰富中医临床实践经验的中药新药"
+        },
+        {
+          "option_id": "C",
+          "content": "国家支持以临床价值为导向、对人的疾病具有者特殊疗效的药物创新鼓励具有新的治疗机理等"
+        },
+        {
+          "option_id": "D",
+          "content": "开展药物安全性评价应当遵守药物临床试验质量管理,保证药品研制全过程持续符合法定要求 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 39,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0040",
+      "question_type": "single_choice",
+      "question_content": "根据《药品管理法》第一百一十八条第一款规定，生产、销售假药，对法定代表人、主要负责人、直接负责的主管人员和其他责任人员，不适用的行政处罚是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "公安机关处10日的拘留"
+        },
+        {
+          "option_id": "B",
+          "content": "处违法行为发生期间自本单位所获收入5倍的罚款"
+        },
+        {
+          "option_id": "C",
+          "content": "终身禁止从事药品生产经营活动"
+        },
+        {
+          "option_id": "D",
+          "content": "没收违法行为发生期间自本单位所获收入 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 40,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0091",
+      "question_type": "single_choice",
+      "question_content": "药品监督管理部门监督检查发现，甲没有实体经营场所，主要通过网络销售药品。针对甲的上述情形，药品监督管理部门应当定性为（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "不符合药品经营机构的制度要求"
+        },
+        {
+          "option_id": "B",
+          "content": "不符合《药品经营质量管理规范》，情节一般"
+        },
+        {
+          "option_id": "C",
+          "content": "提供虚假承诺骗取许可"
+        },
+        {
+          "option_id": "D",
+          "content": "超经营方式销售药品 正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 91,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0092",
+      "question_type": "single_choice",
+      "question_content": "药品监督管理部门监督检查发现，甲通过微信接收消费者订单后，将购药款转入乙，由乙快递配送至消费者。消费者需要发票的，由乙开具。根据上述情形，药品监督管理部门对乙可作出的行政决定是（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "认定乙违反票、货一致原则，严重违反《药品经营质量管理规范》，按照《药品管理法》规定给予处罚"
+        },
+        {
+          "option_id": "B",
+          "content": "认定乙超经营方式销售药品，按照《药品管理法》无证经营药品的规定给予处罚"
+        },
+        {
+          "option_id": "C",
+          "content": "认定乙非法提供经营场所给甲，违反《药品经营质量管理规范》，按照《药品管理法》规定给予处罚"
+        },
+        {
+          "option_id": "D",
+          "content": "认定乙应当知道甲不具备经营条件，依然为其提供药品，按照《药品流通监督管理办法》向非法渠道销售药品的规定给予处罚正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 92,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0093",
+      "question_type": "single_choice",
+      "question_content": "药品监督管理部门监督检查发现，甲雇人从医疗机构凭处方获取某医疗机构制剂，拟通过微信群销售。针对上述情形，药品监督管理部门认定甲违法销售医疗机构制剂，按照《药品管理法》应当定性为（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "从非法渠道购进药品"
+        },
+        {
+          "option_id": "B",
+          "content": "销售假药"
+        },
+        {
+          "option_id": "C",
+          "content": "违反《药品经营质量管理规范》"
+        },
+        {
+          "option_id": "D",
+          "content": "销售未经批准生产的药品正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 93,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0094",
+      "question_type": "single_choice",
+      "question_content": "甲经调研发现药品网络销售发展趋势向好，网络销售多为甲类非处方药。甲拟增加经营甲类非处方药，为此需要配备执业药师，下列做法错误的是（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "聘用刚获得执业药师资格的 B到甲注册执业工作"
+        },
+        {
+          "option_id": "B",
+          "content": "甲与J县药品零售企业丙协商同意，让其所属执业药师A 变更注册至甲执业"
+        },
+        {
+          "option_id": "C",
+          "content": "甲联系J县药品零售企业丙的执业药师 A，告知J 县药品监督管理部门执业药师 A为“兼职执业”"
+        },
+        {
+          "option_id": "D",
+          "content": "甲私下联系J 县药品零售企业丙的执业药师 A，承诺高薪并促使其离职后变更注册至甲执业正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 94,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0095",
+      "question_type": "single_choice",
+      "question_content": "由于该“XX 散”临床用量大，甲的制剂室配制能力已不能满足需求，拟委托省内某中药生产企业乙配制，就如何办理委托配制手续的问题，甲向当地药品监督管理部门咨询。下列答复正确的是（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "由甲向S省药品监督管理部门办理审批手续"
+        },
+        {
+          "option_id": "B",
+          "content": "由乙向S省药品监督管理部门办理备案手续"
+        },
+        {
+          "option_id": "C",
+          "content": "由乙向S省药品监督管理部门办理审批手续"
+        },
+        {
+          "option_id": "D",
+          "content": "由甲向S省药品监督管理部门办理备案手续 正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 95,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0096",
+      "question_type": "single_choice",
+      "question_content": "药品监督管理部门对甲在某互联网平台直播间销售“XX 散”的行为进行处罚，正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "该行为违反《药品管理法》，没收违法所得，吊销医疗机构制剂许可证"
+        },
+        {
+          "option_id": "B",
+          "content": "该行为违反《药品管理法》，责令改正，没收违法销售的药品和违法所得，并处 15万元罚款"
+        },
+        {
+          "option_id": "C",
+          "content": "该行为违反《药品管理法》，责令改正，给予警告，没收违法所得"
+        },
+        {
+          "option_id": "D",
+          "content": "该行为违反《药品管理法》，责令改正，没收违法销售的药品和违法所得，并处 7.2万元罚款 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 96,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0098",
+      "question_type": "single_choice",
+      "question_content": "关于甲委托乙生产中成药 B的说法，正确的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "乙应当严格执行质量协议，确保委托生产药品遵守《药品生产质量管理规范》"
+        },
+        {
+          "option_id": "B",
+          "content": "在产能有限、临床急需的前提下，乙可以再委托第三方生产相关产品"
+        },
+        {
+          "option_id": "C",
+          "content": "作为产品质量责任主体，甲负责委托产品的出厂放行和上市放行"
+        },
+        {
+          "option_id": "D",
+          "content": "甲无须设置药品质量管理部门和质量检验机构正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 98,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0099",
+      "question_type": "single_choice",
+      "question_content": "检查发现，丙配备的普通冰箱冷冻区(-18℃)存放有标示储存温度为-80℃的 mRNA 核酸疫苗(货值金额1.45万元，疫苗上市许可持有人为甲)。丙说明，本接种单位疫苗使用周转周期较短，可以配备普通冰存，认为该疫苗可以继续用于接种工作。药品监督管理部门的做法正确的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "责令丙就有关情况联系甲，由甲评估温度偏差对疫苗质量的影响及可接收的条件，再决定涉事疫苗是否可继续使用"
+        },
+        {
+          "option_id": "B",
+          "content": "责令丙就有关情况联系乙，乙再联系甲，由甲评估温度偏差对疫苗质量的影响及可接收的条件，再决定涉事疫苗是否可继续使用"
+        },
+        {
+          "option_id": "C",
+          "content": "责令改正，没收涉事疫苗，予以监督销毁，并处30万元的罚款"
+        },
+        {
+          "option_id": "D",
+          "content": "责令改正，给予警告，没收涉事疫苗，予以监督销毁正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 99,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0100",
+      "question_type": "single_choice",
+      "question_content": "检查发现丙存放在冰箱内的疫苗 B(货值金额 1200元)已过有效期，丙说明该疫苗系从乙处获取，拟用于预防接种工作。针对上述情形，药品监督管理部门对丙可作出的行政处罚是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "没收涉事疫苗，并处 2.4万元的罚款"
+        },
+        {
+          "option_id": "B",
+          "content": "没收涉事疫苗，并处 500万元的罚款"
+        },
+        {
+          "option_id": "C",
+          "content": "没收涉事疫苗，并处 150万元的罚款"
+        },
+        {
+          "option_id": "D",
+          "content": "没收涉事疫苗，责令改正，并通报所在地卫生健康主管部门正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 100,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0101",
+      "question_type": "single_choice",
+      "question_content": "检查发现，丙配置的普通冰箱中存放有标示为甲生产的疫苗 C(货值金额 12万元)，包装字迹模糊，难以识别批号和有效期。丙解释该疫苗由乙分发至此。药品监督管理部门延伸检查乙，在乙的分发系统中未发现相关记录，证实该疫苗非乙分发。涉事疫苗C 经甲确认非甲生产，并出具了书面认定。针对上述情形，药品监督管理部门和卫生健康主管部门可对丙做出的行政处罚是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "没收涉事疫苗，并处 400万元的罚款，取消其疫苗接种资格"
+        },
+        {
+          "option_id": "B",
+          "content": "没收涉事疫苗，并处 150万元的罚款，取消其疫苗接种资格"
+        },
+        {
+          "option_id": "C",
+          "content": "没收涉事疫苗，并处 500万元的罚款，取消其疫苗接种资格"
+        },
+        {
+          "option_id": "D",
+          "content": "没收涉事疫苗，并处 750万元的罚款，取消其疫苗接种资格正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 101,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0103",
+      "question_type": "single_choice",
+      "question_content": "关于“甲”说法，错误的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "复方制剂可以不列出每个活性成分化学名称、构式、分子式、分子量内容"
+        },
+        {
+          "option_id": "B",
+          "content": "多组分或者化学结构尚不明确的化学药品或者治疗用生物制品，应当列出主要成分名称，简述活性成分来源"
+        },
+        {
+          "option_id": "C",
+          "content": "处方中含有可能引起严重不良反应的辅料的，该项下应当列出该辅料名称"
+        },
+        {
+          "option_id": "D",
+          "content": "单方制剂应当列出活性成分和非活性成分的化学名称、化学结构式、分子式正确"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 103,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0104",
+      "question_type": "single_choice",
+      "question_content": "【“乙”】的名称是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "【药物相互作用】"
+        },
+        {
+          "option_id": "B",
+          "content": "【禁忌】"
+        },
+        {
+          "option_id": "C",
+          "content": "【注意事项】"
+        },
+        {
+          "option_id": "D",
+          "content": "【不良反应】正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 104,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0106",
+      "question_type": "single_choice",
+      "question_content": "乙的下列情形符合规定的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消费者A从乙处购买某非处方药颗粒剂，丙的配送人员送达药品后，A签收后打开配送包装，发现药品为胶囊剂。经沟通，乙同意更换并收回该药品后继续销售"
+        },
+        {
+          "option_id": "B",
+          "content": "丙的配送人员从乙处接取了两单不同药品配送业务，配送中不慎将药品混淆，消费者签收后打开配送包装发现配送单据和药品非本人所购遂要求退货。乙同意退货，由丙承担了配送错误的损失，乙将退回药品继续销售"
+        },
+        {
+          "option_id": "C",
+          "content": "消费者B从乙处购买某非处方药，乙的业务员发货时误将与该药包装颜色类似的另一种药品交付给丙的配送人员。B签收后打开配送包装发现药品有误遂要求退货。乙同意退货，并未经质量管理人员确认，将该药品直接按不合格药品予以处置"
+        },
+        {
+          "option_id": "D",
+          "content": "消费者C从乙处购买了一款糖浆剂，丙的配送人员将药品送达时，消费者未打开配送包装即发现糖浆剂药液从包装接缝处渗出。C拒收并要求乙退货，乙拒绝退货，但同意全额返还购药款，并要求C 承诺不要向任何单位和个人透露此事，且需对乙的售后给予五星好评，C表示可接受正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 106,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0107",
+      "question_type": "single_choice",
+      "question_content": "药品监督管理部门对甲实施监督检查，下列情形不符合规定的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甲按照《药品网络销售监督管理办法》有关要求配备药学技术人员，药学技术人员不在岗时采用智能程序(AI)监督处方审核"
+        },
+        {
+          "option_id": "B",
+          "content": "甲发现乙在展示某药品的页面标注有效期过期 2周，并提示“介意慎购”，甲立即停止为乙提供服务，并报告至乙所在地县级药品监督管理部门"
+        },
+        {
+          "option_id": "C",
+          "content": "甲每3个月对入驻药品经营企业进行一次资质核验更新"
+        },
+        {
+          "option_id": "D",
+          "content": "甲为包括乙在内的入驻药品经营企业，分别备份了销售相关数据正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 107,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0108",
+      "question_type": "single_choice",
+      "question_content": "药品监督管理部门通过药品网络销售监测平台发乙的下列行为中，符合规定的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "乙在药品经营主页面上标示“满 100 元免配送费，明确提示处方药和甲类非处方药不可享受"
+        },
+        {
+          "option_id": "B",
+          "content": "乙在其“感冒用药”销售主页面下，将中成药和化学药配套组合销售，并标示组合优惠"
+        },
+        {
+          "option_id": "C",
+          "content": "乙在其处方药销售主页面上，推出“惠民活动”，标示“买 5盒打 8折，买 10盒打 6折”"
+        },
+        {
+          "option_id": "D",
+          "content": "乙销售处方药时，由执业药师审核电子处方;销售非处方药时，由其他药学技术人员通过互联网远程指导消费者购药正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 108,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0109",
+      "question_type": "single_choice",
+      "question_content": "根据上述背景材料，下列说法正确的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "丙从甲处购买复方甘草片后，可以向己销售"
+        },
+        {
+          "option_id": "B",
+          "content": "乙从甲处购买复方甘草片后，不得向丁销售"
+        },
+        {
+          "option_id": "C",
+          "content": "乙从甲处购买复方甘草片后，可以向丙销售"
+        },
+        {
+          "option_id": "D",
+          "content": "丙从甲处购买复方甘草片后，不得向乙销售正确"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 109,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0110",
+      "question_type": "single_choice",
+      "question_content": "根据上述背景材料，下列说法错误的是()",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "丙将已销售给戊的药品先行调拨给丁，之后再将拟销售给丁的相同药品补齐给戊"
+        },
+        {
+          "option_id": "B",
+          "content": "戊从丙处购买药品后，委托丙将药品直接配送至己"
+        },
+        {
+          "option_id": "C",
+          "content": "甲可以在自行配送药品的同时，再委托乙和丙配送药品"
+        },
+        {
+          "option_id": "D",
+          "content": "丁可以绕开乙，直接从甲处购买其持有的药品正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 110,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0111",
+      "question_type": "single_choice",
+      "question_content": "健康中国战略的原则(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "改革创新"
+        },
+        {
+          "option_id": "B",
+          "content": "科学发展"
+        },
+        {
+          "option_id": "C",
+          "content": "健康优先"
+        },
+        {
+          "option_id": "D",
+          "content": "公平公正 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 111,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0112",
+      "question_type": "single_choice",
+      "question_content": "国际奥委会规定的兴奋剂种类包括(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "利尿剂"
+        },
+        {
+          "option_id": "B",
+          "content": "胰岛素"
+        },
+        {
+          "option_id": "C",
+          "content": "人血白蛋白"
+        },
+        {
+          "option_id": "D",
+          "content": "合成胆固醇 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 112,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0113",
+      "question_type": "single_choice",
+      "question_content": "缺陷项目包括(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "一般缺陷项目"
+        },
+        {
+          "option_id": "B",
+          "content": "次要缺陷项目"
+        },
+        {
+          "option_id": "C",
+          "content": "主要缺陷项目"
+        },
+        {
+          "option_id": "D",
+          "content": "严重缺陷项目 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 113,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0114",
+      "question_type": "single_choice",
+      "question_content": "根据《关于对医疗机构应用传统工艺配制中药制剂实施备案管理的公告》，属于备案管理的中药制剂有(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "由中药饮片经粉碎后制成的胶囊剂"
+        },
+        {
+          "option_id": "B",
+          "content": "由中药原药材鲜药榨汁的汤剂"
+        },
+        {
+          "option_id": "C",
+          "content": "由中药饮片经粉碎制成的散剂"
+        },
+        {
+          "option_id": "D",
+          "content": "由中药饮片仅经水提取的汤剂 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 114,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0115",
+      "question_type": "single_choice",
+      "question_content": "根据《药品上市后变更管理办法（试行）》，变更实施前应当报所在地省级药品监督管理部门备案的有(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药品口服剂型变更为注射制型"
+        },
+        {
+          "option_id": "B",
+          "content": "药品包装标签内容的变更"
+        },
+        {
+          "option_id": "C",
+          "content": "药品生产过程中的中等变更"
+        },
+        {
+          "option_id": "D",
+          "content": "药品分包装 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 115,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0116",
+      "question_type": "single_choice",
+      "question_content": "关于中药品种保护管理的说法，正确的有(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "对批准保护的品种，国家药品监督管理局将在政府网站和《中国医药报》上予以公告"
+        },
+        {
+          "option_id": "B",
+          "content": "经批准保护的中药品种，由国家药品监督管理《中药保护品种证书》，有效期 5年"
+        },
+        {
+          "option_id": "C",
+          "content": "国家药品监督管理部门委托中药品种保护审评到项部进行审评"
+        },
+        {
+          "option_id": "D",
+          "content": "保护品种的药品批准文号被撤销或注销的，国家药品监督管理局将提前终止保护，收回其保护审批件及证书正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 116,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0117",
+      "question_type": "single_choice",
+      "question_content": "关于医疗机构处方审核的说法，正确的有(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "处方审核是处方调剂的必要环节，经判定为合理的处方才可进入收费和调配环节"
+        },
+        {
+          "option_id": "B",
+          "content": "药师和开具处方的医师是处方审核的第一责任人"
+        },
+        {
+          "option_id": "C",
+          "content": "处方审核常用依据有药品管理相关法律法规和规范性文件、药品临床应用指导原则、临床诊疗指南和药品说明书等"
+        },
+        {
+          "option_id": "D",
+          "content": "审核的处方包括纸质处方、电子处方和医疗机构病区用药医嘱单 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 117,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0118",
+      "question_type": "single_choice",
+      "question_content": "根据国家药监局综合司关于假劣药认定有关问题的复函，只需要事实认定无需 对涉案药品进行检验，可以直接出具假药劣药认定意见的情形有（多选）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "被污染的药品"
+        },
+        {
+          "option_id": "B",
+          "content": "未标明产品批号"
+        },
+        {
+          "option_id": "C",
+          "content": "超过有效期"
+        },
+        {
+          "option_id": "D",
+          "content": "药品所标明的适应症和功能主治超出规定范围 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 118,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0119",
+      "question_type": "single_choice",
+      "question_content": "关于定点零售药店使用医疗保障基金的说法，正确的有(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "应当建立医疗保障基金使用内部管理制度，由专门机构或者人员负责医疗保障基金使用管理工作"
+        },
+        {
+          "option_id": "B",
+          "content": "应当执行实名购药管理规定，核验参保人员医疗保障凭证，按照诊疗规范提供合理、必要的医药服务"
+        },
+        {
+          "option_id": "C",
+          "content": "不得串换药品，不得诱导、协助他人冒名或者虚假购药"
+        },
+        {
+          "option_id": "D",
+          "content": "应当及时通过医疗保障信息系统全面准确传送医疗保障基金使用有关数据 正确"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 119,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-906691019e-q0120",
+      "question_type": "single_choice",
+      "question_content": "经国务院药品监督管理部门注册后方可使用的化妆品新原料，其功能包括(多选)",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "护肤"
+        },
+        {
+          "option_id": "B",
+          "content": "防晒"
+        },
+        {
+          "option_id": "C",
+          "content": "祛斑美白"
+        },
+        {
+          "option_id": "D",
+          "content": "染发 正确"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\法规真题（15-24年）\\2023药事管理与法规真题解析\\full.md",
+        "number": 120,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

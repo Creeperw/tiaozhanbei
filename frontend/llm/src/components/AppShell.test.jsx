@@ -39,7 +39,7 @@ describe('AppShell', () => {
     render(
       <AppShell
         currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="practice"
+        currentPage="training-workshop"
         onNavigate={vi.fn()}
         onLogout={vi.fn()}
       >
@@ -87,6 +87,8 @@ describe('AppShell', () => {
 
     await user.click(screen.getByRole('link', { name: '学习工坊' }));
     expect(onNavigate).toHaveBeenCalledWith({ page: 'practice', params: {} });
+    await user.click(screen.getByRole('link', { name: '训练工坊' }));
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: {} });
   });
 
   it('opens moved intervention notifications from the notification action', async () => {

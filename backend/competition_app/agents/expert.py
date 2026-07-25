@@ -50,7 +50,6 @@ class ExpertAgent:
         learning_profile = {
             "summary": getattr(diagnosis_payload, "summary", ""),
             "risk_flags": getattr(diagnosis_payload, "risk_flags", []),
-            "target_difficulty": getattr(diagnosis_payload, "target_difficulty", 2),
         }
         short_term_plan = (
             formal_plan.short_term_plan.content if formal_plan else ""
@@ -380,7 +379,6 @@ class ExpertAgent:
             resource_draft_id=f"DRAFT_{uuid4().hex}",
             title=f"{topic}试卷蓝图" if paper_generation else f"{topic}个性化复习卡",
             content=content,
-            target_difficulty=int(learning_profile["target_difficulty"]),
             estimated_minutes=int(context.get("available_minutes", 15)),
             claims=[
                 ResourceClaim(

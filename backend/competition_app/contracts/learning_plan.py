@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, TypeAlias
+from typing import Any, Literal, TypeAlias
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from competition_app.contracts.base import ContractModel
 from competition_app.contracts.default_route import ResolvedPlanningRoute
@@ -35,6 +35,12 @@ class LongTermPlanStage(ContractModel):
 class ShortTermTaskBlock(ContractModel):
     content: str = Field(min_length=1)
     estimated_minutes: int = Field(gt=0)
+    item_type: Literal["video_section", "knowledge_practice", "reading", "recall"] | None = None
+    knowledge_point_name: str | None = None
+    kp_id: str | None = None
+    required_question_count: int | None = Field(default=None, ge=1)
+    resource_ref: dict[str, Any] = Field(default_factory=dict)
+    completion_policy: dict[str, Any] = Field(default_factory=dict)
 
 
 class ShortTermFocusContext(ContractModel):
@@ -93,6 +99,57 @@ class LearningTaskProposal(ContractModel):
     estimated_minutes: int = Field(gt=0)
     expected_output: str
     completion_criteria: str
+
+
+class DailyTaskItemSpec(ContractModel):
+    task_item_id: str = Field(min_length=1)
+    ordinal: int = Field(ge=1)
+    item_type: Literal["video_section", "knowledge_practice", "reading", "recall"]
+    title: str = Field(min_length=1)
+    estimated_minutes: int = Field(gt=0)
+    knowledge_point_name: str | None = None
+    kp_id: str | None = None
+    required_question_count: int | None = Field(default=None, ge=1)
+    resource_ref: dict[str, Any] = Field(default_factory=dict)
+    completion_policy: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_execution_policy(self) -> "DailyTaskItemSpec":
+        policy = self.completion_policy.get("policy")
+        if self.item_type == "knowledge_practice":
+            if not self.kp_id or self.required_question_count is None:
+                raise ValueError(
+                    "knowledge_practice requires kp_id and required_question_count"
+                )
+            if policy != "frozen_question_set":
+                raise ValueError(
+                    "knowledge_practice requires policy=frozen_question_set"
+                )
+        elif self.kp_id is not None:
+            raise ValueError("only knowledge_practice may carry a formal kp_id")
+        if self.item_type == "video_section":
+            start = self.resource_ref.get("start_seconds")
+            end = self.resource_ref.get("end_seconds")
+            if (
+                isinstance(start, bool)
+                or isinstance(end, bool)
+                or not isinstance(start, (int, float))
+                or not isinstance(end, (int, float))
+                or start < 0
+                or start >= end
+            ):
+                raise ValueError(
+                    "video_section requires start_seconds < end_seconds"
+                )
+            source_keys = {"source", "provider", "url", "video_id", "bvid"}
+            if not any(self.resource_ref.get(key) for key in source_keys):
+                raise ValueError("video_section requires a video source")
+            if policy not in {
+                "html5_coverage",
+                "iframe_focus_and_confirmation",
+            }:
+                raise ValueError("video_section requires the verified video A policy")
+        return self
 
 
 class LearningPlanProposal(ContractModel):
@@ -172,6 +229,19 @@ class LearningTask(ContractModel):
     updated_at: datetime
     refresh_started_at: datetime | None = None
     refresh_due_at: datetime | None = None
+    items: list[DailyTaskItemSpec] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_atomic_items(self) -> "LearningTask":
+        item_ids = [item.task_item_id for item in self.items]
+        if len(item_ids) != len(set(item_ids)):
+            raise ValueError("daily task item IDs must be unique")
+        ordinals = [item.ordinal for item in self.items]
+        if ordinals != list(range(1, len(self.items) + 1)):
+            raise ValueError("daily task item ordinals must be consecutive from 1")
+        if sum(item.estimated_minutes for item in self.items) > self.estimated_minutes:
+            raise ValueError("daily task item budget exceeds parent task budget")
+        return self
 
 
 class LearningPlanResult(ContractModel):

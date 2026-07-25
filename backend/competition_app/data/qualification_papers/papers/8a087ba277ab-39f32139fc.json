@@ -1,0 +1,119 @@
+{
+  "template_id": "8a087ba277ab-39f32139fc",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-39f32139fc-q0001",
+      "question_type": "single_choice",
+      "question_content": "不属于肝细胞性黄疸的特点是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "尿胆红素阳性"
+        },
+        {
+          "option_id": "B",
+          "content": "尿胆原常增多"
+        },
+        {
+          "option_id": "C",
+          "content": "血清结合型、非结合型胆红素均增高"
+        },
+        {
+          "option_id": "D",
+          "content": "血清仅结合型胆红素增高"
+        },
+        {
+          "option_id": "E",
+          "content": "大便颜色正常或变深"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "C 选项肝细胞性黄疸时多由病毒、中毒等病因引起肝细胞坏死，致使肝细胞中的结合、非结合胆红素入血，故血清结合及非结合胆红素均增多，故排除 C，选择 D。B 选项胆原是胆红素经过肠道细菌作用产生的，一部分变成粪胆原，另一部分重吸收入血，血中的部分胆原是尿胆原的主要来源，由于胆道没有阻塞，所以胆红素变成胆原的途径正常，所以尿胆原增多。A 选项由于血清结合胆红素（经肝细胞处理，可以溶于水；而非结合胆红素是在红细胞中的，不溶于水）升高，故尿胆红素升高。E 选项大便颜色和结合胆红素含量有关，故会变深，但由于肝细胞的坏死，结合胆红素产生会变少，因此也会有正常情况。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟4\\full.md",
+        "number": 1,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-39f32139fc-q0002",
+      "question_type": "single_choice",
+      "question_content": "一严重脑出血病人，急性期间出现呕吐咖啡色胃内容物，应考虑",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性胃炎"
+        },
+        {
+          "option_id": "B",
+          "content": "既往有消化性溃疡"
+        },
+        {
+          "option_id": "C",
+          "content": "既往有肝硬化"
+        },
+        {
+          "option_id": "D",
+          "content": "应激性溃疡"
+        },
+        {
+          "option_id": "E",
+          "content": "伴发急性胆囊炎"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "在颅脑损伤、脑病变或脑手术后，容易出现应激性溃疡。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟4\\full.md",
+        "number": 2,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-39f32139fc-q0003",
+      "question_type": "single_choice",
+      "question_content": "肠鸣音亢进，呈金属音者见于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性肠炎"
+        },
+        {
+          "option_id": "B",
+          "content": "消化道出血"
+        },
+        {
+          "option_id": "C",
+          "content": "机械性肠梗阻"
+        },
+        {
+          "option_id": "D",
+          "content": "麻痹性肠梗阻"
+        },
+        {
+          "option_id": "E",
+          "content": "急性胃炎"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "机械性肠梗阻早期呈现金属调。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 更多医考干货 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 11-中药相同功效药物 12-中药学30味中药药理作用总 结 13-方剂学常考重点总结 可扫码关注微信公众平台",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟4\\full.md",
+        "number": 3,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

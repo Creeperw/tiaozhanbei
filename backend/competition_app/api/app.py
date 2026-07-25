@@ -36,7 +36,9 @@ from competition_app.services.profile_readiness import ProfileReadinessService
 from competition_app.services.planning_readiness import PlanningReadinessService
 from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.workshop import WorkshopKnowledgeService
+from competition_app.services.qualification_papers import QualificationPaperRepository
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
+from competition_app.api.simulated_patient_routes import router as sp_router, init_engine as sp_init_engine
 
 
 SESSION_COOKIE = "competition_session"
@@ -193,6 +195,22 @@ class WorkshopPaperSubmitRequest(BaseModel):
     request_id: str = Field(min_length=1, max_length=120)
 
 
+class QualificationAttemptCreateRequest(BaseModel):
+    answer_mode: str = Field(pattern="^(practice|test)$")
+    duration_minutes: int | None = Field(default=None, ge=10, le=300)
+
+
+class QualificationAttemptProgressRequest(BaseModel):
+    answers: dict[str, str] = Field(default_factory=dict)
+    current_position: int = Field(default=1, ge=1)
+    marked_positions: list[int] = Field(default_factory=list)
+    paused: bool = False
+
+
+class QualificationAttemptSubmitRequest(BaseModel):
+    request_id: str = Field(min_length=1, max_length=120)
+
+
 class NotificationStatusRequest(BaseModel):
     status: str = Field(pattern="^(read|dismissed)$")
 
@@ -217,6 +235,10 @@ class PlanReviewDecisionRequest(BaseModel):
 
 def create_app(container: ApplicationContainer, *, auth_required: bool = True) -> FastAPI:
     backend_handoff = container.backend_handoff_runtime
+    qualification_papers = QualificationPaperRepository(
+        Path(__file__).resolve().parents[1] / "data" / "qualification_papers",
+        runtime_root=Path(__file__).resolve().parents[1] / "runtime" / "qualification_papers",
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -261,6 +283,15 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
+
+    # ── 模拟病患模块 ────────────────────────────────────
+    try:
+        sp_init_engine(llm_timeout_seconds=120.0)
+        app.include_router(sp_router)
+    except Exception:
+        import logging
+        _logger = logging.getLogger("competition_app.simulated_patient")
+        _logger.warning("模拟病患模块初始化失败", exc_info=True)
 
     @app.middleware("http")
     async def authentication_boundary(request: Request, call_next):
@@ -350,6 +381,86 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is not None and learner_id != user.user_id:
             raise HTTPException(status_code=403, detail="无权访问其他用户的数据")
         return user
+
+    @app.get("/api/v1/qualification-papers/catalog")
+    async def qualification_paper_catalog(
+        request: Request,
+        exam_id: str = "",
+        year: str = "",
+        paper_type: str = "",
+    ) -> dict:
+        current_user(request)
+        return qualification_papers.list_catalog(exam_id=exam_id, year=year, paper_type=paper_type)
+
+    @app.post("/api/v1/qualification-papers/{template_id}/attempts")
+    async def create_qualification_attempt(
+        template_id: str, payload: QualificationAttemptCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.create_attempt(
+                user.user_id,
+                template_id,
+                answer_mode=payload.answer_mode,
+                duration_minutes=payload.duration_minutes,
+            )
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/qualification-paper-attempts/{attempt_id}")
+    async def get_qualification_attempt(attempt_id: str, request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.get_attempt(user.user_id, attempt_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.put("/api/v1/qualification-paper-attempts/{attempt_id}/progress")
+    async def save_qualification_attempt_progress(
+        attempt_id: str, payload: QualificationAttemptProgressRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.save_progress(
+                user.user_id,
+                attempt_id,
+                answers=payload.answers,
+                current_position=payload.current_position,
+                marked_positions=payload.marked_positions,
+                paused=payload.paused,
+            )
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/qualification-paper-attempts/{attempt_id}/submit")
+    async def submit_qualification_attempt(
+        attempt_id: str, payload: QualificationAttemptSubmitRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/qualification-paper-attempts/{attempt_id}/items/{question_id}/explanation")
+    async def qualification_attempt_explanation(attempt_id: str, question_id: str, request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            return qualification_papers.get_explanation(user.user_id, attempt_id, question_id)
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     def knowledge_backend():
         backend = container.knowledge_backend
@@ -1498,6 +1609,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         kp_id: str | None,
         mode: str,
         attempted_question_ids: set[str],
+        preferred_kp_ids: list[str] | None = None,
     ) -> dict | None:
         backend = container.knowledge_backend
         if backend is None:
@@ -1510,6 +1622,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             kp = store.kps.get(str(kp_id))
             if kp is not None:
                 selected_kps.append({"kp_id": str(kp_id), "kp": kp})
+        if not selected_kps:
+            for preferred_kp_id in preferred_kp_ids or []:
+                normalized_kp_id = str(preferred_kp_id or "").strip()
+                kp = store.kps.get(normalized_kp_id)
+                if kp is not None and not any(
+                    item["kp_id"] == normalized_kp_id for item in selected_kps
+                ):
+                    selected_kps.append({"kp_id": normalized_kp_id, "kp": kp})
         if not selected_kps:
             selected_kps = store.resolve_topic(query, limit=8)
 
@@ -1567,9 +1687,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     )
                     if payload["standard_answer"] and payload["kp_ids"]:
                         candidates.append(payload)
-                        break
-                if candidates:
-                    break
         if not candidates:
             return None
         return next(
@@ -1606,11 +1723,79 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             context = await asyncio.to_thread(runtime.load_learning_context, user.user_id)
         except Exception:
             context = {}
+        selection_context: dict = {}
+        load_selection_context = getattr(runtime, "load_practice_selection_context", None)
+        if callable(load_selection_context):
+            try:
+                selection_context = await asyncio.to_thread(
+                    load_selection_context, user.user_id
+                )
+            except Exception:
+                selection_context = {}
         attempted_ids = {
             str(item.get("question_id") or "")
             for item in context.get("question_attempt") or []
             if isinstance(item, dict) and item.get("question_id")
         }
+        attempted_ids.update(
+            str(question_id)
+            for question_id, history in (
+                selection_context.get("attempt_history") or {}
+            ).items()
+            if str(question_id).strip()
+            and isinstance(history, dict)
+            and int(history.get("attempt_count") or 0) > 0
+        )
+
+        has_explicit_target = bool(kp_id or str(topic or "").strip())
+        latest_claim = selection_context.get("latest_active_claim")
+        resume_claim = getattr(runtime, "resume_formal_practice_claim", None)
+        if not has_explicit_target and isinstance(latest_claim, dict) and callable(resume_claim):
+            question_id = str(latest_claim.get("question_id") or "").strip()
+            request_id = str(latest_claim.get("request_id") or "").strip()
+            if question_id and request_id:
+                try:
+                    resumed = await asyncio.to_thread(
+                        resume_claim,
+                        user.user_id,
+                        question_id=question_id,
+                        request_id=request_id,
+                    )
+                except Exception:
+                    resumed = None
+                resumed_question = resumed.get("question") if isinstance(resumed, dict) else None
+                if (
+                    isinstance(resumed_question, dict)
+                    and _practice_mode_matches(resumed_question.get("question_type"), mode)
+                ):
+                    resumed["selection"] = {
+                        "strategy": "current_learning_adaptive_v1",
+                        "reason": "active_claim",
+                    }
+                    return resumed
+
+        current_task_kp_ids = [
+            str(value).strip()
+            for value in selection_context.get("current_task_kp_ids") or []
+            if str(value).strip()
+        ]
+        due_review_kp_ids = [
+            str(value).strip()
+            for value in selection_context.get("due_review_kp_ids") or []
+            if str(value).strip()
+        ]
+        mastery = selection_context.get("mastery") or {}
+        low_mastery_kp_ids = sorted(
+            (
+                str(value).strip()
+                for value in mastery
+                if str(value).strip()
+            ),
+            key=lambda value: float((mastery.get(value) or {}).get("mastery") or 0),
+        )
+        preferred_kp_ids = list(dict.fromkeys(
+            current_task_kp_ids + due_review_kp_ids + low_mastery_kp_ids
+        ))
         query = str(topic or "").strip() or _profile_practice_query(context)
         try:
             candidate = await asyncio.to_thread(
@@ -1619,13 +1804,28 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 kp_id=kp_id,
                 mode=mode,
                 attempted_question_ids=attempted_ids,
+                preferred_kp_ids=preferred_kp_ids if not has_explicit_target else None,
             )
             if candidate is not None:
-                return await asyncio.to_thread(
+                issued = await asyncio.to_thread(
                     runtime.issue_formal_practice,
                     user.user_id,
                     candidate,
                 )
+                candidate_kp_ids = set(candidate.get("kp_ids") or [])
+                if candidate_kp_ids.intersection(current_task_kp_ids):
+                    reason = "current_task"
+                elif candidate_kp_ids.intersection(due_review_kp_ids):
+                    reason = "due_review"
+                elif candidate_kp_ids.intersection(low_mastery_kp_ids):
+                    reason = "low_mastery"
+                else:
+                    reason = "formal_bank"
+                issued["selection"] = {
+                    "strategy": "current_learning_adaptive_v1",
+                    "reason": reason,
+                }
+                return issued
         except Exception:
             # Keep projected formal questions usable while the read-only bank
             # is temporarily unavailable; never reinterpret this as an empty bank.
@@ -1787,6 +1987,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         daily_task_timer = await asyncio.to_thread(
             container.daily_task_refresh_service.ensure_current, user.user_id
         )
+        coordinator = container.daily_task_execution_coordinator
+        if coordinator is not None:
+            try:
+                await asyncio.to_thread(coordinator.dispatch_pending, user.user_id, 20)
+                await asyncio.to_thread(coordinator.reconcile_parent_status, user.user_id)
+            except Exception:
+                # Dashboard content remains available while cross-store sync recovers.
+                pass
         plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
         queue = container.review_service.get_queue(user.user_id, limit=12)
         sessions = container.review_card_use_case.conversation_repository.list_sessions(
@@ -1797,6 +2005,46 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if plans is not None and plans.learning_task is not None:
             task = plans.learning_task
             if task.status != "completed":
+                task_progress: dict = {}
+                if coordinator is not None:
+                    try:
+                        load_progress = getattr(coordinator, "load_current_progress", None)
+                        if callable(load_progress):
+                            task_progress = await asyncio.to_thread(
+                                load_progress, user.user_id
+                            )
+                        elif backend_handoff is not None:
+                            task_progress = await asyncio.to_thread(
+                                backend_handoff.load_daily_task_progress,
+                                user.user_id,
+                                {
+                                    "task_id": task.task_id,
+                                    "host_task_id": task.task_id,
+                                    "host_task_version": task.version,
+                                    "items": [
+                                        {
+                                            "task_item_id": item.task_item_id,
+                                            "item_type": item.item_type,
+                                            "kp_id": item.kp_id,
+                                            "required_question_count": item.required_question_count,
+                                        }
+                                        for item in task.items
+                                    ],
+                                },
+                            )
+                    except Exception:
+                        task_progress = {}
+                progress_items = {
+                    str(item.get("task_item_id") or ""): item
+                    for item in task_progress.get("items") or []
+                    if isinstance(item, dict) and item.get("task_item_id")
+                }
+                completed_items = int(task_progress.get("completed_items") or sum(
+                    1
+                    for item in progress_items.values()
+                    if str(item.get("status") or "").lower() == "completed"
+                ))
+                total_items = int(task_progress.get("total_items") or 0)
                 resolved_points: list[dict] = []
                 seen_kp_ids: set[str] = set()
                 task_chapter_text = str(task.learning_chapter or "").strip()
@@ -1876,6 +2124,43 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "refresh_started_at": task.refresh_started_at,
                     "refresh_due_at": task.refresh_due_at,
                     "source": "daily_task",
+                    "progress": {
+                        "completed": completed_items,
+                        "total": total_items,
+                        "rate": round(completed_items / total_items, 4)
+                        if total_items
+                        else 0.0,
+                    },
+                    "items": [
+                        {
+                            "task_item_id": item.task_item_id,
+                            "item_type": item.item_type,
+                            "status": str(
+                                progress_items.get(item.task_item_id, {}).get("status")
+                                or "pending"
+                            ),
+                            "progress": {
+                                key: value
+                                for key, value in dict(
+                                    progress_items.get(item.task_item_id, {}).get("progress")
+                                    or {}
+                                ).items()
+                                if key in {
+                                    "reviewed_questions",
+                                    "required_questions",
+                                    "coverage",
+                                    "coverage_rate",
+                                    "video_coverage",
+                                    "active_seconds",
+                                }
+                            },
+                            "action": {
+                                "destination": "workshop.practice",
+                                "params": {"taskItemId": item.task_item_id},
+                            },
+                        }
+                        for item in task.items
+                    ],
                     "learning_chapter": {
                         "book": resolved_book,
                         "title": resolved_chapter,
@@ -1960,19 +2245,46 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if plans is None or plans.learning_task is None:
             raise HTTPException(status_code=404, detail="当前没有可完成的学习任务")
         task = plans.learning_task
-        if task.status != "completed":
-            now = datetime.now(timezone.utc)
-            task = task.model_copy(
-                update={
-                    "status": "completed",
-                    "version": task.version + 1,
-                    "updated_at": now,
-                }
+        if task.status == "completed":
+            return {"learning_task": task.model_dump(mode="json")}
+        coordinator = container.daily_task_execution_coordinator
+        reconciled = False
+        if coordinator is not None:
+            reconciled = await asyncio.to_thread(
+                coordinator.reconcile_parent_status, user.user_id
             )
-            repository.save_current(
-                user.user_id,
-                plans.model_copy(update={"learning_task": task}),
+        if not reconciled:
+            raw_progress = {}
+            if coordinator is not None:
+                load_progress = getattr(coordinator, "load_current_progress", None)
+                if callable(load_progress):
+                    raw_progress = await asyncio.to_thread(load_progress, user.user_id)
+            progress_items = [
+                item
+                for item in raw_progress.get("items") or []
+                if isinstance(item, dict)
+            ]
+            completed = int(raw_progress.get("completed_items") or sum(
+                1
+                for item in progress_items
+                if str(item.get("status") or "").lower() == "completed"
+            ))
+            total = int(raw_progress.get("total_items") or 0)
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": "仍有未完成的每日任务项，不能直接完成父任务",
+                    "current_progress": {
+                        "completed": completed,
+                        "total": total,
+                        "rate": round(completed / total, 4) if total else 0.0,
+                    },
+                },
             )
+        plans = repository.get_current(user.user_id)
+        if plans is None or plans.learning_task is None:
+            raise HTTPException(status_code=404, detail="当前学习任务已不存在")
+        task = plans.learning_task
         return {"learning_task": task.model_dump(mode="json")}
 
     @app.post("/api/v1/learning-tasks/current/refresh")

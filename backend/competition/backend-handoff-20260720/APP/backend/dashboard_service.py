@@ -77,7 +77,7 @@ def _build_recommendations(
 ) -> list[dict[str, str]]:
     goal = profile.get("health_goals") or "先完善学习目标"
     preference = profile.get("exercise_preferences") or "题目、案例、知识卡和短视频"
-    difficulty = profile.get("medical_history") or "当前薄弱点待补充"
+    weak_point = profile.get("medical_history") or "当前薄弱点待补充"
     focus = _context_focus(profile, memories, events)
     reason = "基于你的长期目标与近期关注内容生成" if memories else "基于当前画像与平台默认学习路径生成"
     source_signal = f"{len(memories)} 条活跃记忆、{len(events)} 条近期 Agent 动态、{len(sessions)} 个近期会话"
@@ -87,7 +87,7 @@ def _build_recommendations(
             "key": "daily-question",
             "title": "每日推荐题目",
             "reason": reason,
-            "summary": f"围绕“{focus}”安排 5-10 道短练，并优先覆盖“{difficulty}”。",
+            "summary": f"围绕“{focus}”安排 5-10 道短练，并优先覆盖“{weak_point}”。",
             "resource_type": "question",
             "source_signal": source_signal,
             "action_label": "进入练习",
@@ -189,7 +189,6 @@ def build_dashboard_payload(
     learning_target: dict[str, Any] | None = None,
     announcements: list[dict[str, Any]] | None = None,
     checkin_status: dict[str, Any] | None = None,
-    difficulty_notice: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     profile = profile or {}
     learning_target = learning_target or None
@@ -265,6 +264,5 @@ def build_dashboard_payload(
         "continue_learning": continue_learning,
         "announcements": announcements or [],
         "checkin_status": checkin_status or {"checked_in_today": False, "streak": 0},
-        "difficulty_notice": difficulty_notice or None,
         "learning_target": learning_target,
     }

@@ -73,6 +73,7 @@ class ReviewCardRequest(BaseModel):
     short_term_plan: dict[str, Any] = Field(default_factory=dict)
     learning_task: dict[str, Any] = Field(default_factory=dict)
     exam_constraints: dict[str, Any] = Field(default_factory=dict)
+    daily_task_item_id: str | None = Field(default=None, min_length=1, max_length=120)
     plan_change_context: PlanChangeContext | None = None
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     plan_scope_hint: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
@@ -988,6 +989,7 @@ class PersonalizedReviewCardUseCase:
                     if hasattr(evidence_pack, "model_dump")
                     else {}
                 ),
+                daily_task_item_id=request.daily_task_item_id,
             )
         publish_answers = self._paper_answers_requested(request)
         paper_content: dict[str, Any] = {
@@ -1019,7 +1021,6 @@ class PersonalizedReviewCardUseCase:
             resource_draft_id=paper.paper_draft_id,
             title=paper.title,
             content=paper_content,
-            target_difficulty=1,
             estimated_minutes=paper.duration_minutes or request.available_minutes,
             safety_notes=[
                 (

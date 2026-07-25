@@ -1,0 +1,3052 @@
+{
+  "template_id": "5ae6a7bd1b91-de6440fff0",
+  "questions": [
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0001",
+      "question_type": "single_choice",
+      "question_content": "荆芥生用不具有的功效是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "散风"
+        },
+        {
+          "option_id": "B",
+          "content": "发表"
+        },
+        {
+          "option_id": "C",
+          "content": "止血"
+        },
+        {
+          "option_id": "D",
+          "content": "透疹"
+        },
+        {
+          "option_id": "E",
+          "content": "止痒"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 1,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0002",
+      "question_type": "single_choice",
+      "question_content": "某医师治初产妇乳痈肿痛最喜用蒲公英，此因蒲公英除清热解毒而消痈肿外，又能（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "活血"
+        },
+        {
+          "option_id": "B",
+          "content": "凉血"
+        },
+        {
+          "option_id": "C",
+          "content": "通络"
+        },
+        {
+          "option_id": "D",
+          "content": "化痰"
+        },
+        {
+          "option_id": "E",
+          "content": "通乳"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "蒲公英【功效】清热解毒，消痈散结，利湿通淋。既清热解毒而痈肿，又利湿与通乳。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 2,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0003",
+      "question_type": "single_choice",
+      "question_content": "牵牛子为峻下逐水药，其主治病症不包括（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "水肿鼓胀"
+        },
+        {
+          "option_id": "B",
+          "content": "痰饮喘满"
+        },
+        {
+          "option_id": "C",
+          "content": "大便秘结"
+        },
+        {
+          "option_id": "D",
+          "content": "癥瘕积聚"
+        },
+        {
+          "option_id": "E",
+          "content": "虫积腹痛"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "牵牛子【功效】泻下逐水，去积杀虫。 【主治】 (1)水肿，鼓胀，痰饮喘满； (2)大便秘结，食积停滞； (3)虫积腹痛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 3,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0004",
+      "question_type": "single_choice",
+      "question_content": "某男，60岁，20年前患风湿性关节炎，10年前又患高血压病，刻下痹痛筋脉拘麻，时见头晕头胀，血压160/90mmHg。病证属风湿痹痛兼高血压，治疗宜选用的药组是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白鲜皮配豨莶草"
+        },
+        {
+          "option_id": "B",
+          "content": "豨莶草配臭梧桐"
+        },
+        {
+          "option_id": "C",
+          "content": "豨莶草配徐长卿"
+        },
+        {
+          "option_id": "D",
+          "content": "海风藤配臭梧桐"
+        },
+        {
+          "option_id": "E",
+          "content": "白鲜皮配臭梧桐"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "豨莶草配臭梧桐，既祛风湿、通经络，治风湿痹痛筋脉拘麻；又降血压，治高血压病。若为风湿痹痛肢麻兼高血压者用之最宜。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 4,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0005",
+      "question_type": "single_choice",
+      "question_content": "某医师常选用草豆蔻治寒湿中阻之胀满疼痛，呕吐，泄泻。此因其除燥湿行气外，又能（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "散风发表"
+        },
+        {
+          "option_id": "B",
+          "content": "消积止呕"
+        },
+        {
+          "option_id": "C",
+          "content": "温中止呕"
+        },
+        {
+          "option_id": "D",
+          "content": "降逆止呕"
+        },
+        {
+          "option_id": "E",
+          "content": "除痰截疟"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "草豆蔻【功效】燥湿行气，温中止呕。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 5,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0006",
+      "question_type": "single_choice",
+      "question_content": "某女，40岁。既往罹患尿路感染，反复发作，清明时节，因感风热，不但诱发旧疾，而且引发咳嗽吐痰，刻下尿频，尿急，尿痛，尿黄，咳嗽痰多而黄。证属痰热阻肺，湿热下注，治当利尿通淋，清肺化痰，宜选用的药是（ ）。",
+      "options": [
+        {
+          "option_id": "B",
+          "content": "通草"
+        },
+        {
+          "option_id": "C",
+          "content": "连钱草"
+        },
+        {
+          "option_id": "D",
+          "content": "冬葵子"
+        },
+        {
+          "option_id": "E",
+          "content": "车前子"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "车前子【功效】利水通淋，渗湿止泻，明目，清肺化痰。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 6,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0007",
+      "question_type": "single_choice",
+      "question_content": "某医师治下元虚冷、虚阳上浮之上热下寒证，常选肉桂，此因肉桂除补火助阳外，又能（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疏肝下气"
+        },
+        {
+          "option_id": "B",
+          "content": "引火归元"
+        },
+        {
+          "option_id": "C",
+          "content": "回阳救逆"
+        },
+        {
+          "option_id": "D",
+          "content": "温中止呕"
+        },
+        {
+          "option_id": "E",
+          "content": "暖肝降逆"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "肉桂【功效】补火助阳，引火归元，散寒止痛，温经通脉。【主治】下元虚冷、虚阳上浮之上热下寒证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 7,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0008",
+      "question_type": "single_choice",
+      "question_content": "木香性温，能通理三焦，其主治病症是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝郁血瘀之脘痛"
+        },
+        {
+          "option_id": "B",
+          "content": "肝火郁滞之胁痛"
+        },
+        {
+          "option_id": "C",
+          "content": "痰浊闭阻之胸痹"
+        },
+        {
+          "option_id": "D",
+          "content": "痰湿壅肺之咳喘"
+        },
+        {
+          "option_id": "E",
+          "content": "脾胃气滞之脘腹胀痛"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "木香【功效】行气止痛，健脾消食。【主治】(1)脾胃气滞之脘腹胀痛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 8,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0009",
+      "question_type": "single_choice",
+      "question_content": "胃阴虚，胃火盛者不宜服用的药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "稻芽"
+        },
+        {
+          "option_id": "B",
+          "content": "神曲"
+        },
+        {
+          "option_id": "C",
+          "content": "麦芽"
+        },
+        {
+          "option_id": "D",
+          "content": "鸡内金"
+        },
+        {
+          "option_id": "E",
+          "content": "莱菔子"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "神曲【使用注意】本品性温，胃阴虚，胃火盛者不宜服用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 9,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0010",
+      "question_type": "single_choice",
+      "question_content": "性凉，驱杀绦虫宜研粉冲服的药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "雷丸"
+        },
+        {
+          "option_id": "B",
+          "content": "芦荟"
+        },
+        {
+          "option_id": "C",
+          "content": "鹤草芽"
+        },
+        {
+          "option_id": "D",
+          "content": "地肤子"
+        },
+        {
+          "option_id": "E",
+          "content": "苦楝皮"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "鹤草芽性凉，【主治病症】绦虫病。【用法用量】内服：研粉吞服，成人每次30\\~50g。小儿按体重0.7\\~0.8g/kg，每日一次，早晨空腹服。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 10,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0011",
+      "question_type": "single_choice",
+      "question_content": "仙鹤草性平，应用广泛，除收敛止血、止痢、截疟外，又能（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "活血、化痰、利尿"
+        },
+        {
+          "option_id": "B",
+          "content": "解毒、杀虫、补虚"
+        },
+        {
+          "option_id": "C",
+          "content": "泻火、燥湿、杀虫"
+        },
+        {
+          "option_id": "D",
+          "content": "活血、补虚、化痰"
+        },
+        {
+          "option_id": "E",
+          "content": "解毒、燥湿、利尿"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "仙鹤草【功效】收敛止血，止痢，截疟，解毒，杀虫，补虚。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 11,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0012",
+      "question_type": "single_choice",
+      "question_content": "某女，42岁。自初潮即发倒经，平日胸闷不舒，心烦急躁，口干口苦，尿黄，每至行经，必见鼻衄。一周前，又见口黏，肝区胀痛，目珠轻度黄染，被确诊为胆囊炎。就诊时又适值经期，每日鼻衄。据此，医师在方中处以郁金。此因其除能活血止痛、行气解郁外，又能（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热解毒，凉血清心"
+        },
+        {
+          "option_id": "B",
+          "content": "消积化滞，通腑泄热"
+        },
+        {
+          "option_id": "C",
+          "content": "消积化滞，泻下通便"
+        },
+        {
+          "option_id": "D",
+          "content": "利胆退黄，凉血清心"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒，泻下通便"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "郁金【功效】活血止痛，行气解郁，凉血清心，利胆退黄。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 12,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0013",
+      "question_type": "single_choice",
+      "question_content": "某男，50岁，久患气管炎，近日咳嗽气喘，痰黄，浮肿尿少。医师的处方时常将桑白皮与葶苈子同用，是因此二药除均能利水消肿外，又均能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "泻肺平喘"
+        },
+        {
+          "option_id": "B",
+          "content": "清肺平喘"
+        },
+        {
+          "option_id": "C",
+          "content": "温肺平喘"
+        },
+        {
+          "option_id": "D",
+          "content": "泻下平喘"
+        },
+        {
+          "option_id": "E",
+          "content": "纳气平喘"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "桑白皮【功效】泻肺平喘，利水消肿。 葶苈子【功效】泻肺平喘，利水消肿。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 13,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0014",
+      "question_type": "single_choice",
+      "question_content": "某女，60岁。素体虚弱，气短乏力，面色萎黄，身痛肢麻。近日又见血虚心烦失眠多梦，据此，医师以补气养血，养心安神为主，并在处方中重用了夜交藤，此因夜交藤除养心安神外，又能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "息风通络"
+        },
+        {
+          "option_id": "B",
+          "content": "化痰通络"
+        },
+        {
+          "option_id": "C",
+          "content": "祛风通络"
+        },
+        {
+          "option_id": "D",
+          "content": "镇惊通络"
+        },
+        {
+          "option_id": "E",
+          "content": "祛湿通络"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "夜交藤【功效】养心安神，祛风通络。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 14,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0015",
+      "question_type": "single_choice",
+      "question_content": "珍珠母咸寒质重，生用、煅用功异，其不具有的功效是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "凉血止血"
+        },
+        {
+          "option_id": "B",
+          "content": "清肝明目"
+        },
+        {
+          "option_id": "C",
+          "content": "平肝潜阳"
+        },
+        {
+          "option_id": "D",
+          "content": "安神定惊"
+        },
+        {
+          "option_id": "E",
+          "content": "收湿敛疮"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "珍珠母【功效】平肝潜阳，清肝明目，安神定惊，收湿敛疮。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 15,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0017",
+      "question_type": "single_choice",
+      "question_content": "某男，65岁。患癫痫40年，刻下气短乏力，面色萎黄，神情呆滞，证属癫痫久发，气血亏虚，宜选用的药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄精"
+        },
+        {
+          "option_id": "B",
+          "content": "党参"
+        },
+        {
+          "option_id": "C",
+          "content": "山药"
+        },
+        {
+          "option_id": "D",
+          "content": "五味子"
+        },
+        {
+          "option_id": "E",
+          "content": "紫河车"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "紫河车： 【功效】温肾补精，养血益气。 【主治】 (1)肾虚精亏的不孕、阳痿、遗精、腰酸。 (2)气血两亏的脸色萎黄、消瘦乏力、产后少乳。 (3)肺肾两虚的气喘咳嗽。 (4)癫痫久发，气血亏虚。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 17,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0018",
+      "question_type": "single_choice",
+      "question_content": "某男，18岁。平时饮食不讲卫生，清晨突发阵发性上腹剧烈绞痛，有向上钻顶感，伴恶心、呕吐。而在间歇期，却似如常人。査验粪便有蛔虫卵。西医确诊断为胆道蛔虫症，中医诊为蛔厥腹痛，宜选用的药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "椿皮"
+        },
+        {
+          "option_id": "B",
+          "content": "乌梅"
+        },
+        {
+          "option_id": "C",
+          "content": "木瓜"
+        },
+        {
+          "option_id": "D",
+          "content": "地肤子"
+        },
+        {
+          "option_id": "E",
+          "content": "蛇床子"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "乌梅【功效】敛肺，涩肠，生津，安蛔，止血。 【主治】(1)肺虚久咳。(2)久泻久痢。(3)虚热消渴。(4)蛔厥腹痛。(5)崩漏，便血。 解析：白矾【功效】外用解毒杀虫，燥湿止痒：内服止血止泻，清热消痰。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 18,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0019",
+      "question_type": "single_choice",
+      "question_content": "性寒，外用解毒杀虫、燥湿止痒，内服止血止泻，清热消痰的药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白矾"
+        },
+        {
+          "option_id": "B",
+          "content": "硫黄"
+        },
+        {
+          "option_id": "C",
+          "content": "轻粉"
+        },
+        {
+          "option_id": "D",
+          "content": "露蜂房"
+        },
+        {
+          "option_id": "E",
+          "content": "炉甘石"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 19,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0020",
+      "question_type": "single_choice",
+      "question_content": "儿茶既可内服又可外用，主治广泛，但其主治的病证不包括（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疮疡不敛"
+        },
+        {
+          "option_id": "B",
+          "content": "吐血衄血"
+        },
+        {
+          "option_id": "C",
+          "content": "寒痰哮喘"
+        },
+        {
+          "option_id": "D",
+          "content": "外伤出血"
+        },
+        {
+          "option_id": "E",
+          "content": "湿疹湿疮"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "儿茶【功效】收湿敛疮，生肌止血，活血止痛，清肺化痰。 【主治】 (1)湿疮，湿疹，疮疡不敛。 (2)吐血，衄血，外伤出血。 (3)跌扑伤痛。 (4)肺热咳嗽。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 20,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0021",
+      "question_type": "single_choice",
+      "question_content": "某男，20岁。夏初因气温突降，小雨不断，患流行性感冒2天。症见发热、恶寒、肌肉酸痛，鼻塞流涕，咳嗽，头痛，咽干咽痛，舌偏红，苔黄腻。证属热毒袭肺，宜选用的中成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "荆防颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "桂枝合剂"
+        },
+        {
+          "option_id": "C",
+          "content": "双黄连颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "九味羌活颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "连花清瘟胶囊"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "连花清瘟胶囊【功能】清瘟解毒，宣肺泄热。【主治】流行性感冒属热毒袭肺证，症见发热、恶寒、肌肉酸痛、鼻塞流涕、咳嗽、头痛、咽干咽痛、舌红、苔黄或黄腻。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 21,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0022",
+      "question_type": "single_choice",
+      "question_content": "参苏丸为解表剂，除能益气解表、疏风散寒外，又能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "祛痰止咳"
+        },
+        {
+          "option_id": "B",
+          "content": "宣肺止咳"
+        },
+        {
+          "option_id": "C",
+          "content": "润燥止咳"
+        },
+        {
+          "option_id": "D",
+          "content": "降气止咳"
+        },
+        {
+          "option_id": "E",
+          "content": "敛肺止咳"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "参苏丸【功能】益气解表，疏风散寒，祛痰止咳。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 22,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0023",
+      "question_type": "single_choice",
+      "question_content": "某男，70岁，患便秘20年，刻下大便秘结，腹痛拒按，腹胀纳呆，口干苦，小便短赤，舌红苔黄，脉弦滑数。证属肠胃实热积滞，治当宽中理气、泻下通便，宜选用的成药是（）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "舟车丸"
+        },
+        {
+          "option_id": "B",
+          "content": "通便宁片"
+        },
+        {
+          "option_id": "C",
+          "content": "通便灵胶囊"
+        },
+        {
+          "option_id": "D",
+          "content": "九制大黄丸"
+        },
+        {
+          "option_id": "E",
+          "content": "增液口服液"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "通便宁片【功能】宽中理气，泻下通便。【主治】肠胃实热积滞所致的便秘，症见大便秘结、腹痛拒按、腹胀纳呆、口干苦、小便短赤、舌红苔黄、脉弦滑数。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 23,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0024",
+      "question_type": "single_choice",
+      "question_content": "某男，45岁，平日喜食辣，近日突发头痛眩晕，目赤耳鸣，口燥咽干，大便燥结。证属胃肠积热，治当清热解毒、泻火通便，宜选用的成药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "芩连片"
+        },
+        {
+          "option_id": "B",
+          "content": "黛蛤散"
+        },
+        {
+          "option_id": "C",
+          "content": "西黄丸"
+        },
+        {
+          "option_id": "D",
+          "content": "清开灵片"
+        },
+        {
+          "option_id": "E",
+          "content": "牛黄至宝丸"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "牛黄至宝丸【功能】清热解毒，泻火通便。【主治】胃肠积热所致的头痛眩晕、目赤耳鸣、口燥咽干、大便燥结。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 24,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0025",
+      "question_type": "single_choice",
+      "question_content": "某女，54岁，体胖少动，因深秋时节，阴雨连绵，突发胃脘疼痛，胸膈满闷，恶心呕吐，纳呆食少。证属湿浊中阻、脾胃不和，宜选用的成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "良附丸"
+        },
+        {
+          "option_id": "B",
+          "content": "四逆汤"
+        },
+        {
+          "option_id": "C",
+          "content": "香砂平胃丸"
+        },
+        {
+          "option_id": "D",
+          "content": "小建中合剂"
+        },
+        {
+          "option_id": "E",
+          "content": "附子理中丸"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "香砂平胃丸【功能】理气化湿，和胃止痛。【主治】湿浊中阻、脾胃不和所致的胃脘疼痛、胸膈满闷、恶心呕吐、纳呆食少。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 25,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0026",
+      "question_type": "single_choice",
+      "question_content": "某女，30岁。身强体健，今年2月中旬，因着衣不慎而感风寒，导致急性支气管炎。症见身热烦渴，咳嗽痰盛，喘促气逆，胸膈满闷。证属表寒里热，宜选用的成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蠲哮片"
+        },
+        {
+          "option_id": "B",
+          "content": "橘红丸"
+        },
+        {
+          "option_id": "C",
+          "content": "通宣理肺丸"
+        },
+        {
+          "option_id": "D",
+          "content": "桂龙咳喘宁胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "止嗽定喘口服液"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "止嗽定喘口服液【功能】辛凉宣泄，清肺平喘。【主治】表寒里热，身热口渴， 咳嗽痰盛，喘促气逆，胸膈满闷；急性支气管炎见上述证候者。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 26,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0027",
+      "question_type": "single_choice",
+      "question_content": "某医师治疗热入心包、热盛动风所致的高热烦躁，神昏谵语，常用万氏牛黄清心丸，此因该成药除清热解毒外，又能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "解郁安神"
+        },
+        {
+          "option_id": "B",
+          "content": "镇惊安神"
+        },
+        {
+          "option_id": "C",
+          "content": "开窍安神"
+        },
+        {
+          "option_id": "D",
+          "content": "养心安神"
+        },
+        {
+          "option_id": "E",
+          "content": "止痉安神"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "万氏牛黄清心丸【功能】清热解毒，镇惊安神。【主治】热入心包、热盛动风证，症见高热烦燥、神昏谵语及小儿高热惊厥。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 27,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0028",
+      "question_type": "single_choice",
+      "question_content": "某男，56岁。肾虚不固3年，症见遗精滑泄，神疲乏力，四肢酸软，腰酸耳鸣。经男科医师诊断后，建议其服金锁固精丸，该成药处方的君药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "芡实"
+        },
+        {
+          "option_id": "B",
+          "content": "莲子"
+        },
+        {
+          "option_id": "C",
+          "content": "菟丝子"
+        },
+        {
+          "option_id": "D",
+          "content": "炒沙苑子"
+        },
+        {
+          "option_id": "E",
+          "content": "煅龙骨"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "金锁固精丸方中炒沙苑子甘温补涩，不燥不烈，善补肾助阳固精，故为君药。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 28,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0029",
+      "question_type": "single_choice",
+      "question_content": "某女，85岁。一年来，因肝肾阴亏导致眩晕耳鸣，羞明畏光，迎风流泪，视物昏花。宜选用的成药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄连羊肝丸"
+        },
+        {
+          "option_id": "B",
+          "content": "大补阴丸"
+        },
+        {
+          "option_id": "C",
+          "content": "明目蒺藜丸"
+        },
+        {
+          "option_id": "D",
+          "content": "六味地黄丸"
+        },
+        {
+          "option_id": "E",
+          "content": "杞菊地黄丸"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "杞菊地黄丸【功能】滋肾养肝。【主治】肝肾阴亏、昡晕耳鸣，羞明畏光，迎风流泪，视物昏花。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 29,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0030",
+      "question_type": "single_choice",
+      "question_content": "某女，40岁。体硕肥胖，瘀热痰湿内生，导致脾胃气郁，症见胸脘痞闷，腹中胀满，饮食停滞，嗳气吞酸。治当理气解郁、宽中除满，宜选用的成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "越鞠丸"
+        },
+        {
+          "option_id": "B",
+          "content": "左金丸"
+        },
+        {
+          "option_id": "C",
+          "content": "胃苏颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "健脾消食丸"
+        },
+        {
+          "option_id": "E",
+          "content": "木香顺气颗粒"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "越鞠丸【功能】理气解郁，宽中除满。【主治】瘀热痰湿内生所致的脾胃气郁，症见胸脘痞闷、腹中胀满、饮食停滞、嗳气吞酸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 30,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0031",
+      "question_type": "single_choice",
+      "question_content": "某女，55岁。患冠心病室性早搏3年，症见心悸不安，气短乏力，动则加剧，胸部闷痛，失眠多梦，盗汗，神倦，懒言，医师处以参松养心胶囊，服后症状得到控制。此因该成药除活血通络外，又能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "益气强心，清心安神"
+        },
+        {
+          "option_id": "B",
+          "content": "益气复脉，养阴生津"
+        },
+        {
+          "option_id": "C",
+          "content": "益气养阴，清心安神"
+        },
+        {
+          "option_id": "D",
+          "content": "益气强心，养阴生津"
+        },
+        {
+          "option_id": "E",
+          "content": "益气复脉，平肝安神"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "参松养心胶囊【功能】益气养阴，活血通络，清心安神。【主治】治疗冠心病室性早搏属气阴两虚、心络瘀阻证，症见心悸不安、气短乏力、动则加剧、胸部闷痛、失眠多梦、盗汗、神倦、懒言。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 31,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0032",
+      "question_type": "single_choice",
+      "question_content": "某男，50岁。3年来，患十二指肠溃疡疼痛，时见柏油样便，近日又见胃酸过多，宜选用的成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "槐角丸"
+        },
+        {
+          "option_id": "B",
+          "content": "三七片"
+        },
+        {
+          "option_id": "C",
+          "content": "丹七片"
+        },
+        {
+          "option_id": "D",
+          "content": "元胡止痛片"
+        },
+        {
+          "option_id": "E",
+          "content": "止血定痛片"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "止血定痛片【功能】散瘀，止血，止痛。【主治】十二指肠溃疡疼痛、出血，胃酸过多。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 32,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0033",
+      "question_type": "single_choice",
+      "question_content": "既治饮食积滞、湿热内阻所致的脘腹胀痛、不思饮食、大便秘结，又治食积湿热内阻肠胃所致的痢疾里急后重的成药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "保和丸"
+        },
+        {
+          "option_id": "B",
+          "content": "芩连片"
+        },
+        {
+          "option_id": "C",
+          "content": "六味安消散"
+        },
+        {
+          "option_id": "D",
+          "content": "枳实导滞丸"
+        },
+        {
+          "option_id": "E",
+          "content": "葛根芩连丸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "枳实导滞丸【功能】消积导滞，清利湿热。【主治】饮食积滞、湿热内阻所致的脘腹胀痛、不思饮食、大便秘结、痢疾里急后重。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 33,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0034",
+      "question_type": "single_choice",
+      "question_content": "某医师在治疗中老年高血压病证属肝阳上亢时，每用天麻钩藤颗粒，按照方剂学君臣佐使的组方原则，在天麻钩藤颗粒处方中属臣药，既增君药平肝息风之力，又兼清肝益阴的药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "盐杜仲"
+        },
+        {
+          "option_id": "B",
+          "content": "决明子"
+        },
+        {
+          "option_id": "C",
+          "content": "桑寄生"
+        },
+        {
+          "option_id": "D",
+          "content": "益母草"
+        },
+        {
+          "option_id": "E",
+          "content": "石决明"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "天麻钩藤颗粒方中石决明质重镇潜，咸寒清泄兼补，善平肝潜阳、清肝益阴，既增君药平肝息风之力，又兼清肝益阴，故为臣药。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 34,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0035",
+      "question_type": "single_choice",
+      "question_content": "某男，72岁。患前列腺增生症10年，症见腰膝酸软，尿频、尿急、尿痛，尿线细，伴小腹拘急疼痛。证属肾气不足、湿热瘀阻所致的癃闭，治当益肾活血、清热通淋，宜选用的成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "癃清片"
+        },
+        {
+          "option_id": "B",
+          "content": "三金颗粒"
+        },
+        {
+          "option_id": "C",
+          "content": "八正合剂"
+        },
+        {
+          "option_id": "D",
+          "content": "癃闭舒胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "萆薢分清丸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "癃闭舒胶囊【功能】益肾活血，清热通淋。【主治】肾气不足、湿热瘀阻所致的癃闭，症见腰膝酸软、尿频、尿急、尿痛、尿线细、伴小腹拘急疼痛；前列腺增生症见上述证候者。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 35,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0036",
+      "question_type": "single_choice",
+      "question_content": "内消瘰疬丸是治皮下结块，不热不痛的常用成药，某外科医师经常使用，此因该成药除软坚，散结外，又能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "化痰"
+        },
+        {
+          "option_id": "B",
+          "content": "燥湿"
+        },
+        {
+          "option_id": "C",
+          "content": "拔毒"
+        },
+        {
+          "option_id": "D",
+          "content": "化腐"
+        },
+        {
+          "option_id": "E",
+          "content": "化瘀"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "内消瘰疬丸【功能】化痰，软坚，散结。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 36,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0037",
+      "question_type": "single_choice",
+      "question_content": "某女，40岁。少腹有包块2年，逐渐增大，3个月前闭经，至今未行，症见面色黯黑，潮热羸瘦，肌肤甲错，证属瘀血内停所致的癥瘕、闭经，治当活血破瘀、通经消癥，宜选用的成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "女金丸"
+        },
+        {
+          "option_id": "B",
+          "content": "乌鸡白凤丸"
+        },
+        {
+          "option_id": "C",
+          "content": "大黄䗪虫丸"
+        },
+        {
+          "option_id": "D",
+          "content": "七制香附丸"
+        },
+        {
+          "option_id": "E",
+          "content": "少腹逐瘀丸"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "大黄䗪虫丸【功能】活血破瘀，通经消癥。【主治】瘀血内停所致的癥瘕、闭经，症见腹部肿块、肌肤甲错、面色黯黑、潮热羸瘦、经闭不行。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 37,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0038",
+      "question_type": "single_choice",
+      "question_content": "某女，5岁，因热毒内蕴、毒邪未尽导致口疮肿痛、烦躁口渴，大便秘结，儿科医师给其处以小儿化毒散。患儿家长依方购药，按说明服用数日，口疮痊愈。因小儿化毒散除清热解毒外，又能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "敛疮生肌"
+        },
+        {
+          "option_id": "B",
+          "content": "活血消肿"
+        },
+        {
+          "option_id": "C",
+          "content": "消肿散结"
+        },
+        {
+          "option_id": "D",
+          "content": "拔毒消肿"
+        },
+        {
+          "option_id": "E",
+          "content": "祛腐生肌"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "小儿化毒散【功能】清热解毒，活血消肿。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 38,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0039",
+      "question_type": "single_choice",
+      "question_content": "某女，30岁。患急性扁桃体炎2天。刻下咽部红肿、咽痛，伴发热、微恶风，脉浮数。证属外感风热，宜选用的成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "六神丸"
+        },
+        {
+          "option_id": "B",
+          "content": "清音丸"
+        },
+        {
+          "option_id": "C",
+          "content": "栀子金花丸"
+        },
+        {
+          "option_id": "D",
+          "content": "牛黄解毒片"
+        },
+        {
+          "option_id": "E",
+          "content": "复方鱼腥草片"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "复方鱼腥草片【功能】清热解毒。【主治】外感风热所致的急喉痹、急乳蛾、症见咽部红肿、咽痛；急性咽炎、急性扁桃体炎见上述证候者。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 39,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0040",
+      "question_type": "single_choice",
+      "question_content": "因内含有毒的朱砂而不能过量或长期服用的成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "七厘散"
+        },
+        {
+          "option_id": "B",
+          "content": "跌打丸"
+        },
+        {
+          "option_id": "C",
+          "content": "接骨丸"
+        },
+        {
+          "option_id": "D",
+          "content": "活血止痛散"
+        },
+        {
+          "option_id": "E",
+          "content": "接骨七厘片 第2题 配伍选择题 （每题1分，共60题，共60分）"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "七厘散组成血竭、制乳香、制没药、红花、儿茶、冰片、人工麝香、朱砂。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 40,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0041",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "凉血止血"
+        },
+        {
+          "option_id": "B",
+          "content": "息风止痉"
+        },
+        {
+          "option_id": "C",
+          "content": "升阳止泻"
+        },
+        {
+          "option_id": "D",
+          "content": "祛风止痛"
+        },
+        {
+          "option_id": "E",
+          "content": "疏肝，透疹 {TS}桑叶除疏散风热、清肺润燥外，又能（ ）。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "桑叶【功效】疏散风热，清肺润燥，平肝明目，凉血止血 。蔓荆子【功效】疏散风热，清利头目，祛风止痛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 41,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0043",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "熊胆"
+        },
+        {
+          "option_id": "B",
+          "content": "秦皮"
+        },
+        {
+          "option_id": "C",
+          "content": "夏枯草"
+        },
+        {
+          "option_id": "D",
+          "content": "谷精草"
+        },
+        {
+          "option_id": "E",
+          "content": "青葙子 {TS}某男，25岁。1周前患风热头痛，近日又患目赤肿痛羞明，治当疏散风热，明目退翳，宜选用的药是（ ）。 44、某女，45岁。患赤白带下半年，近日又患目赤肿痛。治当清肝明目、清热解毒、燥湿止带，宜选用的药是（ ）。 45、某女，40岁。素患有肝火上升之头晕目赤，近日又患痰火郁结之瘰疬。治当清肝明目、散结消肿，宜选用的药是（ ）。"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "谷精草【功效】疏散风热，明目退翳。秦皮【功效】清热解毒，燥湿止带，清肝明目。夏枯草【功效】清肝明目，散结消肿。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 43,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0046",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "射干"
+        },
+        {
+          "option_id": "B",
+          "content": "白头翁"
+        },
+        {
+          "option_id": "C",
+          "content": "马齿苋"
+        },
+        {
+          "option_id": "D",
+          "content": "穿心莲"
+        },
+        {
+          "option_id": "E",
+          "content": "白花蛇舌草 {TS}既治热毒血痢，又治阿米巴痢疾的药是（ ）。"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "白头翁【功效】清热解毒，凉血止痢。【主治】热毒血痢，阿米巴痢疾。穿心莲【功效】清热解毒，燥湿。【主治】(1)温病初起，感冒发热，肺热咳喘，肺痈，咽喉肿痛。(2)痈疮疖肿，毒蛇咬伤。(3)湿热泻痢，热淋涩痛，湿疹。马齿苋【功效】清热解毒，凉血止血，通淋。【主治】(1)热毒血痢，热毒疮疡。(2)血热崩漏、便血。(3)热淋，血淋。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 46,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0049",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "秦艽"
+        },
+        {
+          "option_id": "B",
+          "content": "川乌"
+        },
+        {
+          "option_id": "C",
+          "content": "络石藤"
+        },
+        {
+          "option_id": "D",
+          "content": "伸筋草"
+        },
+        {
+          "option_id": "E",
+          "content": "香加皮 {TS}某女，36岁。患湿热痹痛2年，近日新患湿热黄疸，宜选用的药是（ ）。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "秦艽【功效】祛风湿，舒筋络，清虚热，利湿退黄。【主治】(1)风湿热痹，风寒湿痹，表证夹湿。(2)骨蒸潮热。(3)湿热黄疸。络石藤【功效】祛风通络，凉血消肿。【主治】(1)治风湿痹痛，筋脉拘挛。(2)喉痹，痈肿。香加皮【功效】祛风湿，强筋骨，利水消肿。【主治】(1)风寒湿痹，腰膝酸软。(2)水肿(尤宜心衰性水肿)，小便不利。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 49,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0052",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "薤白"
+        },
+        {
+          "option_id": "B",
+          "content": "甘松"
+        },
+        {
+          "option_id": "C",
+          "content": "沉香"
+        },
+        {
+          "option_id": "D",
+          "content": "香附"
+        },
+        {
+          "option_id": "E",
+          "content": "川楝子 {TSE}某女，86岁。体瘦，患支气管哮喘20年，时而喘息，动则加重，证属下元虚冷、肾不纳气之虚喘。日前因不慎着凉，又患胃寒呕吐，治当温中止呕、温肾纳气，宜选用的药是（）53、某男，50岁。体胖，患胸痹5年，时而心痛，痰多胸闷，苔白腻，证属痰浊闭阻，胸阳不振。日前因饮食不洁，又患胃肠气滞、泻痢里急后重，治当通阳散结、行气导滞，宜选用的药是（ ）。"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "沉香【功效】行气止痛，温中止呕，温肾纳气。【主治】(1)寒凝气滞之胸腹胀闷作痛。(2)胃寒呕吐。(3)下元虚冷、肾不纳气之虚喘，痰饮咳喘属上盛下虚者。薤白【功效】通阳散结，行气导滞。【主治】(1)痰浊闭阻胸阳之胸痹证。(2)胃肠气滞，泻痢里急后重。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 52,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0054",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "茜草"
+        },
+        {
+          "option_id": "B",
+          "content": "三七"
+        },
+        {
+          "option_id": "C",
+          "content": "槐花"
+        },
+        {
+          "option_id": "D",
+          "content": "艾叶"
+        },
+        {
+          "option_id": "E",
+          "content": "苎麻根 {TS}某女，48岁。素体虚弱，时见胸腹刺痛，近日又患崩漏，色暗红，并有少量血块，舌质暗淡，苔薄白。治当化瘀止血、活血定痛，兼以补虚，宜选用的药是（ ）。"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "三七【功效】化瘀止血，活血定痛。【主治】(1)咳血，吐血，衄血，便血，崩漏，外伤出血。(2)跌打损伤，瘀滞肿痛。(3)胸腹刺痛。艾叶【功效】温经止血，散寒止痛。【主治】(1)虚寒性崩漏下血、胎漏。(2)经寒痛经、月经不调，带下清稀，宫冷不孕。(3)脘腹冷痛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 54,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0056",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "下乳消肿，利尿通淋"
+        },
+        {
+          "option_id": "B",
+          "content": "破血通经，消食化积"
+        },
+        {
+          "option_id": "C",
+          "content": "化瘀止血，解蛇虫毒"
+        },
+        {
+          "option_id": "D",
+          "content": "通经下乳，消肿排脓"
+        },
+        {
+          "option_id": "E",
+          "content": "化瘀止血，生肌敛疮 {TS}血竭性平，除能活血定痛外，又能（ ）"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "血竭【功效】活血定痛，化瘀止血，生肌敛疮。 五灵脂【功效】活血止痛，化瘀止血，解蛇虫毒。王不留行【功效】活血通经，下乳消肿，利尿通淋。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 56,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0059",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "竹沥"
+        },
+        {
+          "option_id": "B",
+          "content": "竹叶"
+        },
+        {
+          "option_id": "C",
+          "content": "礞石"
+        },
+        {
+          "option_id": "D",
+          "content": "海浮石"
+        },
+        {
+          "option_id": "E",
+          "content": "天竺黄 {TS}性寒，既清热化痰，又清心定惊的药是（ ）。"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "天竺黄【功效】清热化痰，清心定惊。礞石【功效】消痰下气，平肝镇惊。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 59,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0061",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "润肠通便，补虚"
+        },
+        {
+          "option_id": "B",
+          "content": "润肠通便，润肺化痰"
+        },
+        {
+          "option_id": "C",
+          "content": "润肠通便，降气化痰"
+        },
+        {
+          "option_id": "D",
+          "content": "润肠通便，凉血止血"
+        },
+        {
+          "option_id": "E",
+          "content": "润肠通便，利水消肿 {TS}某女，70岁。患肠燥便秘与脚气浮肿，医师在方中处以郁李仁，此因该药的功效是（）。"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "郁李仁【功效】润肠通便，利水消肿。瓜蒌【功效】瓜蒌皮长于清肺化痰，利气宽胸；瓜蒌仁长于润肺化痰，滑肠通便；全瓜蒌兼具两者功效。紫苏子【功效】降气化痰，止咳平喘，润肠通便。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 61,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0064",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "山药"
+        },
+        {
+          "option_id": "B",
+          "content": "黄芪"
+        },
+        {
+          "option_id": "C",
+          "content": "大枣"
+        },
+        {
+          "option_id": "D",
+          "content": "红景天"
+        },
+        {
+          "option_id": "E",
+          "content": "西洋参 {TS}某女，50岁。患脾虚乏力，食少便溏数年，近日又见血虚脏躁、神志不安。证属中气虚弱、血不养脏，治当补中益气，养血安神。宜选用的药是（ ）。"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "大枣【功效】补中益气，养血安神，缓和药性。 黄芪【功效】补气升阳，益卫固表，托毒生肌，利水消肿。 山药【功效】益气养阴，补脾肺肾，固精止带。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 64,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0067",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "滋肾阴"
+        },
+        {
+          "option_id": "B",
+          "content": "补脾气"
+        },
+        {
+          "option_id": "C",
+          "content": "祛风湿"
+        },
+        {
+          "option_id": "D",
+          "content": "纳肾气"
+        },
+        {
+          "option_id": "E",
+          "content": "祛痰湿 {TS}淫羊藿除补肾阳、强筋骨外，又能（ ）。"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "淫羊藿【功效】补肾阳，强筋骨，祛风湿。巴戟天【功效】补肾阳，强筋骨，祛风湿。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 67,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0069",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麦冬"
+        },
+        {
+          "option_id": "B",
+          "content": "天冬"
+        },
+        {
+          "option_id": "C",
+          "content": "玉竹"
+        },
+        {
+          "option_id": "D",
+          "content": "龙眼肉"
+        },
+        {
+          "option_id": "E",
+          "content": "莲子肉 {TS}某女，55岁。体瘦，数月来，心烦失眠，证属心阴虚，心火旺，治当养阴、清心除烦，宜选用的药是（ ）。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "麦冬【功效】润肺养阴，益胃生津，清心除烦，润肠通便。莲子肉【功效】补脾止泻，益肾固精，止带，养心安神。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 69,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0071",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "午时茶颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "双黄连颗粒"
+        },
+        {
+          "option_id": "C",
+          "content": "感冒清热颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "九味羌活颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "桑菊感冒颗粒 {TS}某女，30岁。感冒3日，症见恶寒、发热、无汗，头重而痛，肢体酸痛，证属外感风寒夹湿，治当疏风解表、散寒除湿。宜选用的成药是（ ）"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "九味羌活丸【功能】疏风解表，散寒除湿。【主治】外感风寒夹湿所致的感冒，症见恶寒、发热、无汗、头重而痛、肢体酸痛。桑菊感冒片【功能】疏风清热，宣肺止咳。【主治】风热感冒初起，头痛、咳嗽、口干、咽痛。午时茶颗粒【功能】祛风解表，化湿和中。【主治】外感风寒、内伤食积证，症见恶寒发热、头痛身楚、胸脘满闷、恶心呕吐、腹痛腹泻。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 71,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0074",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热泻火，利尿通便"
+        },
+        {
+          "option_id": "B",
+          "content": "清肝利肺，降逆除烦"
+        },
+        {
+          "option_id": "C",
+          "content": "清热泻火，散风止痛"
+        },
+        {
+          "option_id": "D",
+          "content": "清胃泻火，解毒消肿"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒，散瘀止痛 {TS}牛黄上清丸主治热毒内盛，风火上攻所致的头痛眩晕、咽喉肿痛，牙龈肿痛、大便燥结，其功能是（ ）。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 74,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0076",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蛤蚧定喘丸"
+        },
+        {
+          "option_id": "B",
+          "content": "通宣理肺丸"
+        },
+        {
+          "option_id": "C",
+          "content": "二母宁嗽丸"
+        },
+        {
+          "option_id": "D",
+          "content": "人参保肺丸"
+        },
+        {
+          "option_id": "E",
+          "content": "礞石滚痰丸 {TS}某男，32岁。因痰火扰心导致癫狂惊悸，喘咳痰稠，大便秘结。治当逐痰降火，宜选用的成药是（ ）。"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "礞石滚痰丸【功能】逐痰降火。【主治】痰火扰心所致的癫狂惊悸，或喘咳痰稠、大便秘结。二母宁嗽丸【功能】清肺润燥，化痰止咳。【主治】燥热蕴肺所致的咳嗽，症见痰黄而黏不易咳出、胸闷气促、久咳不止、声哑喉痛。蛤蚧定喘丸【功能】滋阴清肺，止咳平喘。【主治】肺肾两虚、阴虚肺热所致的虚劳久咳、年老哮喘、气短烦热、胸满郁闷、自汗盗汗。 解析：礞石滚痰丸【功能】逐痰降火。【主治】痰火扰心所致的癫狂惊悸，或喘咳痰稠、大便秘结。二母宁嗽丸【功能】清肺润燥，化痰止咳。【主治】燥热蕴肺所致的咳嗽，症见痰黄而黏不易咳出、胸闷气促、久咳不止、声哑喉痛。蛤蚧定喘丸【功能】滋阴清肺，止咳平喘。【主治】肺肾两虚、阴虚肺热所致的虚劳久咳、年老哮喘、气短烦热、胸满郁闷、自汗盗汗。 解析：礞石滚痰丸【功能】逐痰降火。【主治】痰火扰心所致的癫狂惊悸，或喘咳痰稠、大便秘结。二母宁嗽丸【功能】清肺润燥，化痰止咳。【主治】燥热蕴肺所致的咳嗽，症见痰黄而黏不易咳出、胸闷气促、久咳不止、声哑喉痛。蛤蚧定喘丸【功能】滋阴清肺，止咳平喘。【主治】肺肾两虚、阴虚肺热所致的虚劳久咳、年老哮喘、气短烦热、胸满郁闷、自汗盗汗。 解析：左归丸【功能】滋肾补阴。【主治】真阴不足、腰酸膝软、盗汗遗精、神疲口燥。麦味地黄丸【功能】滋肾养肺。 【主治】肺肾阴亏、潮热盗汗、咽干咳血、眩晕耳鸣、腰膝酸软、消渴。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 76,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0079",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "玉泉丸"
+        },
+        {
+          "option_id": "B",
+          "content": "左归丸"
+        },
+        {
+          "option_id": "C",
+          "content": "薯蓣丸"
+        },
+        {
+          "option_id": "D",
+          "content": "大补阴丸"
+        },
+        {
+          "option_id": "E",
+          "content": "麦味地黄丸 {TS}某男，59岁，半年来，腰酸膝软，盗汗遗精，神疲口燥，证属真阴不足，治当滋肾补阴，宜选用的成药是（ ）。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 79,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0081",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "十全大补丸"
+        },
+        {
+          "option_id": "B",
+          "content": "人参归脾丸"
+        },
+        {
+          "option_id": "C",
+          "content": "人参固本丸"
+        },
+        {
+          "option_id": "D",
+          "content": "桂附地黄丸"
+        },
+        {
+          "option_id": "E",
+          "content": "七宝美髯丸 {TS}某女，58岁。半年来，面色苍白，气短心悸，头晕自汗，体倦乏力，四肢不温。证属气血两虚，治当温补气血，宜选用的成药是（ ）。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "十全大补丸【功能】温补气血。【主治】气血两虚，面色苍白，气短心悸，头晕自汗，体倦乏力，四肢不温，月经量多。人参固本丸【功能】滋阴益气，固本培元。【主治】阴虚气弱，虚劳咳嗽、心悸气短、骨蒸潮热、腰酸耳鸣、遗精盗汗、大便干燥。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 81,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0083",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "四逆散"
+        },
+        {
+          "option_id": "B",
+          "content": "逍遥丸"
+        },
+        {
+          "option_id": "C",
+          "content": "小柴胡颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "柴胡舒肝丸"
+        },
+        {
+          "option_id": "E",
+          "content": "气滞胃痛颗粒 {TS}某男，38岁，因外感病邪犯少阳导致寒热往来，胸胁苦满，食欲不振，心烦喜呕，口苦咽干。治当解表散热、疏肝和胃，宜选用的成药是（ ）。"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "小柴胡颗粒【功能】解表散热，疏肝和胃。 【主治】外感病邪犯少阳证，症见寒热往来、胸胁苦满、食欲不振、心烦喜呕、口苦咽 干。 逍遥丸【功能】疏肝健脾，养血调经。 【主治】肝郁脾虚所致的郁闷不舒、胸胁胀痛、头晕目眩、食欲减退、月经不调。 四逆散【功能】透解郁热，疏肝理脾。 【主治】肝气郁结、肝脾不和所致的胁痛、痢疾，症见脘腹胁痛、热厥手足不温、泻痢 下重。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 83,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0086",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "天麻丸"
+        },
+        {
+          "option_id": "B",
+          "content": "木瓜丸"
+        },
+        {
+          "option_id": "C",
+          "content": "痛风定胶囊"
+        },
+        {
+          "option_id": "D",
+          "content": "尪痹颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "风湿骨痛胶囊 {TS}某男，69岁。患风湿性关节炎，症见腰脊疼痛，四肢关节冷痛。证属寒湿痹阻经络，治当温经散寒、通络止痛，宜选用的成药是（ ）。"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "风湿骨痛丸【功能】温经散寒，通络止痛。 【主治】寒湿痹阻经络所致的痹病，症见腰脊疼痛、四肢关节冷痛；风湿性关节炎见上述证候者。 痛风定胶囊【功能】清热祛湿，活血通络定痛。 【主治】湿热瘀阻所致的痹病，症见关节红肿热痛、伴有发热、汗出不解、口渴心烦、小便黄、舌红苔黄腻、脉滑数；痛风见上述证候。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 86,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0088",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "紫草膏"
+        },
+        {
+          "option_id": "B",
+          "content": "如意金黄散"
+        },
+        {
+          "option_id": "C",
+          "content": "拔毒生肌散"
+        },
+        {
+          "option_id": "D",
+          "content": "生肌玉红膏"
+        },
+        {
+          "option_id": "E",
+          "content": "京万红软膏 {TS}某女，89岁。因倒开水不慎，将左手背轻度烫伤，肿痛溃烂，宜选用的成药是（ ）89、某女，25岁。右足踝处新患疮疡肿痛，症见肌肤红、肿、热、痛，宜选用的成药是（ ）90、某男，65岁。右腿胫骨处久患溃疡，症见疮面脓液稠厚、腐肉未脱、久不生肌，宜选用的成药是（ ）。"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "京万红软膏【功能】活血解毒，消肿止痛，去腐生肌。 【主治】轻度水、火烫伤，疮疡肿痛，创面溃烂。 如意金黄散【功能】清热解毒，消肿止痛。 【主治】热毒瘀滞肌肤所致疮疡肿痛、丹毒流注，症见肌肤红、肿、热、痛。亦可用于跌打损伤。 拔毒生肌散【功能】拔毒生肌。 【主治】热毒内蕴所致的溃疡，症见疮面脓液稠厚、腐肉未脱、久不生肌。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 88,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0097",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄连羊肝丸"
+        },
+        {
+          "option_id": "B",
+          "content": "石斛夜光丸"
+        },
+        {
+          "option_id": "C",
+          "content": "消栓通络胶囊"
+        },
+        {
+          "option_id": "D",
+          "content": "血府逐瘀胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "复方血栓通胶囊 {TS}某女，63岁，2天前，患视网膜静脉阻塞，症见视力下降，眼底瘀血征象，并见神疲乏力、咽干、口干。证属血瘀兼心阴两虚，宜选用的成药是（ ）。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 97,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0099",
+      "question_type": "single_choice",
+      "question_content": "根据以下材料，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "藿胆丸"
+        },
+        {
+          "option_id": "B",
+          "content": "鼻炎康片"
+        },
+        {
+          "option_id": "C",
+          "content": "辛芩颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "千柏鼻炎片"
+        },
+        {
+          "option_id": "E",
+          "content": "鼻渊舒口服液 {TS}因处方组成含千里光，不宜过量或持久服用的成药是（ ）"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "千柏鼻炎片【注意事项】因组成含千里光，不宜过量或持久服用。鼻炎康片【注意事项】组成含马来酸氯苯那敏，易引起嗜睡，故服药期间不得驾驶车、船，不得从事高空作业、机械作业及操作精密仪器。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 99,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0101",
+      "question_type": "single_choice",
+      "question_content": "根据下面材料，回答{TSE}题 某男，37岁。长夏时节，天气由暑热突转阴雨连绵，因着衣不慎，遂致感冒。症见头痛昏重，胸膈痞闷，脘腹胀痛，呕吐泄泻，舌质淡红，苔白腻。证属外感风寒、内伤湿滞之感冒，接诊医师处以藿香正气水。服用2天后症状消失。 {TS}藿香正气水的功能是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "解表化湿，理气和中"
+        },
+        {
+          "option_id": "B",
+          "content": "解表散寒，祛风胜湿"
+        },
+        {
+          "option_id": "C",
+          "content": "解表散寒，燥湿和中"
+        },
+        {
+          "option_id": "D",
+          "content": "解表胜湿，祛风化痰"
+        },
+        {
+          "option_id": "E",
+          "content": "解表散风，理气和中"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "藿香正气水【功能】解表化湿，理气和中。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 101,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0102",
+      "question_type": "single_choice",
+      "question_content": "在藿香正气水处方的臣药中，内能燥湿而健脾，外能散风寒而发表的药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "陈皮"
+        },
+        {
+          "option_id": "B",
+          "content": "茯苓"
+        },
+        {
+          "option_id": "C",
+          "content": "苍术"
+        },
+        {
+          "option_id": "D",
+          "content": "姜厚朴"
+        },
+        {
+          "option_id": "E",
+          "content": "生半夏"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "藿香正气水【组成】君药：广藿香油，臣药：苍术、姜厚朴、生半夏、陈皮、茯苓、大腹皮。佐药：紫苏叶油、白芷。使药：甘草浸膏。臣药苍术苦燥辛散，芳香温化，既燥湿而健脾，又散风寒而除痹发表。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 102,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0103",
+      "question_type": "single_choice",
+      "question_content": "藿香正气水处方的佐药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白芷、白术"
+        },
+        {
+          "option_id": "B",
+          "content": "香薷、防风"
+        },
+        {
+          "option_id": "C",
+          "content": "紫苏梗、防风"
+        },
+        {
+          "option_id": "D",
+          "content": "香薷、白术"
+        },
+        {
+          "option_id": "E",
+          "content": "白芷、紫苏叶油"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "藿香正气水【组成】君药：广藿香油，臣药：苍术、姜厚朴、生半夏、陈皮、茯苓、大腹皮。佐药：紫苏叶油、白芷。使药：甘草浸膏。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 103,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0104",
+      "question_type": "single_choice",
+      "question_content": "根据下面材料，回答{TSE}题 某男，36岁，患慢性肾炎5年，求中医诊治，希冀配服中成药以缓解病情，症见浮肿，腰痛，乏力，小便不利，舌红，苔薄黄腻，证属湿热内蕴兼气虚，据此，医师处以肾炎四味片。{TS}医师处以肾炎四味片，此因其功能是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热利尿，补气活血"
+        },
+        {
+          "option_id": "B",
+          "content": "清热利尿，补气健脾"
+        },
+        {
+          "option_id": "C",
+          "content": "清热解毒，补气健脾"
+        },
+        {
+          "option_id": "D",
+          "content": "凉血利湿，补气益肾"
+        },
+        {
+          "option_id": "E",
+          "content": "凉血利湿，补气健脾"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "肾炎四味片【功能】清热利尿，补气健脾。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 104,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0105",
+      "question_type": "single_choice",
+      "question_content": "3个月后，患者又来就诊，诉云：服上药后，浮肿减轻，尿量有增，乏力大减，3天前，因感冒咽痛，浮肿加重，不但肢体浮肿，又添眼睑浮肿，伴发热，微恶风，尿痛，尿急而少，纳可，大便尚调，尿检有蛋白与潜血，证属风水水肿，治当宣肺解表，利水消肿，医师处以麻黄，连翘，金银花，茯苓，猪苓，泽泻，车前子，赤小豆，芦根，7剂，方中能宣肺利水的药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "连翘"
+        },
+        {
+          "option_id": "B",
+          "content": "芦根"
+        },
+        {
+          "option_id": "C",
+          "content": "泽泻"
+        },
+        {
+          "option_id": "D",
+          "content": "麻黄"
+        },
+        {
+          "option_id": "E",
+          "content": "车前子"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "麻黄【功效】发汗解表，宣肺平喘，利水消肿。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 105,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0106",
+      "question_type": "single_choice",
+      "question_content": "1周后，患者再来就诊，诉云：药后发热，微恶风已，尿急，尿痛大减，眼睑浮肿也减轻，唯尿中仍有蛋白与潜血，据此，医师在原方上又加石韦、白茅根，再进7剂。并嘱其药后如病证恢复至首诊状态，可继服肾炎四味片，医师加用石韦与白茅根，是因此二药除均能利尿通淋外，又均能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "收敛止血"
+        },
+        {
+          "option_id": "B",
+          "content": "凉血止血"
+        },
+        {
+          "option_id": "C",
+          "content": "化瘀止血"
+        },
+        {
+          "option_id": "D",
+          "content": "益气止血"
+        },
+        {
+          "option_id": "E",
+          "content": "温经止血"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "石韦【功效】利尿通淋，凉血止血，清肺止咳。白茅根【功效】凉血止血，清热生津，利尿通淋。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 106,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0107",
+      "question_type": "single_choice",
+      "question_content": "根据下面材料，回答{TSE}题 某男，35岁，春节期间突患急性胆囊炎，症见胁痛，口苦，舌红苔黄。证属肝胆湿热，医师依据其要求，给其处以方便服用的消炎利胆颗粒。{TS}医师处以消炎利胆颗粒，此因其功能是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热，活血，利胆"
+        },
+        {
+          "option_id": "B",
+          "content": "清热，胜湿，利胆"
+        },
+        {
+          "option_id": "C",
+          "content": "凉血，清热，利胆"
+        },
+        {
+          "option_id": "D",
+          "content": "清热，祛湿，利胆"
+        },
+        {
+          "option_id": "E",
+          "content": "凉血，解毒，利胆"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "消炎利胆片【功能】清热，祛湿，利胆。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 107,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0108",
+      "question_type": "single_choice",
+      "question_content": "药师在发药时告诉患者，药不宜久服，是因其处方中含一味有一定毒性的药，该药是（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄连"
+        },
+        {
+          "option_id": "B",
+          "content": "苦参"
+        },
+        {
+          "option_id": "C",
+          "content": "苦木"
+        },
+        {
+          "option_id": "D",
+          "content": "重楼"
+        },
+        {
+          "option_id": "E",
+          "content": "穿心莲"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "消炎利胆片因其所含苦木有一定毒性，故不宜久服。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 108,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0109",
+      "question_type": "single_choice",
+      "question_content": "服用一周后，胁痛减轻，口苦不减。前日天气突然升温。又引发急性支气管炎，症见发热，恶寒，胸膈满闷，咳嗽咽痛。证属风热咳嗽。据此医师除给其处以消炎利胆颗粒外，又增加了急支糖浆。并嘱其服用方法。此因急支糖浆除能清热化痰外，又能（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "宣肺止咳"
+        },
+        {
+          "option_id": "B",
+          "content": "燥湿止咳"
+        },
+        {
+          "option_id": "C",
+          "content": "理气止咳"
+        },
+        {
+          "option_id": "D",
+          "content": "润肺止咳"
+        },
+        {
+          "option_id": "E",
+          "content": "敛肺止咳"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "急支糖浆【功能】清热化痰，宣肺止咳。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 109,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0110",
+      "question_type": "single_choice",
+      "question_content": "药师在发药时询问患者是否患有心脏病和高血压，若是，则需慎服该成药。因为急支糖浆内含（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "紫菀"
+        },
+        {
+          "option_id": "B",
+          "content": "麻黄"
+        },
+        {
+          "option_id": "C",
+          "content": "四季青"
+        },
+        {
+          "option_id": "D",
+          "content": "鱼腥草"
+        },
+        {
+          "option_id": "E",
+          "content": "金荞麦 第4题 多选题 （每题1分，共10题，共10分）"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "急支糖浆【注意事项】因含有麻黄，故运动员、心脏病、高血压病者慎用。服药期间，忌食辛辣、生冷、油腻食物，忌吸烟饮酒。 $$ \\mathbf {A}, \\mathbf {B}, \\mathbf {C}, \\mathbf {D}, \\mathbf {E} $$ 112 答案： $\\mathbf { A , B , C , E }$ 解析：甘遂【使用注意】本品峻泻有毒，故孕妇及虚寒阴水者忌服，体弱者慎服，不可连续过量服用。反甘草。 113 答案： $\\mathbf { \\delta B , C , E }$ 解析：本题中安胎药有，紫苏梗、竹茹、黄芩、苎麻根，但是清热安胎的药物是竹茹、黄芩、苎麻根。 答案：114 $\\mathbf { A } , \\mathbf { B } , \\mathbf { D }$ 解析：半夏【性能特点】本品辛散温燥。有毒而力较强，入脾胃肺经，善祛脾胃湿痰。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 110,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0111",
+      "question_type": "single_choice",
+      "question_content": "黄连是临床常用的清热燥湿，泻火解毒药。其药理作用有（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "降血糖"
+        },
+        {
+          "option_id": "B",
+          "content": "抗溃疡"
+        },
+        {
+          "option_id": "C",
+          "content": "抑制中枢"
+        },
+        {
+          "option_id": "D",
+          "content": "增强免疫功能"
+        },
+        {
+          "option_id": "E",
+          "content": "抗心律失常和心肌缺血"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 111,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0112",
+      "question_type": "single_choice",
+      "question_content": "某女，30岁，患风痰癫痫，某中医建议其仿古遂心丹，将甘遂研末入猪心内煨过，与朱砂为丸服，药师在调配时，为保证用药安全，特向患者介绍了甘遂与朱砂的注意事项，其中，甘遂的使用注意事项主要有（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇忌服"
+        },
+        {
+          "option_id": "B",
+          "content": "不能与甘草同用"
+        },
+        {
+          "option_id": "C",
+          "content": "虚寒阴水者忌服"
+        },
+        {
+          "option_id": "D",
+          "content": "痰饮停滞者忌用"
+        },
+        {
+          "option_id": "E",
+          "content": "不可连续和过量服用"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 112,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0113",
+      "question_type": "single_choice",
+      "question_content": "妇女怀孕后，若因胎热所导致的胎动不安，治当清热安胎，宜选用的药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "紫苏梗"
+        },
+        {
+          "option_id": "B",
+          "content": "竹茹"
+        },
+        {
+          "option_id": "C",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "D",
+          "content": "黄柏"
+        },
+        {
+          "option_id": "E",
+          "content": "苎麻根"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 113,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0114",
+      "question_type": "single_choice",
+      "question_content": "半夏为温化寒痰之要药，其性能特点是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "有毒而力较强"
+        },
+        {
+          "option_id": "B",
+          "content": "辛散温燥"
+        },
+        {
+          "option_id": "C",
+          "content": "苦能降泄"
+        },
+        {
+          "option_id": "D",
+          "content": "善祛脾胃湿痰"
+        },
+        {
+          "option_id": "E",
+          "content": "善祛经络风痰"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 114,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0115",
+      "question_type": "multiple_choice",
+      "question_content": "某女，50岁，适值更年期，患阴虚崩漏，口干口渴，舌红少苔。治当滋阴，凉血止血，宜选用药是（ ）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "龟甲"
+        },
+        {
+          "option_id": "B",
+          "content": "鳖甲"
+        },
+        {
+          "option_id": "C",
+          "content": "女贞子"
+        },
+        {
+          "option_id": "D",
+          "content": "墨旱莲"
+        },
+        {
+          "option_id": "E",
+          "content": "蛤蟆油"
+        }
+      ],
+      "answer": [
+        "A",
+        "D"
+      ],
+      "explanation": "龟甲【功效】滋阴潜阳，益肾健骨，养血补心，凉血止血。墨旱莲【功效】滋阴益肾，凉血止血。 116 答案： $\\mathbf { \\delta B , C , D , E }$ 解析：小青龙颗粒【组成】君药：麻黄、桂枝，臣药：干姜、细辛；佐药：五味子、白芍、法半夏；使药：炙甘草。 117 答案： $\\mathbf { A } , \\mathbf { B } , \\mathbf { C } , \\mathbf { D } , \\mathbf { E }$ 解析：安宫牛黄丸【注意事项】孕妇慎用。寒闭神昏者不宜使用。因其含有毒的朱砂、雄黄，故不宜过量或久服，肝肾功能不全者慎用。服药期间，忌食辛辣食物。在治疗过程中如出现肢寒畏冷、面色苍白、冷汗不止、脉微欲绝，由闭证变为脱证者应立即停药。高热神昏、中风昏迷等口服本品困难者，当鼻饲给药。 118 答案： $\\mathbf { A } , \\mathbf { B } , \\mathbf { E }$ 解析：通心络胶囊【功能】益气活血，通络止痛。 诺迪康胶囊【功能】益气活血，通脉止痛。 119 答案： $\\mathbf { A , B , C , D }$ 解析：小金丸【功能】散结消肿，化瘀止痛。【主治】痰气凝滞所致的瘰疬、瘿瘤、乳岩、乳癖，症见肌肤或肌肤下肿块一处或数处、推之能动、或骨及骨关节肿大、皮色不变、肿硬作痛。 120 答案： $\\mathbf { A } , \\mathbf { B } , \\mathbf { C } , \\mathbf { D } , \\mathbf { E }$ 解析：妇科千金片【注意事项】气滞血瘀、寒凝血瘀者慎用。孕妇慎用。饮食宜清淡，忌食辛辣食物。糖尿病患者慎用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 115,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0116",
+      "question_type": "single_choice",
+      "question_content": "组成小青龙颗粒处方的药物，除麻黄、桂枝、干姜、细辛外，还有（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白术"
+        },
+        {
+          "option_id": "B",
+          "content": "白芍"
+        },
+        {
+          "option_id": "C",
+          "content": "五味子"
+        },
+        {
+          "option_id": "D",
+          "content": "炙甘草"
+        },
+        {
+          "option_id": "E",
+          "content": "法半夏"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 116,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0117",
+      "question_type": "single_choice",
+      "question_content": "某女，42岁，素体壮健，突然患中毒性脑病，症见高热惊厥，神昏谵语，医师对其施用西医常规治疗外，又处以安宫牛黄丸，以增强疗效，药师亲自将安宫牛黄丸送至其床头，并详告家属该成药的用法与注意事项，其中，安宫牛黄丸的注意事项主要有（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇慎用"
+        },
+        {
+          "option_id": "B",
+          "content": "不宜过量或久服"
+        },
+        {
+          "option_id": "C",
+          "content": "寒闭神昏者不宜使用"
+        },
+        {
+          "option_id": "D",
+          "content": "肝肾功能不全者慎用"
+        },
+        {
+          "option_id": "E",
+          "content": "服药期间忌食辛辣食物"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 117,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0118",
+      "question_type": "single_choice",
+      "question_content": "某医师治疗心血管病常用的成药有通心络胶囊与诺迪康胶囊，二者均具有的功能有（）",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "益气"
+        },
+        {
+          "option_id": "B",
+          "content": "活血"
+        },
+        {
+          "option_id": "C",
+          "content": "养血"
+        },
+        {
+          "option_id": "D",
+          "content": "豁痰"
+        },
+        {
+          "option_id": "E",
+          "content": "止痛"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 118,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0119",
+      "question_type": "single_choice",
+      "question_content": "小金胶囊能散结消肿，化瘀止痛，善治痰气凝滞所致病证。主要有（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "瘰疬"
+        },
+        {
+          "option_id": "B",
+          "content": "乳癖"
+        },
+        {
+          "option_id": "C",
+          "content": "瘿瘤"
+        },
+        {
+          "option_id": "D",
+          "content": "乳岩"
+        },
+        {
+          "option_id": "E",
+          "content": "乳痈红肿"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 119,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-de6440fff0-q0120",
+      "question_type": "single_choice",
+      "question_content": "某女，38岁。患慢性盆腔炎与慢性宫颈炎，症见带下量多，色黄质稠臭秽，小腹胀痛，腰骶酸痛，神疲乏力。病证属湿热瘀阻所致带下病，腹痛，医师处以妇科千金片，药师在售药时，向其详述了该成药的用法与注意事项，其中注意事项（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕妇慎用"
+        },
+        {
+          "option_id": "B",
+          "content": "气滞血瘀者慎用"
+        },
+        {
+          "option_id": "C",
+          "content": "寒凝血瘀者慎用"
+        },
+        {
+          "option_id": "D",
+          "content": "糖尿病患者慎用"
+        },
+        {
+          "option_id": "E",
+          "content": "饮食宜清淡，忌辛辣食物"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药二真题（15-24年）\\2017年执业药师考试《中药学专业知识（二）》真题及解析\\full.md",
+        "number": 120,
+        "answer_source": ""
+      }
+    }
+  ]
+}

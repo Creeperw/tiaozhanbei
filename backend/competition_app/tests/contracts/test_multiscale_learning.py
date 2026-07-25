@@ -35,13 +35,6 @@ def valid_candidate_payload() -> dict[str, object]:
                 "unit": "ratio_0_1",
                 "source_refs": ["mastery:MASTER_1"],
             },
-            "difficulty_fit": {
-                "available": False,
-                "value": None,
-                "unit": "ratio_0_1",
-                "source_refs": [],
-                "unavailable_reason": "resource_difficulty_missing",
-            },
         },
         "evidence_refs": ["evidence:TB_1"],
         "source_refs": ["task:TASK_1"],

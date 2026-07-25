@@ -170,6 +170,45 @@ describe('DashboardPage learning workspace', () => {
     });
   });
 
+  it('renders atomic daily items with derived parent progress and bound actions', async () => {
+    const onNavigate = vi.fn();
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      const payload = url.endsWith('/dashboard/home') ? {
+        hero: { greeting: '你好', goal: '完成今日任务', focus: '按原子项推进' },
+        yesterday_feedback: { metrics: [] },
+        current_learning_task: {
+          task_id: 'TASK_ATOMIC', title: '完成今日四项训练', duration: '40 分钟',
+          progress: { completed: 2, total: 4, rate: 0.5 },
+          items: [
+            { task_item_id: 'ITEM_1', item_type: 'knowledge_practice', title: '方剂知识点练习', estimated_minutes: 10, status: 'in_progress', progress: { reviewed_questions: 2, required_questions: 3 }, action: { destination: 'workshop.practice', params: { taskItemId: 'ITEM_1' } } },
+            { task_item_id: 'ITEM_2', item_type: 'video_section', title: '观看配伍视频', estimated_minutes: 8, status: 'in_progress', progress: { coverage: 0.72 }, action: { destination: 'workshop.practice', params: { taskItemId: 'ITEM_2' } } },
+            { task_item_id: 'ITEM_3', item_type: 'recall', title: '闭卷回忆', estimated_minutes: 7, status: 'completed', progress: {}, action: { destination: 'workshop.practice', params: { taskItemId: 'ITEM_3' } } },
+            { task_item_id: 'ITEM_4', item_type: 'paper', title: '冻结试卷', estimated_minutes: 15, status: 'completed', progress: { reviewed_questions: 5, required_questions: 5 }, action: { destination: 'workshop.practice', params: { taskItemId: 'ITEM_4' } } },
+          ],
+          knowledge_cards: [],
+        },
+        today_tasks: [], recommendations: [], continue_learning: [], announcements: [],
+      } : url.endsWith('/training/onboarding/status')
+        ? { needs_survey_popup: false }
+        : { schema_version: '1.0', nodes: [], plan_ref: null, items: [], total: 0 };
+      return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify(payload) });
+    }));
+
+    render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={onNavigate} />);
+
+    const task = await screen.findByRole('region', { name: '今日任务' });
+    expect(within(task).getByText('今日任务进度：2/4')).toBeInTheDocument();
+    expect(within(task).getByRole('list', { name: '今日原子任务' }).children).toHaveLength(4);
+    expect(within(task).getByText(/2\/3/)).toBeInTheDocument();
+    expect(within(task).getByText(/视频覆盖率 72%/)).toBeInTheDocument();
+    expect(within(task).queryByRole('button', { name: /完成整个任务/ })).not.toBeInTheDocument();
+    fireEvent.click(within(task).getAllByRole('button', { name: '开始' })[0]);
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: { view: 'workspace', taskType: 'question_training', taskItemId: 'ITEM_1' },
+    });
+  });
+
   it('switches the shared work rail between today task and assistant', async () => {
     render(<DashboardPage currentUser={{ username: 'admin' }} onNavigate={vi.fn()} />);
 

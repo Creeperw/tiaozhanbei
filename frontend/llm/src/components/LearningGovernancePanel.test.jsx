@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LearningGovernancePanel from './LearningGovernancePanel';
-import { fetchWithAuth, readJsonResponse } from '../utils/api';
+import { fetchWithAuth } from '../utils/api';
 
 vi.mock('../utils/api', () => ({
   API_BASE: 'http://api.test',

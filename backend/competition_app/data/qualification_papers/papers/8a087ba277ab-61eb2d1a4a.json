@@ -1,0 +1,575 @@
+{
+  "template_id": "8a087ba277ab-61eb2d1a4a",
+  "questions": [
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0091",
+      "question_type": "single_choice",
+      "question_content": "患者，男，43岁。入冬后，肢体关节游走窜痛，沉重。苔薄白，脉弦缓，临床诊断最可能是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "表湿证"
+        },
+        {
+          "option_id": "B",
+          "content": "里湿证"
+        },
+        {
+          "option_id": "C",
+          "content": "风湿证"
+        },
+        {
+          "option_id": "D",
+          "content": "寒湿证"
+        },
+        {
+          "option_id": "E",
+          "content": "湿热证"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "风与寒湿合邪，侵袭筋骨关节，阻痹经络，则见肢体关节游走疼痛，从而形成风胜行痹证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 91,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0092",
+      "question_type": "single_choice",
+      "question_content": "患者, 女, 16 岁, 头面部皮肤突然鲜红成片, 色如涂丹, 边缘清楚, 灼热肿胀, 舌淡红, 苔黄,脉数属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痈"
+        },
+        {
+          "option_id": "B",
+          "content": "疽"
+        },
+        {
+          "option_id": "C",
+          "content": "流火"
+        },
+        {
+          "option_id": "D",
+          "content": "赤游丹"
+        },
+        {
+          "option_id": "E",
+          "content": "丹毒"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "皮肤突然鲜红成片，色如涂丹，边缘清楚，灼热肿胀者，为丹毒。发于头面者，名抱头火丹。发于小腿足部者名流火。发于全身、游走不定者，名赤游丹。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 92,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0093",
+      "question_type": "single_choice",
+      "question_content": "患者, 女, 29 岁。外出游泳后, 发热, 腰痛, 尿频尿急, 尿道灼痛, 小便黄少, 舌红苔黄腻, 脉濡数。临床诊断最可能是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小肠实热证"
+        },
+        {
+          "option_id": "B",
+          "content": "膀胱湿热证"
+        },
+        {
+          "option_id": "C",
+          "content": "热结膀胱证"
+        },
+        {
+          "option_id": "D",
+          "content": "湿热下注证"
+        },
+        {
+          "option_id": "E",
+          "content": "热入营血证"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "临床表现：小便频数，排尿灼热涩痛，小便短赤，尿血或有砂石，小腹胀痛，腰痛，发热口渴，舌红苔黄腻，脉濡数。此为膀胱湿热证的表现。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 93,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0094",
+      "question_type": "single_choice",
+      "question_content": "某女，32 岁。1 月前下岗后，心情不好，近半月，自感胃脘痞满，嗳气时作，纳谷不香，胸闷喜叹息，舌正常，脉弦。辨证为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝气郁结证"
+        },
+        {
+          "option_id": "B",
+          "content": "胃气虚证"
+        },
+        {
+          "option_id": "C",
+          "content": "肝胃不和证"
+        },
+        {
+          "option_id": "D",
+          "content": "肝脾不调证"
+        },
+        {
+          "option_id": "E",
+          "content": "气滞证"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "肝胃不和证：胃脘、胁肋胀满疼痛，走窜不定，嗳气，吞酸嘈杂，呃逆，不思饮食，情绪抑郁，善太息，或烦躁易怒，舌淡红，苔薄黄，脉弦。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 94,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0095",
+      "question_type": "single_choice",
+      "question_content": "患者，男，37岁，因与妻子经常吵架，终日闷闷不乐，出现消渴，气上冲心，心中痛热，饥不欲食，食则吐蛔，舌淡红，苔薄黄，脉弱。证属",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阳明病证"
+        },
+        {
+          "option_id": "B",
+          "content": "太阴病证"
+        },
+        {
+          "option_id": "C",
+          "content": "少阴病证"
+        },
+        {
+          "option_id": "D",
+          "content": "少阳病证 懒人医考整理"
+        },
+        {
+          "option_id": "E",
+          "content": "厥阴病证"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "厥阴病证临床表现：消渴，气上撞心，心中疼热，饥而不欲食，食则吐蛔。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 95,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0096",
+      "question_type": "single_choice",
+      "question_content": "患儿，男，14岁。患“乙型脑炎”5天，现高热 $39^{\\circ} \\mathrm{C}$ ，躁狂谵语，呼吸气粗，喉中痰鸣，胡言乱语，哭笑无常，面赤，大便四日未行，舌红苔黄腻，脉滑数有力。临床诊断最可能是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "热入营血证"
+        },
+        {
+          "option_id": "B",
+          "content": "痰火扰神证"
+        },
+        {
+          "option_id": "C",
+          "content": "心火亢盛证"
+        },
+        {
+          "option_id": "D",
+          "content": "痰迷心窍证"
+        },
+        {
+          "option_id": "E",
+          "content": "阳明腑实证"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "痰热扰神证：临床表现：高热，口渴，胸闷，气粗，咯吐黄痰，喉间痰鸣，心烦，失眠，甚则神昏谵语，或狂躁妄动，打人毁物，不避亲疏，胡言乱语，哭笑无常，面赤，舌质红，苔黄腻，脉滑数。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 96,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0097",
+      "question_type": "single_choice",
+      "question_content": "患者, 男, 39 岁, 小便短数, 灼热刺痛。尿色黄赤, 舌苔黄腻, 脉数。治疗应选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大蓟"
+        },
+        {
+          "option_id": "B",
+          "content": "地榆"
+        },
+        {
+          "option_id": "C",
+          "content": "槐花"
+        },
+        {
+          "option_id": "D",
+          "content": "白茅根"
+        },
+        {
+          "option_id": "E",
+          "content": "侧柏叶"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "患者“小便短数，灼热刺痛，尿色黄赤”，治宜清热利尿。白茅根凉血止血，清热利尿，清肺胃热。大蓟凉血止血，散瘀解毒消痈。地榆凉血止血，解毒敛疮。槐花凉血止血，清肝泻火。侧柏叶凉血止血，化痰止咳，生发乌发。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 97,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0098",
+      "question_type": "single_choice",
+      "question_content": "患者，女，32岁。喜凉，喝冷饮，经期小腹冷痛，经色黯，有血块。伴面色淡白，四肢发冷。舌质淡白，脉沉迟。治疗应选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肉桂"
+        },
+        {
+          "option_id": "B",
+          "content": "川芎"
+        },
+        {
+          "option_id": "C",
+          "content": "牡丹皮"
+        },
+        {
+          "option_id": "D",
+          "content": "川芎"
+        },
+        {
+          "option_id": "E",
+          "content": "青皮"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "本题所述病证为寒邪血滞导致的痛经，此五个选项中，肉桂辛热散寒，通经脉以止痛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 98,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0099",
+      "question_type": "single_choice",
+      "question_content": "患儿，男，5岁。高热，神昏，手足不时痉挛抽搐，宜用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "青黛"
+        },
+        {
+          "option_id": "B",
+          "content": "夏枯草"
+        },
+        {
+          "option_id": "C",
+          "content": "栀子"
+        },
+        {
+          "option_id": "D",
+          "content": "大青叶"
+        },
+        {
+          "option_id": "E",
+          "content": "黄连"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "青黛泻火定惊，能够治疗小儿惊痫。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 99,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0100",
+      "question_type": "single_choice",
+      "question_content": "患者，男，55岁。长期腰膝酸软冷痛，小便清长，近几日腹痛便秘。治疗首选药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "雄黄 懒人医考整理"
+        },
+        {
+          "option_id": "B",
+          "content": "雌黄"
+        },
+        {
+          "option_id": "C",
+          "content": "皂矾"
+        },
+        {
+          "option_id": "D",
+          "content": "硼砂"
+        },
+        {
+          "option_id": "E",
+          "content": "硫磺"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "硫磺内服具有补火助阳通便的功效，能够治疗虚寒便秘。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 100,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0101",
+      "question_type": "single_choice",
+      "question_content": "患者，女，25岁。妊娠4周，患病前来就诊，问下列除哪组药外，均是妊娠用药禁忌的",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "巴豆、牵牛子、大戟"
+        },
+        {
+          "option_id": "B",
+          "content": "三棱、莪术、水蛭"
+        },
+        {
+          "option_id": "C",
+          "content": "斑蝥、麝香、雄黄"
+        },
+        {
+          "option_id": "D",
+          "content": "当归、阿胶、丹参"
+        },
+        {
+          "option_id": "E",
+          "content": "冬葵子、瞿麦、木通"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "孕妇禁用：指毒性较强或药性猛烈的药物，如巴豆、牵牛子、大戟、商陆、麝香、三棱、莪术、水蛭、斑蝥、雄黄、砒霜等。孕妇慎用：慎用的药物包括通经祛瘀、行气破滞及辛热滑利之品，如桃仁、红花、牛膝、大黄、枳实、附子、肉桂、干姜、木通、冬葵子、瞿麦等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 101,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0102",
+      "question_type": "single_choice",
+      "question_content": "患者，男，30岁，与朋友聚餐吃烧烤后腹痛、便脓血前来就诊，里急后重，肛门灼热，苔黄腻，治宜用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白头翁汤"
+        },
+        {
+          "option_id": "B",
+          "content": "芍药汤"
+        },
+        {
+          "option_id": "C",
+          "content": "葛根芩连汤"
+        },
+        {
+          "option_id": "D",
+          "content": "真人养脏汤"
+        },
+        {
+          "option_id": "E",
+          "content": "木香槟榔丸"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "芍药汤主治：湿热痢疾。腹痛，便脓血，赤白相兼，里急后重，肛门灼热，小便短赤，舌苔黄腻，脉弦数。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 102,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0103",
+      "question_type": "single_choice",
+      "question_content": "患者，男45岁，大量饮酒后出现一身面目俱黄的表现，前来就诊，黄色鲜明，腹微满，口中渴，小便不利，舌苔黄腻，脉沉数，治宜用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄连解毒汤"
+        },
+        {
+          "option_id": "B",
+          "content": "三仁汤"
+        },
+        {
+          "option_id": "C",
+          "content": "甘露消毒汤"
+        },
+        {
+          "option_id": "D",
+          "content": "茵陈蒿汤"
+        },
+        {
+          "option_id": "E",
+          "content": "龙胆泻肝汤 懒人医考整理"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "茵陈蒿汤主治：黄疸阳黄证。一身面目俱黄，黄色鲜明，发热，无汗或但头汗出，口渴欲饮，恶心呕吐，腹微满，小便短赤，大便不爽或秘结，舌红苔黄腻，脉沉数或滑数有力。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 103,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0104",
+      "question_type": "single_choice",
+      "question_content": "患者，女，29岁，3天前顺产一男婴，后血虚受寒，恶露不尽，少腹冷痛者，治宜用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血府逐瘀汤"
+        },
+        {
+          "option_id": "B",
+          "content": "温经汤"
+        },
+        {
+          "option_id": "C",
+          "content": "桃核承气汤"
+        },
+        {
+          "option_id": "D",
+          "content": "生化汤"
+        },
+        {
+          "option_id": "E",
+          "content": "复元活血汤"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "生化汤主治：血虚寒凝，瘀血阻滞证。产后恶露不行，小腹冷痛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 104,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "8a087ba277ab-61eb2d1a4a-q0105",
+      "question_type": "single_choice",
+      "question_content": "患者, 男, 55 岁, 久病长期卧床, 身体虚弱, 近日排便次数增多, 经常于凌晨 4 点排便, 不思饮食, 久泻不愈, 伴腹痛喜温, 腰酸肢冷, 神疲乏力, 舌淡, 苔薄白, 脉沉迟无力, 治宜用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "痛泻要方"
+        },
+        {
+          "option_id": "B",
+          "content": "小建中汤"
+        },
+        {
+          "option_id": "C",
+          "content": "真人养脏汤"
+        },
+        {
+          "option_id": "D",
+          "content": "四神丸"
+        },
+        {
+          "option_id": "E",
+          "content": "补中益气汤"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "四神丸主治：脾肾阳虚之肾泄证。五更泄泻，不思饮食，食不消化，或久泻不愈，腹痛喜温，腰酸肢冷，神疲乏力，舌淡，苔薄白，脉沉迟无力。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业医师资格考试\\执业模拟题\\执业模拟3\\full.md",
+        "number": 105,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

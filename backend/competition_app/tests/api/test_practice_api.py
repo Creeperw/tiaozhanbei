@@ -24,7 +24,6 @@ class FormalQuestionStore:
                 "answer": ["A"],
                 "explanation": "人参益气健脾，为君药。",
                 "kp_ids": ["KP_SJZT"],
-                "difficulty": 1,
             }],
         }
 
@@ -37,6 +36,49 @@ class FormalQuestionStore:
     def resolve_topic(self, query: str, limit: int = 8) -> list[dict]:
         assert query == "四君子汤"
         return [{"kp_id": "KP_SJZT", "kp": self.kps["KP_SJZT"]}][:limit]
+
+
+class BroadFormalQuestionStore:
+    def __init__(self) -> None:
+        self.kps = {
+            "KP_1": {"kp_id": "KP_1", "kp_lv3": "知识点一"},
+            "KP_2": {"kp_id": "KP_2", "kp_lv3": "知识点二"},
+            "KP_CASE": {"kp_id": "KP_CASE", "kp_lv3": "案例辨析"},
+        }
+        self.questions_by_kp = {
+            "KP_1": [{
+                "question_id": "FORMAL_Q_1",
+                "question_type": "单项选择题",
+                "question_content": "第一道客观题",
+                "options": [{"option_id": "A", "content": "甲"}],
+                "answer": ["A"],
+                "kp_ids": ["KP_1"],
+            }],
+            "KP_2": [{
+                "question_id": "FORMAL_Q_2",
+                "question_type": "单项选择题",
+                "question_content": "第二道客观题",
+                "options": [{"option_id": "B", "content": "乙"}],
+                "answer": ["B"],
+                "kp_ids": ["KP_2"],
+            }],
+            "KP_CASE": [{
+                "question_id": "FORMAL_CASE_1",
+                "question_type": "临床案例问答",
+                "question_content": "分析案例",
+                "answer": "辨证依据",
+                "kp_ids": ["KP_CASE"],
+            }],
+        }
+
+    def ensure_hierarchy(self) -> None:
+        return None
+
+    def ensure_questions(self) -> None:
+        return None
+
+    def resolve_topic(self, query: str, limit: int = 8) -> list[dict]:
+        return []
 
 
 class PracticeRuntime:
@@ -67,7 +109,6 @@ class PracticeRuntime:
                 "stem": question["stem"],
                 "options": question["options"],
                 "kp_ids": question["kp_ids"],
-                "difficulty": question["difficulty"],
                 "request_id": "issued-once",
                 "source_scope": "formal_question_bank",
             },
@@ -75,6 +116,40 @@ class PracticeRuntime:
 
     def issue_cached_public_practice(self, learner_id: str, *, kp_id, mode) -> dict:
         raise AssertionError("formal delivery should be used before the database cache")
+
+
+class PersonalizedPracticeRuntime(PracticeRuntime):
+    def __init__(self, selection_context: dict) -> None:
+        super().__init__()
+        self.selection_context = selection_context
+
+    def load_practice_selection_context(self, learner_id: str) -> dict:
+        return self.selection_context
+
+    def load_learning_context(self, learner_id: str) -> dict:
+        return {"user_profile": {"learning_goal": "宽泛考试目标"}}
+
+    def resume_formal_practice_claim(
+        self,
+        learner_id: str,
+        *,
+        question_id: str,
+        request_id: str,
+    ) -> dict | None:
+        if question_id != "FORMAL_Q_1":
+            return None
+        return {
+            "available": True,
+            "question": {
+                "question_id": question_id,
+                "question_type": "single_choice",
+                "stem": "第一道客观题",
+                "options": [],
+                "kp_ids": ["KP_1"],
+                "request_id": request_id,
+                "source_scope": "formal_question_bank",
+            },
+        }
 
 
 def test_practice_next_uses_complete_formal_bank_without_exposing_answer(tmp_path: Path) -> None:
@@ -104,5 +179,101 @@ def test_practice_next_uses_complete_formal_bank_without_exposing_answer(tmp_pat
     assert body["question"]["question_type"] == "single_choice"
     assert body["question"]["options"][0]["option_id"] == "A"
     assert body["question"]["source_scope"] == "formal_question_bank"
+    assert "difficulty" not in body["question"]
     assert "answer" not in body["question"]
     assert runtime.issued[0][1]["standard_answer"] == "A"
+
+
+def test_practice_next_collects_broad_candidates_and_skips_attempted_question(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = PersonalizedPracticeRuntime({
+        "attempt_history": {"FORMAL_Q_1": {"attempt_count": 1}},
+        "active_claims": [],
+    })
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=BroadFormalQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "broad-practice", "password": "correct-horse-2026"},
+        )
+        response = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["question"]["question_id"] == "FORMAL_Q_2"
+    assert response.json()["selection"]["strategy"] == "current_learning_adaptive_v1"
+
+
+def test_practice_next_prioritizes_current_task_and_keeps_modes_isolated(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = PersonalizedPracticeRuntime({
+        "current_task_kp_ids": ["KP_2"],
+        "mastery": {
+            "KP_1": {"mastery": 0.1, "confidence": 1.0},
+            "KP_2": {"mastery": 0.8, "confidence": 1.0},
+        },
+        "attempt_history": {},
+        "active_claims": [],
+    })
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=BroadFormalQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "task-practice", "password": "correct-horse-2026"},
+        )
+        objective = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public"},
+        )
+        case = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "case", "scope": "public"},
+        )
+
+    assert objective.json()["question"]["question_id"] == "FORMAL_Q_2"
+    assert objective.json()["selection"]["reason"] == "current_task"
+    assert case.json()["question"]["question_id"] == "FORMAL_CASE_1"
+
+
+def test_practice_next_resumes_latest_unfinished_claim_on_refresh(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = PersonalizedPracticeRuntime({
+        "attempt_history": {},
+        "active_claims": [{"question_id": "FORMAL_Q_1", "request_id": "claim-1"}],
+        "latest_active_claim": {"question_id": "FORMAL_Q_1", "request_id": "claim-1"},
+    })
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=BroadFormalQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "resume-practice", "password": "correct-horse-2026"},
+        )
+        response = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["question"]["question_id"] == "FORMAL_Q_1"
+    assert response.json()["question"]["request_id"] == "claim-1"
+    assert runtime.issued == []

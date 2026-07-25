@@ -1,0 +1,3329 @@
+{
+  "template_id": "5ae6a7bd1b91-2594b464c3",
+  "questions": [
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0001",
+      "question_type": "single_choice",
+      "question_content": "根据中医理论，“症”“证”“病”含义不同，下列表述中属于“证”的是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胸痹"
+        },
+        {
+          "option_id": "B",
+          "content": "心悸"
+        },
+        {
+          "option_id": "C",
+          "content": "气虚血瘀"
+        },
+        {
+          "option_id": "D",
+          "content": "胸肋胀满"
+        },
+        {
+          "option_id": "E",
+          "content": "胸痛彻背"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "症，指疾病的外在表现，即症状。病，即疾病的简称，指有特定的致病因素、发病规律和病机演变的异常生命过程，具有特定的症状和体征。所 谓 “证”，是机体在疾病发展过程中某一阶段的病机概括，包括病变的部位、原因、性质以及邪正关系，能够反映出疾病发展过程中某一阶段的病机变化的本质，因而它比症状能更全面、更深刻、更准确地揭示出疾病的发展过程和本质。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 1,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0002",
+      "question_type": "single_choice",
+      "question_content": "根据阴阳理论，下列属阳的是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "滋润"
+        },
+        {
+          "option_id": "B",
+          "content": "兴奋"
+        },
+        {
+          "option_id": "C",
+          "content": "抑制"
+        },
+        {
+          "option_id": "D",
+          "content": "凝聚"
+        },
+        {
+          "option_id": "E",
+          "content": "收敛"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "一般来说，凡是剧烈运动的、外向的、上升的、温热的、明亮的、无形的，皆属于阳；相对静止的、内守的、下降的、寒冷的、晦暗的，有形的，皆属于阴。阴和阳的相对属性引入于医学领域，即把对于人体具有推动、温煦、兴奋等作用的物质和功能，统属于阳；对于人体具有凝聚、滋润 、抑制等作用的物质和功能，统属于阴。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 2,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0003",
+      "question_type": "single_choice",
+      "question_content": "具有助心行血作用的气成是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "营气"
+        },
+        {
+          "option_id": "B",
+          "content": "宗气"
+        },
+        {
+          "option_id": "C",
+          "content": "卫气"
+        },
+        {
+          "option_id": "D",
+          "content": "元气"
+        },
+        {
+          "option_id": "E",
+          "content": "真气"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "1. 元气，又 称 “原气”，是人体最基本、最重要的气，是人体生命活动的原动力。元气的生理功能：推动和促进人体的生长发育，温煦和激发各脏腑、经络等组织器官的生理活动。 2. 宗气，是积于胸中之气。宗气在胸中集聚之处，称 作 “气海”，又 称 “膻中”。宗气的生理功能：上走息道以行呼吸，贯注心脉以行气血。 3. 营气，又 称 “荣气”，与卫气相 对而言，营气行于脉内而属阴，故又有 “营阴” 之称。营气的生理功能：有营养人体和化生血液两方面。 4. 卫气，与营气相对而言，卫气行于脉外而属阳，又 称 “卫阳”。卫气的生理功能有三个方面：一是护卫肌表，防御外邪入侵；二是温养脏腑、肌肉、皮毛等；三是调节控制汗孔的开合和汗液的排泄,以维持体温的相对恒定。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 3,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0004",
+      "question_type": "single_choice",
+      "question_content": "称为“十二经脉之海”的静脉是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "带脉"
+        },
+        {
+          "option_id": "B",
+          "content": "督脉"
+        },
+        {
+          "option_id": "C",
+          "content": "任脉"
+        },
+        {
+          "option_id": "D",
+          "content": "冲脉"
+        },
+        {
+          "option_id": "E",
+          "content": "阴维脉"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "1. 督脉的基本功能 (1) 调节阳经气血，故 称 “阳脉之海”。 (2) 与脑、髓和肾的功能有关。 2. 任脉的基本功能 (1) 调节阴经气血，故 称 “阴脉之海”。 (2) 主持妊养胞胎。 3. 冲脉的基本功能 (1) 调节十二经气血，故 称 “十二经脉之海”。 (2) 冲为血海，有促进生殖之功能，并同妇女的月经有着密切的联系。 4. 带脉的基本功能 (1) 约束纵行诸经。 (2) 主司妇女的带下。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 4,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0005",
+      "question_type": "single_choice",
+      "question_content": "某女，22岁，身体偏寒，喜静，少动，其体质类型应辨为( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "偏阳质"
+        },
+        {
+          "option_id": "B",
+          "content": "气虚质"
+        },
+        {
+          "option_id": "C",
+          "content": "偏阴质"
+        },
+        {
+          "option_id": "D",
+          "content": "痰湿质"
+        },
+        {
+          "option_id": "E",
+          "content": "瘀血质"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "偏阴质，是指具有代谢相对减退 、身体偏寒、喜静少动等特征的体质类型。题干 中有“偏寒”、“少动”字样，故选C。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 5,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0006",
+      "question_type": "single_choice",
+      "question_content": "根据七情内伤治病的理论，惊可导致( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气上"
+        },
+        {
+          "option_id": "B",
+          "content": "气结"
+        },
+        {
+          "option_id": "C",
+          "content": "气消"
+        },
+        {
+          "option_id": "D",
+          "content": "气下"
+        },
+        {
+          "option_id": "E",
+          "content": "气乱"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "情志所伤，主要影响脏腑气机，使其紊乱。主要的病变变化是：“怒则气上”、“喜则气缓”、 “悲则气消”、“恐则气下”、“惊则气乱”、“思则气结”。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 6,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0007",
+      "question_type": "single_choice",
+      "question_content": "中医诊断用以分辨疾病性质的纲领是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴阳"
+        },
+        {
+          "option_id": "B",
+          "content": "表里"
+        },
+        {
+          "option_id": "C",
+          "content": "寒热"
+        },
+        {
+          "option_id": "D",
+          "content": "虚实"
+        },
+        {
+          "option_id": "E",
+          "content": "气血"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "八纲 指阴阳、表里、寒热、虚实八个辨证要点，也是辨证的纲领。寒热用以分辨疾病的属性；表里用以分辨疾病病位与病势的浅深；虚实用以分辨邪正的盛衰；疾病的基础是阴阳失调，因此，阴阳是区分疾病类别的总纲。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 7,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0008",
+      "question_type": "single_choice",
+      "question_content": "执业药师在审方中发现有中成药不合理配伍，下列各组配伍中，属证候禁忌的是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "二陈丸与平胃丸"
+        },
+        {
+          "option_id": "B",
+          "content": "归脾丸与养荣丸"
+        },
+        {
+          "option_id": "C",
+          "content": "金匮肾气丸与麦味地黄丸"
+        },
+        {
+          "option_id": "D",
+          "content": "附子理中丸与黄连上清丸"
+        },
+        {
+          "option_id": "E",
+          "content": "生脉饮与六味地黄丸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "附子理中丸与牛黄解毒片联用，附子理中丸系温中散寒之剂，适用于脾胃虚寒所致的胃脘痛、呕吐、腹泻等；而牛黄解毒片性质寒凉，为清热解毒泻火之剂，适用于火热毒邪炽盛于内而上扰清窍者，可见不加分析地盲目将两者合用是不适宜的。再如，盲目将附子理中丸与黄连上清丸、金匮肾气丸与牛黄解毒片等合用，均属不注意证候的不合理用药。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 8,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0009",
+      "question_type": "single_choice",
+      "question_content": "某男，39岁，肛内肿物脱出，肛管紧缩，坠胀疼痛，触痛明显，舌质暗红，苔薄白，脉细涩，中医辨证为内痔气滞血瘀证，治宜选用的方剂是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "止痛如神汤"
+        },
+        {
+          "option_id": "B",
+          "content": "凉血地黄汤"
+        },
+        {
+          "option_id": "C",
+          "content": "补中益气汤"
+        },
+        {
+          "option_id": "D",
+          "content": "桃仁承气汤"
+        },
+        {
+          "option_id": "E",
+          "content": "四妙勇安汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "气滞血瘀证 【症状】内痔常见肛内肿物脱出，甚至嵌顿，肛管紧缩，坠胀疼痛，甚则肛缘水肿、血栓形成, 触痛明显。外痔可见肛缘肿物突起，排便时可增大，有异物感，可有胀痛或坠痛，局部可触及硬性结节。舌质暗红，苔白或黄，脉弦或涩。 【治法】理气祛风活血。 【方剂应用】 1、基础方剂 止痛如神汤（秦艽、桃仁、皂角子、苍术、防风、黄柏、当归、泽泻、槟榔、熟大黄）加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 9,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0010",
+      "question_type": "single_choice",
+      "question_content": "某男，25岁，因腹泻就诊。症见腹痛肠鸣，泻下粪便臭如败卵，伴有未消化食物，泻后痛减，喛腐吞酸，不思饮食，舌苔厚腻，脉滑，治宜选用的方剂是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "保和丸"
+        },
+        {
+          "option_id": "B",
+          "content": "参苓白术散"
+        },
+        {
+          "option_id": "C",
+          "content": "四神丸"
+        },
+        {
+          "option_id": "D",
+          "content": "葛根苓连汤"
+        },
+        {
+          "option_id": "E",
+          "content": "藿香正气散"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "中医内科病证泄泻辨证，该题属食滞肠胃证。 【症状】腹痛肠鸣，泻下粪便臭如败卵，泻后痛减，泻下伴有不消化食物，脘腹胀满，嗳腐吞酸，不思饮食。舌淡红，苔垢浊或厚腻，脉滑实。 【治法】消食导滞，和中止泻 【方剂应用】 基础方剂 保和丸(山楂、神曲、茯苓、半夏、莱菔子、陈皮、连翘、麦芽)加减 。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 10,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0011",
+      "question_type": "single_choice",
+      "question_content": "安排饮片斗谱时，不能排于一斗或上下药斗中的是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麻黄与桂皮"
+        },
+        {
+          "option_id": "B",
+          "content": "陈皮与青皮"
+        },
+        {
+          "option_id": "C",
+          "content": "酸枣仁与远志"
+        },
+        {
+          "option_id": "D",
+          "content": "乌头与天花粉"
+        },
+        {
+          "option_id": "E",
+          "content": "板蓝根与大青叶"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "属于配伍禁忌的药物，不能装于一斗或上下药斗中。如甘草与京大戟、甘遂、芫花;藜芦与丹参、南沙参、玄参、苦参、白芍、赤芍、细辛；乌头类（附子、川乌及草乌）与半夏的各种炮制品、瓜蒌（瓜蒌皮、瓜蒌子、瓜蒌仁及天花粉）；丁香（包括母丁香）与郁金（黄郁金、黑郁金）；芒硝（包括玄明粉）与京三棱；肉桂（官桂）与石脂（赤石脂）均不宜放在一起。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 11,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0012",
+      "question_type": "single_choice",
+      "question_content": "中药养护中吸湿防潮法可采用的干燥剂是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "干冰"
+        },
+        {
+          "option_id": "B",
+          "content": "生石灰"
+        },
+        {
+          "option_id": "C",
+          "content": "熟石灰"
+        },
+        {
+          "option_id": "D",
+          "content": "氯化钠"
+        },
+        {
+          "option_id": "E",
+          "content": "氢氧化钙"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "吸潮方法通常采用以下三种。 ①选择条件较好的小库房全部密封后，放入干燥剂，以减少库内湿度，保持贮存环境的干燥。 ②选择一定的容器(如缸、罐、皮箱、铁桶、糊封后的木箱等)，放入适量的生石灰，用薄木板隔开，上放置药物，以吸收药物的水分，保持其经常干燥。常采用的干燥剂有： 生石灰块，又名氧化钙，具有取材和使用方便、成本低、吸湿率高等特点，其吸潮率可达20%-25%，是传统养护方法中一种主要的 吸潮剂。无水氯化钙，是一种白色无定形的固体，呈粒状、块状或粉状。吸潮率可达100%\\~120%。氯化钙吸潮后即溶化成液体，将其溶化物放在搪瓷盆内加热，待水分蒸发，仍能恢复固体块状，可重复使用。 ③ 可利用日晒或采用加热烘干，使饮片的水分散失，保持干燥。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 12,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0013",
+      "question_type": "single_choice",
+      "question_content": "罂粟壳中毒的典型症状是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "精神亢奋"
+        },
+        {
+          "option_id": "B",
+          "content": "呼吸急促"
+        },
+        {
+          "option_id": "C",
+          "content": "血压升高"
+        },
+        {
+          "option_id": "D",
+          "content": "瞳孔急速缩小"
+        },
+        {
+          "option_id": "E",
+          "content": "心跳加速"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "罂粟壳中含有的主要成分是吗啡、可待因、罂粟碱等，罂粟壳中毒与其所含的主要成分吗啡有关。其临床表现为昏睡或昏迷，抽搐，呼吸浅表而不规则，恶心、呕吐、腹泻，面色苍白，发绀、瞳孔极度缩小呈针尖样，血压下降等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 13,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0014",
+      "question_type": "single_choice",
+      "question_content": "具有安神功能的藏药是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "洁白丸"
+        },
+        {
+          "option_id": "B",
+          "content": "大月晶丸"
+        },
+        {
+          "option_id": "C",
+          "content": "八味沉香散"
+        },
+        {
+          "option_id": "D",
+          "content": "仁青芒觉"
+        },
+        {
+          "option_id": "E",
+          "content": "仁青常觉"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "八味沉香散由沉香、肉豆蔻、广枣、石灰华、乳香、木香、诃子（去核）、木棉花8味药加工制成的散剂。功能与主治：清心热，养心，安神，开窍。用于热病攻心，神昏谵语；冠心病，心绞痛。 答案：D15 解析：风寒头痛 【症状】头痛时作，痛连项背，常有拘急收紧感，伴恶风畏寒，受风尤剧，口不渴。舌苔薄白，脉浮紧。 【治法】疏风散寒止痛。 【方剂应用】 1、基础方剂 川芎茶调散 (川芎、荆芥、薄荷、羌活、细辛、白芷、甘草、防风)加减。【中成药】：川芎茶调颗粒，天麻头痛片，都梁软胶囊。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 14,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0015",
+      "question_type": "single_choice",
+      "question_content": "某女，24岁。因受凉后出现头痛，连及项背，恶寒畏风，口不渴，舌质淡，苔薄白，脉浮。中医辨证为风寒头痛，治宜选用的中成药是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "芎菊上清丸"
+        },
+        {
+          "option_id": "B",
+          "content": "通天口服液"
+        },
+        {
+          "option_id": "C",
+          "content": "天麻钩藤颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "川芎茶调颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "杞菊地黄丸"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 15,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0016",
+      "question_type": "single_choice",
+      "question_content": "中药饮片贮存过程中，易发生吸潮粘连和发霉的饮片是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄柏"
+        },
+        {
+          "option_id": "B",
+          "content": "天冬"
+        },
+        {
+          "option_id": "C",
+          "content": "苦参"
+        },
+        {
+          "option_id": "D",
+          "content": "大黄"
+        },
+        {
+          "option_id": "E",
+          "content": "川芎"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "有些固体饮片，由于熔点较低，遇热则发黏而粘结在一起，或含糖分较高的饮片，吸潮后粘结在一起,，使原来形 态发生改变的现象。如芦荟、没药、乳香、阿魏、鹿角胶、龟甲胶、天冬、熟地等。 含黏液质的饮片也易于发霉、生虫。如枸杞子、天冬等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 16,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0017",
+      "question_type": "single_choice",
+      "question_content": "可参考胸痹辨证论的西药疾病是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "高血压病"
+        },
+        {
+          "option_id": "B",
+          "content": "支气管炎"
+        },
+        {
+          "option_id": "C",
+          "content": "冠心病"
+        },
+        {
+          "option_id": "D",
+          "content": "支气管扩张病"
+        },
+        {
+          "option_id": "E",
+          "content": "病毒性肺炎"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "胸痹是指以胸部闷痛，甚则胸痛彻背，短气、喘息不得卧为主症的疾病，轻者仅感胸闷如窒，呼吸欠畅，重者则有胸痛，严重者心痛彻背，背痛彻心。西医学的冠心病(心绞痛或心肌梗死)、其他原因引起的心绞痛(如主动脉瓣狭窄、梗阻性肥厚型心肌病)、心包炎以及肺源性心脏病等以上述表现为主者，可参考此内容辨证论治。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 17,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0018",
+      "question_type": "single_choice",
+      "question_content": "按药物自然属性分类的首部本草专著是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "《新修草本》"
+        },
+        {
+          "option_id": "B",
+          "content": "《本草经集注》"
+        },
+        {
+          "option_id": "C",
+          "content": "《神农本草经》"
+        },
+        {
+          "option_id": "D",
+          "content": "《本草纲目》"
+        },
+        {
+          "option_id": "E",
+          "content": "《重修政和本草》"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "《神农本草经》简称《本经》《本草经》《神农本草》。托名神农氏撰，约成书于东汉时期（公元25-219年），非一时一人所作。全书共3 卷，包括药物三品分类。其分类原则是：上品120种，无毒，欲轻身益气，不老延年者；中品120种，无毒有毒斟酌其宜，欲遏病补虚羸者；下品125种，多毒，欲除寒热邪气，破积聚愈疾者。该书是最早的本草学专著，具有重要的科学价值和历史影响，为我国医药学四大经典著作之一。《本草经集注》南朝•陶弘景（一作宏景，字通明，号华阳居士、华阳隐居、华阳真人）撰。成书于南北朝南齐永元二年（公元500年）之前。 该书的主要成就包括创立了新的编写体例：药物分类按自然属性进行区分，改进了《本经》三品分类法；所载药物内容采用朱墨、大小字体分书法，保持了引录文献的原有面貌。 《重修政和经史证类备急本草》简称《重修政和本草》。刻版人张存惠，字魏卿，堂号晦明轩。张氏以《政和本草》（庞氏本）为基础，将《本草衍义》逐条散入，重新刊行。补充了《政和本草》原缺漏的由跋、莺尾，改为今名，实为合刊本。全书共30 卷，载药大约为1746种。该书为现存最早的完整的古本草合刊本，人民卫生出版社1957年影印，广为流传。 《本草纲目》简称《纲目》，明 • 李时珍著，成书于1578年。52卷，将药物分作16部，此书可谓中药学巨著，内容广博，收罗繁富。全书引据历代本草凡84家，古今医书目277种 ，另从经史子集各部著作中引录了大量有关的文献资料，参考文献共计800余种。书中共收载药物1892种，方 剂 11096首，附有药物图谱1109幅。问世后被全部或部分译成日、朝、英、法、意、俄等多种文字。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 18,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0019",
+      "question_type": "single_choice",
+      "question_content": "血清淀粉酶活性增高最常见于( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "急性肠胃炎"
+        },
+        {
+          "option_id": "B",
+          "content": "病毒性肝炎"
+        },
+        {
+          "option_id": "C",
+          "content": "慢性胆囊炎"
+        },
+        {
+          "option_id": "D",
+          "content": "急性胰腺炎"
+        },
+        {
+          "option_id": "E",
+          "content": "病毒性心肌炎"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "淀粉酶可催化淀粉分子中葡萄糖苷水解， 产生糊精、麦芽糖或葡萄糖。它是一种需钙的金属酶，易由肾脏排出，半衰期很短。 （一） 参考值100 \\~ 1200U/L （二） 临床意义 尿淀粉酶增高 （1） 急性胰腺炎发作期尿淀粉酶活性上升稍晚于血清淀粉酶（发病后12-24小时开始升高），且维持时间稍长。 （2） 其他疾病：如胰头癌、流行性腮腺炎、胃溃疡穿孔也可见尿淀粉酶增高。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 19,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0020",
+      "question_type": "single_choice",
+      "question_content": "处方炒三仙、焦三仙中，“三仙”的组成是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "山楂、稻芽、神曲"
+        },
+        {
+          "option_id": "B",
+          "content": "槟榔、麦芽、神曲"
+        },
+        {
+          "option_id": "C",
+          "content": "麦芽、稻芽、谷芽"
+        },
+        {
+          "option_id": "D",
+          "content": "山楂、麦芽、神曲"
+        },
+        {
+          "option_id": "E",
+          "content": "仙茅、仙灵脾、仙鹤草"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "此题考查饮片的并开药名：并开药名是指将2-3种疗效基本相似或有协同作用的饮片缩写在一起而构成并开药品。这是一种传统的写法。如二母即指知母、贝母，二乌即指制川乌、制草乌，荆防即指荆芥、防风等。例如： 炒/焦三仙：焦山楂、焦麦芽、焦神曲，炒/焦四仙: 焦神曲、焦山楂、焦麦芽、焦槟榔。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 20,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0021",
+      "question_type": "single_choice",
+      "question_content": "下列治疗感冒的中成药中，既含马来酸氯苯那敏又含安乃近的是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "维C银翅片"
+        },
+        {
+          "option_id": "B",
+          "content": "感特灵胶囊"
+        },
+        {
+          "option_id": "C",
+          "content": "重感冒灵片"
+        },
+        {
+          "option_id": "D",
+          "content": "感冒灵胶囊"
+        },
+        {
+          "option_id": "E",
+          "content": "复方感冒灵片"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "维C银翘片（维生素C、含马来酸氯苯那敏、对乙酰氨基酚）、感特灵胶囊（含对乙酰氨基酚、马来酸氯苯那敏、咖啡因）、重感灵片（含马来酸氯苯那敏、安乃近）感冒灵、复方感冒灵片（含对乙酰氨基酚、马来酸氯苯那敏、咖啡因）。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 21,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0022",
+      "question_type": "single_choice",
+      "question_content": "某女，因产后恶露不尽就诊，医师处方：当归12g、川芎9g、桃仁9g、炙甘草6g、炮姜6g、坤草15g、药师调剂时，坤草应付的是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "金钱草"
+        },
+        {
+          "option_id": "B",
+          "content": "益母草"
+        },
+        {
+          "option_id": "C",
+          "content": "龙胆草"
+        },
+        {
+          "option_id": "D",
+          "content": "夏枯草"
+        },
+        {
+          "option_id": "E",
+          "content": "豨莶草"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "益母草别名：坤草、茺蔚、益明。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 22,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0023",
+      "question_type": "single_choice",
+      "question_content": "处方调剂复核时，应予以纠正的错付是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "苦杏仁末捣碎"
+        },
+        {
+          "option_id": "B",
+          "content": "生牡蛎单包先煎"
+        },
+        {
+          "option_id": "C",
+          "content": "薄荷单包后下"
+        },
+        {
+          "option_id": "D",
+          "content": "三七粉单包冲服"
+        },
+        {
+          "option_id": "E",
+          "content": "阿胶单包烊化"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "苦杏仁应捣碎 ，逢子必捣。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 23,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0025",
+      "question_type": "single_choice",
+      "question_content": "某患儿，6岁，面色萎黄，形体消瘦，神疲肢倦，不思饮食，腹满喜按，大便稀溏，夹有未消化食物，舌质淡，苔白腻，脉滑。治宜选用的方剂是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消乳丸"
+        },
+        {
+          "option_id": "B",
+          "content": "健脾丸"
+        },
+        {
+          "option_id": "C",
+          "content": "四物汤"
+        },
+        {
+          "option_id": "D",
+          "content": "香连丸"
+        },
+        {
+          "option_id": "E",
+          "content": "归脾汤"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "脾虚夹积证 【症状】面色萎黄，形体消瘦，神疲肢倦，不思乳食，食则饱胀，腹满喜按，大便溏稀酸腥，夹有乳片或不消化食物残渣。舌质淡，苔白腻，脉细滑，或指纹淡滞。 【治法】健脾助运，消食化滞。 【方剂应用】 基础方剂 健脾丸(人参、白术、陈皮、麦芽、山楂、神曲、枳实)加减 。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 25,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0026",
+      "question_type": "single_choice",
+      "question_content": "某女，妊娠6周，胎动不安，阴道少量下血，中医辨证属冲任不固。处方：党参30g、白术10g、黄芪15g、天山雪莲6g、沙苑子20g、续断15g、桑寄生15g、阿胶15g。药师审方中发现该方有妊娠禁忌中药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "天山雪莲"
+        },
+        {
+          "option_id": "B",
+          "content": "白术"
+        },
+        {
+          "option_id": "C",
+          "content": "黄芪"
+        },
+        {
+          "option_id": "D",
+          "content": "续断"
+        },
+        {
+          "option_id": "E",
+          "content": "沙苑子"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "妊娠禁忌药有毒性大小、性能峻缓之别，对胎儿及母体影响程度也有差别。据此，常分为禁用、忌 用 和慎用。禁用指绝对禁止使用，忌用指避免使用或最好不用，慎用指在一定条件下可谨慎使用，但必须有相应的措施，在没有特殊需要时应尽量避免使用，以免发生事故。妊娠禁用药多为剧毒或性能峻 猛的中药，妊娠慎用药一般包括活血祛瘀、破气行滞、攻下通便、辛热及滑利类的中药。 答案中A天山雪莲为忌用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 26,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0027",
+      "question_type": "single_choice",
+      "question_content": "某男，患鼓胀。医师处方中有京大戟、芫花，内服宜选用的炮制品是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "酒炙品"
+        },
+        {
+          "option_id": "B",
+          "content": "醋炙品"
+        },
+        {
+          "option_id": "C",
+          "content": "蜜炙品"
+        },
+        {
+          "option_id": "D",
+          "content": "盐炙品"
+        },
+        {
+          "option_id": "E",
+          "content": "姜炙品"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "京大戟、芫花内服时，付醋炙品。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 27,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0028",
+      "question_type": "single_choice",
+      "question_content": "某男，因患慢性心衰，长期服用强心苷类药物，现咽喉红肿疼痛，音哑失声。下列中成药中，不宜与强心苷类药物同用的中成药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清音丸"
+        },
+        {
+          "option_id": "B",
+          "content": "金果饮"
+        },
+        {
+          "option_id": "C",
+          "content": "六神丸"
+        },
+        {
+          "option_id": "D",
+          "content": "黄氏响声丸"
+        },
+        {
+          "option_id": "E",
+          "content": "牛黄解毒片"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "六神丸含蟾酥、雄黄有毒物质，蟾酥含强心苷元，故不可与强心苷类药物同用。成分重复。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 28,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0029",
+      "question_type": "single_choice",
+      "question_content": "某男，大便下血，血色黯淡，四肢不温，面色萎黄，舌淡苔白，脉沉细无力。辨证为便血，脾胃虚寒证，医师处以黄土汤加减。方中宜煎汤代水的中药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阿胶"
+        },
+        {
+          "option_id": "B",
+          "content": "甘草"
+        },
+        {
+          "option_id": "C",
+          "content": "制附子"
+        },
+        {
+          "option_id": "D",
+          "content": "灶心土"
+        },
+        {
+          "option_id": "E",
+          "content": "地黄"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "阿胶烊化，甘草、地黄可直接煎煮，制附子先煎，灶心土煎汤代水。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 29,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0030",
+      "question_type": "single_choice",
+      "question_content": "临床使用不当可导致急性肾功能衰竭的中药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "南沙参"
+        },
+        {
+          "option_id": "B",
+          "content": "牡丹皮"
+        },
+        {
+          "option_id": "C",
+          "content": "瓜蒌皮"
+        },
+        {
+          "option_id": "D",
+          "content": "马兜铃"
+        },
+        {
+          "option_id": "E",
+          "content": "北沙参"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "马兜铃、天仙藤、寻骨风等均含马兜铃酸，中毒可致肾小管坏死出现面部浮肿，渐至全身水肿、尿频尿急，甚至出现急、慢性肾功能衰竭及尿毒症而死亡。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 30,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0031",
+      "question_type": "single_choice",
+      "question_content": "根据常见病证论治的理论，咳嗽风寒犯肺证的主要症状是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "咳嗽气粗，咳痰黄稠"
+        },
+        {
+          "option_id": "B",
+          "content": "干咳无痰，鼻燥咽干"
+        },
+        {
+          "option_id": "C",
+          "content": "咳嗽痰多，食后加重"
+        },
+        {
+          "option_id": "D",
+          "content": "咳嗽声重，痰稀色白"
+        },
+        {
+          "option_id": "E",
+          "content": "咳嗽气急，郁怒诱发"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "该试题新版教材有变化，为保证试卷完整性，仅供考生参阅。新版教材为： P141-145 咳嗽风寒袭肺证：咳嗽声重，气急，咽痒，咳痰稀薄色白，常伴鼻塞，流清涕，头痛，肢体酸楚，或见恶寒、发热、无汗等风寒表证。舌苔薄白，脉浮或浮紧。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 31,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0032",
+      "question_type": "single_choice",
+      "question_content": "某男，35岁。口腔黏膜溃疡，周边红肿，灼痛明显，每因过食煎炒辛辣食物而发，并伴口渴心烦，大便秘结，小便短黄，舌红，苔黄腻，脉数有力。治宜选用的方剂是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "凉膈散"
+        },
+        {
+          "option_id": "B",
+          "content": "枳术丸"
+        },
+        {
+          "option_id": "C",
+          "content": "龙胆泻肝汤"
+        },
+        {
+          "option_id": "D",
+          "content": "附子理中丸"
+        },
+        {
+          "option_id": "E",
+          "content": "玉女煎"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "心脾积热证 【症状】口腔黏膜溃疡，灼痛明显，常因过食煎炒辛辣或少寐而发，伴口渴心烦、失眠、小溲短黄、大便秘结；检查见口腔黏膜表面有黄白色假膜，周边红肿。舌红，苔黄或腻，脉数有力。 【治法】清心泻脾，消肿止痛。 【方剂应用】 基础方剂 凉膈散（大黄、朴硝、栀子、黄芩、连翘、薄荷、竹叶、甘草）加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 32,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0033",
+      "question_type": "single_choice",
+      "question_content": "处方调剂复核时，应予以纠正的错付是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "草决明付决明子"
+        },
+        {
+          "option_id": "B",
+          "content": "双花付金银花"
+        },
+        {
+          "option_id": "C",
+          "content": "二术付苍术、白术"
+        },
+        {
+          "option_id": "D",
+          "content": "大腹子付牛蒡子"
+        },
+        {
+          "option_id": "E",
+          "content": "益母草子付茺蔚子"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "槟榔别名：花槟榔、大腹子、海南子。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 33,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0034",
+      "question_type": "single_choice",
+      "question_content": "根据蒙医传统用药的“服药十则”，补养药的服用时间是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "食前服"
+        },
+        {
+          "option_id": "B",
+          "content": "食间服"
+        },
+        {
+          "option_id": "C",
+          "content": "睡前服"
+        },
+        {
+          "option_id": "D",
+          "content": "空腹服"
+        },
+        {
+          "option_id": "E",
+          "content": "夹食服"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "蒙医传统用药的“服药十则”是：治疗寒证及驱虫药，早晨空腹服;补养或下清“赫依”（通便、通经）药，食前服；上行“赫依”（理气）药，食间服；司命 “赫依”（镇静）药，食药交替服；平喘、祛痰或催吐药，不定期服；止逆药，与食混服；止噎或开胃药，夹食服（饭前饭后各一半）；治“巴达干”病或毒剧麻药及催眠药，睡前服。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 34,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0035",
+      "question_type": "single_choice",
+      "question_content": "某女，48岁。夜不能寐，虚烦不安，健忘，盗汗，舌红少苔，脉数细。宜采用的治法是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "健脾养心"
+        },
+        {
+          "option_id": "B",
+          "content": "疏肝解郁"
+        },
+        {
+          "option_id": "C",
+          "content": "清心泻火"
+        },
+        {
+          "option_id": "D",
+          "content": "滋阴养血"
+        },
+        {
+          "option_id": "E",
+          "content": "益气养血"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "阴虚证 【症状】形体消瘦、口燥咽干、眩晕失眠、舌红脉细数等阴液不足的症状外，还常伴见五心烦热、潮热盗汗、舌红绛、脉数等阴不制阳、虚热内生的症状。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 35,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0036",
+      "question_type": "single_choice",
+      "question_content": "能使氨基糖苷类抗生素排泄减少，吸收增加，易引起暂时性或永久性耳聋的中药是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "芒硝"
+        },
+        {
+          "option_id": "B",
+          "content": "雄黄"
+        },
+        {
+          "option_id": "C",
+          "content": "硼砂"
+        },
+        {
+          "option_id": "D",
+          "content": "石膏"
+        },
+        {
+          "option_id": "E",
+          "content": "硫磺"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "碱性中药如硼砂、红灵散、女金丹、痧气散等,能使氨基糖昔类抗生素如链霉素、庆大霉素、卡那霉素、阿米卡星等排泄减少，吸收增加,血药浓度上升，药效增加20-80倍，同时增加脑组织中的药物浓度，使耳毒性增加，造成暂时性或永久性耳聋，故长时间联用应进行血药浓度监测。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 36,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0037",
+      "question_type": "single_choice",
+      "question_content": "执业药师指导患者用药时，应首先考虑的原则是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "经济"
+        },
+        {
+          "option_id": "B",
+          "content": "安全"
+        },
+        {
+          "option_id": "C",
+          "content": "有效"
+        },
+        {
+          "option_id": "D",
+          "content": "简便"
+        },
+        {
+          "option_id": "E",
+          "content": "易得"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "药学服务于1990年由美国学者倡导，其含义是药师应用药学专业知识向公众（包括医务人员、患者及家属）提供直接的、负责任的、与用药相关的服务，以期提高药物治疗的安全、有效、经济和适宜性，改善和提高人类生活质量。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 37,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0038",
+      "question_type": "single_choice",
+      "question_content": "婴幼儿脏腑娇嫩，发育未全。下列关于婴幼儿用药原则的表述，错误的是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "用量宜轻"
+        },
+        {
+          "option_id": "B",
+          "content": "宜用轻清之品"
+        },
+        {
+          "option_id": "C",
+          "content": "宜佐滋补之品"
+        },
+        {
+          "option_id": "D",
+          "content": "宜佐凉肝定惊之品"
+        },
+        {
+          "option_id": "E",
+          "content": "宜佐健脾和胃之品"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "小儿生机旺盛，宜饮食调理，不宜滥用滋补之品，否则会使机体阴阳失衡，伤及脏腑气机。过用或滥用滋补药, 常常引起相关不良反应，如过服人参会引起人参滥用综合征，过服阿胶会引起火气亢盛的症状等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 38,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0039",
+      "question_type": "single_choice",
+      "question_content": "某男，28岁。因小便细数就诊。症见小便频数短涩，淋沥刺痛，小腹拘急引痛，其中医诊断是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "尿多"
+        },
+        {
+          "option_id": "B",
+          "content": "尿频"
+        },
+        {
+          "option_id": "C",
+          "content": "淋证"
+        },
+        {
+          "option_id": "D",
+          "content": "郁证"
+        },
+        {
+          "option_id": "E",
+          "content": "封闭"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "淋证是指以小便频数短涩，淋沥刺痛，小腹拘急引痛为主症的疾病。西医学的泌尿系感染、尿路结石、前列腺炎、尿道综合征等病，具有淋证表现特征者，可参考此内容辨证论治。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 39,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0040",
+      "question_type": "single_choice",
+      "question_content": "临床使用清开灵注射液应特别监护的严重不良反应是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝损害"
+        },
+        {
+          "option_id": "B",
+          "content": "过敏性休克"
+        },
+        {
+          "option_id": "C",
+          "content": "骨髓抑制"
+        },
+        {
+          "option_id": "D",
+          "content": "肾损害"
+        },
+        {
+          "option_id": "E",
+          "content": "脑卒中 第2题 配伍选择题 （每题1分，共50题，共50分） 二、配伍选择题，每题1分。备选"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "清开灵注射液属中药注射液，清开灵注射液不良反应表现：以各种类型过敏反应为主，严重过敏反应包括过敏性休克、急性喉头水肿、过敏性哮喘，过敏性间质性肾炎。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 40,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0041",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "齿痕舌"
+        },
+        {
+          "option_id": "B",
+          "content": "胖大舌"
+        },
+        {
+          "option_id": "C",
+          "content": "芒刺舌"
+        },
+        {
+          "option_id": "D",
+          "content": "痿软舌"
+        },
+        {
+          "option_id": "E",
+          "content": "瘦薄舌 {TS}根据中医望诊理论，热邪亢盛可见( )。"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "① 胖大舌：较正常舌体胖大，为胖大舌。有胖嫩与肿胀之分。若舌体胖嫩，色淡，多属脾肾阳虚、津液不化、水饮痰湿阻滞所致；如舌体肿胀满口，色深红，多是心脾热盛；若舌肿胖，色青紫而暗，多见于中毒。 ② 瘦薄舌：舌体瘦小而薄，称为瘦薄舌。是阴血亏虚、舌体不充之象。瘦薄而色淡者，多是气血两虚；瘦薄而色红绛且干，多是阴虚火旺、津液耗伤所致。 ③ 裂纹舌：舌面上有明显的裂沟，称为裂纹舌，多由阴液亏损不能荣润舌面所致。若舌质红绛而有裂纹，多属热盛津伤、阴精亏损；舌色淡白而有裂纹，常是血虚不润的反映。其中正常人亦有裂纹舌者，在临床上无诊断意义。 ④ 齿痕：舌体的边缘见牙齿的痕迹，即为齿痕舌。多因舌体胖大而受齿缘压迫所致，故齿痕舌常与胖大舌同见，多属脾虚。若舌质淡白而湿润，多为脾虚而寒湿壅盛。 ⑤ 芒刺：舌乳头增生、肥大，高起如刺，摸之棘手，称为芒刺。若芒刺干燥，多属热邪亢盛，且热愈盛则芒刺愈多。根据芒刺所生部位，可分辨邪热所在脏腑，如舌尖有芒刺，多属心火亢盛；舌边有芒刺，多属肝胆火盛；舌中有芒刺，多属胃肠热盛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 41,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0043",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "齿稀根露"
+        },
+        {
+          "option_id": "B",
+          "content": "齿龈红肿"
+        },
+        {
+          "option_id": "C",
+          "content": "齿龈青紫"
+        },
+        {
+          "option_id": "D",
+          "content": "齿龈淡白"
+        },
+        {
+          "option_id": "E",
+          "content": "牙齿蛀蚀 {TS}根据中医望诊理论，肾虚可见( )。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "齿乃骨之余，骨为肾所主。如牙齿干燥，多是胃热炽盛、津液大伤；干燥如枯骨，多为肾精枯竭，肾水不能上承所致；牙齿松动稀疏、齿根外露者，多属肾虚或虚火上炎；睡中咬牙或啮齿，常见于胃中有热或虫积的患者。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 43,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0046",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "增加药物排泄"
+        },
+        {
+          "option_id": "B",
+          "content": "影响药物分布"
+        },
+        {
+          "option_id": "C",
+          "content": "影响药物吸收"
+        },
+        {
+          "option_id": "D",
+          "content": "影响药物代谢"
+        },
+        {
+          "option_id": "E",
+          "content": "减少药物排泄 {TS} 中西药联用时会引起药动学上的相互作用，下列药组中：煅龙骨和呋喃妥因联用能( )。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "碱性药物由于与酸性药物发生相互作用，可大大加快药物排泄速度，导致药效降低，甚至失去治疗作用。碱性中药如锻牡蛎、锻龙骨、红灵散、女金丹、痧气散、乌贝散、陈香露白露片等，可碱化尿液，与酸性药物诺氟沙星、呋喃妥因、吲哚美辛、头孢类抗生素等联用时，增加酸性西药的解离，排泄加快，使作用时间和作用强度降低。红霉素在碱性环境下抗菌作用强，当与含山楂制剂合用时，可使血液中pH值降低，导致红霉素分解，失去抗菌作用。此外，冰硼散可使尿液碱化，增加青霉素与磺胺类药物的排泄速度，降低药物有效浓度，抗菌作用明显降低。含有机酸成分的中药如乌梅、山茱萸、陈皮、木瓜、川芎、青皮、山楂、女贞子等，与一些碱性药物如氢氧化铝、氢氧化钙、碳酸钙、枸橼酸镁、碳酸氢钠、氨茶碱、氨基糖苷类抗生素等合用时，会发生酸碱中和，加快排泄而降低或失去药效。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 46,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0049",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "杞菊地黄丸"
+        },
+        {
+          "option_id": "B",
+          "content": "半夏天麻丸"
+        },
+        {
+          "option_id": "C",
+          "content": "通天口服液"
+        },
+        {
+          "option_id": "D",
+          "content": "当归龙荟丸"
+        },
+        {
+          "option_id": "E",
+          "content": "十全大补丸 {TS} 治疗眩晕时，属肝肾阴虚者，宜选用的中成药是( )。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "“ 该试题已过期，为保证试卷完整性，仅供考生参阅。”",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 49,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0052",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "人参"
+        },
+        {
+          "option_id": "B",
+          "content": "阿胶"
+        },
+        {
+          "option_id": "C",
+          "content": "钩藤"
+        },
+        {
+          "option_id": "D",
+          "content": "海金沙"
+        },
+        {
+          "option_id": "E",
+          "content": "鹿角霜 {TS}中药汤剂煎煮时，需后下的饮片是( )。"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "需要后下的药物有以下几类。 ( 1 ) 气味芳香类饮片，因其含挥发性成分如:降香、沉香、薄荷、砂仁、白豆蔻、鱼腥草等。 ( 2 ) 久煎后有效成分易被破坏的饮片。如：钩藤、苦杏仁、徐长卿、生大黄、番泻叶等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 52,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0054",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴阳格拒"
+        },
+        {
+          "option_id": "B",
+          "content": "阴阳互损"
+        },
+        {
+          "option_id": "C",
+          "content": "阴阳亡失"
+        },
+        {
+          "option_id": "D",
+          "content": "阴阳偏盛"
+        },
+        {
+          "option_id": "E",
+          "content": "阴阳偏衰 {TS}身热反不恶寒，四肢厥逆，下利清谷，脉微欲绝，病机属于( )。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "典型的真寒假热证，即阴盛格阳属于阴阳格拒的一种。 阴阳格拒，是阴阳失调病机中比较特殊的一类病机。形成阴阳相互格拒的机制，主要是在病变过程中阴或阳的一方偏盛至极，或阴和阳的一方极端虚弱，双方盛衰悬殊，盛者壅遏于内，将虚弱、不足的一方排斥。 阴盛格阳：阴盛格阳，是指阴寒之邪壅盛于内，逼迫阳气浮越于外，使阴阳之气不相顺接、相互格拒，表现为真寒假热的病机变化。病变本质是阴寒内盛，临床可见四肢厥逆、下利清谷、脉微欲绝等症状；又可见阳浮于外，症见身热反不恶寒(但欲盖衣被)、面颊泛红等假热之象。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 54,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0056",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "炒焦品"
+        },
+        {
+          "option_id": "B",
+          "content": "麸炒品"
+        },
+        {
+          "option_id": "C",
+          "content": "清炒品"
+        },
+        {
+          "option_id": "D",
+          "content": "酒炒品"
+        },
+        {
+          "option_id": "E",
+          "content": "炒炭品 {TS} 处方名王不留行，调配时应付( )。"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "处方直接写药名（或炒），需调配清炒品，如紫苏子、莱菔子、谷芽、麦芽、王不留行、酸枣仁、蔓荆子、苍耳子、牛蒡子、白芥子等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 56,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0059",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补肾强身片"
+        },
+        {
+          "option_id": "B",
+          "content": "杞菊地黄丸"
+        },
+        {
+          "option_id": "C",
+          "content": "金芪降糖片"
+        },
+        {
+          "option_id": "D",
+          "content": "人参健脾片"
+        },
+        {
+          "option_id": "E",
+          "content": "参苓白术丸 {TS} 治疗消渴时，属肾阴亏虚者，宜选用的中成药是( )。"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "肾阴亏虚证【症状】尿频量多，浊如膏脂，腰酸膝软,头晕耳鸣，多梦遗精，乏力，皮肤干燥。舌红少苔，脉细数。【治法】滋养肾阴。【方剂应用】 基础方剂 六味地黄丸(熟地黄、山萸肉、山药、泽泻、丹皮、茯苓)加减。【中成药】六味地黄丸，麦味地黄丸，杞菊地黄丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 59,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0062",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴暗处"
+        },
+        {
+          "option_id": "B",
+          "content": "密闭容器内"
+        },
+        {
+          "option_id": "C",
+          "content": "避光凉爽处"
+        },
+        {
+          "option_id": "D",
+          "content": "通风干燥处"
+        },
+        {
+          "option_id": "E",
+          "content": "凉暗处 {TS}含糖分多的饮片，应贮存于( )。"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "含糖分及黏液质较多的饮片，如肉苁蓉、熟地黄、天冬、党参等，应贮于通风干燥处。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 62,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0064",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甘草"
+        },
+        {
+          "option_id": "B",
+          "content": "丹参"
+        },
+        {
+          "option_id": "C",
+          "content": "升麻"
+        },
+        {
+          "option_id": "D",
+          "content": "乌头"
+        },
+        {
+          "option_id": "E",
+          "content": "麻黄 {TS}体虚多汗者忌用( )。"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "体虚多汗者忌用发汗力较强的麻黄。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 64,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0066",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牡丹皮"
+        },
+        {
+          "option_id": "B",
+          "content": "细辛"
+        },
+        {
+          "option_id": "C",
+          "content": "红花"
+        },
+        {
+          "option_id": "D",
+          "content": "灯心草"
+        },
+        {
+          "option_id": "E",
+          "content": "吴茱萸 宜与山药同贮的是( )。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "对抗贮存法也称异性对抗驱虫养护，是采用两种或两种以上药物同贮, 相互克制，起到防止虫蛀、霉变作用的养护方法。一般适用于数量不多的药物，如牡丹皮与泽泻、山药同贮，蛤蚧与花椒、吴茱萸或荜澄茄同贮，蕲蛇或白花蛇与花椒或大蒜瓣同贮,土鳖虫与大蒜同贮，人参与细辛同贮，冰片与灯心草同贮，硼砂与绿豆同贮，藏红花与冬虫夏草同贮等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 66,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0068",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "固本止崩汤"
+        },
+        {
+          "option_id": "B",
+          "content": "圣愈汤"
+        },
+        {
+          "option_id": "C",
+          "content": "固阴煎"
+        },
+        {
+          "option_id": "D",
+          "content": "调肝汤"
+        },
+        {
+          "option_id": "E",
+          "content": "四物汤 {TS} 痛经患者属于气血两虚者，宜选用的方剂是( )。"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "气血虚弱证 【症状】经期或经后小腹隐痛喜按，或小腹空坠不适，月经量少，色淡，质清稀；面色无华，头晕心悸，神疲乏力。舌淡，脉细无力。 【治法】益气养血，调经止痛。 【方剂应用】 基础方剂 圣愈汤（人参、黄芪、当归、川芎、熟地黄、白芍）加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 68,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0073",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血府逐瘀丸与妇科千金片"
+        },
+        {
+          "option_id": "B",
+          "content": "天王补心丹与朱砂定神丸"
+        },
+        {
+          "option_id": "C",
+          "content": "祛痰止咳颗粒与镇咳宁胶囊"
+        },
+        {
+          "option_id": "D",
+          "content": "补中益气丸与桂附地黄丸"
+        },
+        {
+          "option_id": "E",
+          "content": "附子理中丸与四神丸 {TS}因含有配伍禁忌重要而不宜使用的药组( )。"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "临床常用中成药心通口服液、内消瘰疬丸中含有海藻，祛痰止咳颗粒含有甘遂，若与橘红痰咳颗粒、通宣理肺丸、镇咳宁胶囊等含甘草的中成药联用也属禁忌之列。 属于十八反十九畏的禁忌。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 73,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0075",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝"
+        },
+        {
+          "option_id": "B",
+          "content": "脾"
+        },
+        {
+          "option_id": "C",
+          "content": "肾"
+        },
+        {
+          "option_id": "D",
+          "content": "肺"
+        },
+        {
+          "option_id": "E",
+          "content": "心 {TS}称为“贮痰之器”的脏是( )。"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "“ 该试题已过期，为保证试卷完整性，仅供考生参阅。”肝主藏血，脾生痰，肾藏精，肺贮痰，心藏神。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 75,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0077",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "烊化"
+        },
+        {
+          "option_id": "B",
+          "content": "兑服"
+        },
+        {
+          "option_id": "C",
+          "content": "另煎"
+        },
+        {
+          "option_id": "D",
+          "content": "冲服"
+        },
+        {
+          "option_id": "E",
+          "content": "服汤代水 {TS}中药处方中含有竹沥水，正确的使用方法是( )。"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "对于液体中药，放置其他药中煎煮，往往会影响其成分，故应待其他药物煎煮去渣取汁后，再行兑入服用。如黄酒、竹沥水、鲜藕汁、姜汁、梨汁、蜂蜜等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 77,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0079",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄芪"
+        },
+        {
+          "option_id": "B",
+          "content": "桃仁"
+        },
+        {
+          "option_id": "C",
+          "content": "鸡血藤"
+        },
+        {
+          "option_id": "D",
+          "content": "青黛粉"
+        },
+        {
+          "option_id": "E",
+          "content": "五味子 {TS}不宜与苦杏仁装于一个药斗的饮片是( )。"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "外观性状相似的饮片，尤其是外观形状相似但功效不同的饮片，不宜排列在一起。如蒲黄与海金沙，紫苏子与菟丝子，山药与天花粉，杏仁与桃仁，厚朴与海桐皮，荆芥与紫苏叶，大蓟与小蓟，炙甘草与炙黄芪，当归与独活，制南星与象贝（浙贝），菟丝子与苏子，熟地与黄精，知母与玉竹，蛇床子与地 肤子，玫瑰花与月季花，血余炭与干漆炭，韭菜子与葱子等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 79,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0082",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "午后发热，五心烦热"
+        },
+        {
+          "option_id": "B",
+          "content": "长期低热，劳累则甚"
+        },
+        {
+          "option_id": "C",
+          "content": "午后热甚，身热不扬"
+        },
+        {
+          "option_id": "D",
+          "content": "日晡热甚，腹痛便结"
+        },
+        {
+          "option_id": "E",
+          "content": "发热烦渴，汗多脉洪 {TS}气虚发热的症状特点是( )。"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "气虚引起的长期低热，称为 “气虚发热” 除表现为发热日久不止和热度不高以外，还可见面色白、食少乏力、短气懒言、劳倦则甚、舌淡、脉虚弱等症。多因脾气虚损，中气下陷，清阳不升，郁而为热。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 82,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0085",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "恶心呕吐、口中有金属味;腹痛腹泻;口腔黏膜充血，牙龈肿胀溃烂"
+        },
+        {
+          "option_id": "B",
+          "content": "胸闷;心悸;喉咙干痛;四肢无力;心电图显示房室传导阻滞"
+        },
+        {
+          "option_id": "C",
+          "content": "头晕;头痛;烦躁不安;面部肌肉紧张;吞咽困难;伸肌与屈肌同时收缩"
+        },
+        {
+          "option_id": "D",
+          "content": "严重脱水;低蛋白血症;水肿;精神错乱;幻觉;癫痫样发作"
+        },
+        {
+          "option_id": "E",
+          "content": "口舌;四肢及全身麻木;头痛;头晕;精神恍惚;牙关紧闭;呼吸衰竭 {TS}轻粉中毒的主要临床表现是( )。"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "轻粉中毒的主要临床表现是1. 消化系统表现为恶心呕吐、腹痛腹泻、口中有金属味、流涎、口腔黏膜充血、牙龈肿胀溃烂等。 2. 泌尿系统表现为少尿、蛋白尿，严重者可发生急性肾功能衰竭。 3. 神经系统及精神方面症状。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 85,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0088",
+      "question_type": "single_choice",
+      "question_content": "根据选项，回答{TSE}题",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "参苏饮"
+        },
+        {
+          "option_id": "B",
+          "content": "清瘟解毒丸"
+        },
+        {
+          "option_id": "C",
+          "content": "百合固金汤"
+        },
+        {
+          "option_id": "D",
+          "content": "荆防败毒散"
+        },
+        {
+          "option_id": "E",
+          "content": "银翘散 {TS}治疗感冒时，属风热感冒者，宜选用的方剂是( )。"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "风热感冒 【症状】身热较著，微恶风，头胀痛，或咳嗽少痰，或痰出不爽，咽痛咽红，口渴。舌边尖红，苔薄白或微黄，脉浮数。 【治法】辛凉解表，宣肺清热。 【方剂应用】 基础方剂 银翘散（金银花、连翘、竹叶、荆芥、牛蒡子、薄荷、桔梗、淡豆豉、甘草）加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 88,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0091",
+      "question_type": "single_choice",
+      "question_content": "根据材料，回答{TSE}题 91、根据材料，回答{TSE}题 某患儿，5岁，体弱多病，近日口臭，便秘，家长希望用中药调理。请根据就诊情况选择用 药。 {TS} 初诊时见其舌苔黄腻，脉滑，治宜选用的中药是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "太子参、黄精"
+        },
+        {
+          "option_id": "B",
+          "content": "藿香、薏苡仁"
+        },
+        {
+          "option_id": "C",
+          "content": "黄芪、党参"
+        },
+        {
+          "option_id": "D",
+          "content": "菟丝子、肉苁蓉"
+        },
+        {
+          "option_id": "E",
+          "content": "补骨脂、熟地黄"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "小儿感冒后容易食欲减退,若此时舌苔厚腻、口有异味、大便秘结，说明体内湿热重，绝不能给予滋补药。对于体虚夹湿热，而有口臭、便秘、舌苔黄腻的患儿应先用清热除湿的藿香、黄芩、黄连 、薏苡仁、陈皮等，使热清湿化，然后再服调补中药。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 91,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0092",
+      "question_type": "single_choice",
+      "question_content": "近一段时间调理，患儿症状有所改善，但仍觉神疲乏力，易感冒，多汗，舌质淡，此时宜选用的中药是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄芪、太子参"
+        },
+        {
+          "option_id": "B",
+          "content": "陈皮、茯苓"
+        },
+        {
+          "option_id": "C",
+          "content": "藿香、薏苡仁"
+        },
+        {
+          "option_id": "D",
+          "content": "白扁豆、稻芽"
+        },
+        {
+          "option_id": "E",
+          "content": "白芍、稻芽"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "易感冒、多汗，属于气虚的患儿，可服用补气固表的黄芪、太子参、白术等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 92,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0093",
+      "question_type": "single_choice",
+      "question_content": "根据材料，回答{TSE}题 某男，75岁，患中风1年，左侧肢软无力，手足浮肿，语言謇涩，面色少华。舌体不正，舌质淡紫，边有痧斑，舌苔薄白，脉细涩无力。{TS}中医辨证是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "风痰阻络"
+        },
+        {
+          "option_id": "B",
+          "content": "气虚血瘀"
+        },
+        {
+          "option_id": "C",
+          "content": "肾精亏损"
+        },
+        {
+          "option_id": "D",
+          "content": "痰蒙神窍"
+        },
+        {
+          "option_id": "E",
+          "content": "肝阳上亢"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "中风病气虚血瘀证 【症状】肢体偏枯不用，肢软无力，面色萎黄。舌质淡紫或有瘀斑，苔薄白，脉细涩或细弱。 【治法】益气养血，化瘀通络。 【方剂应用】 基础方剂 补阳还五汤(黄芪、当归、川芎、桃仁、红花、赤芍、地龙)加减。 【中成药】 脉络通颗粒、软脉灵口服液、脑安颗粒、消栓胶囊、复方地龙胶囊。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 93,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0094",
+      "question_type": "single_choice",
+      "question_content": "中医治法是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "行气活血"
+        },
+        {
+          "option_id": "B",
+          "content": "益气活血"
+        },
+        {
+          "option_id": "C",
+          "content": "滋肾利窍"
+        },
+        {
+          "option_id": "D",
+          "content": "祛风涤痰"
+        },
+        {
+          "option_id": "E",
+          "content": "平肝潜阳"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "中风病气虚血瘀证 【症状】肢体偏枯不用，肢软无力，面色萎黄。舌质淡紫或有瘀斑，苔薄白，脉细涩或细弱。 【治法】益气养血，化瘀通络。 【方剂应用】 基础方剂 补阳还五汤(黄芪、当归、川芎、桃仁、红花、赤芍、地龙)加减。 【中成药】 脉络通颗粒、软脉灵口服液、脑安颗粒、消栓胶囊、复方地龙胶囊。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 94,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0095",
+      "question_type": "single_choice",
+      "question_content": "治宜选用的方剂是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "天麻钩藤饮加减"
+        },
+        {
+          "option_id": "B",
+          "content": "补阳还五汤加减"
+        },
+        {
+          "option_id": "C",
+          "content": "镇肝熄风汤加减"
+        },
+        {
+          "option_id": "D",
+          "content": "通窍活血汤加减"
+        },
+        {
+          "option_id": "E",
+          "content": "血府逐瘀汤加减"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "中风病气虚血瘀证 【症状】肢体偏枯不用，肢软无力，面色萎黄。舌质淡紫或有瘀斑，苔薄白，脉细涩或细弱。 【治法】益气养血，化瘀通络。 【方剂应用】 基础方剂 补阳还五汤(黄芪、当归、川芎、桃仁、红花、赤芍、地龙)加减。 【中成药】 脉络通颗粒、软脉灵口服液、脑安颗粒、消栓胶囊、复方地龙胶囊。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 95,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0096",
+      "question_type": "single_choice",
+      "question_content": "治宜选用的中成药是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脑立清丸"
+        },
+        {
+          "option_id": "B",
+          "content": "血塞通片"
+        },
+        {
+          "option_id": "C",
+          "content": "通心络胶囊"
+        },
+        {
+          "option_id": "D",
+          "content": "脑血栓片"
+        },
+        {
+          "option_id": "E",
+          "content": "复方丹参片"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "中风病气虚血瘀证 【症状】肢体偏枯不用，肢软无力，面色萎黄。舌质淡紫或有瘀斑，苔薄白，脉细涩或细弱。 【治法】益气养血，化瘀通络。 【方剂应用】 基础方剂 补阳还五汤(黄芪、当归、川芎、桃仁、红花、赤芍、地龙)加减。【中成药】 脉络通颗粒、软脉灵口服液、脑安颗粒、消栓胶囊、复方地龙胶囊、通心络胶囊。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 96,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0097",
+      "question_type": "single_choice",
+      "question_content": "根据材料，回答{TSE}题 某女，42岁。经血淋漓不断月余，气短懒言，倦怠乏力，面色苍白。舌淡，脉细弱无力。{TS}该病的病位在( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾"
+        },
+        {
+          "option_id": "B",
+          "content": "心"
+        },
+        {
+          "option_id": "C",
+          "content": "肝"
+        },
+        {
+          "option_id": "D",
+          "content": "肺"
+        },
+        {
+          "option_id": "E",
+          "content": "肾"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "崩漏属气血两虚证【症状】出血量多或淋沥不尽，血色淡薄，面色无华，气短懒言，食欲不振，便溏。舌质淡，苔薄白湿润，脉细弱。【治法】补脾摄血，引血归经。故病位在脾。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 97,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0098",
+      "question_type": "single_choice",
+      "question_content": "中医辨证是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气血两虚"
+        },
+        {
+          "option_id": "B",
+          "content": "肝肾不足"
+        },
+        {
+          "option_id": "C",
+          "content": "气随血脱"
+        },
+        {
+          "option_id": "D",
+          "content": "气虚血瘀"
+        },
+        {
+          "option_id": "E",
+          "content": "精血亏虚"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "崩漏属气血两虚证【症状】出血量多或淋沥不尽，血色淡薄，面色无华，气短懒言，食欲不振，便溏。舌质淡，苔薄白湿润，脉细弱。【治法】补脾摄血，引血归经。【中成药】定坤丹、乌鸡白凤丸、养血饮口服液。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 98,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0099",
+      "question_type": "single_choice",
+      "question_content": "治宜选用的中成药是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "少腹逐瘀丸"
+        },
+        {
+          "option_id": "B",
+          "content": "安坤赞育丸"
+        },
+        {
+          "option_id": "C",
+          "content": "宫血宁胶囊"
+        },
+        {
+          "option_id": "D",
+          "content": "乌鸡白凤丸"
+        },
+        {
+          "option_id": "E",
+          "content": "人参健脾丸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "崩漏属气血两虚证【症状】出血量多或淋沥不尽，血色淡薄，面色无华，气短懒言，食欲不振，便溏。舌质淡，苔薄白湿润，脉细弱。【治法】补脾摄血，引血归经。【中成药】定坤丹、乌鸡白凤丸、养血饮口服液。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 99,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0100",
+      "question_type": "single_choice",
+      "question_content": "根据材料，回答{TSE}题 某女，56岁。因患类风湿关节炎，服用壮骨关节丸，每日服2次，每次6g。服药月余后，出现纳差，乏力，尿黄如浓茶色，皮肤黄染瘙痒，大便呈灰白色。遂收入院治疗。入院后进行各项检查，化验检查：ALT316U/L，AST119U/L，ALP276U/L，GGT231U/L，TBiL171μmol/L，各项肝炎病毒学标志物检测均呈阴性。医师综合分析病情，考虑系药物不良反应，给予系统治疗。 {TS} 根据上述临床治疗，该患者发生的不良反应是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "消化性溃疡"
+        },
+        {
+          "option_id": "B",
+          "content": "胆汁淤积型肝炎"
+        },
+        {
+          "option_id": "C",
+          "content": "病毒性肝炎"
+        },
+        {
+          "option_id": "D",
+          "content": "急性胰腺炎"
+        },
+        {
+          "option_id": "E",
+          "content": "急性胆囊炎"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "服用壮骨关节丸的不良反应表现：皮疹、瘙痒、恶心、 呕吐、腹痛、腹泻、胃痛，血压升高，肝损害。 在不良反应的报告中，胆汁淤积型肝炎例数有 一定比例。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 100,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0101",
+      "question_type": "single_choice",
+      "question_content": "上述案例提示，为避免或减少壮骨关节丸不良反应的发生，在患者用药前，药师应进行用药指导，重点强调服药疗程、间隔时间及相关检查。关于该药服用方法的描述，正确的是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疗程30天，间隔5天"
+        },
+        {
+          "option_id": "B",
+          "content": "疗程30天，间隔7天"
+        },
+        {
+          "option_id": "C",
+          "content": "疗程30天，间隔15天"
+        },
+        {
+          "option_id": "D",
+          "content": "疗程60天，间隔7天"
+        },
+        {
+          "option_id": "E",
+          "content": "疗程60天，间隔15天"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "用药指导①建议患者应严格遵医嘱用药，避免大剂量、长期连续用药；一旦出现纳差、尿黄、皮肤黄染等症状应及时停药就医。②肝功能不全、孕妇及哺乳期妇女禁用。定期检查肝功能。③30天为一疗程，长期服用者每疗程之间间隔10-20天。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 101,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0102",
+      "question_type": "single_choice",
+      "question_content": "根据材料，回答{TSE}题 某男，56岁，患高血压病服用吲达帕胺，后因血压控制不理想，自行加服珍菊降压片。近期 感觉胸闷、心悸、乏力。到医院就诊。 {TS} 医师告知患者联合用药一定要了解药物的成分和作用。珍菊降压片是含有西药成分的中成药，所含降压药成分是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甲基多巴"
+        },
+        {
+          "option_id": "B",
+          "content": "利血平"
+        },
+        {
+          "option_id": "C",
+          "content": "盐酸可乐定"
+        },
+        {
+          "option_id": "D",
+          "content": "硝普钠"
+        },
+        {
+          "option_id": "E",
+          "content": "氯沙坦"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "珍菊降压片 含有盐酸可乐定、氢氯噻嗪。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 102,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0103",
+      "question_type": "single_choice",
+      "question_content": "医师进一步告知，珍菊降压片除含上述西药成分外，还含有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "卡托普利"
+        },
+        {
+          "option_id": "B",
+          "content": "硝苯地平"
+        },
+        {
+          "option_id": "C",
+          "content": "氢氯噻嗪"
+        },
+        {
+          "option_id": "D",
+          "content": "卡马西平"
+        },
+        {
+          "option_id": "E",
+          "content": "米诺地尔"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "珍菊降压片 含有盐酸可乐定、氢氯噻嗪。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 103,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0104",
+      "question_type": "single_choice",
+      "question_content": "医师认为患者出现的症状与其自行加服珍菊降压片有关。珍菊降压片和吲达帕胺合用，最常见的不良反应是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "低血糖"
+        },
+        {
+          "option_id": "B",
+          "content": "血小板减少"
+        },
+        {
+          "option_id": "C",
+          "content": "低蛋白"
+        },
+        {
+          "option_id": "D",
+          "content": "低血钾"
+        },
+        {
+          "option_id": "E",
+          "content": "白细胞减少"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "珍菊降压片不良反应表现：消化系统表现为肝功能异常、黄疸、胰腺炎等；精神神经系统表现为头晕、视物模糊、运动障碍、麻木；皮肤及附件损害表现为剥脱性皮炎、全身水疱疹伴瘙痒等；代谢和营养障碍表现为低钾血症、低氯血症、低钠血症；有肾功能异常、心前区疼痛、心律失常、白细胞减少等个例报告。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 104,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0105",
+      "question_type": "single_choice",
+      "question_content": "根据材料，回答{TSE}题 某女，32岁，口舌生疮，烦躁焦虑，口干舌燥，小便短赤。舌尖红，苔薄黄，脉数。{TS} 口舌生疮，舌尖红，病位在( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "心"
+        },
+        {
+          "option_id": "B",
+          "content": "肝"
+        },
+        {
+          "option_id": "C",
+          "content": "胃"
+        },
+        {
+          "option_id": "D",
+          "content": "肺"
+        },
+        {
+          "option_id": "E",
+          "content": "肾"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "心开窍于舌。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 105,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0106",
+      "question_type": "single_choice",
+      "question_content": "脉数主病是( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "虚证"
+        },
+        {
+          "option_id": "B",
+          "content": "热证"
+        },
+        {
+          "option_id": "C",
+          "content": "阴证"
+        },
+        {
+          "option_id": "D",
+          "content": "寒证"
+        },
+        {
+          "option_id": "E",
+          "content": "表证"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "数表示快的意思，快属于热证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 106,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0107",
+      "question_type": "single_choice",
+      "question_content": "根据材料，回答{TSE}题 某男，31岁，天气突然转冷，衣着单薄，致左上腹部暴痛，喜温恶寒，得温痛减，口和不渴，恶心欲吐，舌质淡，舌苔薄白，脉弦紧。 {TS} 中医诊断是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胃痛"
+        },
+        {
+          "option_id": "B",
+          "content": "胸痹"
+        },
+        {
+          "option_id": "C",
+          "content": "痞满"
+        },
+        {
+          "option_id": "D",
+          "content": "腹痛"
+        },
+        {
+          "option_id": "E",
+          "content": "嘈杂"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "左上腹是胃部。辨证为中医胃痛寒邪客胃证：胃痛暴作，喜温恶寒，得温痛减，口和不渴，或喜热饮。舌淡，苔薄白，脉弦紧。 解析：寒邪客胃证【症状】胃痛暴作，喜温恶寒，得温痛减, 口和不渴，或喜热饮。舌淡，苔薄白，脉弦紧。【治法】温胃散寒，行气止痛。【方剂应用】 基础方剂 良附丸(高良姜、香附)加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 107,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0108",
+      "question_type": "single_choice",
+      "question_content": "中医辨证是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "饮食停滞"
+        },
+        {
+          "option_id": "B",
+          "content": "肝胃郁热"
+        },
+        {
+          "option_id": "C",
+          "content": "脾胃虚寒"
+        },
+        {
+          "option_id": "D",
+          "content": "寒邪客胃"
+        },
+        {
+          "option_id": "E",
+          "content": "肝胃不和"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 108,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0109",
+      "question_type": "single_choice",
+      "question_content": "宜选用的治法是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "导滞和胃"
+        },
+        {
+          "option_id": "B",
+          "content": "疏肝和胃"
+        },
+        {
+          "option_id": "C",
+          "content": "温胃散寒"
+        },
+        {
+          "option_id": "D",
+          "content": "温中健脾"
+        },
+        {
+          "option_id": "E",
+          "content": "温阳散寒"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "寒邪客胃证【症状】胃痛暴作，喜温恶寒，得温痛减, 口和不渴，或喜热饮。舌淡，苔薄白，脉弦紧。【治法】温胃散寒，行气止痛。【方剂应用】 基础方剂 良附丸(高良姜、香附)加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 109,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0110",
+      "question_type": "single_choice",
+      "question_content": "宜选用的方剂是（ ）。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "良附丸加减"
+        },
+        {
+          "option_id": "B",
+          "content": "左金丸加减"
+        },
+        {
+          "option_id": "C",
+          "content": "附子汤加减"
+        },
+        {
+          "option_id": "D",
+          "content": "保和丸加减"
+        },
+        {
+          "option_id": "E",
+          "content": "黄芪建中汤加减 第4题 多项选择题 （每题1分，共10题，共10分） 四、多项选择题。每题1分。每题的备选"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "寒邪客胃证【症状】胃痛暴作，喜温恶寒，得温痛减, 口和不渴，或喜热饮。舌淡，苔薄白，脉弦紧。【治法】温胃散寒，行气止痛。【方剂应用】 基础方剂 良附丸(高良姜、香附)加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 110,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0111",
+      "question_type": "multiple_choice",
+      "question_content": "因富含鞣质，与乳酶生等含酶制剂联用时会产生抑酶作用的中药有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "诃子"
+        },
+        {
+          "option_id": "B",
+          "content": "麻黄"
+        },
+        {
+          "option_id": "C",
+          "content": "女贞子"
+        },
+        {
+          "option_id": "D",
+          "content": "地榆"
+        },
+        {
+          "option_id": "E",
+          "content": "山茱萸"
+        }
+      ],
+      "answer": [
+        "A",
+        "D",
+        "E"
+      ],
+      "explanation": "含鞣质较多的中药有：诃子、地榆 、山茱萸 、五倍子等。与乳酶生等含酶制剂联用时会产生抑酶作用。 112 答案： $\\mathbf { \\delta B , C , D , E }$ 解析：老年人合理应用中药的原则1. 辨证论治，严格掌握适应证2. 熟悉药品，恰当选择应用:服用多种药物时，注意药物相互作用，间隔服药3. 选择合适的用药剂量:一般应从“最小剂量” 开始。4. 对体质较弱的患者不随意加药。 113 答案： $\\mathbf { A , B , C , D }$ 解析：根据五行相生规律确定的治法，主要有滋水涵木法，金水相生法，培土生金法， 益火补土法等 114 答案： $\\mathbf { A } , \\mathbf { B } , \\mathbf { E }$ 解析：消灭病邪，防止邪气侵害的方法有讲究卫生、药物杀灭病邪、防范各种外伤 、避免病邪侵害。 115 答案： $\\mathbf { A , B , C , E }$ 解析：季节属于因时制宜。 11 答案：6 $\\mathbf { \\delta B , C , D , E }$ 解析：价格信息不是执业药师咨询服务的范畴。 答案：117 $\\mathbf { A } , \\mathbf { B } , \\mathbf { C } , \\mathbf { D } , \\mathbf { E }$ 解析：中药饮片调配后，必须经复核后方可发出。核对调配好的药品是否与处方所开药味及剂数相符，有无错味、漏味、多味和掺杂异物，每剂药的剂量误差应小于 ± 5 % ,必要时要复称。还需审查有无相反(十八反、十 九 畏 )药 物 、妊娠禁忌药物，毒麻药有无超量。毒性中药、贵细药品的调配是否得当。对于需特殊煎煮或处理的药味如先煎、后下、包煎、烊化、另煎、冲服等是否单包并注明用法。审查药品质量，保证无伪劣饮片，审查有无虫蛀、发霉变质，有无生炙不分或以生代炙，整药、籽药应捣未捣，调配处方有无乱代乱用等现象。如发现问题及时调换。复核检查无误后，经复核人员签字，方可包装药品。外用药应使用专用包装，并要有外用标志。调剂复核工作应当由主管药师或执业药师等专业技术人员负责，复核率应当达到100% 。 118 答案： $\\mathbf { A } , \\mathbf { B } , \\mathbf { C } , \\mathbf { D } , \\mathbf { E }$ 解析：不合理用药的案例，概括起来主要有以下几种。 1. 辨析病证不准确，用药指征不明确。 2. 给药剂量失准，用量过大或过小。 3. 疗程长短失宜，用药时间过长或过短。 4. 给药途径不适，未选择最佳给药途径。 5. 服用时间不当，不利于药物的药效发挥。 6. 违反用药禁忌，有悖于明令规定的配伍禁忌、妊娠禁忌、证候禁忌及服药时的饮食禁忌。 7. 同类重复使用，因对药物的性能不熟，或单纯追求经济效益，导致同类药重复使用。 8. 乱用贵重药品，因盲目自行购用，或追求经济效益，导致滥用贵重药品。 119 答案： $\\mathbf { A } , \\mathbf { B } , \\mathbf { C } , \\mathbf { D } , \\mathbf { E }$ 解析：使用乌头类药物引起中毒的原因有 1. 过量服用为主要原因。 2. 用法不当，如煎煮时间太短或生用。 3. 泡酒服用。 4. 个体差异引起蓄积性中毒。 120 答案： $\\mathbf { A } , \\mathbf { C } , \\mathbf { D }$ 解析：该考题新版教材有变化，为保证试卷完整性，仅供考生参阅。新版教材为：P218-221 辨证为中医虚劳血虚证：头晕眼花，心悸多梦，手足发麻，面色淡黄或淡白无华，口 唇、爪甲色淡，妇女月经量少。舌质淡，脉细。中成药：归芪口服液，再造生血片，薯 蓣丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 111,
+        "answer_source": "paired_material"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0112",
+      "question_type": "single_choice",
+      "question_content": "老年慢性病患者长期服用中药应注意的事项有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "为增强疗效，可加大服用剂量，并坚持长期服用"
+        },
+        {
+          "option_id": "B",
+          "content": "从小剂量开始服用"
+        },
+        {
+          "option_id": "C",
+          "content": "辨证用药，严格掌握适应病症"
+        },
+        {
+          "option_id": "D",
+          "content": "对体质较弱的患者不随意加药"
+        },
+        {
+          "option_id": "E",
+          "content": "服用多种药物时，注意药物相互作用，间隔服药"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 112,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0113",
+      "question_type": "single_choice",
+      "question_content": "根据五行相生规律的治法有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "培土生金法"
+        },
+        {
+          "option_id": "B",
+          "content": "滋水涵木法"
+        },
+        {
+          "option_id": "C",
+          "content": "金水相生法"
+        },
+        {
+          "option_id": "D",
+          "content": "益火补土法"
+        },
+        {
+          "option_id": "E",
+          "content": "抑木扶土法"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 113,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0114",
+      "question_type": "single_choice",
+      "question_content": "消灭病邪，防止邪气侵害的方法有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "讲究卫生"
+        },
+        {
+          "option_id": "B",
+          "content": "使用药物"
+        },
+        {
+          "option_id": "C",
+          "content": "精神调养"
+        },
+        {
+          "option_id": "D",
+          "content": "人工免疫"
+        },
+        {
+          "option_id": "E",
+          "content": "防范外伤"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 114,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0115",
+      "question_type": "single_choice",
+      "question_content": "在治疗疾病时，因人制宜需考虑的因素包括( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "年龄"
+        },
+        {
+          "option_id": "B",
+          "content": "性别"
+        },
+        {
+          "option_id": "C",
+          "content": "体质"
+        },
+        {
+          "option_id": "D",
+          "content": "季节"
+        },
+        {
+          "option_id": "E",
+          "content": "生活习惯"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 115,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0116",
+      "question_type": "single_choice",
+      "question_content": "执业药师对医师开展用药咨询服务的内容包括( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "价格信息"
+        },
+        {
+          "option_id": "B",
+          "content": "新药信息"
+        },
+        {
+          "option_id": "C",
+          "content": "合理用药信息"
+        },
+        {
+          "option_id": "D",
+          "content": "药物相互作用和禁忌证"
+        },
+        {
+          "option_id": "E",
+          "content": "药品不良反应信息"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 116,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0117",
+      "question_type": "single_choice",
+      "question_content": "饮片处方调配复合的主要内容有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "有无虫蛀、霉变"
+        },
+        {
+          "option_id": "B",
+          "content": "毒麻药有无超量"
+        },
+        {
+          "option_id": "C",
+          "content": "剂量误差是否在允许范围内"
+        },
+        {
+          "option_id": "D",
+          "content": "特殊煎法的药味是否单包"
+        },
+        {
+          "option_id": "E",
+          "content": "有无错味、漏味、多味、异味"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 117,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0118",
+      "question_type": "single_choice",
+      "question_content": "关于中成药不合理用药主要表现形式的说法，正确的有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "药证不符"
+        },
+        {
+          "option_id": "B",
+          "content": "给药途径不当"
+        },
+        {
+          "option_id": "C",
+          "content": "给药剂量失准"
+        },
+        {
+          "option_id": "D",
+          "content": "疗程长短失宜"
+        },
+        {
+          "option_id": "E",
+          "content": "服药时间不当"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 118,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0119",
+      "question_type": "single_choice",
+      "question_content": "使用乌头类药物引起中毒的原因有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "过量服用"
+        },
+        {
+          "option_id": "B",
+          "content": "泡酒服用"
+        },
+        {
+          "option_id": "C",
+          "content": "使用生品"
+        },
+        {
+          "option_id": "D",
+          "content": "煎煮时间太短"
+        },
+        {
+          "option_id": "E",
+          "content": "个体差异引起蓄积性中毒"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 119,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-2594b464c3-q0120",
+      "question_type": "single_choice",
+      "question_content": "某女、32岁、头晕眼花、心悸多梦、面色苍白、爪甲色淡、舌淡、苔薄白、脉细。治疗宜选用的中成药有( )。",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "八珍颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "四神丸"
+        },
+        {
+          "option_id": "C",
+          "content": "十全大补膏"
+        },
+        {
+          "option_id": "D",
+          "content": "当归补血口服液"
+        },
+        {
+          "option_id": "E",
+          "content": "六味地黄丸"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药综合真题（15-24年）\\2016年执业药师考试《中药学综合知识与技能》真题及解析\\full.md",
+        "number": 120,
+        "answer_source": ""
+      }
+    }
+  ]
+}

@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import AtlasPracticePanel from './exam-atlas/AtlasPracticePanel';
-import CaseTrainingPanel from './CaseTrainingPanel';
+import SimulatedPatientChat from './SimulatedPatientChat';
 import MistakeVariationPanel from './MistakeVariationPanel';
 
 const modes = [
   ['objective', '客观题'],
   ['case', '案例简答'],
-  ['patient', 'AI 病患模拟'],
-  ['variation', '错题变式'],
 ];
 
 function normalizeInitialMode(value) {
@@ -20,10 +18,9 @@ function normalizeInitialMode(value) {
 export default function QuestionTrainingPanel({
   enabled,
   selectedKnowledgePoint,
-  practiceScope,
-  onPracticeScopeChange,
   initialMode = '',
   onResult,
+  taskItemId = '',
 }) {
   const [mode, setMode] = useState(() => normalizeInitialMode(initialMode));
 
@@ -52,36 +49,17 @@ export default function QuestionTrainingPanel({
 
       {(mode === 'objective' || mode === 'case') && (
         <div className="question-training-content">
-          <div className="question-training-toolbar">
-            <span>题目范围</span>
-            <div className="question-training-scope" role="group" aria-label="题目范围">
-              {[
-                ['public', '正式题库'],
-                ['user', '我的题目'],
-                ['all', '全部题目'],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={practiceScope === value}
-                  className={practiceScope === value ? 'is-active' : ''}
-                  onClick={() => onPracticeScopeChange(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
           <AtlasPracticePanel
-            key={`${mode}:${practiceScope}:${selectedKnowledgePoint?.kpId || selectedKnowledgePoint?.kp_id || 'all'}`}
+            key={`${mode}:${selectedKnowledgePoint?.kpId || selectedKnowledgePoint?.kp_id || 'all'}`}
             knowledgePoint={selectedKnowledgePoint}
-            scope={practiceScope}
+            scope="public"
             mode={mode}
             onResult={onResult}
+            taskItemId={taskItemId}
           />
         </div>
       )}
-      {mode === 'patient' && <CaseTrainingPanel enabled />}
+      {mode === 'patient' && <SimulatedPatientChat showBack={false} />}
       {mode === 'variation' && <MistakeVariationPanel enabled />}
     </div>
   );

@@ -79,6 +79,10 @@ class LearningWorkshopServiceTests(unittest.TestCase):
             self.assertGreater(paper["timing"]["remaining_seconds"], 0)
             self.assertEqual(paper["items"][0]["options"], ["A. 人参", "B. 甘草"])
             self.assertEqual(paper["items"][0]["max_score"], 25)
+            record = db.query(database.PaperInstanceRecord).filter_by(
+                paper_id=published["paper_id"]
+            ).one()
+            self.assertIsNone(record.daily_task_item_id)
             version = db.query(database.QuestionVersionRecord).filter_by(
                 question_version_id="Q_1:agent"
             ).one()
@@ -88,6 +92,54 @@ class LearningWorkshopServiceTests(unittest.TestCase):
             ).one()
             self.assertEqual(version.answer, "A. 人参")
             self.assertEqual(link.status, "active")
+
+    def test_agent_paper_reuses_task_five_frozen_snapshot_binding(self):
+        with self.Session() as db:
+            db.add(database.DailyTaskItemRecord(
+                task_item_id="ITEM_BOUND",
+                host_task_id="TASK_1",
+                user_id=1,
+                kp_id="KP_1",
+                item_kind="knowledge_practice",
+            ))
+            db.add(database.DailyTaskQuestionSnapshotRecord(
+                task_item_id="ITEM_BOUND",
+                user_id=1,
+                question_id="Q_FROZEN",
+                question_version_id="Q_FROZEN:v1",
+                question_type="short_answer",
+                stem_snapshot="冻结题干",
+                answer_snapshot="冻结答案",
+                kp_snapshot_json='["KP_1"]',
+                source_kind="curated",
+            ))
+            db.commit()
+
+            published = publish_agent_paper(
+                db,
+                user_id=1,
+                execution_id="EXE_BOUND",
+                paper={
+                    "title": "绑定试卷",
+                    "duration_minutes": 20,
+                    "items": [{"question": {"question_id": "AGENT_Q"}}],
+                },
+                blueprint={"total_score": 100},
+                evidence_pack={},
+                daily_task_item_id="ITEM_BOUND",
+            )
+
+            record = db.query(database.PaperInstanceRecord).filter_by(
+                paper_id=published["paper_id"]
+            ).one()
+            item = db.query(database.PaperItemRecord).filter_by(
+                paper_id=published["paper_id"]
+            ).one()
+            self.assertEqual(record.daily_task_item_id, "ITEM_BOUND")
+            self.assertEqual(
+                (item.question_id, item.question_version_id, item.stem_snapshot),
+                ("Q_FROZEN", "Q_FROZEN:v1", "冻结题干"),
+            )
 
     def test_missing_item_scores_are_completed_to_the_authoritative_total(self):
         scores = _normalized_item_scores(

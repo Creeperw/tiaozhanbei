@@ -421,7 +421,9 @@ class CaseTrainingServiceTests(unittest.TestCase):
         self.assertEqual(result["status"], "completed")
         self.assertEqual(activity.completion_status, "completed")
         self.assertEqual(json.loads(activity.payload_json)["task_type"], "case_training")
-        self.assertEqual(rates["value"], 1.0)
+        self.assertFalse(rates["available"])
+        self.assertIsNone(rates["value"])
+        self.assertEqual(rates["unavailable_reason"], "no_planned_daily_task_items")
 
     def test_submit_without_audit_does_not_write_formal_learning_state(self):
         writeback_calls = []

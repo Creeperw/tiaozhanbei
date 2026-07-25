@@ -4,6 +4,7 @@ import asyncio
 import ast
 import importlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -465,6 +466,84 @@ class DeliveryKnowledgeMapStore:
             self.videos_by_kp = index
             self._videos_ready = True
 
+    def resolve_trusted_video_resource(
+        self,
+        supplied_resource_ref: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Return only a canonical segment present in the published video index."""
+
+        if not isinstance(supplied_resource_ref, dict):
+            return None
+        requested_kp_id = str(supplied_resource_ref.get("kp_id") or "").strip()
+        if requested_kp_id:
+            self.ensure_videos()
+            rows = sorted(
+                self.videos_by_kp.get(requested_kp_id, []),
+                key=lambda row: (
+                    str(row.get("bvid") or ""),
+                    int(row.get("page") or 0),
+                    float(row.get("start_seconds") or 0),
+                    float(row.get("end_seconds") or 0),
+                ),
+            )
+            if not rows:
+                return None
+            supplied_resource_ref = {
+                "provider": "bilibili",
+                "bvid": rows[0].get("bvid"),
+                "page": rows[0].get("page"),
+                "start_seconds": rows[0].get("start_seconds"),
+                "end_seconds": rows[0].get("end_seconds"),
+            }
+        provider = str(supplied_resource_ref.get("provider") or "bilibili").casefold()
+        if provider not in {"bilibili", "b23"}:
+            return None
+        bvid = str(supplied_resource_ref.get("bvid") or "").strip()
+        try:
+            page = int(supplied_resource_ref.get("page"))
+            start = float(supplied_resource_ref.get("start_seconds"))
+            end = float(supplied_resource_ref.get("end_seconds"))
+        except (TypeError, ValueError):
+            return None
+        if not bvid or page <= 0 or not all(map(math.isfinite, (start, end))) or end <= start:
+            return None
+
+        self.ensure_videos()
+        matches = [
+            row
+            for rows in self.videos_by_kp.values()
+            for row in rows
+            if str(row.get("bvid") or "") == bvid
+            and int(row.get("page") or 0) == page
+            and math.isclose(float(row.get("start_seconds") or 0), start, abs_tol=1e-6)
+            and math.isclose(float(row.get("end_seconds") or 0), end, abs_tol=1e-6)
+        ]
+        canonical = {
+            (
+                str(row.get("bvid") or ""),
+                int(row.get("page") or 0),
+                float(row.get("start_seconds") or 0),
+                float(row.get("end_seconds") or 0),
+            ): row
+            for row in matches
+        }
+        if len(canonical) != 1:
+            return None
+        row = next(iter(canonical.values()))
+        return {
+            "source": "knowledge_atlas",
+            "provider": "bilibili",
+            "bvid": str(row["bvid"]),
+            "aid": row.get("aid"),
+            "cid": row.get("cid"),
+            "page": int(row["page"]),
+            "start_seconds": float(row["start_seconds"]),
+            "end_seconds": float(row["end_seconds"]),
+            "video_title": str(row.get("video_title") or ""),
+            "part_title": str(row.get("part_title") or ""),
+            "topic": str(row.get("topic") or "知识讲解"),
+        }
+
     def detail(self, kp_id: str, question_limit: int = 30) -> dict[str, Any]:
         self.ensure_hierarchy()
         kp = self.kps.get(str(kp_id))
@@ -687,7 +766,6 @@ class KnowledgeDeliveryBackend:
                             "options": source.get("options") or question.get("options") or [],
                             "answer": source.get("answer", question.get("answer", question.get("题目答案", ""))),
                             "analysis": source.get("analysis", question.get("analysis", question.get("题目解析", ""))),
-                            "difficulty": source.get("difficulty", question.get("difficulty")),
                             "metadata": source.get("metadata") or {},
                         }
                     )
@@ -768,7 +846,6 @@ class KnowledgeDeliveryBackend:
             source_metadata={
                 "scope": question.get("scope") or "public",
                 "owner_id": question.get("owner_id"),
-                "difficulty": question.get("difficulty"),
                 "raw_answer": raw_answer,
                 "raw_options": raw_options,
                 "knowledge_points": item.get("knowledge_points") or [],

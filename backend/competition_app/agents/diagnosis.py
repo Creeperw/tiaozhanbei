@@ -48,9 +48,8 @@ class DiagnosisResult(BaseModel):
     uncertainty: list[str] = Field(default_factory=list)
     stage_id: str = "T0"
     weak_kp_ids: list[str] = Field(default_factory=lambda: ["KP_FJ_001"])
-    target_difficulty: int = 2
     daily_review_policy: DailyReviewPolicy = Field(
-        default_factory=lambda: DailyReviewPolicy(capacity=1, target_difficulty=2)
+        default_factory=lambda: DailyReviewPolicy(capacity=1)
     )
     learning_plan_proposal: LearningPlanProposal | None = None
     requires_clarification: bool = False
@@ -119,7 +118,6 @@ class DiagnosisAgent:
                 if isinstance(singular_knowledge_state, dict)
                 else singular_knowledge_state or []
             )
-        target_difficulty = int(system_data.get("target_difficulty", 2))
         if task_type == "learning_plan":
             scope_clarification = (
                 self._plan_scope_clarification(
@@ -142,10 +140,7 @@ class DiagnosisAgent:
                     summary=reason,
                     stage_id=str(system_data.get("current_stage_id", "T0")),
                     weak_kp_ids=resolved_kp_ids,
-                    target_difficulty=target_difficulty,
-                    daily_review_policy=DailyReviewPolicy(
-                        capacity=1, target_difficulty=target_difficulty
-                    ),
+                    daily_review_policy=DailyReviewPolicy(capacity=1),
                     requires_clarification=True,
                     clarification_questions=questions,
                     clarification_reason=reason,
@@ -178,10 +173,7 @@ class DiagnosisAgent:
                         summary=readiness_summary,
                         stage_id=str(system_data.get("current_stage_id", "T0")),
                         weak_kp_ids=resolved_kp_ids,
-                        target_difficulty=target_difficulty,
-                        daily_review_policy=DailyReviewPolicy(
-                            capacity=1, target_difficulty=target_difficulty
-                        ),
+                        daily_review_policy=DailyReviewPolicy(capacity=1),
                         requires_clarification=True,
                         clarification_questions=clarification_questions,
                         clarification_fields=[planning_readiness.next_profile_field]
@@ -209,10 +201,7 @@ class DiagnosisAgent:
                 summary="需要先确认与当前目标匹配的具体学习或报考路线。",
                 stage_id=str(system_data.get("current_stage_id", "T0")),
                 weak_kp_ids=resolved_kp_ids,
-                target_difficulty=target_difficulty,
-                daily_review_policy=DailyReviewPolicy(
-                    capacity=1, target_difficulty=target_difficulty
-                ),
+                daily_review_policy=DailyReviewPolicy(capacity=1),
                 requires_clarification=True,
                 clarification_questions=questions,
                 clarification_reason="当前目标与已知背景还不足以唯一确定一条已批准路线。",
@@ -228,10 +217,7 @@ class DiagnosisAgent:
                 summary="需要先确认具体考试目标，再绑定教材主线。",
                 stage_id=str(system_data.get("current_stage_id", "T0")),
                 weak_kp_ids=resolved_kp_ids,
-                target_difficulty=target_difficulty,
-                daily_review_policy=DailyReviewPolicy(
-                    capacity=1, target_difficulty=target_difficulty
-                ),
+                daily_review_policy=DailyReviewPolicy(capacity=1),
                 requires_clarification=True,
                 clarification_questions=questions,
                 clarification_reason="教材方向已识别，但具体考试身份仍不明确。",
@@ -261,10 +247,7 @@ class DiagnosisAgent:
                 summary="需要先澄清重规划范围和变化事实。",
                 stage_id=str(system_data.get("current_stage_id", "T0")),
                 weak_kp_ids=resolved_kp_ids,
-                target_difficulty=target_difficulty,
-                daily_review_policy=DailyReviewPolicy(
-                    capacity=1, target_difficulty=target_difficulty
-                ),
+                daily_review_policy=DailyReviewPolicy(capacity=1),
                 requires_clarification=True,
                 clarification_questions=change_decision.clarification_questions,
                 clarification_reason=change_decision.reason,
@@ -307,10 +290,7 @@ class DiagnosisAgent:
                 summary=summary,
                 stage_id=str(system_data.get("current_stage_id", "T0")),
                 weak_kp_ids=resolved_kp_ids,
-                target_difficulty=target_difficulty,
-                daily_review_policy=DailyReviewPolicy(
-                    capacity=1, target_difficulty=target_difficulty
-                ),
+                daily_review_policy=DailyReviewPolicy(capacity=1),
                 requires_clarification=True,
                 clarification_questions=route_questions[:1] or [fallback_question],
                 clarification_reason=(
@@ -491,11 +471,7 @@ class DiagnosisAgent:
                                 summary="当前目标还没有绑定到包含明确教材的可信学习路线。",
                                 stage_id=str(system_data.get("current_stage_id", "T0")),
                                 weak_kp_ids=resolved_kp_ids,
-                                target_difficulty=target_difficulty,
-                                daily_review_policy=DailyReviewPolicy(
-                                    capacity=1,
-                                    target_difficulty=target_difficulty,
-                                ),
+                                daily_review_policy=DailyReviewPolicy(capacity=1),
                                 requires_clarification=True,
                                 clarification_questions=(
                                     self._string_list(
@@ -533,11 +509,7 @@ class DiagnosisAgent:
                                 summary="需要先确认前置课程掌握情况，再选择当前教材阶段。",
                                 stage_id=str(system_data.get("current_stage_id", "T0")),
                                 weak_kp_ids=resolved_kp_ids,
-                                target_difficulty=target_difficulty,
-                                daily_review_policy=DailyReviewPolicy(
-                                    capacity=1,
-                                    target_difficulty=target_difficulty,
-                                ),
+                                daily_review_policy=DailyReviewPolicy(capacity=1),
                                 requires_clarification=True,
                                 clarification_questions=clarification_questions,
                                 clarification_reason="模型选择的阶段需要尚未确认的强前置课程。",
@@ -599,14 +571,10 @@ class DiagnosisAgent:
             risk_flags=[] if three_layer is not None else output.risk_flags,
             recommendations=[] if three_layer is not None else output.recommendations,
             uncertainty=[] if three_layer is not None else output.uncertainty,
-            # IDs, stage, and difficulty are system facts; the model only proposes semantic content.
+            # IDs and stage are system facts; the model only proposes semantic content.
             stage_id=str(system_data.get("current_stage_id", "T0")),
             weak_kp_ids=resolved_kp_ids,
-            target_difficulty=target_difficulty,
-            daily_review_policy=DailyReviewPolicy(
-                capacity=1,
-                target_difficulty=target_difficulty,
-            ),
+            daily_review_policy=DailyReviewPolicy(capacity=1),
             learning_plan_proposal=(
                 None
                 if task_type == "personalized_review_card"

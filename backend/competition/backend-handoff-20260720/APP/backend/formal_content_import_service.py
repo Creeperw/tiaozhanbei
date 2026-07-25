@@ -237,7 +237,7 @@ def _upsert_questions(
         question.analysis = str(item.get("题目答案解析") or "")
         question.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
         question.question_type = _question_type(item.get("题型"))
-        question.difficulty = 2.0
+        question.difficulty = None
         question.quality_score = 0.7
         question.source = source_tag
         question.status = "active" if kp_ids else "pending_link"
@@ -253,7 +253,7 @@ def _upsert_questions(
         mirror.question_content = question.stem
         mirror.answer_json = json.dumps([question.answer], ensure_ascii=False)
         mirror.explanation = question.analysis
-        mirror.difficulty = question.difficulty
+        mirror.difficulty = None
         mirror.kp_ids_json = question.kp_ids_json
 
         version_id = _formal_version_id(question_id, source_tag)
@@ -269,7 +269,7 @@ def _upsert_questions(
         version.stem = question.stem
         version.answer = question.answer
         version.analysis = question.analysis
-        version.standard_difficulty = 2
+        version.standard_difficulty = None
         version.source_kind = source_tag
         version.status = "active"
         db.flush()

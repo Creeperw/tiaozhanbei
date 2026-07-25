@@ -1,0 +1,4281 @@
+{
+  "template_id": "5ae6a7bd1b91-d676646cac",
+  "questions": [
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0001",
+      "question_type": "single_choice",
+      "question_content": "【题干】对因功效是指某些中药能针对病因起治疗作用，具体包括祛邪、扶正、调理脏腑功能、消除病理产物等。其中不属于扶正功效的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补气"
+        },
+        {
+          "option_id": "B",
+          "content": "助阳"
+        },
+        {
+          "option_id": "C",
+          "content": "活血"
+        },
+        {
+          "option_id": "D",
+          "content": "养血"
+        },
+        {
+          "option_id": "E",
+          "content": "滋阴"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 1,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0002",
+      "question_type": "single_choice",
+      "question_content": "【题干】已知最早的药物学专著是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "《神农本草经》"
+        },
+        {
+          "option_id": "B",
+          "content": "《本草经集注》"
+        },
+        {
+          "option_id": "C",
+          "content": "《新修本草》"
+        },
+        {
+          "option_id": "D",
+          "content": "《本草纲目》"
+        },
+        {
+          "option_id": "E",
+          "content": "《中华本草》"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 2,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0003",
+      "question_type": "single_choice",
+      "question_content": "【题干】五味理论认为，大多能伤津、伐胃，津液大伤及脾胃虚弱者不宜大量使用的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甘味药"
+        },
+        {
+          "option_id": "B",
+          "content": "苦味药"
+        },
+        {
+          "option_id": "C",
+          "content": "咸味药"
+        },
+        {
+          "option_id": "D",
+          "content": "涩味药"
+        },
+        {
+          "option_id": "E",
+          "content": "淡味药"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 3,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0004",
+      "question_type": "single_choice",
+      "question_content": "【题干】常用蜂蜜作辅料炮制的药物是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "当归"
+        },
+        {
+          "option_id": "B",
+          "content": "白芍"
+        },
+        {
+          "option_id": "C",
+          "content": "巴戟天"
+        },
+        {
+          "option_id": "D",
+          "content": "丹参"
+        },
+        {
+          "option_id": "E",
+          "content": "百部"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 4,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0005",
+      "question_type": "single_choice",
+      "question_content": "【题干】粉末升华物可见黄色针状或羽状结晶的药材是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牡丹皮"
+        },
+        {
+          "option_id": "B",
+          "content": "斑蝥"
+        },
+        {
+          "option_id": "C",
+          "content": "徐长卿"
+        },
+        {
+          "option_id": "D",
+          "content": "大黄"
+        },
+        {
+          "option_id": "E",
+          "content": "人参"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 5,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0006",
+      "question_type": "single_choice",
+      "question_content": "【题干】不含毒性成分马兜铃酸的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "关木通"
+        },
+        {
+          "option_id": "B",
+          "content": "广防己"
+        },
+        {
+          "option_id": "C",
+          "content": "青木香"
+        },
+        {
+          "option_id": "D",
+          "content": "千里光"
+        },
+        {
+          "option_id": "E",
+          "content": "天仙藤"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 6,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0007",
+      "question_type": "single_choice",
+      "question_content": "【题干】中药茵陈依采收期不同可分为“绵茵陈”和“花茵陈”，二者采收时间分别为( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "春季，冬季"
+        },
+        {
+          "option_id": "B",
+          "content": "春季，夏季"
+        },
+        {
+          "option_id": "C",
+          "content": "春季，秋季"
+        },
+        {
+          "option_id": "D",
+          "content": "夏季，秋季"
+        },
+        {
+          "option_id": "E",
+          "content": "夏季，冬季"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 7,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0008",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》现定，以木犀草苷和绿原酸为指标成分进行含量测定的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "当归"
+        },
+        {
+          "option_id": "B",
+          "content": "丹参"
+        },
+        {
+          "option_id": "C",
+          "content": "细辛"
+        },
+        {
+          "option_id": "D",
+          "content": "金银花"
+        },
+        {
+          "option_id": "E",
+          "content": "肉桂"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "【考点】",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 8,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0009",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，黄芪含量测定的指标成分是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄芪皂苷甲和黄芪皂苷乙"
+        },
+        {
+          "option_id": "B",
+          "content": "黄芪皂苷甲和异黄芪苷Ⅰ"
+        },
+        {
+          "option_id": "C",
+          "content": "黄芪皂苷乙和大豆皂苷Ⅰ"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芪甲苷和毛蕊异黄酮葡萄糖苷"
+        },
+        {
+          "option_id": "E",
+          "content": "黄芪甲苷和乙酰黄芪苷Ⅰ"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 9,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0010",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈类球形或痛球形，直径 1.5～3cm;表面乌黑色或棕黑色，皱缩不平;果核坚硬，楠圆形，棕黄色，表面有凹点;气微，味极酸的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "山楂"
+        },
+        {
+          "option_id": "B",
+          "content": "乌梅"
+        },
+        {
+          "option_id": "C",
+          "content": "木瓜"
+        },
+        {
+          "option_id": "D",
+          "content": "五味子"
+        },
+        {
+          "option_id": "E",
+          "content": "山茱萸"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 10,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0011",
+      "question_type": "single_choice",
+      "question_content": "【题干】常用作片剂润滑剂的辅料是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "淀粉"
+        },
+        {
+          "option_id": "B",
+          "content": "糊精"
+        },
+        {
+          "option_id": "C",
+          "content": "糖粉"
+        },
+        {
+          "option_id": "D",
+          "content": "微晶纤维素"
+        },
+        {
+          "option_id": "E",
+          "content": "滑石粉"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 11,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0012",
+      "question_type": "single_choice",
+      "question_content": "【题干】经肠菌代谢生成苷元，苷元再次解聚为大黄酸蔥酮发挥泻下作用的化合物是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大黄酸"
+        },
+        {
+          "option_id": "B",
+          "content": "大黄酚"
+        },
+        {
+          "option_id": "C",
+          "content": "番泻苷"
+        },
+        {
+          "option_id": "D",
+          "content": "虎杖苷"
+        },
+        {
+          "option_id": "E",
+          "content": "芦荟苷"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 12,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0013",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，黄连含量测定的指标成分是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胡椒碱"
+        },
+        {
+          "option_id": "B",
+          "content": "小檗碱"
+        },
+        {
+          "option_id": "C",
+          "content": "药根碱"
+        },
+        {
+          "option_id": "D",
+          "content": "金雀花碱"
+        },
+        {
+          "option_id": "E",
+          "content": "秋水仙碱"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0014",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈不规则类圆形或条形厚片切面黄白色或灰白色，散有多数棕红色或橙黄色油点，有的可析出白色细针状结晶的饮片是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "地榆"
+        },
+        {
+          "option_id": "B",
+          "content": "防风"
+        },
+        {
+          "option_id": "C",
+          "content": "板蓝根"
+        },
+        {
+          "option_id": "D",
+          "content": "苍术"
+        },
+        {
+          "option_id": "E",
+          "content": "木香"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 14,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0015",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定以东莨若碱为指标成分进行含量测定的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "洋金花"
+        },
+        {
+          "option_id": "B",
+          "content": "马钱子"
+        },
+        {
+          "option_id": "C",
+          "content": "葛根"
+        },
+        {
+          "option_id": "D",
+          "content": "防己"
+        },
+        {
+          "option_id": "E",
+          "content": "延胡索"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 15,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0016",
+      "question_type": "single_choice",
+      "question_content": "【题干】关于胶囊剂的质量要求和应用注意事项的说法，正确的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胶囊一般不宜嚼碎服用"
+        },
+        {
+          "option_id": "B",
+          "content": "软胶囊的崩解时限为 30分钟"
+        },
+        {
+          "option_id": "C",
+          "content": "除另有规定外，软胶囊应进行释放度检查"
+        },
+        {
+          "option_id": "D",
+          "content": "中药硬胶囊内容物水分不得过12.0%"
+        },
+        {
+          "option_id": "E",
+          "content": "胶囊应 30℃以下，密闭贮存"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 16,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0017",
+      "question_type": "single_choice",
+      "question_content": "【题干】三七凝胶贴膏剂处方组成：三七提取物 2g、薄荷脑 2g、樟脑 3g、卡波姆24g、甘油7.7g、聚维酮(PVP)6g、明胶0.5g、三乙醇胺适量、氮酮和丙二醇适量、蒸馏水加至100g。其中用作透皮促进剂的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "PVPB.卡波姆"
+        },
+        {
+          "option_id": "C",
+          "content": "三乙醇胺"
+        },
+        {
+          "option_id": "D",
+          "content": "明胶"
+        },
+        {
+          "option_id": "E",
+          "content": "丙二醇"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 17,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0018",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈碟形或扁球形，直径 2.5～4cm，常数个相连成片;舌状花类白色或黄色，平展或微折叠，彼此粘连，通常无腺点;管状花多数、外露的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "毫菊"
+        },
+        {
+          "option_id": "B",
+          "content": "杭菊"
+        },
+        {
+          "option_id": "D",
+          "content": "贡菊"
+        },
+        {
+          "option_id": "C",
+          "content": "滁菊"
+        },
+        {
+          "option_id": "E",
+          "content": "怀菊"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 18,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0019",
+      "question_type": "single_choice",
+      "question_content": "【题干】结构类型为环烯醚萜类化合物的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "龙胆苦苷"
+        },
+        {
+          "option_id": "B",
+          "content": "青蒿素"
+        },
+        {
+          "option_id": "C",
+          "content": "莪术醇"
+        },
+        {
+          "option_id": "D",
+          "content": "桂皮醛"
+        },
+        {
+          "option_id": "E",
+          "content": "穿心莲内酯"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 19,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0021",
+      "question_type": "single_choice",
+      "question_content": "【题干】多呈纺锤形;表面棕揭色或黑褐色，有纵皱纹及6～10个略隆起的环节，节上有未除净的棕色毛须及须根断痕：去净毛须者较光环节不明显该药材是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "泽泻"
+        },
+        {
+          "option_id": "B",
+          "content": "山麦冬"
+        },
+        {
+          "option_id": "C",
+          "content": "香附"
+        },
+        {
+          "option_id": "D",
+          "content": "三棱"
+        },
+        {
+          "option_id": "E",
+          "content": "天麻"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 21,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0022",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，以木犀草苷和绿原酸为指标成分进行含量测定的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "当归"
+        },
+        {
+          "option_id": "B",
+          "content": "金银花"
+        },
+        {
+          "option_id": "C",
+          "content": "丹参"
+        },
+        {
+          "option_id": "D",
+          "content": "细辛"
+        },
+        {
+          "option_id": "E",
+          "content": "肉桂"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 22,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0023",
+      "question_type": "single_choice",
+      "question_content": "【题干】关散剂量要求的说法的是，正确的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "除另有规定外儿科用散剂应为极细粉"
+        },
+        {
+          "option_id": "B",
+          "content": "含有毒性药多剂量包装的内服散剂应附分剂量用具"
+        },
+        {
+          "option_id": "C",
+          "content": "规定外，含挥发性药物的散剂应密封贮存"
+        },
+        {
+          "option_id": "D",
+          "content": "除另有规定外，多剂量包装的散剂应检查装量差异"
+        },
+        {
+          "option_id": "E",
+          "content": "除另有规定外，单剂量包装的散剂应检查最低装量"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 23,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0024",
+      "question_type": "single_choice",
+      "question_content": "【题干】经肠菌代谢生成苷元，苷元再次解聚为大黄酸菌酮发挥泻下作用的化合物( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大黄酸"
+        },
+        {
+          "option_id": "B",
+          "content": "番泻苷 AC.大黄酚"
+        },
+        {
+          "option_id": "D",
+          "content": "虎权苷"
+        },
+        {
+          "option_id": "E",
+          "content": "芦荟苷"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 24,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0025",
+      "question_type": "single_choice",
+      "question_content": "【题干】关于中药注射剂特点和应用注意事项的说法，错误的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "一般能口服用药的不选用注射给药"
+        },
+        {
+          "option_id": "B",
+          "content": "中药注射剂应谨慎联合用药"
+        },
+        {
+          "option_id": "C",
+          "content": "中药注射剂药效迅速，不易发生不良反应"
+        },
+        {
+          "option_id": "D",
+          "content": "长期使用时，疗程间应有一走的隔时间"
+        },
+        {
+          "option_id": "E",
+          "content": "对于初次使用中药注射剂的患者应加强监测"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 25,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0026",
+      "question_type": "single_choice",
+      "question_content": "【题干】不需要检查溶散时限的丸剂是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "浓缩丸"
+        },
+        {
+          "option_id": "B",
+          "content": "小蜜丸"
+        },
+        {
+          "option_id": "C",
+          "content": "糊丸"
+        },
+        {
+          "option_id": "D",
+          "content": "大蜜丸"
+        },
+        {
+          "option_id": "E",
+          "content": "滴丸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 26,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0027",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，以二苯乙烯苷和结合菌醌为指标成分进行含量测定的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "何首乌"
+        },
+        {
+          "option_id": "B",
+          "content": "丹参"
+        },
+        {
+          "option_id": "C",
+          "content": "芦荟"
+        },
+        {
+          "option_id": "D",
+          "content": "紫草"
+        },
+        {
+          "option_id": "E",
+          "content": "决明子"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 27,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0028",
+      "question_type": "single_choice",
+      "question_content": "【题干】达到杀酶保苷和软化药物的目的既可采用蒸法又可采用沸水煮法炮制的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "人参"
+        },
+        {
+          "option_id": "B",
+          "content": "地黄"
+        },
+        {
+          "option_id": "C",
+          "content": "川乌"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "E",
+          "content": "远志"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 28,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0029",
+      "question_type": "single_choice",
+      "question_content": "【题干】常用作片剂润剂的辅料是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "滑石粉"
+        },
+        {
+          "option_id": "B",
+          "content": "淀粉"
+        },
+        {
+          "option_id": "C",
+          "content": "糊精"
+        },
+        {
+          "option_id": "D",
+          "content": "糖粉"
+        },
+        {
+          "option_id": "E",
+          "content": "微晶纤维素"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "【考点】",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 29,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0030",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定黄连含量测定的指标成分是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "胡椒碱"
+        },
+        {
+          "option_id": "B",
+          "content": "小檗碱"
+        },
+        {
+          "option_id": "C",
+          "content": "药根碱"
+        },
+        {
+          "option_id": "D",
+          "content": "金雀花碱"
+        },
+        {
+          "option_id": "E",
+          "content": "秋水仙碱"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 30,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0031",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈长倒卵形略弯曲有的纵剖为两半;表面黄棕色至黑褐色密被排列整齐的柄残基及鳞片的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大黄"
+        },
+        {
+          "option_id": "B",
+          "content": "葛根"
+        },
+        {
+          "option_id": "C",
+          "content": "天麻"
+        },
+        {
+          "option_id": "D",
+          "content": "绵马贯众"
+        },
+        {
+          "option_id": "E",
+          "content": "地黄"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 31,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0032",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈不规则类圆形或条形厚片;切面黄白色或灰白色散有多数棕红色或橙黄色油点有的可析出白色细针状结晶的饮片是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "地榆"
+        },
+        {
+          "option_id": "B",
+          "content": "苍术"
+        },
+        {
+          "option_id": "C",
+          "content": "防方风"
+        },
+        {
+          "option_id": "D",
+          "content": "板蓝根"
+        },
+        {
+          "option_id": "E",
+          "content": "木香"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 32,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0033",
+      "question_type": "single_choice",
+      "question_content": "【题干】关于防风通圣丸特点和质量要求的说法是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "包衣可以防止丸中薄荷、荆芥中挥发性成分散失"
+        },
+        {
+          "option_id": "B",
+          "content": "石既是处方中药物粉碎为极细粉又可用作包衣"
+        },
+        {
+          "option_id": "C",
+          "content": "大黄煎取药汁泛丸，既能使之成型又可发挥其药效作用"
+        },
+        {
+          "option_id": "D",
+          "content": "应控制制剂的水分不得过9.0%"
+        },
+        {
+          "option_id": "E",
+          "content": "应密封贮存防止受潮、发霉、变质等"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 33,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0034",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈宽卵形或长椭圆形;表面乳白色，光滑，偶有残存的黄褐色种皮;一端钝圆，另一端较宽而微凹;背面圆凸，腹面有1 条较宽而深的纵沟;气微，味微甜的饮片是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "决明子"
+        },
+        {
+          "option_id": "B",
+          "content": "輝桃仁"
+        },
+        {
+          "option_id": "C",
+          "content": "葶苈子"
+        },
+        {
+          "option_id": "D",
+          "content": "牛蒡子"
+        },
+        {
+          "option_id": "E",
+          "content": "薏苡仁"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 34,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0035",
+      "question_type": "single_choice",
+      "question_content": "【题干】关于制剂新技术特点与应用的说法错误的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "固体分散体常用乙基纤维素增加难溶性药物的溶出速度"
+        },
+        {
+          "option_id": "B",
+          "content": "环糊精包合可提高药物的稳定性"
+        },
+        {
+          "option_id": "C",
+          "content": "环糊精包合可掩盖药物不良气味"
+        },
+        {
+          "option_id": "D",
+          "content": "制成微囊可改善药物的流动性、可压性等物理特性"
+        },
+        {
+          "option_id": "E",
+          "content": "固体分散体久贮可能出现药物晶型改变等老化现象"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 35,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0036",
+      "question_type": "single_choice",
+      "question_content": "【题干】鱼肝油乳剂处方组成鱼肝油 500m、阿拉伯胶细粉 25g、西黄蓍胶细粉 7g、糖精钠0.1g、杏仁油1ml、羟苯乙酯0.5g，纯化水加至1000ml。其中用作抑菌剂的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阿拉伯胶"
+        },
+        {
+          "option_id": "B",
+          "content": "鱼肝油"
+        },
+        {
+          "option_id": "C",
+          "content": "杏仁油"
+        },
+        {
+          "option_id": "D",
+          "content": "羟苯乙酯"
+        },
+        {
+          "option_id": "E",
+          "content": "西黄蓍胶"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 36,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0037",
+      "question_type": "single_choice",
+      "question_content": "【题干】试卷附图图 1～图5中图示饮片为南沙参的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "图 1"
+        },
+        {
+          "option_id": "B",
+          "content": "图二"
+        },
+        {
+          "option_id": "C",
+          "content": "图三"
+        },
+        {
+          "option_id": "D",
+          "content": "图四"
+        },
+        {
+          "option_id": "E",
+          "content": "图五"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 37,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0038",
+      "question_type": "single_choice",
+      "question_content": "【题干】试卷附图图 6～图10中，图示药材为茜草的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "图 6"
+        },
+        {
+          "option_id": "B",
+          "content": "图 7"
+        },
+        {
+          "option_id": "C",
+          "content": "图 8"
+        },
+        {
+          "option_id": "D",
+          "content": "图 9"
+        },
+        {
+          "option_id": "E",
+          "content": "图 10"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 38,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0039",
+      "question_type": "single_choice",
+      "question_content": "【题干】试卷附图图 11～图15 中，图示饮片为川木通的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "图 11"
+        },
+        {
+          "option_id": "B",
+          "content": "图 12"
+        },
+        {
+          "option_id": "C",
+          "content": "图 13"
+        },
+        {
+          "option_id": "D",
+          "content": "图 14"
+        },
+        {
+          "option_id": "E",
+          "content": "图 15"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 39,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0040",
+      "question_type": "single_choice",
+      "question_content": "【题干】试卷附图图 16～图20中，图示药材为草果的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "图 16"
+        },
+        {
+          "option_id": "B",
+          "content": "图 17"
+        },
+        {
+          "option_id": "C",
+          "content": "图 18"
+        },
+        {
+          "option_id": "D",
+          "content": "图 19"
+        },
+        {
+          "option_id": "E",
+          "content": "图 20"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 40,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0041",
+      "question_type": "single_choice",
+      "question_content": "【题干】具有同质多晶性的栓剂油脂性基质是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "单硬脂酸酯"
+        },
+        {
+          "option_id": "B",
+          "content": "甘油明胶"
+        },
+        {
+          "option_id": "C",
+          "content": "聚乙二醇"
+        },
+        {
+          "option_id": "D",
+          "content": "可可豆脂"
+        },
+        {
+          "option_id": "E",
+          "content": "泊洛沙姆"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 41,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0042",
+      "question_type": "single_choice",
+      "question_content": "【题干】常用作阴道栓基质，但鞣酸等与蛋白质有配伍禁忌的药物不宜使用的栓剂水溶性基质是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "单硬脂酸酯"
+        },
+        {
+          "option_id": "B",
+          "content": "甘油明胶"
+        },
+        {
+          "option_id": "C",
+          "content": "聚乙二醇"
+        },
+        {
+          "option_id": "D",
+          "content": "可可豆脂"
+        },
+        {
+          "option_id": "E",
+          "content": "泊洛沙姆"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 42,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0043",
+      "question_type": "single_choice",
+      "question_content": "【题干】按分散系统分类，薄荷水属液体制剂的类型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "溶胶剂"
+        },
+        {
+          "option_id": "B",
+          "content": "高分子溶液剂"
+        },
+        {
+          "option_id": "C",
+          "content": "乳剂"
+        },
+        {
+          "option_id": "D",
+          "content": "混层剂"
+        },
+        {
+          "option_id": "E",
+          "content": "低分子溶液剂"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 43,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0044",
+      "question_type": "single_choice",
+      "question_content": "【题干】按分散系统分类，碘甘油属液体制剂的类型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "溶胶剂"
+        },
+        {
+          "option_id": "B",
+          "content": "高分子溶液剂"
+        },
+        {
+          "option_id": "C",
+          "content": "乳剂"
+        },
+        {
+          "option_id": "D",
+          "content": "混层剂"
+        },
+        {
+          "option_id": "E",
+          "content": "低分子溶液剂"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 44,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0045",
+      "question_type": "single_choice",
+      "question_content": "【题干】按分散系统分类，炉甘石洗剂属液体制剂的类型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "溶胶剂"
+        },
+        {
+          "option_id": "B",
+          "content": "高分子溶液剂"
+        },
+        {
+          "option_id": "C",
+          "content": "乳剂"
+        },
+        {
+          "option_id": "D",
+          "content": "混层剂"
+        },
+        {
+          "option_id": "E",
+          "content": "低分子溶液剂"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 45,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0046",
+      "question_type": "single_choice",
+      "question_content": "【题干】断面纤维性，类白色或徹红色，内皮层环纹明显，并可见多数维管束小点及 棕色油点的药材是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "石菖蒲"
+        },
+        {
+          "option_id": "B",
+          "content": "白芷"
+        },
+        {
+          "option_id": "C",
+          "content": "天花粉"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "E",
+          "content": "商陆"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 46,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0047",
+      "question_type": "single_choice",
+      "question_content": "【题干】断面白色或灰白色，粉性，形成层环纹粽色、近方形或近圆形，皮部散有多 数棕色油点的药材是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "石菖蒲"
+        },
+        {
+          "option_id": "B",
+          "content": "白芷"
+        },
+        {
+          "option_id": "C",
+          "content": "天花粉"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "E",
+          "content": "商陆"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 47,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0048",
+      "question_type": "single_choice",
+      "question_content": "【题干】切面浅黄棕色或黄白色，异型维管束隆起，其木部明显，形成数个突起的同心性环轮的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "石菖蒲"
+        },
+        {
+          "option_id": "B",
+          "content": "白芷"
+        },
+        {
+          "option_id": "C",
+          "content": "天花粉"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "E",
+          "content": "商陆"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 48,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0049",
+      "question_type": "single_choice",
+      "question_content": "【题干】以水湿润，手搓成团，揉即散，不粘手、染手、顶指或结块，有特异香气的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蟾酥"
+        },
+        {
+          "option_id": "B",
+          "content": "麝香"
+        },
+        {
+          "option_id": "C",
+          "content": "熊胆粉"
+        },
+        {
+          "option_id": "D",
+          "content": "牛黄"
+        },
+        {
+          "option_id": "E",
+          "content": "马宝"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 49,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0050",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈扁圆形团块状或片状;气味腥，味初甜而后有持久的麻辣感，粉末嗅之作嚏的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蟾酥"
+        },
+        {
+          "option_id": "B",
+          "content": "麝香"
+        },
+        {
+          "option_id": "C",
+          "content": "熊胆粉"
+        },
+        {
+          "option_id": "D",
+          "content": "牛黄"
+        },
+        {
+          "option_id": "E",
+          "content": "马宝"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 50,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0051",
+      "question_type": "single_choice",
+      "question_content": "【题干】水液可使指甲染黄;断面可见同心层纹;气清香，味先苦而后甜有清凉感的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蟾酥"
+        },
+        {
+          "option_id": "B",
+          "content": "麝香"
+        },
+        {
+          "option_id": "C",
+          "content": "熊胆粉"
+        },
+        {
+          "option_id": "D",
+          "content": "牛黄"
+        },
+        {
+          "option_id": "E",
+          "content": "马宝"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 51,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0052",
+      "question_type": "single_choice",
+      "question_content": "【题干】加辅料煮后毒性降低，可供内服的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "艾叶"
+        },
+        {
+          "option_id": "B",
+          "content": "朱砂"
+        },
+        {
+          "option_id": "C",
+          "content": "藤黄"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "E",
+          "content": "芒硝"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 52,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0053",
+      "question_type": "single_choice",
+      "question_content": "【题干】提净后润燥软坚、消导，下气通便作用增强的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "艾叶"
+        },
+        {
+          "option_id": "B",
+          "content": "朱砂"
+        },
+        {
+          "option_id": "C",
+          "content": "藤黄"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "E",
+          "content": "芒硝"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 53,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0054",
+      "question_type": "single_choice",
+      "question_content": "【题干】炒炭后温经止血作用增强的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "艾叶"
+        },
+        {
+          "option_id": "B",
+          "content": "朱砂"
+        },
+        {
+          "option_id": "C",
+          "content": "藤黄"
+        },
+        {
+          "option_id": "D",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "E",
+          "content": "芒硝"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 54,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0055",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定：以总黄酮醇苷和萜类内酯为指标成分的药材是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "B",
+          "content": "葛根"
+        },
+        {
+          "option_id": "C",
+          "content": "银杏叶"
+        },
+        {
+          "option_id": "D",
+          "content": "槐花"
+        },
+        {
+          "option_id": "E",
+          "content": "满山红"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 55,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0056",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，以杜鹃素为指标成分的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "B",
+          "content": "葛根"
+        },
+        {
+          "option_id": "C",
+          "content": "银杏叶"
+        },
+        {
+          "option_id": "D",
+          "content": "槐花"
+        },
+        {
+          "option_id": "E",
+          "content": "满山红"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 56,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0057",
+      "question_type": "single_choice",
+      "question_content": "【题干】供无破损皮肤揉擦用的剂型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "糊剂"
+        },
+        {
+          "option_id": "B",
+          "content": "凝胶剂"
+        },
+        {
+          "option_id": "C",
+          "content": "涂剂"
+        },
+        {
+          "option_id": "D",
+          "content": "乳膏剂"
+        },
+        {
+          "option_id": "E",
+          "content": "搽剂"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 57,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0058",
+      "question_type": "single_choice",
+      "question_content": "【题干】一般含有 1/4以上原料药物固体粉末的剂型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "糊剂"
+        },
+        {
+          "option_id": "B",
+          "content": "凝胶剂"
+        },
+        {
+          "option_id": "C",
+          "content": "涂剂"
+        },
+        {
+          "option_id": "D",
+          "content": "乳膏剂"
+        },
+        {
+          "option_id": "E",
+          "content": "搽剂"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 58,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0059",
+      "question_type": "single_choice",
+      "question_content": "【题干】化合物结构类型为黄酮醇的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "槲皮素"
+        },
+        {
+          "option_id": "B",
+          "content": "黄芩素"
+        },
+        {
+          "option_id": "C",
+          "content": "丹参素"
+        },
+        {
+          "option_id": "D",
+          "content": "葛根素"
+        },
+        {
+          "option_id": "E",
+          "content": "花青素"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 59,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0060",
+      "question_type": "single_choice",
+      "question_content": "【题干】化合物结构类型为异黄酮的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "槲皮素"
+        },
+        {
+          "option_id": "B",
+          "content": "黄芩素"
+        },
+        {
+          "option_id": "C",
+          "content": "丹参素"
+        },
+        {
+          "option_id": "D",
+          "content": "葛根素"
+        },
+        {
+          "option_id": "E",
+          "content": "花青素"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 60,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0061",
+      "question_type": "single_choice",
+      "question_content": "【题干】化合物结构类型为黄酮的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "槲皮素"
+        },
+        {
+          "option_id": "B",
+          "content": "黄芩素"
+        },
+        {
+          "option_id": "C",
+          "content": "丹参素"
+        },
+        {
+          "option_id": "D",
+          "content": "葛根素"
+        },
+        {
+          "option_id": "E",
+          "content": "花青素"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 61,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0062",
+      "question_type": "single_choice",
+      "question_content": "【题干】来源于百合科植物根状茎的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "香附"
+        },
+        {
+          "option_id": "B",
+          "content": "玉竹"
+        },
+        {
+          "option_id": "C",
+          "content": "浙贝母"
+        },
+        {
+          "option_id": "D",
+          "content": "射干"
+        },
+        {
+          "option_id": "E",
+          "content": "天冬"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 62,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0063",
+      "question_type": "single_choice",
+      "question_content": "【题干】来源于百合科植物块根的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "香附"
+        },
+        {
+          "option_id": "B",
+          "content": "玉竹"
+        },
+        {
+          "option_id": "C",
+          "content": "浙贝母"
+        },
+        {
+          "option_id": "D",
+          "content": "射干"
+        },
+        {
+          "option_id": "E",
+          "content": "天冬"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 63,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0064",
+      "question_type": "single_choice",
+      "question_content": "【题干】来源于百合科植物鳞茎的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "香附"
+        },
+        {
+          "option_id": "B",
+          "content": "玉竹"
+        },
+        {
+          "option_id": "C",
+          "content": "浙贝母"
+        },
+        {
+          "option_id": "D",
+          "content": "射干"
+        },
+        {
+          "option_id": "E",
+          "content": "天冬"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 64,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0065",
+      "question_type": "single_choice",
+      "question_content": "【题干】粉末显微特征中，石细胞类方形、椭圆形或不规则分枝状;油细胞椭圆形或类 圆形的药材是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "合欢皮"
+        },
+        {
+          "option_id": "B",
+          "content": "秦皮"
+        },
+        {
+          "option_id": "C",
+          "content": "肉桂"
+        },
+        {
+          "option_id": "D",
+          "content": "杜仲"
+        },
+        {
+          "option_id": "E",
+          "content": "厚朴"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 65,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0066",
+      "question_type": "single_choice",
+      "question_content": "【题干】粉末显微特征中，石细胞类圆形或类方形，壁厚，有的一面菲薄;油细胞类圆形或长圆形的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "合欢皮"
+        },
+        {
+          "option_id": "B",
+          "content": "秦皮"
+        },
+        {
+          "option_id": "C",
+          "content": "肉桂"
+        },
+        {
+          "option_id": "D",
+          "content": "杜仲"
+        },
+        {
+          "option_id": "E",
+          "content": "厚朴"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 66,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0067",
+      "question_type": "single_choice",
+      "question_content": "【题干】主含碳酸锌(ZnCO3)的矿物药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "雄黄"
+        },
+        {
+          "option_id": "B",
+          "content": "炉甘石"
+        },
+        {
+          "option_id": "C",
+          "content": "滑石"
+        },
+        {
+          "option_id": "D",
+          "content": "硫黄"
+        },
+        {
+          "option_id": "E",
+          "content": "芒硝"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 67,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0068",
+      "question_type": "single_choice",
+      "question_content": "【题干】主含含水硅酸镁[Mg3(Si4O10)(0H)2]的矿物药是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "雄黄"
+        },
+        {
+          "option_id": "B",
+          "content": "炉甘石"
+        },
+        {
+          "option_id": "C",
+          "content": "滑石"
+        },
+        {
+          "option_id": "D",
+          "content": "硫黄"
+        },
+        {
+          "option_id": "E",
+          "content": "芒硝"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 68,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0069",
+      "question_type": "single_choice",
+      "question_content": "【题干】主含含水硫酸钠(Na2SO4·10H2O)的矿物药是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "雄黄"
+        },
+        {
+          "option_id": "B",
+          "content": "炉甘石"
+        },
+        {
+          "option_id": "C",
+          "content": "滑石"
+        },
+        {
+          "option_id": "D",
+          "content": "硫黄"
+        },
+        {
+          "option_id": "E",
+          "content": "芒硝"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 69,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0070",
+      "question_type": "single_choice",
+      "question_content": "【题干】缓释片应检查的项目是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "释放度"
+        },
+        {
+          "option_id": "B",
+          "content": "崩解时限"
+        },
+        {
+          "option_id": "C",
+          "content": "发泡量"
+        },
+        {
+          "option_id": "D",
+          "content": "融变时限"
+        },
+        {
+          "option_id": "E",
+          "content": "溶出度"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 70,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0071",
+      "question_type": "single_choice",
+      "question_content": "【题干】阴道片应检查的项目是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "释放度"
+        },
+        {
+          "option_id": "B",
+          "content": "崩解时限"
+        },
+        {
+          "option_id": "C",
+          "content": "发泡量"
+        },
+        {
+          "option_id": "D",
+          "content": "融变时限"
+        },
+        {
+          "option_id": "E",
+          "content": "溶出度"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 71,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0072",
+      "question_type": "single_choice",
+      "question_content": "【题干】中药浸膏片应检查的项目是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "释放度"
+        },
+        {
+          "option_id": "B",
+          "content": "崩解时限"
+        },
+        {
+          "option_id": "C",
+          "content": "发泡量"
+        },
+        {
+          "option_id": "D",
+          "content": "融变时限"
+        },
+        {
+          "option_id": "E",
+          "content": "溶出度"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 72,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0073",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，以总黄酮醇苷和萜类内酯为指标成分的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "葛根"
+        },
+        {
+          "option_id": "B",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "C",
+          "content": "满山红"
+        },
+        {
+          "option_id": "D",
+          "content": "银杏叶"
+        },
+        {
+          "option_id": "E",
+          "content": "槐花"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 73,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0074",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，以杜鹃素为指标成分的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "葛根"
+        },
+        {
+          "option_id": "B",
+          "content": "黄芩"
+        },
+        {
+          "option_id": "C",
+          "content": "满山红"
+        },
+        {
+          "option_id": "D",
+          "content": "银杏叶"
+        },
+        {
+          "option_id": "E",
+          "content": "槐花"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 74,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0075",
+      "question_type": "single_choice",
+      "question_content": "【题干】可用于检识生物碱的试剂是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "无色亚甲蓝乙醇溶液"
+        },
+        {
+          "option_id": "B",
+          "content": "醋酐—浓硫酸"
+        },
+        {
+          "option_id": "C",
+          "content": "盐酸—镁粉"
+        },
+        {
+          "option_id": "D",
+          "content": "Molish 试剂"
+        },
+        {
+          "option_id": "E",
+          "content": "碘化铋钾"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 75,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0076",
+      "question_type": "single_choice",
+      "question_content": "【题干】可用于检识苯及萘醌的试剂是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "无色亚甲蓝乙醇溶液"
+        },
+        {
+          "option_id": "B",
+          "content": "醋酐—浓硫酸"
+        },
+        {
+          "option_id": "C",
+          "content": "盐酸—镁粉"
+        },
+        {
+          "option_id": "D",
+          "content": "Molish 试剂"
+        },
+        {
+          "option_id": "E",
+          "content": "碘化铋钾"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 76,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0077",
+      "question_type": "single_choice",
+      "question_content": "【题干】主要化学成分为三萜皂苷类化合物的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牛黄"
+        },
+        {
+          "option_id": "B",
+          "content": "牛膝"
+        },
+        {
+          "option_id": "C",
+          "content": "知母"
+        },
+        {
+          "option_id": "D",
+          "content": "柴胡"
+        },
+        {
+          "option_id": "E",
+          "content": "罗布麻叶"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 77,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0078",
+      "question_type": "single_choice",
+      "question_content": "【题干】主要化学成分为胆汁酸类化合物的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牛黄"
+        },
+        {
+          "option_id": "B",
+          "content": "牛膝"
+        },
+        {
+          "option_id": "C",
+          "content": "知母"
+        },
+        {
+          "option_id": "D",
+          "content": "柴胡"
+        },
+        {
+          "option_id": "E",
+          "content": "罗布麻叶"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 78,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0079",
+      "question_type": "single_choice",
+      "question_content": "【题干】主要化学成分为强心苷关化合物的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牛黄"
+        },
+        {
+          "option_id": "B",
+          "content": "牛膝"
+        },
+        {
+          "option_id": "C",
+          "content": "知母"
+        },
+        {
+          "option_id": "D",
+          "content": "柴胡"
+        },
+        {
+          "option_id": "E",
+          "content": "罗布麻叶"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 79,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0080",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈肾形，略扁;表面黑色、黑褐色或灰褐色，具细微网状皱纹的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "酸枣仁"
+        },
+        {
+          "option_id": "B",
+          "content": "补骨脂"
+        },
+        {
+          "option_id": "C",
+          "content": "巴豆"
+        },
+        {
+          "option_id": "D",
+          "content": "女贞子"
+        },
+        {
+          "option_id": "E",
+          "content": "马钱子"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 80,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0081",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈卵形、椭圆形或肾形;表面黑紫色或灰黑色，皱缩不平，基部有果梗痕或具宿萼及短梗的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "酸枣仁"
+        },
+        {
+          "option_id": "B",
+          "content": "补骨脂"
+        },
+        {
+          "option_id": "C",
+          "content": "巴豆"
+        },
+        {
+          "option_id": "D",
+          "content": "女贞子"
+        },
+        {
+          "option_id": "E",
+          "content": "马钱子"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 81,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0082",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈扁圆形或痛椭圆形;表面紫红色或紫褐色，平滑有光泽;有的一面较平坦，中间有1条隆起的纵线纹，另一面微隆起，边缘略薄的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "酸枣仁"
+        },
+        {
+          "option_id": "B",
+          "content": "补骨脂"
+        },
+        {
+          "option_id": "C",
+          "content": "巴豆"
+        },
+        {
+          "option_id": "D",
+          "content": "女贞子"
+        },
+        {
+          "option_id": "E",
+          "content": "马钱子"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 82,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0083",
+      "question_type": "single_choice",
+      "question_content": "【题干】为增强收敛止血作用，大蓟宜选用的炮制方法是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "扣锅煅炭"
+        },
+        {
+          "option_id": "B",
+          "content": "米炒"
+        },
+        {
+          "option_id": "C",
+          "content": "麸炒"
+        },
+        {
+          "option_id": "D",
+          "content": "炒黄"
+        },
+        {
+          "option_id": "E",
+          "content": "炒炭"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 83,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0084",
+      "question_type": "single_choice",
+      "question_content": "【题干】为降低毒性，斑蝥宜选用的炮制方法是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "扣锅煅炭"
+        },
+        {
+          "option_id": "B",
+          "content": "米炒"
+        },
+        {
+          "option_id": "C",
+          "content": "麸炒"
+        },
+        {
+          "option_id": "D",
+          "content": "炒黄"
+        },
+        {
+          "option_id": "E",
+          "content": "炒炭"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 84,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0085",
+      "question_type": "single_choice",
+      "question_content": "【题干】为利于粉碎、杀酶保苷，芥子宜选用的炮制方法是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "扣锅煅炭"
+        },
+        {
+          "option_id": "B",
+          "content": "米炒"
+        },
+        {
+          "option_id": "C",
+          "content": "麸炒"
+        },
+        {
+          "option_id": "D",
+          "content": "炒黄"
+        },
+        {
+          "option_id": "E",
+          "content": "炒炭"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 85,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0086",
+      "question_type": "single_choice",
+      "question_content": "【题干】穿心莲的采收时间应为( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "果实成熟期"
+        },
+        {
+          "option_id": "B",
+          "content": "果实成熟前"
+        },
+        {
+          "option_id": "C",
+          "content": "茎叶茂盛期"
+        },
+        {
+          "option_id": "D",
+          "content": "幼苗期"
+        },
+        {
+          "option_id": "E",
+          "content": "花开到顶、穗绿时"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 86,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0087",
+      "question_type": "single_choice",
+      "question_content": "【题干】荆芥的采收时间应为( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "果实成熟期"
+        },
+        {
+          "option_id": "B",
+          "content": "果实成熟前"
+        },
+        {
+          "option_id": "C",
+          "content": "茎叶茂盛期"
+        },
+        {
+          "option_id": "D",
+          "content": "幼苗期"
+        },
+        {
+          "option_id": "E",
+          "content": "花开到顶、穗绿时"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 87,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0088",
+      "question_type": "single_choice",
+      "question_content": "【题干】根头略膨大，可见暗绿色或暗棕色轮状排列的叶柄残基和密集的疣状突起的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "西洋参"
+        },
+        {
+          "option_id": "B",
+          "content": "北豆根"
+        },
+        {
+          "option_id": "C",
+          "content": "三七"
+        },
+        {
+          "option_id": "D",
+          "content": "板蓝根"
+        },
+        {
+          "option_id": "E",
+          "content": "三棱"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 88,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0089",
+      "question_type": "single_choice",
+      "question_content": "【题干】呈圆锥形，略扁;表面黄白色或灰黄色，有刀削痕的药材是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "西洋参"
+        },
+        {
+          "option_id": "B",
+          "content": "北豆根"
+        },
+        {
+          "option_id": "C",
+          "content": "三七"
+        },
+        {
+          "option_id": "D",
+          "content": "板蓝根"
+        },
+        {
+          "option_id": "E",
+          "content": "三棱"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 89,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0090",
+      "question_type": "single_choice",
+      "question_content": "【题干】赭石味苦，其作用特点是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "通泄"
+        },
+        {
+          "option_id": "B",
+          "content": "坚阴"
+        },
+        {
+          "option_id": "C",
+          "content": "降泄"
+        },
+        {
+          "option_id": "D",
+          "content": "散泄"
+        },
+        {
+          "option_id": "E",
+          "content": "坚厚肠胃"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 90,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0091",
+      "question_type": "single_choice",
+      "question_content": "【题干】黄连味苦，少量用时其作用特点是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "通泄"
+        },
+        {
+          "option_id": "B",
+          "content": "坚阴"
+        },
+        {
+          "option_id": "C",
+          "content": "降泄"
+        },
+        {
+          "option_id": "D",
+          "content": "散泄"
+        },
+        {
+          "option_id": "E",
+          "content": "坚厚肠胃"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 91,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0092",
+      "question_type": "single_choice",
+      "question_content": "【题干】供无破损皮肤揉擦用的剂型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "涂剂"
+        },
+        {
+          "option_id": "B",
+          "content": "搽剂"
+        },
+        {
+          "option_id": "C",
+          "content": "乳膏剂"
+        },
+        {
+          "option_id": "D",
+          "content": "凝胶剂"
+        },
+        {
+          "option_id": "E",
+          "content": "糊剂"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 92,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0093",
+      "question_type": "single_choice",
+      "question_content": "【题干】一般含有 1/4以上原料药物面体粉末的剂型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "涂剂"
+        },
+        {
+          "option_id": "B",
+          "content": "搽剂"
+        },
+        {
+          "option_id": "C",
+          "content": "乳膏剂"
+        },
+        {
+          "option_id": "D",
+          "content": "凝胶剂"
+        },
+        {
+          "option_id": "E",
+          "content": "糊剂"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 93,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0094",
+      "question_type": "single_choice",
+      "question_content": "【题干】可用作滴眼剂黏度调节剂的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大豆磷脂"
+        },
+        {
+          "option_id": "B",
+          "content": "苯酚"
+        },
+        {
+          "option_id": "C",
+          "content": "氯化钠"
+        },
+        {
+          "option_id": "D",
+          "content": "聚维酮"
+        },
+        {
+          "option_id": "E",
+          "content": "亚硫酸钠"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 94,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0095",
+      "question_type": "single_choice",
+      "question_content": "【题干】可用作注射剂抗氧剂的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大豆磷脂"
+        },
+        {
+          "option_id": "B",
+          "content": "苯酚"
+        },
+        {
+          "option_id": "C",
+          "content": "氯化钠"
+        },
+        {
+          "option_id": "D",
+          "content": "聚维酮"
+        },
+        {
+          "option_id": "E",
+          "content": "亚硫酸钠"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 95,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0096",
+      "question_type": "single_choice",
+      "question_content": "【题干】可用作注射液抑菌剂的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大豆磷脂"
+        },
+        {
+          "option_id": "B",
+          "content": "苯酚"
+        },
+        {
+          "option_id": "C",
+          "content": "氯化钠"
+        },
+        {
+          "option_id": "D",
+          "content": "聚维酮"
+        },
+        {
+          "option_id": "E",
+          "content": "亚硫酸钠"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 96,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0101",
+      "question_type": "single_choice",
+      "question_content": "【题干】制备藿香正气滴丸时所用的聚乙二醇6000，其作用是( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "起防腐作用"
+        },
+        {
+          "option_id": "B",
+          "content": "作为滴丸的赋形剂"
+        },
+        {
+          "option_id": "C",
+          "content": "调节制剂 pHD.控制药物缓慢释放"
+        },
+        {
+          "option_id": "E",
+          "content": "减少生半夏的刺激性"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 101,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0102",
+      "question_type": "single_choice",
+      "question_content": "【题干】处方中呈立方块或不规则厚片：白色、淡红色或淡棕色：气微，嚼之粘牙的饮片是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "陈皮"
+        },
+        {
+          "option_id": "B",
+          "content": "生半夏"
+        },
+        {
+          "option_id": "C",
+          "content": "白芷"
+        },
+        {
+          "option_id": "D",
+          "content": "大腹皮"
+        },
+        {
+          "option_id": "E",
+          "content": "茯苓"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 102,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0103",
+      "question_type": "single_choice",
+      "question_content": "【题干】上述滴丸含量测定成分为橙皮苷，其化学结构类型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "萜类"
+        },
+        {
+          "option_id": "B",
+          "content": "挥发油"
+        },
+        {
+          "option_id": "C",
+          "content": "醌类"
+        },
+        {
+          "option_id": "D",
+          "content": "黄酮类"
+        },
+        {
+          "option_id": "E",
+          "content": "苯丙素类"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 103,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0104",
+      "question_type": "single_choice",
+      "question_content": "【题干】处方中厚朴用姜汁制的作用是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "增强宽中和胃作用"
+        },
+        {
+          "option_id": "B",
+          "content": "增强祛瘀止痛作用"
+        },
+        {
+          "option_id": "C",
+          "content": "增强止咳化痰作用"
+        },
+        {
+          "option_id": "D",
+          "content": "增强健脾补血作用"
+        },
+        {
+          "option_id": "E",
+          "content": "增强渗湿止泻作用"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 104,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0106",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，香连丸的溶散时限是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "15 分钟"
+        },
+        {
+          "option_id": "B",
+          "content": "30 分钟"
+        },
+        {
+          "option_id": "C",
+          "content": "1 小时"
+        },
+        {
+          "option_id": "D",
+          "content": "45 分钟"
+        },
+        {
+          "option_id": "E",
+          "content": "2 小时"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 106,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0107",
+      "question_type": "single_choice",
+      "question_content": "【题干】香连丸处方中萸黄连的显微鉴别特征是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "纤维束鲜黄色，壁稍厚，纹孔明显"
+        },
+        {
+          "option_id": "B",
+          "content": "联结乳管含淡黄色细小颗粒状物"
+        },
+        {
+          "option_id": "C",
+          "content": "树脂道碎片易见，含黄色块状分泌物"
+        },
+        {
+          "option_id": "D",
+          "content": "纤维多而壁厚，附有小晶体(砂晶和方晶)"
+        },
+        {
+          "option_id": "E",
+          "content": "纤维成束，周围薄壁细胞含草酸钙方晶，形成晶纤维"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 107,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0108",
+      "question_type": "single_choice",
+      "question_content": "【题干】处方中淡附片是由附子炮制而成，关于淡附片炮制方法的说法，正确的是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "由泥附子浸入食用胆巴的水溶液数日，煮至透心，水漂，切片，用调色液染至浓茶色，蒸后晒干而得"
+        },
+        {
+          "option_id": "B",
+          "content": "由泥附子浸入食用胆巴的水溶液，加食盐浸泡，取出，切片，晒干而得"
+        },
+        {
+          "option_id": "C",
+          "content": "由泥附子浸入食用胆巴的水溶液，煮至透心，剥去外皮，切片，蒸透晒干由净盐附子漂尽盐分，与甘草、黑豆加水共煮至透心，除去甘草、黑豆，切薄片，干燥"
+        },
+        {
+          "option_id": "D",
+          "content": "由净盐附子漂尽盐分，与甘草、黑豆加水共煮至透心，除去甘草、黑豆，切薄片，干燥而得"
+        },
+        {
+          "option_id": "E",
+          "content": "取砂置锅内，加入附片拌炒至鼓起、变色，去砂，放凉而得"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 108,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0109",
+      "question_type": "single_choice",
+      "question_content": "【题干】该方炙甘草和制剂的质量控制成分为甘草酸，其结构类型是( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甾体皂苷"
+        },
+        {
+          "option_id": "B",
+          "content": "强心苷"
+        },
+        {
+          "option_id": "C",
+          "content": "胆汁酸类"
+        },
+        {
+          "option_id": "D",
+          "content": "蜕皮激素"
+        },
+        {
+          "option_id": "E",
+          "content": "三萜皂苷"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 109,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0111",
+      "question_type": "single_choice",
+      "question_content": "【题干】断面可见大理石样花纹的饮片有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大黄"
+        },
+        {
+          "option_id": "B",
+          "content": "鸡血藤"
+        },
+        {
+          "option_id": "C",
+          "content": "肉豆蔻"
+        },
+        {
+          "option_id": "D",
+          "content": "大血藤"
+        },
+        {
+          "option_id": "E",
+          "content": "槟榔"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 111,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0112",
+      "question_type": "single_choice",
+      "question_content": "【题干】切面内皮层环纹明显的饮片有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "土茯苓"
+        },
+        {
+          "option_id": "B",
+          "content": "百部"
+        },
+        {
+          "option_id": "C",
+          "content": "莪术"
+        },
+        {
+          "option_id": "D",
+          "content": "姜黄"
+        },
+        {
+          "option_id": "E",
+          "content": "白及"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 112,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0113",
+      "question_type": "single_choice",
+      "question_content": "【题干】具有缓释作用，可显著减轻药物毒性或刺激性的丸剂有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "蜡丸"
+        },
+        {
+          "option_id": "B",
+          "content": "水蜜丸"
+        },
+        {
+          "option_id": "C",
+          "content": "大蜜丸"
+        },
+        {
+          "option_id": "D",
+          "content": "浓缩丸"
+        },
+        {
+          "option_id": "E",
+          "content": "糊丸"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 113,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0114",
+      "question_type": "single_choice",
+      "question_content": "【题干】《中国药典》规定，可不进行溶化性检查的颗粒剂有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肠溶颗粒"
+        },
+        {
+          "option_id": "B",
+          "content": "混悬颗粒"
+        },
+        {
+          "option_id": "C",
+          "content": "可溶颗粒"
+        },
+        {
+          "option_id": "D",
+          "content": "泡腾颗粒"
+        },
+        {
+          "option_id": "E",
+          "content": "缓释颗粒"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 114,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0115",
+      "question_type": "single_choice",
+      "question_content": "【题干】主产于青藏高原地区的药材有( )。 【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "冬虫夏草"
+        },
+        {
+          "option_id": "B",
+          "content": "雪莲花"
+        },
+        {
+          "option_id": "C",
+          "content": "红景天"
+        },
+        {
+          "option_id": "D",
+          "content": "西红花"
+        },
+        {
+          "option_id": "E",
+          "content": "炉贝母"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 115,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0116",
+      "question_type": "single_choice",
+      "question_content": "【题干】用煮法炮制降低毒性的中药有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "巴豆"
+        },
+        {
+          "option_id": "B",
+          "content": "吴茱萸"
+        },
+        {
+          "option_id": "C",
+          "content": "附子"
+        },
+        {
+          "option_id": "D",
+          "content": "川乌"
+        },
+        {
+          "option_id": "E",
+          "content": "马钱子"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 116,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0117",
+      "question_type": "single_choice",
+      "question_content": "【题干】根及根茎类药材，在产地加工时需除去外皮的有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "白芍"
+        },
+        {
+          "option_id": "B",
+          "content": "人参"
+        },
+        {
+          "option_id": "C",
+          "content": "天南星"
+        },
+        {
+          "option_id": "D",
+          "content": "郁金"
+        },
+        {
+          "option_id": "E",
+          "content": "山药"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 117,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0118",
+      "question_type": "single_choice",
+      "question_content": "【题干】根据苷键原子分类原则，属于氧苷的有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "酯苷"
+        },
+        {
+          "option_id": "B",
+          "content": "醇苷"
+        },
+        {
+          "option_id": "C",
+          "content": "酚苷"
+        },
+        {
+          "option_id": "D",
+          "content": "氰苷"
+        },
+        {
+          "option_id": "E",
+          "content": "吲哚苷"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 118,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0119",
+      "question_type": "single_choice",
+      "question_content": "【题干】主含生物碱类化学成分的药材有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "当归"
+        },
+        {
+          "option_id": "B",
+          "content": "苦参"
+        },
+        {
+          "option_id": "C",
+          "content": "麻黄"
+        },
+        {
+          "option_id": "D",
+          "content": "川乌"
+        },
+        {
+          "option_id": "E",
+          "content": "五味子"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 119,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "5ae6a7bd1b91-d676646cac-q0120",
+      "question_type": "single_choice",
+      "question_content": "【题干】既可内服又可外用的剂型有( )。【选项】",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "锭剂"
+        },
+        {
+          "option_id": "B",
+          "content": "钉剂"
+        },
+        {
+          "option_id": "C",
+          "content": "散剂"
+        },
+        {
+          "option_id": "D",
+          "content": "膜剂"
+        },
+        {
+          "option_id": "E",
+          "content": "棒剂"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "执业药师职业资格考试（中药学类）\\中药一真题（15-24年）\\2021年执业药师考试《中药学专业知识（一）》真题及解析\\full.md",
+        "number": 120,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

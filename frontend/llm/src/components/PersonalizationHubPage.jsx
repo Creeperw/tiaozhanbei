@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import PersonalizationPage from './PersonalizationPage';
 import ReportsPage from './ReportsPage';
 import ReviewDashboardPanel from './ReviewDashboardPanel';
@@ -15,14 +15,12 @@ const normalizeTask = (value) => (
 );
 
 export default function PersonalizationHubPage({ navigationContext = {}, onNavigate }) {
-  const [activeTab, setActiveTab] = useState(() => normalizeTask(navigationContext.view));
-
-  useEffect(() => {
-    setActiveTab(normalizeTask(navigationContext.view));
-  }, [navigationContext.view]);
+  const routeTab = normalizeTask(navigationContext.view);
+  const [selectedTab, setSelectedTab] = useState(null);
+  const activeTab = selectedTab || routeTab;
 
   const selectTask = (task) => {
-    setActiveTab(task);
+    setSelectedTab(task);
     onNavigate?.({ page: 'personalization', params: { view: task } });
   };
 

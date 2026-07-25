@@ -35,7 +35,7 @@ const assistantCharacterImages = {
   right: '/assistant-character/lizhizhen-right-cutout.png',
 };
 
-export const executionEventLabels = {
+const executionEventLabels = {
   handoff_prepared: '按需通信',
   handoff_blocked: '通信信息不足',
   repair_planned: '已生成局部修复链',

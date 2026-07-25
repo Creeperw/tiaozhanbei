@@ -317,7 +317,6 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
                 "standard_answer": "脾胃气虚证",
                 "rubric": "答出脾胃气虚证并能说明气虚、纳差、乏力等证据为满分。",
                 "knowledge_points": ["四君子汤", "脾胃气虚证"],
-                "difficulty": 2,
             },
             "options": {},
         }
@@ -1165,14 +1164,13 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
     def test_paper_projection_failure_rolls_back_paper_items_and_task(self):
         question = QuestionVersionView(
             "Q1:v1", "Q1", "short_answer", "安全题干", "秘密答案", "秘密解析",
-            ("KP_1",), 2, "curated",
+            ("KP_1",), "curated",
         )
 
         def passing_runner(**kwargs):
             value = kwargs["value"]
             blueprint = {"question_count": 1, "kp_ids": ["KP_1"],
-                         "types": ["short_answer"], "distribution": {"short_answer": 1},
-                         "difficulty": 2}
+                         "types": ["short_answer"], "distribution": {"short_answer": 1}}
             return {
                 "task_id": value.task_id, "task_type": value.task_type, "status": "completed",
                 "title": value.title, "orchestration_run_id": "RUN_PASS",
@@ -1458,7 +1456,7 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
                     "title": "四君子汤复习资料",
                     "query": "四君子汤与脾胃气虚证",
                     "inputs": {"kp_ids": ["kp:formal:001"]},
-                    "options": {"difficulty": 2},
+                    "options": {},
                 }
                 with self.Session() as db:
                     result = create_training_task(db, 1, request, runtime=runtime)
@@ -1864,7 +1862,7 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
             self.assertEqual(verification_db.query(database.TrainingTaskRecord).count(), 1)
             self.assertEqual(verification_db.query(database.AgentEvent).filter_by(event_type="runtime_side_effect").count(), 1)
 
-    def test_generation_maps_input_controls_to_generation_tool_with_option_overrides(self):
+    def test_generation_maps_duration_controls_to_generation_tool_with_option_overrides(self):
         for task_type, generation_tool in (
             ("handout_generation", "generate_handout"),
             ("knowledge_card_generation", "generate_knowledge_card"),
@@ -1875,7 +1873,7 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
                     "task_type": task_type,
                     "title": "四君子汤复习资料",
                     "query": "四君子汤与脾胃气虚证",
-                    "inputs": {"difficulty": 2, "duration_minutes": 15},
+                    "inputs": {"duration_minutes": 15},
                     "options": {},
                 }
                 with self.Session() as db:
@@ -1884,13 +1882,13 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
                 generation_input = next(
                     kwargs for tool, _, kwargs in runtime.calls if tool == generation_tool
                 )
-                self.assertEqual(generation_input["request"]["difficulty"], 2)
+                self.assertNotIn("difficulty", generation_input["request"])
                 self.assertEqual(generation_input["request"]["expected_duration_min"], 15)
 
                 override_runtime = DeterministicGenerationRuntime()
                 override_request = {
                     **request,
-                    "options": {"difficulty": 4, "expected_duration_min": 30},
+                    "options": {"expected_duration_min": 30},
                 }
                 with self.Session() as db:
                     create_training_task(db, 1, override_request, runtime=override_runtime)
@@ -1898,7 +1896,7 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
                 override_generation_input = next(
                     kwargs for tool, _, kwargs in override_runtime.calls if tool == generation_tool
                 )
-                self.assertEqual(override_generation_input["request"]["difficulty"], 4)
+                self.assertNotIn("difficulty", override_generation_input["request"])
                 self.assertEqual(override_generation_input["request"]["expected_duration_min"], 30)
 
     def test_generation_passes_textual_knowledge_prompts_without_fabricating_kp_ids(self):
@@ -2193,7 +2191,6 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
             "standard_answer": ["脾胃气虚证"],
             "rubric": True,
             "knowledge_points": ["四君子汤", 2],
-            "difficulty": True,
         }
         for field, value in invalid_inputs.items():
             with self.subTest(field=field):
@@ -2235,9 +2232,7 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
     def test_rejects_unknown_or_invalid_options_before_runtime(self):
         cases = (
             ({"unexpected": True}, "unknown option"),
-            ({"difficulty": True}, "options.difficulty has invalid type"),
-            ({"difficulty": 0}, "options.difficulty must be between 1 and 5"),
-            ({"difficulty": 6}, "options.difficulty must be between 1 and 5"),
+            ({"difficulty": True}, "unknown option: difficulty"),
             ({"expected_duration_min": True}, "options.expected_duration_min has invalid type"),
             ({"duration_minutes": 0}, "options.duration_minutes must be between 1 and 180"),
             ({"duration_minutes": 181}, "options.duration_minutes must be between 1 and 180"),
@@ -2267,7 +2262,6 @@ class TrainingWorkspaceFacadeTests(unittest.TestCase):
             "query": "问" * 8000,
             "inputs": {"kp_ids": ["K" * 120] * 20},
             "options": {
-                "difficulty": 5,
                 "duration_minutes": 180,
                 "save_activity": False,
                 "need_audit": True,

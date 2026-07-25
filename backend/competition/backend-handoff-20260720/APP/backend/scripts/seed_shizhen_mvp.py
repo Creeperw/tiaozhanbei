@@ -123,7 +123,7 @@ def _create_question_bank(db, seed: dict[str, Any]) -> int:
         row.analysis = item.get("analysis", "")
         row.kp_ids_json = _dump(item.get("kp_ids", []))
         row.question_type = item.get("question_type", "single_choice")
-        row.difficulty = float(item.get("difficulty", 2.0))
+        row.difficulty = None
         row.quality_score = float(item.get("quality_score", 0.8))
         row.source = SEED_SOURCE
         row.status = "active"

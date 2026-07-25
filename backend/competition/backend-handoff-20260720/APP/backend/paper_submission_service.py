@@ -8,6 +8,7 @@ from typing import Any, Callable
 from sqlalchemy.orm import Session
 
 from APP.backend.database import (
+    DailyTaskQuestionSnapshotRecord,
     KnowledgePoint,
     LearningActivityRecord,
     LearningAttemptItemRecord,
@@ -20,6 +21,7 @@ from APP.backend.database import (
     QuestionVersionRecord,
     QuestionKPLinkRecord,
 )
+from APP.backend.daily_task_progress_service import record_reviewed_question
 from APP.backend.grading_application_service import GradePracticeCommand, apply_practice_grading
 from APP.backend.learning_workshop_service import (
     _normalized_item_scores,
@@ -50,6 +52,26 @@ def _paper(db: Session, learner_id: int, paper_id: str) -> PaperInstanceRecord:
 
 def _items(db: Session, paper_id: str) -> list[PaperItemRecord]:
     return db.query(PaperItemRecord).filter_by(paper_id=paper_id).order_by(PaperItemRecord.position.asc()).all()
+
+
+def _bound_paper_has_exact_frozen_set(
+    db: Session,
+    paper: PaperInstanceRecord,
+    items: list[PaperItemRecord],
+) -> bool:
+    if not paper.daily_task_item_id:
+        return True
+    snapshots = db.query(DailyTaskQuestionSnapshotRecord).filter_by(
+        task_item_id=paper.daily_task_item_id,
+        user_id=paper.learner_id,
+    ).all()
+    snapshot_ids = {snapshot.question_version_id for snapshot in snapshots}
+    return (
+        bool(snapshots)
+        and len(items) == len(snapshots)
+        and len({item.question_version_id for item in items}) == len(items)
+        and {item.question_version_id for item in items} == snapshot_ids
+    )
 
 
 def _normalize_paper_scores(paper: PaperInstanceRecord, items: list[PaperItemRecord]) -> float:
@@ -83,16 +105,6 @@ def _kp_names(db: Session, kp_ids: list[str]) -> list[str]:
     rows = db.query(KnowledgePoint).filter(KnowledgePoint.kp_id.in_(kp_ids)).all() if kp_ids else []
     names = {str(row.kp_id): str(row.name) for row in rows if str(row.name or "").strip()}
     return [names[kp_id] for kp_id in kp_ids if kp_id in names]
-
-
-def _difficulty_source(source_kind: str | None) -> str:
-    if source_kind == "agent_audited":
-        return "agent_blueprint"
-    if source_kind in {"formal_question_bank", "question_bank", "question_bank_snapshot"}:
-        return "question_bank_snapshot"
-    if source_kind == "variation":
-        return "source_question"
-    return source_kind or "paper_snapshot"
 
 
 def _normalize_submission_result(
@@ -191,8 +203,6 @@ def _hydrate_submission_result(
             "grading_analysis": hydrated.get("grading_analysis") or str(
                 grading_payload.get("feedback") or grading_payload.get("error_reason") or ""
             ),
-            "difficulty": hydrated.get("difficulty", int(item.standard_difficulty or 2)),
-            "difficulty_source": hydrated.get("difficulty_source", _difficulty_source(item.source_kind)),
             "is_correct": hydrated.get("is_correct", bool(grading_row.is_correct) if grading_row else False),
         }
         for key, value in additions.items():
@@ -312,8 +322,6 @@ def get_owned_paper(db: Session, learner_id: int, paper_id: str) -> dict[str, An
             "options": _decode_options(item.options_snapshot_json),
             "kp_ids": _decode_list(item.kp_snapshot_json),
             "kp_names": _kp_names(db, _decode_list(item.kp_snapshot_json)),
-            "difficulty": item.standard_difficulty,
-            "difficulty_source": _difficulty_source(item.source_kind),
             "max_score": float(item.max_score_snapshot or 100.0),
             "answer": answers.get(item.paper_item_id, ""),
         } for item in items],
@@ -391,6 +399,8 @@ def submit_paper(
             return json.loads(completed.result_json or "{}")
         raise PaperSubmissionInvalid("paper submission is unavailable")
     items = _items(db, paper_id)
+    if not _bound_paper_has_exact_frozen_set(db, paper, items):
+        raise PaperSubmissionInvalid("paper items do not match the frozen daily task question set")
     _normalize_paper_scores(paper, items)
     answers = {
         answer.paper_item_id: answer.answer
@@ -423,12 +433,12 @@ def submit_paper(
                 rubric="",
                 kp_ids=tuple(kp_ids),
                 kp_names=tuple(_kp_names(db, kp_ids)),
-                difficulty=item.standard_difficulty,
                 duration_sec=None,
                 hint_used=False,
                 profile={},
                 memories=(),
                 attempt_type="paper",
+                daily_task_item_id=paper.daily_task_item_id,
             )
             graded = apply_practice_grading(
                 db,
@@ -438,6 +448,21 @@ def submit_paper(
                 atomic=True,
                 require_audit=True,
             )
+            if paper.daily_task_item_id:
+                audit = dict(graded.audit or {})
+                record_reviewed_question(
+                    db,
+                    learner_id,
+                    {
+                        "task_item_id": paper.daily_task_item_id,
+                        "question_version_id": item.question_version_id,
+                        "submitted_answer": answers[item.paper_item_id],
+                        "attempt_status": "reviewed",
+                        "audit_decision": audit.get("decision"),
+                        "audit_status": "completed",
+                    },
+                    commit=False,
+                )
             grading = dict(graded.grading_payload or {})
             raw_score = float(grading.get("score") or 0.0)
             raw_maximum = float(grading.get("max_score") or 0.0)
@@ -464,8 +489,6 @@ def submit_paper(
                 "grading_analysis": str(
                     grading.get("feedback") or grading.get("error_reason") or ""
                 ),
-                "difficulty": int(item.standard_difficulty or 2),
-                "difficulty_source": _difficulty_source(authority.source_kind or item.source_kind),
                 "audit": graded.audit,
                 "writeback": graded.writeback.status if graded.writeback else "skipped",
                 "mistake_ids": list(graded.writeback.mistake_ids) if graded.writeback else [],

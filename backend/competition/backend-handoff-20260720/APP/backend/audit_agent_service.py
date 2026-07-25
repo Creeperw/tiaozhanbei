@@ -53,28 +53,11 @@ def _claim_entries(artifact: ExpertArtifact) -> list[dict[str, Any]]:
 def _schema_conflicts(artifact: ExpertArtifact) -> list[str]:
     content = artifact.content or {}
     conflicts = []
-    required_fields = ("schema_version", "source_ids", "kp_ids", "difficulty")
+    required_fields = ("schema_version", "source_ids", "kp_ids")
     for field in required_fields:
         if field not in content:
             conflicts.append(f"schema_invalid:missing_{field}")
     return conflicts
-
-
-def _difficulty_score(actual: Any, expected: Any) -> float:
-    if isinstance(actual, int) and isinstance(expected, int):
-        return max(0.0, round(1.0 - 0.2 * abs(actual - expected), 4))
-    return 1.0
-
-
-def _expected_difficulty(learner_context: LearnerContextBrief, diagnosis_report: DiagnosisReport, actual: Any) -> int | None:
-    learning_state = learner_context.learning_state or {}
-    target = learning_state.get("target_difficulty")
-    if isinstance(target, int):
-        return target
-    stage_name = _text(diagnosis_report.stage_name)
-    if "难度不适" in stage_name and isinstance(actual, int):
-        return max(1, actual - 1)
-    return actual if isinstance(actual, int) else None
 
 
 def _contains_copyright_risk(artifact: ExpertArtifact, diagnosis_report: DiagnosisReport) -> bool:
@@ -164,12 +147,6 @@ def audit_artifact(
 
     conflicts.extend(_schema_conflicts(artifact))
 
-    actual_difficulty = (artifact.content or {}).get("difficulty")
-    expected_difficulty = _expected_difficulty(learner_context, diagnosis_report, actual_difficulty)
-    difficulty_match = _difficulty_score(actual_difficulty, expected_difficulty)
-    if difficulty_match < 0.7:
-        conflicts.append(f"difficulty_mismatch:expected_{expected_difficulty}_actual_{actual_difficulty}")
-
     safety_risk = _safety_risk(artifact, diagnosis_report)
     if safety_risk == "high":
         conflicts.append("medical_high_risk:requires_human_review")
@@ -186,8 +163,6 @@ def audit_artifact(
     elif any(item.startswith("missing_evidence_ids:") for item in conflicts):
         decision = "reject"
     elif any(item.startswith("schema_invalid:") for item in conflicts):
-        decision = "reject"
-    elif difficulty_match < 0.7:
         decision = "reject"
     elif knowledge_coverage < 1.0:
         decision = "revise"
@@ -213,7 +188,9 @@ def audit_artifact(
             "risk_notes": risk_notes,
         },
     )
-    confidence = llm_confidence if llm_confidence is not None else round((fact_consistency + evidence_coverage + difficulty_match + knowledge_coverage) / 4, 4)
+    confidence = llm_confidence if llm_confidence is not None else round(
+        (fact_consistency + evidence_coverage + knowledge_coverage) / 3, 4
+    )
     if llm_reason and decision == "pass":
         reason = llm_reason
 
@@ -228,7 +205,6 @@ def audit_artifact(
         confidence=confidence,
         fact_consistency=fact_consistency,
         evidence_coverage=evidence_coverage,
-        difficulty_match=difficulty_match,
         knowledge_coverage=knowledge_coverage,
         safety_risk=safety_risk,
         conflicts=conflicts,

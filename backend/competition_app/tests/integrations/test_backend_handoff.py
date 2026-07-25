@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
@@ -60,6 +61,108 @@ def test_stable_paper_submission_injects_question_explanation_agent():
     assert result == {"status": "completed"}
     assert calls[0][0][1:] == (7, "PAPER_1", "request-1")
     assert calls[0][1]["explanation_runner"] is explanation_runner
+    assert calls[-1] == "closed"
+
+
+def test_daily_task_handoff_maps_user_and_rolls_back_failed_upsert():
+    calls = []
+
+    class FakeDB:
+        def rollback(self):
+            calls.append("rolled_back")
+
+        def close(self):
+            calls.append("closed")
+
+    db = FakeDB()
+    modules = {
+        "APP.backend.database": SimpleNamespace(SessionLocal=lambda: db),
+        "APP.backend.daily_task_progress_service": SimpleNamespace(
+            upsert_daily_task_snapshot=lambda *_: (_ for _ in ()).throw(
+                RuntimeError("storage unavailable")
+            )
+        ),
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+    runtime._workshop_user = lambda current_db, external_id: SimpleNamespace(id=7)
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        with pytest.raises(RuntimeError, match="storage unavailable"):
+            runtime.upsert_daily_task_execution("external-1", {"task_id": "TASK_1"})
+
+    assert calls == ["rolled_back", "closed"]
+
+
+def test_formal_knowledge_point_resolver_delegates_to_handoff_repository():
+    calls = []
+
+    class FakeDB:
+        def close(self):
+            calls.append("closed")
+
+    db = FakeDB()
+    modules = {
+        "APP.backend.database": SimpleNamespace(SessionLocal=lambda: db),
+        "APP.backend.daily_task_progress_service": SimpleNamespace(
+            resolve_executable_knowledge_point=lambda current_db, name, **kwargs: (
+                calls.append((current_db, name, kwargs)) or "KP_FORMAL_1"
+            )
+        ),
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        result = runtime.resolve_executable_knowledge_point("四君子汤")
+
+    assert result == "KP_FORMAL_1"
+    assert calls[0] == (db, "四君子汤", {"required_question_count": 3})
+    assert calls[-1] == "closed"
+
+
+def test_publish_agent_paper_forwards_optional_daily_task_item_id():
+    calls = []
+
+    class FakeDB:
+        def close(self):
+            calls.append("closed")
+
+    db = FakeDB()
+    modules = {
+        "APP.backend.database": SimpleNamespace(SessionLocal=lambda: db),
+        "APP.backend.learning_workshop_service": SimpleNamespace(
+            publish_agent_paper=lambda *args, **kwargs: (
+                calls.append((args, kwargs)) or {"paper_id": "PAPER_1", "status": "published"}
+            )
+        ),
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+    runtime._workshop_user = lambda current_db, external_id: SimpleNamespace(id=7)
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        result = runtime.publish_agent_paper(
+            "external-1",
+            execution_id="EXEC_1",
+            paper={},
+            blueprint={},
+            evidence_pack={},
+            daily_task_item_id="ITEM_BOUND",
+        )
+
+    assert result == {"paper_id": "PAPER_1", "status": "published"}
+    assert calls[0][1]["user_id"] == 7
+    assert calls[0][1]["daily_task_item_id"] == "ITEM_BOUND"
     assert calls[-1] == "closed"
 
 
@@ -172,6 +275,10 @@ def test_multiscale_loaders_map_external_user_and_share_the_read_transaction():
     modules = {
         "APP.backend.database": SimpleNamespace(SessionLocal=lambda: db),
         "APP.backend.multiscale_learning_service": SimpleNamespace(
+            verify_host_plan_context=lambda context, **kwargs: {
+                **context,
+                "verified_for": kwargs["external_user_id"],
+            },
             build_multiscale_state=lambda current_db, user_id, **kwargs: (
                 calls.append(("state", current_db, user_id, kwargs)) or state
             ),
@@ -213,7 +320,10 @@ def test_multiscale_loaders_map_external_user_and_share_the_read_transaction():
         db,
         7,
         {
-            "plan_context": {"long_term_plan": {"plan_id": "LONG_1"}},
+            "plan_context": {
+                "long_term_plan": {"plan_id": "LONG_1"},
+                "verified_for": "external-1",
+            },
             "window_days": 30,
         },
     )
@@ -223,7 +333,10 @@ def test_multiscale_loaders_map_external_user_and_share_the_read_transaction():
         db,
         7,
         {
-            "plan_context": {"short_term_plan": {"plan_id": "SHORT_1"}},
+            "plan_context": {
+                "short_term_plan": {"plan_id": "SHORT_1"},
+                "verified_for": "external-1",
+            },
             "scope": "daily_task",
             "limit": 5,
             "include_blocked": False,

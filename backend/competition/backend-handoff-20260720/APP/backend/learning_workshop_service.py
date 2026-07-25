@@ -131,19 +131,49 @@ def publish_agent_paper(
     paper: dict[str, Any],
     blueprint: dict[str, Any],
     evidence_pack: dict[str, Any],
+    daily_task_item_id: str | None = None,
 ) -> dict[str, Any]:
+    if daily_task_item_id is not None and (
+        not isinstance(daily_task_item_id, str) or not daily_task_item_id.strip()
+    ):
+        raise ValueError("daily task item id is invalid")
+    bound_item_id = daily_task_item_id.strip() if isinstance(daily_task_item_id, str) else None
+    snapshots = None
+    if bound_item_id:
+        # Keep the Task 5 frozen-snapshot ownership and set-validation rules as
+        # the single authority for bound papers.
+        from APP.backend.paper_generation_service import (
+            _bound_paper_matches_snapshots,
+            _bound_snapshots,
+        )
+
+        snapshots = _bound_snapshots(
+            db,
+            user_id=user_id,
+            daily_task_item_id=bound_item_id,
+        )
+        existing_bound = db.query(PaperInstanceRecord).filter_by(
+            learner_id=user_id,
+            daily_task_item_id=bound_item_id,
+        ).one_or_none()
+        if existing_bound is not None:
+            if not _bound_paper_matches_snapshots(db, existing_bound, snapshots):
+                raise ValueError("bound paper does not match frozen daily task questions")
+            return {"paper_id": existing_bound.paper_id, "status": existing_bound.status}
+
     existing = db.query(PaperInstanceRecord).filter_by(task_id=execution_id, learner_id=user_id).one_or_none()
     if existing is not None:
         return {"paper_id": existing.paper_id, "status": existing.status}
 
     paper_id = f"PAPER_{uuid4().hex}"
     duration = max(1, min(24 * 60, int(paper.get("duration_minutes") or 60)))
-    paper_items = list(paper.get("items") or [])
+    paper_items = list(paper.get("items") or []) if snapshots is None else [{} for _ in snapshots]
     item_scores = _normalized_item_scores(paper_items, paper, blueprint)
     db.add(
         PaperInstanceRecord(
             paper_id=paper_id,
             task_id=execution_id,
+            daily_task_item_id=bound_item_id,
             orchestration_run_id=execution_id,
             learner_id=user_id,
             title=str(paper.get("title") or "训练试卷")[:200],
@@ -153,14 +183,28 @@ def publish_agent_paper(
             evidence_pack_json=json.dumps(evidence_pack, ensure_ascii=False),
         )
     )
+    if snapshots is not None:
+        for position, (snapshot, item_score) in enumerate(zip(snapshots, item_scores), start=1):
+            db.add(PaperItemRecord(
+                paper_item_id=f"PI_{uuid4().hex}",
+                paper_id=paper_id,
+                position=position,
+                question_id=snapshot.question_id,
+                question_version_id=snapshot.question_version_id,
+                question_type=snapshot.question_type,
+                stem_snapshot=snapshot.stem_snapshot,
+                options_snapshot_json=snapshot.options_snapshot_json,
+                standard_answer_snapshot=snapshot.answer_snapshot,
+                kp_snapshot_json=snapshot.kp_snapshot_json,
+                evidence_refs_json="[]",
+                source_kind=snapshot.source_kind,
+                standard_difficulty=None,
+                max_score_snapshot=item_score,
+            ))
     for position, (item, item_score) in enumerate(zip(paper_items, item_scores), start=1):
+        if snapshots is not None:
+            break
         question = item.get("question") or {}
-        try:
-            item_difficulty = max(1, min(5, int(float(
-                question.get("difficulty") or paper.get("difficulty") or blueprint.get("difficulty") or 2
-            ))))
-        except (TypeError, ValueError):
-            item_difficulty = 2
         bridges = question.get("bridges") or []
         kp_ids = list(dict.fromkeys(
             str(bridge.get("kp_id"))
@@ -181,7 +225,7 @@ def publish_agent_paper(
                 kp_snapshot_json=json.dumps(kp_ids, ensure_ascii=False),
                 evidence_refs_json="[]",
                 source_kind="agent_audited",
-                standard_difficulty=item_difficulty,
+                standard_difficulty=None,
                 max_score_snapshot=item_score,
             )
         db.add(paper_item)
@@ -190,6 +234,10 @@ def publish_agent_paper(
             paper_item,
             analysis=str(question.get("analysis") or ""),
         )
+    if snapshots is not None:
+        paper_instance = db.query(PaperInstanceRecord).filter_by(paper_id=paper_id).one()
+        if not _bound_paper_matches_snapshots(db, paper_instance, snapshots):
+            raise ValueError("bound paper does not match frozen daily task questions")
     db.commit()
     return {"paper_id": paper_id, "status": "published", "duration_minutes": duration}
 
@@ -261,7 +309,7 @@ def ensure_paper_question_authority(
     version.answer = item.standard_answer_snapshot
     if analysis.strip() and not str(version.analysis or "").strip():
         version.analysis = analysis.strip()
-    version.standard_difficulty = max(1, min(5, int(item.standard_difficulty or 2)))
+    version.standard_difficulty = None
     version.source_kind = item.source_kind or "paper_snapshot"
     version.status = "active"
     db.flush()

@@ -177,7 +177,6 @@ def test_blueprint_normalizes_loose_live_model_values_before_validation() -> Non
                     "score_total": "待确认",
                     "candidate_limit": 500,
                     "selection_rule": "覆盖核心概念",
-                    "difficulty_preference": "综合应用" * 30,
                 }
             ],
         },

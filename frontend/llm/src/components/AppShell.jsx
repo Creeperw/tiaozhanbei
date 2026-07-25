@@ -25,7 +25,8 @@ import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 const navIconMap = {
   dashboard: Home,
   assistant: MessageSquareMore,
-  practice: Dumbbell,
+  practice: ClipboardList,
+  'training-workshop': Dumbbell,
   knowledge: BookOpen,
   'question-workspace': ClipboardList,
   personalization: ChartNoAxesColumnIncreasing,
@@ -138,7 +139,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
   const displayName = currentUser?.display_name || currentUser?.username || 'User';
   const avatarUrl = accountProfile?.avatar_url || null;
   const avatarInitial = displayName.trim().slice(0, 1).toUpperCase() || '用';
-  const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice'].includes(shell.currentPage);
+  const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice', 'training-workshop'].includes(shell.currentPage);
   const shouldShowPageHeader = shell.currentPage !== 'dashboard'
     && shell.shellMode !== 'workspace'
     && !['personalization', 'settings'].includes(shell.currentPage);

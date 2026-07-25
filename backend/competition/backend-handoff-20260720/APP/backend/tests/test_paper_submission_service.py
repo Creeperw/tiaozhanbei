@@ -15,6 +15,7 @@ from APP.backend.paper_submission_service import (
     save_paper_answers,
     submit_paper,
 )
+from APP.backend.paper_generation_service import generate_and_publish_paper
 from APP.backend.mistake_variation_service import list_available_variation_sources
 
 
@@ -47,6 +48,33 @@ class PaperSubmissionServiceTests(unittest.TestCase):
             "error_reason": "" if correct else "答案不正确",
             "confidence": 0.9,
             "audit": {"decision": "pass", "confidence": 0.9},
+        }
+
+    def _add_bound_daily_task(self, task_item_id="ITEM_1"):
+        self.db.add_all((
+            database.DailyTaskItemRecord(
+                task_item_id=task_item_id, host_task_id=f"TASK_{task_item_id}", host_task_version=1,
+                user_id=1, kp_id="KP_1", item_kind="knowledge_practice",
+                ordinal=1, required_question_count=1,
+            ),
+            database.DailyTaskQuestionSnapshotRecord(
+                task_item_id=task_item_id, user_id=1, question_id="Q_1",
+                question_version_id="QV_1", question_type="short_answer",
+                stem_snapshot="冻结题干", options_snapshot_json="[]",
+                answer_snapshot="脾胃气虚证", rubric_snapshot="",
+                kp_snapshot_json='["KP_1"]', source_kind="formal-content:test",
+            ),
+        ))
+        self.db.commit()
+
+    def _bound_orchestration(self):
+        return {
+            "task_id": "PAPER_TASK_1", "title": "绑定试卷",
+            "artifact": {"content": {"paper_blueprint": {
+                "question_count": 1, "kp_ids": ["KP_1"], "types": ["short_answer"],
+                "distribution": {"short_answer": 1},
+            }}},
+            "evidence_pack": {}, "audit": {"decision": "pass"},
         }
 
     def test_owned_paper_read_omits_standard_answer_and_returns_saved_answer(self):
@@ -188,7 +216,9 @@ class PaperSubmissionServiceTests(unittest.TestCase):
         self.assertEqual(result["status"], "completed")
         self.assertEqual(activity.completion_status, "completed")
         self.assertEqual(json.loads(activity.payload_json)["task_type"], "paper_submission")
-        self.assertEqual(rates["value"], 1.0)
+        self.assertFalse(rates["available"])
+        self.assertIsNone(rates["value"])
+        self.assertEqual(rates["unavailable_reason"], "no_planned_daily_task_items")
 
     def test_successful_submission_locks_answers_and_replays_for_new_request_id(self):
         with self.Session() as db:
@@ -232,6 +262,72 @@ class PaperSubmissionServiceTests(unittest.TestCase):
             loaded = get_owned_paper(db, 1, "PAPER_1")
 
         self.assertEqual(loaded["items"][0]["answer"], "初始答案")
+
+    def test_bound_paper_reopens_the_same_identity_and_frozen_question_set(self):
+        with self.Session() as db:
+            self.db = db
+            self._add_bound_daily_task()
+            first = generate_and_publish_paper(
+                db=db, user_id=1, orchestration_result=self._bound_orchestration(),
+                daily_task_item_id="ITEM_1",
+            )
+            second = generate_and_publish_paper(
+                db=db, user_id=1, orchestration_result=self._bound_orchestration(),
+                daily_task_item_id="ITEM_1",
+            )
+            paper = db.query(database.PaperInstanceRecord).filter_by(paper_id=first["paper_id"]).one()
+            paper_items = db.query(database.PaperItemRecord).filter_by(paper_id=first["paper_id"]).all()
+
+        self.assertEqual(second["paper_id"], first["paper_id"])
+        self.assertEqual(paper.daily_task_item_id, "ITEM_1")
+        self.assertEqual(
+            {item.question_version_id for item in paper_items},
+            {"QV_1"},
+        )
+
+    def test_bound_paper_rejects_missing_extra_or_replaced_frozen_questions(self):
+        for mutation in ("missing", "extra", "replaced"):
+            with self.subTest(mutation=mutation), self.Session() as db:
+                self.db = db
+                task_item_id = f"ITEM_{mutation}"
+                self._add_bound_daily_task(task_item_id)
+                db.query(database.PaperInstanceRecord).filter_by(paper_id="PAPER_1").update({
+                    database.PaperInstanceRecord.daily_task_item_id: task_item_id,
+                })
+                if mutation == "missing":
+                    db.query(database.PaperItemRecord).filter_by(paper_item_id="PI_1").delete()
+                elif mutation == "extra":
+                    db.add(database.PaperItemRecord(
+                        paper_item_id="PI_extra", paper_id="PAPER_1", position=2,
+                        question_id="Q_extra", question_version_id="QV_extra",
+                    ))
+                else:
+                    db.query(database.PaperItemRecord).filter_by(paper_item_id="PI_1").update({
+                        database.PaperItemRecord.question_version_id: "QV_replaced",
+                    })
+                db.commit()
+                with self.assertRaisesRegex(PaperSubmissionInvalid, "frozen daily task question set"):
+                    submit_paper(db, 1, "PAPER_1", f"bound-{mutation}", runner=self.runner)
+
+    def test_bound_paper_submission_updates_each_frozen_snapshot_terminal_audit(self):
+        with self.Session() as db:
+            self.db = db
+            self._add_bound_daily_task()
+            db.query(database.PaperInstanceRecord).filter_by(paper_id="PAPER_1").update({
+                database.PaperInstanceRecord.daily_task_item_id: "ITEM_1",
+            })
+            db.commit()
+            save_paper_answers(db, 1, "PAPER_1", {"PI_1": "脾胃气虚证"})
+            submit_paper(db, 1, "PAPER_1", "bound-progress", runner=self.runner)
+            snapshot = db.query(database.DailyTaskQuestionSnapshotRecord).filter_by(
+                task_item_id="ITEM_1", question_version_id="QV_1",
+            ).one()
+            item = db.query(database.DailyTaskItemRecord).filter_by(task_item_id="ITEM_1").one()
+
+        self.assertEqual(snapshot.submitted_answer, "脾胃气虚证")
+        self.assertEqual(snapshot.audit_decision, "pass")
+        self.assertEqual(snapshot.audit_status, "completed")
+        self.assertEqual(item.status, "completed")
 
 
 if __name__ == "__main__":

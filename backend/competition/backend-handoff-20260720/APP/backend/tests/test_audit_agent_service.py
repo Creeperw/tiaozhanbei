@@ -105,7 +105,7 @@ class AuditAgentServiceTests(unittest.TestCase):
         self.assertEqual(review.reviewer, "audit_agent")
         self.assertGreaterEqual(review.fact_consistency, 1.0)
         self.assertGreaterEqual(review.knowledge_coverage, 1.0)
-        self.assertGreaterEqual(review.difficulty_match, 1.0)
+        self.assertNotIn("difficulty_match", review.model_dump())
         self.assertEqual(review.conflicts, [])
         llm_judge.assert_called_once()
 
@@ -164,7 +164,7 @@ class AuditAgentServiceTests(unittest.TestCase):
         self.assertLess(review.knowledge_coverage, 1.0)
         self.assertTrue(any("knowledge_gap" in item for item in review.conflicts))
 
-    def test_audit_rejects_difficulty_mismatch(self):
+    def test_audit_ignores_legacy_difficulty_fields(self):
         service = self._service()
 
         review = service.audit_artifact(
@@ -174,9 +174,9 @@ class AuditAgentServiceTests(unittest.TestCase):
             diagnosis_report=self._diagnosis_report(),
         )
 
-        self.assertEqual(review.decision, "reject")
-        self.assertLess(review.difficulty_match, 0.7)
-        self.assertTrue(any("difficulty" in item for item in review.conflicts))
+        self.assertEqual(review.decision, "pass")
+        self.assertNotIn("difficulty_match", review.model_dump())
+        self.assertFalse(any("difficulty" in item for item in review.conflicts))
 
     def test_audit_sends_high_risk_medical_content_to_human_review(self):
         service = self._service()

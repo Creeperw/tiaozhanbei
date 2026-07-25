@@ -10,14 +10,21 @@ from typing import Any
 
 UTC = timezone.utc
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from APP.backend.database import LearningActivityRecord, LearningFocusSession, LearningTask, SystemData
+from APP.backend.database import (
+    DailyTaskInstanceRecord,
+    DailyTaskItemRecord,
+    LearningActivityRecord,
+    LearningFocusSession,
+    LearningTask,
+    SystemData,
+)
 
 _ACTIVITY_WINDOW_DAYS = 30
-_CALCULATION_VERSION = "system-data-v2"
+_CALCULATION_VERSION = "system-data-v3-daily-atomic"
 _RECOMMENDATION_VIEW_ACTIVITY = "dashboard_recommendations_view"
 _RESOURCE_CLICK_ACTIVITY = "resource_click"
 _LEGACY_TASK_ACTIVITY_TYPES = {
@@ -31,9 +38,11 @@ _LEGACY_TASK_ACTIVITY_TYPES = {
 def system_data_payload(snapshot: SystemData | None) -> dict[str, Any]:
     if snapshot is None:
         return {}
+    task_completion_rate = _json_object(snapshot.task_completion_rate_json)
     return {
         "time_data": _json_object(snapshot.time_data_json),
-        "task_completion_rate": _json_object(snapshot.task_completion_rate_json),
+        "task_completion_rate": task_completion_rate,
+        "daily_atomic_task_completion_rate": task_completion_rate,
         "resource_click_rate": _json_object(snapshot.resource_click_rate_json),
         "calculation_version": snapshot.calculation_version,
         "calculated_at": _beijing_iso(snapshot.calculated_at),
@@ -134,11 +143,9 @@ def rebuild_system_data(
     ).all()
     _migrate_legacy_task_activities(db, user_id=user_id, activities=activities)
     db.flush()
-    tasks = db.query(LearningTask).filter(
-        LearningTask.user_id == user_id,
-        LearningTask.created_at >= window_start,
-        LearningTask.created_at <= calculated_at,
-    ).all()
+    daily_items = _published_daily_task_items(
+        db, user_id=user_id, window_start=window_start, window_end=calculated_at
+    )
     focus_sessions = db.query(LearningFocusSession).filter(
         LearningFocusSession.user_id == user_id,
         LearningFocusSession.started_at >= window_start,
@@ -150,11 +157,11 @@ def rebuild_system_data(
         ensure_ascii=False,
     )
     snapshot.task_completion_rate_json = json.dumps(
-        _task_completion_rate(tasks, window_start, calculated_at),
+        _daily_atomic_task_completion_rate(daily_items, window_start, calculated_at),
         ensure_ascii=False,
     )
     snapshot.resource_click_rate_json = json.dumps(_resource_click_rate(activities, window_start, calculated_at), ensure_ascii=False)
-    snapshot.data_source = "learning_tasks,learning_focus_sessions,learning_activity_records"
+    snapshot.data_source = "daily_task_instances,daily_task_items,learning_focus_sessions,learning_activity_records"
     snapshot.calculation_version = _CALCULATION_VERSION
     snapshot.calculated_at = calculated_at
     db.flush()
@@ -184,11 +191,9 @@ def build_learning_window_metrics(
         LearningActivityRecord.created_at >= window_start,
         LearningActivityRecord.created_at <= calculated_at,
     ).all()
-    tasks = db.query(LearningTask).filter(
-        LearningTask.user_id == user_id,
-        LearningTask.created_at >= window_start,
-        LearningTask.created_at <= calculated_at,
-    ).all()
+    daily_items = _published_daily_task_items(
+        db, user_id=user_id, window_start=window_start, window_end=calculated_at
+    )
     focus_sessions = db.query(LearningFocusSession).filter(
         LearningFocusSession.user_id == user_id,
         LearningFocusSession.started_at <= calculated_at,
@@ -206,7 +211,9 @@ def build_learning_window_metrics(
     active_focus_sessions = [
         row for row in focus_sessions if row.status == "completed" and (row.active_seconds or 0) > 0
     ]
-    non_cancelled_tasks = [row for row in tasks if row.status != "cancelled"]
+    daily_atomic_task_completion_rate = _daily_atomic_task_completion_rate(
+        daily_items, window_start, calculated_at
+    )
     return {
         "window": {
             "days": days,
@@ -215,18 +222,19 @@ def build_learning_window_metrics(
             "timezone": "Asia/Shanghai",
         },
         "time_data": _time_data(activities, focus_sessions, window_start, calculated_at),
-        "task_completion_rate": _task_completion_rate(tasks, window_start, calculated_at),
+        "task_completion_rate": daily_atomic_task_completion_rate,
+        "daily_atomic_task_completion_rate": daily_atomic_task_completion_rate,
         "resource_click_rate": _resource_click_rate(activities, window_start, calculated_at),
         "counts": {
             "activity_records": len(activities),
-            "tasks": len(non_cancelled_tasks),
-            "completed_tasks": sum(row.status == "completed" for row in non_cancelled_tasks),
+            "tasks": len(daily_items),
+            "completed_tasks": sum(row.status == "completed" for row in daily_items),
             "focus_sessions": len(active_focus_sessions),
             "recommendation_views": len(recommendation_views),
             "recommendation_clicks": len(recommendation_clicks),
         },
-        "data_source": "learning_tasks,learning_focus_sessions,learning_activity_records",
-        "calculation_version": "learning-window-v1",
+        "data_source": "daily_task_instances,daily_task_items,learning_focus_sessions,learning_activity_records",
+        "calculation_version": "learning-window-v2-daily-atomic",
         "calculated_at": _beijing_iso(calculated_at),
     }
 
@@ -253,11 +261,9 @@ def build_learning_trends(
         LearningActivityRecord.created_at >= window_start,
         LearningActivityRecord.created_at <= calculated_at,
     ).all()
-    tasks = db.query(LearningTask).filter(
-        LearningTask.user_id == user_id,
-        LearningTask.created_at >= window_start,
-        LearningTask.created_at <= calculated_at,
-    ).all()
+    daily_items = _published_daily_task_items(
+        db, user_id=user_id, window_start=window_start, window_end=calculated_at
+    )
     focus_sessions = db.query(LearningFocusSession).filter(
         LearningFocusSession.user_id == user_id,
         LearningFocusSession.started_at <= calculated_at,
@@ -277,21 +283,22 @@ def build_learning_trends(
         window_start=window_start,
         window_end=calculated_at,
     )
-    tasks_by_date: dict[date, list[LearningTask]] = {}
-    for task in tasks:
-        task_date = as_beijing(task.created_at).date()
-        tasks_by_date.setdefault(task_date, []).append(task)
+    daily_items_by_date: dict[date, list[DailyTaskItemRecord]] = {}
+    for item in daily_items:
+        item_date = as_beijing(item.created_at).date()
+        daily_items_by_date.setdefault(item_date, []).append(item)
 
     series = []
     for offset in range(days):
         day = start_date + timedelta(days=offset)
-        daily_tasks = [task for task in tasks_by_date.get(day, []) if task.status != "cancelled"]
-        completed = sum(task.status == "completed" for task in daily_tasks)
+        daily_tasks = daily_items_by_date.get(day, [])
+        completed = sum(item.status == "completed" for item in daily_tasks)
         series.append({
             "date": day.isoformat(),
             "login_days": int(day in login_dates),
             "focus_minutes": round(focus_seconds_by_date.get(day, 0) / 60),
-            "task_completion_rate": completed / len(daily_tasks) if daily_tasks else 0.0,
+            "task_completion_rate": completed / len(daily_tasks) if daily_tasks else None,
+            "daily_atomic_task_completion_rate": completed / len(daily_tasks) if daily_tasks else None,
         })
     return {
         "days": days,
@@ -408,15 +415,53 @@ def _time_data(
     }
 
 
-def _task_completion_rate(
-    tasks: list[LearningTask],
+def _published_daily_task_items(
+    db: Session,
+    *,
+    user_id: int,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[DailyTaskItemRecord]:
+    """Return only atomic items belonging to a published, non-cancelled daily task.
+
+    The handoff schema records publication by materializing a daily task instance;
+    its active or completed states remain published.  Orphaned item rows and any
+    cancelled instance/item are deliberately excluded.
+    """
+
+    return db.query(DailyTaskItemRecord).join(
+        DailyTaskInstanceRecord,
+        and_(
+            DailyTaskInstanceRecord.host_task_id == DailyTaskItemRecord.host_task_id,
+            DailyTaskInstanceRecord.host_task_version == DailyTaskItemRecord.host_task_version,
+            DailyTaskInstanceRecord.user_id == DailyTaskItemRecord.user_id,
+        ),
+    ).filter(
+        DailyTaskItemRecord.user_id == user_id,
+        DailyTaskItemRecord.created_at >= window_start,
+        DailyTaskItemRecord.created_at <= window_end,
+        DailyTaskInstanceRecord.status.in_(("active", "completed")),
+        DailyTaskItemRecord.status != "cancelled",
+    ).all()
+
+
+def _daily_atomic_task_completion_rate(
+    daily_items: list[DailyTaskItemRecord],
     window_start: datetime,
     window_end: datetime,
 ) -> dict[str, Any]:
-    candidates = [task for task in tasks if task.status != "cancelled"]
-    completed = sum(task.status == "completed" for task in candidates)
-    value = completed / len(candidates) if candidates else 0.0
-    return _metric(value, "ratio", window_start, window_end)
+    if not daily_items:
+        return {
+            "available": False,
+            "value": None,
+            "unit": "ratio",
+            "unavailable_reason": "no_planned_daily_task_items",
+        }
+    completed = sum(item.status == "completed" for item in daily_items)
+    return {
+        "available": True,
+        **_metric(completed / len(daily_items), "ratio", window_start, window_end),
+    }
 
 
 def _resource_click_rate(

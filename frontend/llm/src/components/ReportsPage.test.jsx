@@ -31,6 +31,7 @@ describe('ReportsPage', () => {
           { key: 'mastery', label: '知识掌握', value: 0.62, evidence_count: 3, formula: 'mean(mastery)' },
           { key: 'retention', label: '复习保持', value: 0.55, evidence_count: 2, formula: 'mean(retention)' },
           { key: 'execution', label: '任务执行', value: 0.48, evidence_count: 5, formula: 'completed/tasks' },
+          { key: 'accuracy', label: '练习得分率', value: 0.73, evidence_count: 4, formula: 'sum(scores)/sum(max_scores)' },
         ],
         activity_trends: {
           series: [
@@ -62,13 +63,12 @@ describe('ReportsPage', () => {
             score: 0.9,
             estimated_minutes: 12,
             reasons: ['覆盖当前薄弱知识点'],
-            components: { knowledge_fit: 1, quality: 0.8, format_fit: 1, time_fit: 1, difficulty_fit: null },
+            components: { knowledge_fit: 1, quality: 0.8, format_fit: 1, time_fit: 1 },
             component_sources: {
               knowledge_fit: 'resource.kp_ids intersect target.kp_ids',
               quality: 'knowledge_card_bundle',
               format_fit: 'user_profiles.exercise_preferences/custom_needs',
               time_fit: 'content_type_default',
-              difficulty_fit: 'not_available_excluded_from_weighting',
             },
           }],
         },
@@ -98,6 +98,8 @@ describe('ReportsPage', () => {
     expect(screen.queryByText('需要优先补强')).not.toBeInTheDocument();
     expect(screen.getByText('四君子汤知识卡')).toBeInTheDocument();
     expect(screen.getByText('样本状态：可用于谨慎干预')).toBeInTheDocument();
+    expect(screen.getAllByText('练习得分率').length).toBeGreaterThan(0);
+    expect(screen.getByText('73%')).toBeInTheDocument();
     expect(screen.getByText('监测口径、数据来源与参考依据')).toBeInTheDocument();
     expect(screen.getByText('宏观状态')).toBeInTheDocument();
     expect(screen.getByText('中医基础与文化语言')).toBeInTheDocument();
@@ -115,6 +117,6 @@ describe('ReportsPage', () => {
     expect(basisButton).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByLabelText('四君子汤知识卡匹配依据详情')).toBeInTheDocument();
     expect(screen.getByText('资源知识点与当前薄弱点、计划知识点的交集')).toBeInTheDocument();
-    expect(screen.getByText('未纳入')).toBeInTheDocument();
+    expect(screen.queryByText(/难度/)).not.toBeInTheDocument();
   });
 });

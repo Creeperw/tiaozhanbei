@@ -26,14 +26,28 @@ function taskDescription(task) {
   try {
     const payload = JSON.parse(match[1]);
     if (payload?.status !== 'onboarding_completed') return description;
-    const difficulty = text(payload?.survey_answers?.current_difficulties)
+    const weakPoint = text(payload?.survey_answers?.current_difficulties)
       || text(payload?.l0_baseline?.current_difficulties);
-    return difficulty
-      ? `围绕“${difficulty}”快速检测掌握情况`
+    return weakPoint
+      ? `围绕“${weakPoint}”快速检测掌握情况`
       : '正在准备个性化短练';
   } catch {
     return description;
   }
+}
+
+export function dailyTaskItems(task = {}) {
+  return Array.isArray(task?.items) ? task.items : [];
+}
+
+export function dailyTaskProgress(task = {}) {
+  const progress = task?.progress || {};
+  const items = dailyTaskItems(task);
+  const derivedCompleted = items.filter((item) => item?.status === 'completed').length;
+  return {
+    completed: Number(progress.completed ?? derivedCompleted),
+    total: Number(progress.total ?? items.length),
+  };
 }
 
 export function buildDailyFocus(dashboard = {}) {

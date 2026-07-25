@@ -79,19 +79,13 @@ def _upsert_question(db: Session, parts: list[str], source: str) -> str | None:
     if len(parts) < 5:
         return None
     question_id = parts[0]
-    difficulty = 2.0
-    if len(parts) > 5:
-        try:
-            difficulty = float(parts[5])
-        except ValueError:
-            difficulty = 2.0
     row = db.query(QuestionBankItem).filter(QuestionBankItem.question_id == question_id).first()
     fields = {
         "stem": parts[1],
         "answer": parts[2],
         "analysis": parts[3],
         "kp_ids_json": _json(_kp_ids(parts[4])),
-        "difficulty": difficulty,
+        "difficulty": None,
         "quality_score": 0.75,
         "source": source,
         "status": "active",

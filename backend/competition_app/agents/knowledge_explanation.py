@@ -161,7 +161,6 @@ class KnowledgeExplanationAgent:
             resource_draft_id=f"DRAFT_{uuid4().hex}",
             title=output.title,
             content=content,
-            target_difficulty=1,
             estimated_minutes=int(context.get("available_minutes", 15)),
             claims=[
                 ResourceClaim(

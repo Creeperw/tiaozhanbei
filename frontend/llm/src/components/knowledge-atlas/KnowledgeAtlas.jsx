@@ -556,7 +556,14 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
 
       {selectedNode && (
         <div className={detailClosing ? 'knowledge-atlas__detail-layer is-closing' : 'knowledge-atlas__detail-layer'}>
-          <KnowledgeAtlasDetail node={selectedNode} detail={detail} loading={detailLoading} error={detailError} onClose={closeDetail} />
+          <KnowledgeAtlasDetail
+            node={selectedNode}
+            detail={detail}
+            loading={detailLoading}
+            error={detailError}
+            taskItemId={initialContext.taskItemId || initialContext.task_item_id || ''}
+            onClose={closeDetail}
+          />
         </div>
       )}
     </section>

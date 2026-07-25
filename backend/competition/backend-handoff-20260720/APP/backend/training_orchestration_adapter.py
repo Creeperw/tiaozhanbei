@@ -44,7 +44,6 @@ def build_orchestration_request(value: TrainingOrchestrationInput) -> Orchestrat
     if requested_output is None:
         raise ValueError(f"unsupported training orchestration task type: {value.task_type}")
 
-    difficulty = value.options.get("difficulty", value.inputs.get("difficulty"))
     expected_duration = value.options.get(
         "expected_duration_min",
         value.inputs.get("duration_minutes"),
@@ -56,7 +55,6 @@ def build_orchestration_request(value: TrainingOrchestrationInput) -> Orchestrat
         task_context=OrchestrationTaskContext(
             correlation_id=value.task_id,
             kp_ids=list(value.inputs.get("kp_ids") or []),
-            difficulty=difficulty,
             expected_duration_min=expected_duration,
             question_count=value.options.get("question_count", value.inputs.get("question_count")),
             types=list(value.options.get("types", value.inputs.get("types", [])) or []),
@@ -68,7 +66,6 @@ def build_orchestration_request(value: TrainingOrchestrationInput) -> Orchestrat
             source_answer=_safe_string(value.inputs.get("source_answer")),
             source_analysis=_safe_string(value.inputs.get("source_analysis")),
             source_question_type=_safe_string(value.inputs.get("source_question_type")) or "single_choice",
-            source_difficulty=value.inputs.get("source_difficulty"),
         ),
     )
 
@@ -147,11 +144,9 @@ def _project_audit(value: Any) -> dict[str, Any]:
 def _project_variation_content(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
-    difficulty = value.get("difficulty")
     return {
         "stem": _safe_string(value.get("stem")),
         "question_type": _safe_string(value.get("question_type")) or "single_choice",
-        "difficulty": difficulty if isinstance(difficulty, int) and not isinstance(difficulty, bool) else 2,
         "kp_ids": _safe_string_list(value.get("kp_ids")),
         "source_mistake_id": value.get("source_mistake_id"),
         "source_question_version_id": _safe_string(value.get("source_question_version_id")),
@@ -464,7 +459,6 @@ def execute_training_orchestration(
                 "source_question_id": _safe_string(content.get("source_question_id")),
                 "stem": _safe_string(content.get("stem")),
                 "question_type": _safe_string(content.get("question_type")) or "single_choice",
-                "difficulty": content.get("difficulty"),
                 "kp_ids": _safe_string_list(content.get("kp_ids")),
                 "artifact_source_id": _safe_string(candidate.get("source_id")),
                 "standard_answer": _safe_string(authoritative_variation.get("answer")),

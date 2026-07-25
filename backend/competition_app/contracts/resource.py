@@ -25,7 +25,6 @@ class ResourceDraft(ContractModel):
     title: str
     target_kp_id: str | None = None
     content: dict[str, object]
-    target_difficulty: int = Field(ge=1, le=5)
     estimated_minutes: int = Field(gt=0)
     claims: list[ResourceClaim] = Field(default_factory=list)
     safety_notes: list[str] = Field(default_factory=list)

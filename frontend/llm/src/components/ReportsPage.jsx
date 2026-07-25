@@ -18,7 +18,7 @@ const percent = (value) => `${Math.round(Math.max(0, Math.min(1, Number(value) |
 const metricLabels = {
   task_completion_rate: '任务完成率',
   learning_regularity: '学习规律度',
-  question_accuracy: '答题正确率',
+  question_accuracy: '练习得分率',
   average_response_time: '平均答题用时',
   average_mastery: '平均掌握度',
   recent_focus_minutes: '近期专注时长',
@@ -164,13 +164,11 @@ const matchComponentLabels = {
   quality: '资源质量',
   format_fit: '形式偏好',
   time_fit: '时间适配',
-  difficulty_fit: '难度适配',
 };
 
 const matchSourceLabels = {
   'resource.kp_ids intersect target.kp_ids': '资源知识点与当前薄弱点、计划知识点的交集',
   'user_profiles.exercise_preferences/custom_needs': '学习画像中的资源偏好与自定义需求',
-  'question_bank_items.difficulty vs user_profile_survey': '题库难度与学情调查中的难度偏好',
   not_available_excluded_from_weighting: '当前没有可靠数据，本项未参与加权',
   neutral_default_no_quality_evidence: '暂无质量证据，采用中性基线',
   content_type_default: '按资源类型的默认完成时长估算',
@@ -338,7 +336,7 @@ export default function ReportsPage() {
 
       <section className="rounded-[28px] bg-white p-5 shadow-sm shadow-emerald-950/5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div><div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><DatabaseZap size={16} />资源匹配报告</div><p className="mt-2 text-sm text-slate-600">按知识点覆盖、资源质量、形式偏好、可用时间及有证据的难度信息综合排序。</p></div>
+          <div><div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><DatabaseZap size={16} />资源匹配报告</div><p className="mt-2 text-sm text-slate-600">按知识点覆盖、资源质量、形式偏好和可用时间综合排序。</p></div>
           <div className="text-right"><div className="font-mono text-xl font-semibold tabular-nums text-slate-950">{percent(resourceReport.summary?.coverage)}</div><div className="text-xs text-slate-500">当前目标覆盖</div></div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">

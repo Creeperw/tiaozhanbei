@@ -18,7 +18,7 @@ class PaperGenerationServiceTests(unittest.TestCase):
         self.Session = sessionmaker(bind=self.engine)
         self.blueprint = {
             "question_count": 1, "kp_ids": ["KP_1"], "types": ["short_answer"],
-            "distribution": {"short_answer": 1}, "difficulty": 2,
+            "distribution": {"short_answer": 1},
         }
         self.orchestration = {
             "task_id": "TT_1", "task_type": "paper_generation", "status": "completed",
@@ -28,7 +28,7 @@ class PaperGenerationServiceTests(unittest.TestCase):
             "audit": {"decision": "pass", "source_scope": "audit_agent", "source_id": "artifact:paper", "reason": "passed"},
             "trace": [{"step_id": "orchestration", "run_id": "RUN_1"}], "learning_updates": {}, "next_actions": [],
         }
-        self.question = QuestionVersionView("Q1:v3", "Q1", "short_answer", "冻结题干", "秘密答案", "解析", ("KP_1",), 2, "curated")
+        self.question = QuestionVersionView("Q1:v3", "Q1", "short_answer", "冻结题干", "秘密答案", "解析", ("KP_1",), "curated")
 
     def tearDown(self):
         self.engine.dispose()
@@ -74,9 +74,9 @@ class PaperGenerationServiceTests(unittest.TestCase):
 
     def test_mixed_type_distribution_selects_exact_deterministic_quotas(self):
         questions = (
-            QuestionVersionView("Q1:v1", "Q1", "single_choice", "选择一", "A", "解析一", ("KP_1",), 2, "curated"),
-            QuestionVersionView("Q2:v1", "Q2", "single_choice", "选择二", "B", "解析二", ("KP_1",), 2, "curated"),
-            QuestionVersionView("Q3:v1", "Q3", "short_answer", "简答一", "答案", "解析三", ("KP_1",), 2, "curated"),
+            QuestionVersionView("Q1:v1", "Q1", "single_choice", "选择一", "A", "解析一", ("KP_1",), "curated"),
+            QuestionVersionView("Q2:v1", "Q2", "single_choice", "选择二", "B", "解析二", ("KP_1",), "curated"),
+            QuestionVersionView("Q3:v1", "Q3", "short_answer", "简答一", "答案", "解析三", ("KP_1",), "curated"),
         )
         repository = Mock()
         repository.select.return_value = questions
@@ -86,7 +86,6 @@ class PaperGenerationServiceTests(unittest.TestCase):
             "kp_ids": ["KP_1"],
             "types": ["single_choice", "short_answer"],
             "distribution": {"single_choice": 2, "short_answer": 1},
-            "difficulty": 2,
         }
 
         with self.Session() as db:
@@ -96,8 +95,8 @@ class PaperGenerationServiceTests(unittest.TestCase):
 
         criteria = repository.select.call_args.args[0]
         self.assertEqual(
-            criteria.type_difficulty_counts,
-            (("single_choice", 2, 2), ("short_answer", 2, 1)),
+            criteria.type_counts,
+            (("single_choice", 2), ("short_answer", 1)),
         )
         self.assertEqual(
             [item["question_type"] for item in result["artifact"]["content"]["items"]],
@@ -130,7 +129,6 @@ class PaperGenerationServiceTests(unittest.TestCase):
                 "kp_ids": ["KP_1"],
                 "types": ["single_choice", "short_answer"],
                 "distribution": {"single_choice": 1, "short_answer": 2},
-                "difficulty": 2,
             }
             result = generate_and_publish_paper(
                 db=db, user_id=7, orchestration_result=orchestration, repository=repository
@@ -211,11 +209,11 @@ class PaperGenerationServiceTests(unittest.TestCase):
 
     def test_repository_result_with_invalid_identity_or_quota_fails_closed_before_writes(self):
         invalid_results = {
-            "blank version": (QuestionVersionView(" ", "Q1", "short_answer", "题干", "答案", "解析", ("KP_1",), 2, "curated"),),
-            "duplicate version": (self.question, QuestionVersionView("Q1:v3", "Q2", "short_answer", "题干二", "答案", "解析", ("KP_1",), 2, "curated")),
-            "duplicate question": (self.question, QuestionVersionView("Q2:v1", "Q1", "short_answer", "题干二", "答案", "解析", ("KP_1",), 2, "curated")),
+            "blank version": (QuestionVersionView(" ", "Q1", "short_answer", "题干", "答案", "解析", ("KP_1",), "curated"),),
+            "duplicate version": (self.question, QuestionVersionView("Q1:v3", "Q2", "short_answer", "题干二", "答案", "解析", ("KP_1",), "curated")),
+            "duplicate question": (self.question, QuestionVersionView("Q2:v1", "Q1", "short_answer", "题干二", "答案", "解析", ("KP_1",), "curated")),
             "wrong count": (),
-            "wrong quota": (QuestionVersionView("Q2:v1", "Q2", "single_choice", "题干二", "答案", "解析", ("KP_1",), 2, "curated"),),
+            "wrong quota": (QuestionVersionView("Q2:v1", "Q2", "single_choice", "题干二", "答案", "解析", ("KP_1",), "curated"),),
         }
         for label, selected in invalid_results.items():
             with self.subTest(label=label), self.Session() as db:

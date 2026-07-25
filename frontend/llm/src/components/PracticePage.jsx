@@ -1,35 +1,31 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ArrowLeft,
+  ArrowUpRight,
+  BookMarked,
   ClipboardCheck,
   FileText,
+  Files,
+  FolderHeart,
+  HeartPulse,
+  Lightbulb,
+  NotebookPen,
+  Sparkles,
+  Target,
+  UploadCloud,
 } from 'lucide-react';
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
 import { fetchJsonWithAuthFallback } from '../utils/api';
-import PaperGenerationPanel from './PaperGenerationPanel';
 import QuestionTrainingPanel from './QuestionTrainingPanel';
+import QualificationPaperPanel from './QualificationPaperPanel';
+import SimulatedPatientChat from './SimulatedPatientChat';
+import MistakeVariationPanel from './MistakeVariationPanel';
+import PaperGenerationPanel from './PaperGenerationPanel';
+import SmartPaperPanel from './SmartPaperPanel';
+import QuestionWorkspacePage from './QuestionWorkspacePage';
 import KnowledgeCardLibrary from './KnowledgeCardLibrary';
-import {
-  loadPracticeAgentContext,
-  loadTrainingWorkspaceModules,
-  isTrainingTaskResultApproved,
-} from '../pageDataLoaders.js';
+import { isTrainingTaskResultApproved } from '../pageDataLoaders.js';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
-
-const fallbackPracticeModule = {
-  key: 'question_training',
-  label: '题目训练',
-  description: '集中完成练习批改、案例训练和错题变式。',
-  enabled: true,
-  badge: '可用',
-  recommended: true,
-};
-
-const workshopModuleKey = (value) => {
-  if (['practice_grading', 'case_training', 'mistake_variation', 'question_training'].includes(value)) return 'question_training';
-  if (['paper_generation', 'paper_workspace'].includes(value)) return 'paper_workspace';
-  if (['knowledge_card_generation', 'knowledge_cards'].includes(value)) return 'knowledge_cards';
-  return value || 'question_training';
-};
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -125,13 +121,9 @@ function ArtifactResult({ taskResult }) {
         {grading.question_explanation && (
           <div className="border-l-2 border-sky-300 pl-4">
             <h4 className="text-sm font-semibold text-slate-900">题目解析</h4>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-              {displayValue(grading.question_explanation)}
-            </p>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{displayValue(grading.question_explanation)}</p>
             <p className="mt-2 text-xs text-slate-500">
-              解析来源：{grading.explanation_source === 'generated_on_first_attempt'
-                ? '首次作答自动生成并保存'
-                : '题目解析库'}
+              解析来源：{grading.explanation_source === 'generated_on_first_attempt' ? '首次作答自动生成并保存' : '题目解析库'}
             </p>
           </div>
         )}
@@ -183,29 +175,206 @@ function ArtifactResult({ taskResult }) {
   );
 }
 
+const trainingCards = [
+  {
+    key: 'question_training',
+    initialMode: 'objective',
+    title: '综合套题',
+    description: '覆盖核心知识点，系统巩固基础能力。',
+    icon: ClipboardCheck,
+    tone: 'emerald',
+  },
+  {
+    key: 'paper_workspace',
+    title: '智能组卷',
+    description: '按学习目标组卷，灵活安排练习节奏。',
+    icon: Files,
+    tone: 'green',
+  },
+  {
+    key: 'special_training',
+    initialMode: 'case_training',
+    title: '专项训练',
+    description: '聚焦案例简答，针对题型强化训练。',
+    icon: Target,
+    tone: 'teal',
+  },
+  {
+    key: 'topic_training',
+    initialMode: 'objective',
+    title: '专题训练',
+    description: '围绕专题集中练习，突破理解难点。',
+    icon: Lightbulb,
+    tone: 'cyan',
+  },
+  {
+    key: 'ai_patient_simulation',
+    title: '模拟病患',
+    description: '置身临床情境，训练辨证与问诊思路。',
+    icon: HeartPulse,
+    tone: 'rose',
+  },
+  {
+    key: 'question_workspace',
+    title: '上传题库',
+    description: '上传学习资料，沉淀个人专属题库。',
+    icon: UploadCloud,
+    tone: 'amber',
+  },
+];
+
+const utilityCards = [
+  {
+    key: 'mistake_variation',
+    title: '错题库',
+    description: '整理错题记录，生成变式并针对性复盘。',
+    icon: FolderHeart,
+    available: true,
+  },
+  {
+    title: '知识收藏',
+    description: '汇总重点内容，随时回顾复习。',
+    icon: BookMarked,
+    available: false,
+  },
+  {
+    title: '学习笔记',
+    description: '沉淀学习心得，形成个人知识脉络。',
+    icon: NotebookPen,
+    available: false,
+  },
+];
+
+const workspaceTitles = {
+  question_training: '综合套题',
+  special_training: '专项训练',
+  topic_training: '专题训练',
+  ai_patient_simulation: '模拟病患',
+  mistake_variation: '错题库',
+  paper_workspace: '智能组卷',
+  knowledge_cards: '知识卡片',
+};
+
+const legacyTaskTypes = {
+  practice_grading: { taskType: 'question_training', initialMode: 'objective' },
+  case_training: { taskType: 'ai_patient_simulation', initialMode: 'ai_patient_simulation' },
+  knowledge_cards: { taskType: 'knowledge_cards', initialMode: 'knowledge_cards' },
+  knowledge_card_generation: { taskType: 'knowledge_cards', initialMode: 'knowledge_cards' },
+  paper_generation: { taskType: 'paper_workspace', initialMode: 'paper_workspace' },
+};
+
+const normalizeTaskIntent = (taskType = '') => legacyTaskTypes[taskType] || {
+  taskType: taskType || 'question_training',
+  initialMode: taskType,
+};
+
+function TrainingBannerIllustration() {
+  return (
+    <div className="practice-overview__illustration" aria-hidden="true">
+      <div className="practice-overview__speech-bubble">快来跟我一起练习吧</div>
+      <img
+        className="practice-overview__character"
+        src="/assistant-character/lizhizhen-center-cutout.png"
+        alt=""
+      />
+    </div>
+  );
+}
+
+function TrainingOverview({ onOpenModule }) {
+  return (
+    <section className="practice-overview" aria-labelledby="practice-overview-title">
+      <header className="practice-overview__banner">
+        <div>
+          <span className="practice-overview__eyebrow"><Sparkles size={16} aria-hidden="true" />训练中心</span>
+          <h1 id="practice-overview-title">训练工坊，实战精进</h1>
+          <p>聚焦实战训练，强化能力，在每一次复盘中稳步精进。</p>
+        </div>
+        <TrainingBannerIllustration />
+      </header>
+
+      <div className="practice-overview__layout">
+        <section className="practice-overview__main" aria-label="训练路径">
+          <div className="practice-overview__section-heading">
+            <div>
+              <span>训练路径</span>
+              <h2>选择今天的练习方式</h2>
+            </div>
+          </div>
+          <div className="practice-overview__training-grid">
+            {trainingCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <button
+                  key={`${card.title}-${card.key}`}
+                  type="button"
+                  className={`practice-overview__training-card practice-overview__training-card--${card.tone}`}
+                  onClick={() => onOpenModule(card)}
+                >
+                  <span className="practice-overview__card-icon"><Icon aria-hidden="true" size={26} /></span>
+                  <span className="practice-overview__card-copy">
+                    <strong>{card.title}</strong>
+                    <small>{card.description}</small>
+                  </span>
+                  <ArrowUpRight className="practice-overview__card-arrow" aria-hidden="true" size={20} />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <aside className="practice-overview__utilities" aria-label="常用学习工具">
+          <div className="practice-overview__section-heading">
+            <div>
+              <span>常用工具</span>
+              <h2>复盘与沉淀</h2>
+            </div>
+          </div>
+          <div className="practice-overview__utility-list">
+            {utilityCards.map((card) => {
+              const Icon = card.icon;
+              const content = <>
+                <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
+                <span><strong>{card.title}</strong><small>{card.description}</small></span>
+              </>;
+              return card.available ? (
+                <button
+                  key={card.title}
+                  type="button"
+                  className="practice-overview__utility-card"
+                  onClick={() => onOpenModule(card)}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div key={card.title} className="practice-overview__utility-card" aria-disabled="true">
+                  {content}
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+      </div>
+
+      <footer className="practice-overview__summary" aria-label="学习摘要">
+        <span><ClipboardCheck aria-hidden="true" size={18} /><b>今日练习</b><em>暂无记录</em></span>
+        <span><Target aria-hidden="true" size={18} /><b>正确率</b><em>暂无记录</em></span>
+        <span><BookMarked aria-hidden="true" size={18} /><b>累计学习</b><em>暂无记录</em></span>
+        <p>保持练习，积累每一次进步。</p>
+      </footer>
+    </section>
+  );
+}
+
 export default function PracticePage({ navigationContext = {} }) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
-  const [modules, setModules] = useState([]);
-  const [activeTaskType, setActiveTaskType] = useState(() => workshopModuleKey(navigationContext.taskType));
+  const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
+  const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
+  const [activeInitialMode, setActiveInitialMode] = useState(() => initialTaskIntent.initialMode);
   const [taskResult, setTaskResult] = useState(null);
-  const [modulesLoading, setModulesLoading] = useState(true);
-  const [moduleError, setModuleError] = useState('');
-  const [contextBrief, setContextBrief] = useState(null);
   const [mobilePage, setMobilePage] = useState('task');
-  const [practiceScope, setPracticeScope] = useState('public');
-  const [statusMessage, setStatusMessage] = useState('正在加载训练模块。');
-  const mountedRef = useRef(true);
-
-  const visibleModules = useMemo(
-    () => (modules.length > 0 ? modules : [fallbackPracticeModule]),
-    [modules],
-  );
-  const activeModule = useMemo(
-    () => visibleModules.find((module) => module.key === activeTaskType) || fallbackPracticeModule,
-    [activeTaskType, visibleModules],
-  );
-  const activeTaskReady = !modulesLoading && activeModule.key === activeTaskType && activeModule.enabled;
-  const requestedTaskType = workshopModuleKey(navigationContext.taskType || '');
+  const [view, setView] = useState(() => (navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'));
+  const taskItemId = navigationContext.taskItemId || navigationContext.task_item_id || '';
 
   useEffect(() => {
     const request = async (path, body) => {
@@ -230,47 +399,6 @@ export default function PracticePage({ navigationContext = {} }) {
     };
   }, []);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    let cancelled = false;
-    const loadWorkspace = async () => {
-      const [moduleResult, contextResult] = await Promise.all([
-        loadTrainingWorkspaceModules({ fetcher: fetchJsonWithAuthFallback }),
-        loadPracticeAgentContext({ fetcher: fetchJsonWithAuthFallback }),
-      ]);
-      if (cancelled || !mountedRef.current) return;
-      const loadedModules = moduleResult.workspace.modules;
-      const requestedModule = requestedTaskType && loadedModules.find((module) => module.key === requestedTaskType);
-      const fallbackModule = loadedModules.find((module) => module.enabled) || fallbackPracticeModule;
-      const requestedModuleUnavailable = requestedTaskType && !requestedModule?.enabled;
-
-      if (requestedModuleUnavailable) {
-        setActiveTaskType(fallbackModule.key);
-        setTaskResult(null);
-      }
-      setModules(moduleResult.workspace.modules);
-      setModuleError(moduleResult.error);
-      setModulesLoading(false);
-      setContextBrief(contextResult.contextBrief);
-      setStatusMessage(requestedModuleUnavailable
-        ? '请求的训练模块暂未开放，已切换到可用训练模块。'
-        : moduleResult.error ? '训练模块加载失败，已保留题目训练入口。' : '训练模块加载完成。');
-    };
-
-    loadWorkspace();
-    return () => {
-      cancelled = true;
-      mountedRef.current = false;
-    };
-  }, [requestedTaskType]);
-
-  const selectModule = (taskType) => {
-    const targetModule = visibleModules.find((module) => module.key === taskType);
-    if (!targetModule?.enabled) return;
-    setActiveTaskType(taskType);
-    setTaskResult(null);
-  };
-
   const handlePracticeResult = (result, question) => {
     const grading = result?.grading || {};
     setTaskResult({
@@ -291,34 +419,51 @@ export default function PracticePage({ navigationContext = {} }) {
       next_actions: [],
     });
     setMobilePage('result');
-    setStatusMessage(grading.is_correct ? '练习已完成。' : '练习已完成并记录错题。');
   };
 
-  const handleNextAction = (action) => {
-    const targetModule = visibleModules.find((module) => module.key === workshopModuleKey(action?.task_type));
-    if (!targetModule?.enabled) return;
-    selectModule(targetModule.key);
+  const openWorkshopModule = ({ key, initialMode }) => {
+    setActiveTaskType(key);
+    setActiveInitialMode(initialMode || key);
+    setTaskResult(null);
+    setMobilePage('task');
+    setView('workspace');
   };
 
   const taskResultApproved = isTrainingTaskResultApproved(taskResult);
 
-  return (
-    <div className="practice-page space-y-5 text-slate-800">
-      <header className="border-b border-slate-200 pb-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-emerald-800">
-              <ClipboardCheck size={17} aria-hidden="true" />
-              循证训练台
-            </div>
-            <h2 className="mt-2 text-2xl font-bold text-slate-950">训练工坊</h2>
-          </div>
-          <div className="flex max-w-xl flex-col items-end gap-3">
-            <p className="break-words text-sm leading-6 text-slate-600">
-              当前目标：{contextBrief?.goal || (modulesLoading ? '正在加载学习上下文…' : '暂无全局学习目标，仍可直接开始训练。')}
-            </p>
-          </div>
+  if (view === 'overview') {
+    return <TrainingOverview onOpenModule={openWorkshopModule} />;
+  }
+
+  if (activeTaskType === 'question_workspace') {
+    return (
+      <div className="space-y-5 text-slate-800">
+        <div className="practice-workspace__toolbar">
+          <button type="button" className="practice-workspace__back" onClick={() => setView('overview')}>
+            <ArrowLeft aria-hidden="true" size={18} />返回训练工坊
+          </button>
         </div>
+        <QuestionWorkspacePage />
+      </div>
+    );
+  }
+
+  const isSP = activeTaskType === 'ai_patient_simulation';
+
+  if (isSP) {
+    return <SimulatedPatientChat onBack={() => setView('overview')} />;
+  }
+
+  return (
+    <div className="space-y-5 text-slate-800">
+      <div className="practice-workspace__toolbar">
+        <button type="button" className="practice-workspace__back" onClick={() => setView('overview')}>
+          <ArrowLeft aria-hidden="true" size={18} />返回训练工坊
+        </button>
+      </div>
+      <header>
+        <span className="app-shell__section-label">训练工坊</span>
+        <h1 className="mt-1 text-2xl font-semibold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
       </header>
 
       <div className="practice-mobile-tabs" role="tablist" aria-label="移动端训练视图">
@@ -348,76 +493,27 @@ export default function PracticePage({ navigationContext = {} }) {
         </section>
       )}
 
-      <div
-        className="sr-only"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {statusMessage}
-      </div>
-
-      {moduleError && (
-        <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-          {moduleError}。已保留题目训练入口。
-        </div>
-      )}
-
-      <div className="practice-workspace-grid grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <nav data-mobile-active={String(mobilePage === 'task')} aria-busy={modulesLoading} aria-label="训练模块" className="practice-module-nav rounded-[24px] border border-slate-200 bg-white p-3 shadow-sm shadow-slate-200/50">
-          <div className="px-2 py-2 text-sm font-semibold text-slate-900">训练模块</div>
-          <div className="space-y-1">
-            {modulesLoading ? [0, 1, 2, 3, 4, 5].map((item) => <div key={item} className="h-14 animate-pulse rounded-xl bg-slate-100" />) : visibleModules.map((module) => {
-              const selected = module.key === activeTaskType;
-              const moduleButtonClass = selected
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
-                : 'border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50';
-              return (
-                <button
-                  key={module.key}
-                  type="button"
-                  onClick={() => selectModule(module.key)}
-                  disabled={!module.enabled}
-                  aria-current={selected ? 'page' : undefined}
-                  className={`w-full break-words rounded-xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 ${moduleButtonClass} disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:border-transparent disabled:hover:bg-transparent`}
-                >
-                  <span className="flex items-center justify-between gap-2 text-sm font-semibold">
-                    <span>{module.label}</span>
-                    <span className={`text-xs font-medium ${selected ? 'text-emerald-800' : module.enabled ? 'text-slate-500' : 'text-slate-700'}`}>{module.enabled ? module.badge : '未开放'}</span>
-                  </span>
-                  <span className={`mt-1 block text-xs leading-5 ${selected ? 'text-emerald-800' : 'text-slate-500'}`}>{module.description}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-
-        <div className="min-w-0 space-y-5">
+      <div className="min-w-0 space-y-5">
           <section data-mobile-active={String(mobilePage === 'task')} className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-950">{activeModule.label}</h2>
-                <p className="mt-1 break-words text-sm leading-6 text-slate-600">{activeModule.description}</p>
-              </div>
-              {activeModule.recommended && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">推荐</span>}
-            </div>
-
-            {!activeTaskReady ? (
-              <div className="mt-5 rounded-xl bg-slate-50 px-4 py-6 text-sm text-slate-600" role="status">
-                正在准备可用训练模块。
-              </div>
+            {activeTaskType === 'question_training' && !taskItemId ? (
+              <QualificationPaperPanel enabled />
+            ) : activeTaskType === 'mistake_variation' ? (
+              <MistakeVariationPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
-              <PaperGenerationPanel enabled={activeModule.enabled} paperId={navigationContext.paperId || navigationContext.paper_id || ''} />
+              <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} taskItemId={taskItemId} />
             ) : activeTaskType === 'knowledge_cards' ? (
-              <KnowledgeCardLibrary cardId={navigationContext.cardId || navigationContext.card_id || ''} kpId={navigationContext.kpId || navigationContext.kp_id || ''} />
-            ) : activeTaskType === 'question_training' ? (
+              <KnowledgeCardLibrary
+                cardId={navigationContext.cardId || navigationContext.card_id || ''}
+                kpId={navigationContext.kpId || navigationContext.kp_id || ''}
+                taskItemId={taskItemId}
+              />
+            ) : ['question_training', 'special_training', 'topic_training'].includes(activeTaskType) ? (
               <QuestionTrainingPanel
-                enabled={activeModule.enabled}
+                enabled
                 selectedKnowledgePoint={selectedKnowledgePoint}
-                practiceScope={practiceScope}
-                onPracticeScopeChange={setPracticeScope}
-                initialMode={navigationContext.taskType || ''}
+                initialMode={activeInitialMode}
                 onResult={handlePracticeResult}
+                taskItemId={taskItemId}
               />
             ) : (
               <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
@@ -449,32 +545,7 @@ export default function PracticePage({ navigationContext = {} }) {
             ) : (
               <div className="mt-4 [overflow-wrap:anywhere]"><ArtifactResult taskResult={taskResult} /></div>
             )}
-            {taskResultApproved && Array.isArray(taskResult?.next_actions) && taskResult.next_actions.length > 0 && (
-              <div className="mt-5 border-t border-slate-200 pt-4">
-                <h3 className="text-sm font-semibold text-slate-900">下一步</h3>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {taskResult.next_actions.slice(0, 6).map((action, index) => {
-                    const targetModule = visibleModules.find((module) => module.key === workshopModuleKey(action?.task_type));
-                    const enabled = Boolean(targetModule?.enabled);
-                    return (
-                      <button
-                        key={`${action?.task_type || 'action'}-${index}`}
-                        type="button"
-                        disabled={!enabled}
-                        onClick={() => handleNextAction(action)}
-                        title={enabled ? `切换至${targetModule.label}` : '该后续模块暂未开放'}
-                        className="break-words rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-950"
-                      >
-                        {action?.label || '后续任务'}{enabled ? '' : '（未开放）'}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </section>
-        </div>
-
       </div>
     </div>
   );

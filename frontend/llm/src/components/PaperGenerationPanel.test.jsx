@@ -116,4 +116,26 @@ describe('PaperGenerationPanel', () => {
     expect(await screen.findByRole('button', { name: '暂停计时' })).toBeInTheDocument();
     expect(setPaperTimerPaused).toHaveBeenLastCalledWith(expect.objectContaining({ paperId: 'PAPER_TIMER', paused: false }));
   });
+
+  it('opens a bound daily-task paper without exposing paper constraints', async () => {
+    const paper = {
+      paper_id: 'PAPER_BOUND', title: '今日冻结试卷', status: 'published',
+      timing: { remaining_seconds: 600 },
+      items: [{ paper_item_id: 'I1', position: 1, question_type: 'short_answer', stem: '冻结题目', options: [], answer: '' }],
+    };
+    generateWorkshopPaperWithAgents.mockResolvedValue({ paperId: 'PAPER_BOUND', error: '' });
+    loadPaper.mockResolvedValue({ paper, error: '' });
+
+    render(<PaperGenerationPanel enabled taskItemId="ITEM_PAPER" />);
+
+    expect(await screen.findByText('今日冻结试卷')).toBeInTheDocument();
+    expect(generateWorkshopPaperWithAgents).toHaveBeenCalledWith(expect.objectContaining({
+      taskItemId: 'ITEM_PAPER',
+      distribution: {},
+    }));
+    expect(screen.queryByLabelText('训练主题')).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '生成试卷' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '返回试卷列表' })).not.toBeInTheDocument();
+  });
 });

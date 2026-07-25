@@ -1,0 +1,575 @@
+{
+  "template_id": "6581a15b89f4-1d5955adf4",
+  "questions": [
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0056",
+      "question_type": "single_choice",
+      "question_content": "下列哪项为治疗餐后血糖升高的口服降糖药",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阿卡波糖"
+        },
+        {
+          "option_id": "B",
+          "content": "二甲双胍"
+        },
+        {
+          "option_id": "C",
+          "content": "格列本脲"
+        },
+        {
+          "option_id": "D",
+          "content": "罗格列酮"
+        },
+        {
+          "option_id": "E",
+          "content": "使用胰岛素"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "阿卡波糖主要通过抑制 $\\alpha-$ 葡萄糖苷酶的活性，减慢淀粉等多糖分解为葡萄糖的速度，从而减缓餐后血糖的升高，主要用于降低餐后高血糖。二甲双胍可降低肝葡萄糖的输出，改善外周组织对胰岛素的敏感性、增加对葡萄糖的摄取和利用而降低血糖，主要用于肥胖或超重的2型糖尿病患者。格列本脲属于磺酰脲类，主要通过刺激胰岛B细胞释放胰岛素而降低血糖，主要用于非肥胖型2型糖尿病患者。罗格列酮属于格列酮类，主要通过刺激胰岛B细胞释放胰岛素而降低血糖，主要用于胰岛素抵抗的T2DM患者。使用胰岛素主要用于胰岛素绝对分泌不足的患者，如1型糖尿病和部分2型糖尿病。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 56,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0057",
+      "question_type": "single_choice",
+      "question_content": "下列哪项是治疗厌氧菌感染的首选药物",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甲硝唑"
+        },
+        {
+          "option_id": "B",
+          "content": "红霉素"
+        },
+        {
+          "option_id": "C",
+          "content": "乙胺丁醇"
+        },
+        {
+          "option_id": "D",
+          "content": "特布他林"
+        },
+        {
+          "option_id": "E",
+          "content": "青霉素"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "甲硝唑主要用于厌氧菌的治疗，对需氧菌和兼性厌氧菌无效。红霉素为治疗支原体、衣原体感染首选药。乙胺丁醇是抗结核一线药物。特布他林为选择性兴奋呼吸道β2受体的支气管舒张剂，仅用于β1受体有关机制而致的哮喘的治疗和防止哮喘复发。青霉素是治疗敏感的G+球菌和杆菌、G-球菌及螺旋体所致感染的首选药。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 57,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0058",
+      "question_type": "single_choice",
+      "question_content": "香豆素类用药过量引起的自发性出血，可选用以下哪种药物对抗",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "氨甲苯酸"
+        },
+        {
+          "option_id": "B",
+          "content": "维生素 K1"
+        },
+        {
+          "option_id": "C",
+          "content": "氨甲环酸"
+        },
+        {
+          "option_id": "D",
+          "content": "硫酸鱼精蛋白"
+        },
+        {
+          "option_id": "E",
+          "content": "以上均非"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "香豆素类是维生素K拮抗剂,过量使用可引起自发性出血,可给予维生素K1、输注新鲜血、血浆或凝血酶原复合物治疗。氨甲苯酸是抗纤维蛋白溶解药,主要用于纤维蛋白溶解过程亢进所致的出血。氨甲环酸是抗纤维蛋白溶解药,作用与氨甲苯酸相似。硫酸鱼精蛋白是抗肝素药,能与肝素结合,拮抗肝素的抗凝作用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 58,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0059",
+      "question_type": "single_choice",
+      "question_content": "下列药物中,对支气管哮喘和心源性哮喘均有效的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "异丙肾上腺素"
+        },
+        {
+          "option_id": "B",
+          "content": "哌替啶"
+        },
+        {
+          "option_id": "C",
+          "content": "吗啡"
+        },
+        {
+          "option_id": "D",
+          "content": "氨茶碱"
+        },
+        {
+          "option_id": "E",
+          "content": "沙丁胺醇"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "茶碱类（如氨茶碱）药物通过抑制磷酸二酯酶，提高平滑肌细胞内的环腺苷酸(cAMP)浓度，拮抗腺苷受体，增强呼吸肌的力量以及增强气道纤毛清除功能等，从而起到舒张支气管和气道抗炎作用，是临床治疗哮喘常用的药物。主要用于支气管哮喘和哮喘型慢性支气管炎，对于急性发作期的患者疗效较好，对心源性哮喘也有效。异丙肾上腺素为β肾上腺素受体激动药，仅用于急性支气管哮喘的应急。哌替啶为镇静药，主要用于人工冬眠。吗啡为镇痛药，可引起呼吸抑制，加重哮喘患者缺氧和二氧化碳潴留，诱发或加重肺性脑病，故禁用于支气管哮喘患者。沙丁胺醇为选择性 $\\beta_{2}$ 受体激动药，对心脏 $\\beta_{1}$ 受体的作用很小，临床主要用于治疗支气管哮喘。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 59,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0060",
+      "question_type": "single_choice",
+      "question_content": "肩髃穴归属于哪一条经",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "手阳明大肠经"
+        },
+        {
+          "option_id": "B",
+          "content": "手少阳三焦经"
+        },
+        {
+          "option_id": "C",
+          "content": "手太阳小肠经"
+        },
+        {
+          "option_id": "D",
+          "content": "手厥阴心包经"
+        },
+        {
+          "option_id": "E",
+          "content": "足少阳胆经"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "肩髃是手阳明大肠经穴位。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 60,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0061",
+      "question_type": "single_choice",
+      "question_content": "下列可用于治疗胎位不正的穴位",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "申脉"
+        },
+        {
+          "option_id": "B",
+          "content": "照海"
+        },
+        {
+          "option_id": "C",
+          "content": "太溪"
+        },
+        {
+          "option_id": "D",
+          "content": "至阴"
+        },
+        {
+          "option_id": "E",
+          "content": "丘墟"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "至阴可用于治疗胎位不正。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 更多医考干货可扫码关注微信公众平台 6-中西医结合内科学最字题 7-中西医结合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 11-中药相同功效药物 总结 12-中药学 30味中药 药理作用总 结 13-方剂学常考重点总结",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 61,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0062",
+      "question_type": "single_choice",
+      "question_content": "百会穴位于头部正中线后发际正中上",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "4寸"
+        },
+        {
+          "option_id": "B",
+          "content": "5寸"
+        },
+        {
+          "option_id": "C",
+          "content": "6寸"
+        },
+        {
+          "option_id": "D",
+          "content": "7寸"
+        },
+        {
+          "option_id": "E",
+          "content": "8寸"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "百会穴位于前发际正中上5寸。后发际正中上7寸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 62,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0063",
+      "question_type": "single_choice",
+      "question_content": "下列有关痢疾杆菌的描述错误的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "属肠杆菌科志贺菌属"
+        },
+        {
+          "option_id": "B",
+          "content": "宋内志贺菌易转为慢性"
+        },
+        {
+          "option_id": "C",
+          "content": "按抗原结构及生化反应不同，可分为4群"
+        },
+        {
+          "option_id": "D",
+          "content": "我国多数地区以福氏菌为主要流行菌群"
+        },
+        {
+          "option_id": "E",
+          "content": "各型痢疾杆菌均可产生内毒素"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "福氏志贺菌感染易转为慢性。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 63,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0064",
+      "question_type": "single_choice",
+      "question_content": "下列消毒剂不能用于手和皮肤消毒的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "乙醇"
+        },
+        {
+          "option_id": "B",
+          "content": "甲醛"
+        },
+        {
+          "option_id": "C",
+          "content": "氯己定"
+        },
+        {
+          "option_id": "D",
+          "content": "消毒净"
+        },
+        {
+          "option_id": "E",
+          "content": "过氧化氢"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "醛类消毒剂常用的有甲醛和戊二醛等有广谱、高效、快速杀菌的作用。适用于精密仪器内镜的消毒，但对皮肤、黏膜有刺激性。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 64,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0065",
+      "question_type": "single_choice",
+      "question_content": "下列不会传染艾滋病的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "输血"
+        },
+        {
+          "option_id": "B",
+          "content": "母亲患有艾滋病"
+        },
+        {
+          "option_id": "C",
+          "content": "握手"
+        },
+        {
+          "option_id": "D",
+          "content": "共用注射器注射毒品"
+        },
+        {
+          "option_id": "E",
+          "content": "性接触"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "艾滋病的传播途径：性接触传播（本病主要传播途径）；血源传播（输血、器官移植、共用针具）；母婴传播；其他如人工授精，医务人员被HIV污染针头刺伤等。目前无日常接触、食物、水、昆虫传播证据。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 65,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0066",
+      "question_type": "single_choice",
+      "question_content": "感染 HBV 后最早出现的血清学标志是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "HBsAg"
+        },
+        {
+          "option_id": "B",
+          "content": "HBeAg"
+        },
+        {
+          "option_id": "C",
+          "content": "抗-HBs"
+        },
+        {
+          "option_id": "D",
+          "content": "抗-HBe"
+        },
+        {
+          "option_id": "E",
+          "content": "抗-HBc"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "感染 HBV 后最早出现的血清学标志是 HBsAg。抗 HBc-IgM 是最早出现的抗体。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 66,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0067",
+      "question_type": "single_choice",
+      "question_content": "各级医疗机构日常对医疗器具、手术器材、诊疗场所和防护用品按规范要求进行消毒，此类消毒属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "预防性消毒"
+        },
+        {
+          "option_id": "B",
+          "content": "随时消毒"
+        },
+        {
+          "option_id": "C",
+          "content": "疫区消毒"
+        },
+        {
+          "option_id": "D",
+          "content": "终末消毒"
+        },
+        {
+          "option_id": "E",
+          "content": "疫源地消毒"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "预防性消毒指未发现传染源的情况下，对可能受病原体污染的场所、物品和人体进行的消毒措施。如日常卫生消毒、饮水消毒、餐具消毒、类便垃圾无害化处理、饭前便后的洗手、公共场所消毒、运输工具消毒等。医院中手术室消毒，免疫缺陷患者(如骨髓移植患者)层流病房属预防性消毒。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 67,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0068",
+      "question_type": "single_choice",
+      "question_content": "对 HBV 感染的孕妇, 妊娠中、后期如果患者 HBV DNA 载量 $>2 \\times 10^{6} \\mathrm{IU} / \\mathrm{mL}$ , 可于妊娠多少周开始予抗病毒治疗",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "孕 18 周"
+        },
+        {
+          "option_id": "B",
+          "content": "孕 22 周"
+        },
+        {
+          "option_id": "C",
+          "content": "孕 28 周"
+        },
+        {
+          "option_id": "D",
+          "content": "孕 32 周"
+        },
+        {
+          "option_id": "E",
+          "content": "孕 34 周"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "妊娠中、后期如果患者 HBV DNA 载量 $>2 \\times 10^{6} \\mathrm{IU} / \\mathrm{mL}$ ，在与患者充分沟通、知情同意的基础上，于妊娠 $24 \\sim 28$ 周开始予 TDF、LdT 抗病毒治疗，产后停药，可母乳喂养。应用 TDF 时，母乳喂养不是禁忌证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 68,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0069",
+      "question_type": "single_choice",
+      "question_content": "下列属于药物治疗的道德要求的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "综合分析，切忌片面"
+        },
+        {
+          "option_id": "B",
+          "content": "实事求是"
+        },
+        {
+          "option_id": "C",
+          "content": "关心病人，体贴入微"
+        },
+        {
+          "option_id": "D",
+          "content": "合理配伍，细致观察"
+        },
+        {
+          "option_id": "E",
+          "content": "照护为主，缓解痛苦"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "药物治疗的道德要求包括：对症下药，剂量安全；合理配伍，细致观察；节约费用，公正分配。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 69,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "6581a15b89f4-1d5955adf4-q0070",
+      "question_type": "single_choice",
+      "question_content": "下列医德评价标准中，评价医疗人员行为是否有利于生存环境改善属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疗效标准"
+        },
+        {
+          "option_id": "B",
+          "content": "科学标准"
+        },
+        {
+          "option_id": "C",
+          "content": "社会标准"
+        },
+        {
+          "option_id": "D",
+          "content": "舆论标准"
+        },
+        {
+          "option_id": "E",
+          "content": "道德标准"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "医德评价标准包括疗效标准、社会标准、科学标准；其中社会标准指医疗行为是否有利于人类生存环境的保护和改善。而科学标准指医疗行为是否有利于促进医学科学的发展和社会的进步。 1-内外妇儿重点疾病诊断公式 2-中西医结合内科学辨证论治汇总 3-中西医结合外科学辨证论治汇总 4-中西医结合妇科学辨证论治汇总 5-中西医结合儿科学辨证论治汇总 6-中西医结 合内科学最字题 7-中西医结 合内科学首选类题目 8-中西医外妇儿首选类题目 9-经络系统常考总结 10-特定穴 记忆歌诀汇总 11-中药相同功效药物总结 12-中药学30味中药药理作用总结 13-方剂学常考重点总结 可扫码关注微信公众平台",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中西医结合执业助理医师资格考试\\助理题目真题\\助理题目还原4\\full.md",
+        "number": 70,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

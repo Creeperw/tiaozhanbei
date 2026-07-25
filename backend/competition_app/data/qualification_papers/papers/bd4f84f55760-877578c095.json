@@ -1,0 +1,3141 @@
+{
+  "template_id": "bd4f84f55760-877578c095",
+  "questions": [
+    {
+      "question_id": "bd4f84f55760-877578c095-q0001",
+      "question_type": "single_choice",
+      "question_content": "与脾关系密切的气机失常",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气虚"
+        },
+        {
+          "option_id": "B",
+          "content": "气滞"
+        },
+        {
+          "option_id": "C",
+          "content": "气陷"
+        },
+        {
+          "option_id": "D",
+          "content": "气不固"
+        },
+        {
+          "option_id": "E",
+          "content": "气脱"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "脾位于中焦，主运化，升清和统摄血液。脾气运动以上升为主，脾气上升，则水谷之精微得以输布。脾气虚衰，升举无力，甚则下陷而为病，气陷是脾气虚弱，升举无力而反下陷的病理变化。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 1,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0002",
+      "question_type": "single_choice",
+      "question_content": "枳实导滞丸的主治病证是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阳明腑实证"
+        },
+        {
+          "option_id": "B",
+          "content": "痰壅食积证"
+        },
+        {
+          "option_id": "C",
+          "content": "食积便秘证"
+        },
+        {
+          "option_id": "D",
+          "content": "寒积便秘证"
+        },
+        {
+          "option_id": "E",
+          "content": "湿热食积证"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "枳实导滞丸功用：消食导滞，清热祛湿。主治：湿热食积证。脘腹胀痛，下痢泄泻，或大便秘结，小便短赤，舌苔黄腻，脉沉有力。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 2,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0003",
+      "question_type": "single_choice",
+      "question_content": "哪个方剂包含车前子、泽泻",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "八正汤"
+        },
+        {
+          "option_id": "B",
+          "content": "实脾饮"
+        },
+        {
+          "option_id": "C",
+          "content": "龙胆泻肝汤"
+        },
+        {
+          "option_id": "D",
+          "content": "五苓散"
+        },
+        {
+          "option_id": "E",
+          "content": "小蓟饮子"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "龙胆泻肝汤组成：龙胆草、黄芩、栀子、泽泻、木通、当归、生地黄、柴胡、生甘草、车前子。功用：清泻肝胆实火，清利肝经湿热。主治：①肝胆实火上炎证。②肝经湿热下注证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 3,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0004",
+      "question_type": "single_choice",
+      "question_content": "十枣汤的功用是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "泻热逐水"
+        },
+        {
+          "option_id": "B",
+          "content": "行气逐水"
+        },
+        {
+          "option_id": "C",
+          "content": "祛痰逐水"
+        },
+        {
+          "option_id": "D",
+          "content": "攻逐水饮"
+        },
+        {
+          "option_id": "E",
+          "content": "散寒逐水"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "十枣汤功用：攻逐水饮。主治：①悬饮。咳唾胸胁引痛，心下痞硬，干呕短气，头痛目眩，胸背掣痛不得息，舌苔滑，脉沉弦。②水肿。一身悉肿，尤以身半以下肿甚，腹胀喘满，二便不利。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 4,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0005",
+      "question_type": "single_choice",
+      "question_content": "下列选项中，不属于十枣汤用法的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "三味等分为散末，强人服一钱匕，羸人服半钱"
+        },
+        {
+          "option_id": "B",
+          "content": "宜清晨空腹，以肥大枣十枚煎汤送服"
+        },
+        {
+          "option_id": "C",
+          "content": "得快下利后，宜糜粥自养"
+        },
+        {
+          "option_id": "D",
+          "content": "若下利后，病不除，明日更服，加半钱"
+        },
+        {
+          "option_id": "E",
+          "content": "本品每日1 次，可长期服用"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "十枣汤的服法：以水一升半，先煮大枣肥者十枚，取八合，去滓，纳药末。强人服一钱匕，羸人服半钱，温服之，平旦服。若下少病不除者，明日更服，加半钱，得快下利后，糜粥自养。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 5,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0006",
+      "question_type": "single_choice",
+      "question_content": "小青龙汤中体现“散中寓收”的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "麻黄、桂枝"
+        },
+        {
+          "option_id": "B",
+          "content": "干姜、细辛"
+        },
+        {
+          "option_id": "C",
+          "content": "半夏、五味子"
+        },
+        {
+          "option_id": "D",
+          "content": "芍药、甘草"
+        },
+        {
+          "option_id": "E",
+          "content": "芍药、五味子"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "小青龙汤功用：解表散寒，温肺化饮。主治：外寒里饮证。方中麻黄、桂枝相须为君，发汗散寒以解表邪，且麻黄又能宣发肺气而平喘咳，桂枝化气行水以利里饮之化。干姜、细辛为臣，温肺化饮，兼助麻、桂解表祛邪。佐以五味子敛肺止咳、芍药和营养血，二药与辛散之品相配，一散一收，既可增强止咳平喘之功，又可制约诸药辛散温燥太过之弊；半夏燥湿化痰，和胃降逆，亦为佐药。炙甘草兼为佐使之药，既可益气和中，又能调和辛散酸收之品。以上八药相配，共奏解表散寒、温肺化饮之功。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 6,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0007",
+      "question_type": "single_choice",
+      "question_content": "痰饮流注于经络，则可见",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肢体麻木"
+        },
+        {
+          "option_id": "B",
+          "content": "恶心呕吐"
+        },
+        {
+          "option_id": "C",
+          "content": "胸闷心痛"
+        },
+        {
+          "option_id": "D",
+          "content": "咳嗽吐痰"
+        },
+        {
+          "option_id": "E",
+          "content": "胸胁胀满"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "痰饮若流注经络，可致经络阻滞，气血运行不畅，出现肢体麻木、屈伸不利，甚则半身不遂等。若结于局部，可形成瘰疬痰核、阴疽流注等。若留滞于脏腑，可致脏腑气机失常。如肺失宣降而胸闷气喘、咳嗽吐痰等；胃失和降而恶心呕吐等；痹阻心脉而胸闷心痛等；痰结咽喉形成“梅核气”等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 7,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0008",
+      "question_type": "single_choice",
+      "question_content": "痰饮随气流行，结于局部",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肢体麻木，屈伸不利"
+        },
+        {
+          "option_id": "B",
+          "content": "神昏谵妄，发为癫狂"
+        },
+        {
+          "option_id": "C",
+          "content": "瘰疬痰核，阴疽流注"
+        },
+        {
+          "option_id": "D",
+          "content": "腹胀肠鸣，泄泻时发"
+        },
+        {
+          "option_id": "E",
+          "content": "头晕目眩，精神不振"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "痰饮若流注经络，可致经络阻滞，气血运行不畅，出现肢体麻木、屈伸不利，甚则半身不遂等。若结于局部，可形成瘰疬痰核、阴疽流注等。若留滞于脏腑，可致脏腑气机失常。如肺失宣降而胸闷气喘、咳嗽吐痰等；胃失和降而恶心呕吐等；痹阻心脉而胸闷心痛等；痰结咽喉形成“梅核气”等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 8,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0009",
+      "question_type": "single_choice",
+      "question_content": "身灼热而肢厥的临床意义是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "真热假寒证"
+        },
+        {
+          "option_id": "B",
+          "content": "表热里寒证"
+        },
+        {
+          "option_id": "C",
+          "content": "真寒假热证"
+        },
+        {
+          "option_id": "D",
+          "content": "表热证"
+        },
+        {
+          "option_id": "E",
+          "content": "里热证"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "身灼热而肢厥为阳热内盛，格阴于外所 致，属真热假寒证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 9,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0010",
+      "question_type": "single_choice",
+      "question_content": "脏腑虚衰，气血不足，运化无力，致腹部 胀满，呼吸喘促，二便闭涩等为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "真寒假热"
+        },
+        {
+          "option_id": "B",
+          "content": "真热假寒"
+        },
+        {
+          "option_id": "C",
+          "content": "真实假虚"
+        },
+        {
+          "option_id": "D",
+          "content": "真虚假实"
+        },
+        {
+          "option_id": "E",
+          "content": "不虚不实"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "真虚假实指本质为虚证，反见某些盛实现象的证候。多为脏腑虚衰，气血不足，运化无力，气机不畅，故可出现腹部胀满、呼吸喘促、二便闭塞等类似实证的假象。但其本质属虚，故腹部胀满而有时缓解，或内无肿块而喜按，可知并非实邪内积，而是脾虚不运所致；喘促而气短息弱，可知并非邪气壅滞、肺失宣降，而是肺肾气虚、摄纳无权之故；大便闭塞而腹部不甚硬满，系阳气失其温运之能而腑气不行的表现。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 10,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0011",
+      "question_type": "single_choice",
+      "question_content": "真实假虚证应选用的治法是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "热因热用"
+        },
+        {
+          "option_id": "B",
+          "content": "寒因寒用"
+        },
+        {
+          "option_id": "C",
+          "content": "通因通用"
+        },
+        {
+          "option_id": "D",
+          "content": "塞因塞用"
+        },
+        {
+          "option_id": "E",
+          "content": "因时制宜"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "通因通用，即以通治通，是用通利的药物来治疗具有通泻症状的实证。适用于“大实有赢状”的真实假虚证。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 11,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0012",
+      "question_type": "single_choice",
+      "question_content": "某医师，为了从个体推销商手中得到好处，多次使用未经批准的药品和消毒药剂，累计获得回扣 6500元。根据《执业医师法》的规定， 应当依法给予该医师的行政处罚是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "警告"
+        },
+        {
+          "option_id": "B",
+          "content": "责令暂停9个月执业活动"
+        },
+        {
+          "option_id": "C",
+          "content": "罚款1万元"
+        },
+        {
+          "option_id": "D",
+          "content": "吊销执业证书"
+        },
+        {
+          "option_id": "E",
+          "content": "没收非法所得"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "根据《执业医师法》的规定，医师在执业活动中，违反规定，使用未经批准使用的药品、消毒药剂和医疗器械的，由县级以上人民政府卫生行政部门给予警告或者责令暂停6个月以上 1年以下执业活动；情节严重的，吊销其执业证书；构成犯罪的，依法追究刑事责任。本例中，某医师，为了从个体推销商手中得到好处，多次使用未经批准的药品和消毒药剂，累计获得回扣6500元，属于情节严重的情形，故应吊销其执业证书。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 12,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0013",
+      "question_type": "single_choice",
+      "question_content": "下列属于升麻的功效是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "利咽消肿"
+        },
+        {
+          "option_id": "B",
+          "content": "明目退翳"
+        },
+        {
+          "option_id": "C",
+          "content": "解热生津"
+        },
+        {
+          "option_id": "D",
+          "content": "发散风寒"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "升麻【功效】发表透疹，清热解毒，升举阳气。【主治病证】风热头痛；麻疹不透；齿痛口疮，咽喉肿痛，温毒发斑；气虚下陷，脏器脱垂，崩漏下血等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 13,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0014",
+      "question_type": "single_choice",
+      "question_content": "下列关于五脏生理功能及临床意义，叙述正确的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脏病多虚"
+        },
+        {
+          "option_id": "B",
+          "content": "五脏宜泻"
+        },
+        {
+          "option_id": "C",
+          "content": "实而不能满"
+        },
+        {
+          "option_id": "D",
+          "content": "传化物而不藏"
+        },
+        {
+          "option_id": "E",
+          "content": "受盛和传化水谷"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "五脏共同的生理特点是化生和贮藏精气，六腑共同的生理特点是受盛和传化水谷。“所谓五脏者，藏精气而不泻也，故满而不能实；六腑者，传化物而不藏，故实而不能满”。病理上，“脏病多虚”“腑病多实”；治疗上，“五脏宜补”“六腑宜泻”。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 14,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0015",
+      "question_type": "single_choice",
+      "question_content": "下列不属于生化汤组成的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "桂枝"
+        },
+        {
+          "option_id": "B",
+          "content": "川芎"
+        },
+        {
+          "option_id": "C",
+          "content": "桃仁"
+        },
+        {
+          "option_id": "D",
+          "content": "当归"
+        },
+        {
+          "option_id": "E",
+          "content": "炙甘草"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "生化汤的药物组成：全当归、川芎、桃 C．脾仁、炮干姜、炙甘草、黄酒、童便。功用：养 D．肺血祛瘀，温经止痛。主治：血虚寒凝，瘀血阻 E．肾滞证。 答案：B",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 15,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0017",
+      "question_type": "single_choice",
+      "question_content": "膻中又称作",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血海"
+        },
+        {
+          "option_id": "B",
+          "content": "髓海"
+        },
+        {
+          "option_id": "C",
+          "content": "气海"
+        },
+        {
+          "option_id": "D",
+          "content": "水谷之海"
+        },
+        {
+          "option_id": "E",
+          "content": "经脉之海"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "宗气在胸中积聚之处，《灵枢·五味》称 B．肾主骨 B. 肾主骨为“气海”，又名为“膻中”。 C．心主血脉 C. 心主血脉 答案：B 解析：肝主疏泄，是指肝具有疏通、舒畅、条达以保持全身气机疏通畅达，通而不滞，散而不郁的作用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 17,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0021",
+      "question_type": "single_choice",
+      "question_content": "四肢肌肉强健有力主要取决于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝主筋"
+        },
+        {
+          "option_id": "D",
+          "content": "脾主运化"
+        },
+        {
+          "option_id": "E",
+          "content": "肺主气"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "脾在体合肉，主四肢，是因为四肢的运动与肌肉的收缩、舒展功能密切相关，四肢的运动亦赖于脾所化生的水谷精微的充养作用，脾气健运，营养充足，则肌肉丰满、壮实，四肢活动有力；反之，若脾失健运，气血化生不足，则肌肉消瘦、四肢乏力，甚则废痿不用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 21,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0023",
+      "question_type": "single_choice",
+      "question_content": "由泽泻、木通、当归、黄芩、龙胆草、柴 胡、生地、甘草、栀子组成的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清骨散"
+        },
+        {
+          "option_id": "B",
+          "content": "导赤散"
+        },
+        {
+          "option_id": "C",
+          "content": "凉膈散"
+        },
+        {
+          "option_id": "D",
+          "content": "龙胆泻肝汤"
+        },
+        {
+          "option_id": "E",
+          "content": "仙方活命饮"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "龙胆泻肝汤包含泽泻、木通、当归、黄芩、龙胆草、柴胡、生地、甘草、栀子。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 23,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0024",
+      "question_type": "single_choice",
+      "question_content": "下列各项，不会导致余沥不尽的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肾阳不足"
+        },
+        {
+          "option_id": "B",
+          "content": "肾阴亏损"
+        },
+        {
+          "option_id": "C",
+          "content": "久病体弱"
+        },
+        {
+          "option_id": "D",
+          "content": "湿热留着"
+        },
+        {
+          "option_id": "E",
+          "content": "肾气不固"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "余沥不尽是指排尿后，从尿道内滴出少量尿液，淋沥不断的症状。多因老年人肾阳亏虚，肾气不固所致。肾阴亏损指肾脏阴液不足之证，临床以腰膝酸痛、头晕耳鸣、失眠多梦、五心烦热、潮热盗汗、遗精早泄、咽干颧红、舌红少津无苔、脉细数等为主要表现。其病机关键在于肾阴不足，但与膀胱约束功能无关，故不会导致余沥不尽。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 24,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0026",
+      "question_type": "single_choice",
+      "question_content": "柴葛解肌汤的功用是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "解肌透疹"
+        },
+        {
+          "option_id": "B",
+          "content": "解肌清热"
+        },
+        {
+          "option_id": "C",
+          "content": "解肌发表"
+        },
+        {
+          "option_id": "D",
+          "content": "解肌疏风"
+        },
+        {
+          "option_id": "E",
+          "content": "透疹解毒"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "柴葛解肌汤功用：解肌清热。主治：外 感风寒，郁而化热证。恶寒渐轻，身热增盛， 无汗头痛，目疼鼻干，心烦不眠，咽干耳聋， 眼眶痛，舌苔薄黄，脉浮微洪。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 26,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0027",
+      "question_type": "single_choice",
+      "question_content": "柴葛解肌汤主治证的病机是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "外感风热，卫气郁遏"
+        },
+        {
+          "option_id": "B",
+          "content": "外感风寒湿，兼有里热"
+        },
+        {
+          "option_id": "C",
+          "content": "外感风邪，邪热壅肺"
+        },
+        {
+          "option_id": "D",
+          "content": "气虚外感风寒湿"
+        },
+        {
+          "option_id": "E",
+          "content": "外感风寒，郁而化热"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "柴葛解肌汤功用：解肌清热。主治：外 感风寒，郁而化热证。恶寒渐轻，身热增盛， 无汗头痛，目疼鼻干，心烦不眠，咽干耳聋， 眼眶痛，舌苔薄黄，脉浮微洪。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 27,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0028",
+      "question_type": "single_choice",
+      "question_content": "半夏泻心汤中体现“辛开苦降”配伍的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "半夏、干姜、黄芩、黄连"
+        },
+        {
+          "option_id": "B",
+          "content": "人参、半夏、甘草、黄连"
+        },
+        {
+          "option_id": "C",
+          "content": "大枣、人参、半夏、黄芩"
+        },
+        {
+          "option_id": "D",
+          "content": "干姜、黄连、大枣、人参"
+        },
+        {
+          "option_id": "E",
+          "content": "甘草、黄芩、黄连、大枣"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "方中以辛温之半夏为君，散结除痞，又善降逆止呕。臣以辛热之干姜温中散寒，苦寒之黄芩、黄连泄热开痞。以上四药相伍，具有寒热平调，辛开苦降之用。 仆，昏不知人，移时始醒，或醒后不能复原，脉弦长有力。其病机为肝肾阴虚，肝阳上亢，气血逆乱。病机中未涉及肺，故选项 C肺肾阴亏与镇肝熄风汤的主治无关，为本题正确答案。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 28,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0034",
+      "question_type": "single_choice",
+      "question_content": "“孤阴不生，独阳不长”“无阳则阴无以生”所说明的阴阳关系是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴阳交感"
+        },
+        {
+          "option_id": "B",
+          "content": "阴阳互根互用"
+        },
+        {
+          "option_id": "C",
+          "content": "阴阳对立制约"
+        },
+        {
+          "option_id": "D",
+          "content": "阴阳消长"
+        },
+        {
+          "option_id": "E",
+          "content": "阴阳转化"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "“孤阴不生，独阳不长”“无阳则阴无以生，无阴则阳无以化”是指阴阳相互依存，互为根本，任何一方都不能脱离另一方而单独存在，强调阴阳之间相互依存的关系，体现了阴阳互根互用的关系。 答案：E 解析：古代文献记载，甘草、黄连、桔梗、乌梅忌猪肉；常山忌葱；地黄、何首乌忌葱、蒜、萝卜；丹参、茯苓、茯神忌醋；土茯苓、使君子忌茶；薄荷忌蟹肉；以及蜜反生葱、柿反蟹等等，也应作为服药禁忌的参考。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 34,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0037",
+      "question_type": "single_choice",
+      "question_content": "大出血后出现肌热面赤，烦渴欲饮，舌质 淡，脉洪大而虚。治宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补中益气汤"
+        },
+        {
+          "option_id": "B",
+          "content": "当归补血汤"
+        },
+        {
+          "option_id": "C",
+          "content": "炙甘草汤"
+        },
+        {
+          "option_id": "D",
+          "content": "八珍汤"
+        },
+        {
+          "option_id": "E",
+          "content": "当归四逆汤"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "当归补血汤功用：补气生血。主治：血 E．阳气虚发热证。肌热面赤，烦渴欲饮，脉洪大而虚， 答案：A重按无力；亦治妇人经期、产后血虚发热头痛；或疮疡溃后，久不愈合者。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 37,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0038",
+      "question_type": "single_choice",
+      "question_content": "不易溶水，宜入丸散的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "大黄"
+        },
+        {
+          "option_id": "B",
+          "content": "大蓟"
+        },
+        {
+          "option_id": "C",
+          "content": "芒硝"
+        },
+        {
+          "option_id": "D",
+          "content": "甘遂"
+        },
+        {
+          "option_id": "E",
+          "content": "芫花"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "甘遂，苦，寒，有毒，归肺、肾、大肠经，有泻水逐饮，消肿散结的功效，其有效成分不溶于水，故宜入丸散，符合题意。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 38,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0039",
+      "question_type": "single_choice",
+      "question_content": "下述药性都属阳的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "辛甘酸"
+        },
+        {
+          "option_id": "B",
+          "content": "辛甘温"
+        },
+        {
+          "option_id": "C",
+          "content": "酸苦咸"
+        },
+        {
+          "option_id": "D",
+          "content": "辛苦咸"
+        },
+        {
+          "option_id": "E",
+          "content": "酸苦辛"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "在中药的四气五味理论中，四气指药物的寒、热、温、凉四种特性，又称四性；五味指药物的辛、甘、酸、苦、咸五种味道。其中，辛、甘为阳，酸、苦、咸为阴。再与四气结合，辛、甘温性药物性偏升浮，主散，一般具有发散、行气、行血的作用，为阳；酸、苦、咸平、寒性药物性偏沉降，主收、涩、泻、利、燥、坚，一般具有收敛固涩、泻下通便、利水渗湿、软坚散结、滋阴润燥等作用，为阴。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 39,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0040",
+      "question_type": "single_choice",
+      "question_content": "与气海有关的",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "宗气"
+        },
+        {
+          "option_id": "B",
+          "content": "卫气"
+        },
+        {
+          "option_id": "C",
+          "content": "元气"
+        },
+        {
+          "option_id": "D",
+          "content": "营气"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "宗气在肺中生成，积存于胸中“气海”、 C．天冬上走息道出喉咙以促进肺的呼吸，并能贯注心 D．黄精脉以助心推动血液运行，还可沿三焦下行至脐 E．麦冬下丹田以资先天元气。 答案：A",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 40,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0041",
+      "question_type": "single_choice",
+      "question_content": "利小便以实大便的治法依据",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "小肠泌别清浊"
+        },
+        {
+          "option_id": "B",
+          "content": "大肠主津"
+        },
+        {
+          "option_id": "C",
+          "content": "肺通调水道"
+        },
+        {
+          "option_id": "D",
+          "content": "脾运化水液"
+        },
+        {
+          "option_id": "E",
+          "content": "肾主水"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "“泌别清浊”是小肠的主要功能之一，指小肠中的食糜在进一步消化的过程中，随之分为清浊两部分：清者，即水谷精微和津液，由小肠吸收，经脾气转输全身；浊者，即食物残解析：肺热咳喘加心神不宁，治当清肺止咳平喘，养心安神。百合既能养阴润肺止咳，又能清心除烦安神，最宜于肺虚久咳，痰中带血，兼有心神不宁，虚烦惊悸，失眠多梦等肺虚有热之失眠心悸证候。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 41,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0044",
+      "question_type": "single_choice",
+      "question_content": "有人参、黄芪的方剂是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "八珍汤"
+        },
+        {
+          "option_id": "B",
+          "content": "补中益气汤"
+        },
+        {
+          "option_id": "C",
+          "content": "生脉散"
+        },
+        {
+          "option_id": "D",
+          "content": "玉屏风散"
+        },
+        {
+          "option_id": "E",
+          "content": "四物汤 此，小肠泌别清浊的功能正常，则二便调和。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 44,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0045",
+      "question_type": "single_choice",
+      "question_content": "胆汁的生成主要来源于小肠泌别清浊的功能失常，则大便稀薄，而小",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝血便短少。所以中医有“利小便即所以实大便”"
+        },
+        {
+          "option_id": "B",
+          "content": "肝阴之说。"
+        },
+        {
+          "option_id": "C",
+          "content": "肝阳"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 45,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0042",
+      "question_type": "single_choice",
+      "question_content": "通过三焦运行全身的气是",
+      "options": [
+        {
+          "option_id": "D",
+          "content": "肝之余气"
+        },
+        {
+          "option_id": "A",
+          "content": "胃气"
+        },
+        {
+          "option_id": "E",
+          "content": "脾胃之精气"
+        },
+        {
+          "option_id": "B",
+          "content": "卫气"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "胆汁乃肝之余气所化，其分泌和排泄受D．营气 肝气疏泄作用的影响。E．元气 46．与津液代谢关系最密切的是 46. 与津液代谢关系最密切的是 答案：E 解析：元气根于肾，通过三焦而布达全身，内 B．脾肺肾的功能至脏腑，外达肌肤腠理，无处不到，以推动人 C．心肝脾的功能体的生长发育和各脏腑经络的生理功能。 D．脾肺心的功能 D. 脾肺心的功能 A．肝脾肾的功能E．肝肺肾的功能 E． 肝肺肾的功能",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 42,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0047",
+      "question_type": "single_choice",
+      "question_content": "逆传是指",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阳明胃传入太阴肺"
+        },
+        {
+          "option_id": "B",
+          "content": "太阴脾传入太阴肺"
+        },
+        {
+          "option_id": "C",
+          "content": "从肺卫而传入心包"
+        },
+        {
+          "option_id": "D",
+          "content": "阳明胃经传入心包"
+        },
+        {
+          "option_id": "E",
+          "content": "中焦脾胃传入上焦"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "病邪从肺卫而传入心包者，称为逆传， B．生姜 B. 生姜说明邪热炽盛，病情重笃。 C．桂枝 C. 桂枝",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 47,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0048",
+      "question_type": "single_choice",
+      "question_content": "具有维持体温的功能的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气"
+        },
+        {
+          "option_id": "B",
+          "content": "血"
+        },
+        {
+          "option_id": "C",
+          "content": "精"
+        },
+        {
+          "option_id": "D",
+          "content": "液"
+        },
+        {
+          "option_id": "E",
+          "content": "津"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "人体体温的恒定、脏腑机能的稳定发挥及精血津液的正常运行输布，是一身之气中阳气部分的温煦作用和阴气部分的凉润作用对立统一的结果。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 48,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0049",
+      "question_type": "single_choice",
+      "question_content": "区分五脏、六腑和奇恒之腑的最主要依据是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "分布部位的不同"
+        },
+        {
+          "option_id": "B",
+          "content": "解剖形态的不同"
+        },
+        {
+          "option_id": "C",
+          "content": "功能特点的不同"
+        },
+        {
+          "option_id": "D",
+          "content": "阴阳属性的不同"
+        },
+        {
+          "option_id": "E",
+          "content": "表里联络的不同"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "五脏指心、肝、脾、肺、肾五个脏器，其主要功能是化生和贮藏精气。六腑指胆、胃、小肠、大肠、膀胱、三焦六个脏器，其主要功能是受纳、腐熟水谷，传化糟粕。奇恒之腑指脑、髓、骨、脉、胆、女子胞六个器官组织，因其形态似腑，功能似脏，故称为奇恒之腑。五脏的共同生理特点是化生和贮藏精气，六腑的共同生理特点是受盛和传化水谷，奇恒之腑在形态上中空有腔似腑，功能上贮藏精气似脏，与五脏和六腑都有明显区别。故区分五脏、六腑和奇恒之腑的最主要依据是功能特点的不同。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 49,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0050",
+      "question_type": "single_choice",
+      "question_content": "炙甘草汤中，用量最大的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "甘草"
+        },
+        {
+          "option_id": "D",
+          "content": "人参"
+        },
+        {
+          "option_id": "E",
+          "content": "生地"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "炙甘草汤为补益剂，具有滋阴养血，益气温阳，复脉定悸的功效。主治阴血不足，阳气虚弱证。方中生地黄用量最大，为君药，滋阴养血，充脉养心。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 50,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0051",
+      "question_type": "single_choice",
+      "question_content": "四神丸的组成中不包含",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肉豆蔻"
+        },
+        {
+          "option_id": "B",
+          "content": "补骨脂"
+        },
+        {
+          "option_id": "C",
+          "content": "五味子"
+        },
+        {
+          "option_id": "D",
+          "content": "吴茱萸"
+        },
+        {
+          "option_id": "E",
+          "content": "肉苁蓉"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "四神丸组成为肉豆蔻、补骨脂、五味子、吴茱萸、生姜、红枣。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 51,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0052",
+      "question_type": "single_choice",
+      "question_content": "湿邪致病缠绵难愈的主要原因是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "湿为阴邪，易阻遏气机"
+        },
+        {
+          "option_id": "B",
+          "content": "湿邪伤阳困脾"
+        },
+        {
+          "option_id": "C",
+          "content": "湿性黏滞，胶着难解"
+        },
+        {
+          "option_id": "D",
+          "content": "湿性重浊，留滞体内"
+        },
+        {
+          "option_id": "E",
+          "content": "湿性趋下，易袭阴位"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "湿邪致病缠绵难愈的主要原因是湿性黏滞，黏即黏腻，滞即停滞，主要表现在两个方面：一是症状的黏滞性，如湿滞大肠，大便黏腻不爽；湿滞膀胱，小便涩滞不畅；湿滞于肌肤筋骨，则关节疼痛重着而固定不移等。二是病程的缠绵性，因湿性黏滞，易阻气机，病气留恋于脏腑经络，故湿邪为病，起病隐缓，病程较长，反复发作，或缠绵难愈。",
+      "kp_ids": [
+        "004688"
+      ],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 52,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0053",
+      "question_type": "single_choice",
+      "question_content": "下列脉象中，不属于真脏脉的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "败脉"
+        },
+        {
+          "option_id": "B",
+          "content": "绝脉"
+        },
+        {
+          "option_id": "C",
+          "content": "死脉"
+        },
+        {
+          "option_id": "D",
+          "content": "怪脉"
+        },
+        {
+          "option_id": "E",
+          "content": "危脉"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "真脏脉是疾病危重期出现的无胃、无神、无根的脉象，又称怪脉、死脉、绝脉、败脉，为病邪深重，元气离散，胃气已败的征象。危脉并不属于真脏脉，危脉是指病势危重，正气已虚，但正气尚能与邪气抗争的脉象。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 53,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0054",
+      "question_type": "single_choice",
+      "question_content": "患者，女，18岁，观看恐怖电影时受到惊吓，表现的脉象是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "牢脉"
+        },
+        {
+          "option_id": "B",
+          "content": "紧脉"
+        },
+        {
+          "option_id": "C",
+          "content": "动脉"
+        },
+        {
+          "option_id": "D",
+          "content": "滑脉"
+        },
+        {
+          "option_id": "E",
+          "content": "浮脉"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "惊恐则气乱，气机逆乱，气血运行失常，脉气躁动，故脉来滑数有力而短，其形如豆，厥厥动摇，滑数如珠，故曰动脉。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 54,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0056",
+      "question_type": "single_choice",
+      "question_content": "能清肝胆湿热而退黄，治疗湿热黄疸的药 物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "秦艽"
+        },
+        {
+          "option_id": "B",
+          "content": "防己"
+        },
+        {
+          "option_id": "C",
+          "content": "豨莶草"
+        },
+        {
+          "option_id": "D",
+          "content": "络石藤"
+        },
+        {
+          "option_id": "E",
+          "content": "桑枝"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "秦艽祛风湿，通络止痛，退虚热，清湿热。本品苦以降泄，能清肝胆湿热而退黄，治疗湿热黄疸。单用为末服；亦可与茵陈蒿、栀子、大黄等配伍，如山茵陈丸。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 56,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0057",
+      "question_type": "single_choice",
+      "question_content": "可以治疗遗精滑精、遗尿尿频、小便白浊以及阳痿的药物是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "山茱萸"
+        },
+        {
+          "option_id": "B",
+          "content": "桑螵蛸"
+        },
+        {
+          "option_id": "C",
+          "content": "海螵蛸"
+        },
+        {
+          "option_id": "D",
+          "content": "金樱子"
+        },
+        {
+          "option_id": "E",
+          "content": "芡实"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "桑螵蛸功效：固精缩尿，补肾助阳。主治遗精滑精，遗尿尿频，小便白浊；阳痿。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 57,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0059",
+      "question_type": "single_choice",
+      "question_content": "阴虚主要在哪个脏腑",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝"
+        },
+        {
+          "option_id": "B",
+          "content": "肺"
+        },
+        {
+          "option_id": "C",
+          "content": "心"
+        },
+        {
+          "option_id": "D",
+          "content": "脾"
+        },
+        {
+          "option_id": "E",
+          "content": "肾"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "阴虚是指由于阴液不足，不能滋润，不能制阳引起的一系列病理变化及证候。五脏均可出现阴虚，但以肾阴亏虚为主，因为肾阴为诸阴之根本，所以肾阴不足在阴虚的证型中最为常见。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 59,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0060",
+      "question_type": "single_choice",
+      "question_content": "几种不同的疾病可用大致相同的治法和方药来治疗，其理论依据是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "病程大致相同"
+        },
+        {
+          "option_id": "B",
+          "content": "病机大致相同"
+        },
+        {
+          "option_id": "C",
+          "content": "症状大致相同"
+        },
+        {
+          "option_id": "D",
+          "content": "体征大致相同"
+        },
+        {
+          "option_id": "E",
+          "content": "体质大致相同"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "几种不同的疾病，在其发展过程中，由于出现了相同的病机，因而可采用大致相同的治法和方药来治疗，为“异病同治”。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 60,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0061",
+      "question_type": "single_choice",
+      "question_content": "五脏皆有阳虚，最重要的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肝阳虚"
+        },
+        {
+          "option_id": "D",
+          "content": "肺阳虚"
+        },
+        {
+          "option_id": "E",
+          "content": "肾阳虚"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "阳虚是指机体阳气虚衰，机能减退或衰弱，代谢活动减退，机体反应性低下，阳热不足的病理现象。五脏皆有阳虚，其中，肾阳为人身阳气之根本，具有温煦形体脏腑、促进生殖发育、温化水液、通调水道等功能，肾阳虚往往会影响其他脏腑的阳气，从而导致全身性的虚寒症状，故肾阳虚在阳虚的最重要。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 61,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0062",
+      "question_type": "single_choice",
+      "question_content": "下列不属于白芍主治的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "血虚"
+        },
+        {
+          "option_id": "B",
+          "content": "自汗盗汗"
+        },
+        {
+          "option_id": "C",
+          "content": "头晕"
+        },
+        {
+          "option_id": "D",
+          "content": "月经不调"
+        },
+        {
+          "option_id": "E",
+          "content": "劳嗽咯血"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "白芍功效为养血调经，敛阴止汗，柔肝止痛，平抑肝阳。应用：①血虚萎黄，月经不调，崩漏下血。②自汗，盗汗。③肝脾不和，胸胁脘腹疼痛，四肢挛急疼痛。④肝阳上亢，头痛眩晕。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 62,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0063",
+      "question_type": "single_choice",
+      "question_content": "不属于卫生部门刑事处罚的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "管制"
+        },
+        {
+          "option_id": "B",
+          "content": "有期徒刑"
+        },
+        {
+          "option_id": "C",
+          "content": "拘役"
+        },
+        {
+          "option_id": "D",
+          "content": "罚款"
+        },
+        {
+          "option_id": "E",
+          "content": "无期徒刑"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "刑事处罚是违反刑法，应当受到的刑法制裁，简称刑罚。刑事处罚的种类包括主刑和附加刑，主刑有管制、拘役、有期徒刑、无期徒刑和死刑；附加刑有罚金、剥夺政治权利和",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 63,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0064",
+      "question_type": "single_choice",
+      "question_content": "下列不属于地黄饮子主治证病机的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴阳两虚"
+        },
+        {
+          "option_id": "B",
+          "content": "虚阳上浮"
+        },
+        {
+          "option_id": "C",
+          "content": "瘀血内阻"
+        },
+        {
+          "option_id": "D",
+          "content": "痰浊上扰"
+        },
+        {
+          "option_id": "E",
+          "content": "下元虚衰"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "地黄饮子主治：喑痱证。本方证由下元 虚衰，阴阳两亏，虚阳随之上浮，痰浊上泛， 堵塞窍道所致。治宜滋肾阴，补肾阳，开窍化 痰。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 64,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0065",
+      "question_type": "single_choice",
+      "question_content": "下列中药中治风湿痹痛，痉挛抽搐的药是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "砂仁"
+        },
+        {
+          "option_id": "B",
+          "content": "益智仁"
+        },
+        {
+          "option_id": "C",
+          "content": "紫河车"
+        },
+        {
+          "option_id": "D",
+          "content": "淫羊藿"
+        },
+        {
+          "option_id": "E",
+          "content": "肉苁蓉"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "淫羊藿功效为补肾阳，强筋骨，祛风湿。 可治疗风湿痹痛，麻木拘挛。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 65,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0066",
+      "question_type": "single_choice",
+      "question_content": "气虚致血逸脉外的病机是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "气随血脱"
+        },
+        {
+          "option_id": "B",
+          "content": "气血两虚"
+        },
+        {
+          "option_id": "C",
+          "content": "气滞血瘀"
+        },
+        {
+          "option_id": "D",
+          "content": "气不摄血"
+        },
+        {
+          "option_id": "E",
+          "content": "气虚血瘀"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "气不摄血指因气虚统摄无力，以致血逸脉外而出血的病理变化。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 66,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0068",
+      "question_type": "single_choice",
+      "question_content": "未按规定告知患者的医务人员怎么处理",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "6个月至12 个月暂停执业活动"
+        },
+        {
+          "option_id": "B",
+          "content": "罚款一到三万元"
+        },
+        {
+          "option_id": "C",
+          "content": "降低岗位等级或者撤职"
+        },
+        {
+          "option_id": "D",
+          "content": "一个月以上 6个月以下暂停执业活动"
+        },
+        {
+          "option_id": "E",
+          "content": "处 1万元以上 5万元以下罚款"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "未按规定告知患者病情、医疗措施、医疗风险、替代医疗方案等，对有关医务人员可以责令暂停 1 个月以上 6 个月以下执业活动。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 68,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0069",
+      "question_type": "single_choice",
+      "question_content": "清热药的用法",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阴虚禁用"
+        },
+        {
+          "option_id": "B",
+          "content": "真热假寒忌用"
+        },
+        {
+          "option_id": "C",
+          "content": "阴盛格阳宜用"
+        },
+        {
+          "option_id": "D",
+          "content": "胃肠积热慎用"
+        },
+        {
+          "option_id": "E",
+          "content": "脾胃气虚慎用"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "清热药多寒凉，易伤脾胃，故脾胃气虚， 食少便溏者慎用；苦燥药物易化燥伤阴，热证 伤阴或阴虚患者慎用；阴盛格阳、真寒假热之 证忌用。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 69,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0071",
+      "question_type": "single_choice",
+      "question_content": "荆芥与蝉蜕的共有功效有",
+      "options": [
+        {
+          "option_id": "D",
+          "content": "合病"
+        },
+        {
+          "option_id": "A",
+          "content": "平肝"
+        },
+        {
+          "option_id": "E",
+          "content": "后发"
+        },
+        {
+          "option_id": "B",
+          "content": "止血"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "感D．解毒 立即发病E．消疮 剧变。③签安 答案：C 解析：荆芥【功效】解表散风，透疹消疮，止血。蝉蜕【功效】疏散风热，利咽开音，透疹，明目退翳，息风止痉。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 71,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0072",
+      "question_type": "single_choice",
+      "question_content": "治疗阳明温病，津亏肠燥之便秘，应首选方剂",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "黄龙汤"
+        },
+        {
+          "option_id": "B",
+          "content": "增液汤"
+        },
+        {
+          "option_id": "C",
+          "content": "济川煎"
+        },
+        {
+          "option_id": "D",
+          "content": "温脾汤"
+        },
+        {
+          "option_id": "E",
+          "content": "大承气汤"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "增液汤功用：增液润燥。主治：阳明温病，津亏肠燥便秘证。大便秘结，口渴，舌干红，脉细数或沉而无力。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 72,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0073",
+      "question_type": "single_choice",
+      "question_content": "组成药物中含有半夏、干姜的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "半夏泻心汤"
+        },
+        {
+          "option_id": "B",
+          "content": "旋覆代赭汤"
+        },
+        {
+          "option_id": "C",
+          "content": "厚朴温中汤"
+        },
+        {
+          "option_id": "D",
+          "content": "定喘汤"
+        },
+        {
+          "option_id": "E",
+          "content": "二陈汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 73,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0074",
+      "question_type": "single_choice",
+      "question_content": "感受疠气发病属于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "卒发 邪即发又称为卒发、顿发，即感邪后。多见于：①新感外邪较盛。②情志毒物所伤。④外伤。⑤感受疠气。"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 74,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0075",
+      "question_type": "single_choice",
+      "question_content": "以下可见外阴瘙痒，带下黄臭的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "膀胱湿热"
+        },
+        {
+          "option_id": "B",
+          "content": "大肠湿热"
+        },
+        {
+          "option_id": "C",
+          "content": "肝胆湿热"
+        },
+        {
+          "option_id": "D",
+          "content": "湿热困脾"
+        },
+        {
+          "option_id": "E",
+          "content": "寒湿困脾"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "肝胆湿热证是指湿热内蕴，肝胆疏泄失常，以胁肋胀痛、身目发黄，或阴部瘙痒、带下黄臭等与湿热症状共见为辨证的主要依据。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 75,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0076",
+      "question_type": "single_choice",
+      "question_content": "素体肥胖，复感外邪的脉象",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "濡缓"
+        },
+        {
+          "option_id": "B",
+          "content": "浮滑"
+        },
+        {
+          "option_id": "C",
+          "content": "滑数"
+        },
+        {
+          "option_id": "D",
+          "content": "浮紧"
+        },
+        {
+          "option_id": "E",
+          "content": "濡大"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "素体肥胖者，多痰湿内盛，其脉象多表现为滑脉，滑脉脉象特征为往来流利，如珠走盘，应指圆滑，可见于痰饮、食滞、实热等证。外邪侵袭人体，正气抗邪于表，正邪相争，气血趋向于表，故脉象浮，可见于表证。素体肥胖者感受外邪，其脉象表现为浮滑，既可见浮脉的表证特征，又见滑脉的痰湿内盛表现。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 76,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0077",
+      "question_type": "single_choice",
+      "question_content": "肺主行水主要是基于",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺主宣发和肃降"
+        },
+        {
+          "option_id": "B",
+          "content": "肺输精于皮毛"
+        },
+        {
+          "option_id": "C",
+          "content": "肺主一身之气"
+        },
+        {
+          "option_id": "D",
+          "content": "肺司呼吸"
+        },
+        {
+          "option_id": "E",
+          "content": "肺朝百脉"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "肺主行水的功能，主要依赖于肺气的宣发和肃降。肺气宣发，将脾所转输的津液和水谷精微，布散到全身，外达于皮毛，通调水道， 下输膀胱；肺气肃降，将体内代谢后的水液下输于肾，经肾和膀胱的气化作用，生成尿液而排出体外。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 77,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0078",
+      "question_type": "single_choice",
+      "question_content": "负责中医药使用普及的部门是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "国家中医药管理局"
+        },
+        {
+          "option_id": "B",
+          "content": "国务院事务管理局"
+        },
+        {
+          "option_id": "C",
+          "content": "国务院科技行政管理部门"
+        },
+        {
+          "option_id": "D",
+          "content": "国务院办公厅"
+        },
+        {
+          "option_id": "E",
+          "content": "国务院发展与改革行政管理部门"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "国家中医药管理局的主要职责是负责中医药事业的管理，包括中医药政策的制定、中医药的科研与教育、中医药服务的规范与监管，以及中医药文化的传承与普及等。 ．发布中医医疗广告，医疗机构应当按规定向所在地何部门申请并报送有关材料进行审批A．省级人民政府广告监督管理部门B．省级人民政府卫生行政部门C．省级人民政府中医药管理部门D．省级药品监督管理部门E．县级中医药管理部门 答案：C 解析：《中医药法》规定，发布中医医疗广告，医疗机构应当按照《中华人民共和国广告法》和《医疗广告管理办法》的规定向所在地省、自治区、直辖市人民政府中医药主管部门申请并报送有关材料，由其审核同意后，报同级广告监督管理机关审批。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 78,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0080",
+      "question_type": "single_choice",
+      "question_content": "补肾阳，益精血的中药是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肉苁蓉、锁阳"
+        },
+        {
+          "option_id": "B",
+          "content": "益智仁、沙苑子"
+        },
+        {
+          "option_id": "C",
+          "content": "紫河车、菟丝子"
+        },
+        {
+          "option_id": "D",
+          "content": "淫羊藿、仙茅"
+        },
+        {
+          "option_id": "E",
+          "content": "巴戟天、杜仲"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "肉苁蓉【功效】补肾阳，益精血，润肠通便。锁阳【功效】补肾阳，益精血，润肠通便。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 80,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0081",
+      "question_type": "single_choice",
+      "question_content": "当归四逆汤方中桂枝的作用是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "温经散寒"
+        },
+        {
+          "option_id": "B",
+          "content": "养血和血"
+        },
+        {
+          "option_id": "C",
+          "content": "益气健脾"
+        },
+        {
+          "option_id": "D",
+          "content": "温中补虚"
+        },
+        {
+          "option_id": "E",
+          "content": "降逆止呕"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "当归四逆汤功用：温经散寒，养血通脉。方中当归甘温，养血和血；桂枝辛温，温经散寒，温通血脉，共为君药。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 81,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0082",
+      "question_type": "single_choice",
+      "question_content": "生化汤引败血下行的药物",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "童便"
+        },
+        {
+          "option_id": "B",
+          "content": "川芎"
+        },
+        {
+          "option_id": "C",
+          "content": "桃仁"
+        },
+        {
+          "option_id": "D",
+          "content": "炙甘草"
+        },
+        {
+          "option_id": "E",
+          "content": "当归"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "生化汤功用：养血祛瘀，温经止痛。主 治：血虚寒凝，瘀血阻滞证。方中重用全当归 补血活血，化瘀生新，行滞止痛，为君药。川 芎活血行气，桃仁活血祛瘀，均为臣药。炮姜 入血散寒，温经止痛；黄酒温通血脉以助药力， 共为佐药。炙甘草和中缓急，调和诸药，用以 为使。童便同煎者，乃取其益阴化瘀，引败血 下行之意。 D．气血两亏 E．阳虚寒凝 解析：枯白舌主脱血夺气。气血两亏，血不荣舌，或阳气不足，推动血液运行无力，故舌色浅淡。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 82,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0087",
+      "question_type": "single_choice",
+      "question_content": "蒿芩清胆汤药物组成中不含有",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "青蒿、竹茹"
+        },
+        {
+          "option_id": "B",
+          "content": "茯苓、半夏"
+        },
+        {
+          "option_id": "C",
+          "content": "陈皮、枳壳"
+        },
+        {
+          "option_id": "D",
+          "content": "滑石、青黛"
+        },
+        {
+          "option_id": "E",
+          "content": "黄芪、大黄"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "蒿芩清胆汤组成：青蒿、黄芩、竹茹、半夏、茯苓、枳壳、陈皮、碧玉散（青黛、滑石、甘草）。 答案：E 解析：小柴胡汤证主症：口苦，咽干，目眩， A．肉桂、竹茹 A. 肉桂、竹茹往来寒热，胸胁苦满，默默不欲饮食，心烦喜 B．茯苓、甘草 B. 茯苓、甘草呕。 C．熟地、枳壳 C. 熟地、枳壳",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 87,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0088",
+      "question_type": "single_choice",
+      "question_content": "属于阳和汤组成的是",
+      "options": [
+        {
+          "option_id": "D",
+          "content": "滑石、麻黄"
+        },
+        {
+          "option_id": "E",
+          "content": "麻黄、熟地"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "阳和汤组成麻黄、熟地、炮姜炭、生甘草、肉桂、鹿角胶、白芥子。 答案：D 解析：红花功效为活血通经，散瘀止痛。主治： B．祛风解表，胜湿止痛 B. 祛风解表，胜湿止痛①血滞经闭、痛经，产后瘀滞腹痛。②癥瘕积 C．疏散风热，利咽开音 C. 疏散风热，利咽开音聚。③胸痹心痛、血瘀腹痛、胁痛。④跌打损 D．宣肺祛痰，利咽透疹 D. 宣肺祛痰，利咽透疹伤、瘀滞肿痛。⑤瘀滞斑疹色暗。 E．解表散风，透疹消疮 E. 解表散风，透疹消疮",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 88,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0089",
+      "question_type": "single_choice",
+      "question_content": "荆芥功用为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "解表散寒，温中止呕"
+        }
+      ],
+      "answer": [],
+      "explanation": "",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 89,
+        "answer_source": ""
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0090",
+      "question_type": "single_choice",
+      "question_content": "升麻功用为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "解表散寒，温中止呕"
+        },
+        {
+          "option_id": "B",
+          "content": "发表透疹，清热解毒"
+        },
+        {
+          "option_id": "C",
+          "content": "疏散风热，利咽开音"
+        },
+        {
+          "option_id": "D",
+          "content": "宣肺祛痰，利咽透疹"
+        },
+        {
+          "option_id": "E",
+          "content": "解表散风，透疹消疮"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "升麻【功效】发表透疹，清热解毒，升举阳气。【主治病证】风热头痛；麻疹不透；齿痛口疮，咽喉肿痛，温毒发斑；气虚下陷，脏器脱垂，崩漏下血等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 90,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0091",
+      "question_type": "single_choice",
+      "question_content": "蝉蜕功用为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "疏散风热，利咽开音"
+        },
+        {
+          "option_id": "B",
+          "content": "解表散寒，温中止呕"
+        },
+        {
+          "option_id": "C",
+          "content": "发表透疹，清热解毒"
+        },
+        {
+          "option_id": "D",
+          "content": "宣肺祛痰，利咽透疹"
+        },
+        {
+          "option_id": "E",
+          "content": "解表散风，透疹消疮"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "蝉蜕【功效】疏散风热，利咽开音，透疹，明目退翳，息风止痉。【应用】风热感冒，温病初起，咽痛音哑。长于疏散肺经风热以宣肺利咽、开音疗哑，故风热感冒，温病初起，症见声音嘶哑或咽喉肿痛者，尤为适宜。麻疹不透，风疹瘙痒。目赤翳障。急慢惊风，破伤风证。小儿夜啼不安。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 91,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0092",
+      "question_type": "single_choice",
+      "question_content": "苍术功用为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "醒脾开胃，发表解暑"
+        },
+        {
+          "option_id": "B",
+          "content": "燥湿健脾，祛风散寒"
+        },
+        {
+          "option_id": "C",
+          "content": "燥湿消痰，下气除满"
+        },
+        {
+          "option_id": "D",
+          "content": "温脾止泻，理气安胎"
+        },
+        {
+          "option_id": "E",
+          "content": "温中止呕，开胃消食"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "苍术【功效】燥湿健脾，祛风散寒，明目。【应用】湿阻中焦证。风湿痹证。风寒夹湿表证。此外，本品尚能明目，用于夜盲症及眼目昏涩。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 92,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0093",
+      "question_type": "single_choice",
+      "question_content": "白术功用为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "补脾养胃，生津益肺"
+        },
+        {
+          "option_id": "B",
+          "content": "健脾化湿，和中消暑"
+        },
+        {
+          "option_id": "C",
+          "content": "健脾益气，燥湿利水"
+        },
+        {
+          "option_id": "D",
+          "content": "补脾益气，祛痰止咳"
+        },
+        {
+          "option_id": "E",
+          "content": "补中益气，养血安神"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "白术【功效】健脾益气，燥湿利水，止汗，安胎。【应用】脾气虚证。气虚自汗。脾虚胎动不安。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 93,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0094",
+      "question_type": "single_choice",
+      "question_content": "虚里心肺气绝的表现",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "虚里动高，聚而不散"
+        },
+        {
+          "option_id": "B",
+          "content": "搏动迟弱"
+        },
+        {
+          "option_id": "C",
+          "content": "绝而不应"
+        },
+        {
+          "option_id": "D",
+          "content": "搏动散漫而数"
+        },
+        {
+          "option_id": "E",
+          "content": "搏动不明显"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "按之弹手，洪大而搏，或绝而不应者，是心肺气绝，属于危候。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 94,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0095",
+      "question_type": "single_choice",
+      "question_content": "治疗上实下虚喘咳证的方剂为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "半夏厚朴汤"
+        },
+        {
+          "option_id": "B",
+          "content": "二陈汤"
+        },
+        {
+          "option_id": "C",
+          "content": "贝母瓜蒌散"
+        },
+        {
+          "option_id": "D",
+          "content": "半夏白术天麻汤"
+        },
+        {
+          "option_id": "E",
+          "content": "苏子降气汤"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "苏子降气汤【功用】降气平喘，祛痰止咳。【主治】上实下虚喘咳证。痰涎壅盛（上实），胸膈满闷，喘咳短气，呼多吸少，或腰疼脚弱（下虚），肢体倦怠，或肢体浮肿，舌苔白滑或白腻，脉弦滑。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 95,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0096",
+      "question_type": "single_choice",
+      "question_content": "白虎汤功用为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "健脾利水"
+        },
+        {
+          "option_id": "B",
+          "content": "清热生津"
+        },
+        {
+          "option_id": "C",
+          "content": "益气和胃"
+        },
+        {
+          "option_id": "D",
+          "content": "凉血散瘀"
+        },
+        {
+          "option_id": "E",
+          "content": "泻火解毒"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "白虎汤【功用】清热生津。【主治】气分热盛证。壮热面赤，烦渴引饮，汗出恶热，脉洪大有力。“大热、大汗、大渴、脉洪大”。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 96,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0097",
+      "question_type": "single_choice",
+      "question_content": "具有截疟功效的药是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "山药"
+        },
+        {
+          "option_id": "B",
+          "content": "槟榔"
+        },
+        {
+          "option_id": "C",
+          "content": "当归"
+        },
+        {
+          "option_id": "D",
+          "content": "升麻"
+        },
+        {
+          "option_id": "E",
+          "content": "硫黄"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "具有“截疟”功效的中药：何仙姑，吕洞槟；柴鸦吃青草；雄黄与砒石（生何首乌、仙鹤草、槟榔；柴胡、鸦胆子、青蒿、草果；雄黄、砒石）。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 97,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0098",
+      "question_type": "single_choice",
+      "question_content": "连翘的功效为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "清热解毒，消肿散结，疏散风热"
+        },
+        {
+          "option_id": "B",
+          "content": "泻火解毒，清热燥湿，凉血消肿"
+        },
+        {
+          "option_id": "C",
+          "content": "清热解毒，消肿散结，利尿通淋"
+        },
+        {
+          "option_id": "D",
+          "content": "清热解毒，凉血消斑，泻火定惊"
+        },
+        {
+          "option_id": "E",
+          "content": "清热解毒，消痈排脓，祛瘀止痛"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "连翘【功效】清热解毒，消肿散结，疏散风热。【应用】痈肿疮毒，瘰疬痰核。本品苦寒，主入心经，既能清心火，解疮毒，又能消散痈肿结聚，故有“疮家圣药”之称。风热外感，温病初起。本品苦能清泄，寒能清热，入心、肺二经，长于清心火，散上焦风热。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 98,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0099",
+      "question_type": "single_choice",
+      "question_content": "患儿，男，5岁。发热39.5℃，咽喉肿痛，咳嗽，鼻塞流涕，面部和耳后有针头大小的丘疹，部分融合呈砖红色，或片状斑丘疹。诊断为麻疹初起，用药应选用的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "荆芥、防风、桂枝"
+        },
+        {
+          "option_id": "B",
+          "content": "浮萍、胡荽、葱白"
+        },
+        {
+          "option_id": "C",
+          "content": "薄荷、牛蒡子、蝉蜕"
+        },
+        {
+          "option_id": "D",
+          "content": "葛根、桑叶、蔓荆子"
+        },
+        {
+          "option_id": "E",
+          "content": "柴胡、升麻、葛根"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "薄荷、牛蒡子与蝉蜕：三药均可疏散风热，透疹，利咽。用于风热感冒及温病初起，麻疹不透，风疹瘙痒，咽喉肿痛等。但薄荷宣散表邪力强，还可清利头目，利咽喉，疏肝行气，用于风热头痛、目赤多泪、咽喉肿痛、肝郁气滞、胸闷胁痛等；牛蒡子疏风发散之力虽不及薄荷，但长于宣肺祛痰，清利咽喉，对咽喉红肿疼痛，或咳嗽咳痰不利者尤为适宜；蝉蜕长于疏散肺经风热以宣肺利咽开音，还可明目退翳，息风止痉，治疗目赤翳障、急慢惊风、破伤风证及小儿夜啼不安。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 99,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0100",
+      "question_type": "single_choice",
+      "question_content": "患者，女，60 岁。现症见：一身悉肿，腹胀喘满，二便不利，脉沉实有力者，治宜选用",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "五苓散"
+        },
+        {
+          "option_id": "B",
+          "content": "五皮散"
+        },
+        {
+          "option_id": "C",
+          "content": "实脾散"
+        },
+        {
+          "option_id": "D",
+          "content": "真武汤"
+        },
+        {
+          "option_id": "E",
+          "content": "十枣汤"
+        }
+      ],
+      "answer": [
+        "E"
+      ],
+      "explanation": "十枣汤功用：攻逐水饮。主治：①悬饮。咳唾胸胁引痛，心下痞硬，干呕短气，头痛目眩，胸背掣痛不得息，舌苔滑，脉沉弦。②水肿。一身悉肿，尤以身半以下肿甚，腹胀喘满，二便不利。 B 型题 （101～102题共用备选答案）A．知母B．百合C．栀子D．石膏E．芦根",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 100,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0018",
+      "question_type": "single_choice",
+      "question_content": "选择抗癫痫药物的依据是根据",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "发作的诱因"
+        },
+        {
+          "option_id": "B",
+          "content": "发作的类型"
+        },
+        {
+          "option_id": "C",
+          "content": "发作的频率"
+        },
+        {
+          "option_id": "D",
+          "content": "发作的病因"
+        },
+        {
+          "option_id": "E",
+          "content": "脑电图的异常改变"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "选药与用药个体化：按癫痫的类型选用抗癫痫药物，优选单药治疗，逐渐增大剂量，直至完全控制癫痫发作，需要联合用药时应合理联合。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 18,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0020",
+      "question_type": "single_choice",
+      "question_content": "根据《素问·太阴阳明论》，“脾病而四肢不用”的原因是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "脾实水谷精微壅滞"
+        },
+        {
+          "option_id": "B",
+          "content": "脾虚水谷精微困于肢体"
+        },
+        {
+          "option_id": "C",
+          "content": "脾病水湿困郁四肢"
+        },
+        {
+          "option_id": "D",
+          "content": "脾不能为胃行津液"
+        },
+        {
+          "option_id": "E",
+          "content": "脾病痰湿困阻肢体"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "《素问·太阴阳明论》中提到：“四肢皆禀气于胃，而不得至经，必因于脾，乃得禀也。今脾病不能为胃行其津液，四肢不得禀水谷气，气日以衰，脉道不利，筋骨肌肉，皆无气以生，故不用焉。”意思是，四肢都接受胃所传输的水谷精微，但胃不能直接将水谷精微输送到四肢经脉，必须由脾气传输，才能到达。现在脾有病不能为胃传输水谷精微，四肢得不到水谷精微的营养，气血日渐衰少，经脉得不到滋养，筋骨肌肉都逐渐消瘦枯萎，所以四肢便丧失正常的功能了。因此，“脾病而四肢不用”的原因是脾不能为胃行津液。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 20,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0030",
+      "question_type": "single_choice",
+      "question_content": "患者，反复多次少量咯血伴胸痛，最可能不见于以下哪项",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "肺炎链球菌性肺炎"
+        },
+        {
+          "option_id": "B",
+          "content": "二尖瓣狭窄"
+        },
+        {
+          "option_id": "C",
+          "content": "肺梗死"
+        },
+        {
+          "option_id": "D",
+          "content": "肺结核"
+        },
+        {
+          "option_id": "E",
+          "content": "支气管肺癌"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "选项A肺炎链球菌性肺炎：虽然胸痛不是其主要表现，但在某些情况下，如病变累及胸膜时，也可能出现胸痛。因此，这一选项不能排除。选项B 二尖瓣狭窄：其主要表现为呼吸困难、咳嗽、咯血（多为痰中带血丝）和声嘶，但胸痛不是其主要或常见症状。与患者的症状相比，二尖瓣狭窄导致的胸痛相对少见。选项 C 肺梗死：其典型三联征包括呼吸困难、胸痛及咯血，与患者的症状高度吻合。选项 D肺结核：可能出现咯血和胸痛，尤其是在病变累及胸膜时。因此，这一选项也不能排除。选项 E支气管肺癌：是常见的导致咯血和胸痛的疾病之一，与患者的症状相符。综上所述，最可能不见于患者症状的是选项 B 二尖瓣狭窄，因为胸痛不是其主要表现，且咯血与胸痛同时出现的可能性相对较小。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 30,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0031",
+      "question_type": "single_choice",
+      "question_content": "下列各项，气管移向健侧的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "阻塞性肺不张"
+        },
+        {
+          "option_id": "B",
+          "content": "肺硬化"
+        },
+        {
+          "option_id": "C",
+          "content": "肺不张"
+        },
+        {
+          "option_id": "D",
+          "content": "单侧甲状腺肿大"
+        },
+        {
+          "option_id": "E",
+          "content": "肺广泛纤维化"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "气管检查－移向健侧：大量胸腔积液、积气、纵隔肿瘤以及单侧甲状腺肿大。气管检查－拉向患侧：肺不张、胸膜粘连、肺硬化。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 31,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0035",
+      "question_type": "single_choice",
+      "question_content": "下列各项，抽搐伴意识丧失的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "癫痫大发作"
+        },
+        {
+          "option_id": "B",
+          "content": "狂犬病"
+        },
+        {
+          "option_id": "C",
+          "content": "低钙血症"
+        },
+        {
+          "option_id": "D",
+          "content": "破伤风"
+        },
+        {
+          "option_id": "E",
+          "content": "癔症"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "抽搐伴瞳孔散大、意识丧失、大小便失禁，见于癫痫强直－阵挛发作（大发作）。不伴意识丧失，见于破伤风、狂犬病、低钙抽搐、癔症性抽搐等。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 35,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0046",
+      "question_type": "single_choice",
+      "question_content": "咳嗽伴有鸡鸣样声音的是",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "百日咳"
+        },
+        {
+          "option_id": "B",
+          "content": "喉头水肿"
+        },
+        {
+          "option_id": "C",
+          "content": "喉癌"
+        },
+        {
+          "option_id": "D",
+          "content": "声带炎"
+        },
+        {
+          "option_id": "E",
+          "content": "喉炎"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "鸡鸣样咳嗽见于：百日咳、会厌、喉部 病变或气管受压。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 46,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0079",
+      "question_type": "single_choice",
+      "question_content": "选方为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "七味白术散"
+        },
+        {
+          "option_id": "B",
+          "content": "消渴方"
+        },
+        {
+          "option_id": "C",
+          "content": "玉女煎"
+        },
+        {
+          "option_id": "D",
+          "content": "六味地黄丸"
+        },
+        {
+          "option_id": "E",
+          "content": "金匮肾气丸"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "消渴气阴亏虚证证候：口渴引饮，能食与便溏并见，或饮食减少，精神不振，四肢乏力，体瘦，舌质淡红，苔白而干，脉弱。治法：益气健脾，生津止渴。代表方：七味白术散加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 79,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0083",
+      "question_type": "single_choice",
+      "question_content": "兼脐下悸，吐涎沫，选方为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "五苓散"
+        },
+        {
+          "option_id": "B",
+          "content": "茯苓、泽泻"
+        },
+        {
+          "option_id": "C",
+          "content": "半夏、陈皮"
+        },
+        {
+          "option_id": "D",
+          "content": "苓甘五味姜辛汤"
+        },
+        {
+          "option_id": "E",
+          "content": "葶苈大枣泻肺汤"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "痰涎壅盛，食少痰多，可加半夏、陈皮化痰和中；水湿偏盛，足肿，小便不利，四肢沉重疼痛，可加茯苓、泽泻以利水湿；脐下悸，吐涎沫，头目昏眩，是饮邪上逆，虚中夹实之候，可用五苓散化气行水。共用题干：患者李某，女性，35 岁，近期出现频繁干呕，伴见口渴欲饮，但饮水不多，胃脘部隐隐灼痛，嘈杂不适，大便干结，舌红少津，脉细数。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 83,
+        "answer_source": "same_document"
+      }
+    },
+    {
+      "question_id": "bd4f84f55760-877578c095-q0084",
+      "question_type": "single_choice",
+      "question_content": "治法为",
+      "options": [
+        {
+          "option_id": "A",
+          "content": "滋养胃阴，降逆止呕"
+        },
+        {
+          "option_id": "B",
+          "content": "健脾益气，和胃降逆"
+        },
+        {
+          "option_id": "C",
+          "content": "温中健脾，和胃降逆"
+        },
+        {
+          "option_id": "D",
+          "content": "疏肝理气，和胃降逆"
+        },
+        {
+          "option_id": "E",
+          "content": "温中化饮，和胃降逆"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "呕吐胃阴不足证证候：呕吐反复发作，或时作干呕，似饥而不欲食，口燥咽干，舌红少津，脉细数。治法；滋养胃阴，降逆止呕。代表方：麦门冬汤加减。 答案：A 解析：支饮-脾肾阳虚证候：喘促动则为甚，心 A．麦门冬汤悸，气短，或咳而气怯，痰多，食少，胸闷， B．香砂六君子汤怯寒肢冷，神疲，少腹拘急不仁，脐下动悸， C．理中汤小便不利，足跗浮肿，或吐涎沫而头目昏眩， D．四七汤 E．小半夏汤合苓桂术甘汤答案：A 解析：呕吐胃阴不足证证候：呕吐反复发作，或时作干呕，似饥而不欲食，口燥咽干，舌红少津，脉细数。治法；滋养胃阴，降逆止呕。代表方：麦门冬汤加减。",
+      "kp_ids": [],
+      "media": [],
+      "source_ref": {
+        "file": "中医执业医师资格考试\\2024年中医执业医师（一试）题目整理\\full.md",
+        "number": 84,
+        "answer_source": "same_document"
+      }
+    }
+  ]
+}

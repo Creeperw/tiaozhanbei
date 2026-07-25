@@ -165,7 +165,7 @@ class CrossValidationServiceTests(unittest.TestCase):
         self.assertLess(review.knowledge_coverage, 1.0)
         self.assertTrue(any("knowledge_gap" in item for item in summary["conflicts"]))
 
-    def test_cross_validation_rejects_difficulty_mismatch(self):
+    def test_cross_validation_ignores_legacy_difficulty_fields(self):
         service = self._service()
 
         review, summary = service.cross_validate_output(
@@ -175,9 +175,9 @@ class CrossValidationServiceTests(unittest.TestCase):
             diagnosis_report=self._diagnosis_report(),
         )
 
-        self.assertEqual(review.decision, "reject")
-        self.assertLess(review.difficulty_match, 0.7)
-        self.assertTrue(any("difficulty" in item for item in summary["conflicts"]))
+        self.assertEqual(review.decision, "pass")
+        self.assertNotIn("difficulty_match", review.model_dump())
+        self.assertFalse(any("difficulty" in item for item in summary["conflicts"]))
 
     def test_cross_validation_marks_high_risk_medical_content_for_human_review(self):
         service = self._service()
