@@ -7,19 +7,43 @@ export const fetchWithAuth = async (url, options = {}) => {
   const headers = {
     ...options.headers,
   };
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 30_000;
+  const controller = new AbortController();
+  const timeout = timeoutMs > 0
+    ? globalThis.setTimeout(() => controller.abort(new DOMException('请求超时，请重试。', 'TimeoutError')), timeoutMs)
+    : null;
+  const abortFromCaller = () => controller.abort(options.signal?.reason);
+
+  if (options.signal?.aborted) abortFromCaller();
+  else options.signal?.addEventListener('abort', abortFromCaller, { once: true });
 
   // FormData 由浏览器生成 boundary；无 body 的 GET 也不需要 Content-Type。
   if (options.body !== undefined && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(url, { ...options, headers, credentials: 'include' });
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers,
+      signal: controller.signal,
+      credentials: 'include',
+    });
 
-  if (res.status === 401) {
-    window.dispatchEvent(new CustomEvent('competition:unauthorized'));
+    if (res.status === 401) {
+      window.dispatchEvent(new CustomEvent('competition:unauthorized'));
+    }
+
+    return res;
+  } catch (error) {
+    if (controller.signal.reason?.name === 'TimeoutError') {
+      throw controller.signal.reason;
+    }
+    throw error;
+  } finally {
+    if (timeout !== null) globalThis.clearTimeout(timeout);
+    options.signal?.removeEventListener('abort', abortFromCaller);
   }
-
-  return res;
 };
 
 export const readJsonResponse = async (res, fallback = {}) => {

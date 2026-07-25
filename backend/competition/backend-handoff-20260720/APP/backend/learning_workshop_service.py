@@ -123,6 +123,39 @@ def get_knowledge_card(db: Session, *, user_id: int, card_id: str) -> dict[str, 
     return serialize_knowledge_card(row, include_bundle=True) if row is not None else None
 
 
+def _published_source_kind(question: dict[str, Any]) -> str:
+    metadata = question.get("source_metadata")
+    source_kind = metadata.get("source_kind") if isinstance(metadata, dict) else None
+    if source_kind in {
+        "formal_question_bank",
+        "personal_question_bank",
+        "agent_generated",
+        "demo_stub",
+        "legacy_unknown",
+    }:
+        return source_kind
+    if question.get("origin") == "generated":
+        return "agent_generated"
+    return "formal_question_bank"
+
+
+def _published_evidence_refs(question: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = question.get("source_metadata")
+    source = metadata if isinstance(metadata, dict) else {}
+    refs = source.get("evidence_refs")
+    if isinstance(refs, list):
+        return [item for item in refs if isinstance(item, dict)]
+    return [
+        {
+            "kp_id": bridge.get("kp_id"),
+            "evidence_chunk_uid": bridge.get("evidence_chunk_uid"),
+            "match_method": bridge.get("match_method"),
+        }
+        for bridge in question.get("bridges") or []
+        if isinstance(bridge, dict)
+    ]
+
+
 def publish_agent_paper(
     db: Session,
     *,
@@ -179,8 +212,10 @@ def publish_agent_paper(
                 options_snapshot_json=json.dumps(question.get("options") or [], ensure_ascii=False),
                 standard_answer_snapshot=str(question.get("reference_answer") or ""),
                 kp_snapshot_json=json.dumps(kp_ids, ensure_ascii=False),
-                evidence_refs_json="[]",
-                source_kind="agent_audited",
+                evidence_refs_json=json.dumps(
+                    _published_evidence_refs(question), ensure_ascii=False
+                ),
+                source_kind=_published_source_kind(question),
                 standard_difficulty=item_difficulty,
                 max_score_snapshot=item_score,
             )

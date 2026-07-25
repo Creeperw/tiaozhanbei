@@ -28,15 +28,15 @@ backend/
 所有命令都从 `backend/` 目录执行。不要从 `competition_app/` 内部直接启动，否则 Python
 无法按包名解析绝对导入。
 
-## 1. 本地快速启动（Stub）
+## 1. 本地默认启动（Live 正式题库）
 
-项目开发环境为 Python 3.10 和 Conda `torch`：
+项目开发环境为 Python 3.10 和 Conda `torch`。`competition_app` 默认以 `live` 模式启动，必须先按照 [智能组卷 Live 部署说明](docs/smart-paper-live-deployment.md) 准备 `.env.local`、模型密钥和正式知识资产：
 
 ```bash
 cd backend
 conda activate torch
 python -m pip install -r competition_app/requirements.txt
-COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve
+python -m competition_app.cli.app serve
 ```
 
 健康检查：
@@ -45,12 +45,22 @@ COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve
 curl http://127.0.0.1:7860/health
 ```
 
-Stub 模式不调用外部模型和向量服务，适合前端联调、接口契约检查和自动化测试。
+返回必须包含 `"mode":"live"` 与 `"knowledge_source":"formal"`。如果缺少模型密钥或正式知识资产，服务会明确启动失败，不会静默返回演示题。
+
+## 2. 显式 Stub 模式
+
+仅在前端接口联调、自动化测试或没有正式资产的隔离环境使用：
+
+```bash
+COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve
+```
+
+Stub 模式不调用外部模型和向量服务，会返回演示题；不得用于正式智能组卷验收。
 
 > 当前配置按 `.env`、`.env.local`、系统环境变量的顺序覆盖读取；`.env.example`
 > 只展示可用变量，不包含任何有效密钥。
 
-## 2. Live 模式
+## 3. Live 模式依赖
 
 Live 模式默认使用：
 

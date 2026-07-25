@@ -117,8 +117,15 @@ class PaperAssemblyAgent:
                     + "。"
                 ],
             )
+        cooldown_question_ids = set(
+            context.get("personalization_summary", {}).get("recent_question_ids", [])
+        )
         by_unit = {
-            unit.unit_id: {item.question_id: item for item in unit.items}
+            unit.unit_id: {
+                item.question_id: item
+                for item in unit.items
+                if item.question_id not in cooldown_question_ids
+            }
             for unit in candidate_pool.units
         }
         blueprint_units = {unit.unit_id: unit for unit in blueprint.units}
@@ -135,6 +142,11 @@ class PaperAssemblyAgent:
                 )
                 continue
             question = by_unit.get(selected.unit_id, {}).get(selected.question_id)
+            if selected.question_id in cooldown_question_ids:
+                system_constraints.append(
+                    f"题目{selected.question_id}属于近期已发布题，系统已按冷却策略丢弃。"
+                )
+                continue
             if question is None:
                 system_constraints.append(
                     f"模型选择的题目{selected.question_id}不在蓝图单元"
@@ -170,13 +182,93 @@ class PaperAssemblyAgent:
                     selection_rationale=selected.selection_rationale,
                 )
             )
+        # Pool-first fallback: when the LLM selected nothing valid from the formal
+        # candidate pool, fill deterministically per blueprint unit before touching
+        # generated items. This ensures BM25-retrieved formal questions are always
+        # preferred over model-generated content.
+        if not items:
+            system_constraints.append(
+                "模型未从正式候选池选出有效题目，系统已按蓝图单元确定性回填候选。"
+            )
+            per_unit_target = {
+                unit.unit_id: unit.required_question_count
+                for unit in blueprint.units
+            }
+            for unit in candidate_pool.units:
+                target = per_unit_target.get(unit.unit_id, 1)
+                unit_filled = 0
+                blueprint_unit = blueprint_units[unit.unit_id]
+                for candidate in unit.items:
+                    if (
+                        candidate.question_id in selected_ids
+                        or candidate.question_id in cooldown_question_ids
+                    ):
+                        continue
+                    if (
+                        blueprint_unit.question_type_preferences
+                        and not self._matches_question_type(
+                            candidate.question_type,
+                            blueprint_unit.question_type_preferences,
+                        )
+                    ):
+                        continue
+                    normalized_stem = self._normalize_stem(candidate.stem)
+                    if normalized_stem in selected_stems:
+                        continue
+                    selected_ids.add(candidate.question_id)
+                    selected_stems.add(normalized_stem)
+                    items.append(
+                        ExamPaperItem(
+                            sequence=len(items) + 1,
+                            unit_id=unit.unit_id,
+                            score=None,
+                            question=candidate,
+                            selection_rationale="正式候选池确定性回填（模型未返回有效选题）。",
+                        )
+                    )
+                    unit_filled += 1
+                    if unit_filled >= target:
+                        break
+
         required_total = (
             blueprint.required_total_question_count
             if blueprint.question_count_is_hard_constraint
             else None
         )
+        if required_total and len(items) < required_total:
+            for unit in candidate_pool.units:
+                if len(items) >= required_total:
+                    break
+                blueprint_unit = blueprint_units[unit.unit_id]
+                for candidate in unit.items:
+                    if (
+                        len(items) >= required_total
+                        or candidate.question_id in selected_ids
+                        or candidate.question_id in cooldown_question_ids
+                    ):
+                        continue
+                    if blueprint_unit.question_type_preferences and not self._matches_question_type(
+                        candidate.question_type, blueprint_unit.question_type_preferences
+                    ):
+                        continue
+                    normalized_stem = self._normalize_stem(candidate.stem)
+                    if normalized_stem in selected_stems:
+                        continue
+                    selected_ids.add(candidate.question_id)
+                    selected_stems.add(normalized_stem)
+                    items.append(
+                        ExamPaperItem(
+                            sequence=len(items) + 1,
+                            unit_id=unit.unit_id,
+                            score=None,
+                            question=candidate,
+                            selection_rationale="候选池中合规题目，由系统按题量硬约束补充。",
+                        )
+                    )
         gap = max(0, required_total - len(items)) if required_total else 0
-        if required_total:
+        if not self._allows_generated_fill(context):
+            generated_candidates = []
+        elif required_total:
             generated_candidates = output.generated_items[:gap]
         else:
             covered_units = {item.unit_id for item in items}
@@ -235,53 +327,28 @@ class PaperAssemblyAgent:
                 )
             )
         if required_total and len(items) < required_total:
-            # The model is responsible for ranking and rationale, but hard
-            # question counts are system-owned. A retry/revision must not fail
-            # merely because the model omitted otherwise valid candidates.
-            for unit in candidate_pool.units:
-                if len(items) >= required_total:
-                    break
-                blueprint_unit = blueprint_units[unit.unit_id]
-                for candidate in unit.items:
-                    if len(items) >= required_total or candidate.question_id in selected_ids:
-                        continue
-                    if blueprint_unit.question_type_preferences and not self._matches_question_type(
-                        candidate.question_type, blueprint_unit.question_type_preferences
-                    ):
-                        continue
-                    normalized_stem = self._normalize_stem(candidate.stem)
-                    if normalized_stem in selected_stems:
-                        continue
-                    selected_ids.add(candidate.question_id)
-                    selected_stems.add(normalized_stem)
-                    items.append(
-                        ExamPaperItem(
-                            sequence=len(items) + 1,
-                            unit_id=unit.unit_id,
-                            score=None,
-                            question=candidate,
-                            selection_rationale="系统补足用户明确题量：候选池中未被模型选择的合规题目。",
-                        )
-                    )
-        if required_total and len(items) < required_total:
-            generated_gap_items = await self._generate_remaining_gap(
-                context=context,
-                blueprint=blueprint,
-                candidate_pool=candidate_pool,
-                current_items=items,
-                required_total=required_total,
-                skill=skill,
-            )
-            items.extend(generated_gap_items)
+            if self._allows_generated_fill(context):
+                generated_gap_items = await self._generate_remaining_gap(
+                    context=context,
+                    blueprint=blueprint,
+                    candidate_pool=candidate_pool,
+                    current_items=items,
+                    required_total=required_total,
+                    skill=skill,
+                )
+                items.extend(generated_gap_items)
+            else:
+                raise ValueError(
+                    "正式题库与已确认个人题库候选不足，测试模式不会生成补题；"
+                    "请缩小范围、减少题量或调整题型。"
+                )
         if not items:
-            # Keep a soft-count practice paper usable even if the model returns
-            # only hallucinated candidate IDs.  The fallback still selects
-            # exclusively from the system-owned candidate pool.
             fallback = next(
                 (
                     (unit, candidate)
                     for unit in candidate_pool.units
                     for candidate in unit.items
+                    if candidate.question_id not in cooldown_question_ids
                 ),
                 None,
             )
@@ -299,6 +366,20 @@ class PaperAssemblyAgent:
                 system_constraints.append(
                     "模型未返回有效候选题选择，系统已从正式候选池保留一道题继续组卷。"
                 )
+        if not items:
+            if cooldown_question_ids and any(
+                candidate.question_id in cooldown_question_ids
+                for unit in candidate_pool.units
+                for candidate in unit.items
+            ):
+                raise ValueError(
+                    "正式候选均属于近期已发布题，系统不会为避免重复而重新入卷；"
+                    "请更换主题、等待冷却期结束或在练习模式允许审核补题。"
+                )
+            raise ValueError(
+                "正式题库与已确认个人题库没有符合当前范围和题型的候选；"
+                "请缩小范围、调整题型或在练习模式允许审核补题。"
+            )
         items = [
             item.model_copy(update={"sequence": sequence})
             for sequence, item in enumerate(items, start=1)
@@ -602,6 +683,22 @@ class PaperAssemblyAgent:
             if added == 0:
                 break
         return generated_items
+
+    @staticmethod
+    def _allows_generated_fill(context: dict[str, Any]) -> bool:
+        constraints = context.get("exam_constraints") or {}
+        if not isinstance(constraints, dict):
+            return True
+        mode = str(
+            constraints.get("mode")
+            or constraints.get("answer_mode")
+            or constraints.get("exam_type")
+            or ""
+        ).lower()
+        if mode in {"test", "测试", "考试"}:
+            return False
+        value = constraints.get("allow_generated_fill")
+        return value is not False
 
     @staticmethod
     def _normalize_stem(value: str) -> str:

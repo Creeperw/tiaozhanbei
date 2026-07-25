@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+import asyncio
+from typing import Awaitable, Callable
 from uuid import uuid4
 
-from competition_app.contracts.knowledge import EvidenceItem, EvidencePack
+from competition_app.contracts.knowledge import (
+    EvidenceItem,
+    EvidencePack,
+    QuestionBridge,
+    QuestionDetail,
+    QuestionRetrievalMetadata,
+    QuestionSearchResult,
+)
 from competition_app.embeddings.base import EmbeddingModel
 from competition_app.tools.knowledge_assets import KnowledgeAssetRepository
 from competition_app.tools.question_retrieval import QuestionHybridRetriever
@@ -20,6 +29,7 @@ class KnowledgeRetrievalTool:
         textbook_retriever: TextbookVectorRetriever | None = None,
         exa_retriever: ExaVideoRetriever | None = None,
         delivery_backend: KnowledgeDeliveryBackend | None = None,
+        personal_question_loader: Callable[[str, str, list[str], int], Awaitable[list[QuestionDetail]]] | None = None,
     ) -> None:
         self.repository = repository
         self.embedding_model = embedding_model
@@ -27,6 +37,7 @@ class KnowledgeRetrievalTool:
         self.textbook_retriever = textbook_retriever
         self.exa_retriever = exa_retriever
         self.delivery_backend = delivery_backend
+        self.personal_question_loader = personal_question_loader
 
     async def build_evidence_pack(self, query: str) -> EvidencePack:
         web_items = []
@@ -173,19 +184,27 @@ class KnowledgeRetrievalTool:
         scope: str = "all",
     ):
         if self.delivery_backend is not None:
-            return await self.delivery_backend.search_questions(
+            result = await self.delivery_backend.search_questions(
                 query,
                 kp_ids,
                 limit,
                 owner_id=owner_id,
                 scope=scope,
             )
-        if self.question_retriever is None:
-            raise RuntimeError("question retrieval is not configured")
-        resolved_kp_ids = kp_ids or [match.kp_id for match in self.repository.resolve_topic(query)]
-        if not resolved_kp_ids:
-            raise LookupError(f"knowledge point could not be resolved for query: {query}")
-        return await self.question_retriever.search(query, resolved_kp_ids, limit)
+        else:
+            if self.question_retriever is None:
+                raise RuntimeError("question retrieval is not configured")
+            resolved_kp_ids = kp_ids or [match.kp_id for match in self.repository.resolve_topic(query)]
+            if not resolved_kp_ids:
+                raise LookupError(f"knowledge point could not be resolved for query: {query}")
+            result = await self.question_retriever.search(query, resolved_kp_ids, limit)
+        if self.personal_question_loader is None or not owner_id or scope == "public":
+            return result
+        personal_items = await self.personal_question_loader(owner_id, query, kp_ids or [], limit)
+        items = list(personal_items)
+        seen = {item.question_id for item in items}
+        items.extend(item for item in result.items if item.question_id not in seen)
+        return result.model_copy(update={"items": items[:limit]})
 
     async def get_question_with_content(
         self,

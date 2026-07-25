@@ -726,6 +726,7 @@ export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribu
       fallback: null,
       options: {
         method: 'POST',
+        timeoutMs: 180_000,
         body: JSON.stringify({
           learner_id: 'authenticated-user',
           user_request: `请围绕“${topic.trim()}”生成一份${answerMode === 'test' ? `测试模式（${durationMinutes}分钟）` : '练习模式'}试卷，共${questionCount}题，其中${typeRequirement}。完成审核后发布到学习工坊，不要在对话中展开试卷正文。`,
@@ -735,6 +736,8 @@ export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribu
             question_types: Object.keys(activeDistribution).map((type) => typeLabels[type] || type),
             question_type_distribution: activeDistribution,
             answer_mode: answerMode,
+            mode: answerMode,
+            allow_generated_fill: answerMode === 'practice',
             duration_minutes: answerMode === 'test' ? durationMinutes : null,
           },
         }),

@@ -332,6 +332,36 @@ async def test_blueprint_prompt_receives_current_planning_context() -> None:
     assert payload["learning_scope"]["books"] == ["《伤寒论选读》"]
 
 
+@pytest.mark.asyncio
+async def test_blueprint_prompt_receives_server_controlled_personalization_summary() -> None:
+    class CapturingBlueprintModel(StubChatModel):
+        def __init__(self) -> None:
+            self.payload = None
+
+        async def complete_json(self, role, payload, on_delta=None):
+            self.payload = payload
+            return await super().complete_json(role, payload, on_delta)
+
+    model = CapturingBlueprintModel()
+    context = {
+        **paper_context(),
+        "step_id": "paper_blueprint",
+        "personalization_summary": {
+            "priority_kp_ids": ["KP_WEAK_1"],
+            "review_kp_ids": ["KP_DUE_1"],
+            "data_status": "sufficient",
+        },
+    }
+
+    await PaperBlueprintAgent(model).run(context)
+
+    assert model.payload["payload"]["personalization_summary"] == {
+        "priority_kp_ids": ["KP_WEAK_1"],
+        "review_kp_ids": ["KP_DUE_1"],
+        "data_status": "sufficient",
+    }
+
+
 def test_blueprint_balances_question_types_when_user_did_not_specify_them() -> None:
     units = PaperBlueprintAgent._normalize_question_type_mix(
         [
@@ -397,6 +427,28 @@ def test_explicit_coverage_excludes_stale_exam_constraint_topics() -> None:
         ({"user_request": "请给我一份包含20个题目的选择题专项训练卷。"}, 20),
         ({"user_request": "请生成20道单项选择题。"}, 20),
         ({"user_request": "请出20道关于四君子汤的题。"}, 20),
+        (
+            {
+                "user_request": "第1轮：生成四君子汤单项选择题试卷5题",
+                "exam_constraints": {"question_count": 5},
+            },
+            5,
+        ),
+        (
+            {
+                "user_request": "第3阶段生成四君子汤单项选择题10题",
+                "exam_constraints": {"question_count": 10},
+            },
+            10,
+        ),
+        (
+            {"user_request": "请给我第3阶段的测试题"},
+            None,
+        ),
+        (
+            {"exam_constraints": {"question_count": "第3阶段"}},
+            None,
+        ),
         ({"user_request": "请给我一份选择题专项训练卷。"}, None),
     ],
 )

@@ -85,6 +85,17 @@ def _kp_names(db: Session, kp_ids: list[str]) -> list[str]:
     return [names[kp_id] for kp_id in kp_ids if kp_id in names]
 
 
+def _learner_source_label(source_kind: str | None) -> str:
+    labels = {
+        "formal_question_bank": "正式题库",
+        "personal_question_bank": "个人已确认题",
+        "agent_generated": "审核生成补题",
+        "demo_stub": "样例题",
+        "legacy_unknown": "历史题源待确认",
+    }
+    return labels.get(source_kind or "", "题源待确认")
+
+
 def _difficulty_source(source_kind: str | None) -> str:
     if source_kind == "agent_audited":
         return "agent_blueprint"
@@ -314,6 +325,8 @@ def get_owned_paper(db: Session, learner_id: int, paper_id: str) -> dict[str, An
             "kp_names": _kp_names(db, _decode_list(item.kp_snapshot_json)),
             "difficulty": item.standard_difficulty,
             "difficulty_source": _difficulty_source(item.source_kind),
+            "source_label": _learner_source_label(item.source_kind),
+            "recommendation_reason": "依据本卷范围、知识点覆盖与当前学习状态选择。",
             "max_score": float(item.max_score_snapshot or 100.0),
             "answer": answers.get(item.paper_item_id, ""),
         } for item in items],

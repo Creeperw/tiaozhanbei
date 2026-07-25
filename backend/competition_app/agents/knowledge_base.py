@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any
 from collections import Counter
@@ -396,13 +397,56 @@ class KnowledgeBaseAgent:
                 for item in evidence_pack.evidence_items
                 if item.resource_type == "question"
             ]
-            raw_candidates = []
+            retrieved_candidates = []
             unit_seen: set[str] = set()
+            stem_hashes: set[str] = set()
             for item in result.items:
-                if item.question_id in unit_seen:
+                stem_hash = hashlib.sha256(
+                    self._normalize_stem(item.stem).encode("utf-8")
+                ).hexdigest()
+                if item.question_id in unit_seen or stem_hash in stem_hashes:
                     continue
                 unit_seen.add(item.question_id)
-                raw_candidates.append(item)
+                stem_hashes.add(stem_hash)
+                retrieved_candidates.append(item)
+            retrieved_candidates = self._rotate_candidates(
+                retrieved_candidates, str(context.get("execution_id") or "")
+            )
+            recently_seen = set(
+                context.get("personalization_summary", {}).get(
+                    "recent_question_ids", []
+                )
+            )
+            eligible_before_cooldown = [
+                item
+                for item in retrieved_candidates
+                if self._matches_question_scope(item, unit, evidence_pack)
+                and (
+                    not unit.question_type_preferences
+                    or self._matches_question_type(
+                        item.question_type, unit.question_type_preferences
+                    )
+                )
+            ]
+            cooldown_filtered_count = sum(
+                item.question_id in recently_seen
+                for item in eligible_before_cooldown
+            )
+            raw_candidates = [
+                item
+                for item in retrieved_candidates
+                if item.question_id not in recently_seen
+            ]
+            if cooldown_filtered_count:
+                if cooldown_filtered_count == len(eligible_before_cooldown):
+                    warnings.append(
+                        f"检索命中{cooldown_filtered_count}道正式候选，但均属于近期已发布题；"
+                        "系统已按短期去重策略排除，练习模式可使用审核补题，测试模式会报告题库不足。"
+                    )
+                else:
+                    warnings.append(
+                        f"已按短期去重策略排除{cooldown_filtered_count}道近期正式候选。"
+                    )
             scope_candidates = [
                 item
                 for item in raw_candidates
@@ -502,6 +546,19 @@ class KnowledgeBaseAgent:
             ],
         )
         return envelope(context, "knowledge_base_agent", "question_candidate_pool", pool)
+
+    @staticmethod
+    def _normalize_stem(value: str) -> str:
+        return "".join(character.lower() for character in str(value) if character.isalnum())
+
+    @staticmethod
+    def _rotate_candidates(
+        candidates: list[QuestionDetail], execution_id: str
+    ) -> list[QuestionDetail]:
+        if len(candidates) < 2 or not execution_id:
+            return candidates
+        offset = int(hashlib.sha256(execution_id.encode("utf-8")).hexdigest(), 16) % len(candidates)
+        return [*candidates[offset:], *candidates[:offset]]
 
     @staticmethod
     def _normalize_question_type(value: str) -> str:

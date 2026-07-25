@@ -134,6 +134,14 @@ def build_backend(tmp_path: Path) -> KnowledgeDeliveryBackend:
     )
 
 
+def test_bm25_fallback_builds_persistent_question_index(tmp_path: Path) -> None:
+    backend = build_backend(tmp_path)
+    result = backend._search_questions_bm25(None, "四君子汤", ["KP_1"], 10, "public")
+
+    assert [item["question"]["question_id"] for item in result["items"]] == ["Q_PUBLIC"]
+    assert backend._public_question_index_path().is_file()
+
+
 @pytest.mark.asyncio
 async def test_delivery_evidence_preserves_retrieval_text_and_local_video(tmp_path: Path) -> None:
     backend = build_backend(tmp_path)

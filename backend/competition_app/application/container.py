@@ -164,9 +164,13 @@ class ApplicationContainer:
             )
             knowledge_backend = KnowledgeDeliveryBackend(
                 delivery_paths,
-                embedding_base_url=settings.embedding_base_url,
-                embedding_model=settings.embedding_model,
-                embedding_api_key=settings.siliconflow_api_key,
+                embedding_base_url=settings.embedding_base_url or "",
+                embedding_model=settings.embedding_model or "",
+                embedding_api_key=(
+                    settings.siliconflow_api_key
+                    if settings.embedding_mode == "enabled" and settings.siliconflow_api_key
+                    else None
+                ),
                 chat_base_url=settings.chat_base_url,
                 chat_model=settings.chat_model,
                 chat_api_key=settings.dashscope_api_key,
@@ -293,6 +297,10 @@ class ApplicationContainer:
         backend_handoff_runtime = (
             load_backend_handoff(settings) if include_backend_handoff else None
         )
+        if backend_handoff_runtime is not None:
+            knowledge_tool.personal_question_loader = (
+                backend_handoff_runtime.load_personal_question_candidates
+            )
         orchestrator = (
             orchestrator_class(
                 registry,

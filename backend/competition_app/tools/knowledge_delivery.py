@@ -657,8 +657,22 @@ class KnowledgeDeliveryBackend:
         owner_id: str | None,
         scope: str,
     ) -> QuestionSearchResult:
-        module = self._module("retrieval.hybrid_question_retrieval")
         embedder = self._sync_embedder()
+        if scope in {"all", "public"} and embedder is None:
+            raw = self._search_questions_bm25(query, kp_ids, limit, scope)
+            items = [self._question_detail(item) for item in raw.get("items") or []]
+            return QuestionSearchResult(
+                query=query,
+                resolved_kp_ids=list(dict.fromkeys([
+                    str(row.get("raw_kp_id") or row.get("kp_id") or "")
+                    for row in (raw.get("query") or {}).get("resolved_kps") or []
+                    if row.get("raw_kp_id") or row.get("kp_id")
+                ])),
+                embedding_model="bm25-only",
+                vector_index_path="",
+                items=items,
+            )
+        module = self._module("retrieval.hybrid_question_retrieval")
         raw = module.search(
             query,
             kp_ids,
@@ -1196,3 +1210,76 @@ class KnowledgeDeliveryBackend:
 
     def exam_validation_summary(self) -> dict[str, Any]:
         return self.official_exam_repository.get_validation_summary()
+
+    def _search_questions_bm25(
+        self, query: str, kp_ids: list[str], limit: int, scope: str
+    ) -> dict[str, Any]:
+        if scope not in {"all", "public"}:
+            raise ValueError("BM25 fallback supports public question search only")
+        resolved = self.map.resolve_topic(query, limit=5)
+        target_kp_ids = {
+            *[str(v) for v in kp_ids if str(v).strip()],
+            *[str(item["kp_id"]) for item in resolved],
+        }
+        query_terms = set(re.findall(r"[一-鿿㐀-䶿][一-鿿㐀-䶿]|[a-z0-9_]{2,}", query.lower()))
+        direct = []
+        for question in self._iter_public_questions():
+            qid = str(question.get("question_id") or question.get("题目id") or "")
+            if not qid:
+                continue
+            qkp_ids = [str(v) for v in question.get("kp_ids") or [] if str(v)]
+            if target_kp_ids.intersection(qkp_ids):
+                direct.append((1.0, qid, question, qkp_ids, ["bridge"]))
+                if len(direct) >= max(limit * 5, 100):
+                    break
+        items = [
+            self._streamed_question_item(q, kps, score, ch)
+            for score, _, q, kps, ch in direct[:limit]
+        ]
+        return {
+            "query": {"text": query, "requested_kp_ids": kp_ids, "resolved_kps": resolved},
+            "embedding_model": None,
+            "items": items,
+        }
+
+    def _iter_public_questions(self):
+        path = self.paths.public_data / "01_question_bank" / "formatted_questions.json"
+        try:
+            import ijson
+        except ImportError:
+            ijson = None
+        if ijson is not None:
+            with path.open("rb") as h:
+                for q in ijson.items(h, "item"):
+                    if isinstance(q, dict):
+                        yield q
+            return
+        decoder = json.JSONDecoder()
+        buf = ""
+        with path.open("r", encoding="utf-8-sig") as h:
+            while chunk := h.read(64 * 1024):
+                buf += chunk
+                pos = 0
+                while True:
+                    while pos < len(buf) and buf[pos] in "[\n\r\t ,":
+                        pos += 1
+                    if pos >= len(buf): buf = ""; break
+                    if buf[pos] == "]": return
+                    try:
+                        v, end = decoder.raw_decode(buf, pos)
+                    except json.JSONDecodeError:
+                        buf = buf[pos:]; break
+                    if isinstance(v, dict): yield v
+                    pos = end
+
+    def _streamed_question_item(self, question, kp_ids, score, channels):
+        knowledge_points = []
+        for rank, kp_id in enumerate(kp_ids, start=1):
+            kp = self.map.kps.get(kp_id)
+            if kp is None:
+                continue
+            knowledge_points.append({
+                "kp": dict(kp),
+                "bridge": {"kp_id": kp_id, "rank": rank, "relation": "primary" if rank == 1 else "secondary", "confidence": 1.0, "bridge_layer": "embedded_kp_ids", "match_method": ["formatted_questions.kp_ids"]},
+            })
+        return {"question": question, "knowledge_points": knowledge_points, "question_exam_matches": [], "retrieval": {"score": score, "channels": channels}}

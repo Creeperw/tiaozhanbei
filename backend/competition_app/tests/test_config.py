@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from competition_app.config import (
@@ -9,12 +11,56 @@ from competition_app.config import (
 )
 
 
+def test_live_mode_is_the_default_and_requires_model_secrets() -> None:
+    with pytest.raises(SettingsError, match="DASHSCOPE_API_KEY"):
+        Settings.from_env({})
+
+
+def test_live_mode_requires_handoff_secret_when_handoff_is_enabled() -> None:
+    with pytest.raises(SettingsError, match="BACKEND_HANDOFF_SECRET_KEY"):
+        Settings.from_env(
+            {
+                "COMPETITION_APP_MODE": "live",
+                "DASHSCOPE_API_KEY": "test-dashscope-key",
+                "SILICONFLOW_API_KEY": "test-siliconflow-key",
+                "BACKEND_HANDOFF_ENABLED": "true",
+            }
+        )
+
+
+def test_live_mode_requires_persistent_database_configuration() -> None:
+    with pytest.raises(SettingsError, match="persistent database"):
+        Settings.from_env(
+            {
+                "COMPETITION_APP_MODE": "live",
+                "DASHSCOPE_API_KEY": "test-dashscope-key",
+                "SILICONFLOW_API_KEY": "test-siliconflow-key",
+                "BACKEND_HANDOFF_ENABLED": "false",
+            }
+        )
+
+
+def test_live_mode_allows_sqlite_persistence() -> None:
+    settings = Settings.from_env(
+        {
+            "COMPETITION_APP_MODE": "live",
+            "DASHSCOPE_API_KEY": "test-dashscope-key",
+            "SILICONFLOW_API_KEY": "test-siliconflow-key",
+            "BACKEND_HANDOFF_ENABLED": "false",
+            "USE_SQLITE": "true",
+        }
+    )
+
+    assert settings.mode == "live"
+    assert settings.use_sqlite is True
+
+
 def test_stub_mode_does_not_require_external_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in ("DASHSCOPE_API_KEY", "SILICONFLOW_API_KEY", "MYSQL_PASSWORD"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("COMPETITION_APP_MODE", "stub")
 
-    settings = Settings.from_env()
+    settings = Settings.from_env({"COMPETITION_APP_MODE": "stub"})
 
     assert settings.mode == "stub"
     assert settings.chat_model == "qwen3.7-plus-2026-05-26"
@@ -65,7 +111,7 @@ def test_settings_accepts_question_vector_store_root_override() -> None:
         }
     )
 
-    assert str(settings.question_vector_store_root) == "/tmp/question-vector-store"
+    assert settings.question_vector_store_root == Path("/tmp/question-vector-store").resolve()
 
 
 def test_settings_accepts_legacy_execution_engine() -> None:
@@ -113,8 +159,8 @@ def test_settings_parse_unified_server_and_runtime_configuration() -> None:
 
     assert settings.api_host == "0.0.0.0"
     assert settings.api_port == 7860
-    assert str(settings.runtime_root) == "/tmp/tiaozhanbei-runtime"
-    assert str(settings.frontend_dist_root) == "/tmp/tiaozhanbei-dist"
+    assert settings.runtime_root == Path("/tmp/tiaozhanbei-runtime").resolve()
+    assert settings.frontend_dist_root == Path("/tmp/tiaozhanbei-dist").resolve()
     assert settings.llm_timeout_seconds == 180
 
 
@@ -192,15 +238,9 @@ def test_repository_env_example_contains_no_secret_values() -> None:
     ):
         assert values[name] == ""
 
-    settings = Settings.from_env(values)
-    assert settings.mode == "stub"
-    assert settings.api_port == 7860
-    assert settings.runtime_root == (
-        BACKEND_ROOT.parent / "backend" / "competition_app" / "runtime"
-    ).resolve()
-    assert settings.frontend_dist_root == (
-        BACKEND_ROOT.parent / "frontend" / "llm" / "dist"
-    ).resolve()
+    assert values["COMPETITION_APP_MODE"] == "live"
+    with pytest.raises(SettingsError, match="DASHSCOPE_API_KEY"):
+        Settings.from_env(values)
 
 
 def test_compatibility_config_delegates_models_to_main_settings(monkeypatch) -> None:
