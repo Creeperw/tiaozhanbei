@@ -159,9 +159,24 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
         )}
       </div>
       <footer className="mx-auto flex max-w-3xl flex-wrap gap-3 border-t border-slate-200 px-5 py-4"><button type="button" disabled={position === 1} onClick={() => changePosition(position - 1)} className={`${buttonBase} border-slate-300 bg-white text-slate-700`}><ChevronLeft size={16} />上一题</button><button type="button" onClick={toggleMarked} className={`${buttonBase} ${marked.includes(position) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'}`}><Bookmark size={16} />标记本题</button><button type="button" onClick={() => {
+    const books = JSON.parse(localStorage.getItem('qp-collection-books') || '[]');
+    const choices = ['默认'].concat(books).concat(['+ 新建收藏簿']);
+    const choice = prompt('选择收藏簿：\n' + choices.map(function(c, i) { return (i+1) + '. ' + c; }).join('\n') + '\n\n输入序号或新收藏簿名称：');
+    if (!choice) return;
+    var bookName = choice.trim();
+    var idx = parseInt(choice);
+    if (idx >= 1 && idx <= choices.length) {
+      bookName = choices[idx - 1];
+    }
+    if (bookName === '+ 新建收藏簿') {
+      bookName = prompt('请输入新收藏簿名称：');
+      if (!bookName || !bookName.trim()) return;
+      bookName = bookName.trim();
+      if (books.indexOf(bookName) === -1) { books.push(bookName); localStorage.setItem('qp-collection-books', JSON.stringify(books)); }
+    }
     const key = 'qp-favorite-questions';
     const favs = JSON.parse(localStorage.getItem(key) || '[]');
-    if (!favs.find(f => f.question_id === current.question_id)) {
+    if (!favs.find(function(f) { return f.question_id === current.question_id && f.book === bookName; })) {
       favs.unshift({
         question_id: current.question_id,
         question_content: current.question_content,
@@ -170,6 +185,7 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
         my_answer: String(answers[current.question_id] || ''),
         standard_answer: current.standard_answer || current.answer || [],
         explanation: current.explanation || '',
+        book: bookName,
         source: '综合套题',
         saved_at: new Date().toISOString(),
       });

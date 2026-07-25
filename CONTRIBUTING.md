@@ -9,15 +9,11 @@
 | Creeperw | 多智能体后端、前后端整合、章节层级、数据持久化、接口与部署文档 |
 | sunjingyan（GitHub：[@Monologue-8106](https://github.com/Monologue-8106)） | 登录体验、顺序学习路径、知识空间和学习工坊前端交互 |
 | 11075 | 团队交接与 PowerShell 启动端口校准 |
-| noalternative9 | 模拟病患组件后端接入、SimulatedPatientChat 前端组件、训练工坊 UI 优化、资格试卷数据导入、本地部署配置与调试 |
+| noalternative9 | 模拟病患组件后端接入、SimulatedPatientChat 前端、训练工坊 UI 优化、收藏夹/笔记本/错题库功能、资格试卷数据导入、本地部署配置与调试 |
 
 GitHub Contributors 页面依据 `main` 可达提交的作者邮箱统计。提交者应使用已绑定到个人 GitHub 账号的邮箱；修改历史提交作者会破坏审计链路，不应为了统计而重写已经共享的提交。
 
-当前 GitHub 已将 `sunjingyan <2136945143@qq.com>` 正确映射为 `@Monologue-8106`。`11075 <11075@local>` 不是 GitHub 可识别邮箱，因此提交历史已经保留，但在该邮箱绑定到账号前不会出现在 GitHub Contributors 页面。
-
 ## 已保留的协作分支历史
-
-2026-07-23 的整合基线已将下列历史作为合并父提交接入 `main`：
 
 - `feature/light-login-page`
 - `feat/sequential-learning-path`
@@ -25,89 +21,126 @@ GitHub Contributors 页面依据 `main` 可达提交的作者邮箱统计。提�
 - `feat/chapter-hierarchy-api-settings-20260722`
 - `codex/team-handoff-2026-07-20`
 
-这些功能在合并前已经进入当前工作区并完成在线验收，因此合并提交以当前可运行文件树为准，同时保留原分支提交和作者信息。后续不要再次复制或压缩这些历史。
+---
 
-## 模拟病患组件集成（2026-07-24 ~ 2026-07-25）
+## 本次修改涉及的后端接口
 
-基于 `模拟病患5/` 交付包，完成以下后端接入与前端改造，工作在 `fxz729/训练工坊` 分支。
+### 1. 模拟病患 API — `POST /api/v1/simulated-patient`
 
-### 后端修改
+已有统一入口，本次新增响应字段：
+
+| 修改 | 字段 | 说明 |
+|------|------|------|
+| `engine.py:_handle_start` | `data.case_id` | 新增，返回案例 ID，供前端匹配收藏/误诊记录 |
+| `engine.py:_handle_start` | `data.case_name` | 新增，返回案例疾病名称，供历史记录显示 |
+| `session_manager.py` | 文件持久化 | `SessionManager` 新增 `data_dir` 参数，session 数据写入 `{data_dir}/sessions/{id}.json`，服务重启后不丢失 |
+
+**Session 文件持久化**：`SessionManager.get()` 先查内存再查文件；`set()` 同时写入内存和文件。解决了原纯内存存储导致服务重启后 `dialogue` 返回 `Session not initialized` 的问题。
+
+### 2. 资格试卷 API
+
+本次无后端修改。调用方式见 `QualificationPaperPanel.jsx` 中的 `request()` 封装：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/v1/qualification-papers/catalog` | 获取考试类别 + 套题目录 |
+| POST | `/api/v1/qualification-papers/{template_id}/attempts` | 创建作答记录 |
+| GET | `/api/v1/qualification-paper-attempts/{attempt_id}` | 获取作答详情（含保存的答案和进度） |
+| PUT | `/api/v1/qualification-paper-attempts/{attempt_id}/progress` | 保存作答进度（含 `paused` 标志） |
+| POST | `/api/v1/qualification-paper-attempts/{attempt_id}/submit` | 提交试卷 |
+| GET | `/api/v1/qualification-paper-attempts/{attempt_id}/items/{question_id}/explanation` | 获取单题解析 |
+
+**断点续答**：sessionStorage 改为按 `qp-attempt-{template_id}` 分试卷存储，支持多试卷独立保存/恢复。测试模式恢复时 `remaining_seconds` 由后端实时计算（`started_at + duration - now`）。
+
+### 3. 用户认证 API — `GET /api/v1/auth/me`
+
+用于 SimulatedPatientChat 欢迎页获取当前登录用户名，显示 "欢迎XX医生"。
+
+---
+
+## 前端接口调用清单
+
+### 模拟病患对话 (`SimulatedPatientChat.jsx`)
+
+| 功能 | action | 额外参数 | 响应字段 |
+|------|--------|---------|---------|
+| 开始问诊 | `start` | — | `patient_reply`, `patient_info`, `case_name`, `case_id`, `session_id` |
+| 对话 | `dialogue` | `user_input` | `patient_reply`, `turn_count`, `help_available` |
+| 援助 | `help` | `help_type` | `question` / `interpretation` |
+| 提交诊断 | `submit` | `diagnosis` | `grading_report`, `history_id` |
+| 清空对话 | `reset` | — | `patient_reply` |
+| 统计 | `stats` | — | `total`, `rate` |
+| 错题列表 | `mistakes` | — | `list[{mistake_id, case_name, score}]` |
+| 收藏列表 | `collections` | — | `list[{case_id, case_name}]` |
+| 对话历史 | `dialog_history` | `limit` | `list[{session_id, role, content}]` |
+| 历史详情 | `history_detail` | `history_id` | `full_dialogue`, `grading_report` |
+
+### 前端 localStorage 数据结构
+
+| Key | 格式 | 说明 |
+|-----|------|------|
+| `sp-session-id` | `string` | 当前 SP 会话 ID（sessionStorage） |
+| `sp-completed-sessions` | `[{session_id, case_name, case_id, gender, age_range, body_type, score, diagnosis_correct, status, messages, grading_report, ...}]` | 完整接诊记录 |
+| `sp-collections` | `{bookName: [{session_id, case_name, score, ...}]}` | 收藏簿（按簿分组） |
+| `qp-favorite-questions` | `[{question_id, question_content, options, my_answer, standard_answer, explanation, book, source, saved_at}]` | 收藏的题目 |
+| `qp-collection-books` | `["簿名1", "簿名2"]` | 收藏簿列表 |
+| `study-notes` | `[{id, title, content, type, source, question_content, options, standard_answer, explanation, created_at}]` | 学习笔记 |
+| `qp-notes-{attemptId}` | `{posKey: {title, content, type, source}}` | 按试卷 ID 存储的做题笔记 |
+| `qp-catalog-cache` | `{exams, papers}` | 资格试卷目录缓存 |
+| `qp-attempt-{template_id}` | `string` | 按试卷模板存储的 attempt ID（sessionStorage） |
+| `qp-completed-papers` | `{examId: count}` | 各考试类别已完成套题数 |
+
+---
+
+## 修改文件清单
+
+### 后端
 
 | 文件 | 改动 |
 |------|------|
-| `backend/competition_app/simulated_patient/` | **新增** — 组件核心模块，从交付包复制 |
-| `backend/competition_app/simulated_patient/llm_adapter.py` | **新增** — 将项目 DashScope `qwen3.7-max-2026-05-20` 适配为组件 LLMProvider 接口 |
-| `backend/competition_app/simulated_patient/agent_clients.py` | **修改** — 新增 `ProductionMemoryAgent` / `ProductionDiagnosisAgent` 生产环境桩，解决原组件在生产环境抛出 `NotImplementedError` 的问题 |
-| `backend/competition_app/simulated_patient/case_adapter.py` | **修改** — 放宽正则匹配支持 `主诉 `（空格分隔），新增现病史/病史摘要备选提取，修复 20 个案例症状全部提取为空的 bug |
-| `backend/competition_app/simulated_patient/engine.py` | **修改** — `_handle_start` 响应新增 `case_name` 字段，供前端历史记录使用 |
-| `backend/competition_app/api/simulated_patient_routes.py` | **新增** — FastAPI 路由：`POST /api/v1/simulated-patient` 统一入口 + 2 个 GET 快捷接口 |
-| `backend/competition_app/api/app.py` | **修改** — 注册模拟病患路由，初始化引擎（6 行新增） |
-| `backend/competition_app/data/clinical_cases.json` | **新增** — 20 个 CMB 临床案例数据 |
+| `backend/competition_app/simulated_patient/session_manager.py` | **重写** — 新增文件持久化（内存 + JSON 文件双写），`get()` 先查内存再查文件 |
+| `backend/competition_app/simulated_patient/engine.py` | `_handle_start` 响应新增 `case_name`、`case_id` 字段；`SessionManager` 传入 `data_dir` |
+| `backend/competition_app/simulated_patient/case_adapter.py` | 正则放宽：`主诉[：:\s]+` 支持空格分隔；新增病史摘要/现病史备选提取；同步修复体格检查/辅助检查正则 |
+| `backend/competition_app/simulated_patient/agent_clients.py` | 新增 `ProductionMemoryAgent` / `ProductionDiagnosisAgent` 生产环境桩 |
+| `backend/competition_app/simulated_patient/llm_adapter.py` | **新增** — 将项目 DashScope 模型适配为组件 LLMProvider |
+| `backend/competition_app/api/simulated_patient_routes.py` | **新增** — FastAPI 路由 |
+| `backend/competition_app/api/app.py` | 注册模拟病患路由（+6 行） |
+| `backend/competition_app/data/clinical_cases.json` | **新增** — 20 个 CMB 临床案例 |
 
-### 前端修改
+### 前端
 
 | 文件 | 改动 |
 |------|------|
-| `frontend/llm/src/components/SimulatedPatientChat.jsx` | **新增** — 模拟病患对话主组件（~900 行），含侧栏、欢迎页、问诊对话、评分报告、历史记录完整功能 |
-| `frontend/llm/src/components/SimulatedPatientChat.test.jsx` | **新增** — 6 个 Vitest 单元测试 |
-| `frontend/llm/src/components/PracticePage.jsx` | **修改** — `CaseTrainingPanel` 替换为 `SimulatedPatientChat`，SP 模式下隐藏 toolbar/header/result-panel/mobile-tabs，改为全屏渲染 |
-| `frontend/llm/src/components/QuestionTrainingPanel.jsx` | **修改** — 同上前端组件替换（2 行） |
-| `frontend/llm/src/components/PracticePage.test.jsx` | **修改** — Mock 名称从 `CaseTrainingPanel` 更新为 `SimulatedPatientChat` |
-| `frontend/llm/src/index.css` | **修改** — 新增 ~600 行 `sp-*` CSS 命名空间样式（侧栏、欢迎页、问诊对话、评分报告、手绘草药背景等） |
-| `frontend/llm/API_CHANGES.md` | **新增** — API 调用清单与客户端 workaround 说明 |
+| `frontend/llm/src/components/SimulatedPatientChat.jsx` | **新增** — ~900 行，含侧栏/欢迎页/问诊对话/评分报告/历史记录 |
+| `frontend/llm/src/components/SimulatedPatientChat.test.jsx` | **新增** — 6 个 Vitest 测试 |
+| `frontend/llm/src/components/PracticePage.jsx` | SP 全屏渲染、`isFullPanel` 布局、`QuestionFavoritesPanel`（收藏簿）、`StudyNotesPanel`（笔记本+筛选+编辑）、`TrainingBannerIllustration`（李时珍 QQ 人+气泡） |
+| `frontend/llm/src/components/QuestionTrainingPanel.jsx` | 新增 header + 返回按钮 |
+| `frontend/llm/src/components/SmartPaperPanel.jsx` | 新增 header + 返回按钮；折叠面板渐变+图标；试卷卡片点击打开 |
+| `frontend/llm/src/components/MistakeVariationPanel.jsx` | 新增 header + 返回按钮 |
+| `frontend/llm/src/components/QualificationAttemptWorkspace.jsx` | 笔记本面板（75/25 分栏）；「加入收藏」按钮（选择/新建收藏簿）；保存按钮 |
+| `frontend/llm/src/components/QualificationPaperPanel.jsx` | 考试类别卡片渐变+图标+统计；年份/类型筛选水平布局；`catalog` 缓存；per-paper sessionStorage |
+| `frontend/llm/src/components/PaperGenerationPanel.jsx` | 评分解析卡下方「加入收藏」「记笔记」按钮 + 记笔记弹窗；返回试卷列表回调；`onBack` prop |
+| `frontend/llm/src/index.css` | ~600 行 `sp-*` 样式；训练工坊首页渐变卡片+QQ 人；手绘草药 SVG 背景；侧栏渐变按钮 |
 
-### 前端功能概览
+---
 
-- **侧栏**（320px，可伸缩，默认展开）：返回训练工坊、开始诊断、我的收藏、我的误诊、历史记录按钮；下方展示接诊记录列表（待作答优先，已作答按时间倒序）
-- **欢迎页**：听诊器图标 + "欢迎XX医生" + 今日统计卡片 + "开始今天的问诊吧"CTA
-- **模式选择**：随心练 / 题型专练（带科室输入框），绿色渐变边框 + 阴影
-- **问诊对话**：患者信息卡 + 对话气泡（患者红底/医生绿底 + emoji头像）+ 操作按钮（清空对话/申请援助/提交诊断）
-- **申请援助**：10 轮后解锁，弹出选择卡片（关键问题/症状解读）
-- **评分报告**：六维得分进度条 + 正确答案 + 知识点 + 疾病辨析 + 综合建议 + 加入收藏/休息/下一位操作
-- **历史查看**：点击任何侧栏案例跳转对应对话，底部绿色评分报告折叠按钮，已提交案例隐藏输入框
-- **存储机制**：全部对话实时保存到 `localStorage`，未提交退出后侧栏显示「待作答」标签，点击恢复全部对话
-- **视觉设计**：绿色系（#059669），手绘草药 SVG 暗纹背景，输入框复用智能助教 `compact-assistant__composer` 样式
+## 依赖修复
 
-### 依赖修复
+| 问题 | 修复 |
+|------|------|
+| `fastapi-mail==1.5.2` 缺少 `SecretStr` 导入 | 升级到 `1.6.5` |
+| `exa_py` 未安装 | `pip install exa_py` |
 
-- `fastapi-mail` 从 1.5.2 升级到 1.6.5，修复 `SecretStr` 未导入导致的 `BACKEND_HANDOFF_ENABLED=true` 启动崩溃
-- `exa_py` 补充安装（原 `requirements.txt` 遗漏）
-
-## 资格试卷数据导入（2026-07-25 Pull）
-
-从 `fxz729/训练工坊` 远程拉取的更新：
-
-- `backend/competition_app/data/qualification_papers/` — 80+ 套资格试卷 JSON + 目录 + 审计报告
-- `backend/competition_app/services/qualification_papers.py` — 试卷查询服务
-- 前端 `QualificationPaperPanel` / `QualificationAttemptWorkspace` / `SmartPaperPanel` 组件
-
-## 开发流程
-
-1. 从最新 `main` 创建单一目标的功能分支。
-2. 后端接口变化同步修改 OpenAPI/Pydantic 契约和 `docs/frontend-api-reference.md`。
-3. 数据库变化新增编号迁移，不修改已经执行的迁移文件。
-4. 不提交 `.env`、密钥、数据库、向量索引、缓存、用户数据或运行快照。
-5. 合并前完成与改动对应的单元测试、前端构建和在线流程验收。
-6. 使用普通 merge 或 Pull Request 保留作者历史，避免 squash 掉需要计入贡献列表的多人提交。
+---
 
 ## 验收命令
 
 ```bash
 cd backend
-conda run -n torch python -m pytest -q competition_app/tests \
-  --ignore=competition_app/tests/integration/test_learning_plan_live_flow.py
+python -m pytest -q competition_app/tests --ignore=competition_app/tests/integration/test_learning_plan_live_flow.py
 
 cd ../frontend/llm
 npm run test:unit
 npm run lint
 npm run build
 ```
-
-不要从 WSL 命令行运行 Live pytest。Live 流程应在已经启动的前端运行面板点击 Execute，并以浏览器真实接口结果为准。
-
-部署、数据库和接口细节分别见：
-
-- [部署与升级指南](docs/deployment.md)
-- [数据库运维指南](docs/database-operations.md)
-- [前端接口参考](docs/frontend-api-reference.md)
-- [学情监测与资源匹配口径](docs/learning-monitoring-methodology.md)

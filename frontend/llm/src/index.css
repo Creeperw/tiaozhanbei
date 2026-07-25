@@ -3134,6 +3134,24 @@ textarea:focus-visible {
   object-position: top center;
   border-radius: 0 0 16px 16px;
   filter: drop-shadow(0 6px 12px rgba(5,150,105,.12));
+  cursor: pointer;
+  transition: transform 220ms cubic-bezier(.22, 1, .36, 1), filter 180ms ease;
+  animation: practice-character-idle 3.8s ease-in-out infinite;
+}
+
+@keyframes practice-character-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.practice-overview__character:hover {
+  transform: translateY(-6px);
+  filter: drop-shadow(0 12px 18px rgba(5,150,105,.22));
+  animation-play-state: paused;
+}
+
+.practice-overview__character:active {
+  transform: translateY(-2px) scale(.96);
 }
 
 .practice-overview__speech-bubble {
@@ -3164,9 +3182,30 @@ textarea:focus-visible {
 
 .practice-overview__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, .42fr);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, .35fr);
   gap: 20px;
 }
+
+.practice-overview__utilities {
+  display: flex;
+  flex-direction: column;
+}
+
+.practice-overview__utilities .practice-overview__section-heading {
+  flex-shrink: 0;
+}
+
+.practice-overview__utility-list {
+  flex: 1;
+  display: grid;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 12px;
+  align-content: start;
+}
+
+.practice-overview__utility-list > :nth-child(1) { grid-row: 1; }
+.practice-overview__utility-list > :nth-child(2) { grid-row: 2; }
+.practice-overview__utility-list > :nth-child(3) { grid-row: 3; }
 
 .practice-overview__main,
 .practice-overview__utilities {
@@ -3238,7 +3277,8 @@ textarea:focus-visible {
 .practice-overview__utility-card small { color: #657a6e; font-size: .82rem; line-height: 1.55; }
 .practice-overview__card-arrow { justify-self: end; color: #2a8652; }
 
-.practice-overview__utility-list { display: grid; gap: 12px; }
+.practice-overview__utility-list { display: flex; flex-direction: column; gap: 12px; }
+.practice-overview__utility-list > * { flex: 1 1 0; min-height: 0; }
 .practice-overview__utility-card { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: center; gap: 12px; width: 100%; min-height: 130px; border: 1px solid #e2ece5; border-radius: 12px; background: #fbfdfb; padding: 20px 18px; text-align: left; }
 .practice-overview__utility-card:is(button) { cursor: pointer; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
 .practice-overview__utility-card:is(button):hover { border-color: #9dceb0; box-shadow: 0 10px 22px rgb(43 91 62 / 9%); transform: translateY(-1px); }

@@ -240,7 +240,7 @@ const utilityCards = [
   },
   {
     key: 'study_notes',
-    title: '学习笔记',
+    title: '笔记本',
     description: '沉淀学习心得，形成个人知识脉络。',
     icon: NotebookPen,
     available: true,
@@ -256,7 +256,7 @@ const workspaceTitles = {
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
   question_favorites: '收藏夹',
-  study_notes: '学习笔记',
+  study_notes: '笔记本',
 };
 
 const legacyTaskTypes = {
@@ -280,7 +280,7 @@ function QuestionFavoritesPanel({ onBack }) {
   var stdAnswer = function(item) { var ans = item.standard_answer; if (Array.isArray(ans)) return ans.join('、'); if (typeof ans === 'string') return ans; return ''; };
   var hasCorrect = function(item) { return stdAnswer(item).length > 0; };
   var removeFav = function(e, questionId) { e.stopPropagation(); var next = favs.filter(function(f) { return f.question_id !== questionId; }); setFavs(next); localStorage.setItem('qp-favorite-questions', JSON.stringify(next)); if (expanded === questionId) setExpanded(null); };
-  var books = {}; favs.forEach(function(f) { var b = f.book || '默认'; if (!books[b]) books[b] = []; books[b].push(f); });
+  var books = {}; var bookNamesList = JSON.parse(localStorage.getItem('qp-collection-books') || '[]'); bookNamesList.forEach(function(b) { books[b] = []; }); favs.forEach(function(f) { var b = f.book || '默认'; if (!books[b]) books[b] = []; books[b].push(f); });
   if (selectedBook) {
     var items = books[selectedBook] || [];
     return (
@@ -341,7 +341,7 @@ function QuestionFavoritesPanel({ onBack }) {
         {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
         <div className="flex items-center gap-5" style={{flex:1,minWidth:0}}>
           <div><h2 className="text-lg font-semibold text-slate-950">收藏夹</h2><p className="mt-1 text-sm text-slate-600">{bookNames.length} 个收藏簿 · {favs.length} 道题目</p></div>
-          <button type="button" onClick={function() { var name = prompt('请输入新收藏簿名称：'); if (name && name.trim()) setFavs(function(prev) { return prev.slice(); }); }} className="ml-auto inline-flex items-center gap-1 rounded-lg border-2 border-amber-400 bg-amber-50 px-3 py-2.5 text-base font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100"><Plus size={18} />新建收藏簿</button>
+          <button type="button" onClick={function() { var name = prompt('请输入新收藏簿名称：'); if (name && name.trim()) { var key = 'qp-collection-books'; var books = JSON.parse(localStorage.getItem(key) || '[]'); if (books.indexOf(name.trim()) === -1) { books.push(name.trim()); localStorage.setItem(key, JSON.stringify(books)); } var favs = JSON.parse(localStorage.getItem('qp-favorite-questions') || '[]'); setFavs(favs.slice()); } }} className="ml-auto inline-flex items-center gap-1 rounded-lg border-2 border-amber-400 bg-amber-50 px-3 py-2.5 text-base font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100"><Plus size={18} />新建收藏簿</button>
         </div>
       </header>
       <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -376,11 +376,11 @@ function StudyNotesPanel({ onBack }) {
   const [dateFilter, setDateFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('全部');
   const [search, setSearch] = useState('');
-  const sources = ['全部', '综合套题', '智能组卷', '专题训练', '专项训练', '学习笔记'];
+  const sources = ['全部', '综合套题', '智能组卷', '专题训练', '专项训练', '笔记本'];
   const types = ['全部', '心得体会', '题目笔记'];
   const dates = [...new Set(notes.map(function(n) { return (n.created_at || n.date || '').slice(0, 10); }))].filter(Boolean).sort().reverse();
   const filtered = notes.filter(function(n) {
-    if (sourceFilter !== '全部' && (n.source || '学习笔记') !== sourceFilter) return false;
+    if (sourceFilter !== '全部' && (n.source || '笔记本') !== sourceFilter) return false;
     if (dateFilter && (n.created_at || n.date || '').slice(0, 10) !== dateFilter) return false;
     if (typeFilter !== '全部' && (n.type || '心得体会') !== typeFilter) return false;
     if (search && (n.title || '').indexOf(search) === -1 && (n.content || '').indexOf(search) === -1) return false;
@@ -388,7 +388,7 @@ function StudyNotesPanel({ onBack }) {
   });
   var saveNote = function() {
     if (!title.trim() || !content.trim()) return;
-    var next = [{ id: 'note-' + Date.now(), title: title.trim(), content: content.trim(), type: '心得体会', source: '学习笔记', created_at: new Date().toISOString() }].concat(notes);
+    var next = [{ id: 'note-' + Date.now(), title: title.trim(), content: content.trim(), type: '心得体会', source: '笔记本', created_at: new Date().toISOString() }].concat(notes);
     setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); setTitle(''); setContent('');
   };
   var deleteNote = function(e, note) {
@@ -404,7 +404,7 @@ function StudyNotesPanel({ onBack }) {
       <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4" style={{flexWrap:'wrap'}}>
         {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
         <div className="flex items-center gap-5" style={{flex:1,minWidth:0,flexWrap:'wrap'}}>
-          <div><h2 className="text-lg font-semibold text-slate-950">学习笔记</h2><p className="mt-1 text-sm text-slate-600">共 {filtered.length} 条笔记</p></div>
+          <div><h2 className="text-lg font-semibold text-slate-950">笔记本</h2><p className="mt-1 text-sm text-slate-600">共 {filtered.length} 条笔记</p></div>
           <label className="text-base font-semibold text-slate-900">来源<select value={sourceFilter} onChange={function(e) { setSourceFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{sources.map(function(s) { return <option key={s} value={s}>{s}</option>; })}</select></label>
           <label className="text-base font-semibold text-slate-900">日期<select value={dateFilter} onChange={function(e) { setDateFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800"><option value="">全部</option>{dates.map(function(d) { return <option key={d} value={d}>{d}</option>; })}</select></label>
           <label className="text-base font-semibold text-slate-900">类型<select value={typeFilter} onChange={function(e) { setTypeFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{types.map(function(t) { return <option key={t} value={t}>{t}</option>; })}</select></label>
@@ -427,12 +427,12 @@ function StudyNotesPanel({ onBack }) {
               return (
                 <div key={note.id} className={'rounded-xl border bg-white shadow-sm transition ' + (isOpen ? 'border-emerald-400 ring-1 ring-emerald-200' : 'border-slate-200')} style={{ background: gradients[i % 3] }}>
                   <button type="button" onClick={function() { if (isOpen) { setExpanded(null); } else { setExpanded(note.id); setEditTitle(note.title); setEditContent(note.content); } }} className="w-full text-left p-4 flex items-start gap-3">
-                    <span className="flex-1 min-w-0"><strong className="block text-sm text-slate-900">{note.title}</strong><span className="text-xs text-slate-400">{(note.source || '学习笔记') + ' · ' + (note.type || '心得体会') + ' · ' + (note.created_at || note.date || '').slice(0, 10)}</span></span>
+                    <span className="flex-1 min-w-0"><strong className="block text-sm text-slate-900">{note.title}</strong><span className="text-xs text-slate-400">{(note.source || '笔记本') + ' · ' + (note.type || '心得体会') + ' · ' + (note.created_at || note.date || '').slice(0, 10)}</span></span>
                     <button type="button" onClick={function(e) { deleteNote(e, note); }} className="shrink-0 text-xs text-rose-500 hover:text-rose-700">删除</button>
                     <span className="text-xs text-slate-400">{isOpen ? '收起' : '展开'}</span>
                   </button>
                   {isOpen && <div className="border-t border-slate-100 px-4 pb-4 space-y-3">
-                    {note.question_content && <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm leading-6 text-amber-900"><p className="text-xs font-semibold text-amber-700 mb-1">题目内容</p>{note.question_content}{note.options && note.options.length > 0 && <div className="space-y-1 mt-2"><p className="text-xs font-semibold text-amber-700">选项</p>{note.options.map(function(opt, j) { var v = opt.option_id || opt.id || ''; var ans = Array.isArray(note.standard_answer) ? note.standard_answer : []; var isCorrect = ans.indexOf(v) >= 0; return <div key={j} className={isCorrect ? 'text-emerald-800 font-medium' : ''}><strong>{v}.</strong> {opt.content}{isCorrect ? ' ✓' : ''}</div>; })}</div>}{Array.isArray(note.standard_answer) && note.standard_answer.length > 0 && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">正确答案：</span>{note.standard_answer.join('、')}</p>}</div>}
+                    {note.question_content && <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm leading-6 text-amber-900"><p className="text-xs font-semibold text-amber-700 mb-1">题目内容</p>{note.question_content}{note.options && note.options.length > 0 && <div className="space-y-1 mt-2"><p className="text-xs font-semibold text-amber-700">选项</p>{note.options.map(function(opt, j) { var v = opt.option_id || opt.id || ''; var ans = Array.isArray(note.standard_answer) ? note.standard_answer : []; var isCorrect = ans.indexOf(v) >= 0; return <div key={j} className={isCorrect ? 'text-emerald-800 font-medium' : ''}><strong>{v}.</strong> {opt.content}{isCorrect ? ' ✓' : ''}</div>; })}</div>}{Array.isArray(note.standard_answer) && note.standard_answer.length > 0 && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">正确答案：</span>{note.standard_answer.join('、')}</p>}{note.explanation && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">解析：</span>{note.explanation}</p>}</div>}
                     <input type="text" value={editTitle} onChange={function(e) { setEditTitle(e.target.value); }} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" />
                     <textarea value={editContent} onChange={function(e) { setEditContent(e.target.value); }} rows={4} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" style={{resize:'none'}} />
                     <button type="button" onClick={function() { var next = notes.map(function(n) { return n.id === note.id ? Object.assign({}, n, { title: editTitle.trim() || n.title, content: editContent }) : n; }); setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); }} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">保存修改</button>
@@ -448,13 +448,17 @@ function StudyNotesPanel({ onBack }) {
 }
 
 function TrainingBannerIllustration() {
+  const [hint, setHint] = useState('快来跟我一起练习吧');
+  const phrases = ['快来跟我一起练习吧', '今天也要加油哦', '温故而知新', '学而时习之', '坚持就是胜利'];
   return (
     <div className="practice-overview__illustration" aria-hidden="true">
-      <div className="practice-overview__speech-bubble">快来跟我一起练习吧</div>
+      <div className="practice-overview__speech-bubble">{hint}</div>
       <img
         className="practice-overview__character"
         src="/assistant-character/lizhizhen-center-cutout.png"
-        alt=""
+        alt="李时珍"
+        onClick={() => { const next = phrases.filter(function(p) { return p !== hint; }); setHint(next[Math.floor(Math.random() * next.length)]); }}
+        title="点击和李时珍互动"
       />
     </div>
   );
@@ -482,19 +486,11 @@ function TrainingOverview({ onOpenModule }) {
           </div>
           <div className="practice-overview__training-grid">
             {trainingCards.map((card) => {
-              const Icon = card.icon;
+              var Icon = card.icon;
               return (
-                <button
-                  key={`${card.title}-${card.key}`}
-                  type="button"
-                  className={`practice-overview__training-card practice-overview__training-card--${card.tone}`}
-                  onClick={() => onOpenModule(card)}
-                >
-                  <span className="practice-overview__card-icon"><Icon aria-hidden="true" size={26} /></span>
-                  <span className="practice-overview__card-copy">
-                    <strong>{card.title}</strong>
-                    <small>{card.description}</small>
-                  </span>
+                <button key={card.key} type="button" className={'practice-overview__training-card practice-overview__training-card--' + card.tone} onClick={function() { onOpenModule(card); }}>
+                  <span className="practice-overview__card-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 26 })}</span>
+                  <span className="practice-overview__card-copy"><strong>{card.title}</strong><small>{card.description}</small></span>
                   <ArrowUpRight className="practice-overview__card-arrow" aria-hidden="true" size={20} />
                 </button>
               );
@@ -504,31 +500,16 @@ function TrainingOverview({ onOpenModule }) {
 
         <aside className="practice-overview__utilities" aria-label="常用学习工具">
           <div className="practice-overview__section-heading">
-            <div>
-              <span>常用工具</span>
-              <h2>复盘与沉淀</h2>
-            </div>
+            <div><span>常用工具</span><h2>复盘与沉淀</h2></div>
           </div>
           <div className="practice-overview__utility-list">
-            {utilityCards.map((card) => {
-              const Icon = card.icon;
-              const content = <>
-                <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
-                <span><strong>{card.title}</strong><small>{card.description}</small></span>
-              </>;
-              return card.available ? (
-                <button
-                  key={card.title}
-                  type="button"
-                  className="practice-overview__utility-card"
-                  onClick={() => onOpenModule(card)}
-                >
-                  {content}
+            {utilityCards.filter(function(c) { return c.available; }).map(function(card) {
+              var Icon = card.icon;
+              return (
+                <button key={card.title} type="button" className="practice-overview__utility-card" onClick={function() { onOpenModule(card); }}>
+                  <span className="practice-overview__utility-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 22 })}</span>
+                  <span><strong>{card.title}</strong><small>{card.description}</small></span>
                 </button>
-              ) : (
-                <div key={card.title} className="practice-overview__utility-card" aria-disabled="true">
-                  {content}
-                </div>
               );
             })}
           </div>

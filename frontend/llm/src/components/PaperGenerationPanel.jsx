@@ -30,7 +30,7 @@ const formatRemaining = (seconds) => {
 
 const displayAnswer = (value) => Array.isArray(value) ? value.join('、') : String(value ?? '');
 
-export default function PaperGenerationPanel({ enabled, paperId = '' }) {
+export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) {
   const [topic, setTopic] = useState('围绕四君子汤与脾胃气虚证完成训练');
   const [distribution, setDistribution] = useState({
     single_choice: 1,
@@ -44,6 +44,10 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
   const [submissionRequestId, setSubmissionRequestId] = useState('');
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState('');
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteDialogItem, setNoteDialogItem] = useState(null);
+  const [noteDialogTitle, setNoteDialogTitle] = useState('');
+  const [noteDialogContent, setNoteDialogContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(null);
   const [paperLibrary, setPaperLibrary] = useState([]);
@@ -167,6 +171,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
 
   const returnToPaperLibrary = async () => {
     sessionStorage.removeItem(paperStorageKey);
+    if (onBack) { onBack(); return; }
     setPaper(null);
     setAnswers({});
     setSubmitted(null);
@@ -287,22 +292,54 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
             const choice = options.length > 0 && ['single_choice', '单选题', '单项选择题', 'multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
             const multiple = ['multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
             const itemResult = submitted?.items?.find((entry) => entry.paper_item_id === item.paper_item_id);
-            return <fieldset key={item.paper_item_id} className="rounded-2xl border border-slate-200 p-4" disabled={loading || answerLocked}>
-              <legend className="px-1 text-sm font-medium leading-6 text-slate-800">{item.position}. {item.stem}</legend>
-              {choice ? <div className="mt-3 space-y-2">{options.map((option, index) => {
-                const value = optionText(option, index);
-                const checked = multiple
-                  ? String(answers[item.paper_item_id] || '').split(',').map((entry) => entry.trim()).includes(value)
-                  : answers[item.paper_item_id] === value;
-                return <label key={`${item.paper_item_id}-${index}`} className="flex cursor-pointer gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700"><input type={multiple ? 'checkbox' : 'radio'} name={item.paper_item_id} checked={checked} onChange={() => multiple ? toggleMultiple(item.paper_item_id, value) : setAnswers({ ...answers, [item.paper_item_id]: value })} />{value}</label>;
-              })}</div> : <textarea aria-label={`第${item.position}题答案`} value={answers[item.paper_item_id] || ''} onChange={(event) => setAnswers({ ...answers, [item.paper_item_id]: event.target.value })} className="mt-3 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />}
-              {itemResult && <div className={`mt-4 rounded-xl border p-3 text-sm leading-6 ${itemResult.is_correct ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-rose-200 bg-rose-50 text-rose-900'}`}>
+            return <div key={item.paper_item_id}>
+              <fieldset className="rounded-2xl border border-slate-200 p-4" disabled={loading || answerLocked}>
+                <legend className="px-1 text-sm font-medium leading-6 text-slate-800">{item.position}. {item.stem}</legend>
+                {choice ? <div className="mt-3 space-y-2">{options.map((option, index) => {
+                  const value = optionText(option, index);
+                  const checked = multiple
+                    ? String(answers[item.paper_item_id] || '').split(',').map((entry) => entry.trim()).includes(value)
+                    : answers[item.paper_item_id] === value;
+                  return <label key={`${item.paper_item_id}-${index}`} className="flex cursor-pointer gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700"><input type={multiple ? 'checkbox' : 'radio'} name={item.paper_item_id} checked={checked} onChange={() => multiple ? toggleMultiple(item.paper_item_id, value) : setAnswers({ ...answers, [item.paper_item_id]: value })} />{value}</label>;
+                })}</div> : <textarea aria-label={`第${item.position}题答案`} value={answers[item.paper_item_id] || ''} onChange={(event) => setAnswers({ ...answers, [item.paper_item_id]: event.target.value })} className="mt-3 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />}
+              </fieldset>
+              {itemResult && <div className={`mt-2 rounded-xl border p-3 text-sm leading-6 ${itemResult.is_correct ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-rose-200 bg-rose-50 text-rose-900'}`}>
                 <strong>{itemResult.is_correct ? '回答正确' : '回答错误'} · {itemResult.score} / {itemResult.max_score} 分</strong>
                 <p>参考答案：{displayAnswer(itemResult.standard_answer) || '待补充'}</p>
                 <p>题目解析：{itemResult.explanation || '本题解析正在补充。'}</p>
                 {itemResult.grading_analysis && itemResult.grading_analysis !== itemResult.explanation && <p>本次批改：{itemResult.grading_analysis}</p>}
+                <div className="mt-3 flex gap-2">
+                  <button type="button" onClick={function() {
+                    var books = JSON.parse(localStorage.getItem('qp-collection-books') || '[]');
+                    var choices = ['默认'].concat(books).concat(['+ 新建收藏簿']);
+                    var choice = prompt('选择收藏簿：\n' + choices.map(function(c, i) { return (i+1) + '. ' + c; }).join('\n') + '\n\n输入序号或新收藏簿名称：');
+                    if (!choice) return;
+                    var bookName = choice.trim();
+                    var idx = parseInt(choice);
+                    if (idx >= 1 && idx <= choices.length) bookName = choices[idx - 1];
+                    if (bookName === '+ 新建收藏簿') { bookName = prompt('请输入新收藏簿名称：'); if (!bookName || !bookName.trim()) return; bookName = bookName.trim(); if (books.indexOf(bookName) === -1) { books.push(bookName); localStorage.setItem('qp-collection-books', JSON.stringify(books)); } }
+                    var key = 'qp-favorite-questions';
+                    var favs = JSON.parse(localStorage.getItem(key) || '[]');
+                    // Convert options to display format if needed
+                    var opts = (item.options || []).map(function(opt, j) {
+                      if (typeof opt === 'object' && opt !== null) return opt;
+                      return { option_id: String.fromCharCode(65 + j), content: String(opt) };
+                    });
+                    if (!favs.find(function(f) { return f.question_id === item.paper_item_id && f.book === bookName; })) {
+                      favs.unshift({ question_id: item.paper_item_id, question_content: item.stem, question_type: item.question_type, options: opts, my_answer: String(answers[item.paper_item_id] || ''), standard_answer: itemResult.standard_answer || [], explanation: itemResult.explanation || '', book: bookName, source: '智能组卷', saved_at: new Date().toISOString() });
+                      localStorage.setItem(key, JSON.stringify(favs.slice(0, 200)));
+                    }
+                  }} className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100">加入收藏</button>
+                  <button type="button" onClick={function() {
+                    var paperTitle = paper.title || '智能组卷';
+                    setNoteDialogItem(item);
+                    setNoteDialogTitle(paperTitle + '：');
+                    setNoteDialogContent('');
+                    setNoteDialogOpen(true);
+                  }} className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">记笔记</button>
+                </div>
               </div>}
-            </fieldset>;
+            </div>;
           })}
         </section>)}
         {!paperSubmitted && timeExpired && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">答题时间已结束，答案已锁定，请提交当前作答。</p>}
@@ -310,6 +347,33 @@ export default function PaperGenerationPanel({ enabled, paperId = '' }) {
       </div>}
       {submitted && <div className="border-l-2 border-emerald-300 pl-3 text-sm leading-6 text-slate-700"><p>总分：{submitted.score} / {submitted.max_score}</p><p>已完成 {submitted.items?.length || 0} 道题的服务端评分。</p></div>}
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm leading-6 text-rose-700">{error}</p>}
+      {noteDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={function() { setNoteDialogOpen(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4" onClick={function(e) { e.stopPropagation(); }}>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">记笔记</h3>
+            <label className="block text-sm font-medium text-slate-700 mb-1">标题</label>
+            <input type="text" value={noteDialogTitle} onChange={function(e) { setNoteDialogTitle(e.target.value); }} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400 mb-3" />
+            <label className="block text-sm font-medium text-slate-700 mb-1">内容</label>
+            <textarea value={noteDialogContent} onChange={function(e) { setNoteDialogContent(e.target.value); }} rows={5} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400 resize-none mb-4" placeholder="写下你的笔记…" />
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={function() { setNoteDialogOpen(false); }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">取消</button>
+              <button type="button" onClick={function() {
+                if (!noteDialogTitle.trim()) return;
+                var notes = JSON.parse(localStorage.getItem('study-notes') || '[]');
+                var item = noteDialogItem;
+                var result = submitted?.items?.find(function(e) { return e.paper_item_id === item.paper_item_id; });
+                var opts = (item.options || []).map(function(opt, j) {
+                  if (typeof opt === 'object' && opt !== null) return opt;
+                  return { option_id: String.fromCharCode(65 + j), content: String(opt) };
+                });
+                notes.unshift({ id: 'note-' + Date.now(), title: noteDialogTitle.trim(), content: noteDialogContent || '', type: '题目笔记', source: '智能组卷', question_content: item.stem, options: opts, standard_answer: result ? result.standard_answer : [], explanation: result ? result.explanation : '', created_at: new Date().toISOString() });
+                localStorage.setItem('study-notes', JSON.stringify(notes));
+                setNoteDialogOpen(false);
+              }} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">保存</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
