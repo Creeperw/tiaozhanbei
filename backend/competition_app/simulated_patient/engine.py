@@ -503,6 +503,29 @@ class SimulatedPatientEngine:
             case, diagnosis, learner_context, diagnosis_result, evidence_pack
         )
 
+        # 根据实际对话轮数修正时间效率分数（LLM 无法准确判断轮数）
+        turn_count = session.get("turn_count", 0)
+        if turn_count <= 15:
+            time_score = 8
+        elif turn_count <= 25:
+            time_score = 6
+        else:
+            time_score = 3
+        breakdown = grading_report.get("score_breakdown", {})
+        if isinstance(breakdown, dict):
+            old_time = breakdown.get("time_efficiency_score", 0)
+            breakdown["time_efficiency_score"] = time_score
+            # 重新计算总分
+            score_sum = sum(
+                v for k, v in breakdown.items()
+                if k.endswith("_score") and isinstance(v, (int, float))
+            )
+            grading_report["score"] = score_sum
+            # 修正评分理由
+            reasons = breakdown.get("score_reasons", {})
+            if isinstance(reasons, dict):
+                reasons["time_efficiency"] = f"实际问诊{turn_count}轮（≤15轮满分，16-25轮得6分，>25轮得3分）"
+
         audit_result = self.audit_agent.review_content(
             {"artifact_id": "DRAFT_001", "payload": grading_report},
             evidence_pack

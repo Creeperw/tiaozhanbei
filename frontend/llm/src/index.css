@@ -5458,19 +5458,19 @@ textarea:focus-visible {
 
 .smart-paper__composer-heading { margin-left: 14px; padding-bottom: 18px; border-bottom: 1px solid var(--paper-line); }
 .smart-paper__composer-heading h3 { font-size: 1.15rem; }
-.smart-paper__mode { min-height: 190px; border: 1px solid var(--paper-line); background: rgba(255, 255, 255, 0.74); padding: 20px; transition: border-color 160ms ease, background 160ms ease, transform 160ms ease; }
+.smart-paper__mode { border: 1px solid var(--paper-line); background: rgba(255, 255, 255, 0.74); padding: 10px 14px; transition: border-color 160ms ease, background 160ms ease, transform 160ms ease; }
 .smart-paper__mode.is-selected { border-color: var(--paper-green); background: #f0f8f3; box-shadow: inset 3px 0 0 var(--paper-green); }
 .smart-paper__mode h2 { margin: 0; font-family: "Noto Serif SC", "Songti SC", serif; font-size: 1.15rem; }
 .smart-paper__mode button, .smart-paper__actions > button { min-height: 44px; border: 0; cursor: pointer; }
 .smart-paper__mode p { margin: 10px 0 0; color: var(--paper-muted); font-size: 0.8rem; line-height: 1.65; }
 
-.smart-paper__distribution { margin: 22px 0 0 14px; border: 0; padding: 0; }
+.smart-paper__distribution { margin: 4px 0 0 14px; border: 0; padding: 0; }
 .smart-paper__distribution legend { color: var(--paper-gold); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; }
 .smart-paper__distribution > div { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
 .smart-paper__distribution label { display: grid; gap: 6px; color: var(--paper-muted); font-size: 0.78rem; }
 .smart-paper__distribution input { width: 100%; min-height: 42px; border: 1px solid var(--paper-line); background: rgba(255,255,255,.82); padding: 0 10px; color: var(--paper-ink); font-weight: 700; }
 
-.smart-paper__actions { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 24px 0 0 14px; border-top: 1px solid var(--paper-line); padding-top: 18px; }
+.smart-paper__actions { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 4px 0 0 14px; border-top: 1px solid var(--paper-line); padding-top: 6px; }
 .smart-paper__actions > div { display: flex; flex-wrap: wrap; gap: 14px; }
 .smart-paper__actions label { color: var(--paper-muted); font-size: 0.8rem; }
 .smart-paper__actions select, .smart-paper__actions input { min-height: 40px; margin-left: 7px; border: 1px solid var(--paper-line); background: #fff; padding: 0 9px; color: var(--paper-ink); }

@@ -139,19 +139,11 @@ export default function QualificationPaperPanel({ enabled, onBack }) {
           const available = availableCount > 0;
           const icons = [GraduationCap, Stethoscope, Heart, HeartPulse, Pill];
           const Icon = icons[idx % icons.length];
-          const gradients = [
-            'linear-gradient(135deg, #fff 0%, #f9fdfa 100%)',
-            'linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)',
-            'linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)',
-            'linear-gradient(135deg, #e8f7ef 0%, #dcf3e6 100%)',
-            'linear-gradient(135deg, #dcf3e6 0%, #cfeedd 100%)',
-          ];
           return <button key={exam.exam_id} type="button" aria-label={exam.name} disabled={!available} onClick={() => setExamId(exam.exam_id)}
-            className="flex min-h-24 items-center gap-4 rounded-xl border border-transparent px-5 text-left shadow-md transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 w-full"
-            style={{ background: gradients[idx % gradients.length] }}
+            className="flex min-h-20 items-center gap-4 rounded-xl border border-slate-200 bg-white px-5 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 w-full"
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-md" style={{ background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', color: '#059669' }}>
-              <Icon size={22} aria-hidden="true" />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{background:'#f0fdf4',color:'#059669'}}>
+              <Icon size={20} aria-hidden="true" />
             </span>
             <span className="flex-1 min-w-0">
               <span className="block text-sm font-semibold text-slate-800">{exam.name}</span>

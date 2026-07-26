@@ -17,15 +17,16 @@ const getSessions = () => { try { return JSON.parse(localStorage.getItem(STORAGE
 const setSessions = (v) => localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(v));
 const getCollections = () => {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_COLLECTIONS) || '{}');
-    // Migrate old array format
-    if (Array.isArray(raw)) {
-      const migrated = { '默认收藏簿': raw };
-      localStorage.setItem(STORAGE_COLLECTIONS, JSON.stringify(migrated));
-      return migrated;
+    const raw = JSON.parse(localStorage.getItem(STORAGE_COLLECTIONS) || '[]');
+    if (!Array.isArray(raw)) {
+      // Migrate old object format to flat array
+      const flat = [];
+      Object.values(raw).forEach(arr => { if (Array.isArray(arr)) flat.push(...arr); });
+      localStorage.setItem(STORAGE_COLLECTIONS, JSON.stringify(flat));
+      return flat;
     }
     return raw;
-  } catch { return {}; }
+  } catch { return []; }
 };
 const setCollections = (v) => localStorage.setItem(STORAGE_COLLECTIONS, JSON.stringify(v));
 
@@ -80,9 +81,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
 
   // Report
   const [report, setReport] = useState(null);
-  const [showCollectionDialog, setShowCollectionDialog] = useState(false);
-  const [newBookName, setNewBookName] = useState('');
-  const [selectedBook, setSelectedBook] = useState('');
 
   // History view
   const [viewingHistory, setViewingHistory] = useState(null);
@@ -297,21 +295,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
   };
 
   const handleAddCollection = () => {
-    const books = getCollections();
-    const names = Object.keys(books);
-    if (names.length === 1) {
-      // Auto-add to the only book
-      addToBook(names[0]);
-    } else {
-      setSelectedBook(names[0] || '');
-      setNewBookName('');
-      setShowCollectionDialog(true);
-    }
-  };
-  const addToBook = (bookName) => {
-    if (!bookName.trim()) return;
-    const books = getCollections();
-    if (!books[bookName]) books[bookName] = [];
+    const collections = getCollections();
     const sessions = getSessions();
     const session = sessions.find(s => s.session_id === sessionId) || {};
     const item = {
@@ -321,16 +305,10 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       score: report?.score || 0,
       collected_at: new Date().toISOString(),
     };
-    if (!books[bookName].find(f => f.session_id === sessionId)) {
-      books[bookName].unshift(item);
+    if (!collections.find(c => c.session_id === sessionId)) {
+      collections.unshift(item);
+      setCollections(collections);
     }
-    setCollections(books);
-  };
-  const confirmAddCollection = () => {
-    const name = newBookName.trim() || selectedBook;
-    if (!name) return;
-    addToBook(name);
-    setShowCollectionDialog(false);
   };
 
   const handleRest = () => {
@@ -421,20 +399,17 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
     }
 
     if (sidebarMode === 'favorites') {
-      const books = getCollections();
-      const bookNames = Object.keys(books);
-      if (bookNames.length === 0) return <div className="sp-sidebar-empty">暂无收藏</div>;
-      return bookNames.map(bookName => {
-        const items = books[bookName] || [];
+      const favIds = new Set((getCollections() || []).map(c => c.session_id).filter(Boolean));
+      const favSessions = completedSessions.filter(s => s.status === 'completed' && favIds.has(s.session_id));
+      if (favSessions.length === 0) return <div className="sp-sidebar-empty">暂无收藏</div>;
+      return favSessions.map((item, i) => {
+        const name = item.case_name || '未知疾病';
+        const demo = [item.gender, item.age_range, '体型' + item.body_type].filter(Boolean).join(' · ');
         return (
-          <div key={bookName} className="sp-sidebar-item" onClick={() => {
-            if (items.length === 0) return;
-            const sessions = getSessions();
-            const match = sessions.find(s => s.session_id === items[0].session_id);
-            if (match) handleViewHistory(match);
-          }}>
-            <div className="sp-sidebar-item__name">{bookName}</div>
-            <div className="sp-sidebar-item__meta">{items.length} 条收藏</div>
+          <div key={item.session_id || i} className="sp-sidebar-item" onClick={() => handleViewHistory(item)}>
+            <div className="sp-sidebar-item__name">{name}</div>
+            {demo && <div className="sp-sidebar-item__meta">{demo}</div>}
+            {item.score !== undefined && <div className="sp-sidebar-item__score">得分: {item.score}/100</div>}
           </div>
         );
       });
@@ -515,7 +490,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       <div className="sp-welcome__icon-wrapper">
         <Stethoscope className="sp-welcome__icon" />
       </div>
-      <h1 className="sp-welcome__heading">欢迎{currentUserName || ''}医生</h1>
+      <h1 className="sp-welcome__heading">hi&nbsp;&nbsp;&nbsp;&nbsp;{currentUserName || ''}医生</h1>
 
       {view === 'welcome' && (
         <>
@@ -872,29 +847,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
 
       {renderHelpCard()}
       {renderDiagnosisForm()}
-      {showCollectionDialog && (
-        <>
-          <div className="sp-help-overlay__backdrop" onClick={() => setShowCollectionDialog(false)} />
-          <div className="sp-help-overlay" style={{ zIndex: 25 }}>
-            <div className="sp-help-overlay__title">选择收藏簿</div>
-            <div className="sp-help-overlay__options" style={{ maxHeight: 200, overflowY: 'auto' }}>
-              {Object.keys(getCollections()).map(name => (
-                <button key={name} className={`sp-help-overlay__option ${selectedBook === name && !newBookName ? 'ring-2 ring-emerald-400' : ''}`}
-                  onClick={() => { setSelectedBook(name); setNewBookName(''); }}>
-                  📁 {name}
-                </button>
-              ))}
-              <div className="flex gap-2 mt-2">
-                <input type="text" value={newBookName} onChange={e => { setNewBookName(e.target.value); setSelectedBook(''); }}
-                  placeholder="新建收藏簿名称" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400" />
-              </div>
-            </div>
-            <button className="sp-help-overlay__close" onClick={confirmAddCollection} style={{ marginTop: 8, background: '#059669', color: '#fff', border: 'none' }}>
-              确认添加
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 
