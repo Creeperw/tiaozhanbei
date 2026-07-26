@@ -277,87 +277,84 @@ function QuestionFavoritesPanel({ onBack }) {
   var favs = _useState[0], setFavs = _useState[1];
   var _useState2 = useState(null), expanded = _useState2[0], setExpanded = _useState2[1];
   var _useState3 = useState(null), selectedBook = _useState3[0], setSelectedBook = _useState3[1];
+  var _useState4 = useState('全部'), favSourceFilter = _useState4[0], setFavSourceFilter = _useState4[1];
+  var _useState5 = useState(''), favDateFilter = _useState5[0], setFavDateFilter = _useState5[1];
+  var _useState6 = useState(''), favSearch = _useState6[0], setFavSearch = _useState6[1];
   var stdAnswer = function(item) { var ans = item.standard_answer; if (Array.isArray(ans)) return ans.join('、'); if (typeof ans === 'string') return ans; return ''; };
   var hasCorrect = function(item) { return stdAnswer(item).length > 0; };
   var removeFav = function(e, questionId) { e.stopPropagation(); var next = favs.filter(function(f) { return f.question_id !== questionId; }); setFavs(next); localStorage.setItem('qp-favorite-questions', JSON.stringify(next)); if (expanded === questionId) setExpanded(null); };
   var books = {}; var bookNamesList = JSON.parse(localStorage.getItem('qp-collection-books') || '[]'); bookNamesList.forEach(function(b) { books[b] = []; }); favs.forEach(function(f) { var b = f.book || '默认'; if (!books[b]) books[b] = []; books[b].push(f); });
   if (selectedBook) {
     var items = books[selectedBook] || [];
+    var favSources = ['全部', '综合套题', '智能组卷', '专题训练', '专项训练'];
+    var favDates = [...new Set(items.map(function(f) { return (f.saved_at||'').slice(0,10); }))].filter(Boolean).sort().reverse();
+    var favFiltered = items.filter(function(f) {
+      if (favSourceFilter !== '全部' && (f.source || '综合套题') !== favSourceFilter) return false;
+      if (favDateFilter && (f.saved_at||'').slice(0,10) !== favDateFilter) return false;
+      if (favSearch && (f.question_content||'').indexOf(favSearch) === -1) return false;
+      return true;
+    });
     return (
       <div className="flex flex-col h-full">
-        <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
+        <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4" style={{flexWrap:'wrap'}}>
           <button type="button" onClick={function() { setSelectedBook(null); }} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回收藏簿列表</button>
-          <div><h2 className="text-lg font-semibold text-slate-950">{selectedBook}</h2><p className="mt-1 text-sm text-slate-600">{items.length} 道题目</p></div>
+          <div className="flex items-center gap-5" style={{flex:1,minWidth:0,flexWrap:'wrap'}}>
+            <div><h2 className="text-lg font-semibold text-slate-950">{selectedBook}</h2><p className="mt-1 text-sm text-slate-600">{favFiltered.length} 道题目</p></div>
+            <label className="text-base font-semibold text-slate-900">来源<select value={favSourceFilter} onChange={function(e){setFavSourceFilter(e.target.value)}} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{favSources.map(function(s){return <option key={s} value={s}>{s}</option>})}</select></label>
+            <label className="text-base font-semibold text-slate-900">日期<select value={favDateFilter} onChange={function(e){setFavDateFilter(e.target.value)}} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800"><option value="">全部</option>{favDates.map(function(d){return <option key={d} value={d}>{d}</option>})}</select></label>
+            <input type="text" value={favSearch} onChange={function(e){setFavSearch(e.target.value)}} placeholder="搜索题目…" className="rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800 outline-none focus:border-emerald-500" style={{width:160}} />
+          </div>
         </header>
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          {items.map(function(item, i) {
-            var isOpen = expanded === item.question_id;
-            var correct = stdAnswer(item), correctVals = correct.split(',');
-            return React.createElement('div', { key: i, className: 'rounded-xl border bg-white shadow-sm ' + (isOpen ? 'border-emerald-400 ring-1 ring-emerald-200' : 'border-slate-200') },
-              React.createElement('button', { type: 'button', onClick: function() { setExpanded(isOpen ? null : item.question_id); }, className: 'w-full text-left p-4 flex items-start gap-3' },
-                React.createElement('p', { className: 'text-sm leading-6 text-slate-800 flex-1' }, item.question_content || '（题目内容缺失）'),
-                React.createElement('span', { className: 'shrink-0 flex items-center gap-2' },
-                  React.createElement('button', { type: 'button', onClick: function(e) { removeFav(e, item.question_id); }, className: 'text-xs text-rose-500 hover:text-rose-700' }, '移除'),
-                  React.createElement('span', { className: 'text-xs text-slate-400' }, isOpen ? '收起' : '展开')
-                )
-              ),
-              isOpen && React.createElement('div', { className: 'border-t border-slate-100 px-4 pb-4 space-y-3' },
-                item.options && item.options.length > 0 && React.createElement('div', null,
-                  React.createElement('p', { className: 'text-xs font-semibold text-slate-500 mb-2' }, '选项'),
-                  React.createElement('div', { className: 'space-y-1' },
-                    item.options.map(function(opt, j) {
-                      var v = opt.option_id || opt.id || '';
-                      var my = item.my_answer && String(item.my_answer).split(',').indexOf(v) >= 0;
-                      var ok = correctVals.indexOf(v) >= 0;
-                      var c = 'text-slate-600';
-                      if (my && ok) c = 'bg-emerald-50 border border-emerald-300 text-emerald-900 font-medium';
-                      else if (my) c = 'bg-rose-50 border border-rose-300 text-rose-900 font-medium';
-                      else if (ok && hasCorrect(item)) c = 'bg-emerald-50 border border-emerald-200 text-emerald-800';
-                      return React.createElement('div', { key: j, className: 'text-sm px-3 py-1.5 rounded-lg ' + c },
-                        React.createElement('strong', null, v + '. '), opt.content,
-                        my && ok && React.createElement('span', { className: 'ml-2 text-xs text-emerald-600' }, '✓ 正确'),
-                        my && !ok && React.createElement('span', { className: 'ml-2 text-xs text-rose-600' }, '✗ 你的作答'),
-                        !my && ok && hasCorrect(item) && React.createElement('span', { className: 'ml-2 text-xs text-emerald-600' }, '✓ 正确答案')
-                      );
-                    })
-                  )
-                ),
-                item.explanation && React.createElement('div', null,
-                  React.createElement('p', { className: 'text-xs font-semibold text-slate-500 mb-1' }, '解析'),
-                  React.createElement('p', { className: 'text-sm leading-6 text-slate-700 bg-slate-50 rounded-lg p-3' }, item.explanation)
-                ),
-                React.createElement('p', { className: 'text-xs text-slate-400' }, '收藏于' + (item.source || '综合套题') + ' · ' + (item.saved_at || '').slice(0, 10))
-              )
-            );
-          })}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="grid grid-cols-4 gap-4">
+            {favFiltered.map(function(item, i) {
+              var isOpen = expanded === item.question_id;
+              var correct = stdAnswer(item), correctVals = correct.split(',');
+              return (
+                <div key={i} className={'rounded-xl border bg-white shadow-sm transition ' + (isOpen ? 'border-emerald-400 ring-1 ring-emerald-200 col-span-4' : 'border-slate-200')}>
+                  <button type="button" onClick={function() { setExpanded(isOpen ? null : item.question_id); }} className="w-full text-left p-4 flex flex-col gap-2 items-center text-center">
+                    <span className="text-2xl">📋</span>
+                    <strong className="block text-sm text-slate-900" style={{overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{(item.question_content||'').slice(0,60)||'（题目内容缺失）'}</strong>
+                    <span className="text-xs text-slate-400">{(item.source||'综合套题')+' · '+(item.saved_at||'').slice(0,10)}</span>
+                  </button>
+                  {isOpen && <div className="border-t border-slate-100 px-4 pb-4 space-y-3 text-left">
+                    <p className="text-sm leading-6 text-slate-800">{item.question_content}</p>
+                    {item.options && item.options.length > 0 && <div><p className="text-xs font-semibold text-slate-500 mb-2">选项</p><div className="space-y-1">{item.options.map(function(opt, j) { var v = opt.option_id || opt.id || ''; var my = item.my_answer && String(item.my_answer).split(',').indexOf(v) >= 0; var ok = correctVals.indexOf(v) >= 0; var c = 'text-slate-600'; if (my && ok) c = 'bg-emerald-50 border border-emerald-300 text-emerald-900 font-medium'; else if (my) c = 'bg-rose-50 border border-rose-300 text-rose-900 font-medium'; else if (ok && hasCorrect(item)) c = 'bg-emerald-50 border border-emerald-200 text-emerald-800'; return <div key={j} className={'text-sm px-3 py-1.5 rounded-lg '+c}><strong>{v}.</strong> {opt.content}{my&&ok?' ✓正确':''}{my&&!ok?' ✗你的作答':''}{!my&&ok&&hasCorrect(item)?' ✓正确答案':''}</div>; })}</div></div>}
+                    {item.explanation && <div><p className="text-xs font-semibold text-slate-500 mb-1">解析</p><p className="text-sm leading-6 text-slate-700 bg-slate-50 rounded-lg p-3">{item.explanation}</p></div>}
+                    <div className="flex gap-2"><button type="button" onClick={function(e) { removeFav(e, item.question_id); }} className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50">移除收藏</button></div>
+                    <p className="text-xs text-slate-400">收藏于{(item.source||'综合套题')+' · '+(item.saved_at||'').slice(0,10)}</p>
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
   }
   var bookNames = Object.keys(books);
+  var handleNewBook = function() { var name = prompt('请输入新收藏簿名称：'); if (name && name.trim()) { var key = 'qp-collection-books'; var booksList = JSON.parse(localStorage.getItem(key) || '[]'); if (booksList.indexOf(name.trim()) === -1) { booksList.push(name.trim()); localStorage.setItem(key, JSON.stringify(booksList)); } var favs = JSON.parse(localStorage.getItem('qp-favorite-questions') || '[]'); setFavs(favs.slice()); } };
   return (
     <div className="flex flex-col h-full">
       <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
         {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
-        <div className="flex items-center gap-5" style={{flex:1,minWidth:0}}>
-          <div><h2 className="text-lg font-semibold text-slate-950">收藏夹</h2><p className="mt-1 text-sm text-slate-600">{bookNames.length} 个收藏簿 · {favs.length} 道题目</p></div>
-          <button type="button" onClick={function() { var name = prompt('请输入新收藏簿名称：'); if (name && name.trim()) { var key = 'qp-collection-books'; var books = JSON.parse(localStorage.getItem(key) || '[]'); if (books.indexOf(name.trim()) === -1) { books.push(name.trim()); localStorage.setItem(key, JSON.stringify(books)); } var favs = JSON.parse(localStorage.getItem('qp-favorite-questions') || '[]'); setFavs(favs.slice()); } }} className="ml-auto inline-flex items-center gap-1 rounded-lg border-2 border-amber-400 bg-amber-50 px-3 py-2.5 text-base font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100"><Plus size={18} />新建收藏簿</button>
-        </div>
+        <div><h2 className="text-lg font-semibold text-slate-950">收藏夹</h2><p className="mt-1 text-sm text-slate-600">{bookNames.length} 个收藏簿 · {favs.length} 道题目</p></div>
       </header>
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        {bookNames.length === 0 ? (
-          <p className="text-center text-slate-400 py-12">暂无收藏，在套题中点击「加入收藏」即可</p>
-        ) : (
-          <div className="space-y-3">
-            {bookNames.map(function(name, i) {
-              var gradients = ['linear-gradient(135deg, #fff 0%, #f9fdfa 100%)','linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)','linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)'];
-              return <button key={name} type="button" onClick={function() { setSelectedBook(name); }} className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-left hover:border-emerald-300 hover:shadow-md transition" style={{ background: gradients[i % 3] }}>
-                <strong className="block text-sm text-slate-900">{name}</strong>
-                <span className="text-xs text-slate-500">{books[name].length} 道题目</span>
-              </button>;
-            })}
-          </div>
-        )}
+        <div className="grid grid-cols-4 gap-4">
+          {bookNames.map(function(name, i) {
+            var gradients = ['linear-gradient(135deg, #fff 0%, #f9fdfa 100%)','linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)','linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)'];
+            return <button key={name} type="button" onClick={function() { setSelectedBook(name); }} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm text-center hover:border-emerald-300 hover:shadow-md transition flex flex-col items-center justify-center gap-2" style={{ background: gradients[i % 3], minHeight: '140px' }}>
+              <span className="text-2xl">{['📁','📂','📋','📝','📚','📖'][i % 6]}</span>
+              <strong className="block text-sm text-slate-900">{name}</strong>
+              <span className="text-xs text-slate-500">{books[name].length} 道题目</span>
+            </button>;
+          })}
+          <button type="button" onClick={handleNewBook} className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-5 text-center hover:border-amber-400 hover:bg-amber-50 transition flex flex-col items-center justify-center gap-2" style={{ minHeight: '140px' }}>
+            <span className="text-2xl">➕</span>
+            <strong className="block text-sm text-amber-700">新建收藏簿</strong>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -366,82 +363,118 @@ const STORAGE_NOTES = 'study-notes';
 const getNotes = () => { try { return JSON.parse(localStorage.getItem(STORAGE_NOTES) || '[]'); } catch { return []; } };
 
 function StudyNotesPanel({ onBack }) {
-  const [notes, setNotes] = useState(getNotes);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [expanded, setExpanded] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('全部');
-  const [dateFilter, setDateFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('全部');
-  const [search, setSearch] = useState('');
-  const sources = ['全部', '综合套题', '智能组卷', '专题训练', '专项训练', '笔记本'];
-  const types = ['全部', '心得体会', '题目笔记'];
-  const dates = [...new Set(notes.map(function(n) { return (n.created_at || n.date || '').slice(0, 10); }))].filter(Boolean).sort().reverse();
-  const filtered = notes.filter(function(n) {
-    if (sourceFilter !== '全部' && (n.source || '笔记本') !== sourceFilter) return false;
-    if (dateFilter && (n.created_at || n.date || '').slice(0, 10) !== dateFilter) return false;
-    if (typeFilter !== '全部' && (n.type || '心得体会') !== typeFilter) return false;
-    if (search && (n.title || '').indexOf(search) === -1 && (n.content || '').indexOf(search) === -1) return false;
-    return true;
-  });
-  var saveNote = function() {
-    if (!title.trim() || !content.trim()) return;
-    var next = [{ id: 'note-' + Date.now(), title: title.trim(), content: content.trim(), type: '心得体会', source: '笔记本', created_at: new Date().toISOString() }].concat(notes);
-    setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); setTitle(''); setContent('');
-  };
-  var deleteNote = function(e, note) {
-    e.stopPropagation();
-    var next = notes.filter(function(n) { return n.id !== note.id; });
-    setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next));
-    if (expanded === note.id) setExpanded(null);
-    var attId = note.attemptId || (note.qpKey ? note.qpKey.split('-').slice(0, -1).join('-') : '');
-    if (note.qpKey && attId) { try { var qpNotes = JSON.parse(localStorage.getItem('qp-notes-' + attId) || '{}'); var posKey = note.qpKey.replace(attId + '-', ''); delete qpNotes[posKey]; localStorage.setItem('qp-notes-' + attId, JSON.stringify(qpNotes)); } catch(e) {} }
-  };
-  return (
-    <div className="flex flex-col h-full">
-      <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4" style={{flexWrap:'wrap'}}>
-        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
-        <div className="flex items-center gap-5" style={{flex:1,minWidth:0,flexWrap:'wrap'}}>
-          <div><h2 className="text-lg font-semibold text-slate-950">笔记本</h2><p className="mt-1 text-sm text-slate-600">共 {filtered.length} 条笔记</p></div>
-          <label className="text-base font-semibold text-slate-900">来源<select value={sourceFilter} onChange={function(e) { setSourceFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{sources.map(function(s) { return <option key={s} value={s}>{s}</option>; })}</select></label>
-          <label className="text-base font-semibold text-slate-900">日期<select value={dateFilter} onChange={function(e) { setDateFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800"><option value="">全部</option>{dates.map(function(d) { return <option key={d} value={d}>{d}</option>; })}</select></label>
-          <label className="text-base font-semibold text-slate-900">类型<select value={typeFilter} onChange={function(e) { setTypeFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{types.map(function(t) { return <option key={t} value={t}>{t}</option>; })}</select></label>
-          <input type="text" value={search} onChange={function(e) { setSearch(e.target.value); }} placeholder="搜索笔记…" className="rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800 outline-none focus:border-emerald-500" style={{width:160}} />
-        </div>
-      </header>
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-          <input type="text" value={title} onChange={function(e) { setTitle(e.target.value); }} placeholder="笔记标题" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500" />
-          <textarea value={content} onChange={function(e) { setContent(e.target.value); }} placeholder="写下你的学习心得…" rows={3} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500" style={{resize:'none'}} />
-          <button type="button" onClick={saveNote} disabled={!title.trim() || !content.trim()} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">保存笔记</button>
-        </div>
-        {filtered.length === 0 ? (
-          <p className="text-center text-slate-400 py-8">暂无笔记，开始记录你的学习心得吧</p>
-        ) : (
-          <div className="space-y-3">
+  var _n = useState(getNotes), notes = _n[0], setNotes = _n[1];
+  var _e = useState(null), expanded = _e[0], setExpanded = _e[1];
+  var _et = useState(''), editTitle = _et[0], setEditTitle = _et[1];
+  var _ec = useState(''), editContent = _ec[0], setEditContent = _ec[1];
+  var _sb = useState(null), selectedBook = _sb[0], setSelectedBook = _sb[1];
+  var _nt = useState(''), newTitle = _nt[0], setNewTitle = _nt[1];
+  var _nc = useState(''), newContent = _nc[0], setNewContent = _nc[1];
+  var _sf = useState('全部'), sourceFilter = _sf[0], setSourceFilter = _sf[1];
+  var _df = useState(''), dateFilter = _df[0], setDateFilter = _df[1];
+  var _tf = useState('全部'), typeFilter = _tf[0], setTypeFilter = _tf[1];
+  var _sr = useState(''), search = _sr[0], setSearch = _sr[1];
+  var sources = ['全部', '综合套题', '智能组卷', '专题训练', '专项训练', '笔记本'];
+  var types = ['全部', '心得体会', '题目笔记'];
+  var books = {}; notes.forEach(function(n) { var b = n.book || '默认'; if (!books[b]) books[b] = []; books[b].push(n); });
+  var bookNames = Object.keys(books);
+
+  var handleNewBook = function() { var name = prompt('请输入新笔记本名称：'); if (name && name.trim()) { var b = name.trim(); setSelectedBook(b); if (!books[b]) { books[b] = []; setNotes(notes.slice()); } } };
+
+  if (selectedBook) {
+    var items = books[selectedBook] || [];
+    var filtered = items.filter(function(n) {
+      if (sourceFilter !== '全部' && (n.source || '笔记本') !== sourceFilter) return false;
+      if (dateFilter && (n.created_at || n.date || '').slice(0,10) !== dateFilter) return false;
+      if (typeFilter !== '全部' && (n.type || '心得体会') !== typeFilter) return false;
+      if (search && (n.title||'').indexOf(search)===-1 && (n.content||'').indexOf(search)===-1) return false;
+      return true;
+    });
+    var dates = [...new Set(items.map(function(n) { return (n.created_at||n.date||'').slice(0,10); }))].filter(Boolean).sort().reverse();
+    var saveLocal = function() { var next = [{ id: 'note-'+Date.now(), title: newTitle.trim(), content: newContent, type: '心得体会', source: '笔记本', book: selectedBook, created_at: new Date().toISOString() }].concat(notes); setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); setNewTitle(''); setNewContent(''); };
+    var deleteNote = function(e, note) { e.stopPropagation(); var next = notes.filter(function(n) { return n.id !== note.id; }); setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); if (expanded===note.id) setExpanded(null); };
+    return (
+      <div className="flex flex-col h-full">
+        <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4" style={{flexWrap:'wrap'}}>
+          <button type="button" onClick={function() { setSelectedBook(null); }} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回笔记本列表</button>
+          <div className="flex items-center gap-5" style={{flex:1,minWidth:0,flexWrap:'wrap'}}>
+            <div><h2 className="text-lg font-semibold text-slate-950">{selectedBook}</h2><p className="mt-1 text-sm text-slate-600">{filtered.length} 条笔记</p></div>
+            <label className="text-base font-semibold text-slate-900">来源<select value={sourceFilter} onChange={function(e){setSourceFilter(e.target.value)}} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{sources.map(function(s){return <option key={s} value={s}>{s}</option>})}</select></label>
+            <label className="text-base font-semibold text-slate-900">日期<select value={dateFilter} onChange={function(e){setDateFilter(e.target.value)}} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800"><option value="">全部</option>{dates.map(function(d){return <option key={d} value={d}>{d}</option>})}</select></label>
+            <label className="text-base font-semibold text-slate-900">类型<select value={typeFilter} onChange={function(e){setTypeFilter(e.target.value)}} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{types.map(function(t){return <option key={t} value={t}>{t}</option>})}</select></label>
+            <input type="text" value={search} onChange={function(e){setSearch(e.target.value)}} placeholder="搜索笔记…" className="rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800 outline-none focus:border-emerald-500" style={{width:160}} />
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="grid grid-cols-4 gap-4">
             {filtered.map(function(note, i) {
               var isOpen = expanded === note.id;
               var gradients = ['linear-gradient(135deg, #fff 0%, #f9fdfa 100%)','linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)','linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)'];
               return (
-                <div key={note.id} className={'rounded-xl border bg-white shadow-sm transition ' + (isOpen ? 'border-emerald-400 ring-1 ring-emerald-200' : 'border-slate-200')} style={{ background: gradients[i % 3] }}>
-                  <button type="button" onClick={function() { if (isOpen) { setExpanded(null); } else { setExpanded(note.id); setEditTitle(note.title); setEditContent(note.content); } }} className="w-full text-left p-4 flex items-start gap-3">
-                    <span className="flex-1 min-w-0"><strong className="block text-sm text-slate-900">{note.title}</strong><span className="text-xs text-slate-400">{(note.source || '笔记本') + ' · ' + (note.type || '心得体会') + ' · ' + (note.created_at || note.date || '').slice(0, 10)}</span></span>
-                    <button type="button" onClick={function(e) { deleteNote(e, note); }} className="shrink-0 text-xs text-rose-500 hover:text-rose-700">删除</button>
-                    <span className="text-xs text-slate-400">{isOpen ? '收起' : '展开'}</span>
+                <div key={note.id} className={'rounded-xl border bg-white shadow-sm transition '+(isOpen?'border-emerald-400 ring-1 ring-emerald-200 col-span-4':'border-slate-200')} style={{background:gradients[i%3]}}>
+                  <button type="button" onClick={function(){if(isOpen){setExpanded(null)}else{setExpanded(note.id);setEditTitle(note.title);setEditContent(note.content)}}} className="w-full text-left p-4 flex flex-col gap-2 items-center text-center">
+                    <span className="text-2xl">{note.type==='题目笔记'?'📝':'💡'}</span>
+                    <strong className="block text-sm text-slate-900" style={{overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{note.title}</strong>
+                    <span className="text-xs text-slate-400">{(note.source||'笔记本')+' · '+(note.type||'心得体会')}</span>
+                    <span className="text-xs text-slate-400">{(note.created_at||note.date||'').slice(0,10)}</span>
                   </button>
-                  {isOpen && <div className="border-t border-slate-100 px-4 pb-4 space-y-3">
-                    {note.question_content && <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm leading-6 text-amber-900"><p className="text-xs font-semibold text-amber-700 mb-1">题目内容</p>{note.question_content}{note.options && note.options.length > 0 && <div className="space-y-1 mt-2"><p className="text-xs font-semibold text-amber-700">选项</p>{note.options.map(function(opt, j) { var v = opt.option_id || opt.id || ''; var ans = Array.isArray(note.standard_answer) ? note.standard_answer : []; var isCorrect = ans.indexOf(v) >= 0; return <div key={j} className={isCorrect ? 'text-emerald-800 font-medium' : ''}><strong>{v}.</strong> {opt.content}{isCorrect ? ' ✓' : ''}</div>; })}</div>}{Array.isArray(note.standard_answer) && note.standard_answer.length > 0 && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">正确答案：</span>{note.standard_answer.join('、')}</p>}{note.explanation && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">解析：</span>{note.explanation}</p>}</div>}
-                    <input type="text" value={editTitle} onChange={function(e) { setEditTitle(e.target.value); }} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" />
-                    <textarea value={editContent} onChange={function(e) { setEditContent(e.target.value); }} rows={4} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" style={{resize:'none'}} />
-                    <button type="button" onClick={function() { var next = notes.map(function(n) { return n.id === note.id ? Object.assign({}, n, { title: editTitle.trim() || n.title, content: editContent }) : n; }); setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); }} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">保存修改</button>
+                  {isOpen && <div className="border-t border-slate-100 px-4 pb-4 space-y-3 text-left">
+                    {note.question_content && <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm leading-6 text-amber-900"><p className="text-xs font-semibold text-amber-700 mb-1">题目内容</p>{note.question_content}{note.options&&note.options.length>0&&<div className="space-y-1 mt-2"><p className="text-xs font-semibold text-amber-700">选项</p>{note.options.map(function(opt,j){var v=opt.option_id||opt.id||'';var ans=Array.isArray(note.standard_answer)?note.standard_answer:[];var ok=ans.indexOf(v)>=0;return <div key={j} className={ok?'text-emerald-800 font-medium':''}><strong>{v}.</strong> {opt.content}{ok?' ✓':''}</div>})}</div>}{Array.isArray(note.standard_answer)&&note.standard_answer.length>0&&<p className="text-xs mt-2"><span className="font-semibold text-amber-700">正确答案：</span>{note.standard_answer.join('、')}</p>}{note.explanation&&<p className="text-xs mt-2"><span className="font-semibold text-amber-700">解析：</span>{note.explanation}</p>}</div>}
+                    <input type="text" value={editTitle} onChange={function(e){setEditTitle(e.target.value)}} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" />
+                    <textarea value={editContent} onChange={function(e){setEditContent(e.target.value)}} rows={4} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" style={{resize:'none'}} />
+                    <div className="flex gap-2"><button type="button" onClick={function(){var next=notes.map(function(n){return n.id===note.id?Object.assign({},n,{title:editTitle.trim()||n.title,content:editContent}):n});setNotes(next);localStorage.setItem(STORAGE_NOTES,JSON.stringify(next))}} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">保存修改</button><button type="button" onClick={function(e){deleteNote(e,note)}} className="rounded-lg border border-rose-200 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50">删除</button></div>
                   </div>}
                 </div>
               );
             })}
+            <button type="button" onClick={function(){setNewTitle('');setNewContent('');var d=document.getElementById('note-dialog');if(d)d.style.display='flex';}} className="rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 p-5 text-center hover:border-emerald-400 hover:bg-emerald-50 transition flex flex-col items-center justify-center gap-2" style={{minHeight:'140px'}}>
+              <span className="text-2xl">➕</span>
+              <strong className="block text-sm text-emerald-700">新建笔记</strong>
+            </button>
+            <div id="note-dialog" style={{display:'none',position:'fixed',inset:0,zIndex:50,alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.3)'}} onClick={function(e){if(e.target===e.currentTarget){var d=document.getElementById('note-dialog');if(d)d.style.display='none';}}}>
+              <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4" onClick={function(e){e.stopPropagation()}}>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">新建笔记</h3>
+                <label className="block text-sm font-medium text-slate-700 mb-1">选择笔记本</label>
+                <select value={selectedBook} onChange={function(e){setSelectedBook(e.target.value)}} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400 mb-3">
+                  {bookNames.map(function(b){return <option key={b} value={b}>{b}</option>})}
+                </select>
+                <label className="block text-sm font-medium text-slate-700 mb-1">标题</label>
+                <input type="text" value={newTitle} onChange={function(e){setNewTitle(e.target.value)}} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400 mb-3" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">内容</label>
+                <textarea value={newContent} onChange={function(e){setNewContent(e.target.value)}} rows={5} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400 resize-none mb-4" placeholder="写下你的笔记…" />
+                <div className="flex justify-end gap-3">
+                  <button type="button" onClick={function(){var d=document.getElementById('note-dialog');if(d)d.style.display='none';}} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">取消</button>
+                  <button type="button" onClick={function(){if(!newTitle.trim())return;var next=[{id:'note-'+Date.now(),title:newTitle.trim(),content:newContent||'',type:'心得体会',source:'笔记本',book:selectedBook||'默认',created_at:new Date().toISOString()}].concat(notes);setNotes(next);localStorage.setItem(STORAGE_NOTES,JSON.stringify(next));setNewTitle('');setNewContent('');var d=document.getElementById('note-dialog');if(d)d.style.display='none';}} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">保存</button>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
+          {filtered.length===0&&<p className="text-center text-slate-400 py-8">暂无笔记</p>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
+        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
+        <div><h2 className="text-lg font-semibold text-slate-950">笔记本</h2><p className="mt-1 text-sm text-slate-600">{bookNames.length} 个笔记本 · {notes.length} 条笔记</p></div>
+      </header>
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="grid grid-cols-4 gap-4">
+          {bookNames.map(function(name, i) {
+            return <button key={name} type="button" onClick={function(){setSelectedBook(name)}} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm text-center hover:border-emerald-300 hover:shadow-md transition flex flex-col items-center justify-center gap-2" style={{minHeight:'140px'}}>
+              <span className="text-2xl">{['📓','📔','📒','📕','📗','📘'][i%6]}</span>
+              <strong className="block text-sm text-slate-900">{name}</strong>
+              <span className="text-xs text-slate-500">{books[name].length} 条笔记</span>
+            </button>;
+          })}
+          <button type="button" onClick={handleNewBook} className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-5 text-center hover:border-amber-400 hover:bg-amber-50 transition flex flex-col items-center justify-center gap-2" style={{minHeight:'140px'}}>
+            <span className="text-2xl">➕</span>
+            <strong className="block text-sm text-amber-700">新建笔记本</strong>
+          </button>
+        </div>
       </div>
     </div>
   );
