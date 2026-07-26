@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BookOpenCheck, ChevronDown, ChevronRight, Clock3, Loader2, GraduationCap, Stethoscope, Heart, HeartPulse, Pill } from 'lucide-react';
+import { ArrowLeft, BookOpenCheck, ChevronDown, ChevronRight, Clock3, Loader2 } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
 import QualificationAttemptWorkspace from './QualificationAttemptWorkspace';
 
@@ -31,10 +31,7 @@ function ModeSelector({ paper, duration, loading, onDurationChange, onOpen }) {
   );
 }
 
-const STORAGE_DONE = 'qp-completed-papers';
-const getCompleted = () => { try { return JSON.parse(localStorage.getItem(STORAGE_DONE) || '{}'); } catch { return {}; } };
-
-export default function QualificationPaperPanel({ enabled, onBack }) {
+export default function QualificationPaperPanel({ enabled }) {
   const [catalog, setCatalog] = useState({ exams: [], papers: [] });
   const [examId, setExamId] = useState('');
   const [year, setYear] = useState('');
@@ -47,24 +44,8 @@ export default function QualificationPaperPanel({ enabled, onBack }) {
 
   useEffect(() => {
     let active = true;
-    request('/qualification-papers/catalog').then(async (data) => {
-      if (!active) return;
-      setCatalog(data);
-      localStorage.setItem('qp-catalog-cache', JSON.stringify(data));
-      // Restore any saved attempt for the currently selected exam
-      const examPapers = data.papers.filter(p => p.exam_id === examId);
-      for (const paper of examPapers) {
-        const savedId = sessionStorage.getItem(`qp-attempt-${paper.template_id}`);
-        if (savedId) {
-          try {
-            const saved = await request(`/qualification-paper-attempts/${savedId}`);
-            if (active && saved.status !== 'submitted' && saved.template_id === paper.template_id) {
-              setAttempt(saved);
-              return;
-            }
-          } catch { sessionStorage.removeItem(`qp-attempt-${paper.template_id}`); }
-        }
-      }
+    request('/qualification-papers/catalog').then((data) => {
+      if (active) setCatalog(data);
     }).catch((reason) => active && setError(reason.message));
     return () => { active = false; };
   }, []);
@@ -79,23 +60,10 @@ export default function QualificationPaperPanel({ enabled, onBack }) {
     setLoading(true);
     setError('');
     try {
-      // Check for existing saved attempt for this paper AND matching mode
-      const savedId = sessionStorage.getItem(`qp-attempt-${selectedPaper.template_id}`);
-      if (savedId) {
-        try {
-          const saved = await request(`/qualification-paper-attempts/${savedId}`);
-          if (saved.status !== 'submitted' && saved.answer_mode === answerMode) {
-            setAttempt(saved);
-            setLoading(false);
-            return;
-          }
-        } catch { sessionStorage.removeItem(`qp-attempt-${selectedPaper.template_id}`); }
-      }
-      // Create new attempt
       const body = { answer_mode: answerMode };
       if (answerMode === 'test') body.duration_minutes = duration;
       const createdAttempt = await request(`/qualification-papers/${selectedPaper.template_id}/attempts`, { method: 'POST', body: JSON.stringify(body) });
-      sessionStorage.setItem(`qp-attempt-${selectedPaper.template_id}`, createdAttempt.attempt_id);
+      sessionStorage.setItem('qualification-paper-attempt-id', createdAttempt.attempt_id);
       setAttempt(createdAttempt);
     } catch (reason) {
       setError(reason.message || '创建作答失败');
@@ -105,71 +73,27 @@ export default function QualificationPaperPanel({ enabled, onBack }) {
   };
 
   if (!enabled) return null;
-  if (attempt) return <QualificationAttemptWorkspace attempt={attempt} examId={examId} onExit={() => {
-    if (attempt.status === 'submitted') {
-      sessionStorage.removeItem(`qp-attempt-${attempt.template_id}`);
-      const completed = getCompleted();
-      completed[examId] = (completed[examId] || 0) + 1;
-      localStorage.setItem(STORAGE_DONE, JSON.stringify(completed));
-    }
-    setAttempt(null);
-  }} />;
+  if (attempt) return <QualificationAttemptWorkspace attempt={attempt} onExit={() => setAttempt(null)} />;
   return (
-    <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
-        <div className="flex items-center gap-4 min-w-0">
-          {onBack && (
-            <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 shrink-0">
-              <ArrowLeft size={16} />返回训练工坊
-            </button>
-          )}
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-slate-950">{selectedExam ? `五类资格考试套题：${selectedExam.name}` : '五类资格考试套题'}</h2>
-            {!examId && <p className="mt-1 text-sm text-slate-600">按考试类别、年份和套题类型选择真题、回忆题或模拟题。</p>}
-          </div>
-        </div>
+    <div className="mt-5 space-y-5">
+      <header className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+        <div><h2 className="text-lg font-semibold text-slate-950">五类资格考试套题</h2><p className="mt-1 text-sm text-slate-600">按考试类别、年份和套题类型选择真题、回忆题或模拟题。</p></div>
         <BookOpenCheck className="shrink-0 text-emerald-700" size={24} aria-hidden="true" />
       </header>
-      <div className="flex-1 overflow-y-auto px-5 py-4">
       {!examId ? (
-        <div className="flex flex-col gap-3">{catalog.exams.map((exam, idx) => {
+        <div className="grid gap-3 md:grid-cols-2">{catalog.exams.map((exam) => {
           const availableCount = Number(exam.available_paper_count ?? catalog.papers.filter((paper) => paper.exam_id === exam.exam_id).length);
-          const completed = getCompleted();
-          const doneCount = completed[exam.exam_id] || 0;
           const available = availableCount > 0;
-          const icons = [GraduationCap, Stethoscope, Heart, HeartPulse, Pill];
-          const Icon = icons[idx % icons.length];
-          const gradients = [
-            'linear-gradient(135deg, #fff 0%, #f9fdfa 100%)',
-            'linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)',
-            'linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)',
-            'linear-gradient(135deg, #e8f7ef 0%, #dcf3e6 100%)',
-            'linear-gradient(135deg, #dcf3e6 0%, #cfeedd 100%)',
-          ];
-          return <button key={exam.exam_id} type="button" aria-label={exam.name} disabled={!available} onClick={() => setExamId(exam.exam_id)}
-            className="flex min-h-24 items-center gap-4 rounded-xl border border-transparent px-5 text-left shadow-md transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 w-full"
-            style={{ background: gradients[idx % gradients.length] }}
-          >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-md" style={{ background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', color: '#059669' }}>
-              <Icon size={22} aria-hidden="true" />
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm font-semibold text-slate-800">{exam.name}</span>
-              <span className="mt-1 block text-xs text-slate-500">{available ? `${availableCount} 份可作答套题` : '题目整理中，暂不开放作答'}</span>
-            </span>
-            <span className="flex items-center gap-3 shrink-0">
-              <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1">已完成{doneCount}套</span>
-              {available ? <ChevronRight size={18} aria-hidden="true" className="text-emerald-600" /> : <span className="text-xs text-slate-400">整理中</span>}
-            </span>
-          </button>;
+          return <button key={exam.exam_id} type="button" aria-label={exam.name} disabled={!available} onClick={() => setExamId(exam.exam_id)} className="flex min-h-20 items-center justify-between rounded-xl border border-slate-200 bg-white px-4 text-left text-sm font-medium text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-md disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400 disabled:shadow-none"><span><span className="block">{exam.name}</span><span className="mt-1 block text-xs font-normal text-slate-500">{available ? `${availableCount} 份可作答套题` : '题目整理中，暂不开放作答'}</span></span>{available ? <ChevronRight size={18} aria-hidden="true" /> : <span className="text-xs">整理中</span>}</button>;
         })}</div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-5 py-3">
-            <button type="button" onClick={() => { setExamId(''); setYear(''); setPaperType(''); setSelectedPaper(null); }} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-4 py-2.5 text-base font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={18} />返回考试类别</button>
-            <label className="text-base font-semibold text-slate-900">年份<select value={year} onChange={(event) => { setYear(event.target.value); setSelectedPaper(null); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800"><option value="">全部</option>{years.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-            <label className="text-base font-semibold text-slate-900">套题类型<select value={paperType} onChange={(event) => { setPaperType(event.target.value); setSelectedPaper(null); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800"><option value="">全部</option>{types.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <div className="flex flex-wrap items-end gap-3">
+            <button type="button" onClick={() => { setExamId(''); setYear(''); setPaperType(''); setSelectedPaper(null); }} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-400 hover:text-emerald-800"><ArrowLeft size={16} />返回考试类别</button>
+            <label className="text-sm text-slate-700">年份<select value={year} onChange={(event) => { setYear(event.target.value); setSelectedPaper(null); }} className="ml-2 rounded-lg border border-slate-300 bg-white px-2.5 py-2"><option value="">全部</option>{years.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+            <label className="text-sm text-slate-700">套题类型<select value={paperType} onChange={(event) => { setPaperType(event.target.value); setSelectedPaper(null); }} className="ml-2 rounded-lg border border-slate-300 bg-white px-2.5 py-2"><option value="">全部</option>{types.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           </div>
+          <h3 className="text-base font-semibold text-slate-900">{selectedExam?.name}</h3>
           <div className="space-y-3">
             {papers.map((paper) => {
               const selected = selectedPaper?.template_id === paper.template_id;
@@ -184,7 +108,6 @@ export default function QualificationPaperPanel({ enabled, onBack }) {
         </>
       )}
       {error && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
-      </div>
     </div>
   );
 }

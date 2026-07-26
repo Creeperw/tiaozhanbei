@@ -740,7 +740,33 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 
 `login_frequency` 表示时间窗内发生过登录或签到的去重活跃天数，同一用户同一天多次登录、重复签到只计 1 天。
 
-### 5.5 每日签到
+### 5.5 学习成果统计
+
+`GET /api/v1/learning-statistics/overview?days=30`
+
+`days` 只支持 `7`、`30`、`90`。该接口同时返回 `lifetime` 与
+`current_window`，用于前端展示累计学习成果和近期成果。主要字段包括：
+
+- `questions_completed`：正式审核题项与已完成历史试卷题项兼容去重后的完成题目数；
+- `audited_question_items_completed`：统一批改链路中按 `attempt_item_id` 去重的正式审核题项数；
+- `paper_questions_completed`：已完成试卷中的题目数；
+- `unique_questions_completed`：按题目稳定 ID 去重后的已练习题目数；
+- `correct_answers`、`incorrect_answers`、`correctness_unavailable`；
+- `score_rate`：审核通过结果的总得分除以总可得分，空样本返回 `null`；
+- `knowledge_points_practiced`、`knowledge_points_assessed`、`knowledge_points_mastered`；
+- `paper_attempts_completed`、`case_sessions_completed`；
+- `mistakes_recorded`、`active_mistakes`；
+- `review_queue_total`、`reviews_due`、`review_tasks_completed`；
+- `focus_minutes`、`knowledge_cards_saved`。
+
+`metric_definitions` 给出前端可展示的中文标签、计算公式和数据表，
+`counting_policy` 说明草稿、只打开题目、审核拒绝和重复批改版本是否计数。
+同一 `attempt_item_id` 即使产生多条审核记录也只计一次；不同用户的数据由服务端登录身份隔离。
+
+这个接口回答“完成了多少正式成果”。行为趋势继续使用
+`learning-activity/summary`，学情判断继续使用 `learning-insights`，三者不能互相替代。
+
+### 5.6 每日签到
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -754,6 +780,17 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 ## 6. 学习工坊
 
 ### 6.1 工坊入口
+
+当前“学习工坊”首页是教材学习入口，不再把训练模块总览作为首屏。前端并行读取：
+
+- `GET /api/v1/dashboard/home`：当前学习任务、教材与章节；
+- `GET /api/v1/learning-path`：当前长期规划的阶段；
+- `GET /api/v1/learning-path?parent_id={stage_node_id}`：阶段内计划教材；
+- `GET /api/knowledge/atlas/nodes?level=1&route=textbook_14_5`：完整教材库。
+
+计划教材始终排在前面；用户点击“展开所有教材”后才追加其余教材。进入教材后继续调用
+Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍作为训练能力目录保留，
+不应再覆盖教材工坊首屏。
 
 `GET /api/v1/workshop`
 
@@ -783,7 +820,60 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 
 正式模块键只有：`question_training`、`knowledge_cards`、`paper_workspace`。前端不要恢复已移除的“讲义生成”入口。
 
-### 6.2 题目训练
+### 6.2 知识收藏与学习笔记
+
+知识收藏和学习笔记是当前登录用户的私有数据。所有接口均从 `competition_session` 解析用户，前端不得传递或猜测 `user_id`。题目收藏和题目笔记应在批改完成后创建；`content` / `context` 可保存题干、选项、用户答案、标准答案和解析。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/v1/workshop/favorite-folders` | 当前用户收藏簿及收藏数 |
+| `POST` | `/api/v1/workshop/favorite-folders` | 新建收藏簿，正文 `{ "name": "方剂重点" }` |
+| `DELETE` | `/api/v1/workshop/favorite-folders/{folder_id}` | 删除收藏簿及簿内收藏 |
+| `GET` | `/api/v1/workshop/favorites?folder_id={folder_id}` | 查询当前用户收藏，可按收藏簿筛选 |
+| `POST` | `/api/v1/workshop/favorites` | 保存收藏；相同用户、收藏簿、资源类型和资源 ID 幂等更新 |
+| `DELETE` | `/api/v1/workshop/favorites/{favorite_id}` | 取消收藏 |
+| `GET` | `/api/v1/workshop/notes?note_type={type}&query={text}` | 查询当前用户笔记，可按类型和文本筛选 |
+| `POST` | `/api/v1/workshop/notes` | 新建学习笔记 |
+| `PUT` | `/api/v1/workshop/notes/{note_id}` | 修改笔记标题、正文或类型 |
+| `DELETE` | `/api/v1/workshop/notes/{note_id}` | 删除笔记 |
+
+收藏请求示例：
+
+```json
+{
+  "folder_id": "FAVF_01J...",
+  "resource_type": "question",
+  "resource_id": "QUESTION_001",
+  "title": "四君子汤的君药",
+  "source": "智能组卷",
+  "content": {
+    "question_content": "四君子汤的君药是？",
+    "options": [{"option_id": "A", "content": "人参"}],
+    "my_answer": "A",
+    "standard_answer": ["A"],
+    "explanation": "人参益气健脾，为君药。"
+  }
+}
+```
+
+笔记请求示例：
+
+```json
+{
+  "title": "四君子汤配伍",
+  "content": "人参为君，白术为臣。",
+  "note_type": "题目笔记",
+  "source": "智能组卷",
+  "resource_type": "question",
+  "resource_id": "QUESTION_001",
+  "context": {
+    "question_content": "四君子汤的君药是？",
+    "standard_answer": ["A"]
+  }
+}
+```
+
+### 6.3 题目训练
 
 题目训练页固定提供四种模式：客观题、案例简答、AI 病患模拟、错题变式。前三者完成提交后都写入当前用户的学习行为；答错结果进入统一错题记录。AI 病患模拟沿用病例会话接口，不删除、不降级为普通简答题。
 
@@ -1009,7 +1099,7 @@ AI 病患模拟使用：
 
 这两个接口实际查询登录态用户；路径中的 `user_id` 不参与用户切换。跨用户路径访问不会返回路径用户的数据。
 
-### 6.3 知识卡片
+### 6.4 知识卡片
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -1056,7 +1146,7 @@ AI 病患模拟使用：
 
 知识卡只保存已完成学习或明确生成的知识点。到期复习卡不能因“生成完成”直接进入复习队列；复习队列准入以用户完成配套题目为准。
 
-### 6.4 试卷
+### 6.5 试卷
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -1123,7 +1213,7 @@ AI 病患模拟使用：
 
 作答页固定按“单选题、多选题、填空题、简答题”分组展示；`case_quiz` 归入简答题区并保留自身题型标识。暂停与继续必须调用服务端计时接口，不能只停浏览器定时器。暂停后的剩余时长由服务端保存，刷新、离开页面或断线重连后仍保持暂停；继续后服务端基于保存的剩余秒数生成新的截止时间。交卷成功后倒计时立即停止并显示已交卷状态。
 
-### 6.5 资格考试真题套题
+### 6.6 资格考试真题套题
 
 资格考试真题套题是独立于智能体组卷的只读题包能力。套题模板从后端发布目录读取，作答记录按当前登录用户保存。当前支持的资格考试目录与套题由
 `GET /api/v1/qualification-papers/catalog` 返回，前端不得从本地文件复制考试名称、年份或套题列表。
@@ -1302,7 +1392,7 @@ AI 病患模拟使用：
 
 资格套题接口的所有作答记录都按登录用户隔离。前端不得把 `user_id` 拼入请求路径，也不得使用目录中的原始题库文件绕过作答记录读取答案。
 
-### 6.6 训练任务兼容接口
+### 6.7 训练任务兼容接口
 
 尚未完全迁移的训练入口使用：
 
@@ -1338,7 +1428,7 @@ AI 病患模拟使用：
 }
 ```
 
-学习工坊的正式“生成试卷”按钮不再调用上述兼容 `paper_generation`，而是同步调用 `POST /api/v1/review-cards`，提交自然语言组卷要求及 `exam_constraints.question_count`、`question_types`、`question_type_distribution`。这样题库不足时仍可继续网络检索或由 Expert 补题，并强制经过 Audit；前端从 `ui_actions` 中查找 `destination=workshop.paper` 的 `params.paper_id`，再调用 `/api/v1/workshop/papers/{paper_id}` 打开计时答题页。页面不提供难度选择，难度由智能体结合学习状态确定。
+学习工坊的正式“生成试卷”按钮不再调用上述兼容 `paper_generation`，而是同步调用 `POST /api/v1/review-cards`，提交自然语言组卷要求及 `exam_constraints.question_count`、`question_types`、`question_type_distribution`。这样题库不足时仍可继续网络检索或由 Expert 补题，并强制经过 Audit；前端从 `ui_actions` 中查找 `destination=workshop.paper` 的 `params.paper_id`，再调用 `/api/v1/workshop/papers/{paper_id}` 打开计时答题页。系统当前没有可靠的题目难度评级数据，因此页面、组卷契约和推荐计算均不使用难度等级。
 
 对话组卷成功时，`assistant_message` 只包含“组卷并通过审核”的提示，不包含试卷正文、答案或解析；试卷内容仅由答题页按 `paper_id` 读取。当前 UI 继续通过兼容任务接口使用的类型为 `knowledge_card_generation`、`mistake_variation`。普通客观题和案例简答直接使用 `/api/v1/workshop/practice/*`；AI 病患模拟使用独立病例会话接口，不通过此字段伪装。
 
@@ -1428,6 +1518,7 @@ PDF 上传成功响应中的 `pdf_processing[]` 包含
 - `GET /api/knowledge/atlas/status`
 - `GET /api/knowledge/atlas/routes`
 - `GET /api/knowledge/atlas/nodes`
+- `GET /api/knowledge/atlas/section/{section_id}`
 - `GET /api/knowledge/atlas/detail/{kp_id}`
 - `GET /api/knowledge/atlas/images/{filename}`
 - `POST /api/knowledge/atlas/warm`
@@ -1469,6 +1560,25 @@ GET /api/knowledge/atlas/nodes?level=4&route=textbook_14_5&lv1=中医学基础&c
 ```
 
 前端进入教材时传 `lv1=name`；进入章节时传 `chapter_id=id`（也可同时传 `chapter=name`）；进入小节时传 `section_id=id`（兼容调用可传 `lv2=name`）；第四级节点的 `id` 才是详情接口所需的 `kp_id`。`resolve-context` 也会返回 `chapter`、`chapter_id`、`section_id`，前端应原样保留以恢复钻取位置。
+
+教材学习页选择小节后调用：
+
+```text
+GET /api/knowledge/atlas/section/{section_id}?recommendation_limit=1
+```
+
+响应中的 `section_videos`、`recommended_videos` 和 `knowledge_points[].timestamp_video`
+由同一个播放器消费；选择时间戳视频时替换当前播放器，不能同时创建多个播放器。
+
+用户教材识别审查使用登录态隔离的只读接口：
+
+```text
+GET /api/v1/knowledge/content/recognition-reports?offset=0&limit=20
+GET /api/v1/knowledge/content/recognition-reports/{report_id}
+```
+
+列表响应包含 `items`、`total`、`offset`、`limit` 和 `has_more`。结构识别置信度只衡量
+Markdown、切片和章节映射的确定性完整度，不代表医学内容已通过人工审定。
 
 ## 8. 复习队列
 

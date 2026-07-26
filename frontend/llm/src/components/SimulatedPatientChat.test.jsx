@@ -16,12 +16,6 @@ vi.mock('../utils/api', () => ({
 
 const mockEmptyList = { success: true, data: { total: 0, list: [] } };
 
-function mockAPICall(action, data) {
-  mockFetchWithAuth.mockImplementationOnce(() =>
-    Promise.resolve({ ok: true, _json: data })
-  );
-}
-
 function mockAPIForActions(actionMap) {
   mockFetchWithAuth.mockImplementation((url, opts) => {
     const body = JSON.parse(opts.body || '{}');

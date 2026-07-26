@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
-  ArrowUpRight,
-  BookMarked, Plus,
+  ArrowRight,
+  BookMarked,
+  CalendarDays,
+  ChevronRight,
+  CirclePlay,
   ClipboardCheck,
+  Clock3,
   FileText,
   Files,
   FolderHeart,
   HeartPulse,
-  Lightbulb,
   NotebookPen,
-  Sparkles,
+  Stethoscope,
   Target,
+  TrendingUp,
   UploadCloud,
 } from 'lucide-react';
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
@@ -24,6 +28,9 @@ import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
 import KnowledgeCardLibrary from './KnowledgeCardLibrary';
+import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
+import QuestionFavoritesPanel from './QuestionFavoritesPanel';
+import StudyNotesPanel from './StudyNotesPanel';
 import { isTrainingTaskResultApproved } from '../pageDataLoaders.js';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
 
@@ -177,14 +184,6 @@ function ArtifactResult({ taskResult }) {
 
 const trainingCards = [
   {
-    key: 'question_training',
-    initialMode: 'objective',
-    title: '综合套题',
-    description: '覆盖核心知识点，系统巩固基础能力。',
-    icon: ClipboardCheck,
-    tone: 'emerald',
-  },
-  {
     key: 'paper_workspace',
     title: '智能组卷',
     description: '按学习目标组卷，灵活安排练习节奏。',
@@ -192,36 +191,46 @@ const trainingCards = [
     tone: 'green',
   },
   {
-    key: 'special_training',
-    initialMode: 'case_training',
-    title: '专项训练',
-    description: '聚焦案例简答，针对题型强化训练。',
-    icon: Target,
-    tone: 'teal',
-  },
-  {
     key: 'topic_training',
     initialMode: 'objective',
     title: '专题训练',
-    description: '围绕专题集中练习，突破理解难点。',
-    icon: Lightbulb,
-    tone: 'cyan',
+    description: '真实病例场景训练，提升临床思维。',
+    icon: Stethoscope,
+    tone: 'teal',
+  },
+  {
+    key: 'question_training',
+    initialMode: 'objective',
+    title: '综合套题',
+    description: '按知识点分类训练，逐个击破薄弱点。',
+    icon: ClipboardCheck,
+    tone: 'emerald',
   },
   {
     key: 'ai_patient_simulation',
     title: '模拟病患',
-    description: '置身临床情境，训练辨证与问诊思路。',
+    description: '模拟问诊与辨证，训练临床沟通与思路。',
     icon: HeartPulse,
     tone: 'rose',
   },
-  {
-    key: 'question_workspace',
-    title: '上传题库',
-    description: '上传学习资料，沉淀个人专属题库。',
-    icon: UploadCloud,
-    tone: 'amber',
-  },
 ];
+
+const featuredTrainingCard = {
+  key: 'special_training',
+  initialMode: 'case_training',
+  title: '专项训练',
+  description: '覆盖核心知识点，系统巩固基础能力。',
+  icon: Target,
+  tone: 'cyan',
+};
+
+const uploadQuestionBankCard = {
+  key: 'question_workspace',
+  title: '上传题库',
+  description: '上传学习资料，沉淀个人专属题库。',
+  icon: UploadCloud,
+  tone: 'amber',
+};
 
 const utilityCards = [
   {
@@ -233,19 +242,129 @@ const utilityCards = [
   },
   {
     key: 'question_favorites',
-    title: '收藏夹',
-    description: '汇总重点内容，随时回顾复习。',
+    title: '知识收藏',
+    description: '重点内容，随时回顾。',
     icon: BookMarked,
     available: true,
   },
   {
     key: 'study_notes',
-    title: '笔记本',
-    description: '沉淀学习心得，形成个人知识脉络。',
+    title: '学习笔记',
+    description: '记录心得，沉淀思考。',
     icon: NotebookPen,
     available: true,
   },
 ];
+
+const DEFAULT_TRAINING_OVERVIEW_STATS = Object.freeze({
+  streakDays: null,
+  lastAccuracy: null,
+  windowPracticeCount: null,
+  todayGoal: 20,
+  averageAccuracy: null,
+  totalHours: null,
+  totalQuestions: null,
+  recentTaskKey: 'question_training',
+});
+
+const finiteNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const nonNegativeNumberOrNull = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  return parsed === null ? null : Math.max(0, parsed);
+};
+
+const percentageOrNull = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  return parsed === null ? null : Math.min(100, Math.max(0, parsed));
+};
+
+const resumableTrainingCards = [
+  featuredTrainingCard,
+  ...trainingCards,
+  ...utilityCards,
+  uploadQuestionBankCard,
+  {
+    key: 'knowledge_cards',
+    title: '知识卡片',
+    initialMode: 'knowledge_cards',
+  },
+];
+
+function normalizeTrainingOverviewStats(stats = {}) {
+  const safeStats = stats && typeof stats === 'object' && !Array.isArray(stats) ? stats : {};
+  const recentTaskKey = resumableTrainingCards.some((card) => card.key === safeStats.recentTaskKey)
+    ? safeStats.recentTaskKey
+    : DEFAULT_TRAINING_OVERVIEW_STATS.recentTaskKey;
+
+  return {
+    streakDays: nonNegativeNumberOrNull(safeStats.streakDays),
+    lastAccuracy: percentageOrNull(safeStats.lastAccuracy),
+    windowPracticeCount: nonNegativeNumberOrNull(safeStats.windowPracticeCount),
+    todayGoal: nonNegativeNumberOrNull(safeStats.todayGoal) ?? DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
+    averageAccuracy: percentageOrNull(safeStats.averageAccuracy),
+    totalHours: nonNegativeNumberOrNull(safeStats.totalHours),
+    totalQuestions: nonNegativeNumberOrNull(safeStats.totalQuestions),
+    recentTaskKey,
+  };
+}
+
+const scoreAsPercentage = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  if (parsed === null) return null;
+  return Math.round((parsed <= 1 ? parsed * 100 : parsed) * 10) / 10;
+};
+
+const recentTaskKeyFromActivity = (activity = {}) => {
+  const source = `${activity.resource_type || ''} ${activity.activity_type || ''}`.toLowerCase();
+  if (source.includes('favorite')) return 'question_favorites';
+  if (source.includes('note')) return 'study_notes';
+  if (source.includes('mistake')) return 'mistake_variation';
+  if (source.includes('paper')) return 'paper_workspace';
+  if (source.includes('patient') || source.includes('case')) return 'ai_patient_simulation';
+  if (source.includes('topic')) return 'topic_training';
+  if (source.includes('special') || source.includes('knowledge_point')) return 'special_training';
+  return source.includes('question') || source.includes('practice') ? 'question_training' : null;
+};
+
+const isScoredTrainingActivity = (activity = {}) => {
+  const activityType = String(activity.activity_type || '').toLowerCase();
+  return ['question', 'practice', 'paper', 'case', 'grading', 'exam']
+    .some((type) => activityType.includes(type));
+};
+
+const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, checkin = {}) => {
+  const lifetime = statistics?.lifetime || {};
+  const currentWindow = statistics?.current_window || {};
+  const recentActivities = Array.isArray(activitySummary?.recent_activities)
+    ? activitySummary.recent_activities
+    : [];
+  const latestScoredActivity = recentActivities.find(
+    (activity) => (
+      isScoredTrainingActivity(activity)
+      && finiteNumberOrNull(activity?.score) !== null
+    ),
+  );
+  const latestResumableActivity = recentActivities.find(recentTaskKeyFromActivity);
+  const focusMinutes = nonNegativeNumberOrNull(lifetime.focus_minutes);
+
+  return {
+    streakDays: nonNegativeNumberOrNull(checkin?.streak),
+    lastAccuracy: scoreAsPercentage(latestScoredActivity?.score)
+      ?? scoreAsPercentage(currentWindow.score_rate),
+    windowPracticeCount: nonNegativeNumberOrNull(currentWindow.questions_completed),
+    todayGoal: DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
+    averageAccuracy: scoreAsPercentage(currentWindow.score_rate),
+    totalHours: focusMinutes === null ? null : Math.round((focusMinutes / 60) * 10) / 10,
+    totalQuestions: nonNegativeNumberOrNull(lifetime.questions_completed),
+    recentTaskKey: recentTaskKeyFromActivity(latestResumableActivity)
+      || DEFAULT_TRAINING_OVERVIEW_STATS.recentTaskKey,
+  };
+};
 
 const workspaceTitles = {
   question_training: '综合套题',
@@ -255,8 +374,8 @@ const workspaceTitles = {
   mistake_variation: '错题库',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
-  question_favorites: '收藏夹',
-  study_notes: '笔记本',
+  question_favorites: '知识收藏',
+  study_notes: '学习笔记',
 };
 
 const legacyTaskTypes = {
@@ -272,261 +391,205 @@ const normalizeTaskIntent = (taskType = '') => legacyTaskTypes[taskType] || {
   initialMode: taskType,
 };
 
-function QuestionFavoritesPanel({ onBack }) {
-  var _useState = useState(function() { try { return JSON.parse(localStorage.getItem('qp-favorite-questions') || '[]'); } catch(e) { return []; } });
-  var favs = _useState[0], setFavs = _useState[1];
-  var _useState2 = useState(null), expanded = _useState2[0], setExpanded = _useState2[1];
-  var _useState3 = useState(null), selectedBook = _useState3[0], setSelectedBook = _useState3[1];
-  var stdAnswer = function(item) { var ans = item.standard_answer; if (Array.isArray(ans)) return ans.join('、'); if (typeof ans === 'string') return ans; return ''; };
-  var hasCorrect = function(item) { return stdAnswer(item).length > 0; };
-  var removeFav = function(e, questionId) { e.stopPropagation(); var next = favs.filter(function(f) { return f.question_id !== questionId; }); setFavs(next); localStorage.setItem('qp-favorite-questions', JSON.stringify(next)); if (expanded === questionId) setExpanded(null); };
-  var books = {}; var bookNamesList = JSON.parse(localStorage.getItem('qp-collection-books') || '[]'); bookNamesList.forEach(function(b) { books[b] = []; }); favs.forEach(function(f) { var b = f.book || '默认'; if (!books[b]) books[b] = []; books[b].push(f); });
-  if (selectedBook) {
-    var items = books[selectedBook] || [];
-    return (
-      <div className="flex flex-col h-full">
-        <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
-          <button type="button" onClick={function() { setSelectedBook(null); }} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回收藏簿列表</button>
-          <div><h2 className="text-lg font-semibold text-slate-950">{selectedBook}</h2><p className="mt-1 text-sm text-slate-600">{items.length} 道题目</p></div>
-        </header>
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          {items.map(function(item, i) {
-            var isOpen = expanded === item.question_id;
-            var correct = stdAnswer(item), correctVals = correct.split(',');
-            return React.createElement('div', { key: i, className: 'rounded-xl border bg-white shadow-sm ' + (isOpen ? 'border-emerald-400 ring-1 ring-emerald-200' : 'border-slate-200') },
-              React.createElement('button', { type: 'button', onClick: function() { setExpanded(isOpen ? null : item.question_id); }, className: 'w-full text-left p-4 flex items-start gap-3' },
-                React.createElement('p', { className: 'text-sm leading-6 text-slate-800 flex-1' }, item.question_content || '（题目内容缺失）'),
-                React.createElement('span', { className: 'shrink-0 flex items-center gap-2' },
-                  React.createElement('button', { type: 'button', onClick: function(e) { removeFav(e, item.question_id); }, className: 'text-xs text-rose-500 hover:text-rose-700' }, '移除'),
-                  React.createElement('span', { className: 'text-xs text-slate-400' }, isOpen ? '收起' : '展开')
-                )
-              ),
-              isOpen && React.createElement('div', { className: 'border-t border-slate-100 px-4 pb-4 space-y-3' },
-                item.options && item.options.length > 0 && React.createElement('div', null,
-                  React.createElement('p', { className: 'text-xs font-semibold text-slate-500 mb-2' }, '选项'),
-                  React.createElement('div', { className: 'space-y-1' },
-                    item.options.map(function(opt, j) {
-                      var v = opt.option_id || opt.id || '';
-                      var my = item.my_answer && String(item.my_answer).split(',').indexOf(v) >= 0;
-                      var ok = correctVals.indexOf(v) >= 0;
-                      var c = 'text-slate-600';
-                      if (my && ok) c = 'bg-emerald-50 border border-emerald-300 text-emerald-900 font-medium';
-                      else if (my) c = 'bg-rose-50 border border-rose-300 text-rose-900 font-medium';
-                      else if (ok && hasCorrect(item)) c = 'bg-emerald-50 border border-emerald-200 text-emerald-800';
-                      return React.createElement('div', { key: j, className: 'text-sm px-3 py-1.5 rounded-lg ' + c },
-                        React.createElement('strong', null, v + '. '), opt.content,
-                        my && ok && React.createElement('span', { className: 'ml-2 text-xs text-emerald-600' }, '✓ 正确'),
-                        my && !ok && React.createElement('span', { className: 'ml-2 text-xs text-rose-600' }, '✗ 你的作答'),
-                        !my && ok && hasCorrect(item) && React.createElement('span', { className: 'ml-2 text-xs text-emerald-600' }, '✓ 正确答案')
-                      );
-                    })
-                  )
-                ),
-                item.explanation && React.createElement('div', null,
-                  React.createElement('p', { className: 'text-xs font-semibold text-slate-500 mb-1' }, '解析'),
-                  React.createElement('p', { className: 'text-sm leading-6 text-slate-700 bg-slate-50 rounded-lg p-3' }, item.explanation)
-                ),
-                React.createElement('p', { className: 'text-xs text-slate-400' }, '收藏于' + (item.source || '综合套题') + ' · ' + (item.saved_at || '').slice(0, 10))
-              )
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-  var bookNames = Object.keys(books);
-  return (
-    <div className="flex flex-col h-full">
-      <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4">
-        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
-        <div className="flex items-center gap-5" style={{flex:1,minWidth:0}}>
-          <div><h2 className="text-lg font-semibold text-slate-950">收藏夹</h2><p className="mt-1 text-sm text-slate-600">{bookNames.length} 个收藏簿 · {favs.length} 道题目</p></div>
-          <button type="button" onClick={function() { var name = prompt('请输入新收藏簿名称：'); if (name && name.trim()) { var key = 'qp-collection-books'; var books = JSON.parse(localStorage.getItem(key) || '[]'); if (books.indexOf(name.trim()) === -1) { books.push(name.trim()); localStorage.setItem(key, JSON.stringify(books)); } var favs = JSON.parse(localStorage.getItem('qp-favorite-questions') || '[]'); setFavs(favs.slice()); } }} className="ml-auto inline-flex items-center gap-1 rounded-lg border-2 border-amber-400 bg-amber-50 px-3 py-2.5 text-base font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100"><Plus size={18} />新建收藏簿</button>
-        </div>
-      </header>
-      <div className="flex-1 overflow-y-auto px-5 py-4">
-        {bookNames.length === 0 ? (
-          <p className="text-center text-slate-400 py-12">暂无收藏，在套题中点击「加入收藏」即可</p>
-        ) : (
-          <div className="space-y-3">
-            {bookNames.map(function(name, i) {
-              var gradients = ['linear-gradient(135deg, #fff 0%, #f9fdfa 100%)','linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)','linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)'];
-              return <button key={name} type="button" onClick={function() { setSelectedBook(name); }} className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm text-left hover:border-emerald-300 hover:shadow-md transition" style={{ background: gradients[i % 3] }}>
-                <strong className="block text-sm text-slate-900">{name}</strong>
-                <span className="text-xs text-slate-500">{books[name].length} 道题目</span>
-              </button>;
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-const STORAGE_NOTES = 'study-notes';
-const getNotes = () => { try { return JSON.parse(localStorage.getItem(STORAGE_NOTES) || '[]'); } catch { return []; } };
-
-function StudyNotesPanel({ onBack }) {
-  const [notes, setNotes] = useState(getNotes);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [expanded, setExpanded] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('全部');
-  const [dateFilter, setDateFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('全部');
-  const [search, setSearch] = useState('');
-  const sources = ['全部', '综合套题', '智能组卷', '专题训练', '专项训练', '笔记本'];
-  const types = ['全部', '心得体会', '题目笔记'];
-  const dates = [...new Set(notes.map(function(n) { return (n.created_at || n.date || '').slice(0, 10); }))].filter(Boolean).sort().reverse();
-  const filtered = notes.filter(function(n) {
-    if (sourceFilter !== '全部' && (n.source || '笔记本') !== sourceFilter) return false;
-    if (dateFilter && (n.created_at || n.date || '').slice(0, 10) !== dateFilter) return false;
-    if (typeFilter !== '全部' && (n.type || '心得体会') !== typeFilter) return false;
-    if (search && (n.title || '').indexOf(search) === -1 && (n.content || '').indexOf(search) === -1) return false;
-    return true;
-  });
-  var saveNote = function() {
-    if (!title.trim() || !content.trim()) return;
-    var next = [{ id: 'note-' + Date.now(), title: title.trim(), content: content.trim(), type: '心得体会', source: '笔记本', created_at: new Date().toISOString() }].concat(notes);
-    setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); setTitle(''); setContent('');
-  };
-  var deleteNote = function(e, note) {
-    e.stopPropagation();
-    var next = notes.filter(function(n) { return n.id !== note.id; });
-    setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next));
-    if (expanded === note.id) setExpanded(null);
-    var attId = note.attemptId || (note.qpKey ? note.qpKey.split('-').slice(0, -1).join('-') : '');
-    if (note.qpKey && attId) { try { var qpNotes = JSON.parse(localStorage.getItem('qp-notes-' + attId) || '{}'); var posKey = note.qpKey.replace(attId + '-', ''); delete qpNotes[posKey]; localStorage.setItem('qp-notes-' + attId, JSON.stringify(qpNotes)); } catch(e) {} }
-  };
-  return (
-    <div className="flex flex-col h-full">
-      <header className="flex items-center gap-4 border-b border-slate-200 px-5 py-4" style={{flexWrap:'wrap'}}>
-        {onBack && <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"><ArrowLeft size={16} />返回训练工坊</button>}
-        <div className="flex items-center gap-5" style={{flex:1,minWidth:0,flexWrap:'wrap'}}>
-          <div><h2 className="text-lg font-semibold text-slate-950">笔记本</h2><p className="mt-1 text-sm text-slate-600">共 {filtered.length} 条笔记</p></div>
-          <label className="text-base font-semibold text-slate-900">来源<select value={sourceFilter} onChange={function(e) { setSourceFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{sources.map(function(s) { return <option key={s} value={s}>{s}</option>; })}</select></label>
-          <label className="text-base font-semibold text-slate-900">日期<select value={dateFilter} onChange={function(e) { setDateFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800"><option value="">全部</option>{dates.map(function(d) { return <option key={d} value={d}>{d}</option>; })}</select></label>
-          <label className="text-base font-semibold text-slate-900">类型<select value={typeFilter} onChange={function(e) { setTypeFilter(e.target.value); }} className="ml-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800">{types.map(function(t) { return <option key={t} value={t}>{t}</option>; })}</select></label>
-          <input type="text" value={search} onChange={function(e) { setSearch(e.target.value); }} placeholder="搜索笔记…" className="rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-800 outline-none focus:border-emerald-500" style={{width:160}} />
-        </div>
-      </header>
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-          <input type="text" value={title} onChange={function(e) { setTitle(e.target.value); }} placeholder="笔记标题" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500" />
-          <textarea value={content} onChange={function(e) { setContent(e.target.value); }} placeholder="写下你的学习心得…" rows={3} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500" style={{resize:'none'}} />
-          <button type="button" onClick={saveNote} disabled={!title.trim() || !content.trim()} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">保存笔记</button>
-        </div>
-        {filtered.length === 0 ? (
-          <p className="text-center text-slate-400 py-8">暂无笔记，开始记录你的学习心得吧</p>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map(function(note, i) {
-              var isOpen = expanded === note.id;
-              var gradients = ['linear-gradient(135deg, #fff 0%, #f9fdfa 100%)','linear-gradient(135deg, #f9fdfa 0%, #f0faf4 100%)','linear-gradient(135deg, #f0faf4 0%, #e8f7ef 100%)'];
-              return (
-                <div key={note.id} className={'rounded-xl border bg-white shadow-sm transition ' + (isOpen ? 'border-emerald-400 ring-1 ring-emerald-200' : 'border-slate-200')} style={{ background: gradients[i % 3] }}>
-                  <button type="button" onClick={function() { if (isOpen) { setExpanded(null); } else { setExpanded(note.id); setEditTitle(note.title); setEditContent(note.content); } }} className="w-full text-left p-4 flex items-start gap-3">
-                    <span className="flex-1 min-w-0"><strong className="block text-sm text-slate-900">{note.title}</strong><span className="text-xs text-slate-400">{(note.source || '笔记本') + ' · ' + (note.type || '心得体会') + ' · ' + (note.created_at || note.date || '').slice(0, 10)}</span></span>
-                    <button type="button" onClick={function(e) { deleteNote(e, note); }} className="shrink-0 text-xs text-rose-500 hover:text-rose-700">删除</button>
-                    <span className="text-xs text-slate-400">{isOpen ? '收起' : '展开'}</span>
-                  </button>
-                  {isOpen && <div className="border-t border-slate-100 px-4 pb-4 space-y-3">
-                    {note.question_content && <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm leading-6 text-amber-900"><p className="text-xs font-semibold text-amber-700 mb-1">题目内容</p>{note.question_content}{note.options && note.options.length > 0 && <div className="space-y-1 mt-2"><p className="text-xs font-semibold text-amber-700">选项</p>{note.options.map(function(opt, j) { var v = opt.option_id || opt.id || ''; var ans = Array.isArray(note.standard_answer) ? note.standard_answer : []; var isCorrect = ans.indexOf(v) >= 0; return <div key={j} className={isCorrect ? 'text-emerald-800 font-medium' : ''}><strong>{v}.</strong> {opt.content}{isCorrect ? ' ✓' : ''}</div>; })}</div>}{Array.isArray(note.standard_answer) && note.standard_answer.length > 0 && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">正确答案：</span>{note.standard_answer.join('、')}</p>}{note.explanation && <p className="text-xs mt-2"><span className="font-semibold text-amber-700">解析：</span>{note.explanation}</p>}</div>}
-                    <input type="text" value={editTitle} onChange={function(e) { setEditTitle(e.target.value); }} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" />
-                    <textarea value={editContent} onChange={function(e) { setEditContent(e.target.value); }} rows={4} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400" style={{resize:'none'}} />
-                    <button type="button" onClick={function() { var next = notes.map(function(n) { return n.id === note.id ? Object.assign({}, n, { title: editTitle.trim() || n.title, content: editContent }) : n; }); setNotes(next); localStorage.setItem(STORAGE_NOTES, JSON.stringify(next)); }} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">保存修改</button>
-                  </div>}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function TrainingBannerIllustration() {
   const [hint, setHint] = useState('快来跟我一起练习吧');
   const phrases = ['快来跟我一起练习吧', '今天也要加油哦', '温故而知新', '学而时习之', '坚持就是胜利'];
   return (
-    <div className="practice-overview__illustration" aria-hidden="true">
-      <div className="practice-overview__speech-bubble">{hint}</div>
-      <img
-        className="practice-overview__character"
-        src="/assistant-character/lizhizhen-center-cutout.png"
-        alt="李时珍"
-        onClick={() => { const next = phrases.filter(function(p) { return p !== hint; }); setHint(next[Math.floor(Math.random() * next.length)]); }}
-        title="点击和李时珍互动"
-      />
+    <div className="practice-overview__illustration">
+      <span className="practice-overview__character-note" aria-live="polite">{hint}</span>
+      <button
+        type="button"
+        className="practice-overview__character-button"
+        onClick={() => {
+          const next = phrases.filter((phrase) => phrase !== hint);
+          setHint(next[Math.floor(Math.random() * next.length)]);
+        }}
+        aria-label="和李时珍互动"
+      >
+        <img
+          className="practice-overview__character"
+          src="/assistant-character/lizhizhen-center-cutout.png"
+          alt=""
+        />
+      </button>
     </div>
   );
 }
 
-function TrainingOverview({ onOpenModule }) {
+function OverviewMetricCard({ icon: Icon, label, value, hint, tone = 'green' }) {
+  return (
+    <div className={`practice-overview__hero-metric practice-overview__hero-metric--${tone}`}>
+      <span className="practice-overview__metric-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 21 })}</span>
+      <span className="practice-overview__metric-copy">
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <em>{hint}</em>
+      </span>
+    </div>
+  );
+}
+
+function OverviewSummaryMetric({ icon: Icon, label, value, hint, tone = 'green', progress }) {
+  return (
+    <div className={`practice-overview__summary-metric practice-overview__summary-metric--${tone}`}>
+      <span className="practice-overview__summary-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 22 })}</span>
+      <span className="practice-overview__summary-copy">
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <em>{hint}</em>
+        {progress !== undefined && (
+          <span
+            className="practice-overview__progress"
+            role="progressbar"
+            aria-label="今日目标完成度"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress}
+          >
+            <span style={{ width: `${progress}%` }} />
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function TrainingOverview({ onOpenModule, overviewStats }) {
+  const stats = normalizeTrainingOverviewStats(overviewStats);
+  const recentCard = resumableTrainingCards
+    .find((card) => card.key === stats.recentTaskKey) || trainingCards[2];
+  const formatPercent = (value) => value === null ? '--' : `${value}%`;
+  const formatHours = (value) => value === null ? '--' : `${value} 小时`;
+  const formatDays = (value) => value === null ? '--' : `${value} 天`;
+  const formatQuestions = (value) => value === null ? '累计练习待接入' : `累计练习 ${value} 题`;
+
   return (
     <section className="practice-overview" aria-labelledby="practice-overview-title">
       <header className="practice-overview__banner">
-        <div>
-          <span className="practice-overview__eyebrow"><Sparkles size={16} aria-hidden="true" />训练中心</span>
-          <h1 id="practice-overview-title">训练工坊，实战精进</h1>
-          <p>聚焦实战训练，强化能力，在每一次复盘中稳步精进。</p>
+        <div className="practice-overview__hero-copy">
+          <span className="practice-overview__greeting"><span>准备开始今天的训练</span> <span aria-hidden="true">🌿</span></span>
+          <h1 id="practice-overview-title">训练工坊</h1>
+          <p>今日建议完成 <strong>{stats.todayGoal}</strong> 道综合题，预计 <strong>15</strong> 分钟</p>
+          <div className="practice-overview__hero-actions">
+            <button type="button" className="practice-overview__primary-action" onClick={() => onOpenModule(featuredTrainingCard)}>
+              <CirclePlay aria-hidden="true" size={18} />开始今日训练
+            </button>
+            <button type="button" className="practice-overview__secondary-action" onClick={() => onOpenModule(recentCard)}>
+              <Clock3 aria-hidden="true" size={17} />继续上次练习
+            </button>
+          </div>
+        </div>
+        <div className="practice-overview__hero-metrics">
+          <OverviewMetricCard
+            icon={CalendarDays}
+            label="连续学习"
+            value={formatDays(stats.streakDays)}
+            hint="再接再厉，保持节奏"
+          />
+          <OverviewMetricCard
+            icon={TrendingUp}
+            label="上次正确率"
+            value={formatPercent(stats.lastAccuracy)}
+            hint="稳保持，稳步提升"
+            tone="mint"
+          />
         </div>
         <TrainingBannerIllustration />
       </header>
 
       <div className="practice-overview__layout">
-        <section className="practice-overview__main" aria-label="训练路径">
-          <div className="practice-overview__section-heading">
-            <div>
-              <span>训练路径</span>
-              <h2>选择今天的练习方式</h2>
-            </div>
-          </div>
+        <section className="practice-overview__main" aria-label="训练模块">
+          <button type="button" className="practice-overview__featured-card" onClick={() => onOpenModule(featuredTrainingCard)}>
+            <span className="practice-overview__featured-icon"><Target aria-hidden="true" size={30} /></span>
+            <span className="practice-overview__featured-copy">
+              <span className="practice-overview__featured-title"><strong>{featuredTrainingCard.title}</strong><em>推荐</em></span>
+              <small>覆盖核心知识点，系统巩固基础能力。</small>
+              <span>20 题 <i /> 15 分钟 <i /> 覆盖核心知识点</span>
+            </span>
+            <span className="practice-overview__featured-action">
+              <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
+              <small>上次练习：待接入</small>
+              <small>正确率：{formatPercent(stats.lastAccuracy)}</small>
+            </span>
+          </button>
           <div className="practice-overview__training-grid">
             {trainingCards.map((card) => {
-              var Icon = card.icon;
+              const Icon = card.icon;
               return (
-                <button key={card.key} type="button" className={'practice-overview__training-card practice-overview__training-card--' + card.tone} onClick={function() { onOpenModule(card); }}>
-                  <span className="practice-overview__card-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 26 })}</span>
-                  <span className="practice-overview__card-copy"><strong>{card.title}</strong><small>{card.description}</small></span>
-                  <ArrowUpRight className="practice-overview__card-arrow" aria-hidden="true" size={20} />
+                <button
+                  key={card.key}
+                  type="button"
+                  className={`practice-overview__training-card practice-overview__training-card--${card.tone}`}
+                  onClick={() => onOpenModule(card)}
+                >
+                  <span className="practice-overview__card-icon"><Icon aria-hidden="true" size={26} /></span>
+                  <span className="practice-overview__card-copy">
+                    <strong>{card.title}</strong>
+                    <small>{card.description}</small>
+                  </span>
+                  <ChevronRight className="practice-overview__card-arrow" aria-hidden="true" size={19} />
                 </button>
               );
             })}
           </div>
+
+          <section className="practice-overview__summary" role="region" aria-label="学习概览">
+            <OverviewSummaryMetric
+              icon={CalendarDays}
+              label="近 30 天练习"
+              value={stats.windowPracticeCount === null ? '--' : `${stats.windowPracticeCount} 题`}
+              hint="正式审核完成题目"
+            />
+            <OverviewSummaryMetric
+              icon={Target}
+              label="平均正确率"
+              value={formatPercent(stats.averageAccuracy)}
+              hint={stats.averageAccuracy === null ? '暂无数据' : '继续保持'}
+            />
+            <OverviewSummaryMetric
+              icon={Clock3}
+              label="累计学习"
+              value={formatHours(stats.totalHours)}
+              hint={formatQuestions(stats.totalQuestions)}
+              tone="purple"
+            />
+          </section>
         </section>
 
-        <aside className="practice-overview__utilities" aria-label="常用学习工具">
-          <div className="practice-overview__section-heading">
-            <div><span>常用工具</span><h2>复盘与沉淀</h2></div>
-          </div>
+        <aside className="practice-overview__utilities" aria-label="学习工具">
           <div className="practice-overview__utility-list">
-            {utilityCards.filter(function(c) { return c.available; }).map(function(card) {
-              var Icon = card.icon;
+            {utilityCards.filter((card) => card.available).map((card) => {
+              const Icon = card.icon;
               return (
-                <button key={card.title} type="button" className="practice-overview__utility-card" onClick={function() { onOpenModule(card); }}>
-                  <span className="practice-overview__utility-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 22 })}</span>
+                <button
+                  key={card.title}
+                  type="button"
+                  className="practice-overview__utility-card"
+                  onClick={() => onOpenModule(card)}
+                >
+                  <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
                   <span><strong>{card.title}</strong><small>{card.description}</small></span>
+                  <ChevronRight aria-hidden="true" size={18} />
                 </button>
               );
             })}
+            <button
+              type="button"
+              className="practice-overview__utility-card practice-overview__utility-card--upload"
+              onClick={() => onOpenModule(uploadQuestionBankCard)}
+            >
+              <span className="practice-overview__utility-icon"><UploadCloud aria-hidden="true" size={22} /></span>
+              <span><strong>上传题库</strong><small>上传学习资料，沉淀个人专属题库。</small><em>支持 Word / Excel / TXT · 智能解析</em></span>
+              <ChevronRight aria-hidden="true" size={18} />
+            </button>
           </div>
         </aside>
       </div>
-
-      <footer className="practice-overview__summary" aria-label="学习摘要">
-        <span><ClipboardCheck aria-hidden="true" size={18} /><b>今日练习</b><em>暂无记录</em></span>
-        <span><Target aria-hidden="true" size={18} /><b>正确率</b><em>暂无记录</em></span>
-        <span><BookMarked aria-hidden="true" size={18} /><b>累计学习</b><em>暂无记录</em></span>
-        <p>保持练习，积累每一次进步。</p>
-      </footer>
     </section>
   );
 }
 
-export default function PracticePage({ navigationContext = {} }) {
+export default function PracticePage({ navigationContext = {}, overviewStats }) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
   const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
   const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
@@ -534,6 +597,32 @@ export default function PracticePage({ navigationContext = {} }) {
   const [taskResult, setTaskResult] = useState(null);
   const [mobilePage, setMobilePage] = useState('task');
   const [view, setView] = useState(() => (navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'));
+  const [loadedOverviewStats, setLoadedOverviewStats] = useState(DEFAULT_TRAINING_OVERVIEW_STATS);
+  const taskItemId = navigationContext.taskItemId || navigationContext.task_item_id || '';
+
+  useEffect(() => {
+    if (overviewStats !== undefined) return undefined;
+
+    let active = true;
+    const requestOverview = (path) => fetchJsonWithAuthFallback({
+      paths: [path],
+      fallback: {},
+    }).then((result) => result.data).catch(() => ({}));
+
+    Promise.all([
+      requestOverview('/v1/learning-statistics/overview?days=30'),
+      requestOverview('/v1/learning-activity/summary?days=7&recent_limit=100'),
+      requestOverview('/v1/checkin'),
+    ]).then(([statistics, activitySummary, checkin]) => {
+      if (active) {
+        setLoadedOverviewStats(buildTrainingOverviewStats(statistics, activitySummary, checkin));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [overviewStats]);
 
   useEffect(() => {
     const request = async (path, body) => {
@@ -591,7 +680,12 @@ export default function PracticePage({ navigationContext = {} }) {
   const taskResultApproved = isTrainingTaskResultApproved(taskResult);
 
   if (view === 'overview') {
-    return <TrainingOverview onOpenModule={openWorkshopModule} />;
+    return (
+      <TrainingOverview
+        onOpenModule={openWorkshopModule}
+        overviewStats={overviewStats ?? loadedOverviewStats}
+      />
+    );
   }
 
   if (activeTaskType === 'question_workspace') {
@@ -608,32 +702,9 @@ export default function PracticePage({ navigationContext = {} }) {
   }
 
   const isSP = activeTaskType === 'ai_patient_simulation';
-  const isFullPanel = ['question_training', 'special_training', 'topic_training', 'paper_workspace', 'mistake_variation', 'question_favorites', 'study_notes'].includes(activeTaskType);
 
   if (isSP) {
     return <SimulatedPatientChat onBack={() => setView('overview')} />;
-  }
-
-  if (isFullPanel) {
-    return (
-      <div className="flex flex-col h-full text-slate-800">
-        <div className="flex-1 min-h-0 min-w-0">
-          {activeTaskType === 'question_training' ? (
-            <QualificationPaperPanel enabled onBack={() => setView('overview')} />
-          ) : activeTaskType === 'mistake_variation' ? (
-            <MistakeVariationPanel enabled onBack={() => setView('overview')} />
-          ) : activeTaskType === 'paper_workspace' ? (
-            <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} onBack={() => setView('overview')} />
-          ) : activeTaskType === 'question_favorites' ? (
-            <QuestionFavoritesPanel onBack={() => setView('overview')} />
-          ) : activeTaskType === 'study_notes' ? (
-            <StudyNotesPanel onBack={() => setView('overview')} />
-          ) : ['special_training', 'topic_training'].includes(activeTaskType) ? (
-            <QuestionTrainingPanel enabled selectedKnowledgePoint={selectedKnowledgePoint} initialMode={activeInitialMode} onResult={handlePracticeResult} onBack={() => setView('overview')} />
-          ) : null}
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -677,23 +748,35 @@ export default function PracticePage({ navigationContext = {} }) {
 
       <div className="min-w-0 space-y-5">
           <section data-mobile-active={String(mobilePage === 'task')} className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
-            {activeTaskType === 'question_training' ? (
+            {activeTaskType === 'question_training' && !taskItemId ? (
               <QualificationPaperPanel enabled />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
-              <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} />
+              <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} taskItemId={taskItemId} />
             ) : activeTaskType === 'knowledge_cards' ? (
               <KnowledgeCardLibrary
                 cardId={navigationContext.cardId || navigationContext.card_id || ''}
                 kpId={navigationContext.kpId || navigationContext.kp_id || ''}
+                taskItemId={taskItemId}
               />
-            ) : ['question_training', 'special_training', 'topic_training'].includes(activeTaskType) ? (
+            ) : activeTaskType === 'question_favorites' ? (
+              <QuestionFavoritesPanel />
+            ) : activeTaskType === 'study_notes' ? (
+              <StudyNotesPanel />
+            ) : activeTaskType === 'topic_training' ? (
+              <KnowledgePointTrainingHub
+                initialKnowledgePoint={selectedKnowledgePoint}
+                taskItemId={taskItemId}
+                onResult={handlePracticeResult}
+              />
+            ) : ['question_training', 'special_training'].includes(activeTaskType) ? (
               <QuestionTrainingPanel
                 enabled
                 selectedKnowledgePoint={selectedKnowledgePoint}
                 initialMode={activeInitialMode}
                 onResult={handlePracticeResult}
+                taskItemId={taskItemId}
               />
             ) : (
               <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">

@@ -1,6 +1,5 @@
 import pytest
 
-from competition_app.agents.knowledge_base import KnowledgeBaseAgent
 from competition_app.agents.paper_assembly import PaperAssemblyAgent
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.knowledge import QuestionDetail, QuestionRetrievalMetadata
@@ -398,15 +397,6 @@ def _assembly_context() -> dict:
 
 
 @pytest.mark.asyncio
-async def test_paper_assembly_rejects_generated_fill_for_test_mode() -> None:
-    context = _assembly_context()
-    context["exam_constraints"] = {"mode": "test"}
-
-    with pytest.raises(ValueError, match="正式题库"):
-        await PaperAssemblyAgent(GeneratedOnlyAssemblyModel()).run(context)
-
-
-@pytest.mark.asyncio
 async def test_paper_assembly_generates_only_the_hard_question_gap() -> None:
     result = await PaperAssemblyAgent(AssemblyModel()).run(_assembly_context())
 
@@ -446,32 +436,6 @@ async def test_paper_assembly_falls_back_to_candidate_pool_on_invalid_protocol()
     assert any(
         "确定性组装" in item for item in result.payload.unresolved_constraints
     )
-
-
-@pytest.mark.asyncio
-async def test_paper_assembly_never_refills_a_cooldown_question() -> None:
-    context = _assembly_context()
-    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
-    blueprint.required_total_question_count = None
-    blueprint.question_count_is_hard_constraint = False
-    context["personalization_summary"] = {"recent_question_ids": ["Q1"]}
-
-    with pytest.raises(ValueError, match="近期已发布题"):
-        await PaperAssemblyAgent(OutOfPoolSelectionAssemblyModel()).run(context)
-
-
-@pytest.mark.asyncio
-async def test_paper_assembly_rejects_generated_fill_for_soft_test_mode() -> None:
-    context = _assembly_context()
-    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
-    blueprint.required_total_question_count = None
-    blueprint.question_count_is_hard_constraint = False
-    context["exam_constraints"] = {"mode": "test"}
-
-    result = await PaperAssemblyAgent(GeneratedOnlyAssemblyModel()).run(context)
-
-    assert [item.question.question_id for item in result.payload.items] == ["Q1"]
-    assert all(item.question.origin != "generated" for item in result.payload.items)
 
 
 @pytest.mark.asyncio

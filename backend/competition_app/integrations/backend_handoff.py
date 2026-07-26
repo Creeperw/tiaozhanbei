@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import importlib
 import json
 import os
@@ -384,39 +383,9 @@ class BackendHandoffRuntime:
                 .limit(100)
                 .all()
             )
-            user_knowledge_rows = (
-                db.query(database.UserKnowledgeState)
-                .filter(database.UserKnowledgeState.user_id == user.id)
-                .order_by(database.UserKnowledgeState.calculated_at.desc())
-                .limit(100)
-                .all()
-            )
-            question_stat_rows = (
-                db.query(database.QuestionLearningStat)
-                .filter(database.QuestionLearningStat.user_id == user.id)
-                .order_by(database.QuestionLearningStat.calculated_at.desc())
-                .limit(100)
-                .all()
-            )
             completed_attempts = self._load_completed_question_attempts(
                 database, db, user.id, external_user_id
             )
-            recent_paper_question_ids = [
-                row.question_id
-                for row in (
-                    db.query(database.PaperItemRecord)
-                    .join(
-                        database.PaperInstanceRecord,
-                        database.PaperItemRecord.paper_id
-                        == database.PaperInstanceRecord.paper_id,
-                    )
-                    .filter(database.PaperInstanceRecord.learner_id == user.id)
-                    .order_by(database.PaperInstanceRecord.created_at.desc())
-                    .limit(20)
-                    .all()
-                )
-                if row.question_id
-            ]
             system_payload = system_data.system_data_payload(snapshot)
             system_payload.update(
                 {
@@ -536,7 +505,6 @@ class BackendHandoffRuntime:
                 },
                 "system_data": system_payload,
                 "question_attempt": completed_attempts,
-                "recent_paper_question_ids": recent_paper_question_ids,
                 "mastery": [
                     {
                         "kp_id": row.kp_id,
@@ -553,34 +521,6 @@ class BackendHandoffRuntime:
                         else None,
                     }
                     for row in mastery_rows
-                ],
-                "user_knowledge_state": [
-                    {
-                        "kp_id": row.kp_id,
-                        "knowledge_mastery": float(row.knowledge_mastery or 0.0),
-                        "answer_accuracy": float(row.answer_accuracy or 0.0),
-                        "forgetting_coefficient": float(row.forgetting_coefficient or 0.0),
-                        "attempt_count": int(row.attempt_count or 0),
-                        "correct_count": int(row.correct_count or 0),
-                        "review_status": row.kp_review_status,
-                        "calculated_at": row.calculated_at.isoformat()
-                        if row.calculated_at
-                        else None,
-                    }
-                    for row in user_knowledge_rows
-                ],
-                "question_learning_stats": [
-                    {
-                        "question_id": row.question_id,
-                        "answer_accuracy": float(row.answer_accuracy or 0.0),
-                        "attempt_count": int(row.attempt_count or 0),
-                        "correct_count": int(row.correct_count or 0),
-                        "reason_for_mistake": str(row.reason_for_mistake or ""),
-                        "calculated_at": row.calculated_at.isoformat()
-                        if row.calculated_at
-                        else None,
-                    }
-                    for row in question_stat_rows
                 ],
                 "learning_trends": trends,
                 "diagnosis": report_payload,
@@ -1791,99 +1731,6 @@ class BackendHandoffRuntime:
         except Exception:
             db.rollback()
             raise
-        finally:
-            db.close()
-
-    async def load_personal_question_candidates(
-        self,
-        external_user_id: str,
-        query: str,
-        kp_ids: list[str],
-        limit: int,
-    ) -> list[Any]:
-        return await asyncio.to_thread(
-            self._load_personal_question_candidates,
-            external_user_id,
-            query,
-            kp_ids,
-            limit,
-        )
-
-    def _load_personal_question_candidates(
-        self,
-        external_user_id: str,
-        query: str,
-        kp_ids: list[str],
-        limit: int,
-    ) -> list[Any]:
-        from competition_app.contracts.knowledge import (
-            QuestionBridge,
-            QuestionDetail,
-            QuestionRetrievalMetadata,
-        )
-
-        database = importlib.import_module("APP.backend.database")
-        db = database.SessionLocal()
-        try:
-            user = self._workshop_user(db, external_user_id)
-            rows = (
-                db.query(database.UserQuestionItem)
-                .filter(
-                    database.UserQuestionItem.owner_user_id == user.id,
-                    database.UserQuestionItem.status == "active",
-                )
-                .order_by(database.UserQuestionItem.confirmed_at.desc())
-                .limit(max(1, min(limit, 100)))
-                .all()
-            )
-            requested_kp_ids = {str(kp_id) for kp_id in kp_ids if str(kp_id).strip()}
-            items: list[QuestionDetail] = []
-            for row in rows:
-                try:
-                    item_kp_ids = [
-                        str(kp_id)
-                        for kp_id in json.loads(row.kp_ids_json or "[]")
-                        if str(kp_id).strip()
-                    ]
-                    options = json.loads(row.options_json or "[]")
-                except (TypeError, ValueError):
-                    continue
-                if requested_kp_ids and not requested_kp_ids.intersection(item_kp_ids):
-                    continue
-                bridges = [
-                    QuestionBridge(
-                        kp_id=kp_id,
-                        bridge_layer="strict",
-                        relation="confirmed_personal_question",
-                        confidence=1.0,
-                        rank=index,
-                        evidence_chunk_uid=f"personal:{row.question_id}",
-                        match_method="owner_confirmed",
-                    )
-                    for index, kp_id in enumerate(item_kp_ids, start=1)
-                ]
-                items.append(
-                    QuestionDetail(
-                        question_id=str(row.question_id),
-                        question_type=str(row.question_type or "short_answer"),
-                        stem=str(row.stem or ""),
-                        reference_answer=str(row.answer or ""),
-                        analysis=str(row.analysis or "") or None,
-                        options=options if isinstance(options, list) else [],
-                        tags=["个人已确认题"],
-                        source_metadata={
-                            "source_kind": "personal_question_bank",
-                            "owner_scope": "current_user",
-                        },
-                        bridges=bridges,
-                        retrieval=QuestionRetrievalMetadata(
-                            channels=["bridge"],
-                            channel_scores={"bridge": 1.0},
-                            fusion_score=1.0,
-                        ),
-                    )
-                )
-            return items
         finally:
             db.close()
 

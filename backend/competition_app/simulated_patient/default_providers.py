@@ -20,7 +20,9 @@ class DefaultLLMProvider(LLMProvider):
         if OpenAI is None:
             raise ImportError("请安装 openai: pip install openai")
 
-        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY") or "sk-ad3c805d05bd4e6790ccd3db3a0b89fa"
+        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        if not self.api_key:
+            raise ValueError("未配置 DEEPSEEK_API_KEY")
 
         self.model = model
         self.client = OpenAI(

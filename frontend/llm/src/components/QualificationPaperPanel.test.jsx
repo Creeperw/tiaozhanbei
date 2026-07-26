@@ -6,7 +6,7 @@ import QualificationPaperPanel from './QualificationPaperPanel';
 
 describe('QualificationPaperPanel', () => {
   beforeEach(() => {
-    global.fetch = vi.fn()
+    globalThis.fetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({
         exams: [{ exam_id: 'tcm', name: '中医执业医师资格考试' }],
         papers: [{ template_id: 'p1', exam_id: 'tcm', year: '2024', paper_type: '真题', title: '2024 年真题', question_count: 2 }],
@@ -38,6 +38,6 @@ describe('QualificationPaperPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '练习模式' }));
 
     await screen.findByRole('button', { name: '退出并保存' });
-    expect(global.fetch).toHaveBeenLastCalledWith('/api/v1/qualification-papers/p1/attempts', expect.objectContaining({ method: 'POST' }));
+    expect(globalThis.fetch).toHaveBeenLastCalledWith('/api/v1/qualification-papers/p1/attempts', expect.objectContaining({ method: 'POST' }));
   });
 });

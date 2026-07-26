@@ -421,13 +421,6 @@ class PersonalizedReviewCardUseCase:
             "user_knowledge_states": effective_knowledge_states,
             "question_attempts": effective_question_attempts,
             "question_learning_stats": effective_question_learning_stats,
-            "personalization_summary": self._personalization_summary(
-                effective_knowledge_states,
-                effective_question_attempts,
-                effective_question_learning_stats,
-                learning_monitoring.model_dump(mode="json"),
-                behavior_context.get("recent_paper_question_ids", []),
-            ),
             "multi_scale_learning_state": multiscale_state,
             "path_candidates": path_candidates,
             "planner_multiscale_summary": self._planner_multiscale_summary(
@@ -1473,61 +1466,6 @@ class PersonalizedReviewCardUseCase:
             ]
             if isinstance(constraints, list)
             else [],
-        }
-
-    @staticmethod
-    def _personalization_summary(
-        knowledge_states: list[dict[str, Any]] | None,
-        question_attempts: list[dict[str, Any]] | None,
-        question_learning_stats: list[dict[str, Any]] | None,
-        learning_monitoring: dict[str, Any] | None,
-        recent_paper_question_ids: list[str] | None = None,
-    ) -> dict[str, Any]:
-        states = [item for item in knowledge_states or [] if isinstance(item, dict)]
-        ranked_states = sorted(
-            states,
-            key=lambda item: (
-                float(item.get("mastery", item.get("knowledge_mastery", 0.0)) or 0.0),
-                -int(item.get("wrong_count", 0) or 0),
-            ),
-        )
-        priority_kp_ids = [
-            str(item.get("kp_id"))
-            for item in ranked_states
-            if str(item.get("kp_id") or "").strip()
-        ][:8]
-        review_kp_ids = [
-            str(item.get("kp_id"))
-            for item in ranked_states
-            if item.get("next_review_at") and str(item.get("kp_id") or "").strip()
-        ][:5]
-        recent_question_ids = [
-            str(item.get("question_id"))
-            for item in question_attempts or []
-            if isinstance(item, dict) and str(item.get("question_id") or "").strip()
-        ][-20:]
-        recent_question_ids = list(dict.fromkeys([
-            *recent_question_ids,
-            *[
-                str(question_id)
-                for question_id in recent_paper_question_ids or []
-                if str(question_id).strip()
-            ],
-        ]))[-20:]
-        weak_question_ids = [
-            str(item.get("question_id"))
-            for item in question_learning_stats or []
-            if isinstance(item, dict)
-            and float(item.get("answer_accuracy", 1.0) or 0.0) < 0.6
-            and str(item.get("question_id") or "").strip()
-        ][:5]
-        return {
-            "priority_kp_ids": priority_kp_ids,
-            "review_kp_ids": review_kp_ids,
-            "recent_question_ids": recent_question_ids,
-            "weak_question_ids": weak_question_ids,
-            "data_status": "sufficient" if states or question_attempts else "insufficient",
-            "monitoring": learning_monitoring or {},
         }
 
     @classmethod

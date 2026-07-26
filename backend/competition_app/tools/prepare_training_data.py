@@ -411,7 +411,7 @@ def build_qualification_papers(source_root: Path, output_root: Path, reference_p
                     continue
                 published.append(question)
             rejected_count = sum(rejected.values())
-            passed = bool(published)
+            passed = bool(published) and rejected_count == 0
             audit = {
                 "template_id": paper_id,
                 "source": str(markdown_path.relative_to(source_root)),

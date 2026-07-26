@@ -45,9 +45,6 @@ class PaperBlueprintAgent:
                             "learning_scope": self._requested_learning_scope(context),
                             "planning_context": self._planning_context(context),
                             "user_profile": context.get("user_profile", {}),
-                            "personalization_summary": context.get(
-                                "personalization_summary", {}
-                            ),
                             "output_schema": PaperBlueprintModelOutput.model_json_schema(),
                         },
                         permission_note=(
@@ -134,8 +131,7 @@ class PaperBlueprintAgent:
     def _explicit_question_count(context: dict[str, Any]) -> int | None:
         request = str(context.get("user_request") or "")
         match = re.search(
-            r"(?:包含|共|至少|不少于|生成|出)?\s*(\d+)"
-            r"(?!\d|\s*(?:轮|阶段|章|节|次|套|单元))\s*(?:个|道)?"
+            r"(?:包含|共|至少|不少于|生成|出)?\s*(\d+)\s*(?:个|道)?"
             r"(?:[^，。；\n]{0,20})?题(?:目)?",
             request,
         )
@@ -146,9 +142,9 @@ class PaperBlueprintAgent:
         if isinstance(value, int) and value > 0:
             return value
         if isinstance(value, str):
-            match = re.fullmatch(r"\s*(\d+)\s*(?:题|道)?\s*", value)
-            if match and int(match.group(1)) > 0:
-                return int(match.group(1))
+            match = re.search(r"\d+", value)
+            if match and int(match.group()) > 0:
+                return int(match.group())
         return None
 
     @staticmethod

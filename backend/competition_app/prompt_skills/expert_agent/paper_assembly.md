@@ -11,8 +11,6 @@ task_type: paper_assembly
 
 ## 选题规则
 
-**关键约束：`selected_items` 必须非空。只要 `candidate_pool` 中任意单元存在哪怕一道题，就必须将其放入 `selected_items`；绝不能在候选池非空时返回空的 `selected_items`。**
-
 1. 只能选择当前 `candidate_pool` 中存在的 `question_id`，且 `unit_id` 必须与候选所在单元一致。
 2. 同一道题全卷只能出现一次。若跨单元重复，应选择最适合的单元并在覆盖摘要中说明缺口。候选题可以同时出现在多个单元池中，这是为了避免 Knowledge 阶段提前分配导致后续单元无题；最终入卷仍必须全局唯一。
 3. 尽量满足每个单元的 `required_question_count` 和可选分值。用户明确题量且正式候选去重后不足时，必须在 `generated_items` 中只原创缺口数量，并严格匹配所属蓝图单元的题型；不得超量生成。每道原创题必须包含标准答案、解析、来源层级和所属单元；选择题必须包含至少两个选项，简答题等非选择题的 `options` 使用空列表。

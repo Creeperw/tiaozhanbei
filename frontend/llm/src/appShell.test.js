@@ -15,8 +15,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
     { key: 'assistant', label: '智能助教' },
     { key: 'practice', label: '学习工坊' },
     { key: 'training-workshop', label: '训练工坊' },
-    { key: 'knowledge', label: '知识仓库' },
-    { key: 'personalization', label: '画像与记忆' },
+    { key: 'personalization', label: '个性数据' },
     { key: 'settings', label: '用户设置' },
   ]);
   assert.equal(config.currentPage, 'dashboard');
@@ -105,7 +104,7 @@ test('exposes Phase 4 training module route bindings for real pages', () => {
 test('uses updated page titles for knowledge, personalization, and settings modules', () => {
   assert.equal(
     getAppShellConfig({ currentUser: { username: 'alice', role: 'user' }, currentPage: 'personalization' }).pageTitle,
-    '学习画像与记忆',
+    '个性数据',
   );
   assert.equal(
     getAppShellConfig({ currentUser: { username: 'alice', role: 'user' }, currentPage: 'knowledge' }).pageTitle,
@@ -113,7 +112,7 @@ test('uses updated page titles for knowledge, personalization, and settings modu
   );
   assert.equal(
     getAppShellConfig({ currentUser: { username: 'alice', role: 'user' }, currentPage: 'settings' }).pageTitle,
-    '设置',
+    '用户设置',
   );
 });
 
@@ -150,7 +149,7 @@ test('uses a full-width workspace shell for assistant, both workshops, and knowl
   assert.equal(practice.shellMode, 'workspace');
   assert.equal(trainingWorkshop.shellMode, 'workspace');
   assert.equal(knowledge.shellMode, 'workspace');
-  assert.equal(knowledge.primaryNav.find((item) => item.key === 'knowledge').label, '知识仓库');
+  assert.equal(knowledge.primaryNav.some((item) => item.key === 'knowledge'), false);
 });
 
 test('keeps dashboard, personalization, settings and admin in the standard shell', () => {

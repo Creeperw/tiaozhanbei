@@ -226,7 +226,7 @@ class Settings:
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
         values = _environment_values(environ)
         mode = _parse_choice(
-            values, "COMPETITION_APP_MODE", "live", {"stub", "live"}
+            values, "COMPETITION_APP_MODE", "stub", {"stub", "live"}
         )
         execution_engine = _parse_choice(
             values,
@@ -234,24 +234,12 @@ class Settings:
             "langgraph",
             {"langgraph", "legacy"},
         )
-        handoff_enabled = _parse_bool(values, "BACKEND_HANDOFF_ENABLED", False)
-        use_sqlite = _parse_bool(values, "USE_SQLITE", False)
         if mode == "live":
             missing = [
                 name
                 for name in ("DASHSCOPE_API_KEY", "SILICONFLOW_API_KEY")
                 if not values.get(name)
             ]
-            if handoff_enabled and not values.get("BACKEND_HANDOFF_SECRET_KEY"):
-                missing.append("BACKEND_HANDOFF_SECRET_KEY")
-            if not (
-                use_sqlite
-                or values.get("DATABASE_URL")
-                or values.get("MYSQL_PASSWORD")
-            ):
-                missing.append(
-                    "persistent database configuration (USE_SQLITE=true, DATABASE_URL, or MYSQL_PASSWORD)"
-                )
             if missing:
                 raise SettingsError(
                     "Missing required environment variables: " + ", ".join(missing)
@@ -355,7 +343,9 @@ class Settings:
                 / "backend_delivery"
                 / "08_exam_learning_path_2025",
             ),
-            backend_handoff_enabled=handoff_enabled,
+            backend_handoff_enabled=_parse_bool(
+                values, "BACKEND_HANDOFF_ENABLED", False
+            ),
             backend_handoff_root=_parse_path(
                 values, "BACKEND_HANDOFF_ROOT", DEFAULT_BACKEND_HANDOFF_ROOT
             ),
@@ -370,7 +360,7 @@ class Settings:
             backend_handoff_secret_key=values.get(
                 "BACKEND_HANDOFF_SECRET_KEY", "competition-local-development-key"
             ),
-            use_sqlite=use_sqlite,
+            use_sqlite=_parse_bool(values, "USE_SQLITE", False),
             sqlite_path=_parse_path(
                 values,
                 "SQLITE_PATH",

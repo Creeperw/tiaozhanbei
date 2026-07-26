@@ -15,18 +15,7 @@ const STORAGE_COLLECTIONS = 'sp-collections';
 // ── Helpers ───────────────────────────────────────────────
 const getSessions = () => { try { return JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]'); } catch { return []; } };
 const setSessions = (v) => localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(v));
-const getCollections = () => {
-  try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_COLLECTIONS) || '{}');
-    // Migrate old array format
-    if (Array.isArray(raw)) {
-      const migrated = { '默认收藏簿': raw };
-      localStorage.setItem(STORAGE_COLLECTIONS, JSON.stringify(migrated));
-      return migrated;
-    }
-    return raw;
-  } catch { return {}; }
-};
+const getCollections = () => { try { return JSON.parse(localStorage.getItem(STORAGE_COLLECTIONS) || '[]'); } catch { return []; } };
 const setCollections = (v) => localStorage.setItem(STORAGE_COLLECTIONS, JSON.stringify(v));
 
 const levelLabel = (score, max) => {
@@ -62,8 +51,9 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
   const [sidebarMode, setSidebarMode] = useState('history'); // history | favorites | mistakes
   const [sidebarLoading, setSidebarLoading] = useState(false);
 
-  // Sidebar data — favorites/mistakes are just filters on completedSessions
+  // Sidebar data
   const [favoritesList, setFavoritesList] = useState(getCollections);
+  const [mistakesList, setMistakesList] = useState([]);
   const [completedSessions, setCompletedSessions] = useState(getSessions);
 
   // Practice mode
@@ -80,9 +70,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
 
   // Report
   const [report, setReport] = useState(null);
-  const [showCollectionDialog, setShowCollectionDialog] = useState(false);
-  const [newBookName, setNewBookName] = useState('');
-  const [selectedBook, setSelectedBook] = useState('');
 
   // History view
   const [viewingHistory, setViewingHistory] = useState(null);
@@ -128,7 +115,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
   useEffect(() => {
     loadSidebarData();
     loadStats();
-    fetchWithAuth('/api/v1/auth/me').then(r => readJsonResponse(r, {})).then(d => {
+    fetchWithAuth('/api/v1/auth/me', {}).then(r => readJsonResponse(r, {})).then(d => {
       const u = d?.user;
       if (u?.username) setCurrentUserName(u.display_name || u.username);
     }).catch(() => {});
@@ -159,7 +146,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, turnCount, helpAvailable]);
 
-  const loadStats = () => {
+  const loadStats = async () => {
     const sessions = getSessions();
     const completed = sessions.filter(s => s.status === 'completed');
     const today = new Date().toISOString().slice(0, 10);
@@ -168,9 +155,31 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
     const correct = todaySessions.filter(s => s.diagnosis_correct).length;
     const rate = total > 0 ? Math.round((correct / total) * 100) : 0;
     setStats({ total, rate });
+    try {
+      const response = await fetchWithAuth('/api/v1/simulated-patient', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: 'stats', action: 'stats' }),
+      });
+      const result = await readJsonResponse(response, {});
+      if (response.ok && result.success) {
+        setStats({
+          total: Number(result.data?.total) || 0,
+          rate: Number(result.data?.rate) || 0,
+        });
+      }
+    } catch { /* keep local fallback */ }
   };
 
-  const loadSidebarData = () => {
+  const loadSidebarData = async () => {
+    setSidebarLoading(true);
+    try {
+      const [favRes, mistRes] = await Promise.all([
+        fetchWithAuth('/api/v1/simulated-patient', { method: 'POST', body: JSON.stringify({ session_id: 'fav', action: 'collections' }) }).then(r => readJsonResponse(r, {})),
+        fetchWithAuth('/api/v1/simulated-patient', { method: 'POST', body: JSON.stringify({ session_id: 'mist', action: 'mistakes' }) }).then(r => readJsonResponse(r, {})),
+      ]);
+      if (favRes.success) setFavoritesList(favRes.data?.list || []);
+      if (mistRes.success) setMistakesList(mistRes.data?.list || []);
+    } catch { /* silent */ }
     setSidebarLoading(false);
   };
 
@@ -201,7 +210,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       const draft = {
         session_id: result.session_id,
         case_name: result.data?.case_name || '',
-        case_id: result.data?.case_id || '',
         gender: info.gender,
         age_range: info.age_range,
         body_type: info.body_type,
@@ -281,7 +289,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
         gender: patient?.gender || '',
         age_range: patient?.age_range || '',
         body_type: patient?.body_type || '',
-        case_id: existing >= 0 ? (sessions[existing].case_id || '') : '',
         status: 'completed',
         messages: [...messages],
         grading_report: gradingReport,
@@ -297,21 +304,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
   };
 
   const handleAddCollection = () => {
-    const books = getCollections();
-    const names = Object.keys(books);
-    if (names.length === 1) {
-      // Auto-add to the only book
-      addToBook(names[0]);
-    } else {
-      setSelectedBook(names[0] || '');
-      setNewBookName('');
-      setShowCollectionDialog(true);
-    }
-  };
-  const addToBook = (bookName) => {
-    if (!bookName.trim()) return;
-    const books = getCollections();
-    if (!books[bookName]) books[bookName] = [];
+    const collections = getCollections();
     const sessions = getSessions();
     const session = sessions.find(s => s.session_id === sessionId) || {};
     const item = {
@@ -321,16 +314,9 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       score: report?.score || 0,
       collected_at: new Date().toISOString(),
     };
-    if (!books[bookName].find(f => f.session_id === sessionId)) {
-      books[bookName].unshift(item);
-    }
-    setCollections(books);
-  };
-  const confirmAddCollection = () => {
-    const name = newBookName.trim() || selectedBook;
-    if (!name) return;
-    addToBook(name);
-    setShowCollectionDialog(false);
+    collections.unshift(item);
+    setCollections(collections);
+    setFavoritesList(prev => [{ case_id: item.history_id, case_name: item.case_name, collected_at: item.collected_at }, ...prev]);
   };
 
   const handleRest = () => {
@@ -420,40 +406,58 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       return <div className="sp-loading"><div className="sp-loading__spinner" /></div>;
     }
 
+    const findAndViewSession = (item) => {
+      // Try to find matching session in localStorage
+      const sessions = getSessions();
+      const match = sessions.find(s =>
+        (item.session_id && s.session_id === item.session_id) ||
+        (item.history_id && s.history_id === item.history_id) ||
+        (item.case_name && s.case_name === item.case_name)
+      );
+      if (match) {
+        if (match.status === 'active') {
+          // Restore active session
+          setSessionId(match.session_id);
+          sessionStorage.setItem(STORAGE_SESSION, match.session_id);
+          setPatient({ gender: match.gender, age_range: match.age_range, body_type: match.body_type });
+          setTurnCount(match.turn_count || 0);
+          setHelpAvailable(match.help_available || false);
+          setMessages(match.messages || []);
+          setReport(match.grading_report || null);
+          setView('consultation');
+        } else {
+          handleViewHistory(match);
+        }
+      } else {
+        // Show basic info as viewing history
+        const fallbackReport = item.grading_report || (item.score !== undefined ? { score: item.score, diagnosis_correct: item.diagnosis_correct } : null);
+        setReport(fallbackReport);
+        setViewingHistory(item);
+        setViewingReportExpanded(false);
+        setView('consultation');
+      }
+    };
+
     if (sidebarMode === 'favorites') {
-      const books = getCollections();
-      const bookNames = Object.keys(books);
-      if (bookNames.length === 0) return <div className="sp-sidebar-empty">暂无收藏</div>;
-      return bookNames.map(bookName => {
-        const items = books[bookName] || [];
-        return (
-          <div key={bookName} className="sp-sidebar-item" onClick={() => {
-            if (items.length === 0) return;
-            const sessions = getSessions();
-            const match = sessions.find(s => s.session_id === items[0].session_id);
-            if (match) handleViewHistory(match);
-          }}>
-            <div className="sp-sidebar-item__name">{bookName}</div>
-            <div className="sp-sidebar-item__meta">{items.length} 条收藏</div>
-          </div>
-        );
-      });
+      if (favoritesList.length === 0) return <div className="sp-sidebar-empty">暂无收藏</div>;
+      return favoritesList.map((item, i) => (
+        <div key={i} className="sp-sidebar-item" onClick={() => findAndViewSession(item)}>
+          <div className="sp-sidebar-item__name">{item.case_name || '未知案例'}</div>
+          <div className="sp-sidebar-item__score">收藏于 {item.collected_at?.slice(0, 10) || ''}</div>
+        </div>
+      ));
     }
 
     if (sidebarMode === 'mistakes') {
-      const mistakeSessions = completedSessions.filter(s => s.status === 'completed' && s.diagnosis_correct === false);
-      if (mistakeSessions.length === 0) return <div className="sp-sidebar-empty">暂无错题记录</div>;
-      return mistakeSessions.map((item, i) => {
-        const name = item.case_name || '未知疾病';
-        const demo = [item.gender, item.age_range, '体型' + item.body_type].filter(Boolean).join(' · ');
-        return (
-          <div key={item.session_id || i} className="sp-sidebar-item" onClick={() => handleViewHistory(item)}>
-            <div className="sp-sidebar-item__name">{name}</div>
-            {demo && <div className="sp-sidebar-item__meta">{demo}</div>}
-            {item.score !== undefined && <div className="sp-sidebar-item__score">得分: {item.score}/100</div>}
+      if (mistakesList.length === 0) return <div className="sp-sidebar-empty">暂无错题记录</div>;
+      return mistakesList.map((item, i) => (
+        <div key={i} className="sp-sidebar-item" onClick={() => findAndViewSession(item)}>
+          <div className="sp-sidebar-item__name">{item.case_name || '未知案例'}</div>
+          <div className="sp-sidebar-item__meta">
+            得分: {item.score ?? '--'} / 100
           </div>
-        );
-      });
+        </div>
+      ));
     }
 
     // History mode — unanswered first, then answered by time desc
@@ -474,12 +478,13 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
               setSessionId(item.session_id);
               sessionStorage.setItem(STORAGE_SESSION, item.session_id);
               setPatient({ gender: item.gender, age_range: item.age_range, body_type: item.body_type });
+              setTurnCount(item.turn_count || 0);
+              setHelpAvailable(item.help_available || false);
               setView('consultation');
               setViewingHistory(null);
+              // Restore saved messages if available, otherwise restart
               if (item.messages && item.messages.length > 0) {
                 setMessages(item.messages);
-                setTurnCount(item.turn_count || 0);
-                setHelpAvailable(item.help_available || false);
               } else {
                 setMessages([]);
                 const result = await callAPI('start');
@@ -487,6 +492,14 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
                   setMessages([{ role: 'patient', content: result.data?.patient_reply || '' }]);
                   setPatient(result.data?.patient_info || null);
                 }
+              }
+              // Mark as active again in sessions list
+              const sessions = getSessions();
+              const idx = sessions.findIndex(s => s.session_id === item.session_id);
+              if (idx >= 0) {
+                sessions[idx].status = 'active';
+                setSessions(sessions);
+                refreshSessions();
               }
             } else {
               handleViewHistory(item);
@@ -872,29 +885,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
 
       {renderHelpCard()}
       {renderDiagnosisForm()}
-      {showCollectionDialog && (
-        <>
-          <div className="sp-help-overlay__backdrop" onClick={() => setShowCollectionDialog(false)} />
-          <div className="sp-help-overlay" style={{ zIndex: 25 }}>
-            <div className="sp-help-overlay__title">选择收藏簿</div>
-            <div className="sp-help-overlay__options" style={{ maxHeight: 200, overflowY: 'auto' }}>
-              {Object.keys(getCollections()).map(name => (
-                <button key={name} className={`sp-help-overlay__option ${selectedBook === name && !newBookName ? 'ring-2 ring-emerald-400' : ''}`}
-                  onClick={() => { setSelectedBook(name); setNewBookName(''); }}>
-                  📁 {name}
-                </button>
-              ))}
-              <div className="flex gap-2 mt-2">
-                <input type="text" value={newBookName} onChange={e => { setNewBookName(e.target.value); setSelectedBook(''); }}
-                  placeholder="新建收藏簿名称" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400" />
-              </div>
-            </div>
-            <button className="sp-help-overlay__close" onClick={confirmAddCollection} style={{ marginTop: 8, background: '#059669', color: '#fff', border: 'none' }}>
-              确认添加
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 

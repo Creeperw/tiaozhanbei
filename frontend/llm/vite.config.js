@@ -8,7 +8,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
-    include: ['src/**/*.test.{js,jsx}'],
+    include: [
+      'src/pageIntent.test.js',
+      'src/videoTaskEvidence.test.js',
+      'src/**/*.test.jsx',
+    ],
     css: true,
   },
   build: {

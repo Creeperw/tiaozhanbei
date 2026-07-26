@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import PracticePage from './PracticePage';
+import { fetchJsonWithAuthFallback } from '../utils/api';
 
 vi.mock('../learningFocusTracker.js', () => ({
   createLearningFocusTracker: () => ({
@@ -86,6 +87,20 @@ vi.mock('./KnowledgeCardLibrary', () => ({
   default: () => <div data-testid="knowledge-card-library" />,
 }));
 
+vi.mock('./KnowledgePointTrainingHub', () => ({
+  default: ({ initialKnowledgePoint, taskItemId }) => <div data-testid="knowledge-point-training-hub">
+    {initialKnowledgePoint?.kpId || ''}:{initialKnowledgePoint?.kpName || ''}:{taskItemId}
+  </div>,
+}));
+
+vi.mock('./QuestionFavoritesPanel', () => ({
+  default: () => <div data-testid="question-favorites-panel" />,
+}));
+
+vi.mock('./StudyNotesPanel', () => ({
+  default: () => <div data-testid="study-notes-panel" />,
+}));
+
 vi.mock('../utils/api', () => ({
   fetchJsonWithAuthFallback: vi.fn(() => Promise.resolve({ data: {} })),
 }));
@@ -96,20 +111,124 @@ describe('PracticePage training modules', () => {
   it('shows the training workshop overview before a learner selects a module', () => {
     render(<PracticePage />);
 
-    expect(screen.getByRole('heading', { name: '训练工坊，实战精进' })).toBeInTheDocument();
-    const trainingPath = screen.getByRole('region', { name: '训练路径' });
-    const trainingButtons = within(trainingPath).getAllByRole('button');
+    expect(screen.getByRole('heading', { name: '训练工坊' })).toBeInTheDocument();
+    expect(screen.getByText('准备开始今天的训练')).toBeInTheDocument();
+    const trainingModules = screen.getByRole('region', { name: '训练模块' });
+    const trainingButtons = within(trainingModules).getAllByRole('button')
+      .filter((button) => button.querySelector('strong'));
     expect(trainingButtons.map((button) => button.querySelector('strong')?.textContent)).toEqual([
-      '综合套题',
-      '智能组卷',
       '专项训练',
+      '智能组卷',
       '专题训练',
+      '综合套题',
       '模拟病患',
-      '上传题库',
     ]);
     expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /知识收藏/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /学习笔记/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the local workshop summary under training modules and upload as the last learning tool', () => {
+    render(<PracticePage />);
+
+    const trainingModules = screen.getByRole('region', { name: '训练模块' });
+    expect(within(trainingModules).getByRole('region', { name: '学习概览' })).toBeInTheDocument();
+
+    const learningTools = screen.getByRole('complementary', { name: '学习工具' });
+    expect(
+      within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
+    ).toEqual(['错题库', '知识收藏', '学习笔记', '上传题库']);
+  });
+
+  it('renders the local overview statistics contract without replacing main workshop modules', () => {
+    render(<PracticePage overviewStats={{
+      streakDays: 8,
+      lastAccuracy: 76,
+      windowPracticeCount: 6,
+      todayGoal: 20,
+      averageAccuracy: 82,
+      totalHours: 46,
+      totalQuestions: 386,
+    }} />);
+
+    const learningOverview = screen.getByRole('region', { name: '学习概览' });
+    expect(screen.getByText('8 天')).toBeInTheDocument();
+    expect(screen.getByText('76%')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('6 题')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('82%')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('46 小时')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('累计练习 386 题')).toBeInTheDocument();
+  });
+
+  it('loads audited overview statistics, recent activity, and check-in status from main APIs', async () => {
+    fetchJsonWithAuthFallback.mockImplementation(({ paths }) => {
+      const path = paths[0];
+      if (path.startsWith('/v1/learning-statistics/overview')) {
+        return Promise.resolve({
+          data: {
+            lifetime: {
+              questions_completed: 42,
+              focus_minutes: 125,
+            },
+            current_window: {
+              questions_completed: 7,
+              score_rate: 0.84,
+            },
+          },
+        });
+      }
+      if (path.startsWith('/v1/learning-activity/summary')) {
+        return Promise.resolve({
+          data: {
+            calculated_at: '2026-07-26T20:00:00+08:00',
+            recent_activities: [
+              {
+                activity_type: 'daily_checkin',
+                resource_type: 'checkin',
+                completion_status: 'completed',
+                score: 1,
+                created_at: '2026-07-26T19:45:00+08:00',
+              },
+              {
+                activity_type: 'question_attempt',
+                resource_type: 'question_favorites',
+                completion_status: 'needs_review',
+                score: 0.75,
+                created_at: '2026-07-26T19:30:00+08:00',
+              },
+            ],
+          },
+        });
+      }
+      if (path === '/v1/checkin') {
+        return Promise.resolve({ data: { streak: 5 } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(<PracticePage />);
+
+    expect(await screen.findByText('5 天')).toBeInTheDocument();
+    expect(screen.getByText('75%')).toBeInTheDocument();
+    const learningOverview = screen.getByRole('region', { name: '学习概览' });
+    expect(within(learningOverview).getByText('近 30 天练习')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('7 题')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('84%')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('2.1 小时')).toBeInTheDocument();
+    expect(within(learningOverview).getByText('累计练习 42 题')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /继续上次练习/ }));
+    expect(await screen.findByTestId('question-favorites-panel')).toBeInTheDocument();
+  });
+
+  it('continues the main-backed module selected by the local overview contract', async () => {
+    render(<PracticePage overviewStats={{ recentTaskKey: 'question_favorites' }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /继续上次练习/ }));
+
+    expect(await screen.findByTestId('question-favorites-panel')).toBeInTheDocument();
   });
 
   it('opens mistake variations from the mistake library and returns to the workshop overview', async () => {
@@ -122,13 +241,13 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '返回训练工坊' }));
-    expect(screen.getByRole('heading', { name: '训练工坊，实战精进' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '训练工坊' })).toBeInTheDocument();
   });
 
   it.each([
     ['综合套题', 'atlas-practice-scope'],
     ['智能组卷', 'paper-generation-panel'],
-    ['专题训练', 'atlas-practice-scope'],
+    ['专题训练', 'knowledge-point-training-hub'],
     ['模拟病患', 'simulated-patient-chat'],
   ])('opens %s from the overview as a single page', async (title, panelTestId) => {
     render(<PracticePage />);
@@ -142,6 +261,18 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['知识收藏', 'question-favorites-panel'],
+    ['学习笔记', 'study-notes-panel'],
+  ])('opens the %s personal library', async (title, panelTestId) => {
+    render(<PracticePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(title) }));
+
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.getByTestId(panelTestId)).toBeInTheDocument();
+  });
+
   it('opens specialized training in the existing case-answer mode', async () => {
     render(<PracticePage />);
 
@@ -149,6 +280,17 @@ describe('PracticePage training modules', () => {
 
     expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '案例简答' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('binds a daily knowledge-practice item to its formal knowledge point', async () => {
+    render(<PracticePage navigationContext={{
+      taskType: 'topic_training',
+      taskItemId: 'ITEM_1',
+      kpId: 'KP_SIJUNZI',
+      kpName: '四君子汤',
+    }} />);
+
+    expect(await screen.findByTestId('knowledge-point-training-hub')).toHaveTextContent('KP_SIJUNZI:四君子汤:ITEM_1');
   });
 
   it('opens a single training page without the shared module tabs', async () => {

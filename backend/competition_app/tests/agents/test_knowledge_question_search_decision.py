@@ -474,59 +474,6 @@ async def test_paper_retrieval_overfetches_before_question_type_filter() -> None
 
 
 @pytest.mark.asyncio
-async def test_paper_retrieval_reports_candidates_exhausted_by_cooldown() -> None:
-    blueprint = PaperBlueprint(
-        blueprint_id="BP_COOLDOWN",
-        title="测试卷",
-        source_status="user_provided_unverified",
-        scope_summary="四君子汤",
-        units=[
-            BlueprintUnit(
-                unit_id="U1",
-                sequence=1,
-                knowledge_module="组成",
-                learning_objective="识记组成",
-                retrieval_query="四君子汤组成",
-                question_type_preferences=["单项选择题"],
-                required_question_count=1,
-                candidate_limit=1,
-            )
-        ],
-    )
-
-    result = await KnowledgeBaseAgent(None, FixedModel({})).run(
-        {
-            **context("组卷"),
-            "task_type": "paper_generation",
-            "dependency_outputs": {
-                "paper_blueprint": AgentEnvelope(
-                    artifact_id="A_COOLDOWN",
-                    artifact_type="paper_blueprint",
-                    case_id="C1",
-                    trace_id="T1",
-                    request_id="R1",
-                    execution_id="E1",
-                    step_id="paper_blueprint",
-                    producer="expert_agent",
-                    task_type="paper_generation",
-                    learner_id="L1",
-                    payload=blueprint,
-                )
-            },
-            "tool_registry": TypeFilteringToolRegistry(),
-            "personalization_summary": {"recent_question_ids": ["Q_4"]},
-        }
-    )
-
-    unit = result.payload.units[0]
-    assert unit.items == []
-    assert any(
-        "检索命中1道正式候选，但均属于近期已发布题" in warning
-        for warning in unit.warnings
-    )
-
-
-@pytest.mark.asyncio
 async def test_paper_retrieval_expands_after_discarding_off_topic_candidates() -> None:
     blueprint = PaperBlueprint(
         blueprint_id="BP_TOPIC",

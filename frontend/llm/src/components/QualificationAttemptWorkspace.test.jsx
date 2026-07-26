@@ -37,7 +37,7 @@ describe('QualificationAttemptWorkspace', () => {
   });
 
   it('shows the submitted answer and explanation in the result view', async () => {
-    global.fetch = vi.fn()
+    globalThis.fetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify(makeAttempt(1)) })
       .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({
         attempt_id: 'attempt-1', status: 'submitted', score: 1, max_score: 1,
@@ -53,7 +53,7 @@ describe('QualificationAttemptWorkspace', () => {
 
   it('saves the attempt before exiting', async () => {
     const onExit = vi.fn();
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       text: async () => JSON.stringify(makeAttempt(1)),
     });
@@ -62,7 +62,7 @@ describe('QualificationAttemptWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: '退出并保存' }));
 
     await waitFor(() => expect(onExit).toHaveBeenCalledOnce());
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       '/api/v1/qualification-paper-attempts/attempt-1/progress',
       expect.objectContaining({ method: 'PUT', body: expect.stringContaining('"paused":true') }),
     );

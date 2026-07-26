@@ -1,8 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bookmark,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Clock3,
+  Grid3X3,
+  Loader2,
+  PanelRightClose,
+  PanelRightOpen,
+  Pause,
+  Play,
+  X,
+} from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import { generateWorkshopPaperWithAgents, loadPaper, loadPapers, savePaperAnswers, setPaperTimerPaused, submitPaper } from '../pageDataLoaders';
 import { groupPaperItems } from './paperQuestionGroups';
+import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
 
 const questionTypes = [
   ['single_choice', '单选题'],
@@ -12,17 +28,33 @@ const questionTypes = [
   ['case_quiz', '案例题'],
 ];
 const paperStorageKey = 'training-paper-id';
-const optionValue = (option, index) => {
-  if (typeof option === 'string') return option.match(/^\s*([A-Z])(?:[.、．]|\s)/)?.[1] || option;
-  return String(option?.key || option?.option_id || option?.id || String.fromCharCode(65 + index));
-};
-
 const optionText = (option, index) => {
   if (typeof option === 'string') return option;
   const key = option?.key || option?.option_id || option?.id || String.fromCharCode(65 + index);
   const value = option?.value || option?.content || option?.text || '';
   return `${key}. ${value}`;
 };
+
+const legacyImagePattern = /<img\b[^>]*?(?:src|layer-src)=(['"])(https?:\/\/[^'"<>]+)\1[^>]*>/gi;
+const stripLegacyTags = (value) => value.replace(/<[^>]*>/g, '').trim();
+
+export function PaperQuestionContent({ content }) {
+  const source = String(content ?? '');
+  const parts = [];
+  let cursor = 0;
+  for (const match of source.matchAll(legacyImagePattern)) {
+    const text = stripLegacyTags(source.slice(cursor, match.index));
+    if (text) parts.push({ type: 'text', value: text });
+    parts.push({ type: 'image', value: match[2] });
+    cursor = match.index + match[0].length;
+  }
+  const tail = stripLegacyTags(source.slice(cursor));
+  if (tail) parts.push({ type: 'text', value: tail });
+  if (!parts.length) return <span>{stripLegacyTags(source)}</span>;
+  return <span className="space-y-2">{parts.map((part, index) => part.type === 'image'
+    ? <img key={`${part.value}-${index}`} src={part.value} alt="题目配图" loading="lazy" referrerPolicy="no-referrer" className="block max-h-80 max-w-full object-contain" />
+    : <span key={`${part.value}-${index}`} className="block">{part.value}</span>)}</span>;
+}
 
 const formatRemaining = (seconds) => {
   if (!Number.isFinite(seconds)) return '--:--';
@@ -34,8 +66,24 @@ const formatRemaining = (seconds) => {
 };
 
 const displayAnswer = (value) => Array.isArray(value) ? value.join('、') : String(value ?? '');
+const normalizePaperOrder = (paper) => ({
+  ...paper,
+  items: [...(paper?.items || [])].sort(
+    (left, right) => Number(left.position || 0) - Number(right.position || 0),
+  ),
+});
+const paperButton = 'inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40';
+const questionTypeLabel = (value) => ({
+  single_choice: '单选题',
+  multiple_choice: '多选题',
+  fill_blank: '填空题',
+  short_answer: '简答题',
+  case_quiz: '案例题',
+  单项选择题: '单选题',
+  多项选择题: '多选题',
+}[value] || value || '题目');
 
-export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) {
+export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId = '' }) {
   const [topic, setTopic] = useState('围绕四君子汤与脾胃气虚证完成训练');
   const [distribution, setDistribution] = useState({
     single_choice: 1,
@@ -49,13 +97,13 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
   const [submissionRequestId, setSubmissionRequestId] = useState('');
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState('');
-  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-  const [noteDialogItem, setNoteDialogItem] = useState(null);
-  const [noteDialogTitle, setNoteDialogTitle] = useState('');
-  const [noteDialogContent, setNoteDialogContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(null);
   const [paperLibrary, setPaperLibrary] = useState([]);
+  const [boundOpenStarted, setBoundOpenStarted] = useState(false);
+  const [position, setPosition] = useState(1);
+  const [markedPositions, setMarkedPositions] = useState([]);
+  const [answerCardOpen, setAnswerCardOpen] = useState(false);
 
   const questionCount = useMemo(
     () => Object.values(distribution).reduce((total, count) => total + count, 0),
@@ -63,6 +111,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
   );
   const types = questionTypes.filter(([key]) => distribution[key] > 0).map(([key]) => key);
   const canGenerate = enabled && topic.trim() && questionCount > 0 && questionCount <= 50;
+  const boundPaper = Boolean(taskItemId);
   const paperSubmitted = paper?.status === 'submitted' || Boolean(submitted);
   const timerPaused = Boolean(paper?.timing?.paused);
   const timeExpired = remainingSeconds === 0;
@@ -70,20 +119,32 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
   const timerActive = Boolean(paper) && !paperSubmitted && !timerPaused && Number.isFinite(remainingSeconds) && remainingSeconds > 0;
   const activePaperId = paper?.paper_id || '';
   const hasActivePaper = Boolean(activePaperId);
-  const allAnswered = paper?.items?.every((item) => answers[item.paper_item_id]?.trim());
+  const allAnswered = Boolean(paper?.items?.length) && paper.items.every((item) => answers[item.paper_item_id]?.trim());
   const groupedItems = useMemo(() => groupPaperItems(paper?.items || []), [paper?.items]);
+  const currentItem = paper?.items?.[Math.max(0, Math.min((paper?.items?.length || 1) - 1, position - 1))] || null;
+  const currentResult = currentItem
+    ? submitted?.items?.find((entry) => entry.paper_item_id === currentItem.paper_item_id)
+    : null;
+  const answeredIds = useMemo(
+    () => new Set(Object.entries(answers).filter(([, value]) => String(value || '').trim()).map(([key]) => key)),
+    [answers],
+  );
 
   const restorePaper = (loaded) => {
-    setPaper(loaded.paper);
-    setAnswers(Object.fromEntries(loaded.paper.items.map((item) => [item.paper_item_id, item.answer])));
-    setSubmitted(loaded.paper.status === 'submitted' ? loaded.paper.result : null);
-    setRemainingSeconds(loaded.paper.timing?.remaining_seconds ?? null);
+    const normalizedPaper = normalizePaperOrder(loaded.paper);
+    setPaper(normalizedPaper);
+    setAnswers(Object.fromEntries(normalizedPaper.items.map((item) => [item.paper_item_id, item.answer])));
+    setSubmitted(normalizedPaper.status === 'submitted' ? normalizedPaper.result : null);
+    setRemainingSeconds(normalizedPaper.timing?.remaining_seconds ?? null);
     setSubmissionRequestId(`paper-${crypto.randomUUID()}`);
+    setPosition(1);
+    setMarkedPositions([]);
+    setAnswerCardOpen(false);
   };
 
   useEffect(() => {
     let active = true;
-    const targetPaperId = paperId || sessionStorage.getItem(paperStorageKey);
+    const targetPaperId = paperId || (!taskItemId ? sessionStorage.getItem(paperStorageKey) : '');
     if (!targetPaperId) return () => { active = false; };
     loadPaper({ fetcher: fetchJsonWithAuthFallback, paperId: targetPaperId }).then((loaded) => {
       if (!active) return;
@@ -95,17 +156,17 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
       restorePaper(loaded);
     });
     return () => { active = false; };
-  }, [paperId]);
+  }, [paperId, taskItemId]);
 
   useEffect(() => {
     let active = true;
-    if (hasActivePaper) return () => { active = false; };
+    if (hasActivePaper || boundPaper) return () => { active = false; };
     loadPapers({ fetcher: fetchJsonWithAuthFallback }).then((loaded) => {
       if (!active || loaded.error) return;
       setPaperLibrary(loaded.papers.items);
     });
     return () => { active = false; };
-  }, [hasActivePaper]);
+  }, [boundPaper, hasActivePaper]);
 
   useEffect(() => {
     if (!timerActive) return undefined;
@@ -121,7 +182,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
   };
 
   const generate = async () => {
-    if (!canGenerate) {
+    if (!boundPaper && !canGenerate) {
       setError('请填写主题，并设置 1 至 50 道题的题型分布。');
       return;
     }
@@ -132,8 +193,9 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
     try {
       const response = await generateWorkshopPaperWithAgents({
         fetcher: fetchJsonWithAuthFallback,
-        topic: topic.trim(),
-        distribution: Object.fromEntries(types.map((key) => [key, distribution[key]])),
+        topic: boundPaper ? '打开今日任务绑定试卷' : topic.trim(),
+        distribution: boundPaper ? {} : Object.fromEntries(types.map((key) => [key, distribution[key]])),
+        taskItemId,
       });
       if (response.error) {
         setError(response.error);
@@ -158,6 +220,13 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
     }
   };
 
+  useEffect(() => {
+    if (!boundPaper || boundOpenStarted || paper || loading) return undefined;
+    setBoundOpenStarted(true);
+    generate();
+    return undefined;
+  }, [boundPaper, boundOpenStarted, paper, loading]);
+
   const openPaper = async (targetPaperId) => {
     setLoading(true);
     setError('');
@@ -175,13 +244,16 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
   };
 
   const returnToPaperLibrary = async () => {
+    if (boundPaper) return;
     sessionStorage.removeItem(paperStorageKey);
-    if (onBack) { onBack(); return; }
     setPaper(null);
     setAnswers({});
     setSubmitted(null);
     setSubmissionRequestId('');
     setRemainingSeconds(null);
+    setPosition(1);
+    setMarkedPositions([]);
+    setAnswerCardOpen(false);
     setError('');
     const loaded = await loadPapers({ fetcher: fetchJsonWithAuthFallback });
     if (loaded.error) {
@@ -200,8 +272,9 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
         setError(saved.error);
         return false;
       }
-      setPaper(saved.paper);
-      setAnswers(Object.fromEntries(saved.paper.items.map((item) => [item.paper_item_id, item.answer])));
+      const normalizedPaper = normalizePaperOrder(saved.paper);
+      setPaper(normalizedPaper);
+      setAnswers(Object.fromEntries(normalizedPaper.items.map((item) => [item.paper_item_id, item.answer])));
       return true;
     } finally {
       setLoading(false);
@@ -254,21 +327,61 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
     setAnswers({ ...answers, [itemId]: next.join(',') });
   };
 
+  const exitAndSave = async () => {
+    if (!paperSubmitted) {
+      const saved = await save();
+      if (!saved) return;
+    }
+    await returnToPaperLibrary();
+  };
+
+  const goToPosition = (nextPosition) => {
+    const safePosition = Math.max(1, Math.min(paper?.items?.length || 1, nextPosition));
+    setPosition(safePosition);
+    setAnswerCardOpen(false);
+  };
+
+  const toggleMarked = () => {
+    setMarkedPositions((current) => current.includes(position)
+      ? current.filter((item) => item !== position)
+      : [...current, position]);
+  };
+
+  const currentOptions = Array.isArray(currentItem?.options) ? currentItem.options : [];
+  const currentIsChoice = currentOptions.length > 0 && [
+    'single_choice', '单选题', '单项选择题',
+    'multiple_choice', '多选题', '多项选择题',
+  ].includes(currentItem?.question_type);
+  const currentIsMultiple = ['multiple_choice', '多选题', '多项选择题'].includes(currentItem?.question_type);
+  const currentSavedQuestion = currentItem && currentResult ? {
+    resource_id: currentItem.paper_item_id,
+    title: `第 ${currentItem.position} 题 · ${stripLegacyTags(String(currentItem.stem || '')).slice(0, 80)}`,
+    defaultTitle: `${paper?.title || '智能组卷'} · 第 ${currentItem.position} 题`,
+    content: {
+      question_content: currentItem.stem,
+      question_type: currentItem.question_type,
+      options: currentOptions,
+      my_answer: answers[currentItem.paper_item_id] || '',
+      standard_answer: currentResult.standard_answer || [],
+      explanation: currentResult.explanation || '',
+    },
+  } : null;
+
   if (!enabled) return <p className="mt-5 text-sm leading-6 text-slate-600">试卷生成暂未开放。</p>;
 
   return (
     <div className="mt-5 space-y-5">
       {!paper && <>
-        {paperLibrary.length > 0 && <section className="space-y-3" aria-labelledby="paper-library-title">
+        {!boundPaper && paperLibrary.length > 0 && <section className="space-y-3" aria-labelledby="paper-library-title">
           <div><h3 id="paper-library-title" className="text-sm font-semibold text-slate-900">待作答与历史试卷</h3><p className="mt-1 text-sm leading-6 text-slate-500">智能体审核通过的试卷会出现在这里。</p></div>
           <div className="grid gap-2">{paperLibrary.map((item) => <button key={item.paper_id} type="button" onClick={() => openPaper(item.paper_id)} disabled={loading} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-50"><span><strong className="block text-slate-900">{item.title}</strong><span className="mt-1 block text-xs text-slate-500">{item.status === 'published' ? '待作答' : '已提交'} · {item.duration_minutes} 分钟</span></span><span className="text-emerald-700">打开试卷</span></button>)}</div>
         </section>}
-        <div className="border-t border-slate-200 pt-5"><h3 className="text-sm font-semibold text-slate-900">直接组卷</h3><p className="mt-1 text-sm leading-6 text-slate-500">也可以在智能问答中描述完整要求，审核通过后会提供“开始答题”按钮。</p></div>
-        <label className="block text-sm font-medium text-slate-700">训练主题
+        {!boundPaper && <div className="border-t border-slate-200 pt-5"><h3 className="text-sm font-semibold text-slate-900">直接组卷</h3><p className="mt-1 text-sm leading-6 text-slate-500">也可以在智能问答中描述完整要求，审核通过后会提供“开始答题”按钮。</p></div>}
+        {!boundPaper && <label className="block text-sm font-medium text-slate-700">训练主题
           <textarea value={topic} onChange={(event) => setTopic(event.target.value)} disabled={loading} className="mt-2 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />
-        </label>
-        <p className="text-sm text-slate-600">题量：{questionCount} 题；难度由智能体根据学习状态和组卷目标自动确定。</p>
-        <fieldset>
+        </label>}
+        {!boundPaper && <p className="text-sm text-slate-600">题量：{questionCount} 题；系统按主题、题型和知识点覆盖情况组卷。</p>}
+        {!boundPaper && <fieldset>
           <legend className="text-sm font-medium text-slate-700">题型分布</legend>
           <p className="mt-1 text-xs leading-5 text-slate-500">可只保留一种题型，也可组合组卷；总题量不超过 50 题。</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -276,116 +389,118 @@ export default function PaperGenerationPanel({ enabled, paperId = '', onBack }) 
             <input type="number" min="0" max="50" value={distribution[key]} onChange={(event) => setCount(key, event.target.value)} disabled={loading} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
           </label>)}
           </div>
-        </fieldset>
-        <button type="button" onClick={generate} disabled={loading || !canGenerate} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
+        </fieldset>}
+        {!boundPaper && <button type="button" onClick={generate} disabled={loading || !canGenerate} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
           {loading && <Loader2 size={16} className="animate-spin" />}{loading ? '正在组卷并审核…' : '生成试卷'}
-        </button>
+        </button>}
+        {boundPaper && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">正在打开今日任务绑定试卷，题目范围和组卷约束由服务端冻结。</p>}
       </>}
-      {paper && <div className="space-y-4 border-t border-slate-200 pt-4">
-        {!paperSubmitted && <nav aria-label="试题导航" className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">{paper.items.map((item) => <a key={item.paper_item_id} href={`#${item.paper_item_id}`} className={`grid size-9 place-items-center rounded-md border text-xs font-semibold ${answers[item.paper_item_id]?.trim() ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'}`}>{item.position}</a>)}</nav>}
-        <div className="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
-          <div className="flex items-center gap-3"><button type="button" onClick={returnToPaperLibrary} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">返回试卷列表</button><div><h3 className="text-base font-semibold text-slate-950">{paper.title}</h3><p className="mt-1 text-xs text-slate-500">已答 {paper.items.filter((item) => answers[item.paper_item_id]?.trim()).length} / {paper.items.length} 题 · 满分 {paper.total_score ?? submitted?.max_score ?? 100} 分</p></div></div>
-          <div className="flex items-center gap-3">
-            <div className={`font-mono text-lg font-semibold ${remainingSeconds === 0 ? 'text-rose-600' : timerPaused ? 'text-amber-700' : 'text-emerald-800'}`}>{paperSubmitted ? '已交卷' : formatRemaining(remainingSeconds)}</div>
-            {!paperSubmitted && !timeExpired && <button type="button" onClick={toggleTimer} disabled={loading} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">{timerPaused ? '继续计时' : '暂停计时'}</button>}
-          </div>
-        </div>
-        {!paperSubmitted && timerPaused && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">计时已暂停。继续答题前请点击“继续计时”。</p>}
-        {groupedItems.map((group) => <section key={group.key} aria-labelledby={`paper-group-${group.key}`} className="space-y-3">
-          <div className="flex items-center gap-2 border-b border-slate-200 pb-2"><h4 id={`paper-group-${group.key}`} className="text-sm font-semibold text-slate-900">{group.label}</h4><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{group.items.length} 题</span></div>
-          {group.items.map((item) => {
-            const options = Array.isArray(item.options) ? item.options : [];
-            const choice = options.length > 0 && ['single_choice', '单选题', '单项选择题', 'multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
-            const multiple = ['multiple_choice', '多选题', '多项选择题'].includes(item.question_type);
-            const itemResult = submitted?.items?.find((entry) => entry.paper_item_id === item.paper_item_id);
-            return <div id={item.paper_item_id} key={item.paper_item_id}>
-              <fieldset className="rounded-2xl border border-slate-200 p-4" disabled={loading || answerLocked}>
-                <legend className="px-1 text-sm font-medium leading-6 text-slate-800">{item.position}. {item.stem}</legend>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
-                  {item.source_label && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">{item.source_label}</span>}
-                  {item.kp_names?.map((name) => <span key={name} className="rounded-full bg-slate-100 px-2 py-1">{name}</span>)}
-                  {item.recommendation_reason && <span className="basis-full text-slate-500">{item.recommendation_reason}</span>}
-                </div>
-                {choice ? <div className="mt-3 space-y-2">{options.map((option, index) => {
-                  const label = optionText(option, index);
-                  const value = optionValue(option, index);
-                  const checked = multiple
-                    ? String(answers[item.paper_item_id] || '').split(',').map((entry) => entry.trim()).includes(value)
-                    : answers[item.paper_item_id] === value;
-                  return <label key={`${item.paper_item_id}-${index}`} className="flex cursor-pointer gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700"><input type={multiple ? 'checkbox' : 'radio'} name={item.paper_item_id} checked={checked} onChange={() => multiple ? toggleMultiple(item.paper_item_id, value) : setAnswers({ ...answers, [item.paper_item_id]: value })} />{label}</label>;
-                })}</div> : <textarea aria-label={`第${item.position}题答案`} value={answers[item.paper_item_id] || ''} onChange={(event) => setAnswers({ ...answers, [item.paper_item_id]: event.target.value })} className="mt-3 min-h-24 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />}
-              </fieldset>
-              {itemResult && <div className={`mt-2 rounded-xl border p-3 text-sm leading-6 ${itemResult.is_correct ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-rose-200 bg-rose-50 text-rose-900'}`}>
-                <strong>{itemResult.is_correct ? '回答正确' : '回答错误'} · {itemResult.score} / {itemResult.max_score} 分</strong>
-                <p>参考答案：{displayAnswer(itemResult.standard_answer) || '待补充'}</p>
-                <p>题目解析：{itemResult.explanation || '本题解析正在补充。'}</p>
-                {itemResult.grading_analysis && itemResult.grading_analysis !== itemResult.explanation && <p>本次批改：{itemResult.grading_analysis}</p>}
-                <div className="mt-3 flex gap-2">
-                  <button type="button" onClick={function() {
-                    var books = JSON.parse(localStorage.getItem('qp-collection-books') || '[]');
-                    var choices = ['默认'].concat(books).concat(['+ 新建收藏簿']);
-                    var choice = prompt('选择收藏簿：\n' + choices.map(function(c, i) { return (i+1) + '. ' + c; }).join('\n') + '\n\n输入序号或新收藏簿名称：');
-                    if (!choice) return;
-                    var bookName = choice.trim();
-                    var idx = parseInt(choice);
-                    if (idx >= 1 && idx <= choices.length) bookName = choices[idx - 1];
-                    if (bookName === '+ 新建收藏簿') { bookName = prompt('请输入新收藏簿名称：'); if (!bookName || !bookName.trim()) return; bookName = bookName.trim(); if (books.indexOf(bookName) === -1) { books.push(bookName); localStorage.setItem('qp-collection-books', JSON.stringify(books)); } }
-                    var key = 'qp-favorite-questions';
-                    var favs = JSON.parse(localStorage.getItem(key) || '[]');
-                    // Convert options to display format if needed
-                    var opts = (item.options || []).map(function(opt, j) {
-                      if (typeof opt === 'object' && opt !== null) return opt;
-                      return { option_id: String.fromCharCode(65 + j), content: String(opt) };
-                    });
-                    if (!favs.find(function(f) { return f.question_id === item.paper_item_id && f.book === bookName; })) {
-                      favs.unshift({ question_id: item.paper_item_id, question_content: item.stem, question_type: item.question_type, options: opts, my_answer: String(answers[item.paper_item_id] || ''), standard_answer: itemResult.standard_answer || [], explanation: itemResult.explanation || '', book: bookName, source: '智能组卷', saved_at: new Date().toISOString() });
-                      localStorage.setItem(key, JSON.stringify(favs.slice(0, 200)));
-                    }
-                  }} className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100">加入收藏</button>
-                  <button type="button" onClick={function() {
-                    var paperTitle = paper.title || '智能组卷';
-                    setNoteDialogItem(item);
-                    setNoteDialogTitle(paperTitle + '：');
-                    setNoteDialogContent('');
-                    setNoteDialogOpen(true);
-                  }} className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">记笔记</button>
-                </div>
-              </div>}
-            </div>;
-          })}
-        </section>)}
-        {!paperSubmitted && timeExpired && <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">答题时间已结束，答案已锁定，请提交当前作答。</p>}
-        {!paperSubmitted && <div className="flex flex-wrap gap-2">{!timeExpired && <button type="button" onClick={save} disabled={loading} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50">保存答案</button>}<button type="button" onClick={() => submit({ allowIncomplete: timeExpired })} disabled={loading || (!timeExpired && !allAnswered)} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{timeExpired ? '按当前答案交卷' : '提交试卷'}</button></div>}
-      </div>}
-      {submitted && <div className="border-l-2 border-emerald-300 pl-3 text-sm leading-6 text-slate-700"><p>总分：{submitted.score} / {submitted.max_score}</p><p>已完成 {submitted.items?.length || 0} 道题的服务端评分。</p></div>}
-      {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm leading-6 text-rose-700">{error}</p>}
-      {noteDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={function() { setNoteDialogOpen(false); }}>
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4" onClick={function(e) { e.stopPropagation(); }}>
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">记笔记</h3>
-            <label className="block text-sm font-medium text-slate-700 mb-1">标题</label>
-            <input type="text" value={noteDialogTitle} onChange={function(e) { setNoteDialogTitle(e.target.value); }} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400 mb-3" />
-            <label className="block text-sm font-medium text-slate-700 mb-1">内容</label>
-            <textarea value={noteDialogContent} onChange={function(e) { setNoteDialogContent(e.target.value); }} rows={5} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-400 resize-none mb-4" placeholder="写下你的笔记…" />
-            <div className="flex justify-end gap-3">
-              <button type="button" onClick={function() { setNoteDialogOpen(false); }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">取消</button>
-              <button type="button" onClick={function() {
-                if (!noteDialogTitle.trim()) return;
-                var notes = JSON.parse(localStorage.getItem('study-notes') || '[]');
-                var item = noteDialogItem;
-                var result = submitted?.items?.find(function(e) { return e.paper_item_id === item.paper_item_id; });
-                var opts = (item.options || []).map(function(opt, j) {
-                  if (typeof opt === 'object' && opt !== null) return opt;
-                  return { option_id: String.fromCharCode(65 + j), content: String(opt) };
-                });
-                notes.unshift({ id: 'note-' + Date.now(), title: noteDialogTitle.trim(), content: noteDialogContent || '', type: '题目笔记', source: '智能组卷', question_content: item.stem, options: opts, standard_answer: result ? result.standard_answer : [], explanation: result ? result.explanation : '', created_at: new Date().toISOString() });
-                localStorage.setItem('study-notes', JSON.stringify(notes));
-                setNoteDialogOpen(false);
-              }} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">保存</button>
+      {paper && currentItem && <section className="relative min-h-[620px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            {!boundPaper && <button type="button" onClick={exitAndSave} disabled={loading} className={`${paperButton} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-rose-300 hover:text-rose-700`}>
+              <ArrowLeft size={16} />退出并保存
+            </button>}
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-semibold text-slate-950 sm:text-base">{paper.title}</h3>
+              <p className="mt-1 text-xs text-slate-500">第 {position} / {paper.items.length} 题 · 已答 {answeredIds.size} 题 · 满分 {paper.total_score ?? submitted?.max_score ?? 100} 分</p>
             </div>
           </div>
-        </div>
-      )}
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex min-h-9 items-center gap-2 rounded-lg border bg-white px-3 font-mono text-sm font-semibold tabular-nums shadow-sm ${timeExpired ? 'border-rose-200 text-rose-700' : timerPaused ? 'border-amber-200 text-amber-700' : 'border-slate-200 text-emerald-800'}`}>
+              <Clock3 size={15} aria-hidden="true" />{paperSubmitted ? '已交卷' : formatRemaining(remainingSeconds)}
+            </span>
+            {!paperSubmitted && !timeExpired && <button type="button" onClick={toggleTimer} disabled={loading} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
+              {timerPaused ? <Play size={16} /> : <Pause size={16} />}<span className="hidden sm:inline">{timerPaused ? '继续计时' : '暂停计时'}</span>
+            </button>}
+            <button type="button" aria-label={answerCardOpen ? '收起答题卡' : '展开答题卡'} aria-expanded={answerCardOpen} aria-controls="smart-paper-answer-card" onClick={() => setAnswerCardOpen(!answerCardOpen)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
+              {answerCardOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}<span className="hidden sm:inline">答题卡</span>
+            </button>
+          </div>
+        </header>
+
+        {paperSubmitted && <section className="border-b border-emerald-200 bg-emerald-50 px-5 py-4" aria-label="试卷得分">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4">
+            <div><p className="text-xs font-semibold tracking-wide text-emerald-700">本次作答</p><p className="mt-1 text-2xl font-semibold tracking-tight text-emerald-950">{submitted?.score ?? paper.result?.score ?? 0} <span className="text-sm font-medium text-emerald-700">/ {submitted?.max_score ?? paper.result?.max_score ?? paper.total_score ?? 100} 分</span></p></div>
+            <div className="flex items-center gap-2 text-sm text-emerald-900"><CheckCircle2 size={18} /><span>已完成 {submitted?.items?.length || paper.items.length} 道题评分</span></div>
+          </div>
+        </section>}
+
+        {!paperSubmitted && timerPaused && <p role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm leading-6 text-amber-800">计时已暂停，答案保留在当前页面。继续作答时请恢复计时。</p>}
+        {!paperSubmitted && timeExpired && <p role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm leading-6 text-amber-800">答题时间已结束，答案已锁定，请按当前答案交卷。</p>}
+
+        <article className="mx-auto max-w-3xl px-5 py-8 sm:py-10">
+          <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
+            <span className="rounded-md bg-emerald-100 px-2.5 py-1 text-emerald-800">{questionTypeLabel(currentItem.question_type)}</span>
+            {markedPositions.includes(position) && <span className="rounded-md bg-slate-900 px-2.5 py-1 text-white">已标记</span>}
+            {paperSubmitted && currentResult && <span className={`rounded-md px-2.5 py-1 ${currentResult.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{currentResult.is_correct ? '回答正确' : '需要复盘'}</span>}
+          </div>
+          <div className="flex items-start gap-3 text-lg font-medium leading-8 text-slate-950">
+            <span className="mt-0.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-sm font-bold text-emerald-800">{position}</span>
+            <PaperQuestionContent content={currentItem.stem} />
+          </div>
+
+          <fieldset className="mt-6" disabled={loading || answerLocked}>
+            <legend className="sr-only">第 {position} 题答案</legend>
+            {currentIsChoice ? <div className="space-y-3">{currentOptions.map((option, index) => {
+              const value = optionText(option, index);
+              const checked = currentIsMultiple
+                ? String(answers[currentItem.paper_item_id] || '').split(',').map((entry) => entry.trim()).includes(value)
+                : answers[currentItem.paper_item_id] === value;
+              return <label key={`${currentItem.paper_item_id}-${index}`} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-sm leading-6 transition duration-200 ${checked ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}>
+                <input className="mt-1 accent-emerald-700" type={currentIsMultiple ? 'checkbox' : 'radio'} name={currentItem.paper_item_id} checked={checked} onChange={() => currentIsMultiple ? toggleMultiple(currentItem.paper_item_id, value) : setAnswers({ ...answers, [currentItem.paper_item_id]: value })} />
+                <PaperQuestionContent content={value} />
+              </label>;
+            })}</div> : <textarea aria-label={`第${currentItem.position}题答案`} value={answers[currentItem.paper_item_id] || ''} onChange={(event) => setAnswers({ ...answers, [currentItem.paper_item_id]: event.target.value })} placeholder="请在这里输入答案" className="min-h-36 w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100" />}
+          </fieldset>
+
+          {currentResult && <section className={`mt-6 rounded-xl border p-4 text-sm leading-6 ${currentResult.is_correct ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'border-rose-200 bg-rose-50 text-rose-950'}`} aria-label={`第 ${position} 题解析`}>
+            <div className="flex flex-wrap items-center justify-between gap-2"><strong>{currentResult.is_correct ? '回答正确' : '回答错误'}</strong><span className="font-semibold tabular-nums">{currentResult.score} / {currentResult.max_score} 分</span></div>
+            <dl className="mt-3 space-y-2">
+              <div><dt className="inline font-semibold">你的答案：</dt><dd className="inline">{displayAnswer(answers[currentItem.paper_item_id]) || '未作答'}</dd></div>
+              <div><dt className="inline font-semibold">参考答案：</dt><dd className="inline">{displayAnswer(currentResult.standard_answer) || '待补充'}</dd></div>
+              <div><dt className="font-semibold">题目解析</dt><dd className="mt-1 text-slate-700">{currentResult.explanation || '本题解析正在补充。'}</dd></div>
+              {currentResult.grading_analysis && currentResult.grading_analysis !== currentResult.explanation && <div><dt className="font-semibold">本次批改</dt><dd className="mt-1 text-slate-700">{currentResult.grading_analysis}</dd></div>}
+            </dl>
+            <div className="mt-4 flex flex-wrap gap-2"><FavoriteQuestionButton question={currentSavedQuestion} source="智能组卷" /><NoteQuestionButton question={currentSavedQuestion} source="智能组卷" /></div>
+          </section>}
+        </article>
+
+        <footer className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 border-t border-slate-200 px-5 py-4">
+          <button type="button" disabled={position === 1} onClick={() => goToPosition(position - 1)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}><ChevronLeft size={16} />上一题</button>
+          {!paperSubmitted && <button type="button" onClick={toggleMarked} className={`${paperButton} ${markedPositions.includes(position) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'}`}><Bookmark size={16} />{markedPositions.includes(position) ? '取消标记' : '标记本题'}</button>}
+          <button type="button" disabled={position === paper.items.length} onClick={() => goToPosition(position + 1)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>下一题<ChevronRight size={16} /></button>
+          {!paperSubmitted && <button type="button" onClick={() => submit({ allowIncomplete: timeExpired })} disabled={loading || (!timeExpired && !allAnswered)} className={`${paperButton} ml-auto border-slate-900 bg-slate-900 text-white hover:bg-slate-800`}><ClipboardList size={16} />{timeExpired ? '按当前答案交卷' : '提交试卷'}</button>}
+        </footer>
+
+        {answerCardOpen && <><button type="button" aria-label="关闭答题卡遮罩" onClick={() => setAnswerCardOpen(false)} className="absolute inset-0 z-10 bg-slate-950/10 backdrop-blur-[1px]" /><aside id="smart-paper-answer-card" role="complementary" aria-label="答题卡" className="absolute bottom-0 right-0 top-0 z-20 flex w-[min(22rem,90vw)] flex-col border-l border-slate-200 bg-white shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+            <div><div className="flex items-center gap-2"><Grid3X3 size={17} className="text-emerald-700" /><h3 className="font-semibold text-slate-900">答题卡</h3></div><p className="mt-1 text-xs text-slate-500">已答 {answeredIds.size} / {paper.items.length} · 已标记 {markedPositions.length}</p></div>
+            <button type="button" aria-label="收起答题卡" onClick={() => setAnswerCardOpen(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 transition hover:border-emerald-400 hover:text-emerald-800"><X size={17} /></button>
+          </div>
+          <div data-testid="smart-paper-answer-card-grid" className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4">
+            {groupedItems.map((group) => <section key={group.key} aria-labelledby={`paper-card-group-${group.key}`}>
+              <div className="mb-2 flex items-center justify-between gap-2"><h4 id={`paper-card-group-${group.key}`} className="text-xs font-semibold text-slate-700">{group.label}</h4><span className="text-xs text-slate-400">{group.items.length} 题</span></div>
+              <div className="grid grid-cols-5 gap-2">{group.items.map((item) => {
+                const itemPosition = paper.items.findIndex((entry) => entry.paper_item_id === item.paper_item_id) + 1;
+                const result = submitted?.items?.find((entry) => entry.paper_item_id === item.paper_item_id);
+                const color = itemPosition === position
+                  ? 'ring-2 ring-emerald-700 ring-offset-2'
+                  : result
+                    ? result.is_correct ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                    : markedPositions.includes(itemPosition)
+                      ? 'bg-slate-900 text-white'
+                      : answeredIds.has(item.paper_item_id)
+                        ? 'bg-emerald-600 text-white'
+                        : 'border border-slate-300 bg-white text-slate-700';
+                return <button key={item.paper_item_id} type="button" aria-label={`第 ${itemPosition} 题`} onClick={() => goToPosition(itemPosition)} className={`h-9 rounded-full text-xs font-semibold transition hover:scale-105 ${color}`}>{itemPosition}</button>;
+              })}</div>
+            </section>)}
+          </div>
+          <div className="border-t border-slate-200 px-4 py-3 text-xs leading-5 text-slate-500">绿色为已答，深色为标记；交卷后绿色与红色分别表示正确和错误。</div>
+        </aside></>}
+      </section>}
+      {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm leading-6 text-rose-700">{error}</p>}
     </div>
   );
 }
