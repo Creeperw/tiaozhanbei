@@ -193,7 +193,8 @@ RestartSec=5
 - 登录成功后仍返回 401：请求需带 `credentials: 'include'`，HTTPS 环境检查安全 Cookie 与代理头；
 - SSE 无增量输出：检查反向代理缓冲和读取超时配置；
 - Live 资源检索失败：检查资产绝对路径、目录权限、模型密钥及索引版本。
-- 教材下没有章节或知识点：检查 `/api/knowledge/atlas/status` 返回的 `chapter_root`，确认其中包含 `chapter_nodes.jsonl` 和 `chunk_chapter_links.jsonl`；默认应指向仓库内置的 `2026-07-22` 映射。
+- 教材下没有章节或知识点：检查 `/api/knowledge/atlas/status` 返回的 `chapter_root`，确认其中包含 `chapter_nodes.jsonl` 和 `chunk_chapter_links.jsonl`；默认应指向仓库内置的 `2026-07-22/final` 映射。
+- 小节没有完整视频：检查状态接口的 `coverage.section_full_videos` 和 `section_video_path`。运行时目录没有 OCR 映射时，会回退读取 `2026-07-22/final/section_video_matches.jsonl`；不要把知识点时间戳覆盖率误当成小节完整视频覆盖率。
 
 接口联调细节见 [前端接口参考](frontend-api-reference.md)。
 

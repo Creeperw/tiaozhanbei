@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Trash2, Save, Search, Edit2, X, RotateCcw, Database, Clock, Sparkles, ArrowUpCircle, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Trash2, Save, Search, Edit2, X, RotateCcw, Database, Clock, Sparkles, ArrowUpCircle, ChevronDown, Lock, LockOpen } from 'lucide-react';
 import { API_BASE, MAIN_API_BASE, fetchWithAuth } from '../utils/api';
 
 const emptyProfile = {
@@ -22,11 +22,11 @@ const candidateStatusLabels = { pending: '待确认', promoted: '已晋升', ign
 
 const userProfileColumns = {
   background: [
-    { key: 'education_major', label: '学历/专业', source: 'survey' },
-    { key: 'learning_background', label: '学习基础', source: 'context' },
-    { key: 'constitution', label: '用户群体', source: 'profile' },
-    { key: 'health_goals', label: '学习目标', source: 'profile' },
-    { key: 'diet_restrictions', label: '可投入时间', source: 'profile' },
+    { key: 'education_major', lockKey: 'education_major', label: '学历/专业', source: 'survey' },
+    { key: 'learning_background', lockKey: 'learning_background', label: '学习基础', source: 'context' },
+    { key: 'constitution', lockKey: 'learner_group', label: '用户群体', source: 'profile' },
+    { key: 'health_goals', lockKey: 'learning_goal', label: '学习目标', source: 'profile' },
+    { key: 'diet_restrictions', lockKey: 'time_constraints', label: '可投入时间', source: 'profile' },
   ],
   preferences: [
     { key: 'exercise_preferences', lockKey: 'resource_preferences', label: '资源偏好' },
@@ -53,9 +53,46 @@ const normalizeMemoryPayload = (item) => ({
 
 const softInputClass = "w-full rounded-2xl border border-emerald-100/80 bg-white/80 px-4 py-2.5 text-slate-700 shadow-inner shadow-emerald-50/70 outline-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-slate-300 focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100/80";
 const softTextareaClass = "w-full resize-none rounded-[22px] border border-emerald-100/80 bg-white/75 p-4 text-slate-700 shadow-inner shadow-emerald-50/80 outline-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-slate-300 focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100/80";
-const userProfileTextareaClass = `${softTextareaClass} h-[72px] px-4 py-[21px] text-[1.0625rem] leading-7`;
 const softCardClass = "rounded-[28px] border border-emerald-100/70 bg-white/82 shadow-sm shadow-emerald-100/50 backdrop-blur-sm";
 const softIconButtonClass = "rounded-xl p-2 text-slate-500 transition-[color,background-color,transform] duration-150 hover:-translate-y-0.5 hover:bg-emerald-50 hover:text-emerald-700 active:translate-y-px";
+
+function ProfileField({ field, value, isLocked, onToggle, onChange }) {
+  const actionLabel = `${isLocked ? '解锁' : '锁定'}${field.label}`;
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1.5 block text-sm font-semibold text-slate-700">{field.label}</span>
+      <span className="relative block">
+        <input
+          type="text"
+          aria-label={field.label}
+          value={value || ''}
+          disabled={isLocked}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={`请填写${field.label}`}
+          className={`h-12 w-full rounded-xl border py-0 pl-3.5 pr-12 text-[0.95rem] outline-none transition-[border-color,background-color,box-shadow,color] duration-150 placeholder:text-slate-300 ${
+            isLocked
+              ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-500'
+              : 'border-slate-200 bg-white text-slate-800 hover:border-emerald-200 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70'
+          }`}
+        />
+        <button
+          type="button"
+          aria-label={actionLabel}
+          aria-pressed={isLocked}
+          title={isLocked ? `点击解锁并编辑${field.label}` : `点击锁定${field.label}`}
+          onClick={onToggle}
+          className={`absolute right-1.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg transition-[color,background-color,transform] duration-150 active:scale-95 ${
+            isLocked
+              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+              : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-700'
+          }`}
+        >
+          {isLocked ? <Lock size={17} aria-hidden="true" /> : <LockOpen size={17} aria-hidden="true" />}
+        </button>
+      </span>
+    </label>
+  );
+}
 
 const toOptions = (entries) => entries.map(([value, label]) => ({ value, label }));
 const categoryOptions = toOptions(Object.entries(categoryLabels));
@@ -509,91 +546,58 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
               {message && <span role="status" className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2.5 text-base text-emerald-700">{message}</span>}
             </div>
 
-            <div className="mt-5 grid gap-5 lg:grid-cols-2">
-              <section aria-label="学习基础画像" className="rounded-[26px] border border-emerald-100 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/35 p-4 sm:p-5">
-                <h3 className="mb-4 text-lg font-semibold leading-7 text-emerald-950">学习基础与目标</h3>
-                <div className="space-y-3">
+            <div className="mt-6 grid items-start gap-8 lg:grid-cols-2">
+              <section aria-label="学习基础画像" className="min-w-0">
+                <div className="mb-5 min-h-[62px]">
+                  <h3 className="text-lg font-semibold leading-7 text-emerald-950">学习基础与目标</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">确认学习起点、目标和稳定可投入的时间。</p>
+                </div>
+                <div className="grid gap-4">
                   {userProfileColumns.background.map((field) => {
                     const value = field.source === 'survey'
                       ? learnerProfile.education_major
                       : field.source === 'context'
                         ? learnerProfile.learning_background
                         : profile[field.key];
-                    return (
-                      <label key={field.key} className="block">
-                        <span className="text-base font-medium text-slate-700">{field.label}</span>
-                        <textarea
-                          rows={1}
-                          aria-label={field.label}
-                          value={value || ''}
-                          onChange={(event) => {
-                            if (field.source === 'survey') {
-                              setLearnerProfile((current) => ({ ...current, education_major: event.target.value }));
-                              return;
-                            }
-                            if (field.source === 'context') {
-                              setLearnerProfile((current) => ({ ...current, learning_background: event.target.value }));
-                              return;
-                            }
-                            setProfile((current) => ({ ...current, [field.key]: event.target.value }));
-                          }}
-                          placeholder={`请填写${field.label}`}
-                          className={`${userProfileTextareaClass} mt-1`}
-                        />
-                      </label>
-                    );
+                    const isLocked = (learnerProfile.locked_fields || []).includes(field.lockKey);
+                    const updateValue = (nextValue) => {
+                      if (field.source === 'survey') {
+                        setLearnerProfile((current) => ({ ...current, education_major: nextValue }));
+                      } else if (field.source === 'context') {
+                        setLearnerProfile((current) => ({ ...current, learning_background: nextValue }));
+                      } else {
+                        setProfile((current) => ({ ...current, [field.key]: nextValue }));
+                      }
+                    };
+                    return <ProfileField key={field.key} field={field} value={value} isLocked={isLocked} onToggle={() => toggleLockedField(field.lockKey)} onChange={updateValue} />;
                   })}
                 </div>
               </section>
 
-              <section aria-label="学习偏好画像" className="rounded-[26px] border border-teal-100 bg-gradient-to-br from-teal-50/65 via-white to-emerald-50/40 p-4 sm:p-5">
-                <div className="mb-4">
+              <section aria-label="学习偏好画像" className="min-w-0 lg:border-l lg:border-slate-100 lg:pl-8">
+                <div className="mb-5 min-h-[62px]">
                   <h3 className="text-lg font-semibold leading-7 text-emerald-950">学习偏好与需求</h3>
-                  <p className="mt-1 text-sm leading-6 text-emerald-800">勾选锁定后，智能分析只会给出更新建议，不会自动覆盖该字段。</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">锁定后，智能分析只给出建议，不会自动覆盖内容。</p>
                 </div>
-                <div className="space-y-3">
+                <div className="grid gap-4">
                   {userProfileColumns.preferences.map((field) => {
                     const value = field.source === 'survey' ? learnerProfile.learning_habits : profile[field.key];
                     const isLocked = (learnerProfile.locked_fields || []).includes(field.lockKey);
-                    return (
-                      <div key={field.key} className="rounded-2xl border border-white/90 bg-white/78 p-4 shadow-sm shadow-emerald-100/50">
-                        <div className="flex items-center justify-between gap-3">
-                          <label htmlFor={`user-profile-${field.key}`} className="text-base font-medium text-slate-700">{field.label}</label>
-                          <label className="flex shrink-0 items-center gap-2 text-sm font-medium text-emerald-800">
-                            <input
-                              aria-label={`锁定${field.label}`}
-                              type="checkbox"
-                              checked={isLocked}
-                              onChange={() => toggleLockedField(field.lockKey)}
-                              className="h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            锁定
-                          </label>
-                        </div>
-                        <textarea
-                          rows={1}
-                          id={`user-profile-${field.key}`}
-                          aria-label={field.label}
-                          value={value || ''}
-                          onChange={(event) => {
-                            if (field.source === 'survey') {
-                              setLearnerProfile((current) => ({ ...current, learning_habits: event.target.value }));
-                              return;
-                            }
-                            setProfile((current) => ({ ...current, [field.key]: event.target.value }));
-                          }}
-                          placeholder={`请填写${field.label}`}
-                          className={`${userProfileTextareaClass} mt-2`}
-                        />
-                      </div>
-                    );
+                    const updateValue = (nextValue) => {
+                      if (field.source === 'survey') {
+                        setLearnerProfile((current) => ({ ...current, learning_habits: nextValue }));
+                      } else {
+                        setProfile((current) => ({ ...current, [field.key]: nextValue }));
+                      }
+                    };
+                    return <ProfileField key={field.key} field={field} value={value} isLocked={isLocked} onToggle={() => toggleLockedField(field.lockKey)} onChange={updateValue} />;
                   })}
                 </div>
               </section>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-emerald-100 bg-emerald-50/55 p-4 sm:p-5">
-              <p className="text-base leading-7 text-emerald-950">已锁定 {learnerProfile.locked_fields?.length || 0} 项。保存后，锁定设置将同步到学习计划与推荐流程。</p>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+              <p className="text-sm leading-6 text-slate-500">已锁定 {learnerProfile.locked_fields?.length || 0} 项；保存后同步到学习计划与推荐流程。</p>
               <button type="button" onClick={saveProfile} className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-3 text-base font-medium text-white shadow-lg shadow-emerald-100 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-emerald-200 active:translate-y-px"><Save size={18}/>保存用户画像</button>
             </div>
           </section>}

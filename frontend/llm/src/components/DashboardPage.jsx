@@ -344,7 +344,7 @@ export default function DashboardPage({
         page: 'practice',
         params: {
           view: 'textbook-chapters',
-          route: 'textbook_14_5',
+          route: navigation.route_id || 'textbook_14_5',
           lv1: navigation.book || node.title.replace(/[《》]/g, ''),
           source: 'learning-plan',
         },
@@ -373,7 +373,7 @@ export default function DashboardPage({
       page: 'practice',
       params: {
         view: 'textbook-chapters',
-        route: 'textbook_14_5',
+        route: node.navigation?.route_id || 'textbook_14_5',
         lv1: name,
         source: 'textbook-library',
       },

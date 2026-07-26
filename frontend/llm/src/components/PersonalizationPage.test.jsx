@@ -103,24 +103,35 @@ describe('PersonalizationPage single-task views', () => {
     const user = userEvent.setup();
     render(<PersonalizationPage embedded view="user-profile" />);
 
-    expect(await screen.findByDisplayValue('非医学专业')).toBeInTheDocument();
+    const educationInput = await screen.findByRole('textbox', { name: '学历/专业' });
     expect(screen.getByRole('heading', { name: '用户画像' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '学习基础画像' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '学习偏好画像' })).toBeInTheDocument();
-    expect(screen.getByLabelText('学历/专业')).toHaveValue('非医学专业');
-    expect(screen.getByLabelText('学习基础')).toHaveValue('零基础；非医学专业');
+    expect(educationInput).toHaveValue('非医学专业');
+    expect(screen.getByRole('textbox', { name: '学习基础' })).toHaveValue('零基础；非医学专业');
     expect(screen.queryByText('完善个人学习信息，系统会据此优化学习计划、资源推荐与干预建议。')).not.toBeInTheDocument();
     expect(screen.queryByText('用于确认学习起点、目标和可持续投入的节奏。')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '刷新' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '导出' })).not.toBeInTheDocument();
     ['学历/专业', '学习基础', '用户群体', '学习目标', '可投入时间', '资源偏好', '当前困难/薄弱点', '个性化学习需求', '学习习惯'].forEach((label) => {
-      expect(screen.getByLabelText(label)).toHaveAttribute('rows', '1');
-      expect(screen.getByLabelText(label)).toHaveClass('h-[72px]');
+      expect(screen.getByRole('textbox', { name: label })).toBeEnabled();
     });
-    expect(screen.getByLabelText('锁定资源偏好')).not.toBeChecked();
+    expect(screen.getByRole('button', { name: '锁定学历/专业' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: '锁定资源偏好' })).toHaveAttribute('aria-pressed', 'false');
 
-    await user.click(screen.getByLabelText('锁定资源偏好'));
-    expect(screen.getByLabelText('锁定资源偏好')).toBeChecked();
+    await user.clear(educationInput);
+    await user.type(educationInput, '中医学本科');
+    expect(educationInput).toHaveValue('中医学本科');
+
+    await user.click(screen.getByRole('button', { name: '锁定学历/专业' }));
+    await user.click(screen.getByRole('button', { name: '锁定资源偏好' }));
+    expect(educationInput).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: '资源偏好' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '解锁学历/专业' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '解锁资源偏好' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: '解锁学历/专业' }));
+    expect(educationInput).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: '锁定学历/专业' }));
 
     await user.click(screen.getByRole('button', { name: '保存用户画像' }));
     let learnerProfileSave;
@@ -130,11 +141,15 @@ describe('PersonalizationPage single-task views', () => {
       ));
       expect(learnerProfileSave).toBeDefined();
     });
-    expect(JSON.parse(learnerProfileSave[1].body)).toMatchObject({
-      education_major: '非医学专业',
+    const savedProfile = JSON.parse(learnerProfileSave[1].body);
+    expect(savedProfile).toMatchObject({
+      education_major: '中医学本科',
       learning_background: '零基础；非医学专业',
-      locked_fields: ['resource_preferences'],
-      lock_reason: { resource_preferences: '用户在用户画像页锁定' },
+      lock_reason: {
+        education_major: '用户在用户画像页锁定',
+        resource_preferences: '用户在用户画像页锁定',
+      },
     });
+    expect(savedProfile.locked_fields).toEqual(expect.arrayContaining(['education_major', 'resource_preferences']));
   });
 });

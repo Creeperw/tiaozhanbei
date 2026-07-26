@@ -522,6 +522,22 @@ def test_formal_frontend_learning_stage_assets_are_mounted(tmp_path) -> None:
     assert response.content == b"learning-stage-artwork"
 
 
+def test_formal_frontend_textbook_cover_assets_are_mounted(tmp_path) -> None:
+    asset_root = tmp_path / "textbook-covers"
+    asset_root.mkdir(parents=True)
+    (asset_root / "方剂学.jpg").write_bytes(b"textbook-cover")
+    container = ApplicationContainer.build(
+        Settings(frontend_dist_root=tmp_path),
+        snapshot_root=tmp_path / "snapshots",
+    )
+
+    with TestClient(create_app(container, auth_required=False)) as client:
+        response = client.get("/textbook-covers/%E6%96%B9%E5%89%82%E5%AD%A6.jpg")
+
+    assert response.status_code == 200
+    assert response.content == b"textbook-cover"
+
+
 def test_main_cookie_identity_reaches_mounted_business_routes(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     runtime = FakeBackendHandoffRuntime()

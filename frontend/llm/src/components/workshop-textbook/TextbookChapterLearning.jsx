@@ -46,6 +46,52 @@ function cleanDisplayText(value) {
   return String(value || '').replace(/^\?+\s*/, '').trim();
 }
 
+const headingDigits = {
+  零: 0, 〇: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4,
+  五: 5, 六: 6, 七: 7, 八: 8, 九: 9,
+};
+const headingUnits = { 十: 10, 百: 100, 千: 1000 };
+
+function parseHeadingNumber(value) {
+  if (/^\d+$/.test(value)) return Number(value);
+  let total = 0;
+  let digit = 0;
+  for (const char of value) {
+    if (Object.hasOwn(headingDigits, char)) {
+      digit = headingDigits[char];
+    } else if (Object.hasOwn(headingUnits, char)) {
+      total += (digit || 1) * headingUnits[char];
+      digit = 0;
+    } else {
+      return null;
+    }
+  }
+  return total + digit;
+}
+
+function sortByHeadingNumber(items, marker) {
+  return items
+    .map((item, sourceIndex) => {
+      const match = String(item?.name || '').match(
+        new RegExp(`第\\s*([0-9零〇一二两三四五六七八九十百千]+)\\s*${marker}`),
+      );
+      return {
+        item,
+        sourceIndex,
+        headingNumber: match ? parseHeadingNumber(match[1]) : null,
+      };
+    })
+    .sort((left, right) => {
+      if (left.headingNumber !== null && right.headingNumber !== null) {
+        return left.headingNumber - right.headingNumber || left.sourceIndex - right.sourceIndex;
+      }
+      if (left.headingNumber !== null) return -1;
+      if (right.headingNumber !== null) return 1;
+      return left.sourceIndex - right.sourceIndex;
+    })
+    .map(({ item }) => item);
+}
+
 function VideoCard({ video, mode = 'section', displayTitle = '' }) {
   const isTimestamp = mode === 'timestamp' || mode === 'recommended';
   const matchedKps = Array.isArray(video?.matched_kps) ? video.matched_kps : [];
@@ -150,7 +196,10 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     setError('');
     loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal })
       .then((payload) => {
-        const next = Array.isArray(payload.nodes) ? payload.nodes : [];
+        const next = sortByHeadingNumber(
+          Array.isArray(payload.nodes) ? payload.nodes : [],
+          '章',
+        );
         setChapters(next);
         setSelectedChapter((current) => next.find((item) => item.id === current?.id) || null);
       })
@@ -177,7 +226,10 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       chapterId: selectedChapter.id,
       signal: controller.signal,
     }).then((payload) => {
-      const next = Array.isArray(payload.nodes) ? payload.nodes : [];
+      const next = sortByHeadingNumber(
+        Array.isArray(payload.nodes) ? payload.nodes : [],
+        '节',
+      );
       setSections(next);
       setSelectedSection((current) => next.find((item) => item.id === current?.id) || null);
     }).catch((loadError) => {

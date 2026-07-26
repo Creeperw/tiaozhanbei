@@ -308,6 +308,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "learning-stage"),
             name="frontend_learning_stage",
         )
+    if frontend_root and (frontend_root / "textbook-covers").is_dir():
+        app.mount(
+            "/textbook-covers",
+            StaticFiles(directory=frontend_root / "textbook-covers"),
+            name="frontend_textbook_covers",
+        )
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
@@ -334,7 +340,15 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             or path == "/favicon.ico"
             or path == "/health"
             or path == "/openapi.json"
-            or path.startswith(("/assets/", "/design-images/", "/assistant-character/"))
+            or path.startswith(
+                (
+                    "/assets/",
+                    "/design-images/",
+                    "/assistant-character/",
+                    "/learning-stage/",
+                    "/textbook-covers/",
+                )
+            )
             or path.startswith(("/auth", "/docs", "/redoc"))
             or path.startswith("/api/v1/auth/")
         )

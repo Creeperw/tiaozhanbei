@@ -45,6 +45,7 @@ class KnowledgeAtlasRoutesTests(unittest.TestCase):
             "/knowledge/atlas/routes",
             "/knowledge/atlas/nodes",
             "/knowledge/atlas/detail/{kp_id}",
+            "/knowledge/atlas/section/{section_id}",
             "/knowledge/atlas/images/{filename}",
             "/knowledge/atlas/warm",
             "/knowledge/atlas/resolve-context",
@@ -72,6 +73,11 @@ class KnowledgeAtlasRoutesTests(unittest.TestCase):
         detail = self.client.get("/knowledge/atlas/detail/kp-reentry", params={"question_limit": 1})
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()["questions"][0]["question_id"], "q-linked")
+
+        section = self.client.get("/knowledge/atlas/section/section-electrophysiology")
+        self.assertEqual(section.status_code, 200)
+        self.assertEqual(section.json()["resource_state"], "exact")
+        self.assertEqual(section.json()["section_videos"][0]["bvid"], "BVsection")
 
         search = self.client.get(
             "/knowledge/atlas/questions/search",

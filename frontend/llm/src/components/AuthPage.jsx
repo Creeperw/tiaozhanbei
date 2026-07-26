@@ -13,6 +13,7 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import { AUTH_API_BASE, readJsonResponse } from '../utils/api';
+import RegistrationJourney from './RegistrationJourney';
 import './AuthPage.css';
 
 const capabilityCards = [
@@ -92,6 +93,17 @@ const AuthPage = ({ onLogin }) => {
     setError('');
     setMode('login');
     setShowAuth(false);
+  };
+
+  const abandonRegistration = async () => {
+    try {
+      await fetch(`${AUTH_API_BASE}/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } finally {
+      closeAuth();
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -197,7 +209,17 @@ const AuthPage = ({ onLogin }) => {
         </section>
       </main>
 
-      {showAuth && (
+      {showAuth && mode === 'register' && (
+        <section className="auth-login-view fixed inset-0 z-[70] overflow-y-auto" role="dialog" aria-modal="true" aria-label="创建学习账号与学情调查">
+          <RegistrationJourney
+            onComplete={onLogin}
+            onExit={abandonRegistration}
+            serviceUnavailable={authServiceStatus === 'unavailable'}
+          />
+        </section>
+      )}
+
+      {showAuth && mode === 'login' && (
         <section className="auth-login-view fixed inset-0 z-[70] overflow-y-auto bg-[#f4fbf7]/96 px-4 py-6 backdrop-blur-md sm:px-8 sm:py-10" role="dialog" aria-modal="true" aria-label={title}>
           <div className="auth-login-layout mx-auto flex min-h-full max-w-6xl items-center">
             <div className="auth-login-card relative w-full rounded-[2rem] border border-white/95 bg-white/92 p-6 shadow-2xl shadow-emerald-200/70 sm:p-8">
@@ -229,21 +251,6 @@ const AuthPage = ({ onLogin }) => {
                     />
                   </div>
                 </div>
-                {mode === 'register' && <div>
-                  <label htmlFor="auth-display-name" className="mb-1 block text-sm font-medium text-slate-700">显示名（可选）</label>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3 top-3 text-slate-400" size={18} />
-                    <input
-                      id="auth-display-name"
-                      name="displayName"
-                      autoComplete="name"
-                      value={formData.displayName}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border border-emerald-100 bg-emerald-50/45 py-3 pl-10 pr-4 text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                      placeholder="例如：林同学"
-                    />
-                  </div>
-                </div>}
                 <div>
                   <label htmlFor="auth-password" className="mb-1 block text-sm font-medium text-slate-700">密码</label>
                   <div className="relative">
@@ -263,10 +270,10 @@ const AuthPage = ({ onLogin }) => {
                   </div>
                 </div>
                 {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
-                <button type="submit" disabled={loading} className="auth-primary-button flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-50">{loading ? <Loader2 className="animate-spin" size={20} /> : mode === 'login' ? '进入时珍智训' : '提交'}</button>
+                <button type="submit" disabled={loading} className="auth-primary-button flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:opacity-50">{loading ? <Loader2 className="animate-spin" size={20} /> : '进入时珍智训'}</button>
               </form>
               <div className="mt-6 text-center text-sm text-slate-600">
-                {mode === 'login' ? <>还没有账号？ <button type="button" onClick={() => { setMode('register'); setError(''); }} className="font-medium text-emerald-700 hover:text-emerald-800">创建学习账号</button></> : <>已有账号？ <button type="button" onClick={() => { setMode('login'); setError(''); }} className="font-medium text-emerald-700 hover:text-emerald-800">返回登录</button></>}
+                还没有账号？ <button type="button" onClick={() => { setMode('register'); setError(''); }} className="font-medium text-emerald-700 hover:text-emerald-800">创建学习账号</button>
               </div>
             </div>
           </div>

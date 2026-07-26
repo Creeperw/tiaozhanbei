@@ -71,7 +71,9 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
 ) -> None:
     frontend_root = tmp_path / "frontend"
     assets_root = frontend_root / "assets"
+    covers_root = frontend_root / "textbook-covers"
     assets_root.mkdir(parents=True)
+    covers_root.mkdir(parents=True)
     (frontend_root / "index.html").write_text(
         '<div id="root"></div><script src="/assets/app.js"></script>',
         encoding="utf-8",
@@ -79,6 +81,7 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
     (frontend_root / "favicon.ico").write_bytes(b"icon")
     (assets_root / "app.js").write_text("window.loaded = true", encoding="utf-8")
     (assets_root / "app.css").write_text("body { color: green; }", encoding="utf-8")
+    (covers_root / "方剂学.jpg").write_bytes(b"textbook-cover")
     container = ApplicationContainer.build(
         Settings(mode="stub", frontend_dist_root=frontend_root),
         snapshot_root=tmp_path / "snapshots",
@@ -88,6 +91,9 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
         assert client.get("/").status_code == 200
         assert client.get("/assets/app.js").status_code == 200
         assert client.get("/assets/app.css").status_code == 200
+        cover = client.get("/textbook-covers/%E6%96%B9%E5%89%82%E5%AD%A6.jpg")
+        assert cover.status_code == 200
+        assert cover.content == b"textbook-cover"
         assert client.get("/favicon.ico").status_code == 200
         protected = client.post(
             "/api/v1/review-cards",
