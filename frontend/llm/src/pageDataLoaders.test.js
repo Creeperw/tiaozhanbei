@@ -12,6 +12,7 @@ import {
   generateWorkshopPaperWithAgents,
   isCaseSessionPayloadValid,
   isCaseTypesPayloadValid,
+  isPaperPayloadValid,
   loadCaseSession,
   loadCaseTypes,
   loadDailyTaskPracticeQuestion,
@@ -548,6 +549,14 @@ const validPaper = {
     answer: '',
   }],
 };
+
+test('published paper payload does not require internal selection difficulty', () => {
+  assert.equal(isPaperPayloadValid(validPaper), true);
+  assert.equal(isPaperPayloadValid({
+    ...validPaper,
+    items: [{ ...validPaper.items[0], answer: null }],
+  }), false);
+});
 
 const validCaseSession = {
   session_id: 'CS_abc123',

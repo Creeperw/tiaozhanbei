@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Bookmark, ChevronLeft, ChevronRight, ClipboardList, LogOut, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
+import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
 
 const request = async (path, options = {}) => {
   const response = await fetchWithAuth(`/api/v1${path}`, options);
@@ -81,11 +82,25 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
 
   if (report) {
     const reportItem = report.items.find((item) => item.position === reportPosition) || report.items[0];
+    const originalItem = attempt.items.find((item) => item.question_id === reportItem?.question_id);
+    const savedQuestion = reportItem && originalItem ? {
+      resource_id: originalItem.question_id,
+      title: `第 ${reportItem.position} 题 · ${String(originalItem.question_content || '').slice(0, 80)}`,
+      defaultTitle: `综合套题 · 第 ${reportItem.position} 题`,
+      content: {
+        question_content: originalItem.question_content,
+        question_type: originalItem.question_type,
+        options: originalItem.options,
+        my_answer: reportItem.submitted_answer || '',
+        standard_answer: reportItem.standard_answer || [],
+        explanation: reportItem.explanation || '',
+      },
+    } : null;
     return (
       <section className="space-y-5">
         <button type="button" onClick={onExit} className={`${buttonBase} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-emerald-400 hover:text-emerald-800`}><ArrowLeft size={16} />返回套题列表</button>
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm"><h2 className="text-xl font-semibold text-emerald-950">作答分数</h2><p className="mt-2 text-3xl font-semibold text-emerald-800">{report.score} / {report.max_score}</p><div className="mt-4 flex flex-wrap gap-2">{report.items.map((item) => <button key={item.question_id} type="button" onClick={() => setReportPosition(item.position)} className={`h-8 w-8 rounded-full text-xs font-semibold ${item.position === reportPosition ? 'ring-2 ring-emerald-700 ring-offset-2' : ''} ${item.answer_status === 'pending' ? 'bg-slate-400 text-white' : item.is_correct ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`} title={item.answer_status === 'pending' ? '答案待补充' : item.is_correct ? '回答正确' : '回答错误'}>{item.position}</button>)}</div><p className="mt-3 text-xs text-emerald-900">灰色题目答案待补充，不计入分数。</p></div>
-        {reportItem && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="题目结果"><div className="flex items-center justify-between gap-3"><h3 className="text-base font-semibold text-slate-950">第 {reportItem.position} 题结果</h3><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${reportItem.answer_status === 'pending' ? 'bg-slate-100 text-slate-600' : reportItem.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{reportItem.answer_status === 'pending' ? '待补充答案' : reportItem.is_correct ? '回答正确' : '需要复盘'}</span></div><dl className="mt-4 space-y-3 text-sm leading-6 text-slate-700"><div><dt className="font-semibold text-slate-900">你的答案</dt><dd>{reportItem.submitted_answer || '未作答'}</dd></div><div><dt className="font-semibold text-slate-900">正确答案</dt><dd>{reportItem.standard_answer?.join('、') || '待补充'}</dd></div><div><dt className="font-semibold text-slate-900">解析</dt><dd>{reportItem.explanation || '暂无解析'}</dd></div></dl></section>}
+        {reportItem && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="题目结果"><div className="flex items-center justify-between gap-3"><h3 className="text-base font-semibold text-slate-950">第 {reportItem.position} 题结果</h3><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${reportItem.answer_status === 'pending' ? 'bg-slate-100 text-slate-600' : reportItem.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{reportItem.answer_status === 'pending' ? '待补充答案' : reportItem.is_correct ? '回答正确' : '需要复盘'}</span></div><dl className="mt-4 space-y-3 text-sm leading-6 text-slate-700"><div><dt className="font-semibold text-slate-900">你的答案</dt><dd>{reportItem.submitted_answer || '未作答'}</dd></div><div><dt className="font-semibold text-slate-900">正确答案</dt><dd>{reportItem.standard_answer?.join('、') || '待补充'}</dd></div><div><dt className="font-semibold text-slate-900">解析</dt><dd>{reportItem.explanation || '暂无解析'}</dd></div></dl>{savedQuestion && <div className="mt-4 flex flex-wrap gap-2"><FavoriteQuestionButton question={savedQuestion} source="综合套题" /><NoteQuestionButton question={savedQuestion} source="综合套题" /></div>}</section>}
       </section>
     );
   }

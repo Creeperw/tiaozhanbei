@@ -295,6 +295,40 @@ class BatchedTwentyFiveFillBlankModel:
         }
 
 
+class ExactMixedQuotaModel:
+    def __init__(self) -> None:
+        self.gap_calls: list[dict] = []
+
+    async def complete_json(self, role, payload, on_delta=None):
+        business = payload["payload"]
+        if business.get("phase") == "paper_gap_generation":
+            self.gap_calls.append(business)
+            question_type = business["required_question_type"]
+            return {
+                "generated_items": [
+                    {
+                        "unit_id": business["unit_id"],
+                        "question_type": question_type,
+                        "stem": f"{question_type}补充题{len(self.gap_calls)}-{index}",
+                        "options": ["A. 甲", "B. 乙"] if "选择" in question_type else [],
+                        "reference_answer": "A",
+                        "analysis": "精确配额补题。",
+                        "selection_rationale": "补足指定题型缺口。",
+                        "source_tier": "model_knowledge",
+                    }
+                    for index in range(1, int(business["gap_count"]) + 1)
+                ]
+            }
+        return {
+            "title": "精确题型配额试卷",
+            "instructions": "请作答。",
+            "selected_items": [],
+            "generated_items": [],
+            "coverage_summary": {},
+            "unresolved_constraints": [],
+        }
+
+
 def _assembly_context() -> dict:
     question = QuestionDetail(
         question_id="Q1",
@@ -616,3 +650,50 @@ async def test_paper_assembly_generates_twenty_five_fill_blanks_when_pool_is_emp
     assert all(call["paper_scope"] == blueprint.scope_summary for call in model.gap_calls)
     assert all(call["retrieval_query"] == blueprint.units[0].retrieval_query for call in model.gap_calls)
     assert all(call["gap_count"] <= 5 for call in model.gap_calls)
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_enforces_exact_mixed_question_type_quotas() -> None:
+    context = _assembly_context()
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    blueprint.required_total_question_count = 15
+    blueprint.required_question_type_distribution = {
+        "单项选择题": 10,
+        "多项选择题": 5,
+    }
+    blueprint.units[0].required_question_count = 15
+    blueprint.units[0].question_type_preferences = ["单项选择题", "多项选择题"]
+    pool = context["dependency_outputs"]["question_pool"].payload
+    original = pool.units[0].items[0]
+    pool.units[0].required_question_count = 15
+    pool.units[0].items = [
+        original.model_copy(
+            update={"question_id": f"S{index}", "stem": f"单选候选{index}"}
+        )
+        for index in range(1, 13)
+    ] + [
+        original.model_copy(
+            update={
+                "question_id": f"M{index}",
+                "stem": f"多选候选{index}",
+                "question_type": "多项选择题",
+            }
+        )
+        for index in range(1, 4)
+    ] + [
+        original.model_copy(
+            update={
+                "question_id": "F1",
+                "stem": "不应混入的填空题",
+                "question_type": "填空题",
+            }
+        )
+    ]
+    model = ExactMixedQuotaModel()
+
+    result = await PaperAssemblyAgent(model).run(context)
+
+    counts = PaperAssemblyAgent._count_question_types(result.payload.items)
+    assert len(result.payload.items) == 15
+    assert counts == {"单项选择题": 10, "多项选择题": 5}
+    assert all(call["required_question_type"] == "多项选择题" for call in model.gap_calls)

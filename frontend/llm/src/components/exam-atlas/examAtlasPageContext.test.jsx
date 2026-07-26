@@ -23,6 +23,13 @@ describe('exam atlas page context', () => {
       kpName: '阴阳学说',
     });
     expect(practiceContextFromIntent({})).toBeNull();
+    expect(practiceContextFromIntent({ kpId: 'kp-a' })).toBeNull();
+    expect(practiceContextFromIntent({ kpId: 'kp-daily', kpName: '四君子汤' })).toEqual({
+      trackId: undefined,
+      membershipId: undefined,
+      kpId: 'kp-daily',
+      kpName: '四君子汤',
+    });
   });
 
   it('prefills knowledge retrieval from the readable KP name', () => {

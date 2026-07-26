@@ -12,6 +12,7 @@ import json
 import os
 import re
 import threading
+import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable
@@ -59,6 +60,19 @@ _REPOSITORY_CHAPTER_ROOT = (
     / "knowledge_atlas_chapters"
     / "2026-07-22"
 )
+_REPOSITORY_REVIEWED_CHAPTER_ROOT = _REPOSITORY_CHAPTER_ROOT / "final"
+
+_OCR_CJK_RADICAL_TRANSLATION = str.maketrans({
+    "⺒": "巳", "⺠": "民", "⻄": "西", "⻅": "见", "⻉": "贝",
+    "⻋": "车", "⻓": "长", "⻙": "韦", "⻚": "页", "⻛": "风",
+    "⻜": "飞", "⻢": "马", "⻥": "鱼", "⻦": "鸟", "⻧": "卤",
+    "⻨": "麦", "⻩": "黄", "⻬": "齐", "⻮": "齿", "⻰": "龙",
+    "⻘": "青",
+})
+
+
+def _normalize_ocr_cjk(value: Any) -> str:
+    return unicodedata.normalize("NFKC", str(value or "")).translate(_OCR_CJK_RADICAL_TRANSLATION)
 
 
 class AtlasUnavailableError(RuntimeError):
@@ -100,7 +114,16 @@ def _order_value(value: Any, fallback: int = 0) -> int:
 
 
 def _normalized_heading(value: Any) -> str:
-    return re.sub(r"\s+", "", str(value or "")).strip()
+    return re.sub(r"\s+", "", _normalize_ocr_cjk(value)).strip()
+
+
+def _heading_core(value: Any) -> str:
+    heading = _normalize_ocr_cjk(value).strip()
+    return re.sub(
+        r"^(?:第[一二三四五六七八九十百千万零〇两\d]+[章节篇部编卷]?|[一二三四五六七八九十百千万零〇两\d]+)[、.．:：\-\s]*",
+        "",
+        heading,
+    ).strip()
 
 
 def _question_value(row: dict[str, Any], *keys: str, default: Any = "") -> Any:
@@ -136,7 +159,7 @@ class KnowledgeAtlasStore:
         self._hierarchy_ready = False
         self._questions_ready = False
         self._chunks_ready = False
-        self._video_signature: tuple[str, int, int] | None = None
+        self._video_signature: tuple[tuple[str, int, int], ...] | None = None
         self.kps: dict[str, dict[str, Any]] = {}
         self.tree: dict[str, dict[str, list[dict[str, Any]]]] = {}
         self.book_order: dict[str, int] = {}
@@ -149,6 +172,7 @@ class KnowledgeAtlasStore:
         self.questions_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.chunk_offsets: dict[str, int] = {}
         self.videos_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self.section_videos_by_section: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     @property
     def image_root(self) -> Path:
@@ -167,6 +191,11 @@ class KnowledgeAtlasStore:
             and (embedded / _CHUNK_CHAPTER_LINKS_FILE).is_file()
         ):
             return embedded
+        if (
+            (_REPOSITORY_REVIEWED_CHAPTER_ROOT / _CHAPTER_NODES_FILE).is_file()
+            and (_REPOSITORY_REVIEWED_CHAPTER_ROOT / _CHUNK_CHAPTER_LINKS_FILE).is_file()
+        ):
+            return _REPOSITORY_REVIEWED_CHAPTER_ROOT
         return _REPOSITORY_CHAPTER_ROOT
 
     @property
@@ -176,6 +205,18 @@ class KnowledgeAtlasStore:
         if (self.video_root / "catalog.json").is_file():
             return self.video_root
         return active_video_release_root(self.video_root) / "full_batch_results"
+
+    @property
+    def section_video_path(self) -> Path:
+        """Return the OCR section-match file adjacent to full_batch_results."""
+
+        if (self.video_root / "catalog.json").is_file():
+            return self.video_root.parent / "ocr_section_matches" / "section_video_matches.jsonl"
+        return (
+            active_video_release_root(self.video_root)
+            / "ocr_section_matches"
+            / "section_video_matches.jsonl"
+        )
 
     def _asset_errors(self) -> list[str]:
         if not self.enabled:
@@ -422,6 +463,7 @@ class KnowledgeAtlasStore:
                     "order_index": _order_value(row.get("chapter_order"), _order_value(row.get("order"))),
                     "review_status": str(row.get("review_status") or "resolved"),
                     "unresolved_identifier": row.get("unresolved_identifier"),
+                    "content_status": str(row.get("content_status") or "mapped"),
                     "sections": [],
                 }
                 chapters_by_book[book].append(chapter)
@@ -449,6 +491,8 @@ class KnowledgeAtlasStore:
                     "chapter_name": chapter["name"],
                     "chapter_order": chapter["order_index"],
                     "order_index": _order_value(row.get("section_order"), _order_value(row.get("order"))),
+                    "review_status": str(row.get("review_status") or "resolved"),
+                    "content_status": str(row.get("content_status") or "mapped"),
                     "source_section_ids": [section_id],
                     "kps": [],
                 }
@@ -659,6 +703,7 @@ class KnowledgeAtlasStore:
                     "order_index": row["order_index"],
                     "review_status": row["review_status"],
                     "unresolved_identifier": row["unresolved_identifier"],
+                    "content_status": row["content_status"],
                     "alias": (
                         f"{len(row['sections'])} 个小节 · "
                         f"{sum(len(section['kps']) for section in row['sections'])} 个知识点"
@@ -684,6 +729,8 @@ class KnowledgeAtlasStore:
                     "count": len(row["kps"]),
                     "children_count": len(row["kps"]),
                     "order_index": row["order_index"],
+                    "review_status": row["review_status"],
+                    "content_status": row["content_status"],
                     "alias": f"{len(row['kps'])} 个知识点",
                 }
                 for row in selected_chapter["sections"]
@@ -789,17 +836,67 @@ class KnowledgeAtlasStore:
             self.questions_by_kp = by_kp
             self._questions_ready = True
 
-    def _current_video_signature(self) -> tuple[str, int, int] | None:
-        path = self.video_result_root / "catalog.json"
+    @staticmethod
+    def _file_signature(path: Path) -> tuple[str, int, int] | None:
         if not path.is_file():
             return None
         stat = path.stat()
         return str(path.resolve()), stat.st_size, stat.st_mtime_ns
 
+    def _current_video_signature(self) -> tuple[tuple[str, int, int], ...] | None:
+        signatures = [
+            signature
+            for path in (self.video_result_root / "catalog.json", self.section_video_path)
+            if (signature := self._file_signature(path)) is not None
+        ]
+        return tuple(signatures) or None
+
+    def _resolve_section_video(self, row: dict[str, Any]) -> dict[str, Any] | None:
+        book = str(row.get("kp_lv1") or "").strip()
+        section_name = str(row.get("kp_lv2") or "").strip()
+        if not book or not section_name:
+            return None
+
+        candidates: dict[str, dict[str, Any]] = {}
+        normalized_section = _normalized_heading(section_name)
+        for section in self.section_by_id.values():
+            if section["book"] != book or _normalized_heading(section["name"]) != normalized_section:
+                continue
+            candidates.setdefault(section["id"], section)
+        if len(candidates) == 1:
+            return next(iter(candidates.values()))
+        if not candidates:
+            return None
+
+        searchable = _normalized_heading(" ".join(str(row.get(key) or "") for key in (
+            "part_title", "video_title", "matched_text", "ocr_text"
+        )))
+        scored: list[tuple[int, dict[str, Any]]] = []
+        for section in candidates.values():
+            chapter_name = str(section.get("chapter_name") or "")
+            full_chapter = _normalized_heading(chapter_name)
+            chapter_core = _normalized_heading(_heading_core(chapter_name))
+            score = 0
+            if full_chapter and full_chapter in searchable:
+                score += 8
+            if len(chapter_core) >= 2 and chapter_core in searchable:
+                score += 4
+            scored.append((score, section))
+        scored.sort(key=lambda item: (
+            -item[0],
+            item[1]["chapter_order"],
+            item[1]["order_index"],
+            item[1]["id"],
+        ))
+        if scored and scored[0][0] > 0 and (len(scored) == 1 or scored[0][0] > scored[1][0]):
+            return scored[0][1]
+        return None
+
     def ensure_videos(self) -> None:
         signature = self._current_video_signature()
         if signature is None:
             self.videos_by_kp = defaultdict(list)
+            self.section_videos_by_section = defaultdict(list)
             self._video_signature = None
             return
         if self._video_signature == signature:
@@ -808,7 +905,9 @@ class KnowledgeAtlasStore:
             signature = self._current_video_signature()
             if self._video_signature == signature:
                 return
+            self.ensure_hierarchy()
             index: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            section_index: dict[str, list[dict[str, Any]]] = defaultdict(list)
             seen: dict[str, set[tuple[Any, ...]]] = defaultdict(set)
             for result_path in self.video_result_root.glob("BV*/classification_result.json"):
                 try:
@@ -848,12 +947,51 @@ class KnowledgeAtlasStore:
                                 "part_title": page.get("original_part_title") or "",
                                 "start_seconds": segment.get("start_seconds") or 0,
                                 "end_seconds": segment.get("end_seconds") or 0,
-                                "topic": segment.get("topic") or "知识讲解",
+                                "topic": segment.get("topic") or "知识点片段",
                                 "transcript": segment.get("transcript") or "",
+                                "association_scope": "kp_timestamp",
                             })
+
+            if self.section_video_path.is_file():
+                try:
+                    section_rows = _iter_jsonl(self.section_video_path, "section video matches")
+                    for row in section_rows:
+                        section = self._resolve_section_video(row)
+                        if section is None:
+                            continue
+                        section_id = section["id"]
+                        key = (row.get("bvid"), row.get("page"), section_id)
+                        if key in seen[f"section:{section_id}"]:
+                            continue
+                        seen[f"section:{section_id}"].add(key)
+                        section_index[section_id].append({
+                            "bvid": row.get("bvid"),
+                            "aid": row.get("aid"),
+                            "cid": row.get("cid"),
+                            "page": row.get("page"),
+                            "video_title": row.get("video_title") or "",
+                            "part_title": row.get("part_title") or "",
+                            "start_seconds": 0,
+                            "end_seconds": row.get("duration") or 0,
+                            "topic": f"小节完整视频：{section['name']}",
+                            "transcript": "",
+                            "association_scope": "section_ocr",
+                            "match_source": row.get("match_source") or "ocr_1_3_5",
+                            "match_mode": row.get("match_mode") or "",
+                            "matched_text": row.get("matched_text") or "",
+                            "frame_seconds": row.get("frame_seconds") or [1, 3, 5],
+                        })
+                except AtlasUnavailableError:
+                    pass
+
             for rows in index.values():
-                rows.sort(key=lambda row: (row["bvid"], int(row["page"] or 0), float(row["start_seconds"] or 0)))
+                rows.sort(key=lambda row: (
+                    row["bvid"], int(row["page"] or 0), float(row["start_seconds"] or 0)
+                ))
+            for rows in section_index.values():
+                rows.sort(key=lambda row: (row["bvid"], int(row["page"] or 0)))
             self.videos_by_kp = index
+            self.section_videos_by_section = section_index
             self._video_signature = signature
 
     def ensure_chunk_offsets(self) -> None:
@@ -936,6 +1074,64 @@ class KnowledgeAtlasStore:
             "videos": self.videos_by_kp.get(str(kp_id), []),
         }
 
+    def section_detail(self, section_id: str, recommendation_limit: int = 6) -> dict[str, Any]:
+        self.ensure_hierarchy()
+        section = self.section_by_id.get(str(section_id))
+        if section is None:
+            raise KeyError("小节不存在")
+        canonical_id = section["id"]
+        self.ensure_videos()
+
+        knowledge_points: list[dict[str, Any]] = []
+        recommendations: dict[tuple[Any, ...], dict[str, Any]] = {}
+        for kp in self.kps_by_section.get(canonical_id, []):
+            kp_id = str(kp.get("kp_id") or "")
+            kp_name = str(kp.get("kp_lv3") or kp.get("kp_Lv3") or "").strip()
+            timestamp_videos = self.videos_by_kp.get(kp_id, [])
+            knowledge_points.append({
+                "kp_id": kp_id,
+                "name": kp_name,
+                "alias": str(kp.get("other_name") or "").strip(),
+                "timestamp_video": timestamp_videos[0] if timestamp_videos else None,
+                "timestamp_count": len(timestamp_videos),
+            })
+            for video in timestamp_videos:
+                key = (
+                    video.get("bvid"),
+                    video.get("page"),
+                    video.get("start_seconds"),
+                    video.get("end_seconds"),
+                )
+                item = recommendations.setdefault(key, {**video, "matched_kps": []})
+                if kp_id and not any(row.get("kp_id") == kp_id for row in item["matched_kps"]):
+                    item["matched_kps"].append({"kp_id": kp_id, "name": kp_name})
+
+        ranked = sorted(
+            recommendations.values(),
+            key=lambda row: (
+                -len(row.get("matched_kps") or []),
+                str(row.get("bvid") or ""),
+                int(row.get("page") or 0),
+                float(row.get("start_seconds") or 0),
+            ),
+        )
+        limit = max(1, min(12, int(recommendation_limit)))
+        exact_videos = self.section_videos_by_section.get(canonical_id, [])
+        resource_state = "exact" if exact_videos else ("recommended" if ranked else "empty")
+        return {
+            "section": {
+                "id": canonical_id,
+                "name": section["name"],
+                "book": section["book"],
+                "chapter_id": section["chapter_id"],
+                "chapter": section["chapter_name"],
+                "order_index": section["order_index"],
+            },
+            "knowledge_points": knowledge_points,
+            "section_videos": exact_videos[:1],
+            "recommended_videos": [] if exact_videos else ranked[:limit],
+            "resource_state": resource_state,
+        }
     def image_path(self, filename: str) -> Path:
         value = str(filename or "")
         if not value or value in {".", ".."} or "/" in value or "\\" in value or Path(value).name != value:

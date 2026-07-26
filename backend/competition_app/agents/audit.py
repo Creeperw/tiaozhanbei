@@ -171,6 +171,30 @@ class AuditAgent:
             deterministic_findings.append(
                 f"用户明确要求{required_total}题，当前试卷仅有{len(paper.items)}题。"
             )
+        required_by_type = {
+            self._normalize_question_type(question_type): count
+            for question_type, count in blueprint.required_question_type_distribution.items()
+            if count > 0
+        }
+        if required_by_type:
+            actual_by_type: dict[str, int] = {}
+            for item in paper.items:
+                question_type = self._normalize_question_type(
+                    item.question.question_type
+                )
+                actual_by_type[question_type] = actual_by_type.get(question_type, 0) + 1
+            if actual_by_type != required_by_type:
+                expected = "、".join(
+                    f"{question_type}{count}题"
+                    for question_type, count in required_by_type.items()
+                )
+                actual = "、".join(
+                    f"{question_type}{count}题"
+                    for question_type, count in actual_by_type.items()
+                ) or "无题目"
+                deterministic_findings.append(
+                    f"题型分布不符合用户硬约束：要求{expected}，实际{actual}。"
+                )
         if len(selected_ids) != len(set(selected_ids)):
             deterministic_findings.append("试卷存在重复题目。")
         selected_by_unit: dict[str, list[ExamPaperItem]] = {}

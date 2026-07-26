@@ -66,7 +66,7 @@ describe('AppShell', () => {
       </AppShell>,
     );
 
-    expect(screen.getByRole('link', { name: '知识仓库' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('link', { name: '知识仓库' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '我的题目' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '知识治理' })).not.toBeInTheDocument();
   });

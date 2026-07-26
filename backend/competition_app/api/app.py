@@ -6,7 +6,7 @@ import json
 import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -66,6 +66,34 @@ _OBJECTIVE_PRACTICE_TYPES = {
     "single_choice", "multiple_choice", "true_false", "fill_blank",
 }
 _CASE_PRACTICE_TYPES = {"short_answer", "case_quiz"}
+
+
+class FavoriteFolderCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class FavoriteCreateRequest(BaseModel):
+    folder_id: str = Field(min_length=1, max_length=128)
+    resource_type: str = Field(default="question", min_length=1, max_length=32)
+    resource_id: str = Field(min_length=1, max_length=255)
+    title: str = Field(min_length=1, max_length=500)
+    content: dict[str, Any] = Field(default_factory=dict)
+    source: str = Field(default="训练工坊", min_length=1, max_length=128)
+
+
+class WorkshopNoteCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=20_000)
+    note_type: str = Field(default="心得体会", min_length=1, max_length=64)
+    source: str = Field(default="训练工坊", min_length=1, max_length=128)
+    resource_type: str | None = Field(default=None, max_length=32)
+    resource_id: str | None = Field(default=None, max_length=255)
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkshopNoteUpdateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=20_000)
 
 
 def _practice_question_type(value: object) -> str:
@@ -770,6 +798,113 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             headers={"Cache-Control": "private, max-age=3600"},
         )
 
+    @app.get("/api/v1/workshop/favorite-folders")
+    async def list_favorite_folders(request: Request) -> dict:
+        user = current_user(request)
+        return {"items": container.workshop_library_service.list_folders(user.user_id)}
+
+    @app.post("/api/v1/workshop/favorite-folders", status_code=201)
+    async def create_favorite_folder(
+        payload: FavoriteFolderCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            folder = container.workshop_library_service.create_folder(
+                user.user_id, payload.name
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"folder": folder}
+
+    @app.delete("/api/v1/workshop/favorite-folders/{folder_id}", status_code=204)
+    async def delete_favorite_folder(folder_id: str, request: Request) -> Response:
+        user = current_user(request)
+        if not container.workshop_library_service.delete_folder(user.user_id, folder_id):
+            raise HTTPException(status_code=404, detail="收藏簿不存在")
+        return Response(status_code=204)
+
+    @app.get("/api/v1/workshop/favorites")
+    async def list_workshop_favorites(
+        request: Request, folder_id: str | None = None
+    ) -> dict:
+        user = current_user(request)
+        items = container.workshop_library_service.list_favorites(
+            user.user_id, folder_id=folder_id
+        )
+        return {"items": items, "total": len(items)}
+
+    @app.post("/api/v1/workshop/favorites", status_code=201)
+    async def save_workshop_favorite(
+        payload: FavoriteCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            favorite = container.workshop_library_service.save_favorite(
+                user.user_id, **payload.model_dump()
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc).strip("'")) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"favorite": favorite}
+
+    @app.delete("/api/v1/workshop/favorites/{favorite_id}", status_code=204)
+    async def delete_workshop_favorite(favorite_id: str, request: Request) -> Response:
+        user = current_user(request)
+        if not container.workshop_library_service.delete_favorite(
+            user.user_id, favorite_id
+        ):
+            raise HTTPException(status_code=404, detail="收藏不存在")
+        return Response(status_code=204)
+
+    @app.get("/api/v1/workshop/notes")
+    async def list_workshop_notes(
+        request: Request,
+        source: str | None = None,
+        note_type: str | None = None,
+        q: str | None = None,
+    ) -> dict:
+        user = current_user(request)
+        items = container.workshop_library_service.list_notes(
+            user.user_id, source=source, note_type=note_type, query=q
+        )
+        return {"items": items, "total": len(items)}
+
+    @app.post("/api/v1/workshop/notes", status_code=201)
+    async def create_workshop_note(
+        payload: WorkshopNoteCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            note = container.workshop_library_service.create_note(
+                user.user_id, **payload.model_dump()
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"note": note}
+
+    @app.put("/api/v1/workshop/notes/{note_id}")
+    async def update_workshop_note(
+        note_id: str, payload: WorkshopNoteUpdateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            note = container.workshop_library_service.update_note(
+                user.user_id, note_id, **payload.model_dump()
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if note is None:
+            raise HTTPException(status_code=404, detail="笔记不存在")
+        return {"note": note}
+
+    @app.delete("/api/v1/workshop/notes/{note_id}", status_code=204)
+    async def delete_workshop_note(note_id: str, request: Request) -> Response:
+        user = current_user(request)
+        if not container.workshop_library_service.delete_note(user.user_id, note_id):
+            raise HTTPException(status_code=404, detail="笔记不存在")
+        return Response(status_code=204)
+
     @app.post("/api/v1/auth/onboarding/complete")
     async def complete_registration_onboarding(request: Request):
         user = current_user(request)
@@ -1174,6 +1309,22 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             **summary["trends"],
         }
 
+    @app.get("/api/v1/learning-statistics/overview")
+    async def learning_statistics_overview(
+        request: Request,
+        days: int = Query(default=30),
+    ) -> dict:
+        user = current_user(request)
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学习成果统计服务未启用")
+        if days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+        return await asyncio.to_thread(
+            backend_handoff.load_learning_statistics,
+            user.user_id,
+            days=days,
+        )
+
     @app.get("/api/v1/learning-context")
     async def learning_context(request: Request) -> dict:
         user = current_user(request)
@@ -1271,6 +1422,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 ),
                 "learning_activity_summary_endpoint": (
                     "/api/v1/learning-activity/summary"
+                    if backend_handoff is not None
+                    else None
+                ),
+                "learning_statistics_endpoint": (
+                    "/api/v1/learning-statistics/overview"
                     if backend_handoff is not None
                     else None
                 ),
@@ -1660,10 +1816,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 if payload["standard_answer"] and payload["kp_ids"]:
                     candidates.append(payload)
 
-        if not candidates:
+        if not candidates and not kp_id:
             # A broad credential goal may not resolve to one KP name. The source
             # is still the complete formal bank; choose a linked question of the
-            # requested type instead of reporting that the bank is empty.
+            # requested type instead of reporting that the bank is empty. An
+            # explicit KP target must fail closed rather than leak another KP.
             for linked_kp_id, questions in store.questions_by_kp.items():
                 for question in questions:
                     question_id = str(question.get("question_id") or question.get("题目id") or "")
@@ -2135,6 +2292,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         {
                             "task_item_id": item.task_item_id,
                             "item_type": item.item_type,
+                            "title": item.title,
+                            "estimated_minutes": item.estimated_minutes,
+                            "kp_id": item.kp_id,
+                            "kp_name": item.knowledge_point_name,
                             "status": str(
                                 progress_items.get(item.task_item_id, {}).get("status")
                                 or "pending"
@@ -2156,7 +2317,19 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                             },
                             "action": {
                                 "destination": "workshop.practice",
-                                "params": {"taskItemId": item.task_item_id},
+                                "params": {
+                                    "taskItemId": item.task_item_id,
+                                    **(
+                                        {
+                                            "kpId": item.kp_id,
+                                            "kpName": item.knowledge_point_name,
+                                        }
+                                        if item.item_type == "knowledge_practice"
+                                        and item.kp_id
+                                        and item.knowledge_point_name
+                                        else {}
+                                    ),
+                                },
                             },
                         }
                         for item in task.items
@@ -2413,6 +2586,36 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 title=title,
                 apply=apply,
                 mineru_token=request.headers.get("x-mineru-token", ""),
+            )
+        except Exception as exc:
+            raise knowledge_error(exc) from exc
+
+    @app.get("/api/v1/knowledge/content/recognition-reports")
+    async def list_knowledge_recognition_reports(
+        request: Request,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> dict:
+        try:
+            return await asyncio.to_thread(
+                knowledge_backend().list_recognition_reports,
+                knowledge_owner(request),
+                offset=max(0, offset),
+                limit=min(100, max(1, limit)),
+            )
+        except Exception as exc:
+            raise knowledge_error(exc) from exc
+
+    @app.get("/api/v1/knowledge/content/recognition-reports/{report_id}")
+    async def get_knowledge_recognition_report(
+        report_id: str,
+        request: Request,
+    ) -> dict:
+        try:
+            return await asyncio.to_thread(
+                knowledge_backend().get_recognition_report,
+                knowledge_owner(request),
+                report_id,
             )
         except Exception as exc:
             raise knowledge_error(exc) from exc

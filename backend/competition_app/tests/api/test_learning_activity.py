@@ -42,6 +42,26 @@ class ActivityRuntime:
             "collection": {},
         }
 
+    def load_learning_statistics(
+        self,
+        learner_id: str,
+        *,
+        days: int,
+    ) -> dict:
+        self.calls.append(("statistics", learner_id, days))
+        return {
+            "schema_version": "1.0",
+            "learner_id": learner_id,
+            "window": {"days": days},
+            "lifetime": {
+                "questions_completed": 12,
+                "unique_questions_completed": 9,
+            },
+            "current_window": {"questions_completed": 4},
+            "metric_definitions": {},
+            "counting_policy": {},
+        }
+
 
 def _client(tmp_path: Path) -> tuple[TestClient, ActivityRuntime]:
     container = ApplicationContainer.build(
@@ -79,6 +99,29 @@ def test_activity_summary_rejects_unsupported_window(tmp_path: Path) -> None:
     client, runtime = _client(tmp_path)
 
     response = client.get("/api/v1/learning-activity/summary?days=14")
+
+    assert response.status_code == 422
+    assert runtime.calls == []
+
+
+def test_learning_statistics_uses_authenticated_user_and_validated_window(
+    tmp_path: Path,
+) -> None:
+    client, runtime = _client(tmp_path)
+
+    response = client.get("/api/v1/learning-statistics/overview?days=90")
+
+    assert response.status_code == 200
+    assert response.json()["lifetime"]["questions_completed"] == 12
+    assert runtime.calls == [
+        ("statistics", response.json()["learner_id"], 90),
+    ]
+
+
+def test_learning_statistics_rejects_unsupported_window(tmp_path: Path) -> None:
+    client, runtime = _client(tmp_path)
+
+    response = client.get("/api/v1/learning-statistics/overview?days=14")
 
     assert response.status_code == 422
     assert runtime.calls == []

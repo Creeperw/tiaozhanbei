@@ -74,7 +74,12 @@ from competition_app.repositories.account_profile import (
     InMemoryAccountProfileRepository,
     SqlAccountProfileRepository,
 )
+from competition_app.repositories.workshop_library import (
+    InMemoryWorkshopLibraryRepository,
+    SqlWorkshopLibraryRepository,
+)
 from competition_app.services.account_profile import AccountProfileService
+from competition_app.services.workshop_library import WorkshopLibraryService
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -87,6 +92,7 @@ class ApplicationContainer:
     review_service: ReviewService
     authentication_service: AuthenticationService
     account_profile_service: AccountProfileService
+    workshop_library_service: WorkshopLibraryService
     daily_task_refresh_service: DailyTaskRefreshService
     daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
@@ -135,6 +141,7 @@ class ApplicationContainer:
             review_repository = SqlReviewRepository(database_engine)
             auth_repository = SqlAuthRepository(database_engine)
             account_profile_repository = SqlAccountProfileRepository(database_engine)
+            workshop_library_repository = SqlWorkshopLibraryRepository(database_engine)
         else:
             plan_repository = InMemoryLearningPlanRepository()
             run_state_repository = InMemoryRunStateRepository()
@@ -142,6 +149,7 @@ class ApplicationContainer:
             review_repository = InMemoryReviewRepository()
             auth_repository = InMemoryAuthRepository()
             account_profile_repository = InMemoryAccountProfileRepository()
+            workshop_library_repository = InMemoryWorkshopLibraryRepository()
         review_service = ReviewService(review_repository)
         authentication_service = AuthenticationService(
             auth_repository,
@@ -154,6 +162,7 @@ class ApplicationContainer:
             auth_repository,
             settings.avatar_dir,
         )
+        workshop_library_service = WorkshopLibraryService(workshop_library_repository)
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
                 raise ValueError("live mode requires configured model API keys")
@@ -390,6 +399,7 @@ class ApplicationContainer:
             review_service=review_service,
             authentication_service=authentication_service,
             account_profile_service=account_profile_service,
+            workshop_library_service=workshop_library_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,
             question_retrieval_tool=knowledge_tool,

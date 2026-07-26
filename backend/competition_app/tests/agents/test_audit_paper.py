@@ -127,6 +127,24 @@ async def test_paper_audit_passes_when_hard_question_count_is_met() -> None:
 
 
 @pytest.mark.asyncio
+async def test_paper_audit_revises_wrong_exact_type_distribution() -> None:
+    context = _audit_context(15, required_count=15)
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    blueprint.required_question_type_distribution = {
+        "单项选择题": 10,
+        "多项选择题": 5,
+    }
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    for item in paper.items[-3:]:
+        item.question.question_type = "多项选择题"
+
+    result = await AuditAgent(PassingAuditModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert any("题型分布" in finding for finding in result.payload.findings)
+
+
+@pytest.mark.asyncio
 async def test_paper_audit_accepts_generated_short_answer_without_options() -> None:
     context = _audit_context(1, required_count=2)
     blueprint = context["dependency_outputs"]["paper_blueprint"].payload

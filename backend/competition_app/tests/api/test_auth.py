@@ -207,6 +207,88 @@ def test_account_profile_rejects_future_birth_date_and_invalid_avatar(tmp_path: 
     assert invalid.status_code == 422
 
 
+def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path) -> None:
+    settings = Settings(
+        mode="stub",
+        use_sqlite=True,
+        sqlite_path=tmp_path / "competition_app.sqlite3",
+    )
+    app = create_app(ApplicationContainer.build(settings, snapshot_root=tmp_path))
+    alice_client = TestClient(app)
+    bob_client = TestClient(app)
+    register(alice_client, "library-alice")
+    register(bob_client, "library-bob")
+
+    folder = alice_client.post(
+        "/api/v1/workshop/favorite-folders", json={"name": "方剂重点"}
+    )
+    assert folder.status_code == 201
+    folder_id = folder.json()["folder"]["folder_id"]
+
+    favorite = alice_client.post(
+        "/api/v1/workshop/favorites",
+        json={
+            "folder_id": folder_id,
+            "resource_type": "question",
+            "resource_id": "Q_SIJUNZI",
+            "title": "四君子汤的君药",
+            "source": "智能组卷",
+            "content": {
+                "question_content": "四君子汤的君药是？",
+                "standard_answer": ["A"],
+                "explanation": "人参为君药。",
+            },
+        },
+    )
+    note = alice_client.post(
+        "/api/v1/workshop/notes",
+        json={
+            "title": "四君子汤记忆",
+            "content": "人参为君，白术为臣。",
+            "note_type": "题目笔记",
+            "source": "智能组卷",
+            "resource_type": "question",
+            "resource_id": "Q_SIJUNZI",
+            "context": {"question_content": "四君子汤的君药是？"},
+        },
+    )
+    assert favorite.status_code == 201
+    assert note.status_code == 201
+    favorite_id = favorite.json()["favorite"]["favorite_id"]
+    note_id = note.json()["note"]["note_id"]
+
+    assert bob_client.get("/api/v1/workshop/favorite-folders").json()["items"] == []
+    assert bob_client.get("/api/v1/workshop/favorites").json()["items"] == []
+    assert bob_client.get("/api/v1/workshop/notes").json()["items"] == []
+    assert bob_client.delete(f"/api/v1/workshop/favorites/{favorite_id}").status_code == 404
+    assert bob_client.put(
+        f"/api/v1/workshop/notes/{note_id}",
+        json={"title": "越权修改", "content": "不允许"},
+    ).status_code == 404
+
+    updated = alice_client.put(
+        f"/api/v1/workshop/notes/{note_id}",
+        json={"title": "四君子汤配伍", "content": "人参、白术、茯苓、炙甘草。"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["note"]["title"] == "四君子汤配伍"
+
+    restarted = TestClient(create_app(ApplicationContainer.build(
+        settings, snapshot_root=tmp_path / "restart"
+    )))
+    restarted.cookies.set(SESSION_COOKIE, alice_client.cookies.get(SESSION_COOKIE))
+    persisted_favorites = restarted.get("/api/v1/workshop/favorites").json()["items"]
+    persisted_notes = restarted.get("/api/v1/workshop/notes").json()["items"]
+    assert persisted_favorites[0]["content"]["standard_answer"] == ["A"]
+    assert persisted_notes[0]["content"] == "人参、白术、茯苓、炙甘草。"
+
+    assert restarted.delete(f"/api/v1/workshop/favorites/{favorite_id}").status_code == 204
+    assert restarted.delete(f"/api/v1/workshop/notes/{note_id}").status_code == 204
+    assert restarted.delete(
+        f"/api/v1/workshop/favorite-folders/{folder_id}"
+    ).status_code == 204
+
+
 def test_registration_onboarding_gate_is_persistent_until_completed(
     tmp_path: Path,
 ) -> None:

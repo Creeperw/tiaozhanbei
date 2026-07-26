@@ -24,6 +24,9 @@ import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
 import KnowledgeCardLibrary from './KnowledgeCardLibrary';
+import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
+import QuestionFavoritesPanel from './QuestionFavoritesPanel';
+import StudyNotesPanel from './StudyNotesPanel';
 import { isTrainingTaskResultApproved } from '../pageDataLoaders.js';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
 
@@ -203,7 +206,7 @@ const trainingCards = [
     key: 'topic_training',
     initialMode: 'objective',
     title: '专题训练',
-    description: '围绕专题集中练习，突破理解难点。',
+    description: '按知识点训练，承接每日任务并覆盖全部教材。',
     icon: Lightbulb,
     tone: 'cyan',
   },
@@ -232,16 +235,18 @@ const utilityCards = [
     available: true,
   },
   {
+    key: 'question_favorites',
     title: '知识收藏',
     description: '汇总重点内容，随时回顾复习。',
     icon: BookMarked,
-    available: false,
+    available: true,
   },
   {
+    key: 'study_notes',
     title: '学习笔记',
     description: '沉淀学习心得，形成个人知识脉络。',
     icon: NotebookPen,
-    available: false,
+    available: true,
   },
 ];
 
@@ -253,6 +258,8 @@ const workspaceTitles = {
   mistake_variation: '错题库',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
+  question_favorites: '知识收藏',
+  study_notes: '学习笔记',
 };
 
 const legacyTaskTypes = {
@@ -507,7 +514,17 @@ export default function PracticePage({ navigationContext = {} }) {
                 kpId={navigationContext.kpId || navigationContext.kp_id || ''}
                 taskItemId={taskItemId}
               />
-            ) : ['question_training', 'special_training', 'topic_training'].includes(activeTaskType) ? (
+            ) : activeTaskType === 'question_favorites' ? (
+              <QuestionFavoritesPanel />
+            ) : activeTaskType === 'study_notes' ? (
+              <StudyNotesPanel />
+            ) : activeTaskType === 'topic_training' ? (
+              <KnowledgePointTrainingHub
+                initialKnowledgePoint={selectedKnowledgePoint}
+                taskItemId={taskItemId}
+                onResult={handlePracticeResult}
+              />
+            ) : ['question_training', 'special_training'].includes(activeTaskType) ? (
               <QuestionTrainingPanel
                 enabled
                 selectedKnowledgePoint={selectedKnowledgePoint}

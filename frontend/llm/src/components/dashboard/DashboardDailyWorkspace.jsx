@@ -53,6 +53,7 @@ export default function DashboardDailyWorkspace({
   assistantDocked = true,
   railTab,
   onRailTabChange,
+  libraryOnly = false,
 }) {
   const [internalRailTab, setInternalRailTab] = useState('today');
   const activeRailTab = railTab === 'today' || railTab === 'assistant'
@@ -124,6 +125,16 @@ export default function DashboardDailyWorkspace({
       ) : <p>完成一次学习后，这里会生成反馈摘要</p>}
     </section>
   );
+
+  if (libraryOnly) {
+    return (
+      <div className="dashboard-daily dashboard-daily--library-only" data-testid="dashboard-daily">
+        <section className="dashboard-daily__library" aria-label="教材学习区域">
+          {pathContent}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div

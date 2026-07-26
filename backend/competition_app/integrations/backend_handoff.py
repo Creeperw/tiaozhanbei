@@ -1040,6 +1040,30 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def load_learning_statistics(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+    ) -> dict[str, Any]:
+        """Return audited learning outcome counters for the mapped host user."""
+
+        if days not in {7, 30, 90}:
+            raise ValueError("days must be one of: 7, 30, 90")
+
+        database = importlib.import_module("APP.backend.database")
+        statistics = importlib.import_module("APP.backend.learning_statistics_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return statistics.build_learning_statistics(
+                db,
+                user.id,
+                days=days,
+            )
+        finally:
+            db.close()
+
     def issue_personal_practice(
         self,
         external_user_id: str,

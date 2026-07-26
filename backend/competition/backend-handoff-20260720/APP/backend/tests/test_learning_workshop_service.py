@@ -93,6 +93,45 @@ class LearningWorkshopServiceTests(unittest.TestCase):
             self.assertEqual(version.answer, "A. 人参")
             self.assertEqual(link.status, "active")
 
+    def test_agent_paper_rejects_wrong_exact_question_type_distribution(self):
+        with self.Session() as db:
+            paper = {
+                "title": "题型错误试卷",
+                "items": [
+                    {
+                        "sequence": index,
+                        "question": {
+                            "question_id": f"Q_{index}",
+                            "question_type": "单项选择题",
+                            "stem": f"题干{index}",
+                            "options": ["A. 甲", "B. 乙"],
+                            "reference_answer": "A",
+                        },
+                    }
+                    for index in range(1, 16)
+                ],
+            }
+            blueprint = {
+                "required_total_question_count": 15,
+                "question_count_is_hard_constraint": True,
+                "required_question_type_distribution": {
+                    "单项选择题": 10,
+                    "多项选择题": 5,
+                },
+            }
+
+            with self.assertRaisesRegex(ValueError, "question type distribution"):
+                publish_agent_paper(
+                    db,
+                    user_id=1,
+                    execution_id="EXE_WRONG_TYPES",
+                    paper=paper,
+                    blueprint=blueprint,
+                    evidence_pack={},
+                )
+
+            self.assertEqual(db.query(database.PaperInstanceRecord).count(), 0)
+
     def test_agent_paper_reuses_task_five_frozen_snapshot_binding(self):
         with self.Session() as db:
             db.add(database.DailyTaskItemRecord(

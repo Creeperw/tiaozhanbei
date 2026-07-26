@@ -152,6 +152,16 @@ class PersonalizedPracticeRuntime(PracticeRuntime):
         }
 
 
+class StrictTargetPracticeRuntime(PracticeRuntime):
+    def __init__(self) -> None:
+        super().__init__()
+        self.cached_requests = []
+
+    def issue_cached_public_practice(self, learner_id: str, *, kp_id, mode) -> dict:
+        self.cached_requests.append((learner_id, kp_id, mode))
+        return {"available": False, "kp_id": kp_id, "question": None}
+
+
 def test_practice_next_uses_complete_formal_bank_without_exposing_answer(tmp_path: Path) -> None:
     container = ApplicationContainer.build(
         Settings(mode="stub"),
@@ -182,6 +192,34 @@ def test_practice_next_uses_complete_formal_bank_without_exposing_answer(tmp_pat
     assert "difficulty" not in body["question"]
     assert "answer" not in body["question"]
     assert runtime.issued[0][1]["standard_answer"] == "A"
+
+
+def test_practice_next_does_not_fall_back_to_another_kp_for_explicit_target(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = StrictTargetPracticeRuntime()
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=BroadFormalQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        registered = client.post(
+            "/api/v1/auth/register",
+            json={"username": "strict-kp-practice", "password": "correct-horse-2026"},
+        )
+        response = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "case", "scope": "public", "kp_id": "KP_1"},
+        )
+
+    assert registered.status_code == 201
+    assert response.status_code == 200
+    assert response.json() == {"available": False, "kp_id": "KP_1", "question": None}
+    assert runtime.issued == []
+    assert len(runtime.cached_requests) == 1
+    assert runtime.cached_requests[0][1:] == ("KP_1", "case")
 
 
 def test_practice_next_collects_broad_candidates_and_skips_attempted_question(tmp_path: Path) -> None:

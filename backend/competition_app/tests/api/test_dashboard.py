@@ -212,11 +212,19 @@ def test_dashboard_returns_handoff_owned_item_progress_and_safe_action(tmp_path:
     assert current["items"] == [{
         "task_item_id": "DTI_DASHBOARD",
         "item_type": "knowledge_practice",
+        "title": "四君子汤练习",
+        "estimated_minutes": 10,
+        "kp_id": "KP_1",
+        "kp_name": "四君子汤",
         "status": "in_progress",
         "progress": {"reviewed_questions": 2, "required_questions": 3},
         "action": {
             "destination": "workshop.practice",
-            "params": {"taskItemId": "DTI_DASHBOARD"},
+            "params": {
+                "taskItemId": "DTI_DASHBOARD",
+                "kpId": "KP_1",
+                "kpName": "四君子汤",
+            },
         },
     }]
     assert "answer" not in str(current["items"]).lower()

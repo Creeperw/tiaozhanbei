@@ -1,6 +1,6 @@
 export function practiceContextFromIntent(context = {}) {
   const { trackId, membershipId, kpId, kpName } = context;
-  if (!trackId || !membershipId || !kpId || !kpName) return null;
+  if (!kpId || !kpName) return null;
   return { trackId, membershipId, kpId, kpName };
 }
 

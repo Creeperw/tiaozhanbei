@@ -2,8 +2,8 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import PaperGenerationPanel from './PaperGenerationPanel';
-import { generateWorkshopPaperWithAgents, loadPaper, loadPapers, setPaperTimerPaused } from '../pageDataLoaders';
+import PaperGenerationPanel, { PaperQuestionContent } from './PaperGenerationPanel';
+import { generateWorkshopPaperWithAgents, loadPaper, loadPapers, savePaperAnswers, setPaperTimerPaused } from '../pageDataLoaders';
 
 vi.mock('../pageDataLoaders', () => ({
   loadPaper: vi.fn(),
@@ -23,6 +23,15 @@ describe('PaperGenerationPanel', () => {
     vi.clearAllMocks();
     sessionStorage.clear();
     loadPapers.mockResolvedValue({ papers: { items: [] }, error: '' });
+  });
+
+  it('renders legacy question images without injecting arbitrary HTML', () => {
+    render(<PaperQuestionContent content={'A. <img class="showpics" src="https://example.com/herb.png"><script>alert(1)</script>'} />);
+
+    expect(screen.getByText('A.')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '题目配图' })).toHaveAttribute('src', 'https://example.com/herb.png');
+    expect(document.querySelector('script')).toBeNull();
+    expect(screen.getByText('alert(1)')).toBeInTheDocument();
   });
 
   it('supports the full set of paper question types', async () => {
@@ -77,18 +86,24 @@ describe('PaperGenerationPanel', () => {
     };
     loadPaper.mockResolvedValue({ paper, error: '' });
     loadPapers.mockResolvedValue({ papers: { items: [{ paper_id: 'PAPER_1', title: '综合试卷', status: 'published', duration_minutes: 30 }] }, error: '' });
+    savePaperAnswers.mockResolvedValue({ paper, error: '' });
 
     render(<PaperGenerationPanel enabled paperId="PAPER_1" />);
 
-    expect(await screen.findByRole('heading', { name: '单选题' })).toBeInTheDocument();
+    expect(await screen.findByText('单选')).toBeInTheDocument();
+    expect(screen.getByText('单选题')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '展开答题卡' }));
+    expect(screen.getByRole('heading', { name: '单选题' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '多选题' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '填空题' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '简答题' })).toBeInTheDocument();
     expect(screen.getByText('00:02:00')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '返回试卷列表' }));
+    fireEvent.click(screen.getAllByRole('button', { name: '收起答题卡' }).at(-1));
+    fireEvent.click(screen.getByRole('button', { name: '退出并保存' }));
     expect(await screen.findByRole('heading', { name: '待作答与历史试卷' })).toBeInTheDocument();
     await waitFor(() => expect(clearIntervalSpy).toHaveBeenCalled());
+    expect(savePaperAnswers).toHaveBeenCalledWith(expect.objectContaining({ paperId: 'PAPER_1' }));
     expect(sessionStorage.getItem('training-paper-id')).toBeNull();
   });
 
@@ -136,6 +151,6 @@ describe('PaperGenerationPanel', () => {
     expect(screen.queryByLabelText('训练主题')).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '生成试卷' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '返回试卷列表' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '退出并保存' })).not.toBeInTheDocument();
   });
 });

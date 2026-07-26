@@ -86,6 +86,20 @@ vi.mock('./KnowledgeCardLibrary', () => ({
   default: () => <div data-testid="knowledge-card-library" />,
 }));
 
+vi.mock('./KnowledgePointTrainingHub', () => ({
+  default: ({ initialKnowledgePoint, taskItemId }) => <div data-testid="knowledge-point-training-hub">
+    {initialKnowledgePoint?.kpId || ''}:{initialKnowledgePoint?.kpName || ''}:{taskItemId}
+  </div>,
+}));
+
+vi.mock('./QuestionFavoritesPanel', () => ({
+  default: () => <div data-testid="question-favorites-panel" />,
+}));
+
+vi.mock('./StudyNotesPanel', () => ({
+  default: () => <div data-testid="study-notes-panel" />,
+}));
+
 vi.mock('../utils/api', () => ({
   fetchJsonWithAuthFallback: vi.fn(() => Promise.resolve({ data: {} })),
 }));
@@ -108,6 +122,8 @@ describe('PracticePage training modules', () => {
       '上传题库',
     ]);
     expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /知识收藏/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /学习笔记/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
   });
@@ -128,7 +144,7 @@ describe('PracticePage training modules', () => {
   it.each([
     ['综合套题', 'atlas-practice-scope'],
     ['智能组卷', 'paper-generation-panel'],
-    ['专题训练', 'atlas-practice-scope'],
+    ['专题训练', 'knowledge-point-training-hub'],
     ['模拟病患', 'simulated-patient-chat'],
   ])('opens %s from the overview as a single page', async (title, panelTestId) => {
     render(<PracticePage />);
@@ -142,6 +158,18 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['知识收藏', 'question-favorites-panel'],
+    ['学习笔记', 'study-notes-panel'],
+  ])('opens the %s personal library', async (title, panelTestId) => {
+    render(<PracticePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(title) }));
+
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    expect(screen.getByTestId(panelTestId)).toBeInTheDocument();
+  });
+
   it('opens specialized training in the existing case-answer mode', async () => {
     render(<PracticePage />);
 
@@ -149,6 +177,17 @@ describe('PracticePage training modules', () => {
 
     expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '案例简答' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('binds a daily knowledge-practice item to its formal knowledge point', async () => {
+    render(<PracticePage navigationContext={{
+      taskType: 'topic_training',
+      taskItemId: 'ITEM_1',
+      kpId: 'KP_SIJUNZI',
+      kpName: '四君子汤',
+    }} />);
+
+    expect(await screen.findByTestId('knowledge-point-training-hub')).toHaveTextContent('KP_SIJUNZI:四君子汤:ITEM_1');
   });
 
   it('opens a single training page without the shared module tabs', async () => {

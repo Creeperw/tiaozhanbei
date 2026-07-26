@@ -133,6 +133,7 @@ def publish_agent_paper(
     evidence_pack: dict[str, Any],
     daily_task_item_id: str | None = None,
 ) -> dict[str, Any]:
+    _validate_agent_paper_constraints(paper, blueprint)
     if daily_task_item_id is not None and (
         not isinstance(daily_task_item_id, str) or not daily_task_item_id.strip()
     ):
@@ -240,6 +241,46 @@ def publish_agent_paper(
             raise ValueError("bound paper does not match frozen daily task questions")
     db.commit()
     return {"paper_id": paper_id, "status": "published", "duration_minutes": duration}
+
+
+def _validate_agent_paper_constraints(
+    paper: dict[str, Any], blueprint: dict[str, Any]
+) -> None:
+    items = list(paper.get("items") or [])
+    required_total = blueprint.get("required_total_question_count")
+    if blueprint.get("question_count_is_hard_constraint") and required_total is not None:
+        if len(items) != int(required_total):
+            raise ValueError("agent paper does not match required question count")
+    raw_distribution = blueprint.get("required_question_type_distribution") or {}
+    if not isinstance(raw_distribution, dict) or not raw_distribution:
+        return
+
+    def normalize_question_type(value: Any) -> str:
+        normalized = str(value or "").strip().replace(" ", "").replace("_", "")
+        if "案例" in normalized or "病例" in normalized:
+            return "简答题"
+        return {
+            "单选题": "单项选择题",
+            "单项选择": "单项选择题",
+            "多选题": "多项选择题",
+            "多项选择": "多项选择题",
+            "简答": "简答题",
+            "问答": "简答题",
+            "问答题": "简答题",
+        }.get(normalized, normalized)
+
+    expected = {
+        normalize_question_type(question_type): int(count)
+        for question_type, count in raw_distribution.items()
+        if int(count) > 0
+    }
+    actual: dict[str, int] = {}
+    for item in items:
+        question = item.get("question") or {}
+        question_type = normalize_question_type(question.get("question_type"))
+        actual[question_type] = actual.get(question_type, 0) + 1
+    if actual != expected:
+        raise ValueError("agent paper does not match required question type distribution")
 
 
 def _normalized_item_scores(

@@ -1,4 +1,4 @@
-import { API_BASE, fetchWithAuth } from '../../utils/api';
+import { API_BASE, fetchWithAuth, readJsonResponse } from '../../utils/api';
 
 function atlasErrorMessage(payload, fallback) {
   const detail = payload?.detail;
@@ -11,7 +11,7 @@ async function readAtlasResponse(path, { signal, method = 'GET' } = {}) {
   const options = signal ? { signal } : {};
   if (method !== 'GET') options.method = method;
   const response = await fetchWithAuth(`${API_BASE}${path}`, options);
-  const payload = await response.json().catch(() => ({}));
+  const payload = await readJsonResponse(response, {});
   if (!response.ok || payload?.ok === false) {
     throw new Error(atlasErrorMessage(payload, `知识星球请求失败 (${response.status || 'unknown'})`));
   }
@@ -74,7 +74,7 @@ export function atlasImageUrl(filename) {
 export async function loadAtlasImage(filename, { signal } = {}) {
   const response = await fetchWithAuth(atlasImageUrl(filename), signal ? { signal } : {});
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
+    const payload = await readJsonResponse(response, {});
     throw new Error(atlasErrorMessage(payload, '教材图片加载失败'));
   }
   return response.blob();

@@ -405,6 +405,24 @@ def test_blueprint_extracts_only_explicit_question_count(
     assert PaperBlueprintAgent._explicit_question_count(context) == expected
 
 
+def test_blueprint_extracts_exact_structured_question_type_distribution() -> None:
+    distribution = PaperBlueprintAgent._explicit_question_type_distribution(
+        {
+            "exam_constraints": {
+                "question_count": 15,
+                "question_type_distribution": {
+                    "single_choice": 10,
+                    "multiple_choice": 5,
+                    "fill_blank": 0,
+                },
+            }
+        }
+    )
+
+    assert distribution == {"单项选择题": 10, "多项选择题": 5}
+    assert sum(distribution.values()) == 15
+
+
 def test_choice_specialty_distributes_explicit_twenty_across_blueprint_units() -> None:
     units = PaperBlueprintAgent._normalize_hard_count_units(
         [

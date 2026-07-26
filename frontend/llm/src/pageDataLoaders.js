@@ -435,7 +435,6 @@ export const isPaperPayloadValid = (data) => (
     && hasNonEmptyText(item.stem)
     && hasItemsArray(item.options)
     && hasItemsArray(item.kp_ids)
-    && Number.isInteger(item.difficulty)
     && typeof item.answer === 'string'
   ))
 );

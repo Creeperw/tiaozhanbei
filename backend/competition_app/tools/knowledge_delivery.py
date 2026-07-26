@@ -7,6 +7,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -23,6 +24,9 @@ from competition_app.contracts.knowledge import (
     QuestionDetail,
     QuestionRetrievalMetadata,
     QuestionSearchResult,
+)
+from competition_app.services.knowledge_recognition_review import (
+    KnowledgeRecognitionReportReader,
 )
 
 
@@ -608,6 +612,19 @@ class KnowledgeDeliveryBackend:
         self._write_lock = threading.RLock()
         self._modules: dict[str, Any] = {}
         self._official_exam_repository: Any = None
+        self.recognition_reports = KnowledgeRecognitionReportReader(self.paths.runtime_root)
+
+    def list_recognition_reports(
+        self, owner_id: str, *, offset: int = 0, limit: int = 20
+    ) -> dict[str, Any]:
+        return self.recognition_reports.list_reports(
+            _safe_owner(owner_id), offset=offset, limit=limit
+        )
+
+    def get_recognition_report(
+        self, owner_id: str, report_id: str
+    ) -> dict[str, Any]:
+        return self.recognition_reports.get_report(_safe_owner(owner_id), report_id)
 
     def _mineru_token(self, override: str = "") -> str:
         return str(override or self.mineru_token).strip()
@@ -1205,13 +1222,23 @@ class KnowledgeDeliveryBackend:
         if not result_path.is_file():
             raise RuntimeError("知识导入未生成 result.json")
         result = json.loads(result_path.read_text(encoding="utf-8"))
+        delivery = Path(
+            result.get("customer_delivery")
+            or result.get("delivery")
+            or self.paths.knowledge_customer_root / owner / "TCM_backend_delivery"
+        )
+        if apply:
+            result["chapter_hierarchy"] = self._sync_user_chapter_hierarchy(
+                run_dir=run_dir,
+                delivery=delivery,
+                ingestion_id=str(result.get("ingestion_id") or run_dir.name),
+            )
+            result["recognition_review"] = self.recognition_reports.create_snapshot(
+                owner, run_dir, delivery
+            )
+
         default_runtime = (self.paths.component_root / "runtime").resolve()
         if apply and self.paths.runtime_root.resolve() != default_runtime:
-            delivery = Path(
-                result.get("customer_delivery")
-                or result.get("delivery")
-                or self.paths.knowledge_customer_root / owner / "TCM_backend_delivery"
-            )
             vector_module = self._module("retrieval.user_vector_store")
             embedder = self._sync_embedder()
             if embedder is not None:
@@ -1225,10 +1252,75 @@ class KnowledgeDeliveryBackend:
                     owner_id=owner,
                     collection="知识点",
                 )
-                result_path.write_text(
-                    json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
-                )
+        result_path.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         return result
+
+    def _sync_user_chapter_hierarchy(
+        self,
+        *,
+        run_dir: Path,
+        delivery: Path,
+        ingestion_id: str,
+    ) -> dict[str, Any]:
+        """Generate the same chapter mapping used by the public textbooks."""
+
+        chunks_path = delivery / "03_pipeline_chunks" / "source_chunks.jsonl"
+        normalized_books = run_dir / "normalized_books"
+        if not chunks_path.is_file():
+            raise RuntimeError("用户教材导入后缺少 source_chunks.jsonl")
+        if not normalized_books.is_dir():
+            raise RuntimeError("用户教材导入后缺少标准化 Markdown")
+
+        source_root = delivery / "09_ingestion" / "source_markdown"
+        source_root.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(normalized_books, source_root, dirs_exist_ok=True)
+
+        chapter_script = (
+            Path(__file__).resolve().parents[2]
+            / "competition"
+            / "knowledge_atlas_chapters"
+            / "2026-07-22"
+            / "chapter_hierarchy.py"
+        )
+        if not chapter_script.is_file():
+            raise RuntimeError(f"章节映射脚本不存在：{chapter_script}")
+
+        output_dir = delivery / "03_pipeline_chunks"
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(chapter_script),
+                "--chunks",
+                str(chunks_path),
+                "--markdown-root",
+                str(source_root),
+                "--output-dir",
+                str(output_dir),
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30 * 60,
+            check=False,
+        )
+        if completed.returncode != 0:
+            message = (completed.stderr or completed.stdout or "章节映射生成失败").strip()
+            raise RuntimeError(message[-4000:])
+
+        report_path = output_dir / "chapter_hierarchy_report.json"
+        if not report_path.is_file():
+            raise RuntimeError("章节映射未生成 chapter_hierarchy_report.json")
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report.update({
+            "ingestion_id": ingestion_id,
+            "chapter_nodes_path": str(output_dir / "chapter_nodes.jsonl"),
+            "chunk_chapter_links_path": str(output_dir / "chunk_chapter_links.jsonl"),
+            "source_markdown_root": str(source_root),
+        })
+        return report
 
     def list_exam_tracks(self) -> list[dict[str, Any]]:
         return self.official_exam_repository.list_tracks()
