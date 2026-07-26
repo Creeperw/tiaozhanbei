@@ -61,6 +61,12 @@
   font-size: 0.78rem;
 }
 
+.learning-path-page__target-input:focus-visible {
+  border-radius: 6px;
+  outline: 3px solid rgba(22, 132, 95, 0.38);
+  outline-offset: 3px;
+}
+
 .learning-path-page__notice {
   border: 1px solid #f2d5cb;
   border-radius: 12px;
@@ -280,6 +286,10 @@
   border: 1px solid #e8efec;
   border-radius: 11px;
   background: #fff;
+}
+
+.learning-path-page__review-list[hidden] {
+  display: none;
 }
 
 .learning-path-page__task-item {

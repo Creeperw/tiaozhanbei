@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import LearningPathPage from './LearningPathPage';
@@ -22,6 +22,16 @@ const routePayload = {
   }],
 };
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 function installLearningPathFetch(dashboardPayload = {}, options = {}) {
   const fetchMock = vi.fn((url) => {
     const path = String(url);
@@ -38,11 +48,15 @@ function installLearningPathFetch(dashboardPayload = {}, options = {}) {
     if (path.endsWith('/personalization/learning-target')) {
       return Promise.resolve(response({ target: { exam_track_id: 'track-tcm' } }));
     }
+    if (path.includes('/learning-path?parent_id=') && options.stageFetch) {
+      return options.stageFetch(path);
+    }
     if (path.includes('/learning-path?parent_id=') && options.stagePayload) {
       return Promise.resolve(response(options.stagePayload));
     }
-    if (path.includes('/learning-path')) return Promise.resolve(response(routePayload));
+    if (path.includes('/learning-path')) return Promise.resolve(response(options.rootPayload || routePayload));
     if (path.includes('/learning-context')) {
+      if (options.learningContextFetch) return options.learningContextFetch(path);
       return Promise.resolve(response({
         long_term_plan: { content: '【最终目标】通过中医执业医师资格考试。' },
         short_term_plan: { content: '【本周安排】完成中医基础理论复习。' },
@@ -56,7 +70,10 @@ function installLearningPathFetch(dashboardPayload = {}, options = {}) {
 }
 
 describe('LearningPathPage', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 
   it('renders the learning path plan, short route, task rail, and route data', async () => {
     installLearningPathFetch({
@@ -210,5 +227,131 @@ describe('LearningPathPage', () => {
         source: 'learning-plan',
       },
     });
+  });
+
+  it('keeps the latest stage drill-down when an earlier request resolves last', async () => {
+    const firstStage = deferred();
+    const secondStage = deferred();
+    installLearningPathFetch({}, {
+      rootPayload: {
+        schema_version: '1.0',
+        nodes: [
+          { ...routePayload.nodes[0], node_id: 'stage-1', membership_id: 'stage-1', title: '第一阶段' },
+          { ...routePayload.nodes[0], node_id: 'stage-2', membership_id: 'stage-2', title: '第二阶段', order: 2 },
+        ],
+      },
+      stageFetch: (path) => path.includes('stage-1') ? firstStage.promise : secondStage.promise,
+    });
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /进入第一阶段/ }));
+    fireEvent.click(screen.getByRole('button', { name: /进入第二阶段/ }));
+
+    await act(async () => {
+      secondStage.resolve(response({
+        schema_version: '1.0',
+        nodes: [{
+          node_id: 'book-2',
+          node_type: 'book',
+          title: '《第二阶段教材》',
+          order: 1,
+          status: 'in_progress',
+          navigation: { route_id: 'route-2', book: '第二阶段教材' },
+        }],
+      }));
+      await secondStage.promise;
+    });
+    expect(await screen.findByRole('button', { name: /进入《第二阶段教材》/ })).toBeInTheDocument();
+
+    await act(async () => {
+      firstStage.resolve(response({
+        schema_version: '1.0',
+        nodes: [{
+          node_id: 'book-1',
+          node_type: 'book',
+          title: '《第一阶段教材》',
+          order: 1,
+          status: 'in_progress',
+          navigation: { route_id: 'route-1', book: '第一阶段教材' },
+        }],
+      }));
+      await firstStage.promise;
+    });
+    expect(screen.getByRole('button', { name: /进入《第二阶段教材》/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /进入《第一阶段教材》/ })).not.toBeInTheDocument();
+  });
+
+  it('deduplicates repeated drill requests for the same stage', async () => {
+    const stageRequest = deferred();
+    const fetchMock = installLearningPathFetch({}, {
+      stageFetch: () => stageRequest.promise,
+    });
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+    const stageButton = await screen.findByRole('button', { name: /进入中医基础与文化语言/ });
+
+    fireEvent.click(stageButton);
+    fireEvent.click(stageButton);
+    fireEvent.doubleClick(stageButton);
+
+    const stageCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes('parent_id=stage-1'));
+    expect(stageCalls).toHaveLength(1);
+
+    await act(async () => {
+      stageRequest.resolve(response({ schema_version: '1.0', nodes: [] }));
+      await stageRequest.promise;
+    });
+  });
+
+  it('does not report state updates when planning details resolve after unmount', async () => {
+    const planningRequest = deferred();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    installLearningPathFetch({}, {
+      learningContextFetch: () => planningRequest.promise,
+    });
+    const { unmount } = render(
+      <LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '了解详情' }));
+    unmount();
+    await act(async () => {
+      planningRequest.resolve(response({
+        long_term_plan: { content: '长期规划' },
+        short_term_plan: { content: '短期规划' },
+      }));
+      await planningRequest.promise;
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('exposes focusable target controls and keyboard-operable ARIA task tabs', async () => {
+    installLearningPathFetch();
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    const target = await screen.findByRole('combobox', { name: '学习目标' });
+    expect(target).toHaveClass('learning-path-page__target-input');
+    expect(target).not.toHaveAttribute('tabindex', '-1');
+
+    const learningTab = screen.getByRole('tab', { name: '学习任务' });
+    const reviewTab = screen.getByRole('tab', { name: '复习任务' });
+    expect(reviewTab).toHaveAttribute('tabindex', '0');
+    expect(learningTab).toHaveAttribute('tabindex', '-1');
+    expect(learningTab.id).not.toBe(reviewTab.id);
+    expect(document.getElementById(reviewTab.getAttribute('aria-controls'))).toHaveAttribute('role', 'tabpanel');
+    expect(document.getElementById(reviewTab.getAttribute('aria-controls'))).toHaveAttribute(
+      'aria-labelledby',
+      reviewTab.id,
+    );
+
+    reviewTab.focus();
+    fireEvent.keyDown(reviewTab, { key: 'ArrowLeft' });
+    expect(learningTab).toHaveFocus();
+    expect(learningTab).toHaveAttribute('aria-selected', 'true');
+    expect(learningTab).toHaveAttribute('tabindex', '0');
+
+    fireEvent.keyDown(learningTab, { key: 'ArrowRight' });
+    expect(reviewTab).toHaveFocus();
+    expect(reviewTab).toHaveAttribute('aria-selected', 'true');
   });
 });

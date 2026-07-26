@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import LearningStageLanding from './learning-stage/LearningStageLanding';
@@ -52,26 +52,64 @@ function TaskProgress({ value }) {
 
 function ReviewTaskRail({ items, learningItems, onOpen, onOpenLearning }) {
   const [activeTab, setActiveTab] = useState('review');
+  const tabId = useId();
+  const learningTabRef = useRef(null);
+  const reviewTabRef = useRef(null);
+  const learningTabId = `${tabId}-learning-tab`;
+  const reviewTabId = `${tabId}-review-tab`;
+  const learningPanelId = `${tabId}-learning-panel`;
+  const reviewPanelId = `${tabId}-review-panel`;
+
+  const activateTab = (tab, focus = false) => {
+    setActiveTab(tab);
+    if (focus) {
+      const target = tab === 'learning' ? learningTabRef.current : reviewTabRef.current;
+      target?.focus();
+    }
+  };
+
+  const handleTabKeyDown = (event) => {
+    const tabs = ['learning', 'review'];
+    const currentIndex = tabs.indexOf(activeTab);
+    let nextTab = null;
+    if (event.key === 'ArrowRight') nextTab = tabs[(currentIndex + 1) % tabs.length];
+    if (event.key === 'ArrowLeft') nextTab = tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+    if (event.key === 'Home') nextTab = tabs[0];
+    if (event.key === 'End') nextTab = tabs[tabs.length - 1];
+    if (!nextTab) return;
+    event.preventDefault();
+    activateTab(nextTab, true);
+  };
 
   return (
     <section className="learning-path-page__review-rail" aria-label="学习与复习任务">
       <div className="learning-path-page__activity-tabs" role="tablist" aria-label="任务类型">
         <span className="learning-path-page__activity-indicator" data-active-tab={activeTab} aria-hidden="true" />
         <button
+          ref={learningTabRef}
+          id={learningTabId}
           type="button"
           className={activeTab === 'learning' ? 'is-active' : ''}
           role="tab"
           aria-selected={activeTab === 'learning'}
-          onClick={() => setActiveTab('learning')}
+          aria-controls={learningPanelId}
+          tabIndex={activeTab === 'learning' ? 0 : -1}
+          onClick={() => activateTab('learning')}
+          onKeyDown={handleTabKeyDown}
         >
           学习任务
         </button>
         <button
+          ref={reviewTabRef}
+          id={reviewTabId}
           type="button"
           className={activeTab === 'review' ? 'is-active' : ''}
           role="tab"
           aria-selected={activeTab === 'review'}
-          onClick={() => setActiveTab('review')}
+          aria-controls={reviewPanelId}
+          tabIndex={activeTab === 'review' ? 0 : -1}
+          onClick={() => activateTab('review')}
+          onKeyDown={handleTabKeyDown}
         >
           复习任务
         </button>
@@ -83,8 +121,14 @@ function ReviewTaskRail({ items, learningItems, onOpen, onOpenLearning }) {
       {activeTab === 'review' && (
         <p className="learning-path-page__review-hint">根据掌握度与遗忘曲线智能安排</p>
       )}
-      <div className="learning-path-page__review-list">
-        {activeTab === 'review' && items.map((entry, index) => {
+      <div
+        id={reviewPanelId}
+        className="learning-path-page__review-list"
+        role="tabpanel"
+        aria-labelledby={reviewTabId}
+        hidden={activeTab !== 'review'}
+      >
+        {items.map((entry, index) => {
           const unit = entry.memory_unit || {};
           const mastery = normalizePercent(unit.mastery_score) ?? 0;
           return (
@@ -103,7 +147,16 @@ function ReviewTaskRail({ items, learningItems, onOpen, onOpenLearning }) {
             </button>
           );
         })}
-        {activeTab === 'learning' && learningItems.map((item) => (
+        {!items.length && <p className="learning-path-page__task-empty">当前没有复习任务。</p>}
+      </div>
+      <div
+        id={learningPanelId}
+        className="learning-path-page__review-list"
+        role="tabpanel"
+        aria-labelledby={learningTabId}
+        hidden={activeTab !== 'learning'}
+      >
+        {learningItems.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -118,12 +171,8 @@ function ReviewTaskRail({ items, learningItems, onOpen, onOpenLearning }) {
             <time>{item.meta || '最近'}</time>
           </button>
         ))}
-        {((activeTab === 'review' && !items.length) || (activeTab === 'learning' && !learningItems.length)) && (
-          <p className="learning-path-page__task-empty">
-            {activeTab === 'review'
-              ? '当前没有复习任务。'
-              : '完成一次学习后，近期记录会显示在这里。'}
-          </p>
+        {!learningItems.length && (
+          <p className="learning-path-page__task-empty">完成一次学习后，近期记录会显示在这里。</p>
         )}
       </div>
       {activeTab === 'review' && (
@@ -151,6 +200,23 @@ function LearningRoute({ onNavigate }) {
     longTerm: '',
     shortTerm: '',
   });
+  const mountedRef = useRef(true);
+  const drillGenerationRef = useRef(0);
+  const pendingDrillsRef = useRef(new Map());
+  const planningGenerationRef = useRef(0);
+  const planningRequestRef = useRef(null);
+
+  useEffect(() => {
+    const pendingDrills = pendingDrillsRef.current;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      drillGenerationRef.current += 1;
+      planningGenerationRef.current += 1;
+      pendingDrills.clear();
+      planningRequestRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -196,18 +262,35 @@ function LearningRoute({ onNavigate }) {
 
   const openNode = async (node) => {
     if (node?.node_type === 'stage') {
-      try {
-        const childPage = await loadPlannedLearningPath(node.node_id);
-        const childNodes = Array.isArray(childPage.nodes) ? childPage.nodes.map(adaptPlannedPathNode) : [];
-        setRouteState((current) => ({ ...current, nodes: childNodes, error: '' }));
-        setSelectedNode(null);
-      } catch (error) {
-        setRouteState((current) => ({
-          ...current,
-          error: error.message || '教材路径暂时无法读取',
-        }));
-      }
-      return;
+      const stageId = String(node.node_id || '');
+      const pending = pendingDrillsRef.current.get(stageId);
+      if (pending) return pending;
+
+      const generation = drillGenerationRef.current + 1;
+      drillGenerationRef.current = generation;
+      const request = loadPlannedLearningPath(stageId)
+        .then((childPage) => {
+          if (!mountedRef.current || drillGenerationRef.current !== generation) return;
+          const childNodes = Array.isArray(childPage.nodes)
+            ? childPage.nodes.map(adaptPlannedPathNode)
+            : [];
+          setRouteState((current) => ({ ...current, nodes: childNodes, error: '' }));
+          setSelectedNode(null);
+        })
+        .catch((error) => {
+          if (!mountedRef.current || drillGenerationRef.current !== generation) return;
+          setRouteState((current) => ({
+            ...current,
+            error: error.message || '教材路径暂时无法读取',
+          }));
+        })
+        .finally(() => {
+          if (pendingDrillsRef.current.get(stageId) === request) {
+            pendingDrillsRef.current.delete(stageId);
+          }
+        });
+      pendingDrillsRef.current.set(stageId, request);
+      return request;
     }
 
     const navigation = node?.navigation || {};
@@ -224,15 +307,23 @@ function LearningRoute({ onNavigate }) {
 
   const showPlanningDetails = async () => {
     setRouteView('details');
-    if (planningDetails.loaded || planningDetails.loading) return;
+    if (planningDetails.loaded || planningRequestRef.current) return;
     setPlanningDetails((current) => ({ ...current, loading: true, error: '' }));
+    const generation = planningGenerationRef.current + 1;
+    planningGenerationRef.current = generation;
+    const request = fetchWithAuth(`${MAIN_API_BASE}/learning-context`)
+      .then(async (response) => ({
+        response,
+        payload: await readJsonResponse(response, {}),
+      }));
+    planningRequestRef.current = request;
     try {
-      const response = await fetchWithAuth(`${MAIN_API_BASE}/learning-context`);
-      const payload = await readJsonResponse(response, {});
+      const { response, payload } = await request;
       if (!response.ok) {
         const detail = payload?.detail;
         throw new Error(typeof detail === 'string' ? detail : detail?.message || '学习规划暂时无法读取');
       }
+      if (!mountedRef.current || planningGenerationRef.current !== generation) return;
       setPlanningDetails({
         loaded: true,
         loading: false,
@@ -241,16 +332,21 @@ function LearningRoute({ onNavigate }) {
         shortTerm: String(payload?.short_term_plan?.content || ''),
       });
     } catch (error) {
+      if (!mountedRef.current || planningGenerationRef.current !== generation) return;
       setPlanningDetails((current) => ({
         ...current,
         loaded: false,
         loading: false,
         error: error.message || '学习规划暂时无法读取',
       }));
+    } finally {
+      if (planningRequestRef.current === request) planningRequestRef.current = null;
     }
   };
 
   const returnToOrbit = () => {
+    planningGenerationRef.current += 1;
+    planningRequestRef.current = null;
     setRouteView('orbit');
     setSelectedNode(null);
   };
@@ -497,6 +593,7 @@ export default function LearningPathPage({ currentUser, onNavigate }) {
           <span>学习目标</span>
           <select
             ref={targetSelectRef}
+            className="learning-path-page__target-input"
             aria-label="学习目标"
             value={learningTarget.targetId}
             onChange={selectTarget}
