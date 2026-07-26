@@ -108,14 +108,14 @@ export default function QuestionFavoritesPanel() {
     </header>
     {error && <p role="alert" className="workshop-library__error">{error}</p>}
     {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载收藏…</p> : folders.length === 0 ? <div className="workshop-library__empty"><BookMarked size={28} /><h3>还没有收藏簿</h3><p>先新建收藏簿，再从已批改的题目中加入收藏。</p></div> : <div className="workshop-library__layout">
-      <aside aria-label="收藏簿列表">
-        {folders.map((folder) => <button key={folder.folder_id} type="button" aria-pressed={selectedFolderId === folder.folder_id} onClick={() => { setSelectedFolderId(folder.folder_id); setExpandedId(''); }}><span>{folder.name}</span><small>{folder.favorite_count} 项</small></button>)}
+      <aside className="workshop-library__folder-grid" role="region" aria-label="收藏簿卡片">
+        {folders.map((folder) => <button key={folder.folder_id} type="button" className="workshop-library__folder-card" aria-pressed={selectedFolderId === folder.folder_id} onClick={() => { setSelectedFolderId(folder.folder_id); setExpandedId(''); }}><span>{folder.name}</span><small>{folder.favorite_count} 项</small></button>)}
         <button type="button" className="workshop-library__danger" onClick={removeFolder}><Trash2 size={14} />删除当前收藏簿</button>
       </aside>
       <div className="workshop-library__items">
         {visibleFavorites.length === 0 ? <div className="workshop-library__empty workshop-library__empty--compact"><p>这个收藏簿还没有内容。</p><small>完成题目批改后，可在解析下方加入收藏。</small></div> : visibleFavorites.map((item) => {
           const open = expandedId === item.favorite_id;
-          return <article key={item.favorite_id}>
+          return <article key={item.favorite_id} className={open ? 'is-open' : ''}>
             <button type="button" className="workshop-library__item-toggle" aria-expanded={open} onClick={() => setExpandedId(open ? '' : item.favorite_id)}><span><strong>{item.title}</strong><small>{item.source} · {String(item.updated_at || '').slice(0, 10)}</small></span>{open ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</button>
             {open && <div className="workshop-library__item-body"><FavoriteContent item={item} /><button type="button" className="workshop-library__delete" onClick={() => removeFavorite(item.favorite_id)}><Trash2 size={14} />取消收藏</button></div>}
           </article>;

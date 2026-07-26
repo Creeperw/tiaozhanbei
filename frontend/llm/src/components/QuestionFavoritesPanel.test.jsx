@@ -45,4 +45,12 @@ describe('QuestionFavoritesPanel', () => {
 
     await waitFor(() => expect(api.createFavoriteFolder).toHaveBeenCalledWith('经方辨析'));
   });
+
+  it('shows server-backed collection folders in the remote four-column card layout', async () => {
+    render(<QuestionFavoritesPanel />);
+
+    const folderGrid = await screen.findByRole('region', { name: '收藏簿卡片' });
+    expect(folderGrid).toHaveClass('workshop-library__folder-grid');
+    expect(screen.getByRole('button', { name: /方剂重点/ })).toBeInTheDocument();
+  });
 });

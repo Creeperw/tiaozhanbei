@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Loader2, NotebookPen, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, NotebookPen, Plus, Search, Trash2, X } from 'lucide-react';
 import { createNote, deleteNote, loadNotes, updateNote } from './workshopLibraryApi';
 
 const emptyDraft = { title: '', content: '' };
@@ -27,6 +27,7 @@ export default function StudyNotesPanel() {
   const [typeFilter, setTypeFilter] = useState('');
   const [expandedId, setExpandedId] = useState('');
   const [editDraft, setEditDraft] = useState(emptyDraft);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -67,6 +68,7 @@ export default function StudyNotesPanel() {
         context: {},
       });
       setDraft(emptyDraft);
+      setComposerOpen(false);
       await refresh();
     } catch (reason) {
       setError(reason.message || '笔记保存失败');
@@ -107,12 +109,24 @@ export default function StudyNotesPanel() {
   return <section className="workshop-notes" aria-labelledby="notes-title">
     <header className="workshop-library__header">
       <div><span>个人知识沉淀</span><h2 id="notes-title">学习笔记</h2><p>记录学习心得，也统一查看从试卷解析生成的题目笔记。</p></div>
+      <button type="button" className="workshop-notes__new" onClick={() => setComposerOpen(true)}><Plus size={16} />新建笔记</button>
     </header>
-    <form className="workshop-notes__composer" onSubmit={addNote}>
-      <label>标题<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={200} placeholder="今天学到了什么？" /></label>
-      <label>内容<textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} maxLength={20000} rows={4} placeholder="写下理解、辨析要点或复习提醒…" /></label>
-      <button type="submit" disabled={!draft.title.trim() || !draft.content.trim()}><Plus size={16} />保存笔记</button>
-    </form>
+    {composerOpen && <div className="workshop-save-dialog" role="dialog" aria-modal="true" aria-labelledby="new-note-dialog-title">
+      <div>
+        <form onSubmit={addNote}>
+          <header>
+            <h3 id="new-note-dialog-title">新建笔记</h3>
+            <button type="button" aria-label="关闭新建笔记窗口" onClick={() => setComposerOpen(false)}><X size={18} /></button>
+          </header>
+          <label>标题<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={200} placeholder="今天学到了什么？" /></label>
+          <label>内容<textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} maxLength={20000} rows={6} placeholder="写下理解、辨析要点或复习提醒…" /></label>
+          <footer>
+            <button type="button" onClick={() => setComposerOpen(false)}>取消</button>
+            <button type="submit" disabled={!draft.title.trim() || !draft.content.trim()}>保存笔记</button>
+          </footer>
+        </form>
+      </div>
+    </div>}
     <div className="workshop-notes__filters">
       <label className="workshop-notes__search"><Search size={16} /><input aria-label="搜索笔记" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题或正文" /></label>
       <label>来源<select aria-label="筛选笔记来源" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><option value="">全部</option>{sources.map((source) => <option key={source}>{source}</option>)}</select></label>
@@ -122,7 +136,7 @@ export default function StudyNotesPanel() {
     {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载笔记…</p> : visibleNotes.length === 0 ? <div className="workshop-library__empty"><NotebookPen size={28} /><h3>暂无符合条件的笔记</h3><p>可以在上方直接记录，也可以从已批改题目的解析处创建。</p></div> : <div className="workshop-notes__list">
       {visibleNotes.map((note) => {
         const open = expandedId === note.note_id;
-        return <article key={note.note_id}>
+        return <article key={note.note_id} className={open ? 'is-open' : ''}>
           <button type="button" className="workshop-library__item-toggle" aria-expanded={open} onClick={() => openNote(note)}><span><strong>{note.title}</strong><small>{note.source} · {note.note_type} · {String(note.updated_at || '').slice(0, 10)}</small></span>{open ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</button>
           {open && <div className="workshop-notes__editor"><QuestionContext context={note.context} /><label>标题<input value={editDraft.title} onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })} /></label><label>内容<textarea rows={5} value={editDraft.content} onChange={(event) => setEditDraft({ ...editDraft, content: event.target.value })} /></label><div><button type="button" onClick={() => saveEdit(note.note_id)}>保存修改</button><button type="button" className="workshop-library__delete" onClick={() => removeNote(note.note_id)}><Trash2 size={14} />删除笔记</button></div></div>}
         </article>;

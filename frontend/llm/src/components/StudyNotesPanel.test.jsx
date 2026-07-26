@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import StudyNotesPanel from './StudyNotesPanel';
@@ -28,6 +28,7 @@ describe('StudyNotesPanel', () => {
     render(<StudyNotesPanel />);
 
     expect(await screen.findByRole('button', { name: /四君子汤记忆/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '新建笔记' }));
     fireEvent.change(screen.getByPlaceholderText('今天学到了什么？'), { target: { value: '补气方辨析' } });
     fireEvent.change(screen.getByPlaceholderText(/写下理解/), { target: { value: '四君子汤是补气基础方。' } });
     fireEvent.click(screen.getByRole('button', { name: '保存笔记' }));
@@ -49,5 +50,24 @@ describe('StudyNotesPanel', () => {
     await screen.findByRole('button', { name: /四君子汤记忆/ });
     fireEvent.change(screen.getByLabelText('搜索笔记'), { target: { value: '不存在' } });
     expect(screen.getByText('暂无符合条件的笔记')).toBeInTheDocument();
+  });
+
+  it('creates a server-backed note from the merged note dialog', async () => {
+    api.createNote.mockResolvedValue({ note: { note_id: 'N2' } });
+    render(<StudyNotesPanel />);
+    await screen.findByRole('button', { name: /四君子汤记忆/ });
+
+    expect(screen.queryByRole('dialog', { name: '新建笔记' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '新建笔记' }));
+
+    const dialog = screen.getByRole('dialog', { name: '新建笔记' });
+    fireEvent.change(within(dialog).getByLabelText('标题'), { target: { value: '补气方辨析' } });
+    fireEvent.change(within(dialog).getByLabelText('内容'), { target: { value: '四君子汤是补气基础方。' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存笔记' }));
+
+    await waitFor(() => expect(api.createNote).toHaveBeenCalledWith(expect.objectContaining({
+      title: '补气方辨析',
+      content: '四君子汤是补气基础方。',
+    })));
   });
 });
