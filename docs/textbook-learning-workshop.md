@@ -28,6 +28,9 @@
 
 1. 点击章节，查看该章节的小节。
 2. 点击小节，进入知识点和视频学习页面。
+   - 章节和小节优先按照标题中的“第 X 章 / 第 X 节”数字排序；
+   - 原始 `chapter_order` / `section_order` 仅在标题没有序号时作为回退。
+   - 如果原始章节内出现“第三节、第四节、第一节、第二节”这类跨章错挂，且全书按“第一节”切分出的组数与章节数严格一致，后端会按切片顺序重新挂接父章节；当前修正 122 个错挂小节。
 3. 点击带有时间戳视频的知识点时，时间戳视频会替换当前视频，页面始终只显示一个视频播放器。
 4. 点击“返回上一个视频”，可以回到前一个视频。
 5. 点击“返回”可以回到学习工坊。
@@ -65,6 +68,7 @@ backend/competition/knowledge_atlas_chapters/2026-07-22/final/
 - `chapter_nodes.jsonl`：最终发布的教材、章节和小节节点；
 - `chunk_chapter_links.jsonl`：每个 `chunk_uid` 到章节和小节的映射；
 - `publish-report.json`：最终发布数量和完整性报告。
+- `section_video_matches.jsonl`：视频分 P 到教材小节完整视频的正式映射。
 
 同一日期目录下还保留了生成、审核和修复过程资料，例如 `reviewed-v2/`、`reviewed-v3/`、`audit_data/` 和若干处理脚本。这些是开发审计资料，不是运行时必须文件；正式消费应优先使用 `final/` 目录。
 
@@ -131,6 +135,37 @@ frontend/llm/src/appShell.js
 ```text
 backend/competition_app/.env.example
 ```
+
+`KNOWLEDGE_ATLAS_CHAPTER_ROOT` 可以指向直接包含发布文件的 `final/`，也可以指向以 `final/` 为子目录的上一级发布目录。后端会自动选择正式发布目录。部署后的目标目录至少应包含：
+
+```text
+chapter_nodes.jsonl
+chunk_chapter_links.jsonl
+section_video_matches.jsonl
+publish-report.json
+```
+
+小节完整视频映射优先读取当前视频发布目录：
+
+```text
+{KNOWLEDGE_ATLAS_VIDEO_ROOT}/{active-release}/ocr_section_matches/section_video_matches.jsonl
+```
+
+运行目录未部署该文件时，后端回退读取章节正式发布目录中的同名文件：
+
+```text
+backend/competition/knowledge_atlas_chapters/2026-07-22/final/section_video_matches.jsonl
+```
+
+`GET /api/knowledge/atlas/status` 的 `coverage` 字段分别报告教材切片映射、知识点视频和小节完整视频覆盖情况；缺少可选的小节视频映射时同时写入 `warnings`，不再伪装成已有完整视频覆盖。
+
+加载优先级如下：
+
+1. 视频运行目录中的 OCR 映射，适用于独立发布新视频资产；
+2. `KNOWLEDGE_ATLAS_CHAPTER_ROOT` 中的正式映射；
+3. 仓库内置的 `2026-07-22/final/section_video_matches.jsonl`。
+
+因此，合并本分支后不需要在服务器上手工寻找作者本机文件；只要仓库内置正式发布目录存在，小节完整视频就能加载。知识点时间戳视频仍依赖 `KNOWLEDGE_ATLAS_VIDEO_ROOT` 下的 `full_batch_results`。
 
 后端知识资产和交付逻辑位于：
 
@@ -239,6 +274,68 @@ book
 
 因此，最终发布数据保持了 **73,170 / 73,170** 条切片映射，且 `chunk_uid` 唯一。
 
+### `section_video_matches.jsonl`
+
+当前正式映射共 5,227 行，来源为 `ocr-section-1-3-5-v7`。在当前章节树和知识点数据上：
+
+- 5,176 行能够解析到具体小节；
+- 51 行暂时无法解析；
+- 覆盖 1,436 个有完整分 P 视频的小节。
+
+没有完整分 P 视频的小节仍可回退展示知识点时间戳推荐视频，但两类覆盖率必须分别统计。
+
+每行至少使用以下字段：
+
+```json
+{
+  "pipeline_version": "ocr-section-1-3-5-v7",
+  "bvid": "BVxxxxxxxxxx",
+  "aid": 123,
+  "cid": 456,
+  "page": 1,
+  "duration": 520,
+  "video_title": "视频标题",
+  "part_title": "分P标题",
+  "kp_lv1": "教材名称",
+  "kp_lv2": "小节名称",
+  "match_mode": "title_core",
+  "match_source": "ocr_1_3_5",
+  "matched_text": "匹配文本"
+}
+```
+
+后端解析规则：
+
+1. 如果记录含 `section_id`，优先直接关联；
+2. 否则使用 `kp_lv1 + kp_lv2` 匹配章节树；
+3. 章节树标题不一致时，使用现有知识点到切片的映射反查小节；
+4. 同名小节仍有多个候选时，结合 `part_title`、`video_title` 和 OCR 文本识别章节；
+5. 无法可靠确定的记录计入 `unmatched_rows`，不强行挂接。
+
+小节接口返回：
+
+- `section_videos`：小节完整分 P 视频，最多返回一个；
+- `recommended_videos`：没有完整视频时的知识点时间戳推荐；
+- `resource_state: "exact"`：存在小节完整视频；
+- `resource_state: "recommended"`：仅存在推荐片段；
+- `resource_state: "empty"`：没有可播放资源。
+
+### 更新小节视频映射
+
+更新视频资产时执行：
+
+1. 生成或取得新的 `section_video_matches.jsonl`；
+2. 将正式文件放入 `backend/competition/knowledge_atlas_chapters/2026-07-22/final/`；
+3. 更新 `publish-report.json` 中的小节视频行数、解析数、未匹配数、覆盖小节数和 SHA-256；
+4. 调用状态接口确认 `coverage.section_full_videos.mapping_file_available=true`；
+5. 运行后端接口测试和学习工坊前端测试。
+
+校验文件：
+
+```powershell
+Get-FileHash -Algorithm SHA256 backend/competition/knowledge_atlas_chapters/2026-07-22/final/section_video_matches.jsonl
+```
+
 ## 开发验证
 
 前端目录：
@@ -260,6 +357,13 @@ npm run test:unit -- src/components/DashboardTextbookPlan.test.jsx src/component
 ```powershell
 Set-Location backend
 python -m pytest competition_app/tests/services/test_knowledge_recognition_review.py competition_app/tests/api/test_knowledge_recognition_reports.py -q
+```
+
+学习工坊后端接口测试需要从交接后端目录运行：
+
+```powershell
+Set-Location backend/competition/backend-handoff-20260720
+python -m pytest APP/backend/tests/test_knowledge_atlas_service.py APP/backend/tests/test_knowledge_atlas_routes.py APP/backend/tests/test_knowledge_atlas_video_pipeline.py APP/backend/tests/test_knowledge_atlas_asset_import.py -q
 ```
 
 ## 注意事项

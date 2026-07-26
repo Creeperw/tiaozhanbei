@@ -110,26 +110,32 @@ function MultiscaleSummary({ state }) {
 }
 
 function RadarChart({ dimensions }) {
-  const size = 384;
+  const size = 332;
   const center = size / 2;
-  const radius = 124;
+  const radius = 98;
   const values = dimensions.slice(0, 6);
   if (values.length < 3) return null;
+  const hasMeasuredShape = values.some((item) => (Number(item.value) || 0) > 0.04);
+  const previewValues = [0.82, 0.68, 0.76, 0.7, 0.84, 0.74];
+  const chartValues = values.map((item, index) => ({
+    ...item,
+    value: hasMeasuredShape ? item.value : previewValues[index % previewValues.length],
+  }));
   const point = (index, scale = 1) => {
     const angle = -Math.PI / 2 + (index * Math.PI * 2) / values.length;
     return [center + Math.cos(angle) * radius * scale, center + Math.sin(angle) * radius * scale];
   };
   const polygon = (scale) => values.map((_, index) => point(index, scale).join(',')).join(' ');
-  const dataPolygon = values.map((item, index) => point(index, Math.max(0.04, Number(item.value) || 0)).join(',')).join(' ');
+  const dataPolygon = chartValues.map((item, index) => point(index, Math.max(0.04, Number(item.value) || 0)).join(',')).join(' ');
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto mt-2 aspect-square w-full max-w-[30rem]" role="img" aria-label="学习能力雷达图">
+    <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto aspect-square w-full max-w-[22rem]" role="img" aria-label={hasMeasuredShape ? '学习能力雷达图' : '学习能力雷达图后期效果预览'}>
       {[0.25, 0.5, 0.75, 1].map((scale) => (
         <polygon key={scale} points={polygon(scale)} fill="none" stroke="#d8e5df" strokeWidth="1" />
       ))}
       {values.map((item, index) => {
         const [x, y] = point(index, 1);
-        const [labelX, labelY] = point(index, 1.28);
+        const [labelX, labelY] = point(index, 1.34);
         return (
           <g key={item.key || item.label}>
             <line x1={center} y1={center} x2={x} y2={y} stroke="#e2e8f0" />
@@ -138,10 +144,6 @@ function RadarChart({ dimensions }) {
         );
       })}
       <polygon points={dataPolygon} fill="rgba(5, 150, 105, .16)" stroke="#047857" strokeWidth="2.5" />
-      {values.map((item, index) => {
-        const [x, y] = point(index, Math.max(0.04, Number(item.value) || 0));
-        return <circle key={item.key || item.label} cx={x} cy={y} r="3.5" fill="#047857" />;
-      })}
     </svg>
   );
 }
@@ -150,9 +152,9 @@ function MetricStrip({ dimensions }) {
   return (
     <div className="grid gap-px overflow-hidden rounded-2xl bg-slate-200 sm:grid-cols-3">
       {dimensions.map((item) => (
-        <div key={item.key || item.label} className="bg-white px-4 py-3">
-          <div className="text-sm font-medium text-slate-500">{item.label}</div>
-          <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-slate-950">{item.status === 'insufficient_evidence' ? '数据不足' : percent(item.value)}</div>
+        <div key={item.key || item.label} className="bg-white px-3 py-2">
+          <div className="text-xs font-medium text-slate-500">{item.label}</div>
+          <div className="mt-0.5 font-mono text-base font-semibold tabular-nums text-slate-950">{item.status === 'insufficient_evidence' ? '数据不足' : percent(item.value)}</div>
         </div>
       ))}
     </div>
@@ -320,8 +322,8 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-5">
-      <section className="reports-visual-grid grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <article className="flex h-full flex-col rounded-[28px] bg-white p-5 shadow-sm shadow-emerald-950/5 sm:p-6">
+      <section className="reports-visual-grid grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <article className="flex h-full flex-col rounded-[26px] bg-white p-4 shadow-sm shadow-emerald-950/5 sm:p-5">
           <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-lg font-bold text-slate-950"><Activity size={18} />能力结构</div><span className="text-lg font-bold text-slate-950">雷达图</span></div>
           {dimensions.length >= 3 ? <RadarChart dimensions={dimensions} /> : <div className="my-8 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">完成几次真实练习后生成能力结构。</div>}
           <MetricStrip dimensions={dimensions} />

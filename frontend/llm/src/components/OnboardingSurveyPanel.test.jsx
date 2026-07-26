@@ -11,196 +11,173 @@ function jsonResponse(payload, ok = true) {
   });
 }
 
+const target = {
+  target_id: 'tcm_physician',
+  official_name: '中医执业医师资格考试',
+  target_type: 'certification',
+  exam_track_id: 'EXAM_2025_TCM_PHYSICIAN',
+  textbook_route_id: 'textbook_tcm_physician',
+  textbook_route_version: 1,
+};
+
+const template = {
+  groups: [
+    {
+      key: 'academic',
+      title: '学历教育群体',
+      default_profile: {
+        learning_goal: '课程达标',
+        resource_preference: ['经典教材', '分阶测试题'],
+      },
+    },
+    {
+      key: 'cross_professional',
+      title: '跨专业进阶群体',
+      default_profile: {
+        learning_goal: '能力进阶',
+        resource_preference: ['知识卡片'],
+      },
+    },
+  ],
+  questions: [],
+  required_fields: ['learner_group'],
+};
+
+function installRequests({ savedSurvey = {}, completionUser = null } = {}) {
+  const requests = [];
+  vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+    requests.push({ url, options });
+    if (url.endsWith('/training/onboarding/group-templates')) return jsonResponse(template);
+    if (url.endsWith('/api/v1/qualification-targets')) return jsonResponse({ items: [target] });
+    if (url.endsWith('/training/onboarding/status')) {
+      return jsonResponse({
+        status: Object.keys(savedSurvey).length ? 'onboarding_completed' : 'pending',
+        survey_answers: savedSurvey,
+      });
+    }
+    if (url.endsWith('/training/onboarding/survey')) {
+      return jsonResponse({ status: 'onboarding_completed' });
+    }
+    if (url.endsWith('/api/v1/auth/onboarding/complete')) {
+      return jsonResponse({
+        user: completionUser || { username: 'new-user', onboarding_required: false },
+      });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  }));
+  return requests;
+}
+
+function choose(name) {
+  fireEvent.click(screen.getByRole('radio', { name: new RegExp(name) }));
+}
+
+function continueStep() {
+  fireEvent.click(screen.getByRole('button', { name: '继续' }));
+}
+
+async function completeRequiredSteps() {
+  choose('学历教育群体');
+  continueStep();
+  fireEvent.click(await screen.findByRole('radio', { name: new RegExp(target.official_name) }));
+  continueStep();
+  choose('非医学专业');
+  continueStep();
+  choose('零基础');
+  continueStep();
+  choose('30–60 分钟');
+  continueStep();
+}
+
 describe('OnboardingSurveyPanel', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('loads the five supported qualification exams and saves the trusted target', async () => {
-    const requests = [];
-    const targets = [
-      ['tcm_physician', '中医执业医师资格考试', 'EXAM_2025_TCM_PHYSICIAN', 'textbook_tcm_physician'],
-      ['tcm_assistant', '中医执业助理医师资格考试', 'EXAM_2025_TCM_ASSISTANT', 'textbook_tcm_physician'],
-      ['integrated_physician', '中西医结合执业医师资格考试', 'EXAM_2025_INTEGRATED_PHYSICIAN', 'textbook_integrated_clinical'],
-      ['integrated_assistant', '中西医结合执业助理医师资格考试', 'EXAM_2025_INTEGRATED_ASSISTANT', 'textbook_integrated_clinical'],
-      ['licensed_pharmacist_tcm', '执业药师职业资格考试（中药学类）', 'EXAM_TCM_LICENSED_PHARMACIST', 'textbook_tcm_pharmacy'],
-    ].map(([target_id, official_name, exam_track_id, textbook_route_id]) => ({
-      target_id,
-      official_name,
-      exam_track_id,
-      textbook_route_id,
-      textbook_route_version: 1,
-      target_type: 'certification',
-    }));
-    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
-      requests.push({ url, options });
-      if (url.endsWith('/training/onboarding/group-templates')) {
-        return jsonResponse({ groups: [], questions: [], required_fields: ['learner_group'] });
-      }
-      if (url.endsWith('/api/v1/qualification-targets')) {
-        return jsonResponse({
-          schema_version: '1.0',
-          items: targets,
-          total: 5,
-        });
-      }
-      if (url.endsWith('/training/onboarding/status')) {
-        return jsonResponse({ status: 'pending', survey_answers: {} });
-      }
-      if (url.endsWith('/training/onboarding/survey')) {
-        return jsonResponse({ status: 'onboarding_completed' });
-      }
-      throw new Error(`Unexpected request: ${url}`);
-    }));
-
+  it('shows one question at a time, saves the trusted target, and allows optional skips', async () => {
+    const requests = installRequests();
     const onSaved = vi.fn();
-    render(<OnboardingSurveyPanel onSaved={onSaved} />);
+    render(<OnboardingSurveyPanel required stepOffset={1} onSaved={onSaved} onBackToAccount={vi.fn()} />);
 
-    for (const [, label] of targets.map((item) => [item.target_id, item.official_name])) {
-      expect(await screen.findByRole('option', { name: label })).toBeInTheDocument();
-    }
-    fireEvent.change(screen.getByLabelText('所属用户群体'), {
-      target: { value: 'academic' },
-    });
-    fireEvent.change(screen.getByLabelText('学习/考试方向'), {
-      target: { value: 'tcm_physician' },
-    });
-    fireEvent.change(screen.getByLabelText('每日可投入时长'), {
-      target: { value: '45' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '保存学情调查' }));
+    expect(await screen.findByRole('radio', { name: /学历教育群体/ })).toBeInTheDocument();
+    await completeRequiredSteps();
+    expect(screen.getByRole('heading', { name: '你通常喜欢在什么时候学习？' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    expect(screen.getByRole('heading', { name: '你更喜欢哪一种学习资源？' })).toBeInTheDocument();
+    choose('知识卡片');
+    fireEvent.click(screen.getByRole('button', { name: '完成并进入学习' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
-    const surveyRequests = requests.filter(({ url }) => url.endsWith('/training/onboarding/survey'));
-    expect(surveyRequests).toHaveLength(1);
-    expect(JSON.parse(surveyRequests[0].options.body)).toMatchObject({
+    const surveyRequest = requests.find(({ url }) => url.endsWith('/training/onboarding/survey'));
+    expect(JSON.parse(surveyRequest.options.body)).toMatchObject({
       learner_group: 'academic',
-      preferences: { daily_available_minutes: 45 },
+      background: {
+        education_major: '非医学专业',
+        foundation_level: '零基础',
+      },
+      preferences: {
+        daily_available_minutes: 45,
+        preferred_time_slot: '',
+        resource_preference: '知识卡片',
+      },
       goals: {
-        target_exam_or_course: '中医执业医师资格考试',
-        textbook_route_id: 'textbook_tcm_physician',
+        target_exam_or_course: target.official_name,
+        textbook_route_id: target.textbook_route_id,
         textbook_route_version: 1,
       },
       target_type: 'certification',
-      exam_track_id: 'EXAM_2025_TCM_PHYSICIAN',
+      exam_track_id: target.exam_track_id,
     });
-    expect(requests.some(({ url }) => url.endsWith('/personalization/learning-target'))).toBe(false);
-    expect(screen.queryByLabelText('长期目标')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('短期目标')).not.toBeInTheDocument();
-    expect(screen.queryByText('规划输入')).not.toBeInTheDocument();
   });
 
-  it('requires registration basics and completes the auth gate after saving', async () => {
-    const requests = [];
-    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
-      requests.push({ url, options });
-      if (url.endsWith('/training/onboarding/group-templates')) {
-        return jsonResponse({ groups: [], questions: [], required_fields: ['learner_group'] });
-      }
-      if (url.endsWith('/api/v1/qualification-targets')) {
-        return jsonResponse({
-          schema_version: '1.0',
-          items: [{
-            target_id: 'tcm_physician',
-            official_name: '中医执业医师资格考试',
-            target_type: 'certification',
-            exam_track_id: 'EXAM_2025_TCM_PHYSICIAN',
-            textbook_route_id: 'textbook_tcm_physician',
-            textbook_route_version: 1,
-          }],
-        });
-      }
-      if (url.endsWith('/training/onboarding/status')) {
-        return jsonResponse({ status: 'pending', survey_answers: {} });
-      }
-      if (url.endsWith('/training/onboarding/survey')) {
-        return jsonResponse({ status: 'onboarding_completed' });
-      }
-      if (url.endsWith('/api/v1/auth/onboarding/complete')) {
-        return jsonResponse({
-          user: { username: 'new-user', onboarding_required: false },
-        });
-      }
-      throw new Error(`Unexpected request: ${url}`);
-    }));
+  it('completes the auth gate and supports going back on every survey step', async () => {
+    const onBackToAccount = vi.fn();
+    const completionUser = { username: 'new-user', onboarding_required: false };
+    const requests = installRequests({ completionUser });
     const onSaved = vi.fn();
-    render(<OnboardingSurveyPanel required onSaved={onSaved} />);
+    render(
+      <OnboardingSurveyPanel
+        required
+        stepOffset={1}
+        onSaved={onSaved}
+        onBackToAccount={onBackToAccount}
+      />,
+    );
 
-    await screen.findByRole('option', { name: '中医执业医师资格考试' });
-    fireEvent.change(screen.getByLabelText('所属用户群体'), { target: { value: 'academic' } });
-    fireEvent.change(screen.getByLabelText('学习/考试方向'), { target: { value: 'tcm_physician' } });
-    fireEvent.change(screen.getByLabelText('学历/专业'), { target: { value: '非医学专业' } });
-    fireEvent.change(screen.getByLabelText('基础水平'), { target: { value: '零基础' } });
-    fireEvent.change(screen.getByLabelText('每日可投入时长'), { target: { value: '45' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存学情调查' }));
+    await screen.findByRole('radio', { name: /学历教育群体/ });
+    fireEvent.click(screen.getByRole('button', { name: '上一步' }));
+    expect(onBackToAccount).toHaveBeenCalledTimes(1);
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith({
-      user: { username: 'new-user', onboarding_required: false },
-    }));
+    await completeRequiredSteps();
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ user: completionUser }));
     expect(requests.some(({ url }) => url.endsWith('/api/v1/auth/onboarding/complete'))).toBe(true);
   });
 
-  it('restores the saved registration survey when the learner revisits the survey tab', async () => {
-    vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url.endsWith('/training/onboarding/group-templates')) {
-        return jsonResponse({
-          groups: [
-            {
-              key: 'academic',
-              title: '学历教育群体',
-              default_profile: { learning_goal: '课程达标', resource_preference: ['教材'] },
-            },
-            {
-              key: 'cross_professional',
-              title: '跨专业进阶群体',
-              default_profile: { learning_goal: '能力进阶', resource_preference: ['知识卡片'] },
-            },
-          ],
-          questions: [],
-          required_fields: ['learner_group'],
-        });
-      }
-      if (url.endsWith('/api/v1/qualification-targets')) {
-        return jsonResponse({
-          items: [{
-            target_id: 'tcm_physician',
-            official_name: '中医执业医师资格考试',
-            target_type: 'certification',
-            exam_track_id: 'EXAM_2025_TCM_PHYSICIAN',
-            textbook_route_id: 'textbook_tcm_physician',
-            textbook_route_version: 1,
-          }],
-        });
-      }
-      if (url.endsWith('/training/onboarding/status')) {
-        return jsonResponse({
-          status: 'onboarding_completed',
-          survey_answers: {
-            learner_group: 'academic',
-            major_or_role: '非医学专业',
-            tcm_foundation: '零基础',
-            target_exam_or_course: '中医执业医师资格考试',
-            qualification_target_id: 'tcm_physician',
-            textbook_route_id: 'textbook_tcm_physician',
-            textbook_route_version: 1,
-            daily_available_minutes: 45,
-            preferred_time_slot: '晚间',
-            resource_preference: ['知识卡片'],
-          },
-        });
-      }
-      throw new Error(`Unexpected request: ${url}`);
-    }));
+  it('restores saved choices and speaks the group recommendation as Li Shizhen', async () => {
+    installRequests({
+      savedSurvey: {
+        learner_group: 'academic',
+        major_or_role: '非医学专业',
+        tcm_foundation: '零基础',
+        target_exam_or_course: target.official_name,
+        qualification_target_id: target.target_id,
+        daily_available_minutes: 45,
+        preferred_time_slot: '晚间',
+        resource_preference: ['知识卡片'],
+      },
+    });
 
-    render(<OnboardingSurveyPanel />);
+    render(<OnboardingSurveyPanel stepOffset={1} onBackToAccount={vi.fn()} />);
 
-    expect(await screen.findByLabelText('所属用户群体')).toHaveValue('academic');
-    expect(screen.getByLabelText('学习/考试方向')).toHaveValue('tcm_physician');
-    expect(screen.getByLabelText('学历/专业')).toHaveValue('非医学专业');
-    expect(screen.getByLabelText('基础水平')).toHaveValue('零基础');
-    expect(screen.queryByLabelText('长期目标')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('每日可投入时长')).toHaveValue('45');
-    expect(screen.getByLabelText('偏好学习时段')).toHaveValue('晚间');
-    expect(screen.getByLabelText('偏好资源类型')).toHaveValue('知识卡片');
+    const selectedGroup = await screen.findByRole('radio', { name: /学历教育群体/ });
+    expect(selectedGroup).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('好，根据你这一情况，我优先推荐你学习经典教材、分阶测试题。')).toBeInTheDocument();
+    continueStep();
+    expect(await screen.findByRole('radio', { name: new RegExp(target.official_name) })).toHaveAttribute('aria-checked', 'true');
+    continueStep();
+    expect(screen.getByRole('radio', { name: /非医学专业/ })).toHaveAttribute('aria-checked', 'true');
   });
 });

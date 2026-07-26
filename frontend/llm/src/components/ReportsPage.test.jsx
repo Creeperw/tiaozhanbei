@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import ReportsPage from './ReportsPage';
@@ -39,7 +39,7 @@ describe('ReportsPage', () => {
             { date: '2026-07-17', focus_minutes: 45, task_completion_rate: 0.5, login_days: 1 },
             { date: '2026-07-18', focus_minutes: 0, task_completion_rate: 0, login_days: 0 },
             { date: '2026-07-19', focus_minutes: 35, task_completion_rate: 0.75, login_days: 1 },
-            { date: '2026-07-20', focus_minutes: 60, task_completion_rate: 1, login_days: 1 },
+            { date: '2026-07-20', focus_minutes: 60, task_completion_rate: 0.7, login_days: 1 },
             { date: '2026-07-21', focus_minutes: 30, task_completion_rate: 0.5, login_days: 1 },
             { date: '2026-07-22', focus_minutes: 35, task_completion_rate: 0.5, login_days: 1 },
           ],
@@ -89,7 +89,9 @@ describe('ReportsPage', () => {
     render(<ReportsPage />);
 
     expect(await screen.findByLabelText(/2026-07-22：有效学习 35 分钟/)).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '每日学习趋势' })).toBeInTheDocument();
+    const trendRegion = screen.getByRole('region', { name: '每日学习趋势' });
+    expect(trendRegion).toBeInTheDocument();
+    expect(within(trendRegion).getByText('90%')).toBeInTheDocument();
     expect(screen.getByText('有效学习时长（分钟）')).toBeInTheDocument();
     expect(screen.getByText('任务完成率（%）')).toBeInTheDocument();
     expect(screen.getByText('日期')).toBeInTheDocument();
@@ -100,6 +102,7 @@ describe('ReportsPage', () => {
     expect(screen.getByText('样本状态：可用于谨慎干预')).toBeInTheDocument();
     expect(screen.getAllByText('练习得分率').length).toBeGreaterThan(0);
     expect(screen.getByText('73%')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '学习能力雷达图' }).querySelectorAll('circle')).toHaveLength(0);
     expect(screen.getByText('监测口径、数据来源与参考依据')).toBeInTheDocument();
     expect(screen.getByText('宏观状态')).toBeInTheDocument();
     expect(screen.getByText('中医基础与文化语言')).toBeInTheDocument();

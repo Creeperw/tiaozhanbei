@@ -59,9 +59,11 @@ export default function ReviewDashboardPanel() {
             [History, '掌握记录', dashboard.summary?.history_count ?? 0],
           ].map(([Icon, label, value]) => (
             <div key={label} className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
-              {React.createElement(Icon, { size: 18, className: 'text-emerald-700' })}
+              <div className="flex items-center gap-2">
+                {React.createElement(Icon, { size: 18, className: 'text-emerald-700' })}
+                <h3 className="text-sm font-semibold text-slate-800">{label}</h3>
+              </div>
               <div className="mt-3 text-2xl font-black text-slate-900">{value}</div>
-              <div className="mt-1 text-xs text-slate-500">{label}</div>
             </div>
           ))}
         </div>

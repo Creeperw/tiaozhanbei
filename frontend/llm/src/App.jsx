@@ -12,7 +12,7 @@ import LearningStageLanding from './components/learning-stage/LearningStageLandi
 import TextbookChapterLearning from './components/workshop-textbook/TextbookChapterLearning';
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
-import OnboardingSurveyPanel from './components/OnboardingSurveyPanel';
+import RegistrationJourney from './components/RegistrationJourney';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -191,19 +191,11 @@ export default function App() {
 
   if (currentUser.onboarding_required) {
     return (
-      <div className="min-h-screen overflow-y-auto bg-[#f4fbf7] px-4 py-8 sm:px-8">
-        <div className="mx-auto max-w-5xl rounded-[32px] border border-emerald-100 bg-white p-6 shadow-xl shadow-emerald-100/60 sm:p-9">
-          <div className="mb-7 flex flex-wrap items-start justify-between gap-4 border-b border-emerald-100 pb-5">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">首次使用 · 必填</div>
-              <h1 className="mt-2 text-3xl font-black text-emerald-950">先完成学情调查，再进入学习页面</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600">这些基本信息会同时建立学习画像和初始学习记忆，供规划、资源推荐与学情分析统一使用。</p>
-            </div>
-            <button type="button" onClick={handleLogout} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">退出账号</button>
-          </div>
-          <OnboardingSurveyPanel required onSaved={handleOnboardingSaved} />
-        </div>
-      </div>
+      <RegistrationJourney
+        existingUser={currentUser}
+        onComplete={(user) => handleOnboardingSaved({ user })}
+        onExit={handleLogout}
+      />
     );
   }
 

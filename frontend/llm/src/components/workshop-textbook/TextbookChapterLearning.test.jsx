@@ -42,6 +42,37 @@ describe('TextbookChapterLearning', () => {
     expect(document.querySelector('.textbook-catalog-stage')).toHaveClass('has-chapter');
   });
 
+  it('sorts chapters and sections by the numbers written in their titles', async () => {
+    loadAtlasNodes.mockImplementation(({ level }) => Promise.resolve({
+      nodes: level === 2
+        ? [
+          { id: 'CH_3', name: '第三章 三', children_count: 1 },
+          { id: 'CH_1', name: '第一章 一', children_count: 4 },
+          { id: 'CH_2', name: '第二章 二', children_count: 1 },
+        ]
+        : [
+          { id: 'SEC_3', name: '第三节 三', count: 1 },
+          { id: 'SEC_4', name: '第四节 四', count: 1 },
+          { id: 'SEC_1', name: '第一节 一', count: 1 },
+          { id: 'SEC_2', name: '第二节 二', count: 1 },
+        ],
+    }));
+    render(<TextbookChapterLearning navigationContext={{ lv1: '中医文献学' }} />);
+
+    await screen.findByRole('button', { name: /第一章 一/ });
+    expect(
+      [...document.querySelectorAll('.textbook-directory--chapters strong')]
+        .map((node) => node.textContent),
+    ).toEqual(['第一章 一', '第二章 二', '第三章 三']);
+
+    fireEvent.click(screen.getByRole('button', { name: /第一章 一/ }));
+    await screen.findByRole('button', { name: /第一节 一/ });
+    expect(
+      [...document.querySelectorAll('.textbook-directory--sections strong')]
+        .map((node) => node.textContent),
+    ).toEqual(['第一节 一', '第二节 二', '第三节 三', '第四节 四']);
+  });
+
   it('replaces the section video with timestamp videos and supports video history back', async () => {
     prepare();
     render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
