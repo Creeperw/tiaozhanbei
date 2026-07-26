@@ -1,95 +1,135 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import HomePage from './HomePage';
+
+const qualificationTargets = [
+  {
+    target_id: 'target-a',
+    exam_track_id: 'track-a',
+    official_name: '中医执业医师资格考试',
+  },
+  {
+    target_id: 'target-b',
+    exam_track_id: 'track-b',
+    official_name: '中西医结合执业医师资格考试',
+  },
+];
 
 function response(payload, ok = true, status = 200) {
   return { ok, status, text: async () => JSON.stringify(payload) };
 }
 
-describe('HomePage', () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  it('renders the reference hero, learning summaries, and every portal action', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(response({
-      continue_learning: [{ session_id: 's-1', title: '中医基础理论精要' }],
-      today_tasks: [{ title: '复习方剂学', duration: '45 分钟' }],
-      status_cards: [{ key: 'accuracy', value: '65%' }],
-    }))));
-
-    render(<HomePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
-
-    expect(screen.getByText('今天，让学习更有方向')).toBeInTheDocument();
-    expect(screen.getByText('循序精进')).toBeInTheDocument();
-    expect(await screen.findByText('中医基础理论精要')).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: '学习进度' })).toHaveAttribute('aria-valuenow', '65');
-    expect(screen.queryByRole('button', { name: '上传资料' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '开始学习' })).not.toBeInTheDocument();
-
-    for (const label of ['继续学习', '待办任务', '智能问答', '资料检索', '知识图谱', '题目工作区', '专项练习', '错题巩固', '案例实训']) {
-      expect(screen.getByRole('button', { name: new RegExp(label) })).toBeInTheDocument();
+function installLearningTargetApi() {
+  vi.stubGlobal('fetch', vi.fn((url) => {
+    const path = String(url);
+    if (path.endsWith('/qualification-targets')) {
+      return Promise.resolve(response({ items: qualificationTargets }));
     }
+    if (path.endsWith('/personalization/learning-target')) {
+      return Promise.resolve(response({ target: { exam_track_id: 'track-a' } }));
+    }
+    throw new Error(`Unexpected request: ${path}`);
+  }));
+}
+
+function installMotionPreference(reduced = false) {
+  vi.stubGlobal('matchMedia', vi.fn(() => ({
+    matches: reduced,
+    media: '(prefers-reduced-motion: reduce)',
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })));
+}
+
+describe('HomePage', () => {
+  beforeEach(() => {
+    installLearningTargetApi();
+    installMotionPreference();
   });
 
-  it('navigates smart Q&A and mistake reinforcement to their real modules', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(response({}))));
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders the platform headline and the real learning target selector', async () => {
+    render(<HomePage onNavigate={vi.fn()} />);
+
+    expect(screen.getByRole('heading', {
+      name: '多智能体协同，让中医药学习更高效',
+    })).toBeInTheDocument();
+    const selector = await screen.findByRole('combobox', { name: '学习目标' });
+    expect(selector).toHaveValue('target-a');
+    expect(screen.getByRole('option', { name: '中西医结合执业医师资格考试' })).toBeInTheDocument();
+  });
+
+  it('renders the core video with autoplay-safe presentation attributes', () => {
+    const { container } = render(<HomePage onNavigate={vi.fn()} />);
+    const video = container.querySelector('video');
+
+    expect(video).toBeInTheDocument();
+    expect(video).toHaveAttribute('src', '/design-images/home/platform-agents.mp4');
+    expect(video).toHaveAttribute('preload', 'metadata');
+    expect(video).toHaveProperty('autoplay', true);
+    expect(video).toHaveProperty('muted', true);
+    expect(video).toHaveProperty('loop', true);
+    expect(video).toHaveProperty('playsInline', true);
+    expect(video).toHaveProperty('controls', false);
+  });
+
+  it('routes both hero calls to action to their intended modules', () => {
     const onNavigate = vi.fn();
-    render(<HomePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
+    render(<HomePage onNavigate={onNavigate} />);
 
-    await screen.findByRole('button', { name: /智能问答/ });
-    fireEvent.click(screen.getByRole('button', { name: /智能问答/ }));
-    expect(onNavigate).toHaveBeenLastCalledWith({ page: 'assistant', params: {} });
+    fireEvent.click(screen.getByRole('button', { name: '开始学习路径' }));
+    expect(onNavigate).toHaveBeenLastCalledWith({ page: 'learning-path', params: {} });
 
-    fireEvent.click(screen.getByRole('button', { name: /错题巩固/ }));
+    fireEvent.click(screen.getByRole('button', { name: '了解多智能体如何协同' }));
     expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'practice',
-      params: { view: 'workspace', taskType: 'mistake_variation' },
+      page: 'assistant',
+      params: { newConversation: true },
     });
   });
 
-  it('shows the first server announcement without blocking learning actions', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(response({
-      announcements: [{ title: '本周专题练习已更新' }],
-    }))));
-
-    render(<HomePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
-
-    expect(await screen.findByRole('status')).toHaveTextContent('本周专题练习已更新');
-    expect(screen.getByRole('button', { name: /智能问答/ })).toBeEnabled();
-  });
-
-  it('records a daily check-in and shows the persisted streak', async () => {
-    const fetchMock = vi.fn((url, options = {}) => {
-      if (String(url).endsWith('/checkin') && options.method === 'POST') {
-        return Promise.resolve(response({
-          message: '今日签到成功',
-          status: { checked_in_today: true, streak: 4, total_checkins: 8, calendar_days: [] },
-        }));
-      }
-      return Promise.resolve(response({
-        checkin_status: { checked_in_today: false, streak: 3, total_checkins: 7, calendar_days: [] },
-      }));
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    render(<HomePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
-
-    fireEvent.click(await screen.findByRole('button', { name: '今日签到' }));
-    expect(await screen.findByRole('button', { name: '今日已签到，连续4天' })).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('今日签到成功');
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/checkin$/), expect.objectContaining({ method: 'POST' }));
-  });
-
-  it('keeps portal navigation available when the dashboard summary request fails', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(response({ detail: '首页数据暂不可用' }, false, 503))));
+  it.each([
+    ['多智能体协同', { page: 'assistant', params: {} }],
+    ['个性化学习路径', { page: 'learning-path', params: {} }],
+    ['知识图谱驱动', { page: 'knowledge', params: { view: 'atlas' } }],
+    ['数据驱动成长', { page: 'personalization', params: {} }],
+  ])('routes the %s capability card', (name, intent) => {
     const onNavigate = vi.fn();
-    render(<HomePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
+    render(<HomePage onNavigate={onNavigate} />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('首页数据暂不可用');
-    expect(screen.queryByRole('progressbar', { name: '学习进度' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }));
+    expect(onNavigate).toHaveBeenCalledWith(intent);
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: /智能问答/ }));
-    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith({ page: 'assistant', params: {} }));
+  it('replaces a failed video with a silent visual fallback', () => {
+    const { container } = render(<HomePage onNavigate={vi.fn()} />);
+
+    fireEvent.error(container.querySelector('video'));
+
+    expect(container.querySelector('video')).not.toBeInTheDocument();
+    expect(screen.getByTestId('platform-video-fallback')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('does not autoplay or loop and pauses once loaded when reduced motion is preferred', async () => {
+    installMotionPreference(true);
+    const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const { container } = render(<HomePage onNavigate={vi.fn()} />);
+    const video = container.querySelector('video');
+
+    expect(video).toHaveProperty('autoplay', false);
+    expect(video).toHaveProperty('loop', false);
+    fireEvent.loadedData(video);
+
+    await waitFor(() => expect(pause).toHaveBeenCalled());
   });
 });
