@@ -37,12 +37,20 @@ function installLearningPathFetch(dashboardPayload = {}, options = {}) {
     const path = String(url);
     if (path.includes('/qualification-targets')) {
       return Promise.resolve(response({
-        items: [{
-          target_id: 'target-tcm',
-          exam_track_id: 'track-tcm',
-          official_name: '中医类别执业医师资格考试',
-          exam_date: '2026-11-29T23:59:59+08:00',
-        }],
+        items: [
+          {
+            target_id: 'target-tcm',
+            exam_track_id: 'track-tcm',
+            official_name: '中医类别执业医师资格考试',
+            exam_date: '2026-11-29T23:59:59+08:00',
+          },
+          {
+            target_id: 'target-integrated',
+            exam_track_id: 'track-integrated',
+            official_name: '中西医结合执业医师资格考试',
+            exam_date: '2026-11-29T23:59:59+08:00',
+          },
+        ],
       }));
     }
     if (path.endsWith('/personalization/learning-target')) {
@@ -185,6 +193,25 @@ describe('LearningPathPage', () => {
     fireEvent.click(await screen.findByRole('tab', { name: '学习任务' }));
 
     expect(screen.getByRole('button', { name: /完成今日章节学习/ })).toBeInTheDocument();
+  });
+
+  it('uses the shared persisted target selector without navigating after a save', async () => {
+    const onNavigate = vi.fn();
+    const fetchMock = installLearningPathFetch();
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
+    const select = await screen.findByRole('combobox', { name: '学习目标' });
+
+    fireEvent.change(select, { target: { value: 'target-integrated' } });
+
+    expect(await screen.findByRole('status')).toHaveTextContent('学习目标已更新');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/personalization/learning-target'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: expect.stringContaining('"exam_track_id":"track-integrated"'),
+      }),
+    );
+    expect(onNavigate).not.toHaveBeenCalled();
   });
 
   it('drills from a stage into its textbook and opens the textbook chapters', async () => {
@@ -330,7 +357,7 @@ describe('LearningPathPage', () => {
     render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
     const target = await screen.findByRole('combobox', { name: '学习目标' });
-    expect(target).toHaveClass('learning-path-page__target-input');
+    expect(target).toHaveClass('learning-target-selector__input');
     expect(target).not.toHaveAttribute('tabindex', '-1');
 
     const learningTab = screen.getByRole('tab', { name: '学习任务' });

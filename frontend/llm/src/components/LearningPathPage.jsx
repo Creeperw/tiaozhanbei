@@ -4,7 +4,7 @@ import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import LearningStageLanding from './learning-stage/LearningStageLanding';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import { adaptPlannedPathNode, loadPlannedLearningPath } from './learning-tree/learningPathApi';
-import { loadLearningTarget, saveLearningTarget } from './exam-atlas/examAtlasApi';
+import LearningTargetSelector from './LearningTargetSelector';
 import './LearningPathPage.css';
 
 function formatReviewDate(value) {
@@ -449,37 +449,6 @@ export default function LearningPathPage({ currentUser, onNavigate }) {
   const [payload, setPayload] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [learningTarget, setLearningTarget] = useState({
-    name: '中医执业医师资格考试',
-    targetId: '',
-  });
-  const [targetOptions, setTargetOptions] = useState([]);
-  const targetSelectRef = useRef(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      fetchWithAuth(`${MAIN_API_BASE}/qualification-targets`)
-        .then((response) => readJsonResponse(response, { items: [] })),
-      loadLearningTarget(),
-    ])
-      .then(([catalog, targetPayload]) => {
-        if (cancelled) return;
-        const options = Array.isArray(catalog?.items) ? catalog.items : [];
-        const target = targetPayload?.target || targetPayload || {};
-        const selected = options.find((item) => item.exam_track_id === target?.exam_track_id)
-          || options[0];
-        setTargetOptions(options);
-        if (selected) {
-          setLearningTarget({
-            name: selected.official_name,
-            targetId: selected.target_id,
-          });
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -562,17 +531,6 @@ export default function LearningPathPage({ currentUser, onNavigate }) {
     },
   });
 
-  const selectTarget = async (event) => {
-    const selected = targetOptions.find((item) => item.target_id === event.target.value);
-    if (!selected) return;
-    setLearningTarget({ name: selected.official_name, targetId: selected.target_id });
-    try {
-      await saveLearningTarget(selected.exam_track_id);
-    } catch {
-      // Task 2 will provide shared rollback and user-facing target-save feedback.
-    }
-  };
-
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
 
   return (
@@ -582,28 +540,7 @@ export default function LearningPathPage({ currentUser, onNavigate }) {
           <span>学习路径</span>
           <h1>{displayName}，按计划稳步推进</h1>
         </div>
-        <label
-          className="learning-path-page__target-select"
-          onClick={(event) => {
-            if (event.target === targetSelectRef.current) return;
-            targetSelectRef.current?.focus();
-            targetSelectRef.current?.showPicker?.();
-          }}
-        >
-          <span>学习目标</span>
-          <select
-            ref={targetSelectRef}
-            className="learning-path-page__target-input"
-            aria-label="学习目标"
-            value={learningTarget.targetId}
-            onChange={selectTarget}
-          >
-            {!targetOptions.length && <option value="">{learningTarget.name}</option>}
-            {targetOptions.map((item) => (
-              <option key={item.target_id} value={item.target_id}>{item.official_name}</option>
-            ))}
-          </select>
-        </label>
+        <LearningTargetSelector className="learning-path-page__target-select" />
       </header>
 
       {error && <div className="learning-path-page__notice" role="alert">{error}</div>}

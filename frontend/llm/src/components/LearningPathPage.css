@@ -45,6 +45,11 @@
   cursor: pointer;
 }
 
+.learning-path-page__target-select .learning-target-selector__control {
+  display: grid;
+  gap: 3px;
+}
+
 .learning-path-page__target-select span {
   color: #7f918a;
   font-size: 0.62rem;
@@ -61,10 +66,25 @@
   font-size: 0.78rem;
 }
 
-.learning-path-page__target-input:focus-visible {
+.learning-path-page__target-select .learning-target-selector__input:focus-visible {
   border-radius: 6px;
   outline: 3px solid rgba(22, 132, 95, 0.38);
   outline-offset: 3px;
+}
+
+.learning-path-page__target-select .learning-target-selector__load-error {
+  display: grid;
+  gap: 5px;
+}
+
+.learning-path-page__target-select .learning-target-selector__load-error button {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  color: #16845f;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 
 .learning-path-page__notice {
