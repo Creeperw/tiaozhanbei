@@ -7,6 +7,11 @@ from uuid import uuid4
 
 from competition_app.contracts.learning_plan import LearningTask
 from competition_app.repositories.learning_plan import LearningPlanRepository
+from competition_app.services.learning_plan import materialize_daily_task_items
+from competition_app.services.learning_plan import (
+    KnowledgePointResolver,
+    VideoResourceResolver,
+)
 
 
 DAILY_TASK_REFRESH_INTERVAL = timedelta(hours=24)
@@ -15,8 +20,15 @@ DAILY_TASK_REFRESH_INTERVAL = timedelta(hours=24)
 class DailyTaskRefreshService:
     """Keep the current learning task on a server-owned rolling 24-hour window."""
 
-    def __init__(self, repository: LearningPlanRepository) -> None:
+    def __init__(
+        self,
+        repository: LearningPlanRepository,
+        knowledge_point_resolver: KnowledgePointResolver | None = None,
+        video_resource_resolver: VideoResourceResolver | None = None,
+    ) -> None:
         self.repository = repository
+        self.knowledge_point_resolver = knowledge_point_resolver
+        self.video_resource_resolver = video_resource_resolver
         self._lock = RLock()
 
     @staticmethod
@@ -63,10 +75,21 @@ class DailyTaskRefreshService:
                 )
 
             next_task = self._next_task(task, plans.short_term_plan, current_time)
-            self.repository.save_current(
+            saved = self.repository.save_current(
                 learner_id,
                 plans.model_copy(update={"learning_task": next_task}),
+                sync_event_type="replace",
+                expected_task_id=task.task_id,
+                expected_task_version=task.version,
             )
+            if not saved:
+                winner = self.repository.get_current(learner_id)
+                winning_task = winner.learning_task if winner is not None else None
+                return self._result(
+                    winning_task,
+                    current_time,
+                    reason="concurrent_refresh",
+                )
             return self._result(
                 next_task,
                 current_time,
@@ -76,27 +99,41 @@ class DailyTaskRefreshService:
             )
 
     @staticmethod
-    def _block_values(block: Any) -> tuple[str, int | None]:
+    def _block_values(block: Any) -> tuple[str, int | None, Any]:
         if isinstance(block, str):
-            return block.strip(), None
+            return block.strip(), None, block
         if isinstance(block, dict):
-            return str(block.get("content") or "").strip(), block.get("estimated_minutes")
-        return str(getattr(block, "content", "") or "").strip(), getattr(
-            block, "estimated_minutes", None
+            return (
+                str(block.get("content") or "").strip(),
+                block.get("estimated_minutes"),
+                block,
+            )
+        return (
+            str(getattr(block, "content", "") or "").strip(),
+            getattr(block, "estimated_minutes", None),
+            block,
         )
 
     def _next_task(self, task: LearningTask, short_plan: Any, now: datetime) -> LearningTask:
         package = short_plan.short_term_learning_package
         blocks = list(package.task_blocks) if package is not None else []
         usable = [self._block_values(block) for block in blocks]
-        usable = [(content, minutes) for content, minutes in usable if content]
+        usable = [
+            (content, minutes, block)
+            for content, minutes, block in usable
+            if content
+        ]
 
         if usable:
             current_index = next(
-                (index for index, (content, _) in enumerate(usable) if content == task.task_content),
+                (
+                    index
+                    for index, (content, _, _) in enumerate(usable)
+                    if content == task.task_content
+                ),
                 -1,
             )
-            content, minutes = usable[(current_index + 1) % len(usable)]
+            content, minutes, selected_block = usable[(current_index + 1) % len(usable)]
             if len(usable) == 1 and content == task.task_content:
                 content = f"复盘并巩固：{content}"
             expected_output = package.expected_output
@@ -104,6 +141,7 @@ class DailyTaskRefreshService:
         else:
             content = f"复盘并巩固：{task.task_content}"
             minutes = None
+            selected_block = None
             expected_output = task.expected_output
             completion_criteria = task.completion_criteria
 
@@ -124,6 +162,14 @@ class DailyTaskRefreshService:
             updated_at=now,
             refresh_started_at=now,
             refresh_due_at=now + DAILY_TASK_REFRESH_INTERVAL,
+            items=materialize_daily_task_items(
+                task_content=content,
+                estimated_minutes=int(minutes or task.estimated_minutes),
+                focus_knowledge_points=list(task.focus_knowledge_points),
+                task_blocks=[selected_block] if selected_block is not None else [],
+                knowledge_point_resolver=self.knowledge_point_resolver,
+                video_resource_resolver=self.video_resource_resolver,
+            ),
         )
 
     def _result(

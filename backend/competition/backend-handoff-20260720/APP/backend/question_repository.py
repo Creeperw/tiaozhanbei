@@ -15,15 +15,15 @@ from APP.backend.database import (
 @dataclass(frozen=True)
 class QuestionSelectionCriteria:
     kp_ids: tuple[str, ...]
-    type_difficulty_counts: tuple[tuple[str, int, int], ...]
+    type_counts: tuple[tuple[str, int], ...]
     exclude_question_ids: tuple[str, ...] = ()
 
     def __post_init__(self):
         object.__setattr__(self, "kp_ids", tuple(self.kp_ids))
         object.__setattr__(
             self,
-            "type_difficulty_counts",
-            tuple(tuple(quota) for quota in self.type_difficulty_counts),
+            "type_counts",
+            tuple(tuple(quota) for quota in self.type_counts),
         )
         object.__setattr__(self, "exclude_question_ids", tuple(self.exclude_question_ids))
 
@@ -37,7 +37,6 @@ class QuestionVersionView:
     answer: str
     analysis: str
     kp_ids: tuple[str, ...]
-    standard_difficulty: int
     source_kind: str
 
     def __post_init__(self):
@@ -56,7 +55,7 @@ class QuestionRepository:
         self._session_factory = session_factory
 
     def select(self, criteria: QuestionSelectionCriteria):
-        requested_count = sum(count for _, _, count in criteria.type_difficulty_counts)
+        requested_count = sum(count for _, count in criteria.type_counts)
         excluded_ids = set(criteria.exclude_question_ids)
         requested_kps = set(criteria.kp_ids)
         selected = []
@@ -64,7 +63,7 @@ class QuestionRepository:
         session = self._session_factory()
         try:
             question_types = tuple(dict.fromkeys(
-                question_type for question_type, _, _ in criteria.type_difficulty_counts
+                question_type for question_type, _ in criteria.type_counts
             ))
             authoritative_question_ids = {
                 question_id for question_id, in session.query(QuestionVersionRecord.question_id).filter(
@@ -107,13 +106,12 @@ class QuestionRepository:
             ).order_by(QuestionBankItem.question_id.asc()).all()
             items = authoritative_items + legacy_items
             items.sort(key=lambda item: (item.question_id, self._version_id(item)))
-            for question_type, difficulty, count in criteria.type_difficulty_counts:
+            for question_type, count in criteria.type_counts:
                 candidates = []
                 candidate_ids = set()
                 for item in items:
                     if (
                         item.question_type != question_type
-                        or int(self._difficulty(item)) != difficulty
                         or item.question_id in excluded_ids
                         or item.question_id in selected_ids
                         or item.question_id in candidate_ids
@@ -141,7 +139,6 @@ class QuestionRepository:
             "question_type": item.question_type,
             "stem": item.stem,
             "kp_ids": item.kp_ids,
-            "standard_difficulty": item.standard_difficulty,
             "source_kind": item.source_kind,
         } for item in selected)
 
@@ -150,12 +147,6 @@ class QuestionRepository:
         if isinstance(item, QuestionVersionRecord):
             return item.question_version_id
         return f"{item.question_id}:v1"
-
-    @staticmethod
-    def _difficulty(item):
-        if isinstance(item, QuestionVersionRecord):
-            return item.standard_difficulty
-        return item.difficulty
 
     @staticmethod
     def _kp_ids(item):
@@ -177,7 +168,6 @@ class QuestionRepository:
                 answer=item.answer or "",
                 analysis=item.analysis or "",
                 kp_ids=self._kp_ids(item),
-                standard_difficulty=int(item.standard_difficulty),
                 source_kind=item.source_kind or "manual",
             )
         return QuestionVersionView(
@@ -188,6 +178,5 @@ class QuestionRepository:
             answer=item.answer or "",
             analysis=item.analysis or "",
             kp_ids=self._kp_ids(item),
-            standard_difficulty=int(item.difficulty),
             source_kind=item.source or "manual",
         )

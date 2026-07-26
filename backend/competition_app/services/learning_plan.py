@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import re
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from competition_app.contracts.default_route import ResolvedPlanningRoute
 from competition_app.contracts.learning_plan import (
+    DailyTaskItemSpec,
     LearningPlanProposal,
     LearningPlanResult,
     LearningTask,
@@ -64,6 +65,204 @@ _LONG_TERM_CONTENT_SECTIONS = (
 )
 
 _DAILY_TASK_REFRESH_INTERVAL = timedelta(hours=24)
+
+KnowledgePointResolver = Callable[[str], str | None]
+VideoResourceResolver = Callable[[dict[str, Any]], dict[str, Any] | None]
+
+
+def _requests_video(task_content: str, task_blocks: list[Any]) -> bool:
+    texts = [task_content]
+    for block in task_blocks:
+        if isinstance(block, str):
+            texts.append(block)
+        else:
+            texts.append(str(LearningPlanService._field(block, "content") or ""))
+    return any(marker in " ".join(texts) for marker in ("视频", "观看", "课程片段"))
+
+
+def materialize_daily_task_items(
+    *,
+    task_content: str,
+    estimated_minutes: int,
+    focus_knowledge_points: list[str],
+    task_blocks: list[Any] | None = None,
+    knowledge_point_resolver: KnowledgePointResolver | None = None,
+    video_resource_resolver: VideoResourceResolver | None = None,
+) -> list[DailyTaskItemSpec]:
+    """Resolve model semantics at the boundary and create executable atoms.
+
+    Model-produced knowledge-point names and resource strings are never treated as
+    formal IDs or verified video references. A caller-owned resolver must validate
+    either value before an executable practice/video atom can be emitted.
+    """
+
+    semantics: list[dict[str, Any]] = []
+    covered_kp_ids: set[str] = set()
+    for block in task_blocks or []:
+        item_type = LearningPlanService._field(block, "item_type")
+        if item_type is None:
+            continue
+        title = str(LearningPlanService._field(block, "content") or "").strip()
+        if not title:
+            raise ValueError("atomic task block requires content")
+        supplied_resource_ref = dict(
+            LearningPlanService._field(block, "resource_ref") or {}
+        )
+        knowledge_point_name = str(
+            LearningPlanService._field(block, "knowledge_point_name")
+            or LearningPlanService._field(block, "kp_id")
+            or ""
+        ).strip()
+        kp_id = _resolve_knowledge_point(
+            knowledge_point_name, knowledge_point_resolver
+        )
+        if item_type == "knowledge_practice":
+            if not kp_id:
+                item_type = "recall"
+            else:
+                covered_kp_ids.add(kp_id)
+        if item_type == "video_section":
+            resource_ref = (
+                video_resource_resolver(supplied_resource_ref)
+                if video_resource_resolver is not None
+                else None
+            )
+            if not isinstance(resource_ref, dict) or not resource_ref:
+                item_type = "reading"
+                resource_ref = {}
+            else:
+                resource_ref = dict(resource_ref)
+        else:
+            resource_ref = supplied_resource_ref
+        semantics.append(
+            {
+                "item_type": item_type,
+                "title": title,
+                "knowledge_point_name": knowledge_point_name or None,
+                "kp_id": kp_id,
+                "required_question_count": LearningPlanService._field(
+                    block, "required_question_count"
+                ),
+                "resource_ref": resource_ref,
+            }
+        )
+
+    resolved_focus_kp_ids: list[str] = []
+    for raw_knowledge_point in focus_knowledge_points:
+        knowledge_point_name = str(raw_knowledge_point).strip()
+        if not knowledge_point_name:
+            raise ValueError("focus knowledge points must contain non-empty names")
+        kp_id = _resolve_knowledge_point(
+            knowledge_point_name, knowledge_point_resolver
+        )
+        if kp_id is not None and kp_id in covered_kp_ids:
+            continue
+        if kp_id is not None:
+            covered_kp_ids.add(kp_id)
+            resolved_focus_kp_ids.append(kp_id)
+        semantics.append(
+            {
+                "item_type": "knowledge_practice" if kp_id else "recall",
+                "title": f"完成知识点 {knowledge_point_name} 练习",
+                "knowledge_point_name": knowledge_point_name,
+                "kp_id": kp_id,
+                "required_question_count": 3 if kp_id else None,
+                "resource_ref": {},
+            }
+        )
+
+    has_video_atom = any(item["item_type"] == "video_section" for item in semantics)
+    if (
+        not has_video_atom
+        and video_resource_resolver is not None
+        and _requests_video(task_content, list(task_blocks or []))
+        and estimated_minutes >= len(semantics) + 1
+    ):
+        for kp_id in resolved_focus_kp_ids:
+            resource_ref = video_resource_resolver({"kp_id": kp_id})
+            if isinstance(resource_ref, dict) and resource_ref:
+                semantics.insert(
+                    0,
+                    {
+                        "item_type": "video_section",
+                        "title": task_content,
+                        "knowledge_point_name": None,
+                        "kp_id": None,
+                        "required_question_count": None,
+                        "resource_ref": dict(resource_ref),
+                    },
+                )
+                break
+
+    if not semantics:
+        semantics.append(
+            {
+                "item_type": "recall",
+                "title": task_content,
+                "knowledge_point_name": None,
+                "kp_id": None,
+                "required_question_count": None,
+                "resource_ref": {},
+            }
+        )
+    if estimated_minutes < len(semantics):
+        raise ValueError("parent task budget cannot allocate one minute per atomic item")
+
+    base_minutes, remainder = divmod(estimated_minutes, len(semantics))
+    items: list[DailyTaskItemSpec] = []
+    for index, semantic in enumerate(semantics, start=1):
+        item_type = semantic["item_type"]
+        resource_ref = semantic["resource_ref"]
+        if item_type == "knowledge_practice":
+            completion_policy = {"policy": "frozen_question_set"}
+        elif item_type == "video_section":
+            source_text = " ".join(
+                str(resource_ref.get(key) or "")
+                for key in ("source", "provider", "url", "bvid")
+            ).casefold()
+            policy = (
+                "iframe_focus_and_confirmation"
+                if any(token in source_text for token in ("bilibili", "b23", "youtube", "bvid"))
+                or resource_ref.get("bvid")
+                else "html5_coverage"
+            )
+            completion_policy = {"policy": policy, "coverage_threshold": 0.9}
+        else:
+            completion_policy = {"policy": "explicit_evidence"}
+        items.append(
+            DailyTaskItemSpec(
+                task_item_id=f"DTI_{uuid4().hex}",
+                ordinal=index,
+                item_type=item_type,
+                title=semantic["title"],
+                estimated_minutes=base_minutes + (1 if index <= remainder else 0),
+                knowledge_point_name=semantic["knowledge_point_name"],
+                kp_id=semantic["kp_id"],
+                required_question_count=(
+                    semantic["required_question_count"] or 3
+                    if item_type == "knowledge_practice"
+                    else None
+                ),
+                resource_ref=resource_ref,
+                completion_policy=completion_policy,
+            )
+        )
+    return items
+
+
+def _resolve_knowledge_point(
+    knowledge_point_name: str,
+    resolver: KnowledgePointResolver | None,
+) -> str | None:
+    if not knowledge_point_name or resolver is None:
+        return None
+    resolved = resolver(knowledge_point_name)
+    if resolved is None:
+        return None
+    kp_id = str(resolved).strip()
+    if not kp_id:
+        raise ValueError("knowledge point resolver returned an empty formal ID")
+    return kp_id
 
 
 def _all_text(value: Any) -> list[str]:
@@ -308,9 +507,13 @@ class LearningPlanService:
         self,
         route_repository: DefaultRouteRepository | None = None,
         plan_repository: LearningPlanRepository | None = None,
+        knowledge_point_resolver: KnowledgePointResolver | None = None,
+        video_resource_resolver: VideoResourceResolver | None = None,
     ) -> None:
         self.route_repository = route_repository
         self.plan_repository = plan_repository or InMemoryLearningPlanRepository()
+        self.knowledge_point_resolver = knowledge_point_resolver
+        self.video_resource_resolver = video_resource_resolver
 
     def materialize(
         self,
@@ -550,6 +753,25 @@ class LearningPlanService:
                 refresh_due_at=(
                     self._field(task_source, "refresh_due_at")
                     or timestamp + _DAILY_TASK_REFRESH_INTERVAL
+                ),
+                items=(
+                    list(self._field(task_source, "items") or [])
+                    if task_source is not None
+                    else materialize_daily_task_items(
+                        task_content=(
+                            proposal.daily_task_content
+                            or proposal.task_proposal.task_content
+                        ),
+                        estimated_minutes=proposal.task_proposal.estimated_minutes,
+                        focus_knowledge_points=list(
+                            proposal.task_proposal.focus_knowledge_points
+                        ),
+                        task_blocks=list(
+                            self._field(short_package, "task_blocks") or []
+                        ),
+                        knowledge_point_resolver=self.knowledge_point_resolver,
+                        video_resource_resolver=self.video_resource_resolver,
+                    )
                 ),
             ),
         )
@@ -868,6 +1090,9 @@ class LearningPlanService:
         task_source = current_learning_task or (
             previous.learning_task if previous is not None else None
         )
+        package = self._field(
+            current_short_term_plan, "short_term_learning_package"
+        )
         task = LearningTask(
             task_id=str(self._field(task_source, "task_id") or f"TASK_{uuid4().hex}"),
             learner_id=learner_id,
@@ -885,6 +1110,16 @@ class LearningPlanService:
             updated_at=timestamp,
             refresh_started_at=timestamp,
             refresh_due_at=timestamp + _DAILY_TASK_REFRESH_INTERVAL,
+            items=materialize_daily_task_items(
+                task_content=proposal.task_proposal.task_content,
+                estimated_minutes=proposal.task_proposal.estimated_minutes,
+                focus_knowledge_points=list(
+                    proposal.task_proposal.focus_knowledge_points
+                ),
+                task_blocks=list(self._field(package, "task_blocks") or []),
+                knowledge_point_resolver=self.knowledge_point_resolver,
+                video_resource_resolver=self.video_resource_resolver,
+            ),
         )
         if previous is not None:
             stored = previous.model_copy(update={"learning_task": task})

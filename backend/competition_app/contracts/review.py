@@ -20,7 +20,6 @@ class LearnerKPReviewState(ContractModel):
 
 class DailyReviewPolicy(ContractModel):
     capacity: int = Field(default=1, ge=1)
-    target_difficulty: int = Field(default=1, ge=1, le=5)
     allowed_resource_types: list[str] = Field(default_factory=lambda: ["review_card"])
 
 

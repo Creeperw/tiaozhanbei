@@ -388,7 +388,6 @@ class KnowledgeBaseAgent:
                     question_type_preferences=unit.question_type_preferences,
                     fallback_applied=False,
                     external_question_references=[],
-                    difficulty_filter_applied=False,
                     status="insufficient",
                 )
                 continue
@@ -523,7 +522,6 @@ class KnowledgeBaseAgent:
                     }
                     for item in external_question_references
                 ],
-                difficulty_filter_applied=False,
                 candidate_details=[
                     {
                         "question_id": item.question_id,
@@ -542,7 +540,7 @@ class KnowledgeBaseAgent:
             units=units,
             retrieval_summary=[
                 f"按{len(units)}个蓝图单元完成题目检索；单元内已去重，"
-                "跨单元候选保留给Expert做全卷唯一选择；未使用难度硬过滤。"
+                "跨单元候选保留给Expert做全卷唯一选择。"
             ],
         )
         return envelope(context, "knowledge_base_agent", "question_candidate_pool", pool)

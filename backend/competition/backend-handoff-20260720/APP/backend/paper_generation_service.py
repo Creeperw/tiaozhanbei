@@ -6,7 +6,12 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from APP.backend.database import PaperInstanceRecord, PaperItemRecord
+from APP.backend.database import (
+    DailyTaskItemRecord,
+    DailyTaskQuestionSnapshotRecord,
+    PaperInstanceRecord,
+    PaperItemRecord,
+)
 from APP.backend.learning_workshop_service import _normalized_item_scores
 from APP.backend.question_repository import (
     QuestionRepository,
@@ -18,7 +23,6 @@ from APP.backend.question_repository import (
 def _criteria(blueprint: dict[str, Any]) -> QuestionSelectionCriteria | None:
     distribution = blueprint.get("distribution")
     question_types = blueprint.get("types")
-    difficulty = blueprint.get("difficulty")
     question_count = blueprint.get("question_count")
     if (
         not isinstance(distribution, dict)
@@ -26,8 +30,6 @@ def _criteria(blueprint: dict[str, Any]) -> QuestionSelectionCriteria | None:
         or not question_types
         or len(question_types) != len(set(question_types))
         or set(distribution) != set(question_types)
-        or isinstance(difficulty, bool)
-        or not isinstance(difficulty, int)
         or isinstance(question_count, bool)
         or not isinstance(question_count, int)
         or any(isinstance(count, bool) or not isinstance(count, int) or count < 0 for count in distribution.values())
@@ -37,8 +39,8 @@ def _criteria(blueprint: dict[str, Any]) -> QuestionSelectionCriteria | None:
         return None
     return QuestionSelectionCriteria(
         kp_ids=tuple(blueprint.get("kp_ids") or ()),
-        type_difficulty_counts=tuple(
-            (question_type, difficulty, distribution[question_type])
+        type_counts=tuple(
+            (question_type, distribution[question_type])
             for question_type in question_types
         ),
         exclude_question_ids=tuple(blueprint.get("exclude_question_ids") or ()),
@@ -93,8 +95,8 @@ def _valid_selection(selected: Any, criteria: QuestionSelectionCriteria) -> bool
     if not isinstance(selected, (tuple, list)):
         return False
     expected = {
-        (question_type, difficulty): count
-        for question_type, difficulty, count in criteria.type_difficulty_counts
+        question_type: count
+        for question_type, count in criteria.type_counts
     }
     actual = {key: 0 for key in expected}
     version_ids = set()
@@ -102,7 +104,7 @@ def _valid_selection(selected: Any, criteria: QuestionSelectionCriteria) -> bool
     for question in selected:
         version_id = getattr(question, "question_version_id", None)
         question_id = getattr(question, "question_id", None)
-        key = (getattr(question, "question_type", None), getattr(question, "standard_difficulty", None))
+        key = getattr(question, "question_type", None)
         if (
             not isinstance(version_id, str)
             or not version_id.strip()
@@ -119,6 +121,69 @@ def _valid_selection(selected: Any, criteria: QuestionSelectionCriteria) -> bool
     return actual == expected
 
 
+def _bound_snapshots(
+    db: Session,
+    *,
+    user_id: int,
+    daily_task_item_id: str,
+) -> list[DailyTaskQuestionSnapshotRecord]:
+    item = db.query(DailyTaskItemRecord).filter_by(
+        task_item_id=daily_task_item_id,
+        user_id=user_id,
+    ).one_or_none()
+    if item is None or item.item_kind != "knowledge_practice":
+        raise ValueError("daily task item is unavailable for paper generation")
+    snapshots = db.query(DailyTaskQuestionSnapshotRecord).filter_by(
+        task_item_id=daily_task_item_id,
+        user_id=user_id,
+    ).order_by(DailyTaskQuestionSnapshotRecord.id.asc()).all()
+    if not snapshots:
+        raise ValueError("daily task item has no frozen questions")
+    return snapshots
+
+
+def _bound_paper_matches_snapshots(
+    db: Session,
+    paper: PaperInstanceRecord,
+    snapshots: list[DailyTaskQuestionSnapshotRecord],
+) -> bool:
+    items = db.query(PaperItemRecord).filter_by(paper_id=paper.paper_id).all()
+    snapshot_ids = {snapshot.question_version_id for snapshot in snapshots}
+    return (
+        len(items) == len(snapshots)
+        and len({item.question_version_id for item in items}) == len(items)
+        and {item.question_version_id for item in items} == snapshot_ids
+    )
+
+
+def _bound_paper_result(
+    orchestration_result: dict[str, Any],
+    paper: PaperInstanceRecord,
+    items: list[PaperItemRecord],
+) -> dict[str, Any]:
+    learner_items = [{
+        "position": item.position,
+        "question_id": item.question_id,
+        "question_version_id": item.question_version_id,
+        "question_type": item.question_type,
+        "stem": item.stem_snapshot,
+        "kp_ids": json.loads(item.kp_snapshot_json or "[]"),
+        "source_kind": item.source_kind,
+        "evidence_refs": json.loads(item.evidence_refs_json or "[]"),
+        "max_score": item.max_score_snapshot,
+    } for item in items]
+    return {
+        **orchestration_result,
+        "status": "completed",
+        "paper_id": paper.paper_id,
+        "artifact": {
+            "artifact_type": "paper",
+            "title": paper.title,
+            "content": {"paper_id": paper.paper_id, "items": learner_items},
+        },
+    }
+
+
 def generate_and_publish_paper(
     *,
     db: Session,
@@ -126,6 +191,7 @@ def generate_and_publish_paper(
     orchestration_result: dict[str, Any],
     repository: Any | None = None,
     need_audit: bool = True,
+    daily_task_item_id: str | None = None,
 ) -> dict[str, Any]:
     if need_audit is not True:
         raise ValueError("need_audit must be true for paper generation")
@@ -148,20 +214,41 @@ def generate_and_publish_paper(
             summary="组卷蓝图缺少有效题型分布，请补充后重试。",
             audit_decision="needs_clarification",
         )
-    repository = repository or QuestionRepository(sessionmaker(bind=db.get_bind()))
-    selected = repository.select(criteria)
-    if isinstance(selected, QuestionShortage) or not _valid_selection(selected, criteria):
-        return _safe_unpublished_result(
-            orchestration_result,
-            status="needs_clarification",
-            summary="题库候选不足，请调整组卷条件。",
-            audit_decision="needs_clarification",
-        )
+    bound_item_id = daily_task_item_id or orchestration_result.get("daily_task_item_id")
+    if bound_item_id is not None and (not isinstance(bound_item_id, str) or not bound_item_id.strip()):
+        raise ValueError("daily task item id is invalid")
+    bound_item_id = bound_item_id.strip() if isinstance(bound_item_id, str) else None
+    snapshots: list[DailyTaskQuestionSnapshotRecord] | None = None
+    if bound_item_id:
+        snapshots = _bound_snapshots(db, user_id=user_id, daily_task_item_id=bound_item_id)
+        existing = db.query(PaperInstanceRecord).filter_by(
+            learner_id=user_id,
+            daily_task_item_id=bound_item_id,
+        ).one_or_none()
+        if existing is not None:
+            if not _bound_paper_matches_snapshots(db, existing, snapshots):
+                raise ValueError("bound paper does not match frozen daily task questions")
+            items = db.query(PaperItemRecord).filter_by(paper_id=existing.paper_id).order_by(
+                PaperItemRecord.position.asc()
+            ).all()
+            return _bound_paper_result(orchestration_result, existing, items)
+        selected = snapshots
+    else:
+        repository = repository or QuestionRepository(sessionmaker(bind=db.get_bind()))
+        selected = repository.select(criteria)
+        if isinstance(selected, QuestionShortage) or not _valid_selection(selected, criteria):
+            return _safe_unpublished_result(
+                orchestration_result,
+                status="needs_clarification",
+                summary="题库候选不足，请调整组卷条件。",
+                audit_decision="needs_clarification",
+            )
 
     paper_id = f"PAPER_{uuid4().hex}"
     db.add(PaperInstanceRecord(
         paper_id=paper_id,
         task_id=orchestration_result["task_id"],
+        daily_task_item_id=bound_item_id,
         orchestration_run_id=orchestration_result.get("orchestration_run_id", ""),
         learner_id=user_id,
         title=orchestration_result.get("title", ""),
@@ -176,27 +263,35 @@ def generate_and_publish_paper(
         blueprint,
     )
     for position, (question, item_score) in enumerate(zip(selected, item_scores), start=1):
-        refs = _evidence_refs(orchestration_result.get("evidence_pack") or {}, question.kp_ids)
+        is_bound = snapshots is not None
+        kp_ids = json.loads(question.kp_snapshot_json or "[]") if is_bound else list(question.kp_ids)
+        refs = _evidence_refs(orchestration_result.get("evidence_pack") or {}, tuple(kp_ids))
         db.add(PaperItemRecord(
             paper_item_id=f"PI_{uuid4().hex}", paper_id=paper_id, position=position,
             question_id=question.question_id, question_version_id=question.question_version_id,
-            question_type=question.question_type, stem_snapshot=question.stem,
-            options_snapshot_json="[]",
-            standard_answer_snapshot=question.answer,
-            kp_snapshot_json=json.dumps(list(question.kp_ids), ensure_ascii=False),
+            question_type=question.question_type,
+            stem_snapshot=(question.stem_snapshot if is_bound else question.stem),
+            options_snapshot_json=(question.options_snapshot_json if is_bound else "[]"),
+            standard_answer_snapshot=(question.answer_snapshot if is_bound else question.answer),
+            kp_snapshot_json=json.dumps(kp_ids, ensure_ascii=False),
             evidence_refs_json=json.dumps(refs, ensure_ascii=False), source_kind=question.source_kind,
-            standard_difficulty=question.standard_difficulty,
+            standard_difficulty=None,
             max_score_snapshot=item_score,
         ))
         learner_items.append({
             "position": position, "question_id": question.question_id,
             "question_version_id": question.question_version_id,
-            "question_type": question.question_type, "stem": question.stem,
-            "kp_ids": list(question.kp_ids), "standard_difficulty": question.standard_difficulty,
+            "question_type": question.question_type,
+            "stem": question.stem_snapshot if is_bound else question.stem,
+            "kp_ids": kp_ids,
             "source_kind": question.source_kind, "evidence_refs": refs,
             "max_score": item_score,
         })
     db.flush()
+    if snapshots is not None:
+        paper = db.query(PaperInstanceRecord).filter_by(paper_id=paper_id).one()
+        if not _bound_paper_matches_snapshots(db, paper, snapshots):
+            raise ValueError("bound paper does not match frozen daily task questions")
     return {
         **orchestration_result, "status": "completed", "paper_id": paper_id,
         "artifact": {"artifact_type": "paper", "title": orchestration_result.get("title", ""), "content": {"paper_id": paper_id, "items": learner_items}},

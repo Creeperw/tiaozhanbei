@@ -12,8 +12,10 @@ import {
   generateWorkshopPaperWithAgents,
   isCaseSessionPayloadValid,
   isCaseTypesPayloadValid,
+  isPaperPayloadValid,
   loadCaseSession,
   loadCaseTypes,
+  loadDailyTaskPracticeQuestion,
   loadPaper,
   loadPapers,
   loadPracticeQuestion,
@@ -169,6 +171,31 @@ test('agent paper generator posts an exact paper request and returns the publish
   });
   assert.equal(result.paperId, 'PAPER_AGENT_1');
   assert.equal(result.error, '');
+});
+
+test('bound paper open omits client-authored generation constraints', async () => {
+  let received;
+  const result = await generateWorkshopPaperWithAgents({
+    fetcher: async (request) => {
+      received = request;
+      return {
+        data: {
+          status: 'success', task_type: 'paper_generation',
+          ui_actions: [{ destination: 'workshop.paper', params: { paper_id: 'PAPER_BOUND' } }],
+        },
+        source: request.paths[0],
+      };
+    },
+    topic: '打开今日任务绑定试卷',
+    distribution: {},
+    taskItemId: 'ITEM_BOUND',
+  });
+
+  const body = JSON.parse(received.options.body);
+  assert.equal(result.paperId, 'PAPER_BOUND');
+  assert.equal(body.daily_task_item_id, 'ITEM_BOUND');
+  assert.equal(body.user_request, '打开今日任务已绑定并冻结的练习试卷，不重新选题或修改组卷约束。');
+  assert.equal(Object.hasOwn(body, 'exam_constraints'), false);
 });
 
 test('review dashboard loader uses the stable current-user endpoint', async () => {
@@ -332,7 +359,7 @@ test('loadReportsData falls back to legacy report when agent payload is invalid'
       weak_points: [],
       mistake_summary: { total_mistakes: 1, top_error_type: '证型混淆' },
       t_stage: { stage_name: 'T2' },
-      resource_match: { recommended_difficulty: '中', difficulty_match: 0.8 },
+      resource_match: { matched_resource_count: 2 },
       next_actions: ['复盘错题'],
     }))],
   ]), async () => {
@@ -519,10 +546,17 @@ const validPaper = {
     stem: '四君子汤主治什么证型？',
     options: [],
     kp_ids: ['KP_1'],
-    difficulty: 2,
     answer: '',
   }],
 };
+
+test('published paper payload does not require internal selection difficulty', () => {
+  assert.equal(isPaperPayloadValid(validPaper), true);
+  assert.equal(isPaperPayloadValid({
+    ...validPaper,
+    items: [{ ...validPaper.items[0], answer: null }],
+  }), false);
+});
 
 const validCaseSession = {
   session_id: 'CS_abc123',
@@ -695,7 +729,6 @@ test('variation source loader returns only validated source projections', async 
       question_version_id: 'QV_SOURCE_1',
       stem: '原题题干',
       question_type: 'short_answer',
-      difficulty: 2,
       kp_ids: ['KP_1'],
     }],
   };
@@ -716,7 +749,7 @@ test('practice loaders use stable objective and mistake history contracts', asyn
   const requests = [];
   const question = {
     question_id: 'Q_1', question_type: 'single_choice', stem: '客观题', options: ['A', 'B'],
-    kp_ids: ['KP_1'], difficulty: 2, request_id: 'REQ_1', source_scope: 'public',
+    kp_ids: ['KP_1'], request_id: 'REQ_1', source_scope: 'public',
   };
   const fetcher = async (request) => {
     requests.push(request);
@@ -746,6 +779,32 @@ test('practice loaders use stable objective and mistake history contracts', asyn
   assert.match(requests[0].paths[0], /^\/v1\/workshop\/practice\/next\?/);
   assert.deepEqual(requests[1].paths, ['/v1/workshop/practice/grade', '/training/practice/grade']);
   assert.match(requests[2].paths[0], /^\/v1\/workshop\/practice\/mistakes\?/);
+});
+
+test('bound daily-task practice keeps the item id in next and grade contracts', async () => {
+  const requests = [];
+  const question = {
+    question_id: 'Q_BOUND', question_type: 'short_answer', stem: '冻结题目', options: [],
+    kp_ids: ['KP_BOUND'], request_id: 'REQ_BOUND', source_scope: 'daily_task',
+  };
+  const fetcher = async (request) => {
+    requests.push(request);
+    if (request.paths[0].includes('/daily-task-items/')) {
+      return { data: { available: true, progress: { reviewed: 0, required: 1 }, question }, source: request.paths[0] };
+    }
+    return { data: { grading: { score: 100, is_correct: true }, writeback: { status: 'applied' } }, source: request.paths[0] };
+  };
+
+  const loaded = await loadDailyTaskPracticeQuestion({ fetcher, taskItemId: ' ITEM/BOUND ' });
+  const graded = await submitPracticeAnswer({ fetcher, question, answer: '答案', taskItemId: ' ITEM/BOUND ' });
+
+  assert.equal(loaded.practice.question.question_id, 'Q_BOUND');
+  assert.deepEqual(requests[0].paths, [
+    '/v1/daily-task-items/ITEM%2FBOUND/practice/next',
+    '/daily-task-items/ITEM%2FBOUND/practice/next',
+  ]);
+  assert.equal(JSON.parse(requests[1].options.body).daily_task_item_id, 'ITEM/BOUND');
+  assert.equal(graded.result.grading.is_correct, true);
 });
 
 test('case training loaders use the independent session API contracts', async () => {

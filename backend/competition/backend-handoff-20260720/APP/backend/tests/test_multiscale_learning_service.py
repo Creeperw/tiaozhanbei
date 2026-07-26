@@ -11,8 +11,10 @@ from sqlalchemy.pool import StaticPool
 from APP.backend import database
 from APP.backend.multiscale_learning_service import (
     HARD_CONSTRAINT_ORDER,
+    POSITIVE_WEIGHTS,
     build_multiscale_state,
     build_path_candidates,
+    verify_host_plan_context,
 )
 
 
@@ -666,6 +668,111 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
 
         self.assertFalse(mapping["passed"])
 
+    def test_verified_host_plan_chain_projects_current_task_and_passes_storage_gates(
+        self,
+    ) -> None:
+        context = approved_plan_context(daily_minutes=25)
+        for layer in ("long_term_plan", "short_term_plan", "learning_task"):
+            context[layer]["learner_id"] = "HOST_USER_1"
+        context["learning_task"]["focus_knowledge_points"] = ["阴阳学说"]
+        context["learning_task"]["estimated_minutes"] = 25
+        context = verify_host_plan_context(
+            context,
+            external_user_id="HOST_USER_1",
+        )
+        state = build_multiscale_state(self.db, 2, plan_context=context)
+
+        self.assertEqual(
+            state["meso"]["current_daily_tasks"][0]["task_id"],
+            "TASK_1",
+        )
+        self.assertEqual(state["micro"]["current_task_load"]["value"], 25)
+        candidates = build_path_candidates(
+            self.db,
+            2,
+            state=state,
+            scope="daily_task",
+            plan_context=context,
+            limit=30,
+        )
+        task = next(
+            item
+            for item in candidates["items"]
+            if "plan_context:learning_task:TASK_1" in item["source_refs"]
+        )
+        reasons = {
+            result["key"]: result
+            for result in task["hard_constraint_results"]
+        }
+
+        self.assertEqual(task["estimated_minutes"], 25)
+        self.assertTrue(reasons["parent_plan_exists"]["passed"])
+        self.assertTrue(reasons["time_budget"]["passed"])
+        self.assertTrue(reasons["approved_stage_mapping"]["passed"])
+
+    def test_textbook_stage_is_not_merged_with_exam_phase(self) -> None:
+        context = approved_plan_context()
+        context["long_term_plan"]["planning_route"]["phases"][0][
+            "objective"
+        ] = "考试资格绑定"
+        context["long_term_plan"]["planning_route"]["textbook_route"] = {
+            "planning_status": "resolved",
+            "match_reason": "approved binding",
+            "route": {
+                "route_id": "TEXTBOOK_1",
+                "route_version": 1,
+                "status": "approved",
+                "goal_name": "中医执业医师资格考试",
+                "aliases": [],
+                "stages": [
+                    {
+                        "stage_id": "PHASE_1",
+                        "order": 1,
+                        "name": "中医基础",
+                        "objective": "教材基础学习",
+                        "books": ["中医基础理论"],
+                        "exit_evidence": ["教材测评"],
+                        "source_refs": ["TEXTBOOK_ROUTE_1"],
+                    }
+                ],
+                "prerequisites": [],
+                "equivalence_groups": [],
+                "source_refs": ["TEXTBOOK_ROUTE_1"],
+                "reviewed_by": "audit",
+            },
+            "clarification_questions": [],
+        }
+        state = build_multiscale_state(self.db, 1, plan_context=context)
+
+        self.assertEqual(state["macro"]["current_stage"]["objective"], "教材基础学习")
+        self.assertEqual(state["macro"]["current_stage"]["exit_evidence"], ["教材测评"])
+
+    def test_original_difficulty_weight_is_exposed_and_missing_value_is_unavailable(
+        self,
+    ) -> None:
+        self.assertEqual(
+            POSITIVE_WEIGHTS,
+            {
+                "learning_gain": 0.30,
+                "retention_benefit": 0.20,
+                "knowledge_coverage": 0.20,
+                "time_fit": 0.10,
+                "difficulty_fit": 0.10,
+                "autonomy_support": 0.10,
+            },
+        )
+        context = approved_plan_context()
+        state = build_multiscale_state(self.db, 1, context)
+        candidates = build_path_candidates(
+            self.db, 1, state=state, scope="daily_task", plan_context=context
+        )
+        task = next(
+            item for item in candidates["items"] if "task:TASK_1" in item["source_refs"]
+        )
+
+        self.assertFalse(task["score_components"]["difficulty_fit"]["available"])
+        self.assertIsNone(task["score_components"]["difficulty_fit"]["value"])
+
     def test_missing_goal_cannot_be_overridden_as_aligned(self) -> None:
         context = approved_plan_context()
         context["goal_route_aligned"] = True
@@ -703,7 +810,7 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
         self.assertFalse(parent["passed"])
         self.assertIn("unverified", parent["reason"])
 
-    def test_low_data_with_unknown_difficulty_is_blocked(self) -> None:
+    def test_low_data_approved_route_can_pass_without_difficulty_data(self) -> None:
         self.db.add(
             database.LearningUserProfile(
                 user_id=2,
@@ -724,10 +831,10 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
             if result["key"] == "low_data_protection"
         )
 
-        self.assertFalse(low_data_result["passed"])
-        self.assertIn("difficulty_unknown", low_data_result["reason"])
+        self.assertTrue(low_data_result["passed"])
+        self.assertNotIn("difficulty", low_data_result["reason"])
 
-    def test_low_data_due_review_uses_not_applicable_difficulty_and_can_pass(self) -> None:
+    def test_low_data_due_review_can_pass_without_difficulty_component(self) -> None:
         self.db.add_all(
             [
                 database.LearningUserProfile(
@@ -774,10 +881,8 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
         )
 
         self.assertTrue(low_data["passed"])
-        self.assertEqual(
-            review["score_components"]["difficulty_fit"]["unavailable_reason"],
-            "difficulty_not_applicable_for_review",
-        )
+        self.assertFalse(review["score_components"]["difficulty_fit"]["available"])
+        self.assertIsNone(review["score_components"]["difficulty_fit"]["value"])
 
     def test_long_and_short_scope_have_valid_time_contracts(self) -> None:
         context = approved_plan_context()
@@ -1058,10 +1163,8 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
             for item in candidates["items"]
             if "resource:RESOURCE_NO_DIFFICULTY" in item["source_refs"]
         )
-        self.assertEqual(
-            resource["score_components"]["difficulty_fit"]["source_refs"],
-            ["resource:RESOURCE_NO_DIFFICULTY"],
-        )
+        self.assertFalse(resource["score_components"]["difficulty_fit"]["available"])
+        self.assertIsNone(resource["score_components"]["difficulty_fit"]["value"])
         task = next(
             item for item in candidates["items"] if "task:TASK_1" in item["source_refs"]
         )
@@ -1301,7 +1404,7 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
             )
         )
 
-    def test_missing_difficulty_is_not_scored_as_perfect(self) -> None:
+    def test_missing_difficulty_is_explicitly_unavailable(self) -> None:
         context = approved_plan_context()
         state = build_multiscale_state(self.db, 1, plan_context=context)
         candidates = build_path_candidates(
@@ -1317,15 +1420,15 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
             if "resource:RESOURCE_NO_DIFFICULTY" in item["source_refs"]
         )
 
-        self.assertFalse(
-            candidate["score_components"]["difficulty_fit"]["available"]
-        )
-        self.assertIsNone(
-            candidate["score_components"]["difficulty_fit"]["value"]
-        )
-        self.assertIn(
-            "difficulty",
+        self.assertFalse(candidate["score_components"]["difficulty_fit"]["available"])
+        self.assertIsNone(candidate["score_components"]["difficulty_fit"]["value"])
+        self.assertEqual(
             candidate["score_components"]["difficulty_fit"]["unavailable_reason"],
+            "difficulty_metadata_missing",
+        )
+        self.assertEqual(
+            candidates["scoring_policy"]["positive_weights"]["difficulty_fit"],
+            0.10,
         )
 
     def test_candidates_retain_source_and_evidence_references(self) -> None:

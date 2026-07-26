@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 
 from competition_app.db.migrations import MigrationError, MigrationRunner
 
@@ -18,3 +18,24 @@ def test_migrations_are_idempotent_and_checksum_changes_are_rejected(tmp_path: P
     migration.write_text("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT);\n", encoding="utf-8")
     with pytest.raises(MigrationError, match="checksum"):
         runner.run()
+
+
+def test_atomic_daily_task_outbox_migration_is_sqlite_compatible_and_idempotent() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    migration_dir = Path(__file__).resolve().parents[2] / "migrations"
+    runner = MigrationRunner(engine, migration_dir)
+
+    applied = runner.run()
+
+    assert "010_atomic_daily_task_execution.sql" in applied
+    assert runner.run() == []
+    inspector = inspect(engine)
+    assert "learning_task_sync_outbox" in inspector.get_table_names()
+    unique_indexes = inspector.get_unique_constraints("learning_task_sync_outbox")
+    unique_columns = {tuple(item["column_names"]) for item in unique_indexes}
+    index_columns = {
+        tuple(item["column_names"])
+        for item in inspector.get_indexes("learning_task_sync_outbox")
+    }
+    assert ("task_id", "task_version", "event_type") in unique_columns | index_columns
+    assert ("learner_id", "status", "created_at") in index_columns

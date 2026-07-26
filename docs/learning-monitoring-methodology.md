@@ -7,7 +7,7 @@
 
 - 行为窗口仅允许 7、30、90 天，按 `Asia/Shanghai` 展示，服务端使用响应中的 `window.start_at` 和 `window.end_at` 查询。
 - `overview.confidence` 是数据覆盖度，不是统计置信区间，也不是测验信度。
-- 当前掌握状态是累计作答形成的快照；任务执行、答题正确率、登录规律、资源点击率和错因分布严格使用所选窗口。
+- 当前掌握状态是累计作答形成的快照；任务执行、练习得分率、登录规律、资源点击率和错因分布严格使用所选窗口。
 - 掌握度对外统一为 `0..1`；权威写回表 `knowledge_mastery_states.mastery_score` 的存储单位是 `0..100`，返回报告时除以 100。
 - 数据不足时显示空状态或观察值，不使用默认值伪造学习结论。
 
@@ -17,8 +17,8 @@
 |---|---|---|---|---|
 | 知识掌握 | `knowledge_mastery_states`，兼容回退 `learner_knowledge_mastery` | 已完成题目经过批改、审核并成功写回 | 各知识点当前掌握度的算术平均 | 当前状态 |
 | 复习保持 | `learner_kp_review_states` | 完成知识点题目后建立或更新复习状态 | `R=exp(-elapsed_seconds/stability_seconds)`，缺少复习时间或稳定度则不计入平均 | 当前时刻 |
-| 任务执行 | `learning_task` | 创建正式学习/练习任务；完成接口更新 `status=completed` | 完成的非取消任务数 ÷ 全部非取消任务数 | 7/30/90 天 |
-| 练习正确 | `question_attempt` | 客观题、案例或其他正式练习提交成功 | 正确作答数 ÷ 全部作答数 | 7/30/90 天 |
+| 任务执行 | `daily_task_instances`、`daily_task_items` | 已发布每日任务物化原子项；原子项完成状态由绑定练习/视频的服务端证据派生 | `completed_non_cancelled_daily_items/non_cancelled_published_daily_items` | 7/30/90 天 |
+| 练习得分率 | `grading_result_records`、`learning_attempts`、`audit_result_records` | 普通练习或试卷逐题完成评分且审核通过 | 审核通过的普通练习与试卷逐题总得分 ÷ 对应总分；不含 AI 病患案例 | 7/30/90 天 |
 | 学习规律 | `learning_activity_records` | 登录成功或主动签到 | 有登录/签到记录的不同日期数 ÷ 窗口天数 | 7/30/90 天 |
 | 资源使用 | `learning_activity_records` | 服务端记录一次推荐展示；用户点击时携带该展示 ID | 已点击且确实展示过的资源数 ÷ 展示资源数 | 7/30/90 天 |
 | 有效学习分钟 | `learning_focus_sessions` | 开始、心跳、暂停、完成专注会话 | 每日已确认 `active_seconds` 求和后除以 60 | 7/30/90 天 |
@@ -68,17 +68,15 @@ M_t = 0.65 × M_(t-1) × exp(-lambda × delta_days) + 0.35 × q_t
 ### 5.2 评分
 
 ```text
-知识点覆盖 0.40
+知识点覆盖 0.45
 资源质量   0.20
-形式偏好   0.15
+形式偏好   0.20
 时间适配   0.15
-难度适配   0.10
 ```
 
 知识点覆盖是资源知识点与目标知识点交集占目标知识点的比例。质量读取资源或题库的持久化质量分；
 知识卡没有质量证据时使用明确标注的中性值 0.5。形式偏好来自用户画像。题目耗时优先使用当前用户近30天真实响应时间，
-没有记录时才使用题型默认值。只有题库存在明确难度字段时才计算难度适配；缺少某项特征时从分母中移除该项并重新归一化，
-不会伪造固定难度分。
+没有记录时才使用题型默认值。当前不采集或推断题目难度，资源匹配不包含难度分项；缺少某项可用特征时从分母中移除该项并重新归一化。
 
 当前权重属于可解释的工程基线。正式宣称推荐有效前，应以真实用户反馈计算 `Precision@K`、`Recall@K`、`NDCG@K`，
 并验证任务完成率和后测学习增益。
@@ -92,8 +90,9 @@ M_t = 0.65 × M_(t-1) × exp(-lambda × delta_days) + 0.35 × q_t
 
 ## 7. 可审计性与版本
 
-- 学情方法版本：`learning-monitoring-v2`。
-- 行为窗口聚合版本：`learning-window-v1`。
+- 学情方法版本：`learning-monitoring-v3-daily-atomic`。
+- 行为窗口聚合版本：`learning-window-v2-daily-atomic`；持久化系统快照版本为 `system-data-v3-daily-atomic`。
+- 任务执行只统计已物化到 `daily_task_instances` 的非取消每日原子项；自由练习、自由试卷、案例、活动日志和泛 `learning_task` 均不进入分子或分母。取消项排除，窗口内已发布但到期未完成的原子项仍保留在分母。窗口内没有可统计原子项时，任务完成率返回 `available=false`、`value=null` 和 `unavailable_reason=no_planned_daily_task_items`，不以 0% 代替缺失值。
 - 掌握与复习公式版本随每条状态及历史记录保存。
 - 推荐项返回 `components`、`component_sources`、`quality_basis`、`estimated_minutes_basis` 和资源 `source`。
 - 修改公式、阈值或数据源时必须同步修改本文件、接口文档和测试，不允许只改前端文案。
@@ -136,7 +135,7 @@ M_t = 0.65 × M_(t-1) × exp(-lambda × delta_days) + 0.35 × q_t
 `0.15`。
 
 每个分项使用 `available`、`value`、`unit`、`source_refs` 和 `unavailable_reason`。
-缺少难度、掌握、时间或其他证据时，该分项保持 `value=null`，从可用正向分项分母中移除并重归一化；
+缺少掌握、时间、资源难度或其他证据时，该分项保持 `value=null`，从可用正向分项分母中移除并重归一化；
 不得用 0 代替缺失值。低覆盖度通过 `low_data_protection` 限制高风险调整，并通过不确定性分项降低排序。
 
 ### 8.4 解释边界

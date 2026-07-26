@@ -1,4 +1,6 @@
 from pathlib import Path
+from io import BytesIO
+import struct
 
 from fastapi.testclient import TestClient
 
@@ -69,7 +71,9 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
 ) -> None:
     frontend_root = tmp_path / "frontend"
     assets_root = frontend_root / "assets"
+    covers_root = frontend_root / "textbook-covers"
     assets_root.mkdir(parents=True)
+    covers_root.mkdir(parents=True)
     (frontend_root / "index.html").write_text(
         '<div id="root"></div><script src="/assets/app.js"></script>',
         encoding="utf-8",
@@ -77,6 +81,7 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
     (frontend_root / "favicon.ico").write_bytes(b"icon")
     (assets_root / "app.js").write_text("window.loaded = true", encoding="utf-8")
     (assets_root / "app.css").write_text("body { color: green; }", encoding="utf-8")
+    (covers_root / "方剂学.jpg").write_bytes(b"textbook-cover")
     container = ApplicationContainer.build(
         Settings(mode="stub", frontend_dist_root=frontend_root),
         snapshot_root=tmp_path / "snapshots",
@@ -86,6 +91,9 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
         assert client.get("/").status_code == 200
         assert client.get("/assets/app.js").status_code == 200
         assert client.get("/assets/app.css").status_code == 200
+        cover = client.get("/textbook-covers/%E6%96%B9%E5%89%82%E5%AD%A6.jpg")
+        assert cover.status_code == 200
+        assert cover.content == b"textbook-cover"
         assert client.get("/favicon.ico").status_code == 200
         protected = client.post(
             "/api/v1/review-cards",
@@ -126,6 +134,165 @@ def test_register_login_me_and_logout(tmp_path: Path) -> None:
     )
     assert logged_in.status_code == 200
     assert logged_in.json()["user"]["user_id"] == user["user_id"]
+
+
+def _png_bytes() -> bytes:
+    return b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + struct.pack(">IIBBBBB", 24, 24, 8, 2, 0, 0, 0) + b"\x00\x00\x00\x00"
+
+
+def test_account_profile_and_avatar_are_private_to_the_current_user(tmp_path: Path) -> None:
+    settings = Settings(
+        mode="stub",
+        use_sqlite=True,
+        sqlite_path=tmp_path / "competition_app.sqlite3",
+        avatar_dir=tmp_path / "avatars",
+    )
+    app = create_app(ApplicationContainer.build(settings, snapshot_root=tmp_path))
+    alice_client = TestClient(app)
+    bob_client = TestClient(app)
+    alice = register(alice_client, "profile-alice")
+    register(bob_client, "profile-bob")
+
+    initial = alice_client.get("/api/v1/auth/me/profile")
+    assert initial.status_code == 200
+    assert initial.json()["profile"]["display_name"] == alice["display_name"]
+    assert initial.json()["profile"]["avatar_url"] is None
+
+    saved = alice_client.patch(
+        "/api/v1/auth/me/profile",
+        json={
+            "display_name": "艾丽丝同学",
+            "gender": "female",
+            "birth_date": "2000-06-18",
+            "region": "上海市",
+            "contact_email": "alice@example.com",
+            "signature": "循序精进。",
+        },
+    )
+    assert saved.status_code == 200
+    assert saved.json()["user"]["display_name"] == "艾丽丝同学"
+    assert saved.json()["profile"]["contact_email"] == "alice@example.com"
+
+    uploaded = alice_client.put(
+        "/api/v1/auth/me/avatar",
+        files={"file": ("avatar.png", _png_bytes(), "image/png")},
+    )
+    assert uploaded.status_code == 200
+    avatar_url = uploaded.json()["profile"]["avatar_url"]
+    assert avatar_url and "v=1" in avatar_url
+    avatar = alice_client.get(avatar_url)
+    assert avatar.status_code == 200
+    assert avatar.headers["content-type"].startswith("image/png")
+
+    other_profile = bob_client.get("/api/v1/auth/me/profile")
+    assert other_profile.status_code == 200
+    assert other_profile.json()["profile"]["display_name"] != "艾丽丝同学"
+    assert bob_client.get("/api/v1/auth/me/avatar").status_code == 404
+
+    restarted = TestClient(create_app(ApplicationContainer.build(settings, snapshot_root=tmp_path / "restart")))
+    restarted.cookies.set(SESSION_COOKIE, alice_client.cookies.get(SESSION_COOKIE))
+    assert restarted.get("/api/v1/auth/me/profile").json()["profile"]["signature"] == "循序精进。"
+    assert restarted.get("/api/v1/auth/me/avatar").status_code == 200
+
+
+def test_account_profile_rejects_future_birth_date_and_invalid_avatar(tmp_path: Path) -> None:
+    client = build_client(tmp_path)
+    register(client, "profile-validation")
+
+    future = client.patch(
+        "/api/v1/auth/me/profile",
+        json={"display_name": "测试用户", "birth_date": "2999-01-01"},
+    )
+    assert future.status_code == 422
+    assert "出生日期" in future.json()["detail"]
+
+    invalid = client.put(
+        "/api/v1/auth/me/avatar",
+        files={"file": ("not-an-image.txt", b"not an image", "text/plain")},
+    )
+    assert invalid.status_code == 422
+
+
+def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path) -> None:
+    settings = Settings(
+        mode="stub",
+        use_sqlite=True,
+        sqlite_path=tmp_path / "competition_app.sqlite3",
+    )
+    app = create_app(ApplicationContainer.build(settings, snapshot_root=tmp_path))
+    alice_client = TestClient(app)
+    bob_client = TestClient(app)
+    register(alice_client, "library-alice")
+    register(bob_client, "library-bob")
+
+    folder = alice_client.post(
+        "/api/v1/workshop/favorite-folders", json={"name": "方剂重点"}
+    )
+    assert folder.status_code == 201
+    folder_id = folder.json()["folder"]["folder_id"]
+
+    favorite = alice_client.post(
+        "/api/v1/workshop/favorites",
+        json={
+            "folder_id": folder_id,
+            "resource_type": "question",
+            "resource_id": "Q_SIJUNZI",
+            "title": "四君子汤的君药",
+            "source": "智能组卷",
+            "content": {
+                "question_content": "四君子汤的君药是？",
+                "standard_answer": ["A"],
+                "explanation": "人参为君药。",
+            },
+        },
+    )
+    note = alice_client.post(
+        "/api/v1/workshop/notes",
+        json={
+            "title": "四君子汤记忆",
+            "content": "人参为君，白术为臣。",
+            "note_type": "题目笔记",
+            "source": "智能组卷",
+            "resource_type": "question",
+            "resource_id": "Q_SIJUNZI",
+            "context": {"question_content": "四君子汤的君药是？"},
+        },
+    )
+    assert favorite.status_code == 201
+    assert note.status_code == 201
+    favorite_id = favorite.json()["favorite"]["favorite_id"]
+    note_id = note.json()["note"]["note_id"]
+
+    assert bob_client.get("/api/v1/workshop/favorite-folders").json()["items"] == []
+    assert bob_client.get("/api/v1/workshop/favorites").json()["items"] == []
+    assert bob_client.get("/api/v1/workshop/notes").json()["items"] == []
+    assert bob_client.delete(f"/api/v1/workshop/favorites/{favorite_id}").status_code == 404
+    assert bob_client.put(
+        f"/api/v1/workshop/notes/{note_id}",
+        json={"title": "越权修改", "content": "不允许"},
+    ).status_code == 404
+
+    updated = alice_client.put(
+        f"/api/v1/workshop/notes/{note_id}",
+        json={"title": "四君子汤配伍", "content": "人参、白术、茯苓、炙甘草。"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["note"]["title"] == "四君子汤配伍"
+
+    restarted = TestClient(create_app(ApplicationContainer.build(
+        settings, snapshot_root=tmp_path / "restart"
+    )))
+    restarted.cookies.set(SESSION_COOKIE, alice_client.cookies.get(SESSION_COOKIE))
+    persisted_favorites = restarted.get("/api/v1/workshop/favorites").json()["items"]
+    persisted_notes = restarted.get("/api/v1/workshop/notes").json()["items"]
+    assert persisted_favorites[0]["content"]["standard_answer"] == ["A"]
+    assert persisted_notes[0]["content"] == "人参、白术、茯苓、炙甘草。"
+
+    assert restarted.delete(f"/api/v1/workshop/favorites/{favorite_id}").status_code == 204
+    assert restarted.delete(f"/api/v1/workshop/notes/{note_id}").status_code == 204
+    assert restarted.delete(
+        f"/api/v1/workshop/favorite-folders/{folder_id}"
+    ).status_code == 204
 
 
 def test_registration_onboarding_gate_is_persistent_until_completed(

@@ -75,9 +75,7 @@ def select_practice_questions(
         weak_match = 1.0 if kp_ids & mistake_targets else 0.0
         target_match = 1.0 if kp_ids & targets else 0.0
         quality = float(item.get("quality_score", 0.7))
-        difficulty = float(item.get("difficulty", 2))
-        difficulty_match = 1.0 - min(abs(difficulty - 2.5), 2.5) / 2.5
-        return 0.35 * weak_match + 0.30 * target_match + 0.20 * quality + 0.15 * difficulty_match
+        return 0.40 * weak_match + 0.35 * target_match + 0.25 * quality
 
     selected = sorted(question_bank, key=score, reverse=True)[:limit]
     covered = set()
@@ -92,7 +90,7 @@ def select_practice_questions(
             "covered_kp_ids": sorted(covered & targets),
             "target_coverage": round(coverage, 4),
         },
-        "selection_policy": "0.35*薄弱点 + 0.30*目标知识点 + 0.20*题目质量 + 0.15*难度匹配",
+        "selection_policy": "0.40*薄弱点 + 0.35*目标知识点 + 0.25*题目质量",
     }
     review, summary = validate_dynamic_question_selection(
         selection=selection,
@@ -140,11 +138,11 @@ def diagnose_learning_state(
     elif retry_count >= 3 and completion < 0.7:
         stage_id = "T1"
         stage_name = "高耗低效"
-        attribution = "难度不适"
+        attribution = "反复尝试未形成稳定掌握"
         action = "switch_to_micro_lesson_and_comparison_card"
     elif has_mistake_pressure and completion < 0.75:
         stage_id = "T5"
-        stage_name = "难度不适"
+        stage_name = "错题积压"
         attribution = "复盘缺失"
         action = "generate_mistake_review_card"
     else:
@@ -194,7 +192,6 @@ def _ratio(numerator: int, denominator: int) -> float:
 def _cross_validation_contracts(generated: dict[str, Any], evidence: dict[str, Any]) -> tuple[ExpertArtifact, EvidencePack, LearnerContextBrief, DiagnosisReport]:
     source_ids = [item for item in generated.get("source_ids", evidence.get("source_ids", [])) if isinstance(item, str) and item.strip()]
     kp_ids = [item for item in generated.get("kp_ids", evidence.get("required_kp_ids", [])) if isinstance(item, str) and item.strip()]
-    difficulty = generated.get("difficulty") if isinstance(generated.get("difficulty"), int) else evidence.get("expected_difficulty", 2)
     claims = []
     supported_claims = set(evidence.get("supported_claims", []))
     for claim in generated.get("claims", []):
@@ -214,7 +211,6 @@ def _cross_validation_contracts(generated: dict[str, Any], evidence: dict[str, A
             "schema_version": "v1",
             "source_ids": source_ids,
             "kp_ids": kp_ids,
-            "difficulty": difficulty,
             "claims": claims,
         },
         source_scope="deep_training_service",
@@ -249,7 +245,7 @@ def _cross_validation_contracts(generated: dict[str, Any], evidence: dict[str, A
         source_id="cross-validation-context",
         kp_ids=kp_ids,
         confidence=0.9,
-        learning_state={"target_difficulty": evidence.get("expected_difficulty", difficulty)},
+        learning_state={},
     )
     diagnosis_report = DiagnosisReport(
         diagnosis_id="cross-validation-diagnosis",
@@ -280,17 +276,14 @@ def compute_evaluation_metrics(reviews: list[dict[str, Any]]) -> dict[str, Any]:
     if not reviews:
         return {
             "hallucination_rate": 0.0,
-            "difficulty_match_rate": 0.0,
             "knowledge_coverage_rate": 0.0,
             "pass_rate": 0.0,
         }
     hallucination_rate = 1 - sum(item.get("fact_consistency", 0.0) for item in reviews) / len(reviews)
-    difficulty_match_rate = sum(item.get("difficulty_match", 0.0) for item in reviews) / len(reviews)
     knowledge_coverage_rate = sum(item.get("knowledge_coverage", 0.0) for item in reviews) / len(reviews)
     pass_rate = sum(1 for item in reviews if item.get("decision") == "pass") / len(reviews)
     return {
         "hallucination_rate": round(hallucination_rate, 4),
-        "difficulty_match_rate": round(difficulty_match_rate, 4),
         "knowledge_coverage_rate": round(knowledge_coverage_rate, 4),
         "pass_rate": round(pass_rate, 4),
     }

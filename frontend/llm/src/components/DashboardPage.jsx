@@ -1,49 +1,34 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BookOpenText, Clock3, Sparkles } from 'lucide-react';
-import { API_BASE, MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
-import CompactAssistant from './CompactAssistant';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, BookOpenCheck, Clock3, Route, Sparkles } from 'lucide-react';
+import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DashboardDailyWorkspace from './dashboard/DashboardDailyWorkspace';
-import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
-import {
-  buildDailyFeedback,
-  buildDailyFocus,
-  buildDailySchedule,
-} from './dashboard/dashboardDailyModel';
 import {
   loadExamNodes,
   loadExamTracks,
   loadLearningTarget,
   loadNodeLearnerSummary,
 } from './exam-atlas/examAtlasApi';
-import LearningPathOverview from './learning-tree/LearningPathOverview';
-import LearningPlanRail from './learning-tree/LearningPlanRail';
-import LearningPathTrainingModules from './learning-tree/LearningPathTrainingModules';
 import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
-import LearningStageSwitcher from './learning-stage/LearningStageSwitcher';
+import LearningPathOverview from './learning-tree/LearningPathOverview';
+import TextbookLibrary from './workshop-textbook/TextbookLibrary';
 import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
+import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
 import {
   adaptClassicRouteBooks,
-  adaptClassicRouteStage,
   adaptPlannedPathNode,
   loadClassicLearningRoute,
   loadClassicLearningRoutes,
   loadPlannedLearningPath,
 } from './learning-tree/learningPathApi';
 
-const EMPTY_DASHBOARD = {
-  hero: {
-    greeting: '学习数据暂未加载',
-    goal: '请稍后重新进入训练工坊。',
-    focus: '开始今日学习',
-  },
-  today_tasks: [],
-  current_learning_task: null,
-  daily_task_timer: null,
-  yesterday_feedback: { metrics: [] },
-};
-
 const WORKSHOP_PREFERENCES_KEY = 'learning-workshop.preferences';
 const VALID_PATH_MODES = new Set(['personalized', 'classic']);
+
+function normalizedBookName(item) {
+  return String(item?.navigation?.book || item?.book || item?.name || item?.title || '')
+    .replace(/[《》]/g, '')
+    .trim();
+}
 
 function readWorkshopPreferences() {
   try {
@@ -68,62 +53,6 @@ function preferredStageId(navigationContext, preferences) {
     || preferences.currentStageId
     || '',
   );
-}
-
-function TodayTaskRail({ task, timer, onExpire, onNavigate }) {
-  const chapter = task?.learning_chapter || {};
-  const cards = Array.isArray(task?.knowledge_cards) ? task.knowledge_cards : [];
-  if (!task) {
-    return (
-      <section className="today-task-rail" aria-label="今日任务" data-state="empty">
-        <header><span>Today</span><h2>今日任务</h2></header>
-        <DailyTaskCountdown timer={timer} onExpire={onExpire} />
-        <p>还没有可执行的今日任务。</p>
-        <button
-          type="button"
-          onClick={() => onNavigate?.({ page: 'assistant', params: { context: '请结合当前短期计划和学习状态，给我制定今日任务。' } })}
-        >去制定今日任务</button>
-      </section>
-    );
-  }
-  return (
-    <section className="today-task-rail" aria-label="今日任务">
-      <header>
-        <div><span>Today</span><h2>今日任务</h2></div>
-        <small><Clock3 aria-hidden="true" size={13} />{task.duration}</small>
-      </header>
-      <DailyTaskCountdown timer={timer} onExpire={onExpire} />
-      <h3>{task.title}</h3>
-      <div className="today-task-rail__chapter">
-        <BookOpenText aria-hidden="true" size={16} />
-        <div><span>今日章节</span><strong>{[chapter.book, chapter.title].filter(Boolean).join(' · ') || '待任务重新定位'}</strong></div>
-      </div>
-      <div className="today-task-rail__knowledge">
-        <span><Sparkles aria-hidden="true" size={14} />重点知识点</span>
-        {cards.length > 0 ? (
-          <div>
-            {cards.map((card) => (
-              <button
-                key={card.kp_id}
-                type="button"
-                onClick={() => onNavigate?.({
-                  page: 'practice',
-                  params: { view: 'workspace', taskType: 'knowledge_cards', kpId: card.kp_id },
-                })}
-              >
-                <strong>{card.title}</strong><small>打开知识卡</small>
-              </button>
-            ))}
-          </div>
-        ) : <p>当前任务尚未匹配到知识卡，请重新制定今日任务。</p>}
-      </div>
-      {task.completion_criteria && <p className="today-task-rail__criteria">验收：{task.completion_criteria}</p>}
-    </section>
-  );
-}
-
-function hasDashboardShape(value) {
-  return value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0;
 }
 
 function getTrackId(target, tracks, requestedTrackId) {
@@ -162,75 +91,77 @@ function buildPathNodes(items, summaries) {
   });
 }
 
-function buildPathEdges(nodes) {
-  return nodes.slice(1).map((node, index) => ({
-    from: nodes[index].membership_id,
-    to: node.membership_id,
-    kind: 'spine',
-  }));
-}
-
-function recommendationIntent(item) {
-  if (item?.key === 'daily-question') return { page: 'practice', params: { view: 'workspace', taskType: 'question_training' } };
-  if (item?.key === 'case-training') return { page: 'practice', params: { view: 'workspace', taskType: 'case_training' } };
-  if (item?.key === 'resource-card') return { page: 'practice', params: { view: 'workspace', taskType: 'knowledge_cards' } };
-  return { page: item?.target_page || 'assistant', params: { context: item?.summary || item?.title || '' } };
-}
-
 export default function DashboardPage({
-  currentUser,
   navigationContext = {},
   onNavigate,
   onKnowledgeContextChange,
 }) {
-  const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
-  const [error, setError] = useState('');
+  const error = '';
   const [track, setTrack] = useState({ id: '', label: '' });
   const [nodes, setNodes] = useState([]);
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [assistantCollapsed, setAssistantCollapsed] = useState(true);
-  const [assistantDocked, setAssistantDocked] = useState(true);
   const [legacyDrilldown, setLegacyDrilldown] = useState(null);
   const [plannedPath, setPlannedPath] = useState(null);
-  const [pathParent, setPathParent] = useState(null);
   const [initialPreferences] = useState(readWorkshopPreferences);
-  const [pathMode, setPathMode] = useState(() => preferredPathMode(navigationContext, initialPreferences));
+  const [pathMode] = useState(() => preferredPathMode(navigationContext, initialPreferences));
   const [classicRoutes, setClassicRoutes] = useState([]);
   const [classicRouteId, setClassicRouteId] = useState(() => (
     navigationContext.classicRouteId || navigationContext.routeId || initialPreferences.classicRouteId || ''
   ));
-  const [plannedStages, setPlannedStages] = useState([]);
   const [currentStageId, setCurrentStageId] = useState(() => (
     preferredStageId(navigationContext, initialPreferences)
   ));
   const [classicRoutePayload, setClassicRoutePayload] = useState(null);
-  const [classicNodes, setClassicNodes] = useState([]);
-  const [classicParent, setClassicParent] = useState(null);
+  const [plannedBooks, setPlannedBooks] = useState([]);
+  const [, setClassicBooks] = useState([]);
   const [classicError, setClassicError] = useState('');
+  const [allTextbooks, setAllTextbooks] = useState([]);
+  const [textbookError, setTextbookError] = useState('');
+  const [textbooksLoading, setTextbooksLoading] = useState(true);
+  const [currentLearningTask, setCurrentLearningTask] = useState(null);
+  const [showAllTextbooks, setShowAllTextbooks] = useState(false);
 
-  const loadDashboard = useCallback(async () => {
-    setError('');
-    try {
-      const response = await fetchWithAuth(`${MAIN_API_BASE}/dashboard/home`);
-      const payload = await readJsonResponse(response, {});
-      if (!response.ok) throw new Error(payload.detail || '首页数据加载失败');
-      if (!hasDashboardShape(payload)) throw new Error('首页数据解析失败');
-      setDashboard({ ...EMPTY_DASHBOARD, ...payload });
-    } catch (loadError) {
-      setDashboard(EMPTY_DASHBOARD);
-      setError(loadError.message || '首页数据加载失败');
-    }
+  useEffect(() => {
+    let cancelled = false;
+    fetchWithAuth(`${MAIN_API_BASE}/dashboard/home`)
+      .then(async (response) => {
+        const payload = await readJsonResponse(response, {});
+        if (!response.ok) throw new Error(payload.detail || '学习任务加载失败');
+        if (!cancelled) setCurrentLearningTask(payload.current_learning_task || null);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentLearningTask(null);
+      });
+    return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
-
-  const refreshDailyTask = useCallback(async () => {
-    try {
-      await fetchWithAuth(`${MAIN_API_BASE}/learning-tasks/current/refresh`, { method: 'POST' });
-    } finally {
-      await loadDashboard();
-    }
-  }, [loadDashboard]);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadAtlasNodes({ level: 1, route: 'textbook_14_5', signal: controller.signal })
+      .then((payload) => {
+        const books = (payload.nodes || []).map((node) => ({
+          ...node,
+          node_type: 'book',
+          title: `《${node.name}》`,
+          stage_title: '十四五规划教材',
+          navigation: {
+            action: 'open_textbook_chapters',
+            route_id: payload.route || 'textbook_14_5',
+            book: node.name,
+          },
+        }));
+        setAllTextbooks(books);
+        setTextbookError('');
+        setTextbooksLoading(false);
+      })
+      .catch((loadError) => {
+        if (loadError?.name !== 'AbortError') {
+          setAllTextbooks([]);
+          setTextbookError(loadError.message || '教材目录加载失败');
+          setTextbooksLoading(false);
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -250,23 +181,20 @@ export default function DashboardPage({
           if (cancelled) return;
           const rootNodes = planned.nodes.map(adaptPlannedPathNode);
           const rootStages = rootNodes.filter((node) => node.node_type === 'stage');
-          const requestedStage = navigationContext.stageId
-            ? rootNodes.find((node) => node.node_id === navigationContext.stageId)
-            : null;
-          let displayedPlanned = planned;
-          let displayedPlannedNodes = rootNodes;
-          if (requestedStage) {
+          if (cancelled) return;
+          const stageBookPages = await Promise.all(rootStages.map(async (stage) => {
             try {
-              displayedPlanned = await loadPlannedLearningPath(requestedStage.node_id);
-              displayedPlannedNodes = displayedPlanned.nodes.map(adaptPlannedPathNode);
+              const page = await loadPlannedLearningPath(stage.node_id);
+              return page.nodes.filter((node) => node.node_type === 'book').map((node) => ({
+                ...adaptPlannedPathNode(node), stage_title: stage.title, stage_order: stage.order,
+              }));
             } catch {
-              displayedPlanned = planned;
-              displayedPlannedNodes = rootNodes;
+              return [];
             }
-          }
+          }));
           if (cancelled) return;
           setTrack({ id: trackId, label: getTrackLabel(target, tracks, trackId) });
-          setPlannedStages(rootStages);
+          setPlannedBooks(stageBookPages.flat());
           setCurrentStageId((current) => {
             if (rootStages.some((stage) => stage.node_id === current)) return current;
             return (
@@ -276,10 +204,8 @@ export default function DashboardPage({
               || ''
             );
           });
-          setNodes(displayedPlannedNodes);
-          setPlannedPath(displayedPlanned);
-          setPathParent(requestedStage && displayedPlanned !== planned ? requestedStage : null);
-          setSelectedNode(null);
+          setNodes(rootNodes);
+          setPlannedPath(planned);
           setLegacyDrilldown(null);
           onKnowledgeContextChange?.({ trackId, planId: planned.plan_ref?.plan_id });
           return;
@@ -298,17 +224,14 @@ export default function DashboardPage({
         if (cancelled) return;
         setTrack({ id: trackId, label: getTrackLabel(target, tracks, trackId) });
         setNodes(buildPathNodes(children, summaries));
-        setPlannedStages([]);
+        setPlannedBooks([]);
         setPlannedPath(null);
-        setPathParent(null);
-        setSelectedNode(null);
         setLegacyDrilldown(null);
         onKnowledgeContextChange?.({ trackId });
       } catch {
         if (!cancelled) {
           setNodes([]);
-          setPlannedStages([]);
-          setSelectedNode(null);
+          setPlannedBooks([]);
         }
       }
     };
@@ -340,18 +263,18 @@ export default function DashboardPage({
     const textbookRouteId = selectedRoute?.textbook_route_id;
     if (!textbookRouteId) return undefined;
     let cancelled = false;
-    setClassicError('');
     loadClassicLearningRoute(textbookRouteId)
       .then((payload) => {
         if (cancelled) return;
         setClassicRoutePayload(payload);
-        setClassicNodes(payload.route.stages.map((stage) => adaptClassicRouteStage(payload.route, stage)));
-        setClassicParent(null);
+        setClassicBooks(payload.route.stages.flatMap((stage) => adaptClassicRouteBooks(
+          payload.route, stage, payload.navigation?.atlas_route_id,
+        ).map((book) => ({ ...book, stage_title: stage.name, stage_order: stage.order }))));
       })
       .catch((loadError) => {
         if (cancelled) return;
         setClassicRoutePayload(null);
-        setClassicNodes([]);
+        setClassicBooks([]);
         setClassicError(loadError.message || '经典路线详情加载失败');
       });
     return () => { cancelled = true; };
@@ -369,52 +292,43 @@ export default function DashboardPage({
     }
   }, [pathMode, classicRouteId, currentStageId]);
 
-  const focus = useMemo(() => buildDailyFocus(dashboard), [dashboard]);
-  const schedule = useMemo(
-    () => buildDailySchedule(dashboard).filter((item) => item.source !== 'daily_task'),
-    [dashboard],
-  );
-  const feedback = useMemo(() => buildDailyFeedback(dashboard), [dashboard]);
-  const displayedNodes = pathMode === 'classic' ? classicNodes : nodes;
-  const pathEdges = useMemo(() => buildPathEdges(displayedNodes), [displayedNodes]);
-  const greeting = dashboard.hero?.greeting || EMPTY_DASHBOARD.hero.greeting;
-
-  const openRecommendation = async (item) => {
-    const viewId = dashboard.recommendation_view_id;
-    if (viewId && item?.key) {
-      try {
-        await fetchWithAuth(`${API_BASE}/dashboard/recommendations/click`, {
-          method: 'POST',
-          body: JSON.stringify({ recommendation_key: item.key, recommendation_view_id: viewId }),
-        });
-      } catch {
-        // Navigation remains available if telemetry is temporarily unavailable.
-      }
-    }
-    onNavigate?.(recommendationIntent(item));
-  };
+  const legacyPathEdges = useMemo(() => nodes.slice(1).map((node, index) => ({
+    from: nodes[index].membership_id, to: node.membership_id, kind: 'spine',
+  })), [nodes]);
+  const currentStage = useMemo(() => (
+    nodes.find((node) => node.node_id === currentStageId)
+    || nodes.find((node) => ['in_progress', 'current'].includes(node.status))
+    || nodes[0]
+    || null
+  ), [currentStageId, nodes]);
+  const taskBookName = currentLearningTask?.learning_chapter?.book || '';
+  const currentPlanBook = useMemo(() => (
+    plannedBooks.find((book) => normalizedBookName(book) === taskBookName)
+    || plannedBooks.find((book) => ['in_progress', 'current'].includes(book.status))
+    || plannedBooks[0]
+    || null
+  ), [plannedBooks, taskBookName]);
+  const planBookNames = useMemo(() => new Set(plannedBooks.map(normalizedBookName)), [plannedBooks]);
+  const remainingTextbooks = useMemo(() => (
+    allTextbooks.filter((book) => !planBookNames.has(normalizedBookName(book)))
+  ), [allTextbooks, planBookNames]);
+  const visibleTextbooks = useMemo(() => (
+    showAllTextbooks ? [...plannedBooks, ...remainingTextbooks] : plannedBooks
+  ), [plannedBooks, remainingTextbooks, showAllTextbooks]);
+  const currentBookName = taskBookName || normalizedBookName(currentPlanBook);
+  const currentChapter = currentLearningTask?.learning_chapter?.title || '';
+  const currentBookProgress = Number(currentPlanBook?.progress || 0);
+  const currentBookStatus = currentBookProgress > 0
+    ? `${Math.round(currentBookProgress * 100)}%`
+    : currentPlanBook?.status === 'completed' ? '已完成' : '学习中';
 
   const openKnowledgePlanet = async (node) => {
     if (pathMode === 'classic') {
-      if (node.node_type === 'stage') {
-        const route = classicRoutePayload?.route;
-        const stageId = node.navigation?.stage_id;
-        const stage = route?.stages?.find((item) => item.stage_id === stageId);
-        if (!route || !stage) return;
-        setClassicNodes(adaptClassicRouteBooks(
-          route,
-          stage,
-          classicRoutePayload?.navigation?.atlas_route_id,
-        ));
-        setClassicParent(node);
-        setSelectedNode(null);
-        return;
-      }
       if (node.node_type === 'book') {
         onNavigate?.({
-          page: 'knowledge',
+          page: 'practice',
           params: {
-            view: 'atlas',
+            view: 'textbook-chapters',
             route: node.navigation?.route_id || 'textbook_14_5',
             lv1: node.navigation?.book || node.title.replace(/[《》]/g, ''),
             source: 'classic-learning-route',
@@ -424,24 +338,12 @@ export default function DashboardPage({
       }
       return;
     }
-    if (plannedPath && node.node_type === 'stage') {
-      try {
-        const childPage = await loadPlannedLearningPath(node.node_id);
-        setNodes(childPage.nodes.map(adaptPlannedPathNode));
-        setPlannedPath(childPage);
-        setPathParent(node);
-        setSelectedNode(null);
-      } catch (loadError) {
-        setError(loadError.message || '教材路径加载失败');
-      }
-      return;
-    }
     if (plannedPath && node.node_type === 'book') {
       const navigation = node.navigation || {};
       onNavigate?.({
-        page: 'knowledge',
+        page: 'practice',
         params: {
-          view: 'atlas',
+          view: 'textbook-chapters',
           route: navigation.route_id || 'textbook_14_5',
           lv1: navigation.book || node.title.replace(/[《》]/g, ''),
           source: 'learning-plan',
@@ -465,12 +367,27 @@ export default function DashboardPage({
     setLegacyDrilldown(node);
   };
 
-  const selectPathNode = (node) => {
-    if ((pathMode === 'classic' || plannedPath) && ['stage', 'book'].includes(node.node_type)) {
-      openKnowledgePlanet(node);
+  const openTextbook = (node) => {
+    const name = normalizedBookName(node);
+    onNavigate?.({
+      page: 'practice',
+      params: {
+        view: 'textbook-chapters',
+        route: node.navigation?.route_id || 'textbook_14_5',
+        lv1: name,
+        source: 'textbook-library',
+      },
+    });
+  };
+
+  const continueCurrentPlan = () => {
+    if (currentPlanBook) {
+      openTextbook(currentPlanBook);
       return;
     }
-    setSelectedNode(node);
+    if (taskBookName) {
+      openTextbook({ name: taskBookName, navigation: { route_id: 'textbook_14_5', book: taskBookName } });
+    }
   };
 
   if (legacyDrilldown) {
@@ -488,103 +405,69 @@ export default function DashboardPage({
     <>
       {error && <div role="alert" className="dashboard-daily__error">{error}</div>}
       <DashboardDailyWorkspace
-        showFocus={false}
-        fullscreen
-        greeting={greeting}
-        focus={focus}
-        schedule={schedule}
-        todayTaskContent={<TodayTaskRail task={dashboard.current_learning_task} timer={dashboard.daily_task_timer} onExpire={refreshDailyTask} onNavigate={onNavigate} />}
-        feedback={feedback}
-        assistantCollapsed={assistantCollapsed}
-        assistantDocked={assistantDocked}
-        railTab={assistantCollapsed ? 'today' : 'assistant'}
-        pathControls={<>
-          <div className="learning-path-source-tabs" role="tablist" aria-label="学习路径来源">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={pathMode === 'personalized'}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${pathMode === 'personalized' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
-              onClick={() => { setPathMode('personalized'); setSelectedNode(null); }}
-            >我的学习路径</button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={pathMode === 'classic'}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${pathMode === 'classic' ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-600'}`}
-              onClick={() => { setPathMode('classic'); setSelectedNode(null); }}
-            >经典路线</button>
-          </div>
-          {pathMode === 'classic' && classicRoutes.length > 0 && (
-            <label className="learning-path-route-select">路线
-              <select
-                aria-label="经典学习路线"
-                value={classicRouteId}
-                onChange={(event) => {
-                  setClassicRouteId(event.target.value);
-                  setSelectedNode(null);
-                }}
-              >
-                {classicRoutes.map((route) => (
-                  <option key={route.route_id} value={route.route_id}>{route.goal_name}</option>
-                ))}
-              </select>
-            </label>
-          )}
-          <LearningStageSwitcher
-            stages={plannedStages}
-            currentStageId={currentStageId}
-            onCurrentStageChange={(nextStageId, stage) => {
-              setCurrentStageId(nextStageId);
-              if (pathMode === 'personalized' && stage) openKnowledgePlanet(stage);
-            }}
-            onNavigate={onNavigate}
-          />
-        </>}
-        pathHint={pathMode === 'classic' ? '经典路线：阶段 → 教材 → 知识点' : plannedPath ? '阶段 → 教材 → 知识点，单击继续' : undefined}
+        libraryOnly
         pathContent={(
-          <>
-            <div className="learning-path-content">
-              {(pathMode === 'classic' ? classicParent : pathParent) && (
-                <button
-                  type="button"
-                  className="learning-path-content__back"
-                  onClick={async () => {
-                    if (pathMode === 'classic') {
-                      const route = classicRoutePayload?.route;
-                      setClassicNodes(route?.stages?.map((stage) => adaptClassicRouteStage(route, stage)) || []);
-                      setClassicParent(null);
-                      setSelectedNode(null);
-                      return;
-                    }
-                    try {
-                      const rootPage = await loadPlannedLearningPath();
-                      setNodes(rootPage.nodes.map(adaptPlannedPathNode));
-                      setPlannedPath(rootPage);
-                      setPathParent(null);
-                      setSelectedNode(null);
-                    } catch (loadError) {
-                      setError(loadError.message || '阶段路径加载失败');
-                    }
-                  }}
-                >
-                  返回阶段
-                </button>
-              )}
-              {displayedNodes.length > 0 ? (
-                <LearningPathOverview
-                  nodes={displayedNodes}
-                  edges={pathEdges}
-                  selectedId={selectedNode?.membership_id}
-                  onSelect={selectPathNode}
-                  onClearSelection={() => setSelectedNode(null)}
-                  onDrill={openKnowledgePlanet}
-                  directDrill={pathMode === 'classic' || Boolean(plannedPath)}
-                />
+          <div className="workshop-library-page">
+              {textbooksLoading ? (
+                <div className="dashboard-daily__path-empty">教材目录正在准备中</div>
+              ) : allTextbooks.length > 0 ? (
+                <>
+                  <section className="workshop-plan" aria-label="当前学习计划">
+                    <div className="workshop-plan__summary">
+                      <span><Route aria-hidden="true" size={15} />Learning plan</span>
+                      <h1>学习计划</h1>
+                      <p>{currentStage?.description || plannedPath?.message || '结合你的长期目标，按计划教材循序推进学习。'}</p>
+                      <div className="workshop-plan__meta">
+                        <span>{plannedPath?.plan_ref?.plan_id ? `计划 ${plannedPath.plan_ref.plan_id}` : '当前学习计划'}</span>
+                        <span>{currentStage ? `当前阶段：${currentStage.title}` : '等待生成学习阶段'}</span>
+                        <span>{plannedBooks.length} 本计划教材</span>
+                      </div>
+                    </div>
+                    <div className="workshop-plan__focus">
+                      <span><Sparkles aria-hidden="true" size={14} />现在继续</span>
+                      {currentBookName ? (
+                        <>
+                          <h2>该继续学习《{currentBookName}》</h2>
+                          <p>{currentChapter ? `当前任务：${currentChapter}` : currentLearningTask?.title || currentPlanBook?.description || '从当前计划教材继续学习。'}</p>
+                          <div className="workshop-plan__progress">
+                            <div><i style={{ width: currentBookProgress > 0 ? `${Math.round(currentBookProgress * 100)}%` : '12%' }} /></div>
+                            <strong>{currentBookStatus}</strong>
+                            {currentLearningTask?.duration && <small><Clock3 aria-hidden="true" size={13} />预计 {currentLearningTask.duration}</small>}
+                          </div>
+                          <button type="button" onClick={continueCurrentPlan}>
+                            <BookOpenCheck aria-hidden="true" size={17} />点击继续学习<ArrowRight aria-hidden="true" size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <h2>先制定你的长期学习计划</h2>
+                          <p>完成计划后，这里会提醒当前阶段和下一本教材。</p>
+                          <button type="button" onClick={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}>去制定学习计划</button>
+                        </>
+                      )}
+                    </div>
+                  </section>
+                  <TextbookLibrary
+                    books={visibleTextbooks}
+                    emptyText="当前计划暂未匹配到教材"
+                    onOpen={openTextbook}
+                    remainingCount={showAllTextbooks ? 0 : remainingTextbooks.length}
+                    onExpandAll={() => setShowAllTextbooks(true)}
+                  />
+                </>
+              ) : textbookError ? (
+                <div className="dashboard-daily__path-empty"><p>{textbookError}</p></div>
               ) : pathMode === 'classic' ? (
                 <div className="dashboard-daily__path-empty" data-state="classic-route-unavailable">
                   <p>{classicError || '经典路线正在准备中。'}</p>
                 </div>
+              ) : !plannedPath && nodes.length > 0 ? (
+                <LearningPathOverview
+                  nodes={nodes}
+                  edges={legacyPathEdges}
+                  onSelect={openKnowledgePlanet}
+                  onDrill={openKnowledgePlanet}
+                />
               ) : plannedPath?.availability === 'requires_long_term_plan' ? (
                 <div className="dashboard-daily__path-empty" data-state="requires-long-term-plan">
                   <p>{plannedPath.message || '请先完成长期学习规划，再生成阶段、教材和知识点路径。'}</p>
@@ -599,53 +482,7 @@ export default function DashboardPage({
                   </button>
                 </div>
               ) : <div className="dashboard-daily__path-empty">知识路径正在准备中</div>}
-              {selectedNode && (
-                <LearningPlanRail
-                  layout="overlay"
-                  node={selectedNode}
-                  summary={selectedNode}
-                  routeNodes={displayedNodes}
-                  onClose={() => setSelectedNode(null)}
-                  onStartLearning={(node) => onNavigate?.({
-                    page: 'practice',
-                    params: {
-                      view: 'workspace',
-                      trackId: track.id,
-                      membershipId: node.membership_id,
-                    },
-                  })}
-                />
-              )}
-            </div>
-          </>
-        )}
-        trainingContent={<>
-          <LearningPathTrainingModules trackId={track.id} onNavigate={onNavigate} />
-          {Array.isArray(dashboard.recommendations) && dashboard.recommendations.length > 0 && (
-            <section className="learning-workshop-recommendations" aria-label="个性化学习推荐">
-              {dashboard.recommendations.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  title={item.summary}
-                  onClick={() => openRecommendation(item)}
-                >{item.action_label || item.title}</button>
-              ))}
-            </section>
-          )}
-        </>}
-        onRailTabChange={(tab) => setAssistantCollapsed(tab !== 'assistant')}
-        assistantContent={(
-          <CompactAssistant
-            currentUser={currentUser?.username || 'User'}
-            floating={false}
-            initiallyCollapsed={false}
-            dailyGoal={dashboard.hero?.goal || ''}
-            dailyFocus={focus.title}
-            onCollapsedChange={setAssistantCollapsed}
-            onFloatingDockChange={setAssistantDocked}
-            onOpenFull={(sessionId) => onNavigate?.('assistant', sessionId)}
-          />
+          </div>
         )}
       />
     </>

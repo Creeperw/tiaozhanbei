@@ -48,7 +48,6 @@ class _SourceSnapshot:
     source_answer: str
     source_analysis: str
     source_question_type: str
-    source_difficulty: int
     kp_ids: tuple[str, ...]
     attempt_id: str
     attempt_item_id: str
@@ -68,7 +67,6 @@ class _SourceSnapshot:
             "source_answer": self.source_answer,
             "source_analysis": self.source_analysis,
             "source_question_type": self.source_question_type,
-            "source_difficulty": self.source_difficulty,
             "kp_ids": list(self.kp_ids),
             "attempt_item_id": self.attempt_item_id,
         }
@@ -119,7 +117,6 @@ def _source(db: Session, user_id: int, mistake_id: int) -> _SourceSnapshot:
         source_answer=question.answer,
         source_analysis=question.analysis,
         source_question_type=question.question_type,
-        source_difficulty=question.standard_difficulty,
         kp_ids=kp_ids,
         attempt_id=attempt_item.attempt_id,
         attempt_item_id=attempt_item.attempt_item_id,
@@ -138,7 +135,6 @@ def _question_projection(question) -> dict[str, Any]:
         "question_id": question.question_id,
         "stem": question.stem,
         "question_type": question.question_type,
-        "difficulty": question.standard_difficulty,
         "kp_ids": list(question.kp_ids),
         "source_kind": question.source_kind,
     }
@@ -183,7 +179,6 @@ def list_available_variation_sources(db: Session, user_id: int, *, limit: int = 
             "question_version_id": source.source_question_version_id,
             "stem": source.source_stem,
             "question_type": source.source_question_type,
-            "difficulty": source.source_difficulty,
             "kp_ids": list(source.kp_ids),
             "kp_names": _kp_names(db, source.kp_ids),
         })
@@ -215,7 +210,6 @@ def _owned_questions(db: Session, user_id: int):
             question_id=version.question_id,
             stem=version.stem or "",
             question_type=version.question_type,
-            standard_difficulty=int(version.standard_difficulty),
             kp_ids=kp_ids,
             source_kind=version.source_kind,
         ))
@@ -345,7 +339,6 @@ def apply_mistake_variations(
                         rubric=content["rubric"],
                         stem=content["stem"],
                         question_type=content["question_type"],
-                        difficulty=content["difficulty"],
                         kp_ids=tuple(content["kp_ids"]),
                     )
                 else:
@@ -404,7 +397,6 @@ def apply_mistake_variations(
                 "question_id": content.get("question_id", ""),
                 "stem": content["stem"],
                 "question_type": content["question_type"],
-                "difficulty": content.get("difficulty"),
                 "kp_ids": list(content["kp_ids"]),
                 "kp_names": _kp_names(db, list(content["kp_ids"])),
                 "source_kind": "variation",

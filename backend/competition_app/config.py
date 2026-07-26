@@ -15,7 +15,7 @@ REPOSITORY_ROOT = BACKEND_ROOT.parent
 CHAT_BASE_URL = (
     "https://llm-1nvjq1o5rj1bf5yi.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
-CHAT_MODEL = "qwen3.7-plus-2026-05-26"
+CHAT_MODEL = "qwen3.7-flash-2026-07-15"
 EMBEDDING_BASE_URL = "https://api.siliconflow.cn/v1"
 EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-4B"
 
@@ -196,6 +196,7 @@ class Settings:
     # File, mail, image, and search configuration needed by selected incoming
     # business modules. Voice model configuration is intentionally omitted.
     upload_dir: Path = DEFAULT_RUNTIME_ROOT / "uploads"
+    avatar_dir: Path = DEFAULT_RUNTIME_ROOT / "profile_avatars"
     metadata_file: Path = DEFAULT_RUNTIME_ROOT / "file_metadata.json"
     markitdown_output_dir: Path = DEFAULT_RUNTIME_ROOT / "markitdown_output"
     markitdown_extract_timeout_seconds: int = 120
@@ -395,6 +396,12 @@ class Settings:
             ),
             upload_dir=_parse_path(
                 values, "UPLOAD_DIR", runtime_root / "uploads", base=runtime_root
+            ),
+            avatar_dir=_parse_path(
+                values,
+                "AVATAR_DIR",
+                runtime_root / "profile_avatars",
+                base=runtime_root,
             ),
             metadata_file=_parse_path(
                 values,

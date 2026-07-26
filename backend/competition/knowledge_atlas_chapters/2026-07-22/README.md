@@ -12,6 +12,7 @@
 
 - `chapter_nodes.jsonl`：书籍、章节、小节节点及父子关系和顺序。
 - `chunk_chapter_links.jsonl`：通过 `chunk_uid` 将每条切片关联到章节、小节。
+- `final/section_video_matches.jsonl`：视频分 P 到教材小节的正式完整视频映射；运行时 OCR 映射缺失时由后端直接回退读取。
 - `chapter_hierarchy_report.json`：全量映射数量、识别方式和待复核统计。
 - `chapter_hierarchy.py`：从原始 Markdown 与切片重新生成上述数据的脚本。
 

@@ -12,7 +12,7 @@ from competition_app.review.scheduler import ReviewScheduler
 
 
 NOW = datetime(2026, 7, 13, 12, 0, tzinfo=timezone.utc)
-POLICY = DailyReviewPolicy(capacity=1, target_difficulty=2)
+POLICY = DailyReviewPolicy(capacity=1)
 
 
 def test_missing_state_creates_initial_recall_task() -> None:

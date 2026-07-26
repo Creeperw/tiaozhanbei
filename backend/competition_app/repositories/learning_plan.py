@@ -21,7 +21,10 @@ class LearningPlanRepository(Protocol):
         value: LearningPlanResult,
         *,
         invalidated_layers: list[str] | None = None,
-    ) -> None: ...
+        sync_event_type: str = "publish",
+        expected_task_id: str | None = None,
+        expected_task_version: int | None = None,
+    ) -> bool: ...
 
 
 class InMemoryLearningPlanRepository:
@@ -41,11 +44,23 @@ class InMemoryLearningPlanRepository:
         value: LearningPlanResult,
         *,
         invalidated_layers: list[str] | None = None,
-    ) -> None:
+        sync_event_type: str = "publish",
+        expected_task_id: str | None = None,
+        expected_task_version: int | None = None,
+    ) -> bool:
         if not learner_id:
             raise ValueError("learner_id is required")
         self._validate_owner(learner_id, value)
         with self._lock:
+            if expected_task_id is not None or expected_task_version is not None:
+                current_task = self._current.get(learner_id)
+                current_task = current_task.learning_task if current_task else None
+                if (
+                    current_task is None
+                    or current_task.task_id != expected_task_id
+                    or current_task.version != expected_task_version
+                ):
+                    return False
             self._current[learner_id] = value.model_copy(deep=True)
             for layer in invalidated_layers or []:
                 self._invalidation_events.append(
@@ -55,6 +70,7 @@ class InMemoryLearningPlanRepository:
                         "layer": layer,
                     }
                 )
+            return True
 
     @staticmethod
     def _validate_owner(learner_id: str, value: LearningPlanResult) -> None:
@@ -92,13 +108,29 @@ class SqlLearningPlanRepository:
         value: LearningPlanResult,
         *,
         invalidated_layers: list[str] | None = None,
-    ) -> None:
+        sync_event_type: str = "publish",
+        expected_task_id: str | None = None,
+        expected_task_version: int | None = None,
+    ) -> bool:
         if not learner_id:
             raise ValueError("learner_id is required")
+        if sync_event_type not in {"publish", "replace"}:
+            raise ValueError("sync_event_type must be publish or replace")
         InMemoryLearningPlanRepository._validate_owner(learner_id, value)
         serialized = value.model_dump_json()
         with self.engine.begin() as connection:
-            self._save_versions(connection, value)
+            if expected_task_id is not None or expected_task_version is not None:
+                if not expected_task_id or expected_task_version is None:
+                    raise ValueError("refresh CAS requires task ID and version")
+                if not self._claim_refresh(
+                    connection,
+                    learner_id,
+                    expected_task_id,
+                    expected_task_version,
+                    value,
+                ):
+                    return False
+            task_version_created = self._save_versions(connection, value)
             exists = connection.execute(
                 text(
                     "SELECT learner_id FROM learner_plan_states "
@@ -136,9 +168,59 @@ class SqlLearningPlanRepository:
                         "reason": "parent_plan_updated",
                     },
                 )
+            task = value.learning_task
+            if task_version_created and task is not None:
+                connection.execute(
+                    text(
+                        "INSERT INTO learning_task_sync_outbox "
+                        "(event_id, learner_id, task_id, task_version, event_type, payload_json) "
+                        "VALUES (:event_id, :learner_id, :task_id, :task_version, "
+                        ":event_type, :payload_json)"
+                    ),
+                    {
+                        "event_id": f"LTSO_{uuid4().hex}",
+                        "learner_id": learner_id,
+                        "task_id": task.task_id,
+                        "task_version": task.version,
+                        "event_type": sync_event_type,
+                        "payload_json": task.model_dump_json(),
+                    },
+                )
+        return True
+
+    def _claim_refresh(
+        self,
+        connection,
+        learner_id: str,
+        expected_task_id: str,
+        expected_task_version: int,
+        value: LearningPlanResult,
+    ) -> bool:
+        replacement = value.learning_task
+        if replacement is None:
+            raise ValueError("refresh CAS requires a replacement learning task")
+        values = {
+            "learner_id": learner_id,
+            "prior_task_id": expected_task_id,
+            "prior_task_version": expected_task_version,
+            "replacement_task_id": replacement.task_id,
+            "replacement_task_version": replacement.version,
+        }
+        prefix = "INSERT OR IGNORE" if self.engine.dialect.name == "sqlite" else "INSERT IGNORE"
+        result = connection.execute(
+            text(
+                f"{prefix} INTO learning_task_refresh_claims "
+                "(learner_id, prior_task_id, prior_task_version, replacement_task_id, "
+                "replacement_task_version) VALUES (:learner_id, :prior_task_id, "
+                ":prior_task_version, :replacement_task_id, :replacement_task_version)"
+            ),
+            values,
+        )
+        return result.rowcount == 1
 
     @staticmethod
-    def _save_versions(connection, value: LearningPlanResult) -> None:
+    def _save_versions(connection, value: LearningPlanResult) -> bool:
+        task_version_created = False
         rows = (
             ("long_term_plan_versions", "plan_id", value.long_term_plan),
             ("short_term_plan_versions", "plan_id", value.short_term_plan),
@@ -171,3 +253,6 @@ class SqlLearningPlanRepository:
                     "payload_json": item.model_dump_json(),
                 },
             )
+            if table == "learning_task_versions":
+                task_version_created = True
+        return task_version_created

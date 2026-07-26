@@ -7,6 +7,7 @@ import { fetchWithAuth } from '../utils/api';
 
 vi.mock('../utils/api', () => ({
   API_BASE: '',
+  MAIN_API_BASE: '/api/v1',
   fetchWithAuth: vi.fn(),
   fetchJsonWithAuthFallback: vi.fn(async () => ({ data: null })),
 }));
@@ -34,7 +35,9 @@ describe('KnowledgePage workspace navigation', () => {
     vi.clearAllMocks();
     fetchWithAuth.mockImplementation(async (url) => ({
       ok: true,
-      json: async () => url.endsWith('/knowledge/catalog')
+      json: async () => url.includes('/knowledge/content/recognition-reports')
+        ? { items: [] }
+        : url.endsWith('/knowledge/catalog')
         ? {
           documents: [{ id: 'doc-1', name: '病理学2.md', available: true }],
           datasets: [{ id: 'atlas_question_bank', name: 'Atlas 题库', count: 93111, available: true }],
@@ -152,5 +155,36 @@ describe('KnowledgePage workspace navigation', () => {
 
     const progressbar = await screen.findByRole('progressbar');
     expect(progressbar.firstElementChild).toHaveStyle({ transform: 'scaleX(0.5)' });
+  });
+
+  it('shows deterministic recognition confidence and opens a read-only review', async () => {
+    fetchWithAuth.mockImplementation(async (url) => ({
+      ok: true,
+      json: async () => {
+        if (url.includes('/recognition-reports/run-1')) {
+          return {
+            report_id: 'run-1', title: '用户中药学', structural_confidence: 0.91,
+            source_chunk_count: 100, mapped_chunk_count: 98, needs_review_chunk_count: 2,
+            confidence_level: 'good', issue_count_total: 1, read_only: true,
+            metrics: [{ key: 'mapping_coverage', label: '切片映射覆盖率', ratio: 0.98, numerator: 98, denominator: 100, passed: false }],
+            issues: [{ code: 'UNMAPPED_CHUNK', severity: 'error', message: '切片没有章节映射', chunk_uid: 'C_99' }],
+          };
+        }
+        if (url.includes('/recognition-reports')) {
+          return { items: [{ report_id: 'run-1', title: '用户中药学', structural_confidence: 0.91, confidence_level: 'good', book_count: 1, source_chunk_count: 100, mapped_chunk_count: 98, needs_review_chunk_count: 2 }] };
+        }
+        if (url.includes('/knowledge/status')) return { total_documents: 1, total_chunks: 100, status: '就绪', progress: 100, is_processing: false };
+        if (url.endsWith('/knowledge/catalog')) return { documents: [], datasets: [], indexes: [], embedding: null };
+        return { files: [] };
+      },
+    }));
+
+    render(<KnowledgePage currentUser={{ username: 'alice', role: 'user' }} navigationContext={{ view: 'personal' }} />);
+
+    expect(await screen.findByText('结构识别置信度 91%')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /用户中药学/ }));
+    expect(await screen.findByRole('dialog', { name: /用户中药学 · 识别审查/ })).toBeInTheDocument();
+    expect(screen.getByText('切片没有章节映射')).toBeInTheDocument();
+    expect(screen.getByText(/只读报告/)).toBeInTheDocument();
   });
 });

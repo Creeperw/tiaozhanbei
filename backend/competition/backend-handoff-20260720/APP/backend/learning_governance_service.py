@@ -12,15 +12,18 @@ from sqlalchemy.orm import Session
 
 from APP.backend import diagnosis_agent_service, system_data_service
 from APP.backend.database import (
+    AuditResultRecord,
+    GradingResultRecord,
     KnowledgeCardRecord,
     KnowledgeMasteryState,
     KnowledgePoint,
+    LearningAttemptItemRecord,
+    LearningAttemptRecord,
     LearnerKPReviewState,
     LearnerKnowledgeMastery,
     LearningInterventionLifecycle,
     LearningInterventionRecord,
     LearningQuestionAttempt,
-    LearningTask,
     MistakeRecord,
     NotificationPreference,
     NotificationRecord,
@@ -33,7 +36,7 @@ from APP.backend.time_utils import utc_now
 
 
 SCHEMA_VERSION = "1.0"
-METHODOLOGY_VERSION = "learning-monitoring-v2"
+METHODOLOGY_VERSION = "learning-monitoring-v3-daily-atomic"
 REFERENCE_LINKS = [
     {
         "reference_id": "caliper-1edtech-1.2",
@@ -65,7 +68,7 @@ REFERENCE_LINKS = [
     },
 ]
 _ACTION_BY_STAGE = {
-    "T1": ("降低单次任务难度", "先缩小任务范围，并用对比卡补齐关键概念。"),
+    "T1": ("缩小单次任务范围", "先缩小任务范围，并用对比卡补齐关键概念。"),
     "T2": ("恢复学习节奏", "减少今日任务数量，保留一个能够完成的核心任务。"),
     "T4": ("回到当前学习主线", "优先处理当前阶段和短期计划覆盖的知识点。"),
     "T5": ("安排错题复盘", "先完成薄弱知识点的错题复盘，再增加新内容。"),
@@ -128,31 +131,12 @@ def _dimension(
     }
 
 
-def _preferred_difficulty(profile: UserProfile | None) -> tuple[float, str]:
-    survey = _json(getattr(profile, "survey_json", "{}"), {}) if profile is not None else {}
-    values = [
-        survey.get("preferred_difficulty"),
-        survey.get("difficulty_preference"),
-        (survey.get("preferences") or {}).get("difficulty_preference")
-        if isinstance(survey.get("preferences"), dict) else None,
-    ]
-    mapping = {"D1": 1.0, "D2": 2.0, "D3": 3.0, "D4": 4.0, "D5": 5.0}
-    for value in values:
-        if isinstance(value, (int, float)) and 1 <= float(value) <= 5:
-            return float(value), "user_profile_survey"
-        label = str(value or "").strip().upper()
-        if label in mapping:
-            return mapping[label], "user_profile_survey"
-    return 2.0, "transparent_default_D2"
-
-
 def _weighted_match_score(components: dict[str, float | None]) -> float:
     weights = {
-        "knowledge_fit": 0.40,
+        "knowledge_fit": 0.45,
         "quality": 0.20,
-        "format_fit": 0.15,
+        "format_fit": 0.20,
         "time_fit": 0.15,
-        "difficulty_fit": 0.10,
     }
     available = [(weights[key], value) for key, value in components.items() if value is not None]
     denominator = sum(weight for weight, _value in available)
@@ -261,14 +245,53 @@ def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dic
         LearningQuestionAttempt.answered_at >= window_start,
         LearningQuestionAttempt.answered_at <= now,
     ).all()
-    accuracy = sum(bool(row.is_correct) for row in attempts) / len(attempts) if attempts else 0.0
+    scored_attempts = (
+        db.query(GradingResultRecord)
+        .join(
+            LearningAttemptItemRecord,
+            LearningAttemptItemRecord.attempt_item_id
+            == GradingResultRecord.attempt_item_id,
+        )
+        .join(
+            LearningAttemptRecord,
+            LearningAttemptRecord.attempt_id == LearningAttemptItemRecord.attempt_id,
+        )
+        .join(
+            AuditResultRecord,
+            (AuditResultRecord.source_artifact_id == GradingResultRecord.artifact_id)
+            & (
+                AuditResultRecord.source_artifact_version
+                == GradingResultRecord.version
+            ),
+        )
+        .filter(
+            LearningAttemptRecord.learner_id == user_id,
+            LearningAttemptRecord.attempt_type.in_(("practice", "paper")),
+            LearningAttemptRecord.submitted_at >= window_start,
+            LearningAttemptRecord.submitted_at <= now,
+            GradingResultRecord.status == "reviewed",
+            GradingResultRecord.score.is_not(None),
+            GradingResultRecord.max_score.is_not(None),
+            GradingResultRecord.score >= 0,
+            GradingResultRecord.max_score > 0,
+            GradingResultRecord.score <= GradingResultRecord.max_score,
+            AuditResultRecord.decision == "pass",
+            AuditResultRecord.status.in_(("completed", "reviewed")),
+        )
+        .all()
+    )
+    scored_points = sum(float(row.score) for row in scored_attempts)
+    available_points = sum(float(row.max_score) for row in scored_attempts)
+    practice_score_rate = (
+        scored_points / available_points if available_points > 0 else 0.0
+    )
     average_mastery = sum(item["score"] for item in mastery) / len(mastery) if mastery else 0.0
     retention_values = [
         value for value, _source in retention_by_kp.values()
         if value is not None
     ]
     retention = sum(retention_values) / len(retention_values) if retention_values else 0.0
-    completion = _metric_value(window_metrics, "task_completion_rate")
+    completion = _metric_value(window_metrics, "daily_atomic_task_completion_rate")
     resource_engagement = _metric_value(window_metrics, "resource_click_rate")
     login_days = sum(int(item.get("login_days") or 0) for item in trends.get("series", []))
     consistency = login_days / days
@@ -327,13 +350,17 @@ def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dic
                        formula="mean(exp(-elapsed_seconds/stability_seconds))",
                        evidence_count=len(retention_values), window_days=None),
             _dimension("execution", "任务执行", completion,
-                       source_ids=["learning_tasks"],
-                       formula="completed_non_cancelled_tasks/non_cancelled_tasks",
+                       source_ids=["daily_task_instances", "daily_task_items"],
+                       formula="completed_non_cancelled_daily_items/non_cancelled_published_daily_items",
                        evidence_count=task_count, window_days=days),
-            _dimension("accuracy", "练习正确", accuracy,
-                       source_ids=["learning_question_attempts"],
-                       formula="correct_attempts/attempts",
-                       evidence_count=len(attempts), window_days=days),
+            _dimension("accuracy", "练习得分率", practice_score_rate,
+                       source_ids=[
+                           "grading_result_records",
+                           "learning_attempts",
+                           "audit_result_records",
+                       ],
+                       formula="sum(passed_practice_and_paper_scores)/sum(corresponding_max_scores)",
+                       evidence_count=len(scored_attempts), window_days=days),
             _dimension("consistency", "学习规律", consistency,
                        source_ids=["learning_activity_records"],
                        formula="distinct_login_or_checkin_days/window_days",
@@ -362,7 +389,8 @@ def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dic
             "focus_session_count": focus_session_count,
             "sources": [
                 "learning_activity_records",
-                "learning_tasks",
+                "daily_task_instances",
+                "daily_task_items",
                 "learning_focus_sessions",
                 "learning_question_attempts",
                 "knowledge_mastery_states",
@@ -374,9 +402,13 @@ def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dic
         },
         "data_sources": [
             {"source_id": "learning_activity_records", "table": "learning_activity_records", "events": ["login", "daily_checkin", "dashboard_recommendations_view", "resource_click"], "time_field": "created_at", "window_days": days},
-            {"source_id": "learning_tasks", "table": "learning_task", "fields": ["status", "created_at", "completed_at", "kp_ids_json"], "time_field": "created_at", "window_days": days},
+            {"source_id": "daily_task_instances", "table": "daily_task_instances", "fields": ["host_task_id", "host_task_version", "status", "created_at"], "time_field": "created_at", "window_days": days},
+            {"source_id": "daily_task_items", "table": "daily_task_items", "fields": ["task_item_id", "host_task_id", "host_task_version", "status", "created_at", "completed_at"], "time_field": "created_at", "window_days": days},
             {"source_id": "learning_focus_sessions", "table": "learning_focus_sessions", "fields": ["active_seconds", "status", "started_at", "ended_at"], "time_field": "started_at", "window_days": days},
             {"source_id": "learning_question_attempts", "table": "question_attempt", "fields": ["is_correct", "score", "response_time_seconds", "answered_at"], "time_field": "answered_at", "window_days": days},
+            {"source_id": "grading_result_records", "table": "grading_result_records", "fields": ["score", "max_score", "status", "attempt_item_id", "version"], "time_field": None, "window_days": days},
+            {"source_id": "learning_attempts", "table": "learning_attempts", "fields": ["learner_id", "attempt_type", "submitted_at"], "time_field": "submitted_at", "window_days": days},
+            {"source_id": "audit_result_records", "table": "audit_result_records", "fields": ["source_artifact_id", "source_artifact_version", "decision", "status"], "time_field": None, "window_days": days},
             {"source_id": "knowledge_mastery_states", "table": "knowledge_mastery_states", "fields": ["mastery_score", "mastery_confidence", "attempt_count", "calculation_version"], "unit": "percent_0_100", "window_days": None},
             {"source_id": "learner_kp_review_states", "table": "learner_kp_review_states", "fields": ["last_review_at", "stability_seconds", "next_review_at", "formula_version"], "window_days": None},
             {"source_id": "mistake_records", "table": "mistake_records", "fields": ["error_type", "kp_ids_json", "created_at"], "time_field": "created_at", "window_days": days},
@@ -417,7 +449,6 @@ def build_resource_match_report(
             getattr(profile, "custom_needs", ""),
         )
     ).lower()
-    target_difficulty, target_difficulty_basis = _preferred_difficulty(profile)
     response_rows = db.query(LearningQuestionAttempt).filter(
         LearningQuestionAttempt.user_id == user_id,
         LearningQuestionAttempt.answered_at >= utc_now() - timedelta(days=30),
@@ -447,7 +478,6 @@ def build_resource_match_report(
             "quality_basis": "knowledge_card_bundle" if isinstance(bundle_quality, (int, float)) else "neutral_default_no_quality_evidence",
             "estimated_minutes": max(1, int(bundle_minutes)) if isinstance(bundle_minutes, (int, float)) else 12,
             "estimated_minutes_basis": "knowledge_card_bundle" if isinstance(bundle_minutes, (int, float)) else "content_type_default",
-            "difficulty": None,
             "source": "user_knowledge_card",
             "action": {"type": "navigate", "page": "knowledge", "params": {"kp_id": row.kp_id}},
         })
@@ -462,7 +492,6 @@ def build_resource_match_report(
             "quality_basis": "teaching_resources.quality_score",
             "estimated_minutes": 15 if row.resource_type == "video" else 10,
             "estimated_minutes_basis": "content_type_default",
-            "difficulty": None,
             "source": row.source or "unknown",
             "action": {"type": "open_resource", "resource_id": row.resource_id},
         })
@@ -479,7 +508,6 @@ def build_resource_match_report(
             "quality_basis": "question_bank_items.quality_score",
             "estimated_minutes": observed_minutes,
             "estimated_minutes_basis": "user_response_time_mean_30d" if observed_times else "question_type_default",
-            "difficulty": float(row.difficulty) if row.difficulty is not None else None,
             "source": row.source or "unknown",
             "action": {"type": "navigate", "page": "workshop", "params": {"question_id": row.question_id}},
         })
@@ -498,17 +526,11 @@ def build_resource_match_report(
         coverage = len(candidate_kps & target_set) / len(target_set) if target_set else 0.0
         format_fit = 1.0 if not preferred_types or candidate["resource_type"] in preferred_types else 0.45
         time_fit = 1.0 if candidate["estimated_minutes"] <= available_minutes else max(0.2, available_minutes / candidate["estimated_minutes"])
-        candidate_difficulty = candidate.get("difficulty")
-        difficulty_fit = (
-            _clamp(1.0 - abs(float(candidate_difficulty) - target_difficulty) / 4.0)
-            if isinstance(candidate_difficulty, (int, float)) else None
-        )
         components: dict[str, float | None] = {
             "knowledge_fit": coverage,
             "quality": candidate["quality"],
             "format_fit": format_fit,
             "time_fit": time_fit,
-            "difficulty_fit": difficulty_fit,
         }
         total = _weighted_match_score(components) if target_set else 0.0
         reasons = []
@@ -518,8 +540,6 @@ def build_resource_match_report(
             reasons.append("符合已确认的资源偏好")
         if time_fit == 1.0:
             reasons.append("可在当前任务时间内完成")
-        if difficulty_fit is not None and difficulty_fit >= 0.75:
-            reasons.append("难度接近已确认偏好")
         matches.append({
             **candidate,
             "score": round(total, 4),
@@ -528,14 +548,12 @@ def build_resource_match_report(
                 "quality": round(candidate["quality"], 4),
                 "format_fit": round(format_fit, 4),
                 "time_fit": round(time_fit, 4),
-                "difficulty_fit": round(difficulty_fit, 4) if difficulty_fit is not None else None,
             },
             "component_sources": {
                 "knowledge_fit": "resource.kp_ids intersect target.kp_ids",
                 "quality": candidate["quality_basis"],
                 "format_fit": "user_profiles.exercise_preferences/custom_needs",
                 "time_fit": candidate["estimated_minutes_basis"],
-                "difficulty_fit": "question_bank_items.difficulty vs user_profile_survey" if difficulty_fit is not None else "not_available_excluded_from_weighting",
             },
             "reasons": reasons or ["作为补充资源使用"],
         })
@@ -557,8 +575,6 @@ def build_resource_match_report(
             "kp_ids": target_kps,
             "available_minutes": available_minutes,
             "preferred_resource_types": sorted(preferred_types),
-            "preferred_difficulty": target_difficulty,
-            "preferred_difficulty_basis": target_difficulty_basis,
         },
         "summary": {
             "candidate_count": len(candidates),
@@ -580,12 +596,11 @@ def build_resource_match_report(
         ],
         "methodology": {
             "version": METHODOLOGY_VERSION,
-            "formula": "weighted mean of available components: knowledge .40, quality .20, format .15, time .15, difficulty .10",
+            "formula": "weighted mean of available components: knowledge .45, quality .20, format .20, time .15",
             "missing_feature_policy": "exclude_missing_component_and_renormalize_weights",
             "limitations": [
                 "当前权重是公开的工程基线，尚未通过真实学习增益校准。",
                 "没有目标知识点时不生成推荐。",
-                "资源缺少难度时不会伪造难度分。",
             ],
             "recommended_validation_metrics": ["Precision@K", "Recall@K", "NDCG@K", "task_completion_rate", "post_test_learning_gain"],
             "references": [REFERENCE_LINKS[-1]],

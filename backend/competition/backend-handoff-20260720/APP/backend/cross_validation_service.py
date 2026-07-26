@@ -37,24 +37,12 @@ def _knowledge_lens(artifact: ExpertArtifact, evidence_pack: EvidencePack) -> di
 
 
 def _diagnosis_lens(artifact: ExpertArtifact, learner_context: LearnerContextBrief, diagnosis_report: DiagnosisReport) -> dict[str, Any]:
-    learning_state = learner_context.learning_state or {}
-    actual_difficulty = artifact.content.get("difficulty")
-    expected = learning_state.get("target_difficulty")
-    if not isinstance(expected, int) and "难度不适" in _text(diagnosis_report.stage_name) and isinstance(actual_difficulty, int):
-        expected = max(1, actual_difficulty - 1)
-    if isinstance(expected, int) and isinstance(actual_difficulty, int):
-        score = 1.0 - min(abs(expected - actual_difficulty) * 0.2, 1.0)
-    else:
-        score = 1.0
-    conflicts = []
-    if score < 0.7:
-        conflicts.append(f"difficulty_mismatch:expected_{expected}_actual_{actual_difficulty}")
-    return {"score": _round(score), "conflicts": conflicts, "expected_difficulty": expected}
+    return {"score": 1.0, "conflicts": []}
 
 
 def _self_check_lens(artifact: ExpertArtifact) -> dict[str, Any]:
     content = artifact.content or {}
-    required_fields = ("schema_version", "source_ids", "kp_ids", "difficulty")
+    required_fields = ("schema_version", "source_ids", "kp_ids")
     missing = [field for field in required_fields if field not in content]
     conflicts = [f"schema_invalid:missing_{field}" for field in missing]
     return {"score": 1.0 if not conflicts else 0.0, "conflicts": conflicts}
@@ -80,7 +68,6 @@ def _overall_score(review: ReviewDecision) -> float:
     values = [
         review.fact_consistency or 0.0,
         review.evidence_coverage or 0.0,
-        review.difficulty_match or 0.0,
         review.knowledge_coverage or 0.0,
     ]
     return _round(sum(values) / len(values))
@@ -155,7 +142,7 @@ def _default_diagnosis_report(*, kp_ids: list[str], source_id: str, summary: str
     )
 
 
-def _default_learner_context(*, kp_ids: list[str], source_id: str, goal: str, target_difficulty: int = 2) -> LearnerContextBrief:
+def _default_learner_context(*, kp_ids: list[str], source_id: str, goal: str) -> LearnerContextBrief:
     return LearnerContextBrief(
         learner_id="cross-validation-surface",
         learner_group="surface_adapter",
@@ -164,7 +151,7 @@ def _default_learner_context(*, kp_ids: list[str], source_id: str, goal: str, ta
         source_id=source_id,
         kp_ids=kp_ids,
         confidence=0.9,
-        learning_state={"target_difficulty": target_difficulty},
+        learning_state={},
     )
 
 
@@ -253,7 +240,6 @@ def validate_execution_plan(
             "schema_version": "v1",
             "source_ids": source_ids,
             "kp_ids": kp_ids,
-            "difficulty": 2,
             "claims": [{"text": _text(plan.objective) or "plan objective", "evidence_ids": source_ids[:1] or [plan.source_id or "plan"]}],
             "steps": list(plan.steps),
             "constraints": plan.constraints or {},
@@ -318,7 +304,6 @@ def validate_dynamic_question_selection(
             "schema_version": "v1",
             "source_ids": selected_ids,
             "kp_ids": actual_kp_ids,
-            "difficulty": 2,
             "claims": [
                 {"text": _text(item.get("stem")) or _text(item.get("question_id")), "evidence_ids": [_text(item.get("question_id"))]}
                 for item in questions if isinstance(item, dict)
@@ -408,7 +393,6 @@ def validate_visual_parse_result(
             "schema_version": "v1",
             "source_ids": anchor_ids,
             "kp_ids": [],
-            "difficulty": 2,
             "claims": [{"text": claim_text, "evidence_ids": anchor_ids[:1]}] if anchor_ids else [{"text": claim_text, "evidence_ids": []}],
             "visual_observations": visual_observations,
         },
@@ -496,7 +480,6 @@ def _build_review(
         confidence=audit_review.confidence,
         fact_consistency=audit_review.fact_consistency,
         evidence_coverage=audit_review.evidence_coverage,
-        difficulty_match=min(audit_review.difficulty_match or 0.0, diagnosis_lens["score"]),
         knowledge_coverage=min(audit_review.knowledge_coverage or 0.0, knowledge_lens["score"]),
         safety_risk=audit_review.safety_risk,
         conflicts=combined_conflicts,

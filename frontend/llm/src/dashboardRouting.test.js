@@ -3,10 +3,16 @@ import assert from 'node:assert/strict';
 
 import { dashboardModuleTarget } from './dashboardRouting.js';
 
-test('routes legacy personalization module keys into the personalization hub', () => {
+test('routes report-related module keys into the personalization hub', () => {
   assert.equal(dashboardModuleTarget('planning'), 'personalization');
   assert.equal(dashboardModuleTarget('reports'), 'personalization');
-  assert.equal(dashboardModuleTarget('profile'), 'personalization');
+});
+
+test('routes moved learning settings module keys into user settings', () => {
+  assert.equal(dashboardModuleTarget('profile'), 'settings');
+  assert.equal(dashboardModuleTarget('memory'), 'settings');
+  assert.equal(dashboardModuleTarget('governance'), 'settings');
+  assert.equal(dashboardModuleTarget('conflicts'), 'settings');
 });
 
 test('keeps standalone dashboard module keys unchanged', () => {

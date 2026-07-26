@@ -236,7 +236,7 @@ async def test_diagnosis_consumes_semantics_and_injects_trusted_system_facts() -
         "available_minutes": 18,
         "user_profile": {"learning_goals": ["掌握组成"]},
         "learning_profile": {"behavior_metrics": {"recent_accuracy": 0.55}},
-        "system_data": {"current_stage_id": "STAGE_TRUSTED", "target_difficulty": 4},
+        "system_data": {"current_stage_id": "STAGE_TRUSTED"},
         "user_knowledge_states": [{"kp_id": "KP_TRUSTED_1", "review_status": "due"}],
         "dependency_outputs": {
             "knowledge": knowledge_output(),
@@ -252,7 +252,6 @@ async def test_diagnosis_consumes_semantics_and_injects_trusted_system_facts() -
     assert facts["time_constraints"]["available_minutes_today"] == 18
     assert facts["learning_evidence"]["behavior_summary"] == {
         "current_stage_id": "STAGE_TRUSTED",
-        "target_difficulty": 4,
     }
     assert facts["goals"] == ["掌握组成"]
     assert facts["learning_evidence"]["evidence_summaries"] == ["四君子汤由四味药组成。"]
@@ -260,8 +259,8 @@ async def test_diagnosis_consumes_semantics_and_injects_trusted_system_facts() -
     assert "route_id" not in facts["default_route"]
     assert result.stage_id == "STAGE_TRUSTED"
     assert result.weak_kp_ids == ["KP_TRUSTED_1"]
-    assert result.target_difficulty == 4
-    assert result.daily_review_policy.target_difficulty == 4
+    assert "target_difficulty" not in result.model_dump()
+    assert "target_difficulty" not in result.daily_review_policy.model_dump()
     assert result.learning_plan_proposal.priority_mode == "recovery"
     assert result.learning_plan_proposal.task_proposal.estimated_minutes == 10
     assert result.learning_plan_proposal.planning_route.route_id == "ROUTE_TRUSTED"
@@ -288,7 +287,7 @@ async def test_diagnosis_result_keeps_system_fields_outside_model_proposal() -> 
         "step_id": "diagnosis",
         "learner_id": "LEARNER_1",
         "topic": "四君子汤",
-        "system_data": {"current_stage_id": "STAGE_TRUSTED", "target_difficulty": 4},
+        "system_data": {"current_stage_id": "STAGE_TRUSTED"},
         "dependency_outputs": {
             "knowledge": knowledge_output(),
             "route_resolution": route_output(),

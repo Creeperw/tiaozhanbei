@@ -83,7 +83,7 @@ def resolve_controlled_practice_submission(db: Session, submission: dict[str, An
             question_content=question.stem,
             answer_json=json.dumps(_submitted_answer(question.answer), ensure_ascii=False),
             explanation=question.analysis,
-            difficulty=question.difficulty,
+            difficulty=None,
             kp_ids_json=json.dumps(kp_ids, ensure_ascii=False),
         ))
 
@@ -100,7 +100,6 @@ def resolve_controlled_practice_submission(db: Session, submission: dict[str, An
         "rubric": question.analysis,
         "question_type": question.question_type,
         "knowledge_points": kp_ids,
-        "difficulty": question.difficulty,
     }
 
 

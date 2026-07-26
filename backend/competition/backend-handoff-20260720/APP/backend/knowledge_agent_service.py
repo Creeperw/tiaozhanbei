@@ -152,7 +152,6 @@ def _question_evidence(db: Session, kp_ids: list[str], limit: int = 5) -> list[d
                     "answer": row.get("answer") or [],
                     "analysis": row.get("explanation") or "",
                     "kp_ids": row.get("kp_ids") or [],
-                    "difficulty": float(row.get("difficulty") or 0.0),
                     "quality_score": float(row.get("score") or 0.85),
                     "channels": row.get("channels") or ["atlas_question_bank"],
                 }
@@ -169,7 +168,7 @@ def _question_evidence(db: Session, kp_ids: list[str], limit: int = 5) -> list[d
         .all()
     )
     matched = [row for row in rows if _matches_kp(row, targets)]
-    matched.sort(key=lambda row: (float(row.quality_score or 0.0), -abs(float(row.difficulty or 2.0) - 2.5)), reverse=True)
+    matched.sort(key=lambda row: float(row.quality_score or 0.0), reverse=True)
     return [
         {
             "question_id": row.question_id,
@@ -177,7 +176,6 @@ def _question_evidence(db: Session, kp_ids: list[str], limit: int = 5) -> list[d
             "answer": row.answer,
             "analysis": row.analysis,
             "kp_ids": _row_kp_ids(row),
-            "difficulty": float(row.difficulty or 0.0),
             "quality_score": float(row.quality_score or 0.0),
         }
         for row in matched[:limit]
@@ -200,7 +198,6 @@ def _semantic_question_evidence(query: str, kp_ids: list[str], limit: int = 5) -
             "analysis": row.get("explanation") or "",
             "kp_ids": row.get("kp_ids") or [],
             "question_type": row.get("question_type") or "",
-            "difficulty": float(row.get("difficulty") or 0.0),
             "quality_score": float(row.get("score") or 0.0),
             "channels": row.get("channels") or ["question_index_v2", "semantic_search"],
         }
@@ -379,7 +376,6 @@ def list_questions(db: Session, kp_ids: list[str] | None = None, limit: int = 20
                     "analysis": row.get("explanation") or "",
                     "kp_ids": row.get("kp_ids") or [],
                     "question_type": row.get("question_type") or "",
-                    "difficulty": float(row.get("difficulty") or 0.0),
                     "quality_score": float(row.get("score") or 0.85),
                     "channels": row.get("channels") or ["atlas_question_bank"],
                 }
@@ -400,7 +396,6 @@ def list_questions(db: Session, kp_ids: list[str] | None = None, limit: int = 20
             "analysis": row.analysis,
             "kp_ids": _row_kp_ids(row),
             "question_type": row.question_type,
-            "difficulty": float(row.difficulty or 0.0),
             "quality_score": float(row.quality_score or 0.0),
         }
         for row in rows[:limit]

@@ -177,12 +177,11 @@ class BuildDashboardPayloadTests(unittest.TestCase):
             recent_sessions=[],
             announcements=[{"notice_id": "NOTICE_1", "type": "profile_conflict", "title": "学习时段可能有变化"}],
             checkin_status={"checked_in_today": False, "streak": 0},
-            difficulty_notice={"notice_id": "NOTICE_DIFF_1", "suggested_difficulty": "D2"},
         )
 
         self.assertEqual(payload["announcements"][0]["type"], "profile_conflict")
         self.assertFalse(payload["checkin_status"]["checked_in_today"])
-        self.assertEqual(payload["difficulty_notice"]["suggested_difficulty"], "D2")
+        self.assertNotIn("difficulty_notice", payload)
 
     def test_phase3_sample_data_drives_recommendations_and_status_summary(self):
         sample_path = Path(__file__).resolve().parents[1] / "sample_data" / "phase3_dashboard_seed.json"

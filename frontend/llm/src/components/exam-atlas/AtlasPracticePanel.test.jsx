@@ -28,7 +28,6 @@ describe('AtlasPracticePanel', () => {
             stem: '阴阳关系的基本特征是什么？',
             options: [],
             kp_ids: ['kp-yinyang'],
-            difficulty: 2,
             request_id: 'request-1',
           },
         });
@@ -45,6 +44,7 @@ describe('AtlasPracticePanel', () => {
     render(<AtlasPracticePanel knowledgePoint={{ kpId: 'kp-yinyang', kpName: '阴阳学说' }} />);
 
     expect(await screen.findByText('阴阳关系的基本特征是什么？')).toBeInTheDocument();
+    expect(screen.queryByText(/难度/)).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '对立制约，互根互用。' } });
     fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
 
@@ -74,7 +74,6 @@ describe('AtlasPracticePanel', () => {
             stem: '个人题目',
             options: [],
             kp_ids: ['kp-user'],
-            difficulty: 2,
             request_id: 'user-request-1',
             source_scope: 'user',
           },
@@ -110,7 +109,6 @@ describe('AtlasPracticePanel', () => {
             stem: '旧知识点题目',
             options: [],
             kp_ids: ['kp-first'],
-            difficulty: 2,
             request_id: 'request-first',
           },
         });
@@ -145,7 +143,6 @@ describe('AtlasPracticePanel', () => {
         stem: '新知识点题目',
         options: [],
         kp_ids: ['kp-second'],
-        difficulty: 2,
         request_id: 'request-second',
       },
     }));
@@ -168,6 +165,49 @@ describe('AtlasPracticePanel', () => {
     expect(screen.queryByRole('button', { name: '提交并批改' })).not.toBeInTheDocument();
   });
 
+  it('loads and grades the frozen snapshot for a bound daily task item', async () => {
+    const requests = [];
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      requests.push({ url, options });
+      if (url.includes('/daily-task-items/ITEM_BOUND/practice/next')) {
+        return jsonResponse({
+          available: true,
+          progress: { reviewed: 0, required: 1 },
+          question: {
+            question_id: 'question-bound', question_type: 'short_answer', stem: '绑定题目',
+            options: [], kp_ids: ['kp-bound'], request_id: 'request-bound', source_scope: 'daily_task',
+          },
+        });
+      }
+      if (url.endsWith('/practice/grade')) {
+        return jsonResponse({ grading: { score: 100, is_correct: true, analysis: '完成' }, writeback: { status: 'applied' } });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+
+    render(<AtlasPracticePanel taskItemId="ITEM_BOUND" />);
+    expect(await screen.findByText('绑定题目')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('你的答案'), { target: { value: '绑定答案' } });
+    fireEvent.click(screen.getByRole('button', { name: '提交并批改' }));
+
+    expect(await screen.findByText(/得分 100/)).toBeInTheDocument();
+    expect(requests[0].url).toContain('/daily-task-items/ITEM_BOUND/practice/next');
+    const body = JSON.parse(requests.find(({ url }) => url.endsWith('/practice/grade')).options.body);
+    expect(body).toMatchObject({ request_id: 'request-bound', daily_task_item_id: 'ITEM_BOUND' });
+  });
+
+  it('shows completion after every frozen snapshot reaches terminal review', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse({
+      available: false,
+      reason: 'daily_task_item_completed',
+      progress: { reviewed: 3, required: 3 },
+    })));
+
+    render(<AtlasPracticePanel taskItemId="ITEM_COMPLETE" />);
+
+    expect(await screen.findByText('今日知识点练习已完成')).toHaveAttribute('role', 'status');
+  });
+
   it('keeps answer guidance hidden until the learner explicitly requests a hint', async () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
       if (url.includes('/practice/next')) {
@@ -179,7 +219,6 @@ describe('AtlasPracticePanel', () => {
             stem: '阴阳关系的基本特征是什么？',
             options: [],
             kp_ids: ['kp-yinyang'],
-            difficulty: 2,
             request_id: 'request-hint',
           },
         });

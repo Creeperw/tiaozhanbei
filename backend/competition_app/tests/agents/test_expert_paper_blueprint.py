@@ -177,7 +177,6 @@ def test_blueprint_normalizes_loose_live_model_values_before_validation() -> Non
                     "score_total": "待确认",
                     "candidate_limit": 500,
                     "selection_rule": "覆盖核心概念",
-                    "difficulty_preference": "综合应用" * 30,
                 }
             ],
         },
@@ -456,6 +455,24 @@ def test_blueprint_extracts_only_explicit_question_count(
     context: dict, expected: int | None
 ) -> None:
     assert PaperBlueprintAgent._explicit_question_count(context) == expected
+
+
+def test_blueprint_extracts_exact_structured_question_type_distribution() -> None:
+    distribution = PaperBlueprintAgent._explicit_question_type_distribution(
+        {
+            "exam_constraints": {
+                "question_count": 15,
+                "question_type_distribution": {
+                    "single_choice": 10,
+                    "multiple_choice": 5,
+                    "fill_blank": 0,
+                },
+            }
+        }
+    )
+
+    assert distribution == {"单项选择题": 10, "多项选择题": 5}
+    assert sum(distribution.values()) == 15
 
 
 def test_choice_specialty_distributes_explicit_twenty_across_blueprint_units() -> None:

@@ -64,7 +64,7 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
             self.assertEqual(result["l0_baseline"]["stage_id"], "L0")
             self.assertEqual(result["l0_baseline"]["daily_available_minutes"], 60)
             self.assertEqual(result["l0_baseline"]["preferred_time_slot"], "晚间20:00–21:00")
-            self.assertEqual(result["l0_baseline"]["preferred_difficulty"], "D1")
+            self.assertNotIn("preferred_difficulty", result["l0_baseline"])
             self.assertFalse(result["needs_survey_popup"])
 
             status = service.get_onboarding_status(db, 1)
@@ -91,7 +91,6 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
                 },
                 "preferences": {
                     "daily_available_minutes": "30-60 分钟",
-                    "default_difficulty": "综合训练",
                 },
             },
             learner_group="学历教育",
@@ -101,7 +100,46 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
         self.assertEqual(normalized["tcm_foundation"], "学过核心课程")
         self.assertEqual(normalized["current_difficulties"], "中药方剂")
         self.assertEqual(normalized["daily_available_minutes"], 45)
-        self.assertEqual(normalized["difficulty_preference"], "综合训练")
+        self.assertNotIn("difficulty_preference", normalized)
+
+    def test_onboarding_status_strips_legacy_difficulty_ratings(self):
+        service = self._service()
+        db = self.Session()
+        try:
+            db.add(database.UserModel(id=9, username="legacy", email="legacy@example.com", hashed_password="x"))
+            db.add(database.LearningActivityRecord(
+                user_id=9,
+                activity_type=service.ONBOARDING_ACTIVITY_TYPE,
+                payload_json=json.dumps({
+                    "status": "onboarding_completed",
+                    "learner_group": "跨专业进阶",
+                    "survey_answers": {
+                        "current_difficulties": "术语容易混淆",
+                        "difficulty_preference": "D2",
+                        "field_sources": {
+                            "goals.current_difficulties": "user_confirmed",
+                            "preferences.difficulty_preference": "defaulted",
+                        },
+                    },
+                    "field_sources": {
+                        "preferences.difficulty_preference": "defaulted",
+                    },
+                    "l0_baseline": {
+                        "preferred_difficulty": "D2",
+                        "daily_available_minutes": 30,
+                    },
+                }, ensure_ascii=False),
+            ))
+            db.commit()
+
+            status = service.get_onboarding_status(db, 9)
+
+            self.assertEqual(status["survey_answers"]["current_difficulties"], "术语容易混淆")
+            self.assertNotIn("difficulty_preference", status["survey_answers"])
+            self.assertNotIn("preferred_difficulty", status["l0_baseline"])
+            self.assertNotIn("preferences.difficulty_preference", status["field_sources"])
+        finally:
+            db.close()
 
     def test_question_attempts_update_weak_kp_mastery_and_error_patterns(self):
         service = self._service()
@@ -182,7 +220,6 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
             "daily_available_minutes": 45,
             "preferred_time_slot": "20:00-21:00",
             "resource_preference": ["知识卡片", "案例训练"],
-            "preferred_difficulty": "D2",
             "default_daily_tasks": 3,
         }
 
@@ -212,7 +249,6 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
                         "case_reasoning_level": "developing",
                         "question_accuracy": 0.67,
                         "review_stability": 0.5,
-                        "preferred_difficulty": "D2",
                     },
                     mistakes=mistakes,
                 )

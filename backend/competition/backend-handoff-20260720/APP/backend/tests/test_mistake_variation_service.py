@@ -89,7 +89,6 @@ class MistakeVariationServiceTests(unittest.TestCase):
                     "content": {
                         "stem": f"安全变式题干 {context.correlation_id}",
                         "question_type": "short_answer",
-                        "difficulty": 2,
                         "kp_ids": ["KP_1"],
                         "source_mistake_id": context.mistake_id,
                         "source_question_version_id": context.source_question_version_id,
@@ -127,7 +126,6 @@ class MistakeVariationServiceTests(unittest.TestCase):
             "question_version_id": "QV_SOURCE_1",
             "stem": "原题",
             "question_type": "single_choice",
-            "difficulty": 2,
             "kp_ids": ["KP_1"],
             "kp_names": [],
         }])
@@ -255,7 +253,7 @@ class MistakeVariationServiceTests(unittest.TestCase):
         self.assertNotIn("原题秘密答案", serialized)
         self.assertEqual(
             set(result["questions"][0]),
-            {"question_version_id", "question_id", "stem", "question_type", "difficulty", "kp_ids", "kp_names", "source_kind"},
+            {"question_version_id", "question_id", "stem", "question_type", "kp_ids", "kp_names", "source_kind"},
         )
         self.assertTrue(all(
             audits[variation.audit_id].decision == "pass"

@@ -7,7 +7,7 @@ from APP.backend.database import SessionLocal
 from APP.backend.question_ingestion_worker import QuestionIngestionWorker
 from APP.backend.api_errors import install_api_error_handlers
 # 导入路由
-from APP.backend.routers import auth_routes, file_routes, voice_routes, knowledge_routes, knowledge_atlas_routes, vl_chat_routes, personalization_routes, feedback_routes, dashboard_routes, training_routes, training_workspace_routes, case_training_routes, deep_training_routes, agent_routes, learning_activity_routes, exam_learning_routes, question_workspace_routes
+from APP.backend.routers import auth_routes, file_routes, voice_routes, knowledge_routes, knowledge_atlas_routes, vl_chat_routes, personalization_routes, feedback_routes, dashboard_routes, training_routes, training_workspace_routes, case_training_routes, deep_training_routes, agent_routes, learning_activity_routes, exam_learning_routes, question_workspace_routes, daily_task_routes
 
 app = FastAPI(title="Health Multi-Agent API", version="3.0")
 install_api_error_handlers(app)
@@ -42,6 +42,7 @@ app.include_router(agent_routes.router)
 app.include_router(learning_activity_routes.router)
 app.include_router(exam_learning_routes.router)
 app.include_router(question_workspace_routes.router)
+app.include_router(daily_task_routes.router)
 
 @app.on_event("startup")
 def ensure_admin_account():

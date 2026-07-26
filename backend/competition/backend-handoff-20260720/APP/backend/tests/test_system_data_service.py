@@ -8,6 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from APP.backend import database
 from APP.backend.system_data_service import (
+    build_learning_trends,
     build_learning_window_metrics,
     record_dashboard_recommendation_click,
     record_dashboard_recommendations_view,
@@ -35,6 +36,29 @@ class SystemDataServiceTests(unittest.TestCase):
     def tearDown(self):
         self.db.close()
         self.engine.dispose()
+
+    def _add_daily_items(self, *items, instance_status="active"):
+        host_task_id = f"DAILY_{self.db.query(database.DailyTaskInstanceRecord).count() + 1}"
+        self.db.add(database.DailyTaskInstanceRecord(
+            host_task_id=host_task_id,
+            host_task_version=1,
+            user_id=1,
+            status=instance_status,
+        ))
+        self.db.add_all(
+            database.DailyTaskItemRecord(
+                task_item_id=f"{host_task_id}_ITEM_{ordinal}",
+                host_task_id=host_task_id,
+                host_task_version=1,
+                user_id=1,
+                kp_id=f"KP_{ordinal}",
+                ordinal=ordinal,
+                status=status,
+                created_at=created_at,
+                completed_at=created_at if status == "completed" else None,
+            )
+            for ordinal, (status, created_at) in enumerate(items, start=1)
+        )
 
     def test_uses_utc_for_snapshot_storage_and_beijing_for_payload_windows(self):
         utc_now = datetime(2026, 7, 16, 1, 12, 34)
@@ -140,22 +164,11 @@ class SystemDataServiceTests(unittest.TestCase):
                 active_seconds=60,
                 started_at=datetime(2026, 7, 15, 16, 30),
             ),
-            database.LearningTask(
-                task_id="TASK_TREND_DONE",
-                user_id=1,
-                task_type="practice",
-                status="completed",
-                created_at=datetime(2026, 7, 15, 16, 20),
-                completed_at=datetime(2026, 7, 15, 16, 25),
-            ),
-            database.LearningTask(
-                task_id="TASK_TREND_PENDING",
-                user_id=1,
-                task_type="video",
-                status="pending",
-                created_at=datetime(2026, 7, 15, 16, 35),
-            ),
         ))
+        self._add_daily_items(
+            ("completed", datetime(2026, 7, 15, 16, 20)),
+            ("pending", datetime(2026, 7, 15, 16, 35)),
+        )
         self.db.commit()
 
         trend = build_learning_trends(self.db, user_id=1, days=7, now=now)
@@ -268,15 +281,21 @@ class SystemDataServiceTests(unittest.TestCase):
                 completed_at=now,
             ),
         ))
+        self._add_daily_items(
+            ("completed", now),
+            ("pending", now),
+            ("cancelled", now),
+        )
         self.db.commit()
 
         metrics = build_learning_window_metrics(self.db, user_id=1, days=7, now=now + timedelta(hours=2))
         self.assertEqual(metrics["task_completion_rate"]["value"], 0.5)
+        self.assertEqual(metrics["daily_atomic_task_completion_rate"]["value"], 0.5)
         self.assertEqual(metrics["resource_click_rate"]["value"], 0.5)
         self.assertEqual(metrics["counts"]["tasks"], 2)
         self.assertEqual(metrics["counts"]["completed_tasks"], 1)
         self.assertEqual(metrics["counts"]["focus_sessions"], 2)
-        self.assertEqual(metrics["calculation_version"], "learning-window-v1")
+        self.assertEqual(metrics["calculation_version"], "learning-window-v2-daily-atomic")
 
         snapshot = rebuild_system_data(self.db, user_id=1, now=now + timedelta(hours=2))
         self.db.commit()
@@ -286,6 +305,7 @@ class SystemDataServiceTests(unittest.TestCase):
         resource_click_rate = json.loads(snapshot.resource_click_rate_json)
         self.assertEqual(time_data["login_frequency"]["value"], 1)
         self.assertEqual(time_data["focus_time_period"]["value"], "22:00-22:59")
+        self.assertTrue(completion_rate["available"])
         self.assertEqual(completion_rate["value"], 0.5)
         self.assertNotIn("learning_task_completion_rate", completion_rate)
         self.assertNotIn("review_task_completion_rate", completion_rate)
@@ -327,7 +347,9 @@ class SystemDataServiceTests(unittest.TestCase):
         self.db.commit()
 
         completion_rate = json.loads(snapshot.task_completion_rate_json)
-        self.assertEqual(completion_rate["value"], 1.0)
+        self.assertFalse(completion_rate["available"])
+        self.assertIsNone(completion_rate["value"])
+        self.assertEqual(completion_rate["unavailable_reason"], "no_planned_daily_task_items")
         self.assertEqual(self.db.query(database.LearningTask).filter_by(user_id=1).count(), 2)
         migrated = self.db.query(database.LearningTask).filter(
             database.LearningTask.task_id.like("LEGACY_ACTIVITY_%")
@@ -338,6 +360,56 @@ class SystemDataServiceTests(unittest.TestCase):
         rebuild_system_data(self.db, user_id=1, now=now + timedelta(minutes=2))
         self.db.commit()
         self.assertEqual(self.db.query(database.LearningTask).filter_by(user_id=1).count(), 2)
+
+    def test_daily_atomic_completion_ignores_free_practice_paper_case_and_activities(self):
+        now = datetime(2026, 7, 15, 14, 30)
+        self._add_daily_items(("completed", now), ("pending", now))
+        self.db.add_all(
+            database.LearningTask(
+                task_id=f"FREE_PRACTICE_{index}", user_id=1, task_type="practice",
+                status="completed", created_at=now, completed_at=now,
+            )
+            for index in range(20)
+        )
+        self.db.add_all((
+            database.LearningTask(
+                task_id="FREE_PAPER", user_id=1, task_type="paper", status="completed",
+                created_at=now, completed_at=now,
+            ),
+            database.LearningTask(
+                task_id="FREE_CASE", user_id=1, task_type="case", status="completed",
+                created_at=now, completed_at=now,
+            ),
+            database.LearningActivityRecord(
+                user_id=1, activity_type="question_attempt", completion_status="completed", created_at=now,
+            ),
+        ))
+        self.db.commit()
+
+        metrics = build_learning_window_metrics(self.db, user_id=1, days=7, now=now)
+        snapshot = rebuild_system_data(self.db, user_id=1, now=now)
+        trend = build_learning_trends(self.db, user_id=1, days=7, now=now)
+
+        self.assertEqual(metrics["task_completion_rate"]["value"], 0.5)
+        self.assertEqual(metrics["counts"]["tasks"], 2)
+        self.assertEqual(json.loads(snapshot.task_completion_rate_json)["value"], 0.5)
+        self.assertEqual(trend["series"][-1]["task_completion_rate"], 0.5)
+        self.assertEqual(trend["series"][-1]["daily_atomic_task_completion_rate"], 0.5)
+
+    def test_daily_atomic_completion_is_unavailable_without_published_items(self):
+        now = datetime(2026, 7, 15, 14, 30)
+
+        metrics = build_learning_window_metrics(self.db, user_id=1, days=7, now=now)
+
+        self.assertEqual(metrics["task_completion_rate"], {
+            "available": False,
+            "value": None,
+            "unit": "ratio",
+            "unavailable_reason": "no_planned_daily_task_items",
+        })
+        self.assertEqual(
+            metrics["daily_atomic_task_completion_rate"], metrics["task_completion_rate"]
+        )
 
     def test_recommendation_click_requires_a_owned_displayed_recommendation(self):
         view = record_dashboard_recommendations_view(

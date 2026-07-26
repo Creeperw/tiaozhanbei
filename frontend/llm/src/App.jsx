@@ -3,27 +3,39 @@ import AuthPage from './components/AuthPage';
 import ChatInterface from './components/ChatInterface';
 import KnowledgePage from './components/KnowledgePage';
 import PersonalizationHubPage from './components/PersonalizationHubPage';
-import SettingsPage from './components/SettingsPage';
+import SettingsHubPage from './components/SettingsHubPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
 import LearningStageLanding from './components/learning-stage/LearningStageLanding';
+import TextbookChapterLearning from './components/workshop-textbook/TextbookChapterLearning';
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
-import OnboardingSurveyPanel from './components/OnboardingSurveyPanel';
+import RegistrationJourney from './components/RegistrationJourney';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
+import { legacyPersonalizationSettingsView } from './settingsNavigation';
 
 const pendingNavigationKey = 'competition.pending-navigation';
+
+const normalizeInitialIntent = (intent) => {
+  const nextIntent = createPageIntent(intent);
+  const settingsView = nextIntent.page === 'personalization'
+    ? legacyPersonalizationSettingsView(nextIntent.params.view)
+    : null;
+  return settingsView
+    ? createPageIntent('settings', { ...nextIntent.params, view: settingsView })
+    : nextIntent;
+};
 
 const initialPageIntent = () => {
   try {
     const stored = sessionStorage.getItem(pendingNavigationKey);
     if (!stored) return createPageIntent('dashboard');
     sessionStorage.removeItem(pendingNavigationKey);
-    return createPageIntent(JSON.parse(stored));
+    return normalizeInitialIntent(JSON.parse(stored));
   } catch {
     sessionStorage.removeItem(pendingNavigationKey);
     return createPageIntent('dashboard');
@@ -111,7 +123,12 @@ export default function App() {
         return;
       }
       if (destination.page === 'personalization') {
-        setPageIntent(createPageIntent(destination.page, { view: 'profile', ...params, ...(params.view === 'memory' ? { view: 'profile' } : {}) }));
+        const settingsView = legacyPersonalizationSettingsView(params.view);
+        if (settingsView) {
+          setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
+          return;
+        }
+        setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'user-profile' }));
         return;
       }
       if (destination.page === 'training-workshop') setNavigationRevision((value) => value + 1);
@@ -134,7 +151,12 @@ export default function App() {
       return;
     }
     if (destination === 'personalization') {
-      setPageIntent(createPageIntent(destination, { view: params.view === 'memory' ? 'profile' : 'profile', ...params, ...(params.view === 'memory' ? { view: 'profile' } : {}) }));
+      const settingsView = legacyPersonalizationSettingsView(params.view);
+      if (settingsView) {
+        setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
+        return;
+      }
+      setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'user-profile' }));
       return;
     }
     if (destination === 'training-workshop') setNavigationRevision((value) => value + 1);
@@ -169,19 +191,11 @@ export default function App() {
 
   if (currentUser.onboarding_required) {
     return (
-      <div className="min-h-screen overflow-y-auto bg-[#f4fbf7] px-4 py-8 sm:px-8">
-        <div className="mx-auto max-w-5xl rounded-[32px] border border-emerald-100 bg-white p-6 shadow-xl shadow-emerald-100/60 sm:p-9">
-          <div className="mb-7 flex flex-wrap items-start justify-between gap-4 border-b border-emerald-100 pb-5">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">首次使用 · 必填</div>
-              <h1 className="mt-2 text-3xl font-black text-emerald-950">先完成学情调查，再进入学习页面</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600">这些基本信息会同时建立学习画像和初始学习记忆，供规划、资源推荐与学情分析统一使用。</p>
-            </div>
-            <button type="button" onClick={handleLogout} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">退出账号</button>
-          </div>
-          <OnboardingSurveyPanel required onSaved={handleOnboardingSaved} />
-        </div>
-      </div>
+      <RegistrationJourney
+        existingUser={currentUser}
+        onComplete={(user) => handleOnboardingSaved({ user })}
+        onExit={handleLogout}
+      />
     );
   }
 
@@ -198,7 +212,7 @@ export default function App() {
             onLogout={handleLogout}
             onBackHome={() => navigateToPage('dashboard')}
             onOpenKnowledge={() => navigateToPage('knowledge')}
-            onOpenPersonalization={() => navigateToPage('personalization')}
+            onOpenPersonalization={() => navigateToPage({ page: 'settings', params: { view: 'memory' } })}
             onOpenAdminFeedback={() => navigateToPage('admin-feedback')}
             onNavigate={navigateToPage}
             preferredSessionId={selectedSessionId}
@@ -206,6 +220,14 @@ export default function App() {
           />
         );
       case 'practice':
+        if (pageIntent.params.view === 'textbook-chapters') {
+          return (
+            <TextbookChapterLearning
+              navigationContext={pageIntent.params}
+              onNavigate={navigateToPage}
+            />
+          );
+        }
         if (pageIntent.params.view === 'workspace') {
           return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
         }
@@ -245,7 +267,7 @@ export default function App() {
       case 'personalization':
         return <PersonalizationHubPage navigationContext={pageIntent.params} onNavigate={navigateToPage} />;
       case 'settings':
-        return <SettingsPage onBackHome={() => navigateToPage('dashboard')} />;
+        return <SettingsHubPage navigationContext={pageIntent.params} onNavigate={navigateToPage} />;
       case 'admin-feedback':
         return <AdminFeedbackPage onBackHome={() => navigateToPage('dashboard')} />;
       default:
@@ -259,6 +281,7 @@ export default function App() {
       currentPage={shellConfig.currentPage}
       onNavigate={navigateToPage}
       onLogout={handleLogout}
+      onUserUpdated={(updatedUser) => setCurrentUser((current) => ({ ...current, ...updatedUser }))}
     >
       {renderAuthenticatedPage()}
       <StagePageTransition

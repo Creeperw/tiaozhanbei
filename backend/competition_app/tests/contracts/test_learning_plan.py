@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from competition_app.contracts.learning_plan import (
+    DailyTaskItemSpec,
     GoalContract,
     LearningPlanProposal,
     LearningPlanResult,
@@ -112,6 +113,84 @@ def test_formal_learning_task_requires_positive_estimated_minutes() -> None:
 
     with pytest.raises(ValidationError):
         LearningTask.model_validate(data)
+
+
+def test_daily_task_rejects_invalid_practice_items_duplicate_ids_and_budget() -> None:
+    invalid_practice = {
+        "task_item_id": "ITEM_1",
+        "ordinal": 1,
+        "item_type": "knowledge_practice",
+        "title": "完成四君子汤组成练习",
+        "estimated_minutes": 10,
+        "kp_id": "020490",
+        "required_question_count": 0,
+        "completion_policy": {"policy": "frozen_question_set"},
+    }
+    with pytest.raises(ValueError):
+        LearningTask.model_validate({**formal_task_data(), "items": [invalid_practice]})
+
+    practice = {
+        **invalid_practice,
+        "required_question_count": 3,
+    }
+    with pytest.raises(ValueError, match="IDs must be unique"):
+        LearningTask.model_validate(
+            {
+                **formal_task_data(),
+                "items": [practice, {**practice, "ordinal": 2}],
+            }
+        )
+    with pytest.raises(ValueError, match="budget exceeds"):
+        LearningTask.model_validate(
+            {
+                **formal_task_data(),
+                "estimated_minutes": 9,
+                "items": [practice],
+            }
+        )
+
+
+def test_video_task_item_requires_valid_source_segment_and_a_policy() -> None:
+    base = {
+        "task_item_id": "ITEM_VIDEO",
+        "ordinal": 1,
+        "item_type": "video_section",
+        "title": "观看四君子汤视频片段",
+        "estimated_minutes": 5,
+        "resource_ref": {
+            "provider": "bilibili",
+            "bvid": "BV1TEST",
+            "start_seconds": 20,
+            "end_seconds": 10,
+        },
+        "completion_policy": {"policy": "iframe_focus_and_confirmation"},
+    }
+    with pytest.raises(ValueError, match="start_seconds < end_seconds"):
+        DailyTaskItemSpec.model_validate(base)
+
+    valid = {
+        **base,
+        "resource_ref": {**base["resource_ref"], "end_seconds": 80},
+    }
+    assert DailyTaskItemSpec.model_validate(valid).completion_policy["policy"] == (
+        "iframe_focus_and_confirmation"
+    )
+
+
+def test_non_practice_item_cannot_expose_a_knowledge_point_name_as_kp_id() -> None:
+    with pytest.raises(ValueError, match="only knowledge_practice"):
+        DailyTaskItemSpec.model_validate(
+            {
+                "task_item_id": "ITEM_RECALL",
+                "ordinal": 1,
+                "item_type": "recall",
+                "title": "回忆四君子汤",
+                "estimated_minutes": 5,
+                "knowledge_point_name": "四君子汤",
+                "kp_id": "四君子汤",
+                "completion_policy": {"policy": "explicit_evidence"},
+            }
+        )
 
 
 def test_formal_learning_plan_result_contains_system_fields() -> None:

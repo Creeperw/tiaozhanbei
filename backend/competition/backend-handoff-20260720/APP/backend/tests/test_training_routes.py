@@ -191,7 +191,9 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
             self.assertEqual(persisted.artifact_type, "grading_result")
             snapshot = db.query(database.SystemData).filter_by(user_id=1).one()
             rates = json.loads(snapshot.task_completion_rate_json)
-            self.assertEqual(rates["value"], 1.0)
+            self.assertFalse(rates["available"])
+            self.assertIsNone(rates["value"])
+            self.assertEqual(rates["unavailable_reason"], "no_planned_daily_task_items")
 
     def test_workspace_task_get_returns_owned_task_and_404s_when_missing_or_owned_by_another_user(self):
         created = self.client.post(
@@ -701,7 +703,6 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
             "standard_answer": ["脾胃气虚证"],
             "rubric": True,
             "knowledge_points": ["四君子汤", 2],
-            "difficulty": True,
         }
         valid_inputs = {
             "question_id": "demo-sijunzi-001",
@@ -711,7 +712,6 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
             "standard_answer": "脾胃气虚证",
             "rubric": "答出脾胃气虚证得分。",
             "knowledge_points": ["四君子汤", "脾胃气虚证"],
-            "difficulty": 2,
         }
         for field, value in invalid_inputs.items():
             with self.subTest(field=field):
@@ -1059,7 +1059,7 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertIn("午休", detail.json()["time_constraints"])
         self.assertEqual(detail.json()["locked_fields"], ["time_constraints"])
 
-    def test_onboarding_submit_preserves_legacy_top_level_learning_mode_and_difficulty_preference(self):
+    def test_onboarding_submit_preserves_learning_mode_and_drops_legacy_difficulty_preference(self):
         response = self.client.post(
             "/training/onboarding/survey",
             json={
@@ -1071,18 +1071,18 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(body["l0_baseline"]["preferred_difficulty"], "D4")
+        self.assertNotIn("preferred_difficulty", body["l0_baseline"])
 
         status = self.client.get("/training/onboarding/status")
         self.assertEqual(status.status_code, 200)
         survey_answers = status.json()["survey_answers"]
         self.assertEqual(survey_answers["learning_mode"], "问答优先")
-        self.assertEqual(survey_answers["difficulty_preference"], "D4")
+        self.assertNotIn("difficulty_preference", survey_answers)
 
         profile = self.client.get("/personalization/learner-profile")
         self.assertEqual(profile.status_code, 200)
         self.assertIn("问答优先", profile.json()["resource_preferences"])
-        self.assertIn("难度偏好 D4", profile.json()["resource_preferences"])
+        self.assertNotIn("难度偏好", profile.json()["resource_preferences"])
 
     def test_learning_plan_summary_uses_flat_completed_onboarding_answers(self):
         submit = self.client.post(
@@ -1244,7 +1244,7 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         diagnosis = self.client.get("/training/diagnosis/summary")
         self.assertEqual(diagnosis.status_code, 200)
         self.assertIn(diagnosis.json()["diagnosis"]["stage_id"], ["T0", "T1", "T2", "T4", "T5"])
-        self.assertIn("preferred_difficulty", diagnosis.json()["learning_profile"])
+        self.assertNotIn("preferred_difficulty", diagnosis.json()["learning_profile"])
 
         diagnosis_again = self.client.get("/training/diagnosis/summary")
         self.assertEqual(diagnosis_again.status_code, 200)
@@ -1270,7 +1270,7 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertTrue(report_payload["learner_overview"]["learner_group"])
         self.assertTrue(report_payload["mastery_radar"])
         self.assertTrue(report_payload["weak_points"])
-        self.assertTrue(report_payload["resource_match"]["recommended_difficulty"])
+        self.assertNotIn("recommended_difficulty", report_payload["resource_match"])
         self.assertIn(report_payload["t_stage"]["stage_id"], ["T0", "T1", "T2", "T4", "T5"])
         self.assertTrue(report_payload["next_actions"])
 
@@ -1366,6 +1366,21 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()["locked_fields"], ["time_constraints"])
 
+    def test_learner_profile_saves_background_and_habits(self):
+        response = self.client.put(
+            "/personalization/learner-profile",
+            json={
+                "learning_background": "零基础，护理专业",
+                "learning_habits": "晚间使用知识卡片复习",
+                "locked_fields": ["learning_habits"],
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()["profile"]
+        self.assertEqual(body["learning_background"], "零基础，护理专业")
+        self.assertEqual(body["learning_habits"], "晚间使用知识卡片复习")
+        self.assertEqual(body["locked_fields"], ["learning_habits"])
+
     def test_daily_checkin_records_activity_without_refreshing_system_data(self):
         with self.Session() as db:
             db.add(database.SystemData(
@@ -1398,29 +1413,9 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
             snapshot = db.query(database.SystemData).filter_by(user_id=1).one()
             self.assertEqual(snapshot.calculated_at, datetime(2026, 7, 15, 8, 0, 0))
 
-    def test_difficulty_feedback_records_user_response(self):
-        response = self.client.post(
-            "/training/difficulty-feedback",
-            json={
-                "notice_id": "NOTICE_DIFFICULTY_DROP_TEST",
-                "action": "too_hard",
-                "reason": "当前任务仍然偏难",
-                "current_difficulty": "D3",
-                "suggested_difficulty": "D2",
-            },
-        )
-        self.assertEqual(response.status_code, 200)
-        body = response.json()
-        self.assertTrue(body["success"])
-        self.assertEqual(body["feedback_type"], "difficulty_adjustment")
-
-        with self.Session() as db:
-            row = db.query(database.LearningActivityRecord).filter(
-                database.LearningActivityRecord.activity_type == "difficulty_feedback"
-            ).first()
-            self.assertIsNotNone(row)
-            self.assertEqual(row.resource_type, "intervention_notice")
-
+    def test_difficulty_feedback_endpoint_is_removed(self):
+        response = self.client.post("/training/difficulty-feedback", json={})
+        self.assertEqual(response.status_code, 404)
     def test_next_practice_question_is_kp_scoped_and_hides_answers(self):
         with self.Session() as db:
             db.add_all([
@@ -1873,7 +1868,9 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
             self.assertEqual(activity.completion_status, "completed")
             snapshot = db.query(database.SystemData).filter_by(user_id=1).one()
             rates = json.loads(snapshot.task_completion_rate_json)
-            self.assertEqual(rates["value"], 1.0)
+            self.assertFalse(rates["available"])
+            self.assertIsNone(rates["value"])
+            self.assertEqual(rates["unavailable_reason"], "no_planned_daily_task_items")
 
         repeated = self.client.post(
             "/training/practice/grade",
@@ -2089,7 +2086,6 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
                     "standard_answer": "脾胃气虚证",
                     "rubric": "答出脾胃气虚证并能说明气虚、纳差、乏力等证据为满分。",
                     "knowledge_points": ["四君子汤", "脾胃气虚证"],
-                    "difficulty": 2,
                 },
             )
         self.assertEqual(response.status_code, 200)

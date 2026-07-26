@@ -106,7 +106,7 @@ class QuestionIngestionService:
             analysis=str(reviewed_question.get("analysis") or payload.get("analysis") or "").strip(),
             kp_ids_json=json.dumps(kp_ids, ensure_ascii=False),
             question_type=str(payload.get("question_type") or "short_answer"),
-            difficulty=float(payload.get("difficulty") or 2.0),
+            difficulty=None,
             quality_score=float(audit.get("quality_score") or 0.7),
             source=str(payload.get("source_type") or "user_upload"),
             status="active",

@@ -13,7 +13,6 @@ from APP.backend.database import (
     DbMessage,
     DbSession,
     LearningActivityRecord,
-    LearningInterventionRecord,
     PersonalizationMemory,
     UserModel,
     get_db,
@@ -47,25 +46,6 @@ def _json_payload(value: str | None) -> dict:
         return {}
     return parsed if isinstance(parsed, dict) else {}
 
-
-
-def _build_difficulty_notice(db: Session, user_id: int) -> dict | None:
-    record = db.query(LearningInterventionRecord).filter(
-        LearningInterventionRecord.user_id == user_id,
-        LearningInterventionRecord.effect_status == "pending",
-    ).order_by(LearningInterventionRecord.created_at.desc(), LearningInterventionRecord.id.desc()).first()
-    if not record:
-        return None
-    return {
-        "notice_id": f"NOTICE_DIFFICULTY_DROP_{record.id}",
-        "type": "difficulty_adjustment",
-        "title": "是否调整今日任务难度？",
-        "message": record.reason or "系统发现近期学习状态变化，建议确认是否调整任务难度。",
-        "actions": ["accept", "too_easy", "too_hard", "not_relevant"],
-        "intervention_id": record.id,
-        "current_difficulty": "",
-        "suggested_difficulty": record.action,
-    }
 
 
 def _build_announcements(db: Session, user_id: int, profile) -> list[dict]:
@@ -158,7 +138,6 @@ def get_dashboard_home(current_user: UserModel = Depends(get_current_user), db: 
         learning_target=learning_target,
         announcements=_build_announcements(db, current_user.id, profile),
         checkin_status=build_checkin_status(db, current_user.id),
-        difficulty_notice=_build_difficulty_notice(db, current_user.id),
     )
     recommendation_view = record_dashboard_recommendations_view(
         db,

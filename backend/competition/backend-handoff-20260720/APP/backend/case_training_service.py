@@ -180,7 +180,6 @@ class CaseTrainingService:
             standard_answer=json.dumps(standard, ensure_ascii=False, sort_keys=True),
             rubric=json.dumps(rubric, ensure_ascii=False, sort_keys=True),
             kp_ids=tuple(str(item) for item in view.visible_context.get("kp_ids", ()) if str(item).strip()),
-            difficulty=1,
             duration_sec=None,
             hint_used=view.help_used and view.scoring_enabled,
             profile={},

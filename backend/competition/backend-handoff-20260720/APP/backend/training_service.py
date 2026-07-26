@@ -312,7 +312,6 @@ def build_learning_plan_summary(
             "type": "micro_lesson",
             "title": f"围绕“{focus[:18]}”学习一张知识卡",
             "duration_min": min(15, daily_minutes),
-            "difficulty": 2,
             "reason": "承接长期目标与当前薄弱点",
         },
         {
@@ -320,7 +319,6 @@ def build_learning_plan_summary(
             "type": "practice",
             "title": "完成 5 道分阶短练并立即批改",
             "duration_min": min(20, max(10, daily_minutes // 2)),
-            "difficulty": 3,
             "reason": "用练习反馈更新画像和错题库",
         },
         {
@@ -328,7 +326,6 @@ def build_learning_plan_summary(
             "type": "reflection",
             "title": "记录 1 条今日困惑或复盘结论",
             "duration_min": 5,
-            "difficulty": 1,
             "reason": "为记忆管理 Agent 提供长期学习信号",
         },
     ]
@@ -338,7 +335,6 @@ def build_learning_plan_summary(
             "type": "mistake_review",
             "title": f"复盘 {mistake_count} 条近期错题并做变式题",
             "duration_min": min(15, daily_minutes),
-            "difficulty": 2,
             "reason": "错题沉淀已形成，需要闭环复习",
         })
 
@@ -407,13 +403,11 @@ def build_learning_report(
             "top_error_type": "概念混淆" if any("概念" in _text(item.get("content")) for item in mistakes) else "证型-方剂匹配错误" if mistakes else "暂无明显错因",
         },
         "resource_match": {
-            "difficulty_match": 0.88 if learner_group != "大众兴趣群体" else 0.90,
-            "recommended_difficulty": "零基础科普" if learner_group == "大众兴趣群体" else "课程学习",
-            "reason": "根据学习者群体、目标、错题与资源偏好匹配推荐难度。",
+            "reason": "根据学习者群体、目标、错题与资源偏好匹配学习资源。",
         },
         "t_stage": {
             "stage_id": "T5" if mistakes else "T0" if events else "insufficient_data",
-            "stage_name": "难度不适" if mistakes else "稳定学习" if events else "待积累行为数据",
+            "stage_name": "薄弱点待补强" if mistakes else "稳定学习" if events else "待积累行为数据",
             "evidence": [
                 f"错题记录 {len(mistakes)} 条",
                 f"Agent 学习事件 {len(events)} 条",

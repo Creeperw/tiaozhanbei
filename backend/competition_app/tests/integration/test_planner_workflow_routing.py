@@ -281,6 +281,35 @@ async def test_planner_routes_exam_paper_request_to_blueprint_chain(tmp_path) ->
 
 
 @pytest.mark.asyncio
+async def test_bound_paper_request_forwards_daily_task_item_id_to_publication(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    class RecordingWorkshopRuntime:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def publish_agent_paper(self, learner_id, **kwargs):
+            self.calls.append((learner_id, kwargs))
+            return {"paper_id": "PAPER_BOUND", "status": "published"}
+
+    runtime = RecordingWorkshopRuntime()
+    container.review_card_use_case.workshop_runtime = runtime
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="PAPER_BOUND_USER",
+            user_request="请围绕四君子汤生成一份60分钟练习试卷蓝图",
+            available_minutes=60,
+            daily_task_item_id="ITEM_BOUND",
+        )
+    )
+
+    assert runtime.calls[0][0] == "PAPER_BOUND_USER"
+    assert runtime.calls[0][1]["daily_task_item_id"] == "ITEM_BOUND"
+    assert result.ui_actions[0].params["paper_id"] == "PAPER_BOUND"
+
+
+@pytest.mark.asyncio
 async def test_paper_publishes_separate_answers_when_user_requests_them(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
 

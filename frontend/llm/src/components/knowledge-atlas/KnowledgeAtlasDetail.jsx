@@ -7,6 +7,9 @@ import { BookOpenText, CircleHelp, ExternalLink, Film, X } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 
 import { atlasImageUrl, loadAtlasImage } from './knowledgeAtlasApi';
+import { fetchJsonWithAuthFallback } from '../../utils/api';
+import { confirmDailyTaskIframeVideo, recordDailyTaskVideoEvidence } from '../../pageDataLoaders';
+import { createIframeFocusEvidenceTracker, isVideoThresholdMet, videoSegment } from '../../videoTaskEvidence';
 
 function formatTime(seconds) {
   const value = Math.max(0, Math.floor(Number(seconds) || 0));
@@ -98,6 +101,62 @@ function bilibiliPlayerUrl(video) {
   return `https://player.bilibili.com/player.html?${params}`;
 }
 
+function DailyTaskAtlasVideo({ video, taskItemId }) {
+  const frameRef = useRef(null);
+  const trackerRef = useRef(null);
+  const [evidence, setEvidence] = useState({ activeSeconds: 0, coverage: 0 });
+  const [status, setStatus] = useState('');
+  const segment = videoSegment(video);
+
+  useEffect(() => {
+    if (!taskItemId || !frameRef.current) return undefined;
+    const tracker = createIframeFocusEvidenceTracker({
+      iframe: frameRef.current,
+      segmentStart: segment.start,
+      segmentEnd: segment.end,
+      onProgress: setEvidence,
+      report: async (nextEvidence) => {
+        const result = await recordDailyTaskVideoEvidence({ fetcher: fetchJsonWithAuthFallback, taskItemId, evidence: nextEvidence });
+        if (result.error) setStatus(result.error);
+      },
+    });
+    trackerRef.current = tracker;
+    return () => {
+      if (trackerRef.current === tracker) trackerRef.current = null;
+      void tracker.stop();
+    };
+  }, [segment.end, segment.start, taskItemId, video]);
+
+  const confirm = async () => {
+    await trackerRef.current?.flush();
+    const result = await confirmDailyTaskIframeVideo({ fetcher: fetchJsonWithAuthFallback, taskItemId });
+    if (result.evidence?.status === 'completed') {
+      const tracker = trackerRef.current;
+      trackerRef.current = null;
+      await tracker?.stop();
+    }
+    setStatus(result.error || (result.evidence?.status === 'completed' ? '视频任务已完成' : '服务端尚未确认完成'));
+  };
+  const percent = Math.min(100, Math.floor((evidence.coverage || 0) * 100));
+  const thresholdMet = isVideoThresholdMet(evidence.activeSeconds, segment.start, segment.end);
+
+  return <>
+    <iframe
+      ref={frameRef}
+      title={video.topic || video.part_title || 'Bilibili视频讲解'}
+      src={bilibiliPlayerUrl(video)}
+      allowFullScreen
+      scrolling="no"
+    />
+    {taskItemId && <div className="knowledge-atlas__video-evidence" aria-live="polite">
+      <p>第三方播放器无法读取真实进度。仅在页面可见且播放器获得焦点时累计有效专注时长，达到 90% 后还需手动确认。</p>
+      <label>有效专注进度 <strong>{percent}%</strong><progress aria-label="有效专注进度" max="100" value={percent} /></label>
+      <button type="button" disabled={!thresholdMet} onClick={confirm}>确认看完</button>
+      {status && <span role="status">{status}</span>}
+    </div>}
+  </>;
+}
+
 function QuestionCard({ question, index }) {
   const [revealed, setRevealed] = useState(false);
   const options = Array.isArray(question.options)
@@ -139,7 +198,7 @@ function QuestionCard({ question, index }) {
   );
 }
 
-export default function KnowledgeAtlasDetail({ node, detail, loading, error, onClose }) {
+export default function KnowledgeAtlasDetail({ node, detail, loading, error, taskItemId = '', onClose }) {
   const [tab, setTab] = useState('resources');
   const [activeVideo, setActiveVideo] = useState(null);
   const dialogRef = useRef(null);
@@ -220,13 +279,8 @@ export default function KnowledgeAtlasDetail({ node, detail, loading, error, onC
               <section className="knowledge-atlas__videos" aria-labelledby="atlas-video-heading">
                 <div className="knowledge-atlas__section-heading"><h3 id="atlas-video-heading"><Film aria-hidden="true" size={16} />视频讲解时间戳</h3><small>{videos.length ? `${videos.length} 个匹配片段` : ''}</small></div>
                 {activeVideo && (
-                  <div className="knowledge-atlas__player">
-                    <iframe
-                      title={activeVideo.topic || activeVideo.part_title || 'Bilibili视频讲解'}
-                      src={bilibiliPlayerUrl(activeVideo)}
-                      allowFullScreen
-                      scrolling="no"
-                    />
+                  <div className={`knowledge-atlas__player${taskItemId ? ' has-task-evidence' : ''}`}>
+                    <DailyTaskAtlasVideo key={`${activeVideo.bvid || activeVideo.url || activeVideo.topic}:${taskItemId}`} video={activeVideo} taskItemId={taskItemId} />
                     <a href={`https://www.bilibili.com/video/${activeVideo.bvid}?p=${activeVideo.page || 1}&t=${Math.floor(activeVideo.start_seconds || 0)}`} target="_blank" rel="noreferrer">
                       在 B 站打开<ExternalLink aria-hidden="true" size={13} />
                     </a>

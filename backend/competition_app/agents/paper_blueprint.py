@@ -24,6 +24,12 @@ class PaperBlueprintAgent:
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[PaperBlueprint]:
         skill = prompt_skill_registry.load("expert_agent", "paper_blueprint")
+        explicit_distribution = self._explicit_question_type_distribution(context)
+        explicit_count = (
+            sum(explicit_distribution.values())
+            if explicit_distribution
+            else self._explicit_question_count(context)
+        )
         try:
             raw_output = await self.chat_model.complete_json(
                     "expert_agent",
@@ -46,7 +52,7 @@ class PaperBlueprintAgent:
                         },
                         permission_note=(
                             "只生成结构化试卷蓝图和分单元检索需求；不得检索题目、选择题目、"
-                            "生成试卷正文、答案、解析、系统ID或把难度作为必填条件。"
+                            "生成试卷正文、答案、解析、系统ID或系统未提供的评级字段。"
                         ),
                     ),
                 )
@@ -58,12 +64,16 @@ class PaperBlueprintAgent:
             )
             normalized["units"] = self._normalize_hard_count_units(
                 normalized.get("units", []),
-                explicit_count=self._explicit_question_count(context),
+                explicit_count=explicit_count,
                 user_request=user_request,
             )
             normalized["units"] = self._normalize_question_type_mix(
                 normalized.get("units", []),
-                explicit_types=self._explicit_question_types(context),
+                explicit_types=(
+                    list(explicit_distribution)
+                    if explicit_distribution
+                    else self._explicit_question_types(context)
+                ),
             )
             try:
                 output = PaperBlueprintModelOutput.model_validate(normalized)
@@ -109,9 +119,10 @@ class PaperBlueprintAgent:
             scope_summary=output.scope_summary,
             duration_minutes=output.duration_minutes,
             total_score=output.total_score,
-            required_total_question_count=self._explicit_question_count(context),
+            required_total_question_count=explicit_count,
+            required_question_type_distribution=explicit_distribution,
             question_count_is_hard_constraint=(
-                self._explicit_question_count(context) is not None
+                explicit_count is not None
             ),
             units=units,
             assumptions=output.assumptions,
@@ -187,6 +198,59 @@ class PaperBlueprintAgent:
             raw_types = [raw_types]
         return [str(item) for item in raw_types or [] if str(item).strip()]
 
+    @classmethod
+    def _explicit_question_type_distribution(
+        cls, context: dict[str, Any]
+    ) -> dict[str, int]:
+        constraints = context.get("exam_constraints", {}) or {}
+        raw_distribution = constraints.get("question_type_distribution") or {}
+        if not isinstance(raw_distribution, dict):
+            return {}
+        aliases = {
+            "single_choice": "单项选择题",
+            "singlechoice": "单项选择题",
+            "单选题": "单项选择题",
+            "单项选择": "单项选择题",
+            "单项选择题": "单项选择题",
+            "multiple_choice": "多项选择题",
+            "multiplechoice": "多项选择题",
+            "多选题": "多项选择题",
+            "多项选择": "多项选择题",
+            "多项选择题": "多项选择题",
+            "true_false": "判断题",
+            "truefalse": "判断题",
+            "判断题": "判断题",
+            "fill_blank": "填空题",
+            "fillblank": "填空题",
+            "填空题": "填空题",
+            "short_answer": "简答题",
+            "shortanswer": "简答题",
+            "简答": "简答题",
+            "问答题": "简答题",
+            "简答题": "简答题",
+            "case_quiz": "案例分析题",
+            "casequiz": "案例分析题",
+            "case_analysis": "案例分析题",
+            "caseanalysis": "案例分析题",
+            "案例题": "案例分析题",
+            "病例分析题": "案例分析题",
+            "临床案例题": "案例分析题",
+            "案例分析题": "案例分析题",
+        }
+        normalized: dict[str, int] = {}
+        for raw_type, raw_count in raw_distribution.items():
+            key = str(raw_type).strip().replace(" ", "").replace("-", "_").lower()
+            canonical = aliases.get(key)
+            if canonical is None:
+                continue
+            try:
+                count = int(raw_count)
+            except (TypeError, ValueError):
+                continue
+            if count > 0:
+                normalized[canonical] = normalized.get(canonical, 0) + count
+        return normalized
+
     @staticmethod
     def _explicit_coverage_topics(user_request: str) -> list[str]:
         """Extract the user's closed coverage list without inheriting stale constraints."""
@@ -255,7 +319,6 @@ class PaperBlueprintAgent:
                         "required_question_count": 1,
                         "candidate_limit": 10,
                         "selection_rules": [f"只选择与{topic}直接相关的题目"],
-                        "difficulty_preference": None,
                     }
                 )
                 continue
@@ -479,9 +542,6 @@ class PaperBlueprintAgent:
                 "candidate_limit": candidate_limit,
                 "selection_rules": PaperBlueprintAgent._string_list(
                     unit.get("selection_rules") or unit.get("selection_rule")
-                ),
-                "difficulty_preference": PaperBlueprintAgent._optional_bounded_text(
-                    unit.get("difficulty_preference"), maximum=100
                 ),
             })
         assumptions = raw.get("assumptions", [])

@@ -19,7 +19,6 @@ class BlueprintUnit(ContractModel):
     score_total: float | None = Field(default=None, gt=0)
     candidate_limit: int = Field(default=10, ge=1, le=50)
     selection_rules: list[str] = Field(default_factory=list)
-    difficulty_preference: str | None = None
 
 
 class PaperBlueprint(ContractModel):
@@ -35,6 +34,7 @@ class PaperBlueprint(ContractModel):
     duration_minutes: int | None = Field(default=None, gt=0)
     total_score: float | None = Field(default=None, gt=0)
     required_total_question_count: int | None = Field(default=None, gt=0)
+    required_question_type_distribution: dict[str, int] = Field(default_factory=dict)
     question_count_is_hard_constraint: bool = False
     units: list[BlueprintUnit] = Field(min_length=1)
     assumptions: list[str] = Field(default_factory=list)

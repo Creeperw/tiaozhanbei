@@ -182,7 +182,7 @@ class TrainingServicePhase4Tests(unittest.TestCase):
         self.assertTrue(any(item["name"] == "中医基础" for item in payload["mastery_radar"]))
         self.assertTrue(payload["weak_points"])
         self.assertEqual(payload["mistake_summary"]["total_mistakes"], 1)
-        self.assertGreaterEqual(payload["resource_match"]["difficulty_match"], 0.85)
+        self.assertNotIn("difficulty_match", payload["resource_match"])
         self.assertIn(payload["t_stage"]["stage_id"], ["T0", "T5", "insufficient_data"])
         self.assertTrue(payload["next_actions"])
     def test_phase4_sample_data_drives_training_loop_outputs(self):

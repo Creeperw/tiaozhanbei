@@ -164,7 +164,6 @@ class QuestionIndexSearchService:
                 "explanation": _text(atlas.get("explanation")),
                 "kp_ids": kp_values,
                 "question_type": _text(atlas.get("question_type") or original.get("question_type")),
-                "difficulty": float(atlas.get("difficulty") or original.get("difficulty") or 0.0),
                 "status": _text(atlas.get("status")) or ("active" if kp_values else "pending_link"),
                 "score": float(score),
                 "channels": channels,

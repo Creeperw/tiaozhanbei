@@ -210,7 +210,6 @@ def _mistake_question(db: Session, mistake: MistakeRecord, user_id: int) -> dict
             return {
                 "stem": row.stem,
                 "question_type": row.question_type,
-                "difficulty": row.standard_difficulty,
             }
     private = db.query(UserQuestionItem).filter_by(
         question_id=mistake.question_id,
@@ -220,21 +219,18 @@ def _mistake_question(db: Session, mistake: MistakeRecord, user_id: int) -> dict
         return {
             "stem": private.stem,
             "question_type": private.question_type,
-            "difficulty": 2,
         }
     public = db.query(QuestionBankItem).filter_by(question_id=mistake.question_id).one_or_none()
     if public is not None:
         return {
             "stem": public.stem,
             "question_type": public.question_type,
-            "difficulty": int(public.difficulty or 2),
         }
     delivered = db.query(LearningQuestion).filter_by(question_id=mistake.question_id).one_or_none()
     if delivered is not None:
         return {
             "stem": delivered.question_content,
             "question_type": delivered.question_type,
-            "difficulty": int(delivered.difficulty or 2),
         }
     if mistake.attempt_item_id and str(mistake.question_id or "").startswith("case:"):
         case_row = db.query(CaseDefinitionRecord, CaseSessionRecord).join(
@@ -258,9 +254,8 @@ def _mistake_question(db: Session, mistake: MistakeRecord, user_id: int) -> dict
             return {
                 "stem": definition.title,
                 "question_type": f"case_{session.mode}",
-                "difficulty": 2,
             }
-    return {"stem": "题目内容暂不可用", "question_type": "", "difficulty": None}
+    return {"stem": "题目内容暂不可用", "question_type": ""}
 
 
 def _mistake_attempt(db: Session, mistake: MistakeRecord, user_id: int) -> dict[str, Any]:
@@ -313,7 +308,6 @@ def _mistake_payload(
         "attempt_item_id": mistake.attempt_item_id,
         "stem": question["stem"],
         "question_type": question["question_type"],
-        "difficulty": question["difficulty"],
         "kp_ids": _json_list(mistake.kp_ids_json),
         "error_type": mistake.error_type,
         "summary": mistake.summary,

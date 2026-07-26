@@ -420,7 +420,7 @@ def build_context(step_id: str) -> dict:
         "available_minutes": 15,
         "user_profile": {"learning_goals": ["掌握方剂组成与配伍"]},
         "learning_profile": {"behavior_metrics": {"recent_accuracy": 0.6}},
-        "system_data": {"current_stage_id": "T1", "target_difficulty": 3},
+        "system_data": {"current_stage_id": "T1"},
         "user_knowledge_states": [
             {"kp_id": "KP_FJ_001", "mastery_score": 0.58, "review_status": "due"}
         ],
@@ -702,7 +702,7 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "blocked": [],
     }
     evidence = diagnosis_payload["learning_evidence"]
-    assert evidence["behavior_summary"] == {"current_stage_id": "T1", "target_difficulty": 3}
+    assert evidence["behavior_summary"] == {"current_stage_id": "T1"}
     assert diagnosis_payload["goals"] == ["掌握方剂组成与配伍"]
     assert set(diagnosis_payload["learner_context"]) == {
         "learning_goal",
@@ -757,14 +757,14 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
     assert proposal.recommendation_trace.current_task == proposal.task_proposal.task_content
     assert result.stage_id == "T1"
     assert result.weak_kp_ids == ["KP_FJ_001"]
-    assert result.target_difficulty == 3
-    assert result.daily_review_policy.target_difficulty == 3
+    assert "target_difficulty" not in result.model_dump()
+    assert "target_difficulty" not in result.daily_review_policy.model_dump()
 
     model_owned_data = proposal.model_dump()
     forbidden_top_level_system_fields = {
         "plan_id", "task_id", "user_id", "learner_id", "short_term_plan_id",
         "created_at", "updated_at", "due_at", "status", "version",
-        "stage_id", "kp_id", "kp_ids", "target_difficulty",
+        "stage_id", "kp_id", "kp_ids",
     }
     assert forbidden_top_level_system_fields.isdisjoint(model_owned_data)
     assert forbidden_top_level_system_fields.isdisjoint(model_owned_data["task_proposal"])
@@ -1224,7 +1224,6 @@ async def test_diagnosis_normalizes_latest_payload_fields_into_semantic_facts() 
         "calculation_version": "v2",
         "calculated_at": "2026-07-15T00:00:00Z",
         "current_stage_id": "T1",
-        "target_difficulty": 3,
     }
     singular_knowledge_state = {
         "kp_id": "KP_FJ_001",
@@ -1250,7 +1249,7 @@ async def test_diagnosis_normalizes_latest_payload_fields_into_semantic_facts() 
     assert planning_input["learning_evidence"]["behavior_summary"] == behavior_snapshot
     assert "user_knowledge_states" not in planning_input["learning_evidence"]
     assert result.stage_id == "T1"
-    assert result.target_difficulty == 3
+    assert "target_difficulty" not in result.model_dump()
 
 
 @pytest.mark.asyncio

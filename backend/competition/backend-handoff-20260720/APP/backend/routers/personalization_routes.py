@@ -49,10 +49,13 @@ class LearnerProfileUpdate(BaseModel):
     display_name: Optional[str] = None
     learner_group: Optional[str] = None
     learning_goal: Optional[str] = None
+    education_major: Optional[str] = None
+    learning_background: Optional[str] = None
     time_constraints: Optional[str] = None
     resource_preferences: Optional[str] = None
     current_difficulties: Optional[str] = None
     learning_needs: Optional[str] = None
+    learning_habits: Optional[str] = None
     locked_fields: Optional[list[str]] = None
     lock_reason: Optional[dict[str, str]] = None
 
@@ -140,9 +143,11 @@ def serialize_candidate(row: MemoryCandidate):
 
 def learner_profile_response(profile):
     payload = build_learner_profile_payload(profile)
+    survey = parse_json_field(getattr(profile, "survey_json", "{}"), {})
+    survey = survey if isinstance(survey, dict) else {}
     payload["locked_fields"] = parse_json_field(getattr(profile, "locked_fields_json", "[]"), [])
     payload["lock_reason"] = parse_json_field(getattr(profile, "lock_reason_json", "{}"), {})
-    payload["survey"] = parse_json_field(getattr(profile, "survey_json", "{}"), {})
+    payload["survey"] = survey
     return payload
 
 
@@ -242,7 +247,24 @@ def update_learner_profile(body: LearnerProfileUpdate, current_user: UserModel =
     data = body.model_dump(exclude_unset=True)
     locked_fields = data.pop("locked_fields", None)
     lock_reason = data.pop("lock_reason", None)
+    education_major = data.pop("education_major", None)
+    learning_background = data.pop("learning_background", None)
+    learning_habits = data.pop("learning_habits", None)
     apply_learner_profile_update(profile, data, source="manual")
+    if education_major is not None or learning_background is not None or learning_habits is not None:
+        survey = parse_json_field(getattr(profile, "survey_json", "{}"), {})
+        survey = survey if isinstance(survey, dict) else {}
+        background = survey.get("background") if isinstance(survey.get("background"), dict) else {}
+        if education_major is not None:
+            survey["education_major"] = education_major
+            background["education_major"] = education_major
+            background["major_or_role"] = education_major
+            survey["background"] = background
+        if learning_background is not None:
+            survey["learning_background"] = learning_background
+        if learning_habits is not None:
+            survey["learning_habits"] = learning_habits
+        profile.survey_json = serialize_json_field(survey)
     if locked_fields is not None:
         profile.locked_fields_json = serialize_json_field(locked_fields)
     if lock_reason is not None:

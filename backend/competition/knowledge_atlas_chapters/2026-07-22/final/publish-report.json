@@ -1,0 +1,17 @@
+{
+  "books": 83,
+  "chapters": 1203,
+  "sections": 4826,
+  "links": 73170,
+  "unique_uids": 73170,
+  "approved_candidates": 689,
+  "promoted_candidate_nodes": 654,
+  "removed_nodes": 663,
+  "missing_nodes": 0,
+  "section_video_rows": 5227,
+  "section_video_resolved_rows": 5176,
+  "section_video_unmatched_rows": 51,
+  "sections_with_full_video": 1436,
+  "runtime_reparented_sections": 122,
+  "section_video_sha256": "320bcbf42413007f8c20b16a5516b5bf15cd660bff3b8c72f6c67e9aab7502d9"
+}

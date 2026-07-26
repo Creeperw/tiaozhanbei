@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 
 import pymysql
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, ForeignKeyConstraint, Text, Boolean, Float, UniqueConstraint, MetaData, Table, Index, event, inspect, text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, ForeignKeyConstraint, Text, Boolean, Float, JSON, UniqueConstraint, MetaData, Table, Index, event, inspect, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker, relationship
@@ -249,6 +249,7 @@ class PaperInstanceRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     paper_id = Column(String(120), unique=True, nullable=False, index=True)
     task_id = Column(String(120), unique=True, nullable=False, index=True)
+    daily_task_item_id = Column(String(120), nullable=True, index=True)
     orchestration_run_id = Column(String(120), default="", index=True)
     learner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(200), default="")
@@ -359,6 +360,7 @@ class LearningAttemptRecord(Base):
     learner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     attempt_type = Column(String(80), index=True)
     source_task_id = Column(String(120), default="", index=True)
+    daily_task_item_id = Column(String(120), nullable=True, index=True)
     request_id = Column(String(120), default="", index=True)
     status = Column(String(50), default="submitted", index=True)
     submitted_at = Column(DateTime, nullable=True)
@@ -1157,6 +1159,94 @@ class LearningFocusSession(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 
+class DailyTaskInstanceRecord(Base):
+    __tablename__ = "daily_task_instances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    host_task_id = Column(String(120), nullable=False, index=True)
+    host_task_version = Column(Integer, nullable=False, default=1, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(50), default="pending", index=True)
+    refresh_started_at = Column(DateTime, nullable=True)
+    refresh_due_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("host_task_id", "host_task_version", "user_id", name="uq_daily_task_instance_host_version_user"),
+    )
+
+
+class DailyTaskItemRecord(Base):
+    __tablename__ = "daily_task_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_item_id = Column(String(120), unique=True, nullable=False, index=True)
+    host_task_id = Column(String(120), nullable=False, index=True)
+    host_task_version = Column(Integer, nullable=False, default=1, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    kp_id = Column(String(120), nullable=False, index=True)
+    item_kind = Column(String(50), default="knowledge_practice", index=True)
+    ordinal = Column(Integer, nullable=False, default=0, index=True)
+    required_question_count = Column(Integer, nullable=False, default=0)
+    resource_ref = Column(JSON, nullable=True)
+    completion_policy = Column(JSON, nullable=True)
+    status = Column(String(50), default="pending", index=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("task_item_id", "user_id", name="uq_daily_task_item_owner"),
+        UniqueConstraint("task_item_id", "ordinal", name="uq_daily_task_item_ordinal"),
+    )
+
+
+class DailyTaskQuestionSnapshotRecord(Base):
+    __tablename__ = "daily_task_question_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_item_id = Column(String(120), ForeignKey("daily_task_items.task_item_id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    question_id = Column(String(120), nullable=False, index=True)
+    question_version_id = Column(String(120), nullable=False, index=True)
+    question_type = Column(String(50), default="short_answer", index=True)
+    stem_snapshot = Column(Text, default="")
+    options_snapshot_json = Column(Text, default="[]")
+    answer_snapshot = Column(Text, default="")
+    rubric_snapshot = Column(Text, default="")
+    kp_snapshot_json = Column(Text, default="[]")
+    source_kind = Column(String(120), default="", index=True)
+    snapshot_hash = Column(String(120), default="", index=True)
+    submitted_answer = Column(Text, default="")
+    attempt_status = Column(String(50), default="pending", index=True)
+    audit_decision = Column(String(50), default="pending", index=True)
+    audit_status = Column(String(50), default="pending", index=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("task_item_id", "question_version_id", name="uq_daily_task_snapshot_question"),
+    )
+
+
+class DailyTaskVideoEvidenceRecord(Base):
+    __tablename__ = "daily_task_video_evidence"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_item_id = Column(String(120), ForeignKey("daily_task_items.task_item_id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    mode = Column(String(40), default="html5", index=True)
+    segment_start_seconds = Column(Float, nullable=False, default=0.0)
+    segment_end_seconds = Column(Float, nullable=False, default=0.0)
+    watched_intervals_json = Column(Text, default="[]")
+    active_seconds = Column(Float, nullable=False, default=0.0)
+    is_confirmed = Column(Boolean, default=False, index=True)
+    status = Column(String(50), default="pending", index=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    __table_args__ = (
+        UniqueConstraint("task_item_id", "user_id", name="uq_daily_task_video_owner"),
+    )
+
+
 class SystemData(Base):
     __tablename__ = "system_data"
 
@@ -1223,8 +1313,20 @@ class CorePracticeSubmissionClaim(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     request_id = Column(String(120), nullable=False, index=True)
     question_id = Column(String(120), ForeignKey("question.question_id"), nullable=False, index=True)
+    daily_task_item_id = Column(String(120), nullable=True, index=True)
+    # Daily-task claims must identify the immutable snapshot rather than a
+    # mutable question id. Public practice claims intentionally leave these
+    # nullable.
+    question_version_id = Column(String(120), nullable=True, index=True)
+    daily_task_snapshot_id = Column(Integer, nullable=True, index=True)
     created_at = Column(DateTime, default=utc_now)
-    __table_args__ = (UniqueConstraint("user_id", "request_id", name="uq_core_practice_claim_user_request"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "request_id", name="uq_core_practice_claim_user_request"),
+        UniqueConstraint(
+            "user_id", "daily_task_snapshot_id",
+            name="uq_core_practice_claim_user_daily_snapshot",
+        ),
+    )
 
 
 _CORE_LEARNING_CONTRACT_TABLES = (
@@ -1245,12 +1347,67 @@ _CORE_LEARNING_CONTRACT_TABLES = (
     "core_practice_submission_claims",
 )
 
+_DAILY_TASK_CONTRACT_TABLES = (
+    "daily_task_instances",
+    "daily_task_items",
+    "daily_task_question_snapshots",
+    "daily_task_video_evidence",
+)
+
+
+def _ensure_daily_task_contract_tables(bind):
+    Base.metadata.create_all(
+        bind=bind,
+        tables=[Base.metadata.tables[table_name] for table_name in _DAILY_TASK_CONTRACT_TABLES],
+    )
+    inspector = inspect(bind)
+    additions = {
+        "daily_task_items": {
+            "resource_ref": "JSON NULL",
+            "completion_policy": "JSON NULL",
+        },
+        "learning_attempts": {"daily_task_item_id": "VARCHAR(120) NULL"},
+        "core_practice_submission_claims": {
+            "daily_task_item_id": "VARCHAR(120) NULL",
+            "question_version_id": "VARCHAR(120) NULL",
+            "daily_task_snapshot_id": "INTEGER NULL",
+        },
+    }
+    table_names = set(inspector.get_table_names())
+    with bind.begin() as connection:
+        for table_name, columns_to_add in additions.items():
+            if table_name not in table_names:
+                continue
+            columns = {column["name"] for column in inspector.get_columns(table_name)}
+            for column_name, definition in columns_to_add.items():
+                if column_name not in columns:
+                    _add_column_if_missing_after_race(
+                        connection,
+                        table_name,
+                        column_name,
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}",
+                    )
+            if table_name == "core_practice_submission_claims":
+                index_names = {item["name"] for item in inspector.get_indexes(table_name)}
+                unique_names = {
+                    item["name"] for item in inspector.get_unique_constraints(table_name)
+                }
+                if "uq_core_practice_claim_user_daily_snapshot" not in index_names | unique_names:
+                    connection.execute(text(
+                        "CREATE UNIQUE INDEX uq_core_practice_claim_user_daily_snapshot "
+                        "ON core_practice_submission_claims (user_id, daily_task_snapshot_id)"
+                    ))
+
 
 def _ensure_core_learning_contract_tables(bind):
     Base.metadata.create_all(
         bind=bind,
         tables=[Base.metadata.tables[table_name] for table_name in _CORE_LEARNING_CONTRACT_TABLES],
     )
+    # The bound-practice claim is part of the core contract, while its nullable
+    # task binding is introduced by the daily-task contract. Repair it before
+    # validating the core table shape on existing deployments.
+    _ensure_daily_task_contract_tables(bind)
     _ensure_system_data_indexes(bind)
     inspector = inspect(bind)
     if "user_learning_targets" in inspector.get_table_names():
@@ -2890,6 +3047,7 @@ def _ensure_learning_workshop_schema(bind):
     )
     additions = {
         "paper_instances": {
+            "daily_task_item_id": "VARCHAR(120) NULL",
             "duration_minutes": "INTEGER NOT NULL DEFAULT 60",
             "started_at": "DATETIME NULL",
             "expires_at": "DATETIME NULL",
@@ -2951,6 +3109,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 _ensure_case_training_tables(bind)
                 _ensure_learning_governance_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
+                _ensure_daily_task_contract_tables(bind)
                 _ensure_formal_content_tables(bind)
                 _ensure_learning_workshop_schema(bind)
                 return
@@ -2960,6 +3119,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 _ensure_case_training_tables(bind)
                 _ensure_learning_governance_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
+                _ensure_daily_task_contract_tables(bind)
                 _ensure_formal_content_tables(bind)
                 _ensure_learning_workshop_schema(bind)
         except RuntimeError as exc:
@@ -3007,6 +3167,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
             _ensure_paper_item_snapshot_column(bind)
             _ensure_learning_governance_tables(bind)
             _ensure_core_learning_contract_tables(bind)
+            _ensure_daily_task_contract_tables(bind)
             _ensure_formal_content_tables(bind)
             return
         if existing_migration.status in {"prepared", "staged", "switching", "switched"}:
@@ -3136,6 +3297,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
     _ensure_learning_workshop_schema(bind)
     _ensure_learning_governance_tables(bind)
     _ensure_core_learning_contract_tables(bind)
+    _ensure_daily_task_contract_tables(bind)
     _ensure_formal_content_tables(bind)
 
 

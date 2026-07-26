@@ -26,14 +26,6 @@ def _kp_ids(evidence_pack: EvidencePack, learner_context: LearnerContextBrief) -
     return list(evidence_pack.resolved_kp_ids or evidence_pack.kp_ids or learner_context.kp_ids)
 
 
-def _difficulty(value: Any, learner_context: LearnerContextBrief, fallback: int) -> int:
-    if isinstance(value, int):
-        return value
-    learning_state = learner_context.learning_state or {}
-    candidate = learning_state.get("target_difficulty", fallback)
-    return candidate if isinstance(candidate, int) else fallback
-
-
 def _duration(value: Any, fallback: int) -> int:
     return value if isinstance(value, int) and value > 0 else fallback
 
@@ -55,14 +47,12 @@ def _common_content(
     *,
     learner_context: LearnerContextBrief,
     evidence_pack: EvidencePack,
-    difficulty: int,
     expected_duration_min: int,
     diagnosis_report: DiagnosisReport,
 ) -> dict[str, Any]:
     return {
         "source_ids": _source_ids(evidence_pack),
         "kp_ids": _kp_ids(evidence_pack, learner_context),
-        "difficulty": difficulty,
         "expected_duration_min": expected_duration_min,
         "remediation_suggestions": [
             "先用一句话复述四君子汤主治脾胃气虚证的证机。",
@@ -210,7 +200,6 @@ def _subjective_grading_prompt(
         "standard_answer": submission.get("standard_answer"),
         "rubric": submission.get("rubric"),
         "knowledge_points": submission.get("knowledge_point_names") or submission.get("knowledge_points") or [],
-        "difficulty": submission.get("difficulty"),
         "learner_goal": learner_context.goal,
         "learner_group": learner_context.learner_group,
         "diagnosis": diagnosis_report.summary,
@@ -409,7 +398,6 @@ def generate_question_explanation(*, submission: dict[str, Any]) -> str:
             or submission.get("knowledge_points")
             or []
         ),
-        "difficulty": submission.get("difficulty"),
     }
     try:
         client = build_llm_client("executor")
@@ -454,12 +442,10 @@ def generate_handout(
     request: dict[str, Any],
 ) -> ExpertArtifact:
     topic = _topic(request)
-    difficulty = _difficulty(request.get("difficulty"), learner_context, 3)
     expected_duration_min = _duration(request.get("expected_duration_min"), 18)
     content = _common_content(
         learner_context=learner_context,
         evidence_pack=evidence_pack,
-        difficulty=difficulty,
         expected_duration_min=expected_duration_min,
         diagnosis_report=diagnosis_report,
     )
@@ -500,12 +486,10 @@ def generate_knowledge_card(
     request: dict[str, Any],
 ) -> ExpertArtifact:
     topic = _topic(request)
-    difficulty = _difficulty(request.get("difficulty"), learner_context, 2)
     expected_duration_min = _duration(request.get("expected_duration_min"), 8)
     content = _common_content(
         learner_context=learner_context,
         evidence_pack=evidence_pack,
-        difficulty=difficulty,
         expected_duration_min=expected_duration_min,
         diagnosis_report=diagnosis_report,
     )
@@ -542,7 +526,6 @@ PAPER_TYPES = frozenset({"single_choice", "multiple_choice", "short_answer", "ca
 def _paper_blueprint(
     request: dict[str, Any],
     learner_context: LearnerContextBrief,
-    difficulty: int,
     authoritative_kp_ids: list[str],
 ) -> dict[str, Any]:
     question_count = request.get("question_count", 3)
@@ -578,7 +561,6 @@ def _paper_blueprint(
         "kp_ids": list(dict.fromkeys(kp_ids)),
         "types": types,
         "distribution": distribution,
-        "difficulty": difficulty,
         "exclusion_criteria": ["不生成试题正文或标准答案", "仅使用已解析知识点"],
     }
 
@@ -591,12 +573,10 @@ def generate_paper(
     request: dict[str, Any],
 ) -> ExpertArtifact:
     topic = _topic(request)
-    difficulty = _difficulty(request.get("difficulty"), learner_context, 3)
     expected_duration_min = _duration(request.get("expected_duration_min"), 20)
     content = _common_content(
         learner_context=learner_context,
         evidence_pack=evidence_pack,
-        difficulty=difficulty,
         expected_duration_min=expected_duration_min,
         diagnosis_report=diagnosis_report,
     )
@@ -604,7 +584,6 @@ def generate_paper(
         "paper_blueprint": _paper_blueprint(
             request,
             learner_context,
-            difficulty,
             list(evidence_pack.resolved_kp_ids),
         ),
     })
@@ -676,11 +655,9 @@ def grade_submission(
             "variant_questions": [],
         },
     }
-    difficulty = _difficulty(submission.get("difficulty"), learner_context, 2)
     content = _common_content(
         learner_context=learner_context,
         evidence_pack=evidence_pack,
-        difficulty=difficulty,
         expected_duration_min=12,
         diagnosis_report=diagnosis_report,
     )
@@ -738,7 +715,6 @@ def generate_question_variation(
     content = _with_audit_shape({
         "stem": stem,
         "question_type": _text(request.get("source_question_type"), "single_choice"),
-        "difficulty": _difficulty(request.get("source_difficulty"), learner_context, 2),
         "kp_ids": kp_ids,
         "source_ids": _source_ids(evidence_pack),
         "source_mistake_id": mistake_id,
@@ -769,12 +745,10 @@ def generate_case_training(
     request: dict[str, Any],
 ) -> ExpertArtifact:
     topic = _topic(request)
-    difficulty = _difficulty(request.get("difficulty"), learner_context, 3)
     expected_duration_min = _duration(request.get("expected_duration_min"), 15)
     content = _common_content(
         learner_context=learner_context,
         evidence_pack=evidence_pack,
-        difficulty=difficulty,
         expected_duration_min=expected_duration_min,
         diagnosis_report=diagnosis_report,
     )

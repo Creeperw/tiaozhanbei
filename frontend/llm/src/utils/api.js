@@ -47,16 +47,28 @@ export const fetchWithAuth = async (url, options = {}) => {
 };
 
 export const readJsonResponse = async (res, fallback = {}) => {
-  const text = await res.text();
-  if (!text || !text.trim()) {
-    return fallback;
+  if (typeof res?.text === 'function') {
+    const text = await res.text();
+    if (!text || !text.trim()) {
+      return fallback;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      return fallback;
+    }
   }
 
-  try {
-    return JSON.parse(text);
-  } catch {
-    return fallback;
+  if (typeof res?.json === 'function') {
+    try {
+      return await res.json();
+    } catch {
+      return fallback;
+    }
   }
+
+  return fallback;
 };
 
 export const fetchJsonWithAuthFallback = async ({

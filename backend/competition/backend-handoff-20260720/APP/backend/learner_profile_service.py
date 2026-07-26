@@ -64,6 +64,28 @@ def build_learner_profile_payload(profile: dict[str, Any] | Any) -> dict[str, An
         if value is None and learner_key in DEFAULT_PROFILE_HINTS:
             value = DEFAULT_PROFILE_HINTS[learner_key]
         payload[learner_key] = value or ""
+    survey = parse_json_field(_read_value(profile, "survey_json"), {})
+    survey = survey if isinstance(survey, dict) else {}
+    background = survey.get("background") if isinstance(survey.get("background"), dict) else {}
+    preferences = survey.get("preferences") if isinstance(survey.get("preferences"), dict) else {}
+    payload["education_major"] = (
+        survey.get("education_major")
+        or survey.get("major_or_role")
+        or background.get("education_major")
+        or background.get("major_or_role")
+        or ""
+    )
+    payload["learning_background"] = (
+        survey.get("learning_background")
+        or background.get("learning_background")
+        or ""
+    )
+    payload["learning_habits"] = (
+        survey.get("learning_habits")
+        or preferences.get("learning_habits")
+        or preferences.get("learning_mode")
+        or ""
+    )
     return payload
 
 
@@ -86,4 +108,15 @@ def apply_learner_profile_update(profile: Any, update: dict[str, Any], *, source
         value = update[learner_key]
         setattr(profile, storage_key, value)
         changed[storage_key] = value
+    survey_updates = {
+        key: update[key]
+        for key in ("learning_background", "learning_habits")
+        if key in update and (source not in AUTO_UPDATE_SOURCES or key not in locked_fields)
+    }
+    if survey_updates:
+        survey = parse_json_field(_read_value(profile, "survey_json"), {})
+        survey = survey if isinstance(survey, dict) else {}
+        survey.update(survey_updates)
+        setattr(profile, "survey_json", serialize_json_field(survey))
+        changed.update(survey_updates)
     return changed

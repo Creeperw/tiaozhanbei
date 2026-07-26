@@ -51,7 +51,6 @@ class GradingApplicationServiceTests(unittest.TestCase):
             standard_answer="standard",
             rubric="rubric",
             kp_ids=("kp-1",),
-            difficulty=2,
             duration_sec=30,
             hint_used=False,
             profile={"constitution": "learner"},

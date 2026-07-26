@@ -36,7 +36,6 @@ class LearnerQuestionVersion:
     stem: str
     kp_ids: tuple[str, ...]
     question_type: str
-    standard_difficulty: int
     source_kind: str
 
 
@@ -81,7 +80,6 @@ class VariationRepository:
         rubric: dict,
         stem: str = "",
         question_type: str = "single_choice",
-        difficulty: int = 2,
         kp_ids: tuple[str, ...] = (),
         status: str = "published",
         scope: str = "user",
@@ -119,7 +117,6 @@ class VariationRepository:
                             rubric=rubric,
                             stem=stem,
                             question_type=question_type,
-                            difficulty=difficulty,
                             kp_ids=kp_ids,
                             status=status,
                             scope=scope,
@@ -172,7 +169,6 @@ class VariationRepository:
         rubric,
         stem,
         question_type,
-        difficulty,
         kp_ids,
         status,
         scope,
@@ -251,7 +247,7 @@ class VariationRepository:
                 version=next_version,
                 stem=stem,
                 question_type=question_type,
-                standard_difficulty=difficulty,
+                standard_difficulty=None,
                 source_kind="variation",
             ))
             # Persist both aggregate roots before their dependent rows.  These
@@ -339,6 +335,5 @@ class VariationRepository:
             stem=version.stem or "",
             kp_ids=tuple(kp_ids.get(version.question_version_id, ())),
             question_type=version.question_type,
-            standard_difficulty=int(version.standard_difficulty),
             source_kind=version.source_kind,
         ) for version in versions)

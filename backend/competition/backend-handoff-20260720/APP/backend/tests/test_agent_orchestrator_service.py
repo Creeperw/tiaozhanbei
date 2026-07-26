@@ -230,7 +230,6 @@ class AgentOrchestratorServiceTests(unittest.TestCase):
                     task_context=OrchestrationTaskContext(
                         correlation_id="TT_test_001",
                         kp_ids=["KP_FJ_001", "KP_ZD_021"],
-                        difficulty=3,
                         expected_duration_min=20,
                     ),
                 ),
@@ -242,7 +241,7 @@ class AgentOrchestratorServiceTests(unittest.TestCase):
             self.assertEqual(captured["query"], "四君子汤复习资料")
             self.assertEqual(captured["topic"], "四君子汤复习资料")
             self.assertEqual(captured["kp_ids"], ["KP_FJ_001", "KP_ZD_021"])
-            self.assertEqual(captured["difficulty"], 3)
+            self.assertNotIn("difficulty", captured)
             self.assertEqual(captured["expected_duration_min"], 20)
             self.assertNotIn("KP_FJ_001", result["execution_plan"]["objective"])
 
@@ -255,8 +254,6 @@ class AgentOrchestratorServiceTests(unittest.TestCase):
         invalid_contexts = (
             {"kp_ids": [" "]},
             {"kp_ids": [f"KP_{index}" for index in range(101)]},
-            {"difficulty": 0},
-            {"difficulty": 6},
             {"expected_duration_min": 0},
             {"expected_duration_min": 481},
         )
@@ -271,7 +268,6 @@ class AgentOrchestratorServiceTests(unittest.TestCase):
             query="四君子汤复习资料",
             task_context=OrchestrationTaskContext(
                 kp_ids=["KP_FJ_001"],
-                difficulty=3,
                 expected_duration_min=20,
             ),
         )
@@ -298,7 +294,6 @@ class AgentOrchestratorServiceTests(unittest.TestCase):
                 "topic": "四君子汤复习资料",
                 "query": "四君子汤复习资料",
                 "kp_ids": ["KP_FJ_001"],
-                "difficulty": 3,
                 "expected_duration_min": 20,
             },
         )

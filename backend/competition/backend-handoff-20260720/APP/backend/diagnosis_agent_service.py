@@ -100,21 +100,6 @@ def _minutes_to_tasks(minutes: int) -> int:
     return 4
 
 
-def _difficulty_from_foundation(foundation: str, learner_group: str) -> str:
-    normalized = foundation.lower()
-    if normalized in {"none", "weak"}:
-        return "D1"
-    if normalized in {"basic", "beginner"}:
-        return "D2"
-    if normalized in {"intermediate", "mid"}:
-        return "D3"
-    if normalized in {"advanced", "strong"}:
-        return "D4"
-    if learner_group == "学历教育":
-        return "D2"
-    return "D1"
-
-
 def normalize_onboarding_answers(survey_answers: dict[str, Any], learner_group: str = "") -> dict[str, Any]:
     background = survey_answers.get("background") if isinstance(survey_answers.get("background"), dict) else {}
     goals = survey_answers.get("goals") if isinstance(survey_answers.get("goals"), dict) else {}
@@ -173,11 +158,6 @@ def normalize_onboarding_answers(survey_answers: dict[str, Any], learner_group: 
         "preferred_time_slot": _text(preferences.get("preferred_time_slot") or survey_answers.get("preferred_time_slot"), "未填写"),
         "resource_preference": _listify(preferences.get("resource_preference") or survey_answers.get("resource_preference")),
         "learning_mode": _text(preferences.get("learning_mode") or survey_answers.get("learning_mode")),
-        "difficulty_preference": _text(
-            preferences.get("difficulty_preference")
-            or preferences.get("default_difficulty")
-            or survey_answers.get("difficulty_preference")
-        ),
         "device_environment": _text(preferences.get("device_environment") or survey_answers.get("device_environment")),
         "notification_quiet_hours": _text(preferences.get("notification_quiet_hours") or survey_answers.get("notification_quiet_hours")),
         "special_requirement": _text(special.get("description") or survey_answers.get("special_requirement")),
@@ -193,10 +173,6 @@ def normalize_onboarding_answers(survey_answers: dict[str, Any], learner_group: 
 
 def build_l0_baseline(onboarding_answers: dict[str, Any], learner_group: str = "") -> dict[str, Any]:
     normalized = normalize_onboarding_answers(onboarding_answers, learner_group)
-    preferred_difficulty = normalized["difficulty_preference"] or _difficulty_from_foundation(
-        normalized["tcm_foundation"],
-        normalized["user_group"],
-    )
     return {
         "stage_id": "L0",
         "learner_group": normalized["user_group"],
@@ -212,7 +188,6 @@ def build_l0_baseline(onboarding_answers: dict[str, Any], learner_group: str = "
         "daily_available_minutes": normalized["daily_available_minutes"],
         "preferred_time_slot": normalized["preferred_time_slot"],
         "resource_preference": normalized["resource_preference"],
-        "preferred_difficulty": preferred_difficulty,
         "device_environment": normalized["device_environment"],
         "notification_quiet_hours": normalized["notification_quiet_hours"],
         "default_daily_tasks": _minutes_to_tasks(normalized["daily_available_minutes"]),
@@ -281,7 +256,6 @@ def submit_onboarding_survey(
             for part in [
                 "、".join(l0_baseline["resource_preference"]) if l0_baseline["resource_preference"] else "",
                 normalized["learning_mode"],
-                f"难度偏好 {l0_baseline['preferred_difficulty']}",
             ]
             if part
         ),
@@ -372,20 +346,43 @@ def _baseline_from_profile(user_id: int, learner_group: str, profile: Any) -> di
         "daily_available_minutes": minutes,
         "preferred_time_slot": "未填写",
         "resource_preference": _listify(_text(getattr(profile, "exercise_preferences", ""))),
-        "preferred_difficulty": "D2",
         "default_daily_tasks": _minutes_to_tasks(minutes),
     }
+
+
+_LEGACY_DIFFICULTY_RATING_KEYS = {
+    "difficulty",
+    "difficulty_preference",
+    "preferred_difficulty",
+    "default_difficulty",
+    "recommended_difficulty",
+    "target_difficulty",
+}
+
+
+def _strip_legacy_difficulty_ratings(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _strip_legacy_difficulty_ratings(item)
+            for key, item in value.items()
+            if key not in _LEGACY_DIFFICULTY_RATING_KEYS
+            and "difficulty_preference" not in key
+        }
+    if isinstance(value, list):
+        return [_strip_legacy_difficulty_ratings(item) for item in value]
+    return value
 
 
 def get_onboarding_status(db: Session, user_id: int) -> dict[str, Any]:
     payload = _latest_activity_payload(db, user_id, ONBOARDING_ACTIVITY_TYPE)
     if payload:
+        sanitized = _strip_legacy_difficulty_ratings(payload)
         return {
-            "status": payload.get("status", "onboarding_completed"),
-            "learner_group": payload.get("learner_group", "未选择用户群体"),
-            "survey_answers": payload.get("survey_answers", {}),
-            "field_sources": payload.get("field_sources", {}),
-            "l0_baseline": payload.get("l0_baseline", {}),
+            "status": sanitized.get("status", "onboarding_completed"),
+            "learner_group": sanitized.get("learner_group", "未选择用户群体"),
+            "survey_answers": sanitized.get("survey_answers", {}),
+            "field_sources": sanitized.get("field_sources", {}),
+            "l0_baseline": sanitized.get("l0_baseline", {}),
             "needs_survey_popup": False,
         }
 
@@ -555,11 +552,6 @@ def build_learning_profile(db: Session, user_id: int) -> dict[str, Any]:
     else:
         case_reasoning_level = "emerging"
 
-    profile = get_or_create_profile(db, user_id)
-    preferred_difficulty = get_onboarding_status(db, user_id)["l0_baseline"].get("preferred_difficulty") or _difficulty_from_foundation(
-        _text(profile.medical_history),
-        _text(profile.constitution),
-    )
     return {
         "mastery_by_kp": mastery_by_kp,
         "weak_kp_ids": weak_kp_ids,
@@ -568,7 +560,6 @@ def build_learning_profile(db: Session, user_id: int) -> dict[str, Any]:
         "case_reasoning_level": case_reasoning_level,
         "question_accuracy": question_accuracy,
         "review_stability": review_stability,
-        "preferred_difficulty": preferred_difficulty or "D2",
         "sample_counts": {
             "question_attempts": len(attempt_rows),
             "mastery_records": len(mastery_rows),
@@ -805,9 +796,7 @@ def _legacy_report_payload(db: Session, user_id: int, diagnosis: DiagnosisReport
             "top_error_type": next(iter(learning_profile.get("error_patterns", {})), "暂无明显错因"),
         },
         "resource_match": {
-            "difficulty_match": 0.9,
-            "recommended_difficulty": learning_profile.get("preferred_difficulty", diagnosis.l0_baseline.get("preferred_difficulty") if diagnosis.l0_baseline else "D2"),
-            "reason": "根据学习者群体、近期掌握度与诊断阶段映射推荐难度。",
+            "reason": "根据学习者群体、近期掌握度、目标知识点与资源偏好进行匹配。",
         },
         "t_stage": diagnosis.t_stage or {"stage_id": diagnosis.stage_id, "stage_name": diagnosis.stage_name, "evidence": []},
         "next_actions": next_actions,

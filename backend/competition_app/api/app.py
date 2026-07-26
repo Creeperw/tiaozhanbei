@@ -6,11 +6,11 @@ import json
 import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,7 +23,12 @@ from competition_app.application.personalized_review_card import (
 from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
 from competition_app.runtime.snapshot import _sanitize
 from competition_app.contracts.review import ReviewAttemptSubmission
-from competition_app.contracts.auth import AuthUser, LoginRequest, RegisterRequest
+from competition_app.contracts.auth import (
+    AccountProfileUpdateRequest,
+    AuthUser,
+    LoginRequest,
+    RegisterRequest,
+)
 from competition_app.repositories.auth import UsernameTakenError
 from competition_app.services.auth import InvalidCredentialsError
 from competition_app.services.learning_path_projection import LearningPathProjectionService
@@ -61,6 +66,34 @@ _OBJECTIVE_PRACTICE_TYPES = {
     "single_choice", "multiple_choice", "true_false", "fill_blank",
 }
 _CASE_PRACTICE_TYPES = {"short_answer", "case_quiz"}
+
+
+class FavoriteFolderCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class FavoriteCreateRequest(BaseModel):
+    folder_id: str = Field(min_length=1, max_length=128)
+    resource_type: str = Field(default="question", min_length=1, max_length=32)
+    resource_id: str = Field(min_length=1, max_length=255)
+    title: str = Field(min_length=1, max_length=500)
+    content: dict[str, Any] = Field(default_factory=dict)
+    source: str = Field(default="训练工坊", min_length=1, max_length=128)
+
+
+class WorkshopNoteCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=20_000)
+    note_type: str = Field(default="心得体会", min_length=1, max_length=64)
+    source: str = Field(default="训练工坊", min_length=1, max_length=128)
+    resource_type: str | None = Field(default=None, max_length=32)
+    resource_id: str | None = Field(default=None, max_length=255)
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkshopNoteUpdateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=20_000)
 
 
 def _practice_question_type(value: object) -> str:
@@ -275,6 +308,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "learning-stage"),
             name="frontend_learning_stage",
         )
+    if frontend_root and (frontend_root / "textbook-covers").is_dir():
+        app.mount(
+            "/textbook-covers",
+            StaticFiles(directory=frontend_root / "textbook-covers"),
+            name="frontend_textbook_covers",
+        )
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
@@ -301,7 +340,15 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             or path == "/favicon.ico"
             or path == "/health"
             or path == "/openapi.json"
-            or path.startswith(("/assets/", "/design-images/", "/assistant-character/"))
+            or path.startswith(
+                (
+                    "/assets/",
+                    "/design-images/",
+                    "/assistant-character/",
+                    "/learning-stage/",
+                    "/textbook-covers/",
+                )
+            )
             or path.startswith(("/auth", "/docs", "/redoc"))
             or path.startswith("/api/v1/auth/")
         )
@@ -703,6 +750,174 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         return {"user": user}
+
+    def account_profile_payload(user: AuthUser, profile) -> dict:
+        data = profile.model_dump(mode="json", exclude={"avatar_key"})
+        data["avatar_url"] = (
+            f"/api/v1/auth/me/avatar?v={profile.avatar_version}"
+            if profile.avatar_key
+            else None
+        )
+        return {"user": user.model_dump(mode="json"), "profile": data}
+
+    @app.get("/api/v1/auth/me/profile")
+    async def account_profile(request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        profile = container.account_profile_service.get_profile(user)
+        return account_profile_payload(user, profile)
+
+    @app.patch("/api/v1/auth/me/profile")
+    async def update_account_profile(
+        payload: AccountProfileUpdateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        try:
+            updated_user, profile = container.account_profile_service.update_profile(
+                user, payload
+            )
+        except (ValueError, LookupError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return account_profile_payload(updated_user, profile)
+
+    @app.put("/api/v1/auth/me/avatar")
+    async def update_account_avatar(
+        request: Request, file: UploadFile = File(...)
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        content = await file.read()
+        try:
+            profile = container.account_profile_service.update_avatar(user, content)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return account_profile_payload(user, profile)
+
+    @app.get("/api/v1/auth/me/avatar")
+    async def account_avatar(request: Request):
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        avatar = container.account_profile_service.avatar_file(user)
+        if avatar is None:
+            raise HTTPException(status_code=404, detail="尚未设置头像")
+        path, media_type = avatar
+        return FileResponse(
+            path,
+            media_type=media_type,
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
+
+    @app.get("/api/v1/workshop/favorite-folders")
+    async def list_favorite_folders(request: Request) -> dict:
+        user = current_user(request)
+        return {"items": container.workshop_library_service.list_folders(user.user_id)}
+
+    @app.post("/api/v1/workshop/favorite-folders", status_code=201)
+    async def create_favorite_folder(
+        payload: FavoriteFolderCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            folder = container.workshop_library_service.create_folder(
+                user.user_id, payload.name
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"folder": folder}
+
+    @app.delete("/api/v1/workshop/favorite-folders/{folder_id}", status_code=204)
+    async def delete_favorite_folder(folder_id: str, request: Request) -> Response:
+        user = current_user(request)
+        if not container.workshop_library_service.delete_folder(user.user_id, folder_id):
+            raise HTTPException(status_code=404, detail="收藏簿不存在")
+        return Response(status_code=204)
+
+    @app.get("/api/v1/workshop/favorites")
+    async def list_workshop_favorites(
+        request: Request, folder_id: str | None = None
+    ) -> dict:
+        user = current_user(request)
+        items = container.workshop_library_service.list_favorites(
+            user.user_id, folder_id=folder_id
+        )
+        return {"items": items, "total": len(items)}
+
+    @app.post("/api/v1/workshop/favorites", status_code=201)
+    async def save_workshop_favorite(
+        payload: FavoriteCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            favorite = container.workshop_library_service.save_favorite(
+                user.user_id, **payload.model_dump()
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc).strip("'")) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"favorite": favorite}
+
+    @app.delete("/api/v1/workshop/favorites/{favorite_id}", status_code=204)
+    async def delete_workshop_favorite(favorite_id: str, request: Request) -> Response:
+        user = current_user(request)
+        if not container.workshop_library_service.delete_favorite(
+            user.user_id, favorite_id
+        ):
+            raise HTTPException(status_code=404, detail="收藏不存在")
+        return Response(status_code=204)
+
+    @app.get("/api/v1/workshop/notes")
+    async def list_workshop_notes(
+        request: Request,
+        source: str | None = None,
+        note_type: str | None = None,
+        q: str | None = None,
+    ) -> dict:
+        user = current_user(request)
+        items = container.workshop_library_service.list_notes(
+            user.user_id, source=source, note_type=note_type, query=q
+        )
+        return {"items": items, "total": len(items)}
+
+    @app.post("/api/v1/workshop/notes", status_code=201)
+    async def create_workshop_note(
+        payload: WorkshopNoteCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            note = container.workshop_library_service.create_note(
+                user.user_id, **payload.model_dump()
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"note": note}
+
+    @app.put("/api/v1/workshop/notes/{note_id}")
+    async def update_workshop_note(
+        note_id: str, payload: WorkshopNoteUpdateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            note = container.workshop_library_service.update_note(
+                user.user_id, note_id, **payload.model_dump()
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if note is None:
+            raise HTTPException(status_code=404, detail="笔记不存在")
+        return {"note": note}
+
+    @app.delete("/api/v1/workshop/notes/{note_id}", status_code=204)
+    async def delete_workshop_note(note_id: str, request: Request) -> Response:
+        user = current_user(request)
+        if not container.workshop_library_service.delete_note(user.user_id, note_id):
+            raise HTTPException(status_code=404, detail="笔记不存在")
+        return Response(status_code=204)
 
     @app.post("/api/v1/auth/onboarding/complete")
     async def complete_registration_onboarding(request: Request):
@@ -1108,6 +1323,22 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             **summary["trends"],
         }
 
+    @app.get("/api/v1/learning-statistics/overview")
+    async def learning_statistics_overview(
+        request: Request,
+        days: int = Query(default=30),
+    ) -> dict:
+        user = current_user(request)
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学习成果统计服务未启用")
+        if days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+        return await asyncio.to_thread(
+            backend_handoff.load_learning_statistics,
+            user.user_id,
+            days=days,
+        )
+
     @app.get("/api/v1/learning-context")
     async def learning_context(request: Request) -> dict:
         user = current_user(request)
@@ -1205,6 +1436,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 ),
                 "learning_activity_summary_endpoint": (
                     "/api/v1/learning-activity/summary"
+                    if backend_handoff is not None
+                    else None
+                ),
+                "learning_statistics_endpoint": (
+                    "/api/v1/learning-statistics/overview"
                     if backend_handoff is not None
                     else None
                 ),
@@ -1543,6 +1779,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         kp_id: str | None,
         mode: str,
         attempted_question_ids: set[str],
+        preferred_kp_ids: list[str] | None = None,
     ) -> dict | None:
         backend = container.knowledge_backend
         if backend is None:
@@ -1555,6 +1792,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             kp = store.kps.get(str(kp_id))
             if kp is not None:
                 selected_kps.append({"kp_id": str(kp_id), "kp": kp})
+        if not selected_kps:
+            for preferred_kp_id in preferred_kp_ids or []:
+                normalized_kp_id = str(preferred_kp_id or "").strip()
+                kp = store.kps.get(normalized_kp_id)
+                if kp is not None and not any(
+                    item["kp_id"] == normalized_kp_id for item in selected_kps
+                ):
+                    selected_kps.append({"kp_id": normalized_kp_id, "kp": kp})
         if not selected_kps:
             selected_kps = store.resolve_topic(query, limit=8)
 
@@ -1585,10 +1830,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 if payload["standard_answer"] and payload["kp_ids"]:
                     candidates.append(payload)
 
-        if not candidates:
+        if not candidates and not kp_id:
             # A broad credential goal may not resolve to one KP name. The source
             # is still the complete formal bank; choose a linked question of the
-            # requested type instead of reporting that the bank is empty.
+            # requested type instead of reporting that the bank is empty. An
+            # explicit KP target must fail closed rather than leak another KP.
             for linked_kp_id, questions in store.questions_by_kp.items():
                 for question in questions:
                     question_id = str(question.get("question_id") or question.get("题目id") or "")
@@ -1612,9 +1858,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     )
                     if payload["standard_answer"] and payload["kp_ids"]:
                         candidates.append(payload)
-                        break
-                if candidates:
-                    break
         if not candidates:
             return None
         return next(
@@ -1651,11 +1894,79 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             context = await asyncio.to_thread(runtime.load_learning_context, user.user_id)
         except Exception:
             context = {}
+        selection_context: dict = {}
+        load_selection_context = getattr(runtime, "load_practice_selection_context", None)
+        if callable(load_selection_context):
+            try:
+                selection_context = await asyncio.to_thread(
+                    load_selection_context, user.user_id
+                )
+            except Exception:
+                selection_context = {}
         attempted_ids = {
             str(item.get("question_id") or "")
             for item in context.get("question_attempt") or []
             if isinstance(item, dict) and item.get("question_id")
         }
+        attempted_ids.update(
+            str(question_id)
+            for question_id, history in (
+                selection_context.get("attempt_history") or {}
+            ).items()
+            if str(question_id).strip()
+            and isinstance(history, dict)
+            and int(history.get("attempt_count") or 0) > 0
+        )
+
+        has_explicit_target = bool(kp_id or str(topic or "").strip())
+        latest_claim = selection_context.get("latest_active_claim")
+        resume_claim = getattr(runtime, "resume_formal_practice_claim", None)
+        if not has_explicit_target and isinstance(latest_claim, dict) and callable(resume_claim):
+            question_id = str(latest_claim.get("question_id") or "").strip()
+            request_id = str(latest_claim.get("request_id") or "").strip()
+            if question_id and request_id:
+                try:
+                    resumed = await asyncio.to_thread(
+                        resume_claim,
+                        user.user_id,
+                        question_id=question_id,
+                        request_id=request_id,
+                    )
+                except Exception:
+                    resumed = None
+                resumed_question = resumed.get("question") if isinstance(resumed, dict) else None
+                if (
+                    isinstance(resumed_question, dict)
+                    and _practice_mode_matches(resumed_question.get("question_type"), mode)
+                ):
+                    resumed["selection"] = {
+                        "strategy": "current_learning_adaptive_v1",
+                        "reason": "active_claim",
+                    }
+                    return resumed
+
+        current_task_kp_ids = [
+            str(value).strip()
+            for value in selection_context.get("current_task_kp_ids") or []
+            if str(value).strip()
+        ]
+        due_review_kp_ids = [
+            str(value).strip()
+            for value in selection_context.get("due_review_kp_ids") or []
+            if str(value).strip()
+        ]
+        mastery = selection_context.get("mastery") or {}
+        low_mastery_kp_ids = sorted(
+            (
+                str(value).strip()
+                for value in mastery
+                if str(value).strip()
+            ),
+            key=lambda value: float((mastery.get(value) or {}).get("mastery") or 0),
+        )
+        preferred_kp_ids = list(dict.fromkeys(
+            current_task_kp_ids + due_review_kp_ids + low_mastery_kp_ids
+        ))
         query = str(topic or "").strip() or _profile_practice_query(context)
         try:
             candidate = await asyncio.to_thread(
@@ -1664,13 +1975,28 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 kp_id=kp_id,
                 mode=mode,
                 attempted_question_ids=attempted_ids,
+                preferred_kp_ids=preferred_kp_ids if not has_explicit_target else None,
             )
             if candidate is not None:
-                return await asyncio.to_thread(
+                issued = await asyncio.to_thread(
                     runtime.issue_formal_practice,
                     user.user_id,
                     candidate,
                 )
+                candidate_kp_ids = set(candidate.get("kp_ids") or [])
+                if candidate_kp_ids.intersection(current_task_kp_ids):
+                    reason = "current_task"
+                elif candidate_kp_ids.intersection(due_review_kp_ids):
+                    reason = "due_review"
+                elif candidate_kp_ids.intersection(low_mastery_kp_ids):
+                    reason = "low_mastery"
+                else:
+                    reason = "formal_bank"
+                issued["selection"] = {
+                    "strategy": "current_learning_adaptive_v1",
+                    "reason": reason,
+                }
+                return issued
         except Exception:
             # Keep projected formal questions usable while the read-only bank
             # is temporarily unavailable; never reinterpret this as an empty bank.
@@ -1832,6 +2158,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         daily_task_timer = await asyncio.to_thread(
             container.daily_task_refresh_service.ensure_current, user.user_id
         )
+        coordinator = container.daily_task_execution_coordinator
+        if coordinator is not None:
+            try:
+                await asyncio.to_thread(coordinator.dispatch_pending, user.user_id, 20)
+                await asyncio.to_thread(coordinator.reconcile_parent_status, user.user_id)
+            except Exception:
+                # Dashboard content remains available while cross-store sync recovers.
+                pass
         plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
         queue = container.review_service.get_queue(user.user_id, limit=12)
         sessions = container.review_card_use_case.conversation_repository.list_sessions(
@@ -1842,6 +2176,46 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if plans is not None and plans.learning_task is not None:
             task = plans.learning_task
             if task.status != "completed":
+                task_progress: dict = {}
+                if coordinator is not None:
+                    try:
+                        load_progress = getattr(coordinator, "load_current_progress", None)
+                        if callable(load_progress):
+                            task_progress = await asyncio.to_thread(
+                                load_progress, user.user_id
+                            )
+                        elif backend_handoff is not None:
+                            task_progress = await asyncio.to_thread(
+                                backend_handoff.load_daily_task_progress,
+                                user.user_id,
+                                {
+                                    "task_id": task.task_id,
+                                    "host_task_id": task.task_id,
+                                    "host_task_version": task.version,
+                                    "items": [
+                                        {
+                                            "task_item_id": item.task_item_id,
+                                            "item_type": item.item_type,
+                                            "kp_id": item.kp_id,
+                                            "required_question_count": item.required_question_count,
+                                        }
+                                        for item in task.items
+                                    ],
+                                },
+                            )
+                    except Exception:
+                        task_progress = {}
+                progress_items = {
+                    str(item.get("task_item_id") or ""): item
+                    for item in task_progress.get("items") or []
+                    if isinstance(item, dict) and item.get("task_item_id")
+                }
+                completed_items = int(task_progress.get("completed_items") or sum(
+                    1
+                    for item in progress_items.values()
+                    if str(item.get("status") or "").lower() == "completed"
+                ))
+                total_items = int(task_progress.get("total_items") or 0)
                 resolved_points: list[dict] = []
                 seen_kp_ids: set[str] = set()
                 task_chapter_text = str(task.learning_chapter or "").strip()
@@ -1921,6 +2295,59 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "refresh_started_at": task.refresh_started_at,
                     "refresh_due_at": task.refresh_due_at,
                     "source": "daily_task",
+                    "progress": {
+                        "completed": completed_items,
+                        "total": total_items,
+                        "rate": round(completed_items / total_items, 4)
+                        if total_items
+                        else 0.0,
+                    },
+                    "items": [
+                        {
+                            "task_item_id": item.task_item_id,
+                            "item_type": item.item_type,
+                            "title": item.title,
+                            "estimated_minutes": item.estimated_minutes,
+                            "kp_id": item.kp_id,
+                            "kp_name": item.knowledge_point_name,
+                            "status": str(
+                                progress_items.get(item.task_item_id, {}).get("status")
+                                or "pending"
+                            ),
+                            "progress": {
+                                key: value
+                                for key, value in dict(
+                                    progress_items.get(item.task_item_id, {}).get("progress")
+                                    or {}
+                                ).items()
+                                if key in {
+                                    "reviewed_questions",
+                                    "required_questions",
+                                    "coverage",
+                                    "coverage_rate",
+                                    "video_coverage",
+                                    "active_seconds",
+                                }
+                            },
+                            "action": {
+                                "destination": "workshop.practice",
+                                "params": {
+                                    "taskItemId": item.task_item_id,
+                                    **(
+                                        {
+                                            "kpId": item.kp_id,
+                                            "kpName": item.knowledge_point_name,
+                                        }
+                                        if item.item_type == "knowledge_practice"
+                                        and item.kp_id
+                                        and item.knowledge_point_name
+                                        else {}
+                                    ),
+                                },
+                            },
+                        }
+                        for item in task.items
+                    ],
                     "learning_chapter": {
                         "book": resolved_book,
                         "title": resolved_chapter,
@@ -2005,19 +2432,46 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if plans is None or plans.learning_task is None:
             raise HTTPException(status_code=404, detail="当前没有可完成的学习任务")
         task = plans.learning_task
-        if task.status != "completed":
-            now = datetime.now(timezone.utc)
-            task = task.model_copy(
-                update={
-                    "status": "completed",
-                    "version": task.version + 1,
-                    "updated_at": now,
-                }
+        if task.status == "completed":
+            return {"learning_task": task.model_dump(mode="json")}
+        coordinator = container.daily_task_execution_coordinator
+        reconciled = False
+        if coordinator is not None:
+            reconciled = await asyncio.to_thread(
+                coordinator.reconcile_parent_status, user.user_id
             )
-            repository.save_current(
-                user.user_id,
-                plans.model_copy(update={"learning_task": task}),
+        if not reconciled:
+            raw_progress = {}
+            if coordinator is not None:
+                load_progress = getattr(coordinator, "load_current_progress", None)
+                if callable(load_progress):
+                    raw_progress = await asyncio.to_thread(load_progress, user.user_id)
+            progress_items = [
+                item
+                for item in raw_progress.get("items") or []
+                if isinstance(item, dict)
+            ]
+            completed = int(raw_progress.get("completed_items") or sum(
+                1
+                for item in progress_items
+                if str(item.get("status") or "").lower() == "completed"
+            ))
+            total = int(raw_progress.get("total_items") or 0)
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": "仍有未完成的每日任务项，不能直接完成父任务",
+                    "current_progress": {
+                        "completed": completed,
+                        "total": total,
+                        "rate": round(completed / total, 4) if total else 0.0,
+                    },
+                },
             )
+        plans = repository.get_current(user.user_id)
+        if plans is None or plans.learning_task is None:
+            raise HTTPException(status_code=404, detail="当前学习任务已不存在")
+        task = plans.learning_task
         return {"learning_task": task.model_dump(mode="json")}
 
     @app.post("/api/v1/learning-tasks/current/refresh")
@@ -2146,6 +2600,36 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 title=title,
                 apply=apply,
                 mineru_token=request.headers.get("x-mineru-token", ""),
+            )
+        except Exception as exc:
+            raise knowledge_error(exc) from exc
+
+    @app.get("/api/v1/knowledge/content/recognition-reports")
+    async def list_knowledge_recognition_reports(
+        request: Request,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> dict:
+        try:
+            return await asyncio.to_thread(
+                knowledge_backend().list_recognition_reports,
+                knowledge_owner(request),
+                offset=max(0, offset),
+                limit=min(100, max(1, limit)),
+            )
+        except Exception as exc:
+            raise knowledge_error(exc) from exc
+
+    @app.get("/api/v1/knowledge/content/recognition-reports/{report_id}")
+    async def get_knowledge_recognition_report(
+        report_id: str,
+        request: Request,
+    ) -> dict:
+        try:
+            return await asyncio.to_thread(
+                knowledge_backend().get_recognition_report,
+                knowledge_owner(request),
+                report_id,
             )
         except Exception as exc:
             raise knowledge_error(exc) from exc

@@ -13,13 +13,14 @@ import {
   User,
   Zap,
 } from 'lucide-react';
-import { API_BASE, fetchJsonWithAuthFallback, fetchWithAuth } from '../utils/api';
+import { API_BASE, MAIN_API_BASE, fetchJsonWithAuthFallback, fetchWithAuth } from '../utils/api';
 import { knowledgeQueryFromContext } from './exam-atlas/examAtlasPageContext';
 import { getKnowledgeScopeNotice, getSearchFeedback } from '../knowledgePageState';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
 import CompactAssistant from './CompactAssistant';
 import { isKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import KnowledgeWorkspaceNav from './knowledge-atlas/KnowledgeWorkspaceNav';
+import KnowledgeRecognitionReports from './knowledge-reports/KnowledgeRecognitionReports';
 
 const KnowledgeAtlas = React.lazy(() => import('./knowledge-atlas/KnowledgeAtlas'));
 
@@ -83,6 +84,7 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [contextBrief, setContextBrief] = useState(null);
+  const [recognitionReportsVersion, setRecognitionReportsVersion] = useState(0);
 
   const fileInputRef = useRef(null);
   const dragCounter = useRef(0);
@@ -197,21 +199,67 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
 
     setIsUploading(true);
     setUploadError('');
-    const formData = new FormData();
-    filesArray.forEach(file => formData.append('files', file));
 
     try {
-      const res = await fetchWithAuth(`${API_BASE}/knowledge/upload?scope=${uploadScope}`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (!res.ok) {
+      const textbookFiles = uploadScope === 'personal'
+        ? filesArray.filter(file => /\.(pdf|md|txt)$/i.test(file.name || ''))
+        : [];
+      const legacyFiles = filesArray.filter(file => !textbookFiles.includes(file));
+      let latestChapterCount = 0;
+
+      for (const file of textbookFiles) {
+        setStats(prev => ({
+          ...prev,
+          is_processing: true,
+          status: `正在解析《${file.name}》并生成章节、切片和知识点...`,
+          progress: 0,
+        }));
+        const params = new URLSearchParams({
+          filename: file.name,
+          title: file.name.replace(/\.[^.]+$/, '') || '用户教材',
+          apply: 'true',
+        });
+        const res = await fetchWithAuth(`${MAIN_API_BASE}/knowledge/content/import-file?${params}`, {
+          method: 'POST',
+          body: file,
+        });
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || '上传失败');
+        if (!res.ok) {
+          const detail = typeof data.detail === 'string'
+            ? data.detail
+            : data.detail?.message || data.error || '教材导入失败';
+          throw new Error(detail);
+        }
+        if (data.chapter_hierarchy?.ok !== true) {
+          throw new Error('教材已处理，但后端没有生成章节层级数据。');
+        }
+        latestChapterCount += Number(data.chapter_hierarchy.chapter_nodes || 0);
       }
-      setStats(prev => ({ ...prev, is_processing: true, status: '准备构建...', progress: 0 }));
+
+      if (legacyFiles.length > 0) {
+        const formData = new FormData();
+        legacyFiles.forEach(file => formData.append('files', file));
+        const res = await fetchWithAuth(`${API_BASE}/knowledge/upload?scope=${uploadScope}`, {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || '上传失败');
+        }
+        setStats(prev => ({ ...prev, is_processing: true, status: '准备构建向量索引...', progress: 0 }));
+      } else if (textbookFiles.length > 0) {
+        setStats(prev => ({
+          ...prev,
+          is_processing: false,
+          status: `教材导入完成，已生成 ${latestChapterCount} 个章节`,
+          progress: 100,
+        }));
+      }
       await fetchFiles();
+      if (textbookFiles.length > 0) setRecognitionReportsVersion(value => value + 1);
     } catch (e) {
+      setStats(prev => ({ ...prev, is_processing: false }));
       setUploadError(e.message || '上传失败，请检查网络或后端服务');
     } finally {
       setIsUploading(false);
@@ -539,6 +587,10 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
             <div role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
               {uploadError}
             </div>
+          )}
+
+          {activeScope === 'personal' && (
+            <KnowledgeRecognitionReports refreshToken={recognitionReportsVersion} />
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

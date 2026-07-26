@@ -14,6 +14,7 @@ from APP.backend.auth import get_current_user
 from APP.backend.database import (
     AgentEvent,
     CorePracticeSubmissionClaim,
+    DailyTaskQuestionSnapshotRecord,
     LearningActivityRecord,
     LearningAttemptRecord,
     LearningInterventionRecord,
@@ -60,6 +61,7 @@ from APP.backend.core_learning_service import (
     record_practice_outcome,
     resolve_controlled_practice_submission,
 )
+from APP.backend.daily_task_progress_service import TERMINAL_AUDIT_DECISIONS
 from APP.backend.system_data_service import rebuild_system_data
 from APP.backend.training_service import grade_practice_submission
 from APP.backend.expert_agent_service import generate_question_explanation
@@ -95,7 +97,6 @@ class PracticeGradeRequest(BaseModel):
     rubric: str = ""
     knowledge_points: list[str] = Field(default_factory=list)
     knowledge_point_names: list[str] = Field(default_factory=list)
-    difficulty: int = 2
     request_id: str | None = Field(default=None, max_length=120)
 
 
@@ -110,7 +111,6 @@ class OnboardingSurveyRequest(BaseModel):
     preferred_time_slot: str = ""
     resource_preference: list[str] = Field(default_factory=list)
     learning_mode: str = ""
-    difficulty_preference: str = ""
     current_difficulties: list[str] | str | None = None
     difficulty_notes: str = ""
     long_term_goal: str = ""
@@ -121,14 +121,6 @@ class OnboardingSurveyRequest(BaseModel):
     exam_date: datetime | None = None
     is_locked: bool = True
     lock_reason: str = "用户手动选择"
-
-
-class DifficultyFeedbackRequest(BaseModel):
-    notice_id: str
-    action: str
-    reason: str = ""
-    current_difficulty: str = ""
-    suggested_difficulty: str = ""
 
 
 class InterventionFeedbackRequest(BaseModel):
@@ -244,24 +236,6 @@ def daily_checkin(current_user: UserModel = Depends(get_current_user), db: Sessi
     return record_daily_checkin(db, current_user.id)
 
 
-@router.post("/difficulty-feedback")
-def submit_difficulty_feedback(req: DifficultyFeedbackRequest, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    payload = req.model_dump() if hasattr(req, "model_dump") else req.dict()
-    db.add(LearningActivityRecord(
-        user_id=current_user.id,
-        activity_type="difficulty_feedback",
-        resource_id=req.notice_id,
-        resource_type="intervention_notice",
-        duration_minutes=0,
-        completion_status=req.action,
-        score=None,
-        payload_json=json.dumps(payload, ensure_ascii=False),
-        created_at=_now(),
-    ))
-    db.commit()
-    return {"success": True, "feedback_type": "difficulty_adjustment", "notice_id": req.notice_id}
-
-
 @router.post("/interventions/{intervention_id}/feedback")
 def submit_intervention_feedback(intervention_id: int, req: InterventionFeedbackRequest, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     record = db.query(LearningInterventionRecord).filter(
@@ -285,7 +259,6 @@ def _user_question_payload(question: UserQuestionItem, submission: dict[str, Any
         "rubric": question.analysis,
         "question_type": question.question_type,
         "knowledge_points": json.loads(question.kp_ids_json or "[]"),
-        "difficulty": 2,
     }
 
 
@@ -354,6 +327,14 @@ def next_practice_question(
     db: Session = Depends(get_db),
 ):
     if scope in {"user", "all"}:
+        claim_cutoff = _now() - timedelta(minutes=30)
+        active_user_claims = {
+            question_id
+            for question_id, in db.query(UserQuestionPracticeClaim.question_id).filter(
+                UserQuestionPracticeClaim.user_id == current_user.id,
+                UserQuestionPracticeClaim.created_at >= claim_cutoff,
+            ).all()
+        }
         attempted_user_question_ids = {
             question_id
             for question_id, in db.query(QuestionAttempt.question_id).filter(
@@ -371,6 +352,7 @@ def next_practice_question(
             ):
                 user_candidates.append((question, question_kp_ids))
         user_candidates.sort(key=lambda item: (
+            item[0].question_id in active_user_claims,
             item[0].question_id in attempted_user_question_ids,
             item[0].question_id,
         ))
@@ -393,8 +375,6 @@ def next_practice_question(
                     "options": _decode_options(question.options_json),
                     "kp_ids": question_kp_ids,
                     "kp_names": _knowledge_point_names(db, question_kp_ids),
-                    "difficulty": 2,
-                    "difficulty_source": "system_default",
                     "request_id": request_id,
                     "source_scope": "user",
                 },
@@ -430,10 +410,19 @@ def next_practice_question(
             LearningQuestionAttempt.user_id == current_user.id,
         ).all()
     )
+    claim_cutoff = _now() - timedelta(minutes=30)
+    active_claims = {
+        question_id
+        for question_id, in db.query(CorePracticeSubmissionClaim.question_id).filter(
+            CorePracticeSubmissionClaim.user_id == current_user.id,
+            CorePracticeSubmissionClaim.daily_task_item_id.is_(None),
+            CorePracticeSubmissionClaim.created_at >= claim_cutoff,
+        ).all()
+    }
     candidates.sort(key=lambda item: (
+        item[0].question_id in active_claims,
         item[0].question_id in attempted_question_ids,
         -float(item[0].quality_score or 0),
-        abs(float(item[0].difficulty or 2) - 2),
         item[0].question_id,
     ))
     if not candidates:
@@ -463,8 +452,6 @@ def next_practice_question(
             "options": _public_question_options(db, question.question_id),
             "kp_ids": question_kp_ids,
             "kp_names": _knowledge_point_names(db, question_kp_ids),
-            "difficulty": int(question.difficulty or 2),
-            "difficulty_source": "question_bank_snapshot" if question.difficulty else "system_default",
             "request_id": request_id,
             "source_scope": "public",
         },
@@ -481,7 +468,41 @@ def grade_practice(
     submission = req.model_dump() if hasattr(req, "model_dump") else req.dict()
     if submission.get("request_id") and not str(submission.get("student_answer") or "").strip():
         raise HTTPException(status_code=422, detail="student_answer is required")
-    controlled_submission = resolve_controlled_practice_submission(db, submission)
+    daily_claim = None
+    daily_snapshot = None
+    if submission.get("request_id"):
+        daily_claim = db.query(CorePracticeSubmissionClaim).filter_by(
+            user_id=current_user.id,
+            request_id=submission["request_id"],
+        ).one_or_none()
+        if daily_claim is not None and daily_claim.daily_task_item_id:
+            if submission.get("question_id") != daily_claim.question_id:
+                raise HTTPException(status_code=422, detail="question_id does not match the issued practice claim")
+            daily_snapshot = db.query(DailyTaskQuestionSnapshotRecord).filter_by(
+                id=daily_claim.daily_task_snapshot_id,
+                task_item_id=daily_claim.daily_task_item_id,
+                user_id=current_user.id,
+                question_id=daily_claim.question_id,
+                question_version_id=daily_claim.question_version_id,
+            ).one_or_none()
+            if daily_snapshot is None:
+                raise HTTPException(status_code=409, detail="daily task question snapshot is unavailable")
+            if daily_snapshot.audit_decision in TERMINAL_AUDIT_DECISIONS:
+                raise HTTPException(status_code=409, detail="daily task question is already terminal")
+    controlled_submission = (
+        {
+            **submission,
+            "question_id": daily_snapshot.question_id,
+            "question_version_id": daily_snapshot.question_version_id,
+            "question_type": daily_snapshot.question_type,
+            "stem": daily_snapshot.stem_snapshot,
+            "standard_answer": daily_snapshot.answer_snapshot,
+            "rubric": daily_snapshot.rubric_snapshot,
+            "knowledge_points": json.loads(daily_snapshot.kp_snapshot_json or "[]"),
+        }
+        if daily_snapshot is not None
+        else resolve_controlled_practice_submission(db, submission)
+    )
     private_question = db.query(UserQuestionItem).filter_by(
         question_id=submission.get("question_id"),
         owner_user_id=current_user.id,
@@ -502,6 +523,12 @@ def grade_practice(
         ).one_or_none()
         controlled_submission = _user_question_payload(private_question, submission)
     if submission.get("request_id") and controlled_submission is None:
+        replayed_attempt = db.query(LearningAttemptRecord).filter_by(
+            learner_id=current_user.id,
+            request_id=submission["request_id"],
+        ).one_or_none()
+        if replayed_attempt is not None:
+            raise HTTPException(status_code=409, detail="practice submission already processed")
         raise HTTPException(status_code=400, detail="request_id requires an active registered question")
     controlled_request_id = submission.get("request_id") if controlled_submission is not None else None
     if controlled_request_id:
@@ -522,10 +549,12 @@ def grade_practice(
             replayed = db.query(LearningAttemptRecord).filter_by(
                 learner_id=current_user.id,
                 request_id=controlled_request_id,
-            ).one_or_none() if private_controlled else db.query(LearningQuestionAttempt).filter_by(
-                user_id=current_user.id,
-                request_id=controlled_request_id,
             ).one_or_none()
+            if replayed is None and not private_controlled:
+                replayed = db.query(LearningQuestionAttempt).filter_by(
+                    user_id=current_user.id,
+                    request_id=controlled_request_id,
+                ).one_or_none()
             expired = db.query(claim_model).filter_by(
                 user_id=current_user.id,
                 request_id=controlled_request_id,
@@ -567,7 +596,6 @@ def grade_practice(
                 "rubric": grading_submission["rubric"],
                 "knowledge_points": grading_submission["knowledge_points"],
                 "knowledge_point_names": grading_submission["knowledge_point_names"],
-                "difficulty": grading_submission["difficulty"],
             },
         )
         raw_grading = runner_payload.get("grading", runner_payload)
@@ -595,7 +623,6 @@ def grade_practice(
                     "rubric": grading_submission["rubric"],
                     "knowledge_points": grading_submission["knowledge_points"],
                     "knowledge_point_names": grading_submission["knowledge_point_names"],
-                    "difficulty": grading_submission["difficulty"],
                 }
             )
         if cached_explanation:
@@ -712,6 +739,7 @@ def grade_practice(
         profile=_profile_payload(profile),
         memories=memories,
         request_id=submission.get("request_id") or f"legacy-route:{submission['question_id']}",
+        daily_task_item_id=daily_claim.daily_task_item_id if daily_claim is not None else None,
     )
     result = apply_practice_grading(
         db,
@@ -720,6 +748,8 @@ def grade_practice(
         explanation_runner=generate_question_explanation,
         atomic=controlled_submission is not None and bool(submission.get("request_id")),
     )
+    if daily_claim is not None and daily_claim.daily_task_item_id:
+        db.commit()
     grading = dict(result.grading_payload or {})
     grading["question_id"] = submission["question_id"]
     grading["question_type"] = grading_submission["question_type"]

@@ -37,7 +37,10 @@ describe('ReviewDashboardPanel', () => {
 
     expect(await screen.findAllByText('四君子汤')).toHaveLength(3);
     expect(screen.getByText('已到期')).toBeInTheDocument();
-    expect(screen.getByText('平均掌握度')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '已评估知识点' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '平均掌握度' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '当前到期' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '掌握记录' })).toBeInTheDocument();
     expect(screen.getAllByText(/76/).length).toBeGreaterThan(0);
   });
 });

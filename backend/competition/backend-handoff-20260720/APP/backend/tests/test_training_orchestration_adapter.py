@@ -26,7 +26,6 @@ class TrainingOrchestrationAdapterTests(unittest.TestCase):
             query="学习四君子汤",
             inputs={
                 "kp_ids": ["KP_FJ_001"],
-                "difficulty": 3,
                 "duration_minutes": 20,
             },
             options={},
@@ -40,7 +39,7 @@ class TrainingOrchestrationAdapterTests(unittest.TestCase):
         self.assertEqual(request.requested_outputs, ["handout"])
         self.assertEqual(request.task_context.correlation_id, "TT_test_001")
         self.assertEqual(request.task_context.kp_ids, ["KP_FJ_001"])
-        self.assertEqual(request.task_context.difficulty, 3)
+        self.assertNotIn("difficulty", request.task_context.model_dump())
         self.assertEqual(request.task_context.expected_duration_min, 20)
 
     def test_builds_knowledge_card_request(self):

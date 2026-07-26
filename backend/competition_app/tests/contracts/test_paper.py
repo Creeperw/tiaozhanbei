@@ -1,7 +1,7 @@
 from competition_app.contracts.paper import BlueprintUnit
 
 
-def test_blueprint_unit_does_not_require_difficulty() -> None:
+def test_blueprint_unit_uses_knowledge_and_question_type_constraints() -> None:
     unit = BlueprintUnit(
         unit_id="UNIT_01",
         sequence=1,
@@ -11,5 +11,5 @@ def test_blueprint_unit_does_not_require_difficulty() -> None:
         required_question_count=2,
     )
 
-    assert unit.difficulty_preference is None
+    assert "difficulty_preference" not in unit.model_dump()
     assert unit.question_type_preferences == []

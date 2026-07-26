@@ -19,6 +19,7 @@ class MigrationRunner:
     @staticmethod
     def _sqlite_sql(sql: str) -> str:
         indexes: list[tuple[str, str, str]] = []
+        unique_indexes: list[tuple[str, str, str]] = []
         statements: list[str] = []
         for raw_statement in sql.split(";"):
             statement = raw_statement.strip()
@@ -44,6 +45,19 @@ class MigrationRunner:
                     return ""
 
                 statement = pattern.sub(collect_index, statement)
+                unique_pattern = re.compile(
+                    r",\s*UNIQUE\s+KEY\s+(?P<name>[A-Za-z0-9_]+)\s*"
+                    r"\((?P<columns>[^)]+)\)",
+                    flags=re.IGNORECASE,
+                )
+
+                def collect_unique_index(match: re.Match[str]) -> str:
+                    unique_indexes.append(
+                        (match.group("name"), table_name, match.group("columns"))
+                    )
+                    return ""
+
+                statement = unique_pattern.sub(collect_unique_index, statement)
             statement = re.sub(r"TIMESTAMP\(6\)", "TIMESTAMP", statement, flags=re.IGNORECASE)
             statement = re.sub(
                 r"CURRENT_TIMESTAMP\(6\)",
@@ -61,6 +75,10 @@ class MigrationRunner:
         statements.extend(
             f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({columns});"
             for name, table, columns in indexes
+        )
+        statements.extend(
+            f"CREATE UNIQUE INDEX IF NOT EXISTS {name} ON {table} ({columns});"
+            for name, table, columns in unique_indexes
         )
         return "\n".join(statements)
 

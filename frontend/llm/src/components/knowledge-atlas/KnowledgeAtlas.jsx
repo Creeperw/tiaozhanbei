@@ -496,7 +496,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
                   return (
                     <button type="button" key={node.id} aria-label={action} data-resource-kind={kind} onClick={() => enterNode(node)}>
                       <span className="knowledge-atlas__node-index">{String(index + 1).padStart(2, '0')}</span>
-                      <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.alias || `${node.count || node.children_count || 0} ${level === 4 ? '项资源' : '个下级节点'}`}</small></span>
+                      <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.content_status === 'missing_chunks' ? '暂无对应教材切片' : (node.alias || `${node.count || node.children_count || 0} ${level === 4 ? '项资源' : '个下级节点'}`)}</small></span>
                       <span className="knowledge-atlas__node-resource">
                         {(kind === 'question' || kind === 'both') && <CircleHelp aria-label={`${node.question_count} 道题`} size={14} />}
                         {(kind === 'video' || kind === 'both') && <Clapperboard aria-label={`${node.video_count} 个视频`} size={14} />}
@@ -532,7 +532,7 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
               return (
                 <button type="button" key={node.id} aria-label={action} data-resource-kind={kind} onClick={() => enterNode(node)}>
                   <span className="knowledge-atlas__node-index">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.alias || `${node.count || node.children_count || 0} ${level === 4 ? '项资源' : '个下级节点'}`}</small></span>
+                  <span className="knowledge-atlas__node-copy"><strong>{node.name}</strong><small>{node.content_status === 'missing_chunks' ? '暂无对应教材切片' : (node.alias || `${node.count || node.children_count || 0} ${level === 4 ? '项资源' : '个下级节点'}`)}</small></span>
                   <span className="knowledge-atlas__node-resource">
                     {(kind === 'question' || kind === 'both') && <CircleHelp aria-label={`${node.question_count} 道题`} size={14} />}
                     {(kind === 'video' || kind === 'both') && <Clapperboard aria-label={`${node.video_count} 个视频`} size={14} />}
@@ -556,7 +556,14 @@ export default function KnowledgeAtlas({ initialContext = {}, onOpenLegacy, onDi
 
       {selectedNode && (
         <div className={detailClosing ? 'knowledge-atlas__detail-layer is-closing' : 'knowledge-atlas__detail-layer'}>
-          <KnowledgeAtlasDetail node={selectedNode} detail={detail} loading={detailLoading} error={detailError} onClose={closeDetail} />
+          <KnowledgeAtlasDetail
+            node={selectedNode}
+            detail={detail}
+            loading={detailLoading}
+            error={detailError}
+            taskItemId={initialContext.taskItemId || initialContext.task_item_id || ''}
+            onClose={closeDetail}
+          />
         </div>
       )}
     </section>

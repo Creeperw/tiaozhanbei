@@ -85,7 +85,7 @@ class ExpertAgentServiceTests(unittest.TestCase):
         self.assertEqual(artifact.artifact_type, "handout")
         self.assertEqual(artifact.content["source_ids"], ["SRC_FJ_001", "RES_COMPARE_001"])
         self.assertEqual(artifact.content["kp_ids"], ["KP_ZH_001", "KP_FJ_001"])
-        self.assertEqual(artifact.content["difficulty"], 3)
+        self.assertNotIn("difficulty", artifact.content)
         self.assertEqual(artifact.content["expected_duration_min"], 18)
         self.assertTrue(artifact.content["sections"])
         self.assertEqual(artifact.content["sections"][0]["title"], "正式证据要点")
@@ -375,7 +375,7 @@ class ExpertAgentServiceTests(unittest.TestCase):
         )
 
         self.assertEqual(artifact.artifact_type, "knowledge_card")
-        self.assertEqual(artifact.content["difficulty"], 2)
+        self.assertNotIn("difficulty", artifact.content)
         self.assertEqual(artifact.content["expected_duration_min"], 8)
         self.assertEqual(artifact.content["front"], "正式证据要点是什么？")
         self.assertIn("脾胃气虚证", artifact.content["back"])
@@ -401,7 +401,7 @@ class ExpertAgentServiceTests(unittest.TestCase):
         )
 
         self.assertEqual(artifact.artifact_type, "paper")
-        self.assertEqual(artifact.content["difficulty"], 3)
+        self.assertNotIn("difficulty", artifact.content)
         self.assertEqual(artifact.content["expected_duration_min"], 20)
         self.assertNotIn("questions", artifact.content)
         self.assertNotIn("standard_answer", str(artifact.content))
@@ -412,7 +412,6 @@ class ExpertAgentServiceTests(unittest.TestCase):
                 "kp_ids": ["KP_ZH_001", "KP_FJ_001"],
                 "types": ["single_choice", "short_answer"],
                 "distribution": {"single_choice": 3, "short_answer": 1},
-                "difficulty": 3,
                 "exclusion_criteria": ["不生成试题正文或标准答案", "仅使用已解析知识点"],
             },
         )
@@ -500,7 +499,7 @@ class ExpertAgentServiceTests(unittest.TestCase):
         self.assertEqual(artifact.artifact_type, "grading")
         self.assertEqual(artifact.content["source_ids"], ["SRC_FJ_001", "RES_COMPARE_001"])
         self.assertEqual(artifact.content["kp_ids"], ["KP_ZH_001", "KP_FJ_001"])
-        self.assertEqual(artifact.content["difficulty"], 2)
+        self.assertNotIn("difficulty", artifact.content)
         self.assertEqual(artifact.content["expected_duration_min"], 12)
         self.assertEqual(artifact.content["grading"]["is_correct"], False)
         self.assertLess(artifact.content["grading"]["score"], 100)
@@ -526,7 +525,7 @@ class ExpertAgentServiceTests(unittest.TestCase):
         )
 
         self.assertEqual(artifact.artifact_type, "case_training")
-        self.assertEqual(artifact.content["difficulty"], 3)
+        self.assertNotIn("difficulty", artifact.content)
         self.assertEqual(artifact.content["expected_duration_min"], 15)
         self.assertIn("脾胃气虚证", artifact.content["case_summary"])
         self.assertTrue(artifact.content["checkpoints"])

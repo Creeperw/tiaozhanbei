@@ -17,7 +17,6 @@ class CrossValidationAdoptionTests(unittest.TestCase):
             confidence=0.9,
             fact_consistency=1.0,
             evidence_coverage=1.0,
-            difficulty_match=1.0,
             knowledge_coverage=1.0,
             safety_risk="low",
             conflicts=[],

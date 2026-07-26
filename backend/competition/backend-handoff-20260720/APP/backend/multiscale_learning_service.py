@@ -185,6 +185,62 @@ def _plan_layer(
     return _row_plan(row, key)
 
 
+def verify_host_plan_context(
+    plan_context: dict[str, Any],
+    *,
+    external_user_id: str,
+) -> dict[str, Any]:
+    """Mark a host-repository plan chain as trusted after ownership validation."""
+
+    context = dict(plan_context or {})
+    owner = str(external_user_id or "").strip()
+    if not owner:
+        raise ValueError("external user is required for host plan verification")
+    layers = {
+        key: dict(context.get(key) or {})
+        for key in ("long_term_plan", "short_term_plan", "learning_task")
+        if isinstance(context.get(key), dict) and context.get(key)
+    }
+    for key, layer in layers.items():
+        learner_id = str(layer.get("learner_id") or "").strip()
+        if learner_id != owner:
+            raise ValueError(f"{key} must belong to the authenticated learner")
+    long_plan = layers.get("long_term_plan", {})
+    short_plan = layers.get("short_term_plan", {})
+    learning_task = layers.get("learning_task", {})
+    long_id = str(long_plan.get("plan_id") or "")
+    short_id = str(short_plan.get("plan_id") or "")
+    if short_plan and str(short_plan.get("long_term_plan_id") or "") != long_id:
+        raise ValueError("short-term plan must reference the current long-term plan")
+    if learning_task and str(learning_task.get("short_term_plan_id") or "") != short_id:
+        raise ValueError("learning task must reference the current short-term plan")
+    context.update(layers)
+    context["_verified_host_plan_context"] = {
+        "external_user_id": owner,
+        "long_term_plan_id": long_id,
+        "short_term_plan_id": short_id,
+        "learning_task_id": str(learning_task.get("task_id") or ""),
+    }
+    return context
+
+
+def _host_layer_verified(
+    plan_context: dict[str, Any],
+    *,
+    key: str,
+    value_id: str,
+) -> bool:
+    proof = plan_context.get("_verified_host_plan_context")
+    if not isinstance(proof, dict):
+        return False
+    proof_key = {
+        "long_term_plan": "long_term_plan_id",
+        "short_term_plan": "short_term_plan_id",
+        "learning_task": "learning_task_id",
+    }[key]
+    return bool(value_id and str(proof.get(proof_key) or "") == value_id)
+
+
 def _profile_payload(db: Session, user_id: int) -> tuple[dict[str, Any], list[str]]:
     learning = (
         db.query(LearningUserProfile)
@@ -214,6 +270,21 @@ def _profile_payload(db: Session, user_id: int) -> tuple[dict[str, Any], list[st
             "custom_needs": legacy.custom_needs or "",
             "survey": survey,
         }
+        l0_baseline = survey.get("l0_baseline") if isinstance(survey, dict) else None
+        if isinstance(l0_baseline, dict) and isinstance(
+            l0_baseline.get("daily_available_minutes"), (int, float)
+        ):
+            payload.setdefault(
+                "daily_available_minutes",
+                int(l0_baseline["daily_available_minutes"]),
+            )
+        elif isinstance(survey, dict) and isinstance(
+            survey.get("daily_available_minutes"), (int, float)
+        ):
+            payload.setdefault(
+                "daily_available_minutes",
+                int(survey["daily_available_minutes"]),
+            )
         refs.append(f"user_profiles:{legacy.id}")
     return payload, refs
 
@@ -228,22 +299,28 @@ def _route_and_stage(long_plan: dict[str, Any]) -> tuple[dict[str, Any], dict[st
         or long_plan.get("current_stage_id")
         or ""
     ).strip()
-    phases = route.get("phases") if isinstance(route.get("phases"), list) else []
+    textbook_route = route.get("textbook_route")
+    textbook_route = (
+        dict(textbook_route) if isinstance(textbook_route, dict) else {}
+    )
+    textbook = textbook_route.get("route")
+    textbook = dict(textbook) if isinstance(textbook, dict) else {}
+    stages = textbook.get("stages") if isinstance(textbook.get("stages"), list) else []
+    if not stages:
+        stages = route.get("phases") if isinstance(route.get("phases"), list) else []
     stage = next(
         (
             dict(item)
-            for item in phases
-            if isinstance(item, dict) and str(item.get("phase_id") or "") == stage_id
+            for item in stages
+            if isinstance(item, dict)
+            and str(item.get("stage_id") or item.get("phase_id") or "") == stage_id
         ),
         {},
     )
-    if not stage and phases:
-        first = phases[0]
-        stage = dict(first) if isinstance(first, dict) else {}
     if selection:
         stage = {
             **stage,
-            "phase_id": selection.get("stage_id") or stage.get("phase_id"),
+            "stage_id": selection.get("stage_id") or stage.get("stage_id"),
             "name": selection.get("stage_name") or stage.get("name"),
             "books": selection.get("books") or stage.get("books") or [],
         }
@@ -363,6 +440,7 @@ def build_multiscale_state(
     short_row = _current_row(db, ShortTermPlan, user_id)
     long_plan = _plan_layer(plan_context, "long_term_plan", long_row)
     short_plan = _plan_layer(plan_context, "short_term_plan", short_row)
+    host_task = _plan_layer(plan_context, "learning_task", None)
     route, stage = _route_and_stage(long_plan)
     profile, profile_refs = _profile_payload(db, user_id)
 
@@ -400,10 +478,14 @@ def build_multiscale_state(
         .order_by(LearningTask.created_at.desc(), LearningTask.id.desc())
         .all()
     )
-    tasks_by_id = {
-        str(row.task_id): row for row in completion_tasks + pending_tasks
-    }
+    tasks_by_id = {str(row.task_id): row for row in completion_tasks + pending_tasks}
     tasks = list(tasks_by_id.values())
+    host_task_id = str(host_task.get("task_id") or "")
+    host_task_pending = bool(
+        host_task_id
+        and host_task_id not in tasks_by_id
+        and str(host_task.get("status") or "") in {"pending", "active"}
+    )
     attempts = (
         db.query(LearningQuestionAttempt)
         .filter(
@@ -619,10 +701,13 @@ def build_multiscale_state(
         for row in pending_tasks
         if row.estimated_minutes is not None
     ]
+    if host_task_pending and isinstance(host_task.get("estimated_minutes"), (int, float)):
+        known_task_minutes.append(int(host_task["estimated_minutes"]))
+    pending_task_count = len(pending_tasks) + int(host_task_pending)
     current_load = (
         sum(known_task_minutes)
-        if pending_tasks
-        and len(known_task_minutes) == len(pending_tasks)
+        if pending_task_count
+        and len(known_task_minutes) == pending_task_count
         else None
     )
 
@@ -661,7 +746,18 @@ def build_multiscale_state(
                 "source_ref": f"learning_task:{row.task_id}",
             }
             for row in tasks[:30]
-        ],
+        ] + (
+            [{
+                "task_id": host_task_id,
+                "task_type": str(host_task.get("task_type") or "daily_learning"),
+                "content": str(host_task.get("task_content") or ""),
+                "estimated_minutes": host_task.get("estimated_minutes"),
+                "status": str(host_task.get("status") or ""),
+                "kp_ids": list(host_task.get("focus_knowledge_points") or []),
+                "source_ref": f"plan_context:learning_task:{host_task_id}",
+            }]
+            if host_task_pending else []
+        ),
         "planned_knowledge_points": planned_points,
         "weak_knowledge_points": weak_points,
         "due_review_knowledge_points": due_points,
@@ -741,10 +837,15 @@ def build_multiscale_state(
                 f"learning_task:{row.task_id}"
                 for row in pending_tasks
                 if row.estimated_minutes is not None
-            ],
+            ] + (
+                [f"plan_context:learning_task:{host_task_id}"]
+                if host_task_pending
+                and isinstance(host_task.get("estimated_minutes"), (int, float))
+                else []
+            ),
             unavailable_reason=(
                 "no_pending_tasks"
-                if not pending_tasks
+                if not pending_task_count
                 else "pending_task_duration_missing_or_incomplete"
             ),
         ),
@@ -965,6 +1066,10 @@ def _available_minutes(
             max(0, min(1440, int(row.daily_available_minutes))),
             [f"user_profile:{row.id}"],
         )
+    profile, profile_refs = _profile_payload(db, user_id)
+    profile_minutes = profile.get("daily_available_minutes")
+    if isinstance(profile_minutes, (int, float)):
+        return max(0, min(1440, int(profile_minutes))), profile_refs
     return None, []
 
 
@@ -1157,12 +1262,7 @@ def _evaluate_hard_constraints(
     )
     safe_under_low_data = (
         descriptor["kind"] == "due_review"
-        or (
-            scope == "daily_task"
-            and approved_route
-            and isinstance(descriptor["difficulty"], (int, float))
-            and float(descriptor["difficulty"]) <= 3
-        )
+        or (scope == "daily_task" and approved_route)
     )
     low_data_ok = not low_data or safe_under_low_data
 
@@ -1190,11 +1290,12 @@ def _evaluate_hard_constraints(
         not candidate_books
         or candidate_books.issubset(allowed_stage_books)
     )
+    verified_stage_binding = bool(descriptor.get("verified_stage_binding"))
     stage_mapping_ok = bool(
         approved_route
         and candidate_stage_id
         and candidate_stage_id in planned_stage_ids
-        and kps_mapped
+        and (kps_mapped or verified_stage_binding)
         and books_mapped
     )
     values = {
@@ -1276,11 +1377,7 @@ def _evaluate_hard_constraints(
                 else (
                     "sufficient_data"
                     if not low_data
-                    else (
-                        "insufficient_data_difficulty_unknown"
-                        if descriptor["difficulty"] is None
-                        else "insufficient_data_for_high_risk_candidate"
-                    )
+                    else "insufficient_data_requires_trusted_route_or_review"
                 )
             ),
             [f"state:{state_digest}"],
@@ -1357,13 +1454,20 @@ def _build_score_components(
     )
     time_fit = 1.0 if time_ok and scope != "long_term" else None
     difficulty = descriptor.get("difficulty")
+    difficulty_fit = None
+    difficulty_sources: list[str] = []
     if isinstance(difficulty, (int, float)) and mastery_values:
-        learner_level = 1 + 4 * (
-            sum(mastery_values) / len(mastery_values)
+        normalized_difficulty = _clamp((float(difficulty) - 1.0) / 4.0)
+        learner_level = _clamp(sum(mastery_values) / len(mastery_values))
+        difficulty_fit = 1.0 - abs(normalized_difficulty - learner_level)
+        difficulty_sources = _unique(
+            descriptor["source_refs"]
+            + [
+                mastery_ref_by_kp[item]
+                for item in kp_set
+                if item in mastery_ref_by_kp
+            ]
         )
-        difficulty_fit = 1 - abs(float(difficulty) - learner_level) / 4
-    else:
-        difficulty_fit = None
     preferences = profile.get("preferences")
     preferences = preferences if isinstance(preferences, dict) else {}
     preferred_types = preferences.get("resource_preference")
@@ -1444,13 +1548,11 @@ def _build_score_components(
         ),
         "difficulty_fit": _score_metric(
             difficulty_fit,
-            sources=descriptor["source_refs"],
+            sources=difficulty_sources,
             reason=(
-                "difficulty_not_applicable_for_review"
-                if descriptor["kind"] == "due_review"
-                else "learner_mastery_missing_for_difficulty_fit"
-                if difficulty is not None
-                else "resource_difficulty_missing"
+                "difficulty_metadata_missing"
+                if not isinstance(difficulty, (int, float))
+                else "mastery_or_accuracy_missing_for_difficulty_fit"
             ),
         ),
         "autonomy_support": _score_metric(
@@ -1544,6 +1646,7 @@ def build_path_candidates(
     short_row = _current_row(db, ShortTermPlan, user_id)
     long_plan = _plan_layer(plan_context, "long_term_plan", long_row)
     short_plan = _plan_layer(plan_context, "short_term_plan", short_row)
+    host_task = _plan_layer(plan_context, "learning_task", None)
     route, stage = _route_and_stage(long_plan)
     approved_route = bool(
         route.get("planning_status") == "approved_route"
@@ -1654,7 +1757,6 @@ def build_path_candidates(
                     ],
                     "kp_ids": {kp["kp_id"]},
                     "estimated_minutes": 10,
-                    "difficulty": None,
                     "recommended_action": "review",
                     "source_refs": [
                         f"review:{row.review_state_id}",
@@ -1671,6 +1773,55 @@ def build_path_candidates(
                     "next_review_at": row.next_review_at,
                     "resource_type": "review",
                     "resource_id": row.review_state_id,
+                    "difficulty": None,
+                }
+            )
+
+        host_task_id = str(host_task.get("task_id") or "")
+        if (
+            host_task_id
+            and str(host_task.get("status") or "") in {"pending", "active"}
+            and _host_layer_verified(
+                plan_context,
+                key="learning_task",
+                value_id=host_task_id,
+            )
+        ):
+            focus_names = [
+                str(item).strip()
+                for item in host_task.get("focus_knowledge_points", [])
+                if str(item).strip()
+            ]
+            host_kp_ids = {item for item in focus_names if item in kp_names}
+            descriptors.append(
+                {
+                    "kind": "host_task",
+                    "stage": stage,
+                    "books": [
+                        {"name": str(book)}
+                        for book in stage.get("books", [])
+                        if str(book).strip()
+                    ],
+                    "knowledge_points": [
+                        {
+                            **({"kp_id": item} if item in kp_names else {}),
+                            "name": kp_names.get(item, {}).get("name", item),
+                        }
+                        for item in focus_names
+                    ],
+                    "kp_ids": host_kp_ids,
+                    "estimated_minutes": host_task.get("estimated_minutes"),
+                    "recommended_action": "learn",
+                    "source_refs": [f"plan_context:learning_task:{host_task_id}"],
+                    "evidence_refs": route_evidence,
+                    "trusted": bool(route_evidence),
+                    "retention": None,
+                    "resource_type": str(
+                        host_task.get("task_type") or "daily_learning"
+                    ),
+                    "resource_id": host_task_id,
+                    "verified_stage_binding": True,
+                    "difficulty": None,
                 }
             )
 
@@ -1684,25 +1835,6 @@ def build_path_candidates(
             .limit(50)
             .all()
         )
-        task_question_ids = {
-            str(question_id)
-            for row in task_rows
-            for question_id in _json(row.question_ids_json, [])
-            if str(question_id).strip()
-        }
-        task_question_rows = (
-            db.query(LearningQuestion)
-            .filter(LearningQuestion.question_id.in_(task_question_ids))
-            .order_by(LearningQuestion.question_id.asc())
-            .all()
-            if task_question_ids else []
-        )
-        task_difficulty_by_id = {
-            str(row.question_id): (
-                float(row.difficulty) if row.difficulty is not None else None
-            )
-            for row in task_question_rows
-        }
         for row in task_rows:
             ids = {
                 str(item)
@@ -1711,14 +1843,6 @@ def build_path_candidates(
             }
             if not ids:
                 continue
-            question_ids = [
-                str(item) for item in _json(row.question_ids_json, []) if str(item)
-            ]
-            difficulty_values = [
-                float(task_difficulty_by_id[question_id])
-                for question_id in question_ids
-                if task_difficulty_by_id.get(question_id) is not None
-            ]
             descriptors.append(
                 {
                     "kind": "task",
@@ -1737,10 +1861,6 @@ def build_path_candidates(
                         int(row.estimated_minutes)
                         if row.estimated_minutes is not None else None
                     ),
-                    "difficulty": (
-                        sum(difficulty_values) / len(difficulty_values)
-                        if difficulty_values else None
-                    ),
                     "recommended_action": (
                         "review" if row.task_type == "review" else "learn"
                     ),
@@ -1750,6 +1870,7 @@ def build_path_candidates(
                     "retention": None,
                     "resource_type": str(row.task_type),
                     "resource_id": row.task_id,
+                    "difficulty": None,
                 }
             )
 
@@ -1797,7 +1918,6 @@ def build_path_candidates(
                     ],
                     "kp_ids": ids,
                     "estimated_minutes": 15 if row.resource_type == "video" else 10,
-                    "difficulty": None,
                     "recommended_action": "learn",
                     "source_refs": [f"resource:{row.resource_id}"],
                     "evidence_refs": _unique(
@@ -1812,6 +1932,7 @@ def build_path_candidates(
                     "retention": None,
                     "resource_type": str(row.resource_type),
                     "resource_id": str(row.resource_id),
+                    "difficulty": None,
                 }
             )
 
@@ -1857,10 +1978,6 @@ def build_path_candidates(
                     ],
                     "kp_ids": ids,
                     "estimated_minutes": 5,
-                    "difficulty": (
-                        float(row.difficulty)
-                        if row.difficulty is not None else None
-                    ),
                     "recommended_action": "practice",
                     "source_refs": [f"question:{row.question_id}"],
                     "evidence_refs": (
@@ -1871,6 +1988,7 @@ def build_path_candidates(
                     "retention": None,
                     "resource_type": "question",
                     "resource_id": str(row.question_id),
+                    "difficulty": row.difficulty,
                 }
             )
     else:
@@ -1899,7 +2017,6 @@ def build_path_candidates(
                         if isinstance(item.get("estimated_minutes"), (int, float))
                         else None
                     ),
-                    "difficulty": None,
                     "recommended_action": "continue_stage",
                     "source_refs": _unique(
                         route_refs
@@ -1910,6 +2027,7 @@ def build_path_candidates(
                     "retention": None,
                     "resource_type": "route_stage",
                     "resource_id": str(item.get("phase_id") or ""),
+                    "difficulty": None,
                 }
             )
 
@@ -1940,14 +2058,16 @@ def build_path_candidates(
                     )
                     else None
                 ),
-                "difficulty": None,
                 "recommended_action": "learn",
                 "source_refs": _unique(route_refs + ["plan_context:route_focus"]),
                 "evidence_refs": route_evidence,
                 "trusted": bool(route_evidence),
                 "retention": None,
                 "resource_type": "route_focus",
-                "resource_id": str(stage.get("phase_id") or ""),
+                "resource_id": str(
+                    stage.get("stage_id") or stage.get("phase_id") or ""
+                ),
+                "difficulty": None,
             }
         )
 
@@ -1959,12 +2079,38 @@ def build_path_candidates(
         or ""
     ).strip()
     route_goal = str(route.get("goal_name") or "").strip()
+    textbook_route = route.get("textbook_route")
+    textbook_route = textbook_route if isinstance(textbook_route, dict) else {}
+    textbook = textbook_route.get("route")
+    textbook = textbook if isinstance(textbook, dict) else {}
+    goal_aliases = _unique(
+        [route_goal, str(textbook.get("goal_name") or "")]
+        + [str(item) for item in textbook.get("aliases", [])]
+    )
+    normalized_goal = "".join(
+        goal_text.replace("资格考试", "").replace("类别", "").split()
+    )
+    normalized_aliases = {
+        "".join(
+            item.replace("资格考试", "")
+            .replace("类别", "")
+            .replace("（规定学历路径）", "")
+            .split()
+        )
+        for item in goal_aliases
+        if item
+    }
     if not approved_route:
         goal_aligned = False
     elif not goal_text:
         goal_aligned = False
     else:
-        goal_aligned = goal_text in route_goal or route_goal in goal_text
+        goal_aligned = any(
+            normalized_goal == alias
+            or normalized_goal in alias
+            or alias in normalized_goal
+            for alias in normalized_aliases
+        )
     goal_reason = (
         "learner_goal_missing"
         if not goal_text
@@ -1976,9 +2122,18 @@ def build_path_candidates(
 
     coverage = state.get("data_quality", {}).get("coverage")
     low_data = not isinstance(coverage, (int, float)) or float(coverage) < 0.5
+    textbook_stages = (
+        textbook.get("stages")
+        if isinstance(textbook.get("stages"), list)
+        else []
+    )
+    if not textbook_stages:
+        textbook_stages = (
+            route.get("phases") if isinstance(route.get("phases"), list) else []
+        )
     planned_stage_ids = {
-        str(item.get("phase_id") or "")
-        for item in route.get("phases", [])
+        str(item.get("stage_id") or item.get("phase_id") or "")
+        for item in textbook_stages
         if isinstance(item, dict)
     }
     completed_prerequisites = {
@@ -2002,28 +2157,47 @@ def build_path_candidates(
     claimed_long_status = long_plan.get("status")
     claimed_short_status = short_plan.get("status")
     long_plan_verified = bool(
-        long_row is not None
-        and str(long_row.plan_id) == long_plan_id
-        and str(long_row.status or "") in _ACTIVE_PLAN_STATUSES
-        and (
-            claimed_long_status is None
-            or str(claimed_long_status) == str(long_row.status)
+        (
+            long_row is not None
+            and str(long_row.plan_id) == long_plan_id
+            and str(long_row.status or "") in _ACTIVE_PLAN_STATUSES
+            and (
+                claimed_long_status is None
+                or str(claimed_long_status) == str(long_row.status)
+            )
+        )
+        or (
+            _host_layer_verified(
+                plan_context, key="long_term_plan", value_id=long_plan_id
+            )
+            and str(claimed_long_status or "") in _ACTIVE_PLAN_STATUSES
         )
     )
     short_plan_verified = bool(
-        short_row is not None
-        and str(short_row.plan_id) == short_plan_id
-        and str(short_row.status or "") in _ACTIVE_PLAN_STATUSES
-        and (
-            claimed_short_status is None
-            or str(claimed_short_status) == str(short_row.status)
+        (
+            short_row is not None
+            and str(short_row.plan_id) == short_plan_id
+            and str(short_row.status or "") in _ACTIVE_PLAN_STATUSES
+            and (
+                claimed_short_status is None
+                or str(claimed_short_status) == str(short_row.status)
+            )
+        )
+        or (
+            _host_layer_verified(
+                plan_context, key="short_term_plan", value_id=short_plan_id
+            )
+            and str(claimed_short_status or "") in _ACTIVE_PLAN_STATUSES
         )
     )
     parent_link_verified = bool(
         long_plan_verified
         and short_plan_verified
-        and str(short_row.long_term_plan_id or "") == long_plan_id
         and str(short_plan.get("long_term_plan_id") or "") == long_plan_id
+        and (
+            short_row is None
+            or str(short_row.long_term_plan_id or "") == long_plan_id
+        )
     )
     current_stage_id = str(
         stage.get("phase_id") or stage.get("stage_id") or ""
@@ -2031,9 +2205,10 @@ def build_path_candidates(
     approved_stage = next(
         (
             item
-            for item in route.get("phases", [])
+            for item in textbook_stages
             if isinstance(item, dict)
-            and str(item.get("phase_id") or "") == current_stage_id
+            and str(item.get("stage_id") or item.get("phase_id") or "")
+            == current_stage_id
         ),
         {},
     )
@@ -2044,7 +2219,10 @@ def build_path_candidates(
     }
     allowed_stage_kp_names = {
         str(item).strip()
-        for item in approved_stage.get("learning_focus", [])
+        for item in (
+            list(approved_stage.get("learning_focus", []))
+            + list(host_task.get("focus_knowledge_points", []))
+        )
         if str(item).strip()
     }
     allowed_stage_books = {

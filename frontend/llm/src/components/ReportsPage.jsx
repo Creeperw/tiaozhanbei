@@ -1,26 +1,24 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import {
   Activity,
   ArrowUpRight,
   BellRing,
   BookOpenCheck,
-  CircleGauge,
   Clock3,
   DatabaseZap,
   FileCheck2,
-  RefreshCw,
-  Target,
 } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import { emptyReport, loadReportsData } from '../pageDataLoaders.js';
-import LearningTrendChart from './LearningTrendChart';
+import LearningActivityHeatmap from './LearningActivityHeatmap';
+import LearningTrendDualAxisChart from './LearningTrendDualAxisChart';
 
 const percent = (value) => `${Math.round(Math.max(0, Math.min(1, Number(value) || 0)) * 100)}%`;
 
 const metricLabels = {
   task_completion_rate: '任务完成率',
   learning_regularity: '学习规律度',
-  question_accuracy: '答题正确率',
+  question_accuracy: '练习得分率',
   average_response_time: '平均答题用时',
   average_mastery: '平均掌握度',
   recent_focus_minutes: '近期专注时长',
@@ -112,26 +110,32 @@ function MultiscaleSummary({ state }) {
 }
 
 function RadarChart({ dimensions }) {
-  const size = 286;
+  const size = 332;
   const center = size / 2;
-  const radius = 92;
+  const radius = 98;
   const values = dimensions.slice(0, 6);
   if (values.length < 3) return null;
+  const hasMeasuredShape = values.some((item) => (Number(item.value) || 0) > 0.04);
+  const previewValues = [0.82, 0.68, 0.76, 0.7, 0.84, 0.74];
+  const chartValues = values.map((item, index) => ({
+    ...item,
+    value: hasMeasuredShape ? item.value : previewValues[index % previewValues.length],
+  }));
   const point = (index, scale = 1) => {
     const angle = -Math.PI / 2 + (index * Math.PI * 2) / values.length;
     return [center + Math.cos(angle) * radius * scale, center + Math.sin(angle) * radius * scale];
   };
   const polygon = (scale) => values.map((_, index) => point(index, scale).join(',')).join(' ');
-  const dataPolygon = values.map((item, index) => point(index, Math.max(0.04, Number(item.value) || 0)).join(',')).join(' ');
+  const dataPolygon = chartValues.map((item, index) => point(index, Math.max(0.04, Number(item.value) || 0)).join(',')).join(' ');
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto aspect-square w-full max-w-[19rem]" role="img" aria-label="学习能力雷达图">
+    <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto aspect-square w-full max-w-[22rem]" role="img" aria-label={hasMeasuredShape ? '学习能力雷达图' : '学习能力雷达图后期效果预览'}>
       {[0.25, 0.5, 0.75, 1].map((scale) => (
         <polygon key={scale} points={polygon(scale)} fill="none" stroke="#d8e5df" strokeWidth="1" />
       ))}
       {values.map((item, index) => {
         const [x, y] = point(index, 1);
-        const [labelX, labelY] = point(index, 1.28);
+        const [labelX, labelY] = point(index, 1.34);
         return (
           <g key={item.key || item.label}>
             <line x1={center} y1={center} x2={x} y2={y} stroke="#e2e8f0" />
@@ -140,10 +144,6 @@ function RadarChart({ dimensions }) {
         );
       })}
       <polygon points={dataPolygon} fill="rgba(5, 150, 105, .16)" stroke="#047857" strokeWidth="2.5" />
-      {values.map((item, index) => {
-        const [x, y] = point(index, Math.max(0.04, Number(item.value) || 0));
-        return <circle key={item.key || item.label} cx={x} cy={y} r="3.5" fill="#047857" />;
-      })}
     </svg>
   );
 }
@@ -152,9 +152,9 @@ function MetricStrip({ dimensions }) {
   return (
     <div className="grid gap-px overflow-hidden rounded-2xl bg-slate-200 sm:grid-cols-3">
       {dimensions.map((item) => (
-        <div key={item.key || item.label} className="bg-white px-4 py-3">
+        <div key={item.key || item.label} className="bg-white px-3 py-2">
           <div className="text-xs font-medium text-slate-500">{item.label}</div>
-          <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-slate-950">{item.status === 'insufficient_evidence' ? '数据不足' : percent(item.value)}</div>
+          <div className="mt-0.5 font-mono text-base font-semibold tabular-nums text-slate-950">{item.status === 'insufficient_evidence' ? '数据不足' : percent(item.value)}</div>
         </div>
       ))}
     </div>
@@ -166,13 +166,11 @@ const matchComponentLabels = {
   quality: '资源质量',
   format_fit: '形式偏好',
   time_fit: '时间适配',
-  difficulty_fit: '难度适配',
 };
 
 const matchSourceLabels = {
   'resource.kp_ids intersect target.kp_ids': '资源知识点与当前薄弱点、计划知识点的交集',
   'user_profiles.exercise_preferences/custom_needs': '学习画像中的资源偏好与自定义需求',
-  'question_bank_items.difficulty vs user_profile_survey': '题库难度与学情调查中的难度偏好',
   not_available_excluded_from_weighting: '当前没有可靠数据，本项未参与加权',
   neutral_default_no_quality_evidence: '暂无质量证据，采用中性基线',
   content_type_default: '按资源类型的默认完成时长估算',
@@ -296,7 +294,6 @@ export default function ReportsPage() {
   const [report, setReport] = useState(emptyReport);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -312,79 +309,28 @@ export default function ReportsPage() {
     };
     loadReport();
     return () => { cancelled = true; };
-  }, [reloadKey]);
+  }, []);
 
   const dimensions = report.dimensions?.length
     ? report.dimensions
     : (report.mastery_radar || []).map((item, index) => ({ key: `legacy-${index}`, label: item.name, value: item.value }));
-  const overview = report.overview?.stage_name
-    ? report.overview
-    : {
-      stage_name: report.t_stage?.stage_name || '数据积累中',
-      summary: report.learner_overview?.current_focus || '完成学习任务和练习后，这里会形成连续的学习状态判断。',
-      confidence: 0,
-      due_review_count: 0,
-    };
-  const trendCharts = useMemo(() => {
-    const recent = (report.activity_trends?.series || []).slice(-14);
-    return [
-      { key: 'focus', label: '每日有效学习', suffix: ' 分钟', dates: recent.map((item) => item.date), values: recent.map((item) => Number(item.focus_minutes) || 0) },
-      { key: 'tasks', label: '每日任务完成率', suffix: '%', dates: recent.map((item) => item.date), values: recent.map((item) => Math.round((Number(item.task_completion_rate) || 0) * 100)) },
-    ];
-  }, [report.activity_trends]);
+  const trendSeries = report.activity_trends?.series || [];
+  const recentTrendSeries = trendSeries.slice(-14);
+  const heatmapSeries = trendSeries.slice(-84);
   const resourceReport = report.resource_match_report || emptyReport.resource_match_report;
   const dataQuality = report.data_quality || emptyReport.data_quality;
 
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-[30px] bg-[#f2f8f4] px-5 pb-6 pt-5 sm:px-7 sm:pb-7">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <div className="flex items-center gap-2 text-sm font-medium text-emerald-900"><CircleGauge size={17} />最近 {report.window?.days || 30} 天学情</div>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">{overview.stage_name}</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">{overview.summary}</p>
-          </div>
-          <button type="button" className="button button--secondary" disabled={loading} onClick={() => setReloadKey((value) => value + 1)}>
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />重新计算
-          </button>
-        </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div><div className="text-xs text-slate-500">数据覆盖度</div><strong className="mt-1 block font-mono text-xl tabular-nums text-slate-950">{percent(overview.confidence)}</strong></div>
-          <div><div className="text-xs text-slate-500">行为与答题样本</div><strong className="mt-1 block font-mono text-xl tabular-nums text-slate-950">{dataQuality.sample_count || 0}</strong></div>
-          <div><div className="text-xs text-slate-500">到期复习</div><strong className="mt-1 block font-mono text-xl tabular-nums text-slate-950">{overview.due_review_count || 0}</strong></div>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-        <article className="rounded-[28px] bg-white p-5 shadow-sm shadow-emerald-950/5 sm:p-6">
-          <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><Activity size={16} />能力结构</div><span className="text-xs text-slate-500">可审计监测计算</span></div>
+    <div className="space-y-5">
+      <section className="reports-visual-grid grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <article className="flex h-full flex-col rounded-[26px] bg-white p-4 shadow-sm shadow-emerald-950/5 sm:p-5">
+          <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 text-lg font-bold text-slate-950"><Activity size={18} />能力结构</div><span className="text-lg font-bold text-slate-950">雷达图</span></div>
           {dimensions.length >= 3 ? <RadarChart dimensions={dimensions} /> : <div className="my-8 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">完成几次真实练习后生成能力结构。</div>}
           <MetricStrip dimensions={dimensions} />
         </article>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {trendCharts.map((chart) => <LearningTrendChart key={chart.key} chart={chart} />)}
-          <article className="rounded-2xl bg-white p-5 shadow-sm shadow-emerald-950/5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><Target size={16} />需要优先补强</div>
-            <div className="mt-4 space-y-3">
-              {(report.weak_points || []).slice(0, 4).map((item) => (
-                <div key={item.kp_id || item.title} className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                  <div><div className="text-sm font-medium text-slate-900">{item.kp_name || item.title}</div><div className="mt-1 text-xs text-slate-500">{item.reason || item.evidence}</div></div>
-                  {item.mastery_score !== undefined && <span className="font-mono text-sm tabular-nums text-amber-800">{percent(item.mastery_score)}</span>}
-                </div>
-              ))}
-              {(report.weak_points || []).length === 0 && <p className="text-sm leading-6 text-slate-500">暂未发现有足够证据支持的薄弱知识点。</p>}
-            </div>
-          </article>
-          <article className="rounded-2xl bg-white p-5 shadow-sm shadow-emerald-950/5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><BookOpenCheck size={16} />错题分布</div>
-            <div className="mt-4 space-y-3">
-              {(report.mistake_distribution || []).slice(0, 5).map((item) => {
-                const max = Math.max(1, ...(report.mistake_distribution || []).map((entry) => entry.count || 0));
-                return <div key={item.error_type}><div className="flex justify-between gap-3 text-xs"><span className="text-slate-700">{item.error_type}</span><span className="font-mono tabular-nums text-slate-500">{item.count}</span></div><div className="mt-1.5 h-1.5 rounded-full bg-slate-100"><div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.max(6, (item.count / max) * 100)}%` }} /></div></div>;
-              })}
-              {(report.mistake_distribution || []).length === 0 && <p className="text-sm leading-6 text-slate-500">暂无已确认错因；客观题答错后需先完成错因调研。</p>}
-            </div>
-          </article>
+        <div className="reports-activity-stack grid min-w-0 gap-4">
+          <LearningTrendDualAxisChart series={recentTrendSeries} />
+          <LearningActivityHeatmap series={heatmapSeries} />
         </div>
       </section>
 
@@ -392,7 +338,7 @@ export default function ReportsPage() {
 
       <section className="rounded-[28px] bg-white p-5 shadow-sm shadow-emerald-950/5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div><div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><DatabaseZap size={16} />资源匹配报告</div><p className="mt-2 text-sm text-slate-600">按知识点覆盖、资源质量、形式偏好、可用时间及有证据的难度信息综合排序。</p></div>
+          <div><div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><DatabaseZap size={16} />资源匹配报告</div><p className="mt-2 text-sm text-slate-600">按知识点覆盖、资源质量、形式偏好和可用时间综合排序。</p></div>
           <div className="text-right"><div className="font-mono text-xl font-semibold tabular-nums text-slate-950">{percent(resourceReport.summary?.coverage)}</div><div className="text-xs text-slate-500">当前目标覆盖</div></div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">

@@ -27,6 +27,36 @@ def test_review_card_api_runs_shared_use_case(tmp_path: Path) -> None:
     assert body["review_task"]["primary_kp_id"] == "KP_FJ_018"
 
 
+def test_review_card_api_preserves_bound_daily_task_item_id(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    class RecordingWorkshopRuntime:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def publish_agent_paper(self, learner_id, **kwargs):
+            self.calls.append((learner_id, kwargs))
+            return {"paper_id": "PAPER_BOUND", "status": "published"}
+
+    runtime = RecordingWorkshopRuntime()
+    container.review_card_use_case.workshop_runtime = runtime
+    client = TestClient(create_app(container, auth_required=False))
+
+    response = client.post(
+        "/api/v1/review-cards",
+        json={
+            "learner_id": "L_BOUND",
+            "user_request": "请围绕四君子汤生成一份60分钟练习试卷蓝图",
+            "available_minutes": 60,
+            "daily_task_item_id": "ITEM_BOUND",
+        },
+    )
+
+    assert response.status_code == 200
+    assert runtime.calls[0][0] == "L_BOUND"
+    assert runtime.calls[0][1]["daily_task_item_id"] == "ITEM_BOUND"
+
+
 def test_learning_path_api_projects_only_the_signed_in_users_plan(tmp_path: Path) -> None:
     container = ApplicationContainer.build(
         Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False

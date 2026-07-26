@@ -1,7 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, CircleHelp, Film, Library, Loader2, Search } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
-import { loadKnowledgeCard, loadKnowledgeCards, resolveKnowledgeCard } from '../pageDataLoaders';
+import {
+  confirmDailyTaskIframeVideo,
+  loadKnowledgeCard,
+  loadKnowledgeCards,
+  recordDailyTaskVideoEvidence,
+  resolveKnowledgeCard,
+} from '../pageDataLoaders';
+import {
+  createHtml5VideoEvidenceTracker,
+  createIframeFocusEvidenceTracker,
+  isVideoThresholdMet,
+  videoSegment,
+} from '../videoTaskEvidence';
 
 const text = (value) => {
   if (value === null || value === undefined || value === '') return '暂无';
@@ -64,7 +76,69 @@ function ResourceHeading({ icon, title, count }) {
   );
 }
 
-export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
+function DailyTaskVideoPlayer({ player, video, taskItemId }) {
+  const mediaRef = useRef(null);
+  const trackerRef = useRef(null);
+  const [evidence, setEvidence] = useState({ activeSeconds: 0, coverage: 0 });
+  const [status, setStatus] = useState('');
+  const segment = videoSegment(video);
+  const report = async (nextEvidence) => {
+    const result = await recordDailyTaskVideoEvidence({
+      fetcher: fetchJsonWithAuthFallback,
+      taskItemId,
+      evidence: nextEvidence,
+    });
+    if (result.error) setStatus(result.error);
+    else if (result.evidence?.status === 'completed') setStatus('视频任务已自动完成');
+  };
+
+  useEffect(() => {
+    if (!taskItemId || !player || !mediaRef.current) return undefined;
+    const options = {
+      segmentStart: segment.start,
+      segmentEnd: segment.end,
+      report,
+      onProgress: setEvidence,
+    };
+    const tracker = player.kind === 'video'
+      ? createHtml5VideoEvidenceTracker({ ...options, video: mediaRef.current })
+      : createIframeFocusEvidenceTracker({ ...options, iframe: mediaRef.current });
+    trackerRef.current = tracker;
+    return () => {
+      if (trackerRef.current === tracker) trackerRef.current = null;
+      void tracker.stop();
+    };
+  }, [player, report, segment.end, segment.start, taskItemId]);
+
+  const confirm = async () => {
+    setStatus('正在确认…');
+    await trackerRef.current?.flush();
+    const result = await confirmDailyTaskIframeVideo({ fetcher: fetchJsonWithAuthFallback, taskItemId });
+    if (result.evidence?.status === 'completed') {
+      const tracker = trackerRef.current;
+      trackerRef.current = null;
+      await tracker?.stop();
+    }
+    setStatus(result.error || (result.evidence?.status === 'completed' ? '视频任务已完成' : '服务端尚未确认完成'));
+  };
+  const percent = Math.min(100, Math.floor((evidence.coverage || 0) * 100));
+  const thresholdMet = isVideoThresholdMet(evidence.activeSeconds, segment.start, segment.end);
+
+  return <>
+    {player.kind === 'iframe' && <p className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm leading-6 text-sky-900">第三方播放器无法读取真实进度。仅在页面可见且播放器获得焦点时累计有效专注时长，达到 90% 后还需手动确认。</p>}
+    {player.kind === 'iframe'
+      ? <div className="aspect-video overflow-hidden rounded-2xl bg-slate-950"><iframe ref={mediaRef} title={videoTitle(video)} src={player.src} className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
+      : <video ref={mediaRef} title={videoTitle(video)} src={player.src} className="aspect-video w-full rounded-2xl bg-slate-950" controls preload="metadata" />}
+    {taskItemId && <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700" aria-live="polite">
+      <div className="flex items-center justify-between gap-3"><span>{player.kind === 'iframe' ? '有效专注进度' : '去重观看进度'}</span><strong>{percent}%</strong></div>
+      <progress aria-label={player.kind === 'iframe' ? '有效专注进度' : '去重观看进度'} className="mt-2 w-full" max="100" value={percent} />
+      {player.kind === 'iframe' && <button type="button" className="mt-2 rounded-lg bg-emerald-700 px-3 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={!thresholdMet} onClick={confirm}>确认看完</button>}
+      {status && <p role={status.includes('失败') ? 'alert' : 'status'} className="mt-2">{status}</p>}
+    </div>}
+  </>;
+}
+
+export default function KnowledgeCardLibrary({ cardId = '', kpId = '', taskItemId = '' }) {
   const [cards, setCards] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
   const [query, setQuery] = useState('');
@@ -221,8 +295,7 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '' }) {
             {activeResource === 'videos' && <section role="tabpanel" aria-label="视频资源内容">
               <ResourceHeading icon={Film} title="视频资源" count={videos.length} />
               {videos.length > 0 ? <div className="mt-3 space-y-3">
-                {activeVideoPlayer?.kind === 'iframe' && <div className="aspect-video overflow-hidden rounded-2xl bg-slate-950"><iframe title={videoTitle(activeVideo)} src={activeVideoPlayer.src} className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>}
-                {activeVideoPlayer?.kind === 'video' && <video title={videoTitle(activeVideo)} src={activeVideoPlayer.src} className="aspect-video w-full rounded-2xl bg-slate-950" controls preload="metadata" />}
+                {activeVideoPlayer && <DailyTaskVideoPlayer key={`${activeVideoPlayer.kind}:${activeVideoPlayer.src}:${taskItemId}`} player={activeVideoPlayer} video={activeVideo} taskItemId={taskItemId} />}
                 {!activeVideoPlayer && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">该来源暂不支持站内播放，可使用下方原始链接查看。</p>}
                 <div className="grid gap-2 sm:grid-cols-2">{videos.map((item, index) => (
                   <button key={item.source_id || index} type="button" onClick={() => setActiveVideoIndex(index)} aria-pressed={activeVideoIndex === index} className={`rounded-xl border px-3 py-3 text-left text-sm font-medium transition ${activeVideoIndex === index ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-slate-200 text-slate-700 hover:border-emerald-200'}`}>{videoTitle(item)}</button>

@@ -98,7 +98,7 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         selected = repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1", "kp-2"),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         ))
 
         self.assertEqual(selected[0].question_version_id, "QV_REAL_2")
@@ -112,7 +112,7 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         selected = repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         ))
 
         self.assertEqual(selected[0].question_version_id, "QV_A")
@@ -125,7 +125,7 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         selected = repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 2),),
+            type_counts=(("single_choice", 2),),
         ))
 
         self.assertEqual(
@@ -133,18 +133,18 @@ class QuestionRepositoryTests(unittest.TestCase):
             [("question-1", "QV_A"), ("question-2", "QV_Q2")],
         )
 
-    def test_canonicalizes_authoritative_version_before_applying_difficulty_quota(self):
+    def test_canonicalizes_authoritative_version_without_using_legacy_difficulty(self):
         self.add_authoritative_version("QV_A", "question-multi", version=1, difficulty=3)
         self.add_authoritative_version("QV_Z", "question-multi", version=2, difficulty=2)
         repository = QuestionRepository(self.Session)
 
         selected = repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         ))
 
-        self.assertIsInstance(selected, QuestionShortage)
-        self.assertEqual(selected.available_count, 0)
+        self.assertNotIsInstance(selected, QuestionShortage)
+        self.assertEqual(selected[0].question_version_id, "QV_A")
 
     def test_private_variation_does_not_block_public_legacy_question_fallback(self):
         self.add_question("Q1")
@@ -163,7 +163,7 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         selected = QuestionRepository(self.Session).select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         ))
 
         self.assertNotIsInstance(selected, QuestionShortage)
@@ -185,7 +185,7 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         selected = repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         ))
 
         self.assertIsInstance(selected, QuestionShortage)
@@ -194,7 +194,7 @@ class QuestionRepositoryTests(unittest.TestCase):
     def test_selection_criteria_is_immutable(self):
         criteria = QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         )
 
         with self.assertRaises(FrozenInstanceError):
@@ -202,11 +202,11 @@ class QuestionRepositoryTests(unittest.TestCase):
 
     def test_criteria_and_version_view_snapshot_list_inputs(self):
         kp_ids = ["kp-1"]
-        type_difficulty_counts = [["single_choice", 2, 1]]
+        type_counts = [["single_choice", 1]]
         exclude_question_ids = ["question-1"]
         criteria = QuestionSelectionCriteria(
             kp_ids=kp_ids,
-            type_difficulty_counts=type_difficulty_counts,
+            type_counts=type_counts,
             exclude_question_ids=exclude_question_ids,
         )
         version_kp_ids = ["kp-2"]
@@ -218,18 +218,17 @@ class QuestionRepositoryTests(unittest.TestCase):
             answer="answer",
             analysis="analysis",
             kp_ids=version_kp_ids,
-            standard_difficulty=2,
             source_kind="seed",
         )
 
         kp_ids.append("kp-3")
-        type_difficulty_counts.append(["short_answer", 2, 1])
-        type_difficulty_counts[0][2] = 2
+        type_counts.append(["short_answer", 1])
+        type_counts[0][1] = 2
         exclude_question_ids.append("question-3")
         version_kp_ids.append("kp-4")
 
         self.assertEqual(criteria.kp_ids, ("kp-1",))
-        self.assertEqual(criteria.type_difficulty_counts, (("single_choice", 2, 1),))
+        self.assertEqual(criteria.type_counts, (("single_choice", 1),))
         self.assertEqual(criteria.exclude_question_ids, ("question-1",))
         self.assertEqual(version_view.kp_ids, ("kp-2",))
 
@@ -242,7 +241,7 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         selected = repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1", "kp-2"),
-            type_difficulty_counts=(("single_choice", 2, 3),),
+            type_counts=(("single_choice", 3),),
         ))
 
         self.assertEqual([item.question_id for item in selected], ["a-strict", "z-strict", "primary"])
@@ -251,10 +250,9 @@ class QuestionRepositoryTests(unittest.TestCase):
             ["a-strict:v1", "z-strict:v1", "primary:v1"],
         )
         self.assertEqual(selected[0].kp_ids, ("kp-1", "kp-2"))
-        self.assertEqual(selected[0].standard_difficulty, 2)
         self.assertEqual(selected[0].source_kind, "seed")
 
-    def test_select_deduplicates_excludes_and_returns_shortage_without_relaxing_type_or_difficulty(self):
+    def test_select_deduplicates_excludes_and_returns_shortage_without_relaxing_type(self):
         self.add_question("duplicate", difficulty=2)
         self.add_question("excluded", difficulty=2)
         self.add_question("wrong-type", question_type="short_answer", difficulty=2)
@@ -263,16 +261,16 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         selected = repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 3),),
+            type_counts=(("single_choice", 3),),
             exclude_question_ids=("duplicate", "excluded"),
         ))
 
         self.assertIsInstance(selected, QuestionShortage)
         self.assertEqual(selected.requested_count, 3)
-        self.assertEqual(selected.available_count, 0)
+        self.assertEqual(selected.available_count, 1)
         self.assertEqual(
-            selected.criteria.type_difficulty_counts,
-            (("single_choice", 2, 3),),
+            selected.criteria.type_counts,
+            (("single_choice", 3),),
         )
 
     def test_legacy_question_without_kp_ids_is_not_selected_for_personalized_training(self):
@@ -281,7 +279,7 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         selected = repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         ))
 
         self.assertIsInstance(selected, QuestionShortage)
@@ -293,7 +291,7 @@ class QuestionRepositoryTests(unittest.TestCase):
 
         snapshot = repository.learner_snapshot(repository.select(QuestionSelectionCriteria(
             kp_ids=("kp-1",),
-            type_difficulty_counts=(("single_choice", 2, 1),),
+            type_counts=(("single_choice", 1),),
         )))
 
         self.assertEqual(snapshot, ({
@@ -302,7 +300,6 @@ class QuestionRepositoryTests(unittest.TestCase):
             "question_type": "single_choice",
             "stem": "stem-learner-view",
             "kp_ids": ("kp-1",),
-            "standard_difficulty": 2,
             "source_kind": "seed",
         },))
         self.assertNotIn("answer", snapshot[0])

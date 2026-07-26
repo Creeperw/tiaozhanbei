@@ -17,7 +17,18 @@ def _state(now: datetime, *, due_at: datetime | None) -> LearningPlanResult:
         current_goal="本周掌握补气剂",
         task_blocks=[
             ShortTermTaskBlock(content="学习四君子汤", estimated_minutes=25),
-            ShortTermTaskBlock(content="辨析四君子汤与参苓白术散", estimated_minutes=35),
+            ShortTermTaskBlock(
+                content="辨析四君子汤与参苓白术散",
+                estimated_minutes=35,
+                item_type="video_section",
+                resource_ref={
+                    "trusted_resource_id": "VIDEO_REFRESH_2",
+                    "provider": "bilibili",
+                    "bvid": "BV_REFRESH_2",
+                    "start_seconds": 30,
+                    "end_seconds": 150,
+                },
+            ),
         ],
         expected_output="完成一份辨析记录",
         completion_criteria="核心辨析点正确率达到 80%",
@@ -50,6 +61,18 @@ def _state(now: datetime, *, due_at: datetime | None) -> LearningPlanResult:
         updated_at=now,
         refresh_started_at=now if due_at else None,
         refresh_due_at=due_at,
+        items=[
+            {
+                "task_item_id": "DTI_REFRESH_1",
+                "ordinal": 1,
+                "item_type": "knowledge_practice",
+                "title": "完成四君子汤练习",
+                "estimated_minutes": 25,
+                "kp_id": "KP_FJ_001",
+                "required_question_count": 3,
+                "completion_policy": {"policy": "frozen_question_set"},
+            }
+        ],
     )
     return LearningPlanResult(short_term_plan=short_plan, learning_task=task)
 
@@ -77,7 +100,12 @@ def test_overdue_task_rolls_to_next_short_term_block_once() -> None:
         "learner-daily-refresh",
         _state(now - timedelta(hours=25), due_at=now - timedelta(hours=1)),
     )
-    service = DailyTaskRefreshService(repository)
+    service = DailyTaskRefreshService(
+        repository,
+        video_resource_resolver=lambda resource_ref: (
+            resource_ref if resource_ref.get("trusted_resource_id") else None
+        ),
+    )
 
     first = service.ensure_current("learner-daily-refresh", now=now)
     second = service.ensure_current("learner-daily-refresh", now=now)
@@ -91,3 +119,7 @@ def test_overdue_task_rolls_to_next_short_term_block_once() -> None:
     assert stored.status == "pending"
     assert stored.refresh_due_at == now + timedelta(hours=24)
     assert second["current_task_id"] == stored.task_id
+    assert stored.items[0].task_item_id != "DTI_REFRESH_1"
+    assert stored.items[0].task_item_id.startswith("DTI_")
+    assert stored.items[0].item_type == "video_section"
+    assert stored.items[0].resource_ref["trusted_resource_id"] == "VIDEO_REFRESH_2"

@@ -41,6 +41,7 @@ from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.textbook_route import TextbookRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
 from competition_app.services.daily_task_refresh import DailyTaskRefreshService
+from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
 from competition_app.services.review import ReviewService
 from competition_app.llm.terminal import (
     terminal_agent_finished,
@@ -69,6 +70,16 @@ from competition_app.repositories.review import (
 )
 from competition_app.repositories.auth import InMemoryAuthRepository, SqlAuthRepository
 from competition_app.services.auth import AuthenticationService
+from competition_app.repositories.account_profile import (
+    InMemoryAccountProfileRepository,
+    SqlAccountProfileRepository,
+)
+from competition_app.repositories.workshop_library import (
+    InMemoryWorkshopLibraryRepository,
+    SqlWorkshopLibraryRepository,
+)
+from competition_app.services.account_profile import AccountProfileService
+from competition_app.services.workshop_library import WorkshopLibraryService
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -80,7 +91,10 @@ class ApplicationContainer:
     review_card_use_case: PersonalizedReviewCardUseCase
     review_service: ReviewService
     authentication_service: AuthenticationService
+    account_profile_service: AccountProfileService
+    workshop_library_service: WorkshopLibraryService
     daily_task_refresh_service: DailyTaskRefreshService
+    daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
     knowledge_backend: KnowledgeDeliveryBackend | None = None
     mode: str = "stub"
@@ -126,16 +140,16 @@ class ApplicationContainer:
             conversation_repository = SqlConversationRepository(database_engine)
             review_repository = SqlReviewRepository(database_engine)
             auth_repository = SqlAuthRepository(database_engine)
+            account_profile_repository = SqlAccountProfileRepository(database_engine)
+            workshop_library_repository = SqlWorkshopLibraryRepository(database_engine)
         else:
             plan_repository = InMemoryLearningPlanRepository()
             run_state_repository = InMemoryRunStateRepository()
             conversation_repository = InMemoryConversationRepository()
             review_repository = InMemoryReviewRepository()
             auth_repository = InMemoryAuthRepository()
-        learning_plan_service = LearningPlanService(
-            default_route_repository, plan_repository
-        )
-        daily_task_refresh_service = DailyTaskRefreshService(plan_repository)
+            account_profile_repository = InMemoryAccountProfileRepository()
+            workshop_library_repository = InMemoryWorkshopLibraryRepository()
         review_service = ReviewService(review_repository)
         authentication_service = AuthenticationService(
             auth_repository,
@@ -143,6 +157,12 @@ class ApplicationContainer:
             admin_username=settings.admin_username,
             admin_password=settings.admin_default_password,
         )
+        account_profile_service = AccountProfileService(
+            account_profile_repository,
+            auth_repository,
+            settings.avatar_dir,
+        )
+        workshop_library_service = WorkshopLibraryService(workshop_library_repository)
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
                 raise ValueError("live mode requires configured model API keys")
@@ -192,6 +212,30 @@ class ApplicationContainer:
             question_retriever = StubQuestionRetriever()
             textbook_retriever = None
             knowledge_backend = None
+        backend_handoff_runtime = (
+            load_backend_handoff(settings) if include_backend_handoff else None
+        )
+        knowledge_point_resolver = (
+            backend_handoff_runtime.resolve_executable_knowledge_point
+            if backend_handoff_runtime is not None
+            else None
+        )
+        video_resource_resolver = (
+            knowledge_backend.map.resolve_trusted_video_resource
+            if knowledge_backend is not None
+            else None
+        )
+        learning_plan_service = LearningPlanService(
+            default_route_repository,
+            plan_repository,
+            knowledge_point_resolver=knowledge_point_resolver,
+            video_resource_resolver=video_resource_resolver,
+        )
+        daily_task_refresh_service = DailyTaskRefreshService(
+            plan_repository,
+            knowledge_point_resolver=knowledge_point_resolver,
+            video_resource_resolver=video_resource_resolver,
+        )
         exa_retriever = (
             ExaVideoRetriever(settings.exa_api_key)
             if settings.mode == "live" and settings.exa_api_key
@@ -294,8 +338,10 @@ class ApplicationContainer:
             if settings.execution_engine == "langgraph"
             else Orchestrator
         )
-        backend_handoff_runtime = (
-            load_backend_handoff(settings) if include_backend_handoff else None
+        daily_task_execution_coordinator = DailyTaskExecutionCoordinator(
+            engine=database_engine,
+            plan_repository=plan_repository,
+            backend_handoff_runtime=backend_handoff_runtime,
         )
         if backend_handoff_runtime is not None:
             knowledge_tool.personal_question_loader = (
@@ -360,7 +406,10 @@ class ApplicationContainer:
             ),
             review_service=review_service,
             authentication_service=authentication_service,
+            account_profile_service=account_profile_service,
+            workshop_library_service=workshop_library_service,
             daily_task_refresh_service=daily_task_refresh_service,
+            daily_task_execution_coordinator=daily_task_execution_coordinator,
             question_retrieval_tool=knowledge_tool,
             knowledge_backend=knowledge_backend,
             mode=settings.mode,

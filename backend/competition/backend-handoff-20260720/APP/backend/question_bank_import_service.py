@@ -89,7 +89,7 @@ def import_question_bank_metadata(
                     analysis=_text(item.get("题目答案解析")),
                     kp_ids_json="[]",
                     question_type=_question_type(item.get("题型")),
-                    difficulty=2.0,
+                    difficulty=None,
                     quality_score=0.7,
                     source=_source_label(item),
                     status="pending_link",

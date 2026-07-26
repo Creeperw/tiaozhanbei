@@ -20,7 +20,7 @@ def write_atlas_fixture(root: Path, video_root: Path) -> None:
             {"kp": {
                 "kp_id": "kp-reentry",
                 "kp_lv1": "药理学",
-                "kp_lv2": "第一节 心律失常的电生理学基础",
+                "kp_lv2": "心律失常电生理专题",
                 "kp_lv3": "折返",
                 "other_name": "re-entry",
                 "order": "1",
@@ -180,6 +180,25 @@ def write_atlas_fixture(root: Path, video_root: Path) -> None:
         }, ensure_ascii=False),
         encoding="utf-8",
     )
+    section_match_root = video_root.parent / "ocr_section_matches"
+    section_match_root.mkdir()
+    (section_match_root / "section_video_matches.jsonl").write_text(
+        json.dumps({
+            "pipeline_version": "fixture-v1",
+            "bvid": "BVsection",
+            "aid": 456,
+            "cid": 789,
+            "page": 2,
+            "duration": 600,
+            "video_title": "抗心律失常药完整课程",
+            "part_title": "第十四章 第一节 心律失常的电生理学基础",
+            "kp_lv1": "药理学",
+            "kp_lv2": "心律失常电生理专题",
+            "match_mode": "title_core",
+            "match_source": "fixture",
+        }, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 class FakeExamRepository:
@@ -292,6 +311,219 @@ class KnowledgeAtlasServiceTests(unittest.TestCase):
         (self.video_root / "catalog.json").write_text('{"version":2,"changed":true}', encoding="utf-8")
 
         self.assertEqual(store.detail("kp-reentry")["videos"][0]["start_seconds"], 36)
+
+    def test_section_detail_loads_full_video_and_reports_separate_coverage(self):
+        store = self.make_store()
+
+        detail = store.section_detail("section-electrophysiology")
+        self.assertEqual(detail["resource_state"], "exact")
+        self.assertEqual(detail["section_videos"][0]["bvid"], "BVsection")
+        self.assertEqual(detail["recommended_videos"], [])
+
+        status = store.warm()
+        coverage = status["coverage"]
+        self.assertTrue(coverage["section_full_videos"]["mapping_file_available"])
+        self.assertEqual(coverage["section_full_videos"]["source_rows"], 1)
+        self.assertEqual(coverage["section_full_videos"]["resolved_rows"], 1)
+        self.assertEqual(coverage["section_full_videos"]["unmatched_rows"], 0)
+        self.assertEqual(coverage["section_full_videos"]["mapped_sections"], 1)
+        self.assertEqual(coverage["textbook_slice_mapping"]["mapped_chunks"], 1)
+        self.assertEqual(coverage["knowledge_point_videos"]["mapped_knowledge_points"], 2)
+
+    def test_section_video_mapping_falls_back_to_tracked_chapter_release(self):
+        runtime_mapping = self.video_root.parent / "ocr_section_matches" / "section_video_matches.jsonl"
+        tracked_mapping = self.data_root / "03_pipeline_chunks" / "section_video_matches.jsonl"
+        tracked_mapping.write_bytes(runtime_mapping.read_bytes())
+        runtime_mapping.unlink()
+        store = self.make_store()
+
+        detail = store.section_detail("section-electrophysiology")
+
+        self.assertEqual(store.section_video_path, tracked_mapping)
+        self.assertEqual(detail["section_videos"][0]["bvid"], "BVsection")
+
+    def test_chapter_root_parent_resolves_published_final_directory(self):
+        from APP.backend.knowledge_atlas_service import KnowledgeAtlasStore
+
+        source_root = self.data_root / "03_pipeline_chunks"
+        release_root = Path(self.temp.name) / "chapter-release"
+        published = release_root / "final"
+        published.mkdir(parents=True)
+        for name in (
+            "chapter_nodes.jsonl",
+            "chunk_chapter_links.jsonl",
+        ):
+            (published / name).write_bytes((source_root / name).read_bytes())
+        runtime_mapping = self.video_root.parent / "ocr_section_matches" / "section_video_matches.jsonl"
+        (published / "section_video_matches.jsonl").write_bytes(runtime_mapping.read_bytes())
+        runtime_mapping.unlink()
+
+        store = KnowledgeAtlasStore(
+            self.data_root,
+            video_root=self.video_root,
+            chapter_root=release_root,
+        )
+
+        self.assertEqual(store.chapter_root, published.resolve())
+        self.assertEqual(store.section_video_path, published / "section_video_matches.jsonl")
+        self.assertEqual(
+            store.section_detail("section-electrophysiology")["section_videos"][0]["bvid"],
+            "BVsection",
+        )
+
+    def test_heading_numbers_override_broken_chapter_and_section_order_fields(self):
+        chapter_path = self.data_root / "03_pipeline_chunks" / "chapter_nodes.jsonl"
+        rows = [
+            json.loads(line)
+            for line in chapter_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        rows.extend([
+            {
+                "node_id": "chapter-fifteen",
+                "parent_id": "book-pharmacology",
+                "node_type": "chapter",
+                "book": "药理学_clean",
+                "title": "第十五章 抗高血压药",
+                "chapter_order": 1,
+            },
+            {
+                "node_id": "section-third",
+                "parent_id": "chapter-arrhythmia",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第三节 心律失常的治疗",
+                "section_order": 1,
+            },
+            {
+                "node_id": "section-second",
+                "parent_id": "chapter-arrhythmia",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第二节 抗心律失常药的作用机制",
+                "section_order": 4,
+            },
+            {
+                "node_id": "section-fifteen-first",
+                "parent_id": "chapter-fifteen",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第一节 抗高血压药分类",
+                "section_order": 1,
+            },
+        ])
+        chapter_path.write_text(
+            "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
+            encoding="utf-8",
+        )
+        store = self.make_store()
+
+        chapters = store.nodes(2, lv1="药理学")["nodes"]
+        self.assertEqual(
+            [row["name"] for row in chapters],
+            ["第十四章 抗心律失常药", "第十五章 抗高血压药"],
+        )
+        sections = store.nodes(
+            3,
+            lv1="药理学",
+            chapter_id="chapter-arrhythmia",
+        )["nodes"]
+        self.assertEqual(
+            [row["name"] for row in sections],
+            [
+                "第一节 心律失常的电生理学基础",
+                "第二节 抗心律失常药的作用机制",
+                "第三节 心律失常的治疗",
+            ],
+        )
+
+    def test_reparents_shifted_section_groups_when_first_section_boundaries_are_complete(self):
+        chapter_path = self.data_root / "03_pipeline_chunks" / "chapter_nodes.jsonl"
+        rows = [
+            json.loads(line)
+            for line in chapter_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        section_rows = [row for row in rows if row.get("node_type") == "section"]
+        section_rows[0].update({
+            "title": "第三节 旧章第三节",
+            "first_chunk_uid": "药理学_clean:00001",
+        })
+        section_rows[1].update({
+            "title": "第四节 旧章第四节",
+            "first_chunk_uid": "药理学_clean:00002",
+        })
+        rows.extend([
+            {
+                "node_id": "chapter-fifteen",
+                "parent_id": "book-pharmacology",
+                "node_type": "chapter",
+                "book": "药理学_clean",
+                "title": "第十五章 新章",
+                "chapter_order": 15,
+            },
+            {
+                "node_id": "section-new-first",
+                "parent_id": "chapter-arrhythmia",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第一节 新章第一节",
+                "section_order": 3,
+                "first_chunk_uid": "药理学_clean:00003",
+            },
+            {
+                "node_id": "section-new-second",
+                "parent_id": "chapter-arrhythmia",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第二节 新章第二节",
+                "section_order": 4,
+                "first_chunk_uid": "药理学_clean:00004",
+            },
+            {
+                "node_id": "section-new-third",
+                "parent_id": "chapter-fifteen",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第三节 新章第三节",
+                "section_order": 1,
+                "first_chunk_uid": "药理学_clean:00005",
+            },
+            {
+                "node_id": "section-new-fourth",
+                "parent_id": "chapter-fifteen",
+                "node_type": "section",
+                "book": "药理学_clean",
+                "title": "第四节 新章第四节",
+                "section_order": 2,
+                "first_chunk_uid": "药理学_clean:00006",
+            },
+        ])
+        chapter_path.write_text(
+            "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
+            encoding="utf-8",
+        )
+        store = self.make_store()
+
+        old_chapter = store.nodes(
+            3,
+            lv1="药理学",
+            chapter_id="chapter-arrhythmia",
+        )["nodes"]
+        new_chapter = store.nodes(
+            3,
+            lv1="药理学",
+            chapter_id="chapter-fifteen",
+        )["nodes"]
+        self.assertEqual(
+            [row["name"] for row in old_chapter],
+            ["第三节 旧章第三节", "第四节 旧章第四节"],
+        )
+        self.assertEqual(
+            [row["name"] for row in new_chapter],
+            ["第一节 新章第一节", "第二节 新章第二节", "第三节 新章第三节", "第四节 新章第四节"],
+        )
+        self.assertEqual(store.status()["coverage"]["textbook_slice_mapping"]["reparented_sections"], 2)
 
     def test_context_resolver_prefers_exam_knowledge_point_match(self):
         store = self.make_store()

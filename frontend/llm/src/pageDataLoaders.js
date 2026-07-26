@@ -370,10 +370,29 @@ export const isPracticeQuestionPayloadValid = (data) => (
     && hasNonEmptyText(data.question.stem)
     && hasItemsArray(data.question.options)
     && hasItemsArray(data.question.kp_ids)
-    && Number.isInteger(data.question.difficulty)
+    && (data.question.difficulty === undefined || Number.isInteger(data.question.difficulty))
     && hasNonEmptyText(data.question.request_id)
   ))
 );
+
+export const isDailyTaskPracticeQuestionPayloadValid = (data) => {
+  if (!data || typeof data !== 'object' || typeof data.available !== 'boolean') return false;
+  const progress = data.progress;
+  if (!progress || typeof progress !== 'object'
+    || !Number.isInteger(progress.reviewed) || progress.reviewed < 0
+    || !Number.isInteger(progress.required) || progress.required < 0) return false;
+  if (!data.available) return data.question === undefined || data.question === null;
+  const question = data.question;
+  return question && typeof question === 'object'
+    && hasNonEmptyText(question.question_id)
+    && (question.question_version_id === undefined || hasNonEmptyText(question.question_version_id))
+    && hasNonEmptyText(question.question_type)
+    && hasNonEmptyText(question.stem)
+    && hasItemsArray(question.options)
+    && hasItemsArray(question.kp_ids)
+    && hasNonEmptyText(question.request_id)
+    && question.source_scope === 'daily_task';
+};
 
 export const isPracticeGradePayloadValid = (data) => (
   data && typeof data === 'object'
@@ -416,7 +435,6 @@ export const isPaperPayloadValid = (data) => (
     && hasNonEmptyText(item.stem)
     && hasItemsArray(item.options)
     && hasItemsArray(item.kp_ids)
-    && Number.isInteger(item.difficulty)
     && typeof item.answer === 'string'
   ))
 );
@@ -696,12 +714,13 @@ export async function submitTrainingWorkspaceTask({ fetcher, task }) {
   });
 }
 
-export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribution, answerMode = 'practice', durationMinutes = null }) {
+export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribution, answerMode = 'practice', durationMinutes = null, taskItemId = '' }) {
+  const boundTaskItemId = hasNonEmptyText(taskItemId) ? taskItemId.trim() : '';
   const activeDistribution = Object.fromEntries(
     Object.entries(distribution || {}).filter(([, count]) => Number.isInteger(count) && count > 0),
   );
   const questionCount = Object.values(activeDistribution).reduce((total, count) => total + count, 0);
-  if (!hasNonEmptyText(topic) || questionCount < 1 || questionCount > 50) {
+  if (!boundTaskItemId && (!hasNonEmptyText(topic) || questionCount < 1 || questionCount > 50)) {
     return { paperId: '', result: null, error: '请填写主题，并设置 1 至 50 道题的题型分布。', source: null };
   }
   if (!['practice', 'test'].includes(answerMode)) {
@@ -726,8 +745,12 @@ export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribu
       fallback: null,
       options: {
         method: 'POST',
-        timeoutMs: 180_000,
-        body: JSON.stringify({
+        body: JSON.stringify(boundTaskItemId ? {
+          learner_id: 'authenticated-user',
+          daily_task_item_id: boundTaskItemId,
+          user_request: '打开今日任务已绑定并冻结的练习试卷，不重新选题或修改组卷约束。',
+          available_minutes: 60,
+        } : {
           learner_id: 'authenticated-user',
           user_request: `请围绕“${topic.trim()}”生成一份${answerMode === 'test' ? `测试模式（${durationMinutes}分钟）` : '练习模式'}试卷，共${questionCount}题，其中${typeRequirement}。完成审核后发布到学习工坊，不要在对话中展开试卷正文。`,
           available_minutes: 60,
@@ -736,8 +759,6 @@ export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribu
             question_types: Object.keys(activeDistribution).map((type) => typeLabels[type] || type),
             question_type_distribution: activeDistribution,
             answer_mode: answerMode,
-            mode: answerMode,
-            allow_generated_fill: answerMode === 'practice',
             duration_minutes: answerMode === 'test' ? durationMinutes : null,
           },
         }),
@@ -928,7 +949,75 @@ export async function loadPracticeQuestion({ fetcher, mode = 'objective', kpId =
   }
 }
 
-export async function submitPracticeAnswer({ fetcher, question, answer }) {
+export async function loadDailyTaskPracticeQuestion({ fetcher, taskItemId }) {
+  const fallback = { available: false, question: null, progress: { reviewed: 0, required: 0 } };
+  if (!hasNonEmptyText(taskItemId)) return { practice: fallback, error: '每日任务项 ID 不能为空', source: null };
+  const encodedTaskItemId = encodeURIComponent(taskItemId.trim());
+  try {
+    const { data, source } = await fetcher({
+      paths: [
+        `/v1/daily-task-items/${encodedTaskItemId}/practice/next`,
+        `/daily-task-items/${encodedTaskItemId}/practice/next`,
+      ],
+      fallback,
+      validator: isDailyTaskPracticeQuestionPayloadValid,
+    });
+    return { practice: data, error: '', source };
+  } catch (error) {
+    return { practice: fallback, error: error.message || '今日任务练习题加载失败', source: null };
+  }
+}
+
+export async function recordDailyTaskVideoEvidence({ fetcher, taskItemId, evidence }) {
+  if (!hasNonEmptyText(taskItemId) || !evidence || typeof evidence !== 'object') {
+    return { evidence: null, error: '视频任务证据无效', source: null };
+  }
+  const encodedTaskItemId = encodeURIComponent(taskItemId.trim());
+  try {
+    const { data, source } = await fetcher({
+      paths: [
+        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence`,
+        `/daily-task-items/${encodedTaskItemId}/video-evidence`,
+      ],
+      fallback: null,
+      options: {
+        method: 'POST',
+        body: JSON.stringify({
+          mode: evidence.mode,
+          segment_start_seconds: evidence.segmentStartSeconds,
+          segment_end_seconds: evidence.segmentEndSeconds,
+          watched_intervals: evidence.watchedIntervals || [],
+          active_seconds: evidence.activeSeconds || 0,
+        }),
+      },
+      validator: (value) => value && typeof value === 'object' && hasNonEmptyText(value.status),
+    });
+    return { evidence: data, error: '', source };
+  } catch (error) {
+    return { evidence: null, error: error.message || '视频进度保存失败', source: null };
+  }
+}
+
+export async function confirmDailyTaskIframeVideo({ fetcher, taskItemId }) {
+  if (!hasNonEmptyText(taskItemId)) return { evidence: null, error: '视频任务项 ID 不能为空', source: null };
+  const encodedTaskItemId = encodeURIComponent(taskItemId.trim());
+  try {
+    const { data, source } = await fetcher({
+      paths: [
+        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence/confirm`,
+        `/daily-task-items/${encodedTaskItemId}/video-evidence/confirm`,
+      ],
+      fallback: null,
+      options: { method: 'POST', body: JSON.stringify({ confirmed: true }) },
+      validator: (value) => value && typeof value === 'object' && hasNonEmptyText(value.status),
+    });
+    return { evidence: data, error: '', source };
+  } catch (error) {
+    return { evidence: null, error: error.message || '视频完成确认失败', source: null };
+  }
+}
+
+export async function submitPracticeAnswer({ fetcher, question, answer, taskItemId = '' }) {
   if (!question || typeof question !== 'object' || !hasNonEmptyText(answer)) {
     return { result: null, error: '请先完成作答', source: null };
   }
@@ -947,6 +1036,7 @@ export async function submitPracticeAnswer({ fetcher, question, answer }) {
           knowledge_point_names: question.kp_names || [],
           difficulty: question.difficulty,
           request_id: question.request_id,
+          ...(hasNonEmptyText(taskItemId) ? { daily_task_item_id: taskItemId.trim() } : {}),
         }),
       },
       validator: isPracticeGradePayloadValid,

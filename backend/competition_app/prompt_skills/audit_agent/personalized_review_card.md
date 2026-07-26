@@ -12,7 +12,7 @@ task_type: personalized_review_card
 ## 审核清单
 
 1. 核心结论是否被本次 semantic_evidence 直接支持，是否存在明确事实错误或把补充说明伪装成本次证据原文。
-2. 资源动作、难度、产出和标准是否匹配正式 learning_task 与 learning_profile。
+2. 资源动作、产出和标准是否匹配正式 learning_task 与 learning_profile。
 3. estimated_minutes 是否足以完成内容，是否存在明显超载。
 4. 是否暴露参考答案、越权修改计划，或输出现实诊疗、处方和剂量建议。
 5. 专家可以基于现行主流教材共识进行类比、辨析、记忆方法和教学解释；只要标为“补充说明”，且教材分歧已说明来源范围，就不因超出本次 EvidencePack 的逐字内容而否决。

@@ -101,7 +101,6 @@ class ReviewDecision(ContractBase):
     reason: str | None = None
     fact_consistency: float | None = Field(default=None, ge=0.0, le=1.0)
     evidence_coverage: float | None = Field(default=None, ge=0.0, le=1.0)
-    difficulty_match: float | None = Field(default=None, ge=0.0, le=1.0)
     knowledge_coverage: float | None = Field(default=None, ge=0.0, le=1.0)
     safety_risk: str | None = None
     conflicts: list[str] = Field(default_factory=list)
