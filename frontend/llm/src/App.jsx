@@ -6,6 +6,7 @@ import PersonalizationHubPage from './components/PersonalizationHubPage';
 import SettingsHubPage from './components/SettingsHubPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
+import LearningPathPage from './components/LearningPathPage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
 import LearningStageLanding from './components/learning-stage/LearningStageLanding';
@@ -203,6 +204,8 @@ export default function App() {
     switch (shellConfig.currentPage) {
       case 'dashboard':
         return <HomePage currentUser={currentUser} onNavigate={navigateToPage} />;
+      case 'learning-path':
+        return <LearningPathPage currentUser={currentUser} onNavigate={navigateToPage} />;
       case 'assistant':
         return (
           <ChatInterface

@@ -12,6 +12,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   assert.equal(config.defaultPage, 'dashboard');
   assert.deepEqual(config.primaryNav, [
     { key: 'dashboard', label: '平台首页' },
+    { key: 'learning-path', label: '学习路径' },
     { key: 'assistant', label: '智能助教' },
     { key: 'practice', label: '学习工坊' },
     { key: 'training-workshop', label: '训练工坊' },
@@ -21,6 +22,17 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   assert.equal(config.currentPage, 'dashboard');
   assert.equal(config.pageTitle, '培训助手首页');
   assert.equal(config.homeAction, null);
+});
+
+test('allows the dedicated learning path page while keeping dashboard as the default', () => {
+  const config = getAppShellConfig({
+    currentUser: { username: 'alice', role: 'user' },
+    currentPage: 'learning-path',
+  });
+
+  assert.equal(config.defaultPage, 'dashboard');
+  assert.equal(config.currentPage, 'learning-path');
+  assert.equal(config.pageTitle, '学习路径');
 });
 
 test('keeps admin entry out of primary navigation while preserving support access', () => {

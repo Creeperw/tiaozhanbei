@@ -12,6 +12,7 @@ vi.mock('./utils/api', () => ({
 
 vi.mock('./components/AuthPage', () => ({ default: () => <div>Auth</div> }));
 vi.mock('./components/HomePage', () => ({ default: () => <div>Home portal</div> }));
+vi.mock('./components/LearningPathPage', () => ({ default: () => <div>Learning path page</div> }));
 vi.mock('./components/DashboardPage', () => ({
   default: ({ navigationContext = {}, onKnowledgeContextChange }) => (
     <div data-testid="training-overview" data-view={navigationContext.view || ''} data-path-mode={navigationContext.pathMode || ''} data-stage-id={navigationContext.stageId || ''}>
@@ -83,6 +84,7 @@ vi.mock('./components/AppShell', () => ({
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: { view: 'atlas' } })}>Go knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'dashboard', params: {} })}>Go dashboard</button>
+      <button type="button" onClick={() => onNavigate({ page: 'learning-path', params: {} })}>Go learning path</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: {} })}>Go learning workshop</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'stages' } })}>Go learning stages</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'workspace' } })}>Go legacy training workspace</button>
@@ -148,6 +150,18 @@ describe('authenticated application shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Go admin' }));
     expect(screen.getByText('Admin page')).toBeInTheDocument();
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'admin-feedback');
+  });
+
+  it('renders the dedicated learning path page without changing the dashboard default', async () => {
+    render(<App />);
+
+    expect(await screen.findByText('Home portal')).toBeInTheDocument();
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go learning path' }));
+
+    expect(screen.getByText('Learning path page')).toBeInTheDocument();
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'learning-path');
   });
 
   it('resets the training workshop when its primary navigation entry is selected again', async () => {

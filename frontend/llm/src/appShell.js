@@ -1,5 +1,6 @@
 const PRIMARY_NAV = [
   { key: 'dashboard', label: '平台首页' },
+  { key: 'learning-path', label: '学习路径' },
   { key: 'assistant', label: '智能助教' },
   { key: 'practice', label: '学习工坊' },
   { key: 'training-workshop', label: '训练工坊' },
@@ -12,6 +13,7 @@ const SUPPORT_NAV = [
 
 export const PAGE_TITLES = {
   dashboard: '培训助手首页',
+  'learning-path': '学习路径',
   assistant: '智能助教',
   practice: '学习工坊',
   'training-workshop': '训练工坊',
