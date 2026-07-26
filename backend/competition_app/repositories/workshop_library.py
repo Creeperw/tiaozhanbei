@@ -59,6 +59,10 @@ class WorkshopLibraryRepository(Protocol):
 
     def delete_favorite(self, user_id: str, favorite_id: str) -> bool: ...
 
+    def list_note_folders(self, user_id: str) -> list[dict[str, Any]]: ...
+
+    def create_note_folder(self, user_id: str, name: str) -> dict[str, Any]: ...
+
     def list_notes(
         self,
         user_id: str,
@@ -92,6 +96,7 @@ class InMemoryWorkshopLibraryRepository:
     def __init__(self) -> None:
         self._folders: dict[str, dict[str, Any]] = {}
         self._favorites: dict[str, dict[str, Any]] = {}
+        self._note_folders: dict[str, dict[str, Any]] = {}
         self._notes: dict[str, dict[str, Any]] = {}
         self._lock = RLock()
 
@@ -215,6 +220,55 @@ class InMemoryWorkshopLibraryRepository:
             del self._favorites[favorite_id]
             return True
 
+    def list_note_folders(self, user_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            folders = [
+                item for item in self._note_folders.values()
+                if item["user_id"] == user_id
+            ]
+            notes = [item for item in self._notes.values() if item["user_id"] == user_id]
+            result = []
+            for folder in sorted(
+                folders, key=lambda item: item["updated_at"], reverse=True
+            ):
+                payload = self._copy(folder)
+                payload["note_count"] = sum(
+                    str(item.get("context", {}).get("notebook") or "默认笔记本")
+                    == folder["name"]
+                    for item in notes
+                )
+                result.append(payload)
+            return result
+
+    def create_note_folder(self, user_id: str, name: str) -> dict[str, Any]:
+        with self._lock:
+            existing = next(
+                (
+                    item for item in self._note_folders.values()
+                    if item["user_id"] == user_id
+                    and item["name"].casefold() == name.casefold()
+                ),
+                None,
+            )
+            if existing is not None:
+                note_count = sum(
+                    item["user_id"] == user_id
+                    and str(item.get("context", {}).get("notebook") or "默认笔记本")
+                    == existing["name"]
+                    for item in self._notes.values()
+                )
+                return self._copy({**existing, "note_count": note_count})
+            now = _utc_now().isoformat()
+            folder = {
+                "folder_id": f"NOTEBOOK_{uuid4().hex}",
+                "user_id": user_id,
+                "name": name,
+                "created_at": now,
+                "updated_at": now,
+            }
+            self._note_folders[folder["folder_id"]] = folder
+            return self._copy({**folder, "note_count": 0})
+
     def list_notes(
         self,
         user_id: str,
@@ -295,6 +349,14 @@ class SqlWorkshopLibraryRepository:
     def _folder(row: Any) -> dict[str, Any]:
         values = dict(row)
         values["favorite_count"] = int(values.get("favorite_count") or 0)
+        values["created_at"] = _as_utc_datetime(values.get("created_at")).isoformat()
+        values["updated_at"] = _as_utc_datetime(values.get("updated_at")).isoformat()
+        return values
+
+    @staticmethod
+    def _note_folder(row: Any) -> dict[str, Any]:
+        values = dict(row)
+        values["note_count"] = int(values.get("note_count") or 0)
         values["created_at"] = _as_utc_datetime(values.get("created_at")).isoformat()
         values["updated_at"] = _as_utc_datetime(values.get("updated_at")).isoformat()
         return values
@@ -428,6 +490,41 @@ class SqlWorkshopLibraryRepository:
                 "DELETE FROM workshop_favorites WHERE user_id=:user_id AND favorite_id=:favorite_id"
             ), {"user_id": user_id, "favorite_id": favorite_id})
         return bool(result.rowcount)
+
+    def list_note_folders(self, user_id: str) -> list[dict[str, Any]]:
+        with self.engine.connect() as connection:
+            rows = connection.execute(text(
+                "SELECT folder_id, user_id, name, created_at, updated_at "
+                "FROM workshop_note_folders WHERE user_id=:user_id "
+                "ORDER BY updated_at DESC"
+            ), {"user_id": user_id}).mappings().all()
+        counts: dict[str, int] = {}
+        for note in self.list_notes(user_id):
+            name = str(note.get("context", {}).get("notebook") or "默认笔记本")
+            counts[name] = counts.get(name, 0) + 1
+        return [
+            self._note_folder({**dict(row), "note_count": counts.get(row["name"], 0)})
+            for row in rows
+        ]
+
+    def create_note_folder(self, user_id: str, name: str) -> dict[str, Any]:
+        with self.engine.begin() as connection:
+            existing = connection.execute(text(
+                "SELECT folder_id FROM workshop_note_folders "
+                "WHERE user_id=:user_id AND LOWER(name)=LOWER(:name)"
+            ), {"user_id": user_id, "name": name}).mappings().first()
+            if existing is None:
+                folder_id = f"NOTEBOOK_{uuid4().hex}"
+                connection.execute(text(
+                    "INSERT INTO workshop_note_folders (folder_id, user_id, name) "
+                    "VALUES (:folder_id, :user_id, :name)"
+                ), {"folder_id": folder_id, "user_id": user_id, "name": name})
+            else:
+                folder_id = existing["folder_id"]
+        return next(
+            item for item in self.list_note_folders(user_id)
+            if item["folder_id"] == folder_id
+        )
 
     def list_notes(
         self,

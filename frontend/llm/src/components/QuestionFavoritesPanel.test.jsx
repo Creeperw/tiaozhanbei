@@ -27,7 +27,8 @@ describe('QuestionFavoritesPanel', () => {
     api.deleteFavorite.mockResolvedValue(null);
     render(<QuestionFavoritesPanel />);
 
-    expect(await screen.findByRole('button', { name: /方剂重点/ })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /方剂重点/ }));
+    expect(screen.getByRole('button', { name: '返回收藏簿列表' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /四君子汤的君药/ }));
     expect(screen.getByText('人参为君药。')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '取消收藏' }));
@@ -40,7 +41,8 @@ describe('QuestionFavoritesPanel', () => {
     render(<QuestionFavoritesPanel />);
     await screen.findByRole('button', { name: /方剂重点/ });
 
-    fireEvent.change(screen.getByLabelText('新建收藏簿'), { target: { value: '经方辨析' } });
+    fireEvent.click(screen.getByRole('button', { name: '新建收藏簿' }));
+    fireEvent.change(screen.getByLabelText('收藏簿名称'), { target: { value: '经方辨析' } });
     fireEvent.click(screen.getByRole('button', { name: '新建' }));
 
     await waitFor(() => expect(api.createFavoriteFolder).toHaveBeenCalledWith('经方辨析'));
@@ -52,5 +54,17 @@ describe('QuestionFavoritesPanel', () => {
     const folderGrid = await screen.findByRole('region', { name: '收藏簿卡片' });
     expect(folderGrid).toHaveClass('workshop-library__folder-grid');
     expect(screen.getByRole('button', { name: /方剂重点/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /四君子汤的君药/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '新建收藏簿' })).toBeInTheDocument();
+  });
+
+  it('filters favorites inside a selected collection book', async () => {
+    render(<QuestionFavoritesPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /方剂重点/ }));
+
+    expect(screen.getByLabelText('筛选收藏日期')).toBeInTheDocument();
+    expect(screen.getByLabelText('筛选收藏来源')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('搜索收藏'), { target: { value: '不存在' } });
+    expect(screen.getByText('暂无符合条件的收藏')).toBeInTheDocument();
   });
 });

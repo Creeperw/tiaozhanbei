@@ -28,7 +28,6 @@ const questionTypes = [
 const sectionButton = 'inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40';
 
 export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
-  const [activeSection, setActiveSection] = useState('compose');
   const [papers, setPapers] = useState([]);
   const [kind, setKind] = useState('special');
   const [topic, setTopic] = useState('');
@@ -98,12 +97,6 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
     }
   };
 
-  const sections = [
-    { key: 'compose', label: '智能合成', icon: Sparkles },
-    { key: 'pending', label: '待办试卷', count: pendingPapers.length, icon: ListChecks },
-    { key: 'history', label: '历史存档', count: historyPapers.length, icon: History },
-  ];
-
   return (
     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <header className="relative overflow-hidden border-b border-emerald-100 bg-[radial-gradient(circle_at_top_right,rgba(167,243,208,0.45),transparent_42%),linear-gradient(135deg,#f7fcf8,#eef8f1)] px-5 pb-6 pt-5 sm:px-7">
@@ -115,26 +108,18 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
         <div className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full border-[28px] border-white/50" aria-hidden="true" />
       </header>
 
-      <nav className="flex overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-3 sm:px-5" aria-label="智能组卷视图">
-        {sections.map((section) => {
-          const Icon = section.icon;
-          return (
-            <button
-              key={section.key}
-              type="button"
-              aria-current={activeSection === section.key ? 'page' : undefined}
-              onClick={() => { setActiveSection(section.key); setError(''); }}
-              className={`relative inline-flex min-w-max items-center gap-2 px-4 py-3.5 text-sm font-semibold transition ${activeSection === section.key ? 'text-emerald-800' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              <Icon size={16} aria-hidden="true" />{section.label}
-              {section.count !== undefined && <span className={`rounded-md px-1.5 py-0.5 text-xs ${activeSection === section.key ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{section.count}</span>}
-              {activeSection === section.key && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-emerald-600" />}
-            </button>
-          );
-        })}
-      </nav>
+      <section className="smart-paper__archive-grid grid gap-3 border-b border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 sm:p-5" role="region" aria-label="试卷存档">
+        <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900"><ListChecks size={16} className="text-emerald-700" />待办试卷</h3><span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">{pendingPapers.length}</span></header>
+          <PaperList papers={pendingPapers} onOpen={setActivePaperId} empty="当前没有待作答试卷" mode="pending" compact />
+        </article>
+        <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900"><History size={16} className="text-slate-600" />历史存档</h3><span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{historyPapers.length}</span></header>
+          <PaperList papers={historyPapers} onOpen={setActivePaperId} empty="完成的试卷会保存在这里" mode="history" compact />
+        </article>
+      </section>
 
-      {activeSection === 'compose' && <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <main className="min-w-0 space-y-7 p-5 sm:p-7">
           <section aria-labelledby="paper-source-title">
             <div className="mb-4 flex items-start justify-between gap-4">
@@ -207,23 +192,20 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
             <p className="mt-3 text-xs leading-5 text-slate-500">审核通过后进入单题作答界面；不在对话区展开试卷正文。</p>
           </div>
         </aside>
-      </div>}
-
-      {activeSection === 'pending' && <PaperList papers={pendingPapers} onOpen={setActivePaperId} empty="当前没有待作答试卷" mode="pending" />}
-      {activeSection === 'history' && <PaperList papers={historyPapers} onOpen={setActivePaperId} empty="完成的试卷会保存在这里" mode="history" />}
+      </div>
       {error && <p role="alert" className="mx-5 mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-800">{error}</p>}
     </div>
   );
 }
 
-function PaperList({ papers, onOpen, empty, mode }) {
+function PaperList({ papers, onOpen, empty, mode, compact = false }) {
   if (!papers.length) {
-    return <div className="grid min-h-64 place-items-center px-5 py-12 text-center"><div><FileCheck2 className="mx-auto text-slate-300" size={34} /><h3 className="mt-3 text-sm font-semibold text-slate-800">{empty}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{mode === 'pending' ? '生成并审核通过的试卷将自动进入待办。' : '提交试卷后可随时回来查看结果与解析。'}</p></div></div>;
+    return <div className={`grid place-items-center px-5 text-center ${compact ? 'min-h-32 py-6' : 'min-h-64 py-12'}`}><div><FileCheck2 className="mx-auto text-slate-300" size={compact ? 26 : 34} /><h3 className="mt-3 text-sm font-semibold text-slate-800">{empty}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{mode === 'pending' ? '生成并审核通过的试卷将自动进入待办。' : '提交试卷后可随时回来查看结果与解析。'}</p></div></div>;
   }
   return (
-    <div className="grid gap-3 p-5 sm:p-7 md:grid-cols-2">
+    <div className={`grid gap-3 ${compact ? 'max-h-52 overflow-y-auto p-3' : 'p-5 sm:p-7 md:grid-cols-2'}`}>
       {papers.map((paper) => (
-        <article key={paper.paper_id} className="group flex min-h-32 flex-col rounded-xl border border-slate-200 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+        <article key={paper.paper_id} className={`group flex flex-col rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md ${compact ? 'min-h-24 p-3' : 'min-h-32 p-4'}`}>
           <div className="flex items-start justify-between gap-3">
             <span className={`rounded-md px-2 py-1 text-xs font-semibold ${mode === 'pending' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{mode === 'pending' ? '待作答' : '已完成'}</span>
             <span className="inline-flex items-center gap-1 text-xs text-slate-500"><Clock3 size={13} />{paper.duration_minutes} 分钟</span>

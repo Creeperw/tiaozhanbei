@@ -4018,11 +4018,16 @@ textarea:focus-visible {
 .workshop-save-dialog button:disabled { cursor: not-allowed; opacity: .45; }
 .workshop-library__layout { display: grid; grid-template-columns: 1fr; min-height: 430px; }
 .workshop-library__folder-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; border-bottom: 1px solid #e2ece5; background: #f4faf6; padding: 16px 18px; }
-.workshop-library__folder-grid .workshop-library__folder-card { min-height: 108px; align-content: space-between; justify-items: start; border: 1px solid #d8e6dc; background: rgb(255 255 255 / 72%); padding: 16px; color: #3e4e43; text-align: left; }
+.workshop-library__folder-grid .workshop-library__folder-card { position: relative; display: grid; min-height: 140px; align-content: center; justify-items: center; gap: 9px; border: 1px solid #d8e6dc; background: rgb(255 255 255 / 78%); padding: 18px; color: #3e4e43; text-align: center; }
 .workshop-library__folder-grid .workshop-library__folder-card[aria-pressed="true"] { border-color: #9dceb0; background: #fff; color: #17663a; box-shadow: 0 8px 20px rgb(31 102 59 / 10%); }
 .workshop-library__folder-grid .workshop-library__folder-card span { font-size: .92rem; }
+.workshop-library__folder-grid .workshop-library__folder-card i { position: absolute; top: 12px; right: 13px; color: #b2beb5; font-size: .66rem; font-style: normal; font-weight: 700; }
+.workshop-library__folder-grid .workshop-library__folder-card--new { border: 2px dashed #e8c574; background: #fffbeb; color: #9a6614; }
 .workshop-library__folder-grid small { color: #839087; font-size: .7rem; }
 .workshop-library__folder-grid .workshop-library__danger { grid-column: 1 / -1; justify-self: end; border: 0; padding: 4px 2px; color: #b54747; }
+.workshop-library__detail-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid #e2ece5; background: #f7fbf8; padding: 12px 18px; }
+.workshop-library__detail-header button { border: 1px solid #b9d7c3; background: #fff; padding: 8px 11px; color: #206d42; }
+.workshop-library__detail-header .workshop-library__danger { border-color: #f0c7c7; color: #b54747; }
 .workshop-library__items,
 .workshop-notes__list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; gap: 12px; padding: 18px; }
 .workshop-library__items article,
@@ -4042,6 +4047,8 @@ textarea:focus-visible {
 .workshop-library__question { color: #24312a; font-weight: 700; }
 .workshop-library__delete { justify-self: start; border: 1px solid #f0c7c7; background: #fff8f8; padding: 7px 10px; color: #a43f3f; }
 .workshop-library__empty { display: grid; justify-items: center; gap: 8px; padding: 64px 20px; color: #6e7d73; text-align: center; }
+.workshop-library__items > .workshop-library__empty,
+.workshop-notes__list > .workshop-library__empty { grid-column: 1 / -1; }
 .workshop-library__empty h3,
 .workshop-library__empty p { margin: 0; }
 .workshop-library__empty--compact { padding: 48px 20px; }
@@ -4049,6 +4056,12 @@ textarea:focus-visible {
 .workshop-library__error { margin: 14px 18px 0; border: 1px solid #fecaca; border-radius: 10px; background: #fff1f2; padding: 10px 12px; color: #b4233c; font-size: .82rem; }
 
 .workshop-notes__new { flex: none; border: 0; background: #287b4b; padding: 10px 14px; color: #fff; }
+.workshop-notes__books { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 18px; }
+.workshop-notes__book { position: relative; display: grid !important; min-height: 140px; align-content: center; justify-items: center; gap: 9px; border: 1px solid #d8e6dc; background: #fff; padding: 18px; color: #31443a; text-align: center; box-shadow: 0 6px 18px rgb(31 78 49 / 6%); }
+.workshop-notes__book:hover { border-color: #9dceb0; box-shadow: 0 10px 24px rgb(31 102 59 / 10%); transform: translateY(-1px); }
+.workshop-notes__book small { color: #839087; font-size: .72rem; }
+.workshop-notes__book i { position: absolute; top: 12px; right: 13px; color: #b2beb5; font-size: .66rem; font-style: normal; font-weight: 700; }
+.workshop-notes__book--new { border: 2px dashed #e8c574; background: #fffbeb; color: #9a6614; box-shadow: none; }
 .workshop-notes__filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px 18px 0; }
 .workshop-notes__filters > label { display: flex; align-items: center; gap: 7px; color: #5a685f; font-size: .78rem; font-weight: 700; }
 .workshop-notes__filters select { width: auto; padding: 8px 10px; }
@@ -4078,6 +4091,7 @@ textarea:focus-visible {
   .workshop-library__header { align-items: stretch; flex-direction: column; }
   .workshop-library__create { min-width: 0; }
   .workshop-library__folder-grid,
+  .workshop-notes__books,
   .workshop-library__items,
   .workshop-notes__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -4087,6 +4101,7 @@ textarea:focus-visible {
   .workshop-library__create > div,
   .workshop-save-dialog__inline { align-items: stretch; flex-direction: column; }
   .workshop-library__folder-grid,
+  .workshop-notes__books,
   .workshop-library__items,
   .workshop-notes__list { grid-template-columns: 1fr; padding: 12px; }
   .workshop-notes__filters { align-items: stretch; flex-direction: column; }

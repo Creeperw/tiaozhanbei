@@ -58,6 +58,14 @@ class WorkshopLibraryService:
     def delete_favorite(self, user_id: str, favorite_id: str) -> bool:
         return self.repository.delete_favorite(user_id, favorite_id)
 
+    def list_note_folders(self, user_id: str) -> list[dict[str, Any]]:
+        return self.repository.list_note_folders(user_id)
+
+    def create_note_folder(self, user_id: str, name: str) -> dict[str, Any]:
+        return self.repository.create_note_folder(
+            user_id, self._required(name, "笔记本名称", limit=80)
+        )
+
     def list_notes(
         self,
         user_id: str,
@@ -85,6 +93,14 @@ class WorkshopLibraryService:
         resource_id: str | None,
         context: dict[str, Any],
     ) -> dict[str, Any]:
+        context_payload = dict(context or {})
+        notebook = self._required(
+            str(context_payload.get("notebook") or "默认笔记本"),
+            "笔记本名称",
+            limit=80,
+        )
+        self.repository.create_note_folder(user_id, notebook)
+        context_payload["notebook"] = notebook
         return self.repository.create_note(
             user_id,
             title=self._required(title, "笔记标题", limit=200),
@@ -93,7 +109,7 @@ class WorkshopLibraryService:
             source=self._required(source, "笔记来源", limit=128),
             resource_type=str(resource_type or "").strip() or None,
             resource_id=str(resource_id or "").strip() or None,
-            context=dict(context or {}),
+            context=context_payload,
         )
 
     def update_note(

@@ -72,6 +72,10 @@ class FavoriteFolderCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
 
 
+class NoteFolderCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
 class FavoriteCreateRequest(BaseModel):
     folder_id: str = Field(min_length=1, max_length=128)
     resource_type: str = Field(default="question", min_length=1, max_length=32)
@@ -870,6 +874,25 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         ):
             raise HTTPException(status_code=404, detail="收藏不存在")
         return Response(status_code=204)
+
+    @app.get("/api/v1/workshop/note-folders")
+    async def list_note_folders(request: Request) -> dict:
+        user = current_user(request)
+        items = container.workshop_library_service.list_note_folders(user.user_id)
+        return {"items": items, "total": len(items)}
+
+    @app.post("/api/v1/workshop/note-folders", status_code=201)
+    async def create_note_folder(
+        payload: NoteFolderCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            folder = container.workshop_library_service.create_note_folder(
+                user.user_id, payload.name
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"folder": folder}
 
     @app.get("/api/v1/workshop/notes")
     async def list_workshop_notes(
