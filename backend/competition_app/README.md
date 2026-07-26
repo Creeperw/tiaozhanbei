@@ -54,7 +54,7 @@ Stub 模式不调用外部模型和向量服务，适合前端联调、接口契
 
 Live 模式默认使用：
 
-- 对话模型：`qwen3.7-flash-2026-07-15`（阿里云兼容接口）
+- 对话模型：`qwen3.7-max-2026-05-17`（阿里云兼容接口）
 - Embedding：`Qwen/Qwen3-Embedding-4B`（SiliconFlow）
 - 编排：LangGraph
 
@@ -146,6 +146,9 @@ fetch('/api/v1/auth/me', {
 | 会话消息 | `GET /api/v1/conversations/{conversation_id}/messages` |
 | 首页摘要 | `GET /api/v1/dashboard/home` |
 | 今日任务到期轮换 | `POST /api/v1/learning-tasks/current/refresh` |
+| 当前任务可信资源物化/旧任务修复 | `POST /api/v1/learning-tasks/current/materialize-resources` |
+| 当前完整规划与通过门禁 | `GET /api/v1/learning-plans/current` |
+| 已完成任务绑定阶段证据 | `POST /api/v1/learning-plans/current/stages/{stage}/evidence` |
 | 普通执行 | `POST /api/v1/review-cards` |
 | 流式执行 | `POST /api/v1/review-cards/stream` |
 | 查询运行状态 | `GET /api/v1/review-cards/runs/{thread_id}` |
@@ -161,6 +164,19 @@ fetch('/api/v1/auth/me', {
 `GET /api/v1/dashboard/home` 的 `current_learning_task` 是学习工坊右栏的正式今日任务投影，包含 `learning_chapter`、`focus_knowledge_points` 与 `knowledge_cards[].action`。知识点 ID 由知识仓库解析，前端不得从自然语言任务正文自行生成 ID；点击动作后使用现有知识卡解析接口打开对应内容。
 
 正式今日任务自生成起使用滚动 24 小时刷新窗口。`dashboard/home` 和 `learning-context` 返回服务端 `daily_task_timer`，前端倒计时归零后调用刷新接口；如果用户离线，下一次读取时自动补做轮换。轮换从当前短期计划任务块中取下一项，接口幂等且按登录用户隔离。刷新时间随现有计划 JSON 持久化，不需要数据库迁移。
+
+每日任务按“章节视频学习 + 重点知识点题目训练”物化为原子项。视频只能使用知识仓库中
+已发布、可核验的片段；找不到时不伪造链接，题目训练仍可继续。
+模型给出的自然语言知识点会先按教材和章节映射到知识图谱；系统仅把本次需要的规范知识点
+及至少 3 道配套题按需登记到个性化执行库，并冻结题目版本，不在启动时全量复制公共题库。
+无法形成可核验完成路径的模型标签不会伪装成正式训练项。
+每日任务的重点知识点、预期产出和验收标准最终由已经冻结的原子项反向校准，避免计划文字要求
+4 个知识点、实际只有 3 个可执行资源时出现完成率与验收口径冲突。
+`dashboard/home.current_learning_task.recommended_resources` 直接返回已绑定的章节视频和冻结题集入口。
+
+`GET /api/v1/learning-plans/current` 是规划页面的稳定读取接口，同时返回长期/短期正文、
+结构化字段、当前任务和验收门禁。长期阶段遵循 `all_exit_evidence_verified`：只有精确匹配
+批准路线 `exit_evidence`、且来源为本人已完成服务端任务的证据才能满足指标。
 
 每个 `conversation_id` 表示一个可包含多轮消息的正式会话；每次 LangGraph 执行使用独立
 `thread_id`。中断恢复复用该次 `thread_id`，不能把会话 ID 当作所有轮次共用的检查点 ID。

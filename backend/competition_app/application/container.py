@@ -93,6 +93,7 @@ class ApplicationContainer:
     authentication_service: AuthenticationService
     account_profile_service: AccountProfileService
     workshop_library_service: WorkshopLibraryService
+    learning_plan_service: LearningPlanService
     daily_task_refresh_service: DailyTaskRefreshService
     daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
@@ -211,11 +212,29 @@ class ApplicationContainer:
         backend_handoff_runtime = (
             load_backend_handoff(settings) if include_backend_handoff else None
         )
-        knowledge_point_resolver = (
-            backend_handoff_runtime.resolve_executable_knowledge_point
-            if backend_handoff_runtime is not None
-            else None
-        )
+        knowledge_point_resolver = None
+        if backend_handoff_runtime is not None:
+
+            def resolve_executable_knowledge_point(
+                name: str,
+                learning_chapter: str = "",
+            ) -> str | None:
+                current = backend_handoff_runtime.resolve_executable_knowledge_point(name)
+                if current is not None or knowledge_backend is None:
+                    return current
+                bundle = knowledge_backend.map.resolve_executable_bundle(
+                    name,
+                    required_question_count=3,
+                    preferred_scope=learning_chapter,
+                )
+                if bundle is None:
+                    return None
+                return backend_handoff_runtime.ensure_executable_knowledge_bundle(
+                    bundle,
+                    required_question_count=3,
+                )
+
+            knowledge_point_resolver = resolve_executable_knowledge_point
         video_resource_resolver = (
             knowledge_backend.map.resolve_trusted_video_resource
             if knowledge_backend is not None
@@ -400,6 +419,7 @@ class ApplicationContainer:
             authentication_service=authentication_service,
             account_profile_service=account_profile_service,
             workshop_library_service=workshop_library_service,
+            learning_plan_service=learning_plan_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,
             question_retrieval_tool=knowledge_tool,

@@ -34,6 +34,7 @@ from competition_app.services.auth import InvalidCredentialsError
 from competition_app.services.learning_path_projection import LearningPathProjectionService
 from competition_app.services.profile_readiness import ProfileReadinessService
 from competition_app.services.planning_readiness import PlanningReadinessService
+from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.workshop import WorkshopKnowledgeService
 from competition_app.services.qualification_papers import QualificationPaperRepository
@@ -72,6 +73,10 @@ class FavoriteFolderCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
 
 
+class NoteFolderCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
 class FavoriteCreateRequest(BaseModel):
     folder_id: str = Field(min_length=1, max_length=128)
     resource_type: str = Field(default="question", min_length=1, max_length=32)
@@ -94,6 +99,11 @@ class WorkshopNoteCreateRequest(BaseModel):
 class WorkshopNoteUpdateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     content: str = Field(min_length=1, max_length=20_000)
+
+
+class StageEvidenceRequest(BaseModel):
+    requirement: str = Field(min_length=1, max_length=1000)
+    task_id: str = Field(min_length=1, max_length=160)
 
 
 def _practice_question_type(value: object) -> str:
@@ -139,11 +149,20 @@ def _formal_question_payload(question: dict, kp_names: dict[str, str]) -> dict:
     ))
     raw_difficulty = question.get("difficulty", question.get("难度"))
     try:
-        difficulty = max(1, min(5, int(float(raw_difficulty))))
-        difficulty_source = "formal_question_bank"
+        if raw_difficulty is None or isinstance(raw_difficulty, bool):
+            raise ValueError("difficulty is absent")
+        parsed_difficulty = float(raw_difficulty)
+        if not parsed_difficulty.is_integer() or not 1 <= parsed_difficulty <= 5:
+            raise ValueError("difficulty must be an integer from 1 to 5")
+        difficulty = int(parsed_difficulty)
+        difficulty_source = str(
+            question.get("difficulty_source")
+            or question.get("难度来源")
+            or "source_metadata"
+        ).strip()
     except (TypeError, ValueError):
-        difficulty = 2
-        difficulty_source = "system_default"
+        difficulty = None
+        difficulty_source = None
     return {
         "question_id": str(question.get("question_id") or question.get("题目id") or "").strip(),
         "question_type": _practice_question_type(
@@ -338,6 +357,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         public_path = (
             path == "/"
             or path == "/favicon.ico"
+            or path == "/favicon.svg"
+            or path == "/hero_word.txt"
             or path == "/health"
             or path == "/openapi.json"
             or path.startswith(
@@ -871,6 +892,25 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=404, detail="收藏不存在")
         return Response(status_code=204)
 
+    @app.get("/api/v1/workshop/note-folders")
+    async def list_note_folders(request: Request) -> dict:
+        user = current_user(request)
+        items = container.workshop_library_service.list_note_folders(user.user_id)
+        return {"items": items, "total": len(items)}
+
+    @app.post("/api/v1/workshop/note-folders", status_code=201)
+    async def create_note_folder(
+        payload: NoteFolderCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            folder = container.workshop_library_service.create_note_folder(
+                user.user_id, payload.name
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"folder": folder}
+
     @app.get("/api/v1/workshop/notes")
     async def list_workshop_notes(
         request: Request,
@@ -1048,6 +1088,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if favicon_path is None or not favicon_path.is_file():
             return Response(status_code=204)
         return FileResponse(favicon_path)
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    async def favicon_svg():
+        favicon_path = frontend_root / "favicon.svg" if frontend_root else None
+        if favicon_path is None or not favicon_path.is_file():
+            return Response(status_code=204)
+        return FileResponse(favicon_path, media_type="image/svg+xml")
+
+    @app.get("/hero_word.txt", include_in_schema=False)
+    async def hero_word():
+        hero_word_path = frontend_root / "hero_word.txt" if frontend_root else None
+        if hero_word_path is None or not hero_word_path.is_file():
+            return Response(status_code=404)
+        return FileResponse(hero_word_path, media_type="text/plain; charset=utf-8")
 
     @app.get("/demo-app", include_in_schema=False)
     async def demo_app() -> FileResponse:
@@ -1486,6 +1540,62 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             learner_id=user.user_id,
         )
         return readiness.model_dump(mode="json")
+
+    @app.get("/api/v1/learning-plans/current")
+    async def current_learning_plans(request: Request) -> dict:
+        """Return plan prose, structured contracts and executable pass gates."""
+
+        user = current_user(request)
+        coordinator = container.daily_task_execution_coordinator
+        task_progress: dict[str, Any] = {}
+        if coordinator is not None:
+            try:
+                await asyncio.to_thread(coordinator.dispatch_pending, user.user_id, 20)
+                ensure_snapshot = getattr(coordinator, "ensure_current_snapshot", None)
+                if callable(ensure_snapshot):
+                    await asyncio.to_thread(ensure_snapshot, user.user_id)
+                await asyncio.to_thread(coordinator.reconcile_parent_status, user.user_id)
+                task_progress = await asyncio.to_thread(
+                    coordinator.load_current_progress, user.user_id
+                )
+            except Exception:
+                task_progress = {}
+        plans = container.learning_plan_service.get_current(user.user_id)
+        return build_plan_progress(plans, daily_task_progress=task_progress)
+
+    @app.post("/api/v1/learning-plans/current/stages/{stage}/evidence")
+    async def record_stage_evidence(
+        stage: int,
+        payload: StageEvidenceRequest,
+        request: Request,
+    ) -> dict:
+        """Bind a completed server-owned task to one approved stage requirement."""
+
+        if stage < 1:
+            raise HTTPException(status_code=422, detail="stage 必须大于等于 1")
+        user = current_user(request)
+        coordinator = container.daily_task_execution_coordinator
+        task_progress: dict[str, Any] = {}
+        if coordinator is not None:
+            try:
+                await asyncio.to_thread(coordinator.dispatch_pending, user.user_id, 20)
+                await asyncio.to_thread(coordinator.reconcile_parent_status, user.user_id)
+                task_progress = await asyncio.to_thread(
+                    coordinator.load_current_progress, user.user_id
+                )
+            except Exception:
+                task_progress = {}
+        try:
+            plans = await asyncio.to_thread(
+                container.learning_plan_service.record_completed_task_stage_evidence,
+                user.user_id,
+                stage=stage,
+                requirement=payload.requirement,
+                task_id=payload.task_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return build_plan_progress(plans, daily_task_progress=task_progress)
 
     @app.get("/api/v1/learning-monitoring/snapshot")
     async def learning_monitoring_snapshot(
@@ -2147,6 +2257,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     async def dashboard_home(request: Request) -> dict:
         user = current_user(request)
         behavior = {}
+        learning_activity = {"recent_activities": []}
         if backend_handoff is not None:
             try:
                 behavior = await asyncio.to_thread(
@@ -2155,9 +2266,27 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             except Exception:
                 # The home portal remains usable while optional behavior metrics recover.
                 behavior = {}
+            try:
+                learning_activity = await asyncio.to_thread(
+                    backend_handoff.load_learning_activity_summary,
+                    user.user_id,
+                    days=30,
+                    recent_limit=20,
+                )
+            except Exception:
+                # Recent workshop history is supplemental to the dashboard response.
+                learning_activity = {"recent_activities": []}
         daily_task_timer = await asyncio.to_thread(
             container.daily_task_refresh_service.ensure_current, user.user_id
         )
+        try:
+            await asyncio.to_thread(
+                container.learning_plan_service.ensure_executable_daily_resources,
+                user.user_id,
+            )
+        except Exception:
+            # Legacy-task repair must not make the home portal unavailable.
+            pass
         coordinator = container.daily_task_execution_coordinator
         if coordinator is not None:
             try:
@@ -2310,6 +2439,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                             "estimated_minutes": item.estimated_minutes,
                             "kp_id": item.kp_id,
                             "kp_name": item.knowledge_point_name,
+                            "resource_ref": dict(item.resource_ref),
+                            "completion_policy": dict(item.completion_policy),
                             "status": str(
                                 progress_items.get(item.task_item_id, {}).get("status")
                                 or "pending"
@@ -2329,22 +2460,34 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                                     "active_seconds",
                                 }
                             },
-                            "action": {
-                                "destination": "workshop.practice",
-                                "params": {
-                                    "taskItemId": item.task_item_id,
-                                    **(
-                                        {
-                                            "kpId": item.kp_id,
-                                            "kpName": item.knowledge_point_name,
-                                        }
-                                        if item.item_type == "knowledge_practice"
-                                        and item.kp_id
-                                        and item.knowledge_point_name
-                                        else {}
-                                    ),
-                                },
-                            },
+                            "action": (
+                                {
+                                    "action_type": "watch_video",
+                                    "destination": "workshop.knowledge_video",
+                                    "params": {
+                                        "taskItemId": item.task_item_id,
+                                        "video": dict(item.resource_ref),
+                                    },
+                                }
+                                if item.item_type == "video_section"
+                                else {
+                                    "action_type": "practice",
+                                    "destination": "workshop.practice",
+                                    "params": {
+                                        "taskItemId": item.task_item_id,
+                                        **(
+                                            {
+                                                "kpId": item.kp_id,
+                                                "kpName": item.knowledge_point_name,
+                                            }
+                                            if item.item_type == "knowledge_practice"
+                                            and item.kp_id
+                                            and item.knowledge_point_name
+                                            else {}
+                                        ),
+                                    },
+                                }
+                            ),
                         }
                         for item in task.items
                     ],
@@ -2364,17 +2507,44 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         or list(task.focus_knowledge_points)
                     ),
                     "knowledge_cards": resolved_points,
+                    "recommended_resources": {
+                        "chapter_videos": [
+                            {
+                                "task_item_id": item.task_item_id,
+                                "title": item.title,
+                                "resource": dict(item.resource_ref),
+                                "completion_policy": dict(item.completion_policy),
+                            }
+                            for item in task.items
+                            if item.item_type == "video_section"
+                        ],
+                        "knowledge_practice": [
+                            {
+                                "task_item_id": item.task_item_id,
+                                "kp_id": item.kp_id,
+                                "kp_name": item.knowledge_point_name,
+                                "required_question_count": item.required_question_count,
+                            }
+                            for item in task.items
+                            if item.item_type == "knowledge_practice"
+                        ],
+                    },
                 }
                 today_tasks.append(task_projection)
                 current_learning_task = task_projection
         for entry in queue.entries:
             if entry.task is None:
                 continue
+            # ReviewTask is an execution binding and intentionally does not carry a
+            # duration budget.  Keep the dashboard projection backward-compatible
+            # with the front end without coupling it to a removed contract field.
+            review_minutes = 10
             today_tasks.append(
                 {
                     "task_id": entry.task.review_task_id,
                     "title": entry.memory_unit.prompt_abstract,
-                    "duration": f"{entry.task.estimated_minutes} 分钟",
+                    "duration": f"{review_minutes} 分钟",
+                    "estimated_minutes": review_minutes,
                     "status": entry.task.status,
                     "source": "review_queue",
                 }
@@ -2406,6 +2576,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "announcements": [],
             "review_queue": queue.model_dump(mode="json"),
             "checkin_status": checkin_status,
+            "learning_activity": learning_activity,
         }
 
     @app.get("/api/v1/checkin")
@@ -2490,6 +2661,28 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 else None
             ),
             "daily_task_timer": timer,
+        }
+
+    @app.post("/api/v1/learning-tasks/current/materialize-resources")
+    async def materialize_current_learning_task_resources(request: Request) -> dict:
+        """Idempotently bind the current task to trusted video/question resources."""
+
+        user = current_user(request)
+        try:
+            task = await asyncio.to_thread(
+                container.learning_plan_service.ensure_executable_daily_resources,
+                user.user_id,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        coordinator = container.daily_task_execution_coordinator
+        if coordinator is not None:
+            await asyncio.to_thread(coordinator.dispatch_pending, user.user_id, 20)
+            ensure_snapshot = getattr(coordinator, "ensure_current_snapshot", None)
+            if callable(ensure_snapshot):
+                await asyncio.to_thread(ensure_snapshot, user.user_id)
+        return {
+            "learning_task": task.model_dump(mode="json") if task is not None else None
         }
 
     @app.get("/api/v1/knowledge/routes")

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from APP.backend.database import (
     KnowledgeCardRecord,
+    KnowledgePoint,
     PaperInstanceRecord,
     PaperItemRecord,
     QuestionKPLinkRecord,
@@ -212,6 +213,35 @@ def publish_agent_paper(
             for bridge in bridges
             if isinstance(bridge, dict) and str(bridge.get("kp_id") or "").strip()
         ))
+        source_metadata = question.get("source_metadata") or {}
+        kp_name_hints = (
+            source_metadata.get("kp_names")
+            if isinstance(source_metadata, dict)
+            and isinstance(source_metadata.get("kp_names"), dict)
+            else {}
+        )
+        tags = [
+            str(value).strip()
+            for value in question.get("tags") or []
+            if str(value).strip()
+        ]
+        for index, kp_id in enumerate(kp_ids):
+            name = str(kp_name_hints.get(kp_id) or "").strip()
+            if not name and tags:
+                name = tags[index] if index < len(tags) else tags[0]
+            row = db.query(KnowledgePoint).filter_by(kp_id=kp_id).one_or_none()
+            if row is None:
+                db.add(
+                    KnowledgePoint(
+                        kp_id=kp_id,
+                        name=name or kp_id,
+                        source="agent_audited_paper",
+                        status="active",
+                    )
+                )
+            elif name and (not str(row.name or "").strip() or row.name == kp_id):
+                row.name = name
+                row.status = "active"
         question_id = str(question.get("question_id") or f"AGENT_Q_{uuid4().hex}")
         paper_item = PaperItemRecord(
                 paper_item_id=f"PI_{uuid4().hex}",

@@ -62,6 +62,7 @@ _REPOSITORY_CHAPTER_ROOT = (
     / "2026-07-22"
 )
 _REPOSITORY_REVIEWED_CHAPTER_ROOT = _REPOSITORY_CHAPTER_ROOT / "final"
+_REPOSITORY_REVIEWED_V3_CHAPTER_ROOT = _REPOSITORY_CHAPTER_ROOT / "reviewed-v3"
 
 _OCR_CJK_RADICAL_TRANSLATION = str.maketrans({
     "⺒": "巳", "⺠": "民", "⻄": "西", "⻅": "见", "⻉": "贝",
@@ -261,6 +262,11 @@ class KnowledgeAtlasStore:
             and (embedded / _CHUNK_CHAPTER_LINKS_FILE).is_file()
         ):
             return embedded
+        if (
+            (_REPOSITORY_REVIEWED_V3_CHAPTER_ROOT / _CHAPTER_NODES_FILE).is_file()
+            and (_REPOSITORY_REVIEWED_V3_CHAPTER_ROOT / _CHUNK_CHAPTER_LINKS_FILE).is_file()
+        ):
+            return _REPOSITORY_REVIEWED_V3_CHAPTER_ROOT
         if (
             (_REPOSITORY_REVIEWED_CHAPTER_ROOT / _CHAPTER_NODES_FILE).is_file()
             and (_REPOSITORY_REVIEWED_CHAPTER_ROOT / _CHUNK_CHAPTER_LINKS_FILE).is_file()

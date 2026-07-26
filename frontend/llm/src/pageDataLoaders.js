@@ -47,6 +47,7 @@ export const emptyReport = {
   overview: { stage_id: 'T0', stage_name: '', summary: '', confidence: 0, due_review_count: 0 },
   dimensions: [],
   activity_trends: { days: 30, series: [] },
+  activity_summary: null,
   mastery_heatmap: [],
   mistake_distribution: [],
   data_quality: { confidence: 0, sample_count: 0, sources: [], is_sufficient_for_intervention: false },
@@ -355,7 +356,11 @@ export const isVariationSourcesPayloadValid = (data) => (
     && hasNonEmptyText(item.question_version_id)
     && hasNonEmptyText(item.stem)
     && hasNonEmptyText(item.question_type)
-    && Number.isInteger(item.difficulty)
+    && (
+      item.difficulty === undefined
+      || item.difficulty === null
+      || Number.isInteger(item.difficulty)
+    )
     && hasItemsArray(item.kp_ids) && item.kp_ids.every(hasNonEmptyText)
   ))
 );
@@ -370,7 +375,11 @@ export const isPracticeQuestionPayloadValid = (data) => (
     && hasNonEmptyText(data.question.stem)
     && hasItemsArray(data.question.options)
     && hasItemsArray(data.question.kp_ids)
-    && (data.question.difficulty === undefined || Number.isInteger(data.question.difficulty))
+    && (
+      data.question.difficulty === undefined
+      || data.question.difficulty === null
+      || Number.isInteger(data.question.difficulty)
+    )
     && hasNonEmptyText(data.question.request_id)
   ))
 );
@@ -550,8 +559,24 @@ export async function loadReportsData({ fetcher }) {
       fallback: emptyReport,
       validator: isLearningInsightsPayloadValid,
     });
+    let activitySummary = null;
     let resourceReport = emptyReport.resource_match_report;
     let multiscale = null;
+    try {
+      const activityResult = await fetcher({
+        paths: ['/v1/learning-activity/summary?days=30&recent_limit=100'],
+        fallback: null,
+        validator: (value) => (
+          value
+          && typeof value === 'object'
+          && value.counters
+          && typeof value.counters === 'object'
+        ),
+      });
+      activitySummary = activityResult.data;
+    } catch {
+      activitySummary = null;
+    }
     try {
       const resourceResult = await fetcher({
         paths: ['/v1/resource-match-report?limit=12'],
@@ -576,6 +601,7 @@ export async function loadReportsData({ fetcher }) {
       report: {
         ...emptyReport,
         ...data,
+        activity_summary: activitySummary,
         resource_match_report: resourceReport,
         multiscale,
       },

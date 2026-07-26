@@ -1,10 +1,6 @@
 .auth-page {
   position: relative;
   isolation: isolate;
-  background:
-    radial-gradient(circle at 76% 12%, rgba(167, 243, 208, 0.42), transparent 28rem),
-    radial-gradient(circle at 10% 42%, rgba(204, 251, 241, 0.38), transparent 24rem),
-    linear-gradient(145deg, #f8fffb 0%, #effaf4 48%, #f7fbf7 100%);
 }
 
 .auth-page::before {

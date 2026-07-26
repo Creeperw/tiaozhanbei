@@ -81,6 +81,12 @@ def workflow_result_to_markdown(result: Any) -> str:
         )
         return "\n\n".join(part for part in (intro, continuation, question_text) if part)
 
+    if body.get("task_type") == "casual_conversation":
+        return str(
+            body.get("direct_response")
+            or "你好！我是时珍智训智能助教。有什么想学习或练习的内容，可以直接告诉我。"
+        ).strip()
+
     if body.get("task_type") == "paper_generation":
         actions = body.get("ui_actions") or []
         has_answer_action = any(

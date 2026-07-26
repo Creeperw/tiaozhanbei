@@ -1840,7 +1840,8 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertTrue(payload["grading_artifact_id"])
         self.assertTrue(payload["audit_id"])
         self.assertEqual(payload["writeback"]["status"], "applied")
-        self.assertNotIn("standard_answer", payload["grading"])
+        self.assertEqual(payload["grading"]["standard_answer"], "脾胃气虚证")
+        self.assertTrue(payload["grading"]["question_explanation"])
         runner.assert_called_once()
         with self.Session() as db:
             attempt = db.query(database.LearningAttemptRecord).filter_by(attempt_id=payload["attempt_id"]).one()

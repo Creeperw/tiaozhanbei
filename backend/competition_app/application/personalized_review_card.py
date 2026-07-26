@@ -83,6 +83,7 @@ class ReviewCardResult(BaseModel):
     status: Literal["success", "failed"]
     execution_id: str
     task_type: str
+    direct_response: str | None = None
     agent_outputs: list[AgentEnvelope[Any]]
     learning_plan: Any | None = None
     review_schedule: ReviewSchedule | None = None
@@ -481,9 +482,49 @@ class PersonalizedReviewCardUseCase:
         emit_runtime_event(
             "step_completed", step_id="planner", agent="planner_agent", status="success"
         )
+        if planner_output.payload.task_type == "casual_conversation":
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "agent_outputs": [planner_output],
+                    "model_trace": self._model_trace(),
+                },
+            )
+            result = ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type="casual_conversation",
+                direct_response=self._casual_response(request.user_request),
+                agent_outputs=[planner_output],
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+            )
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "completed",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            self._save_assistant_message(
+                conversation_id, request.learner_id, persisted_messages, result
+            )
+            return result
         execution_plan = PlannerAgent.build_plan(planner_output.payload)
         context["task_type"] = planner_output.payload.task_type
         context["plan_scope"] = planner_output.payload.plan_scope
+        context["planner_requires_clarification"] = (
+            planner_output.payload.requires_clarification
+        )
+        context["planner_clarification_question"] = (
+            planner_output.payload.clarification_question
+        )
+        context["planner_routing_reason"] = planner_output.payload.routing_reason
         self._emit_compiled_graph(execution_plan)
         execution = await self.orchestrator.execute(
             execution_plan,
@@ -563,6 +604,27 @@ class PersonalizedReviewCardUseCase:
         )
         return result
 
+    @staticmethod
+    def _casual_response(user_request: str) -> str:
+        normalized = "".join(
+            character
+            for character in user_request.strip().lower()
+            if character not in "，。！？!?、,.；;：:~～ \t\r\n"
+        )
+        if normalized in {"谢谢", "谢谢你", "感谢", "感谢你", "多谢"}:
+            return "不客气。需要继续学习、练习、复习或调整计划时，直接告诉我就可以。"
+        if normalized in {"再见", "拜拜", "bye", "先这样", "下次再聊"}:
+            return "好的，今天先到这里。下次回来时，我可以接着你的学习进度继续。"
+        if normalized in {"你是谁", "你能做什么", "你可以做什么", "你会什么"}:
+            return (
+                "我是时珍智训智能助教，可以结合你的学习状态制定分层计划、"
+                "讲解知识点、安排今日任务、提供练习与复习，并生成审核后的试卷。"
+            )
+        return (
+            "你好！我是时珍智训智能助教。你可以直接告诉我想学习的知识点，"
+            "也可以让我制定计划、安排今日任务、出题或组卷。"
+        )
+
     async def resume(
         self,
         thread_id: str,
@@ -587,6 +649,23 @@ class PersonalizedReviewCardUseCase:
         resume_payload = request.model_dump(mode="json", exclude_none=True)
         run_state = self.get_run_state(thread_id) or {}
         interrupt_payload = run_state.get("interrupt") or {}
+        if (
+            "plan_scope" not in resume_payload
+            and self._is_plan_scope_clarification(interrupt_payload)
+        ):
+            resume_payload["clarification_kind"] = "plan_scope"
+            resolved_scope, followup_question = await self._resolve_resume_plan_scope(
+                continuation=continuation,
+                answer=request.answer,
+                persisted_messages=persisted_messages,
+                interrupt_payload=interrupt_payload,
+            )
+            if resolved_scope is not None:
+                resume_payload["plan_scope"] = resolved_scope
+            elif followup_question:
+                continuation.context["planner_clarification_question"] = (
+                    followup_question
+                )
         if interrupt_payload.get("interrupt_type") == "profile_completion":
             pending_fields = {
                 str(field)
@@ -711,6 +790,109 @@ class PersonalizedReviewCardUseCase:
             result,
         )
         return result
+
+    @staticmethod
+    def _is_plan_scope_clarification(interrupt_payload: dict[str, Any]) -> bool:
+        if interrupt_payload.get("interrupt_type") == "plan_scope_resolution":
+            return True
+        if interrupt_payload.get("requested_scope") != "unspecified":
+            return False
+        questions = [
+            str(item)
+            for item in (interrupt_payload.get("questions") or [])
+            if str(item).strip()
+        ]
+        return any(
+            all(label in question for label in ("长期规划", "短期计划", "当日任务"))
+            for question in questions
+        )
+
+    async def _resolve_resume_plan_scope(
+        self,
+        *,
+        continuation: _WorkflowContinuation,
+        answer: str,
+        persisted_messages: list[dict[str, Any]],
+        interrupt_payload: dict[str, Any],
+    ) -> tuple[
+        Literal["long_term", "short_term", "daily_task"] | None,
+        str | None,
+    ]:
+        """Let Planner interpret a clarification answer in conversation context."""
+
+        planner = self.orchestrator.agent_registry.get("planner_agent")
+        original_request = str(
+            continuation.context.get("original_user_request")
+            or continuation.context.get("user_request")
+            or ""
+        ).strip()
+        questions = [
+            str(item).strip()
+            for item in (interrupt_payload.get("questions") or [])
+            if str(item).strip()
+        ]
+        resolution_context = {
+            **continuation.context,
+            "step_id": "planner_resume_resolution",
+            "user_request": "\n".join(
+                item
+                for item in (
+                    original_request,
+                    f"上一轮追问：{questions[0]}" if questions else "",
+                    f"用户回答：{answer.strip()}",
+                )
+                if item
+            ),
+            "messages": persisted_messages,
+            "plan_scope": None,
+            "plan_scope_hint": infer_plan_scope(answer),
+            "continued_plan_scope": None,
+        }
+        emit_runtime_event(
+            "step_started",
+            step_id="planner_resume_resolution",
+            agent="planner_agent",
+            depends_on=[],
+        )
+        try:
+            planner_output = await planner.run(resolution_context)
+            emit_runtime_event(
+                "system_output",
+                step_id="planner_resume_resolution",
+                agent="planner_agent",
+                output=planner_output,
+            )
+            resolved_scope = planner_output.payload.plan_scope
+            if (
+                planner_output.payload.task_type == "learning_plan"
+                and resolved_scope in {"long_term", "short_term", "daily_task"}
+            ):
+                emit_runtime_event(
+                    "step_completed",
+                    step_id="planner_resume_resolution",
+                    agent="planner_agent",
+                    status="success",
+                )
+                return resolved_scope, None
+            if planner_output.payload.requires_clarification:
+                question = str(
+                    planner_output.payload.clarification_question or ""
+                ).strip()
+                if question:
+                    return None, question
+        except Exception as exc:
+            emit_runtime_event(
+                "step_failed",
+                step_id="planner_resume_resolution",
+                agent="planner_agent",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+        # Fail-safe only: normal clarification answers are interpreted by Planner.
+        fallback_scope = infer_plan_scope(answer)
+        if fallback_scope in {"long_term", "short_term", "daily_task"}:
+            return fallback_scope, None
+        return None, None
 
     def _save_assistant_message(
         self,

@@ -492,10 +492,14 @@ class OpenAICompatibleChatModel(ChatModel):
                     "messages": messages,
                     "response_format": {"type": "json_object"},
                 }
-                # Qwen 3 hybrid-thinking models can otherwise mix reasoning text into
-                # responses that must satisfy a strict JSON contract.
+                # Qwen 3 variants expose different thinking capabilities.  The
+                # 2026-05-17 max endpoint rejects requests unless thinking is
+                # enabled; other currently supported variants stay in
+                # non-thinking mode so their JSON contract remains stable.
                 if self.model.lower().startswith("qwen3"):
-                    request_payload["enable_thinking"] = False
+                    request_payload["enable_thinking"] = (
+                        self.model.lower() == "qwen3.7-max-2026-05-17"
+                    )
                 self.last_request_payload = {
                     "url": f"{self.base_url}/chat/completions",
                     "body": request_payload,

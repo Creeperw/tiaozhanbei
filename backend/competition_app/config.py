@@ -15,7 +15,7 @@ REPOSITORY_ROOT = BACKEND_ROOT.parent
 CHAT_BASE_URL = (
     "https://llm-1nvjq1o5rj1bf5yi.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
-CHAT_MODEL = "qwen3.7-flash-2026-07-15"
+CHAT_MODEL = "qwen3.7-max-2026-05-17"
 EMBEDDING_BASE_URL = "https://api.siliconflow.cn/v1"
 EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-4B"
 
@@ -120,8 +120,13 @@ def _parse_path(
     *,
     base: Path = BACKEND_ROOT,
 ) -> Path:
-    path = Path(values.get(name, str(default))).expanduser()
-    return path.resolve() if path.is_absolute() else (base / path).resolve()
+    raw_value = values.get(name, str(default)).strip()
+    # Keep POSIX absolute paths stable when configuration tests or deployment
+    # tooling inspect them from Windows.
+    if raw_value.startswith("/") and os.name == "nt":
+        return Path(raw_value)
+    path = Path(raw_value).expanduser()
+    return path if path.is_absolute() else (base / path).resolve()
 
 
 def _parse_choice(

@@ -12,7 +12,6 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   assert.equal(config.defaultPage, 'dashboard');
   assert.deepEqual(config.primaryNav, [
     { key: 'dashboard', label: '平台首页' },
-    { key: 'assistant', label: '智能助教' },
     { key: 'practice', label: '学习工坊' },
     { key: 'training-workshop', label: '训练工坊' },
     { key: 'personalization', label: '个性数据' },
@@ -21,6 +20,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   assert.equal(config.currentPage, 'dashboard');
   assert.equal(config.pageTitle, '培训助手首页');
   assert.equal(config.homeAction, null);
+  assert.equal(config.primaryNav.some((item) => item.key === 'assistant'), false);
 });
 
 test('keeps admin entry out of primary navigation while preserving support access', () => {

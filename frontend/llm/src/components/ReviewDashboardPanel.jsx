@@ -3,6 +3,7 @@ import { BrainCircuit, CalendarClock, CheckCircle2, History, RefreshCw } from 'l
 
 import { emptyReviewDashboard, loadReviewDashboard } from '../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../utils/api';
+import MasteryHeatmap from './MasteryHeatmap';
 
 const formatTime = (value) => {
   if (!value) return '尚未安排';
@@ -15,6 +16,60 @@ const masteryTone = (score) => {
   if (score >= 60) return 'bg-amber-400';
   return 'bg-rose-400';
 };
+
+const isOpaqueKnowledgePointLabel = (value) => {
+  const text = String(value || '').trim();
+  return !text || /^[A-Z_]*\d+[A-Z0-9_-]*$/i.test(text);
+};
+
+const readableKnowledgePointName = (...values) => (
+  values
+    .map((value) => String(value || '').trim())
+    .find((value) => !isOpaqueKnowledgePointLabel(value))
+  || '未命名知识点'
+);
+
+function ReviewQueueCard({ entries, names, dueCount, loading }) {
+  return (
+    <section className="rounded-[24px] border border-emerald-100 bg-white/90 p-5 shadow-sm shadow-emerald-100/40 sm:p-6" aria-label="复习队列">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black text-slate-900">复习队列</h2>
+          <p className="mt-1 text-sm text-slate-500">优先处理已到期和即将复习的知识点。</p>
+        </div>
+        <span className="rounded-full bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700">{dueCount} 项到期</span>
+      </div>
+      {loading ? (
+        <p className="mt-5 rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">正在加载复习队列…</p>
+      ) : entries.length > 0 ? (
+        <div className="mt-5 space-y-3">
+          {entries.slice(0, 5).map((entry) => {
+            const unit = entry.memory_unit || {};
+            const displayName = readableKnowledgePointName(
+              names.get(unit.kp_id),
+              unit.prompt_abstract,
+            );
+            return (
+              <article key={`${unit.kp_id}:${unit.next_review_at}`} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong className="min-w-0 truncate text-sm text-slate-900">{displayName}</strong>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${entry.is_due ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{entry.is_due ? '已到期' : '待复习'}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                  <span>掌握度 {Number(unit.mastery_score || 0).toFixed(1)}%</span>
+                  <span>保持率 {(Number(entry.retention_estimate || 0) * 100).toFixed(0)}%</span>
+                </div>
+              </article>
+            );
+          })}
+          {entries.length > 5 && <p className="text-center text-xs text-slate-400">还有 {entries.length - 5} 项复习任务</p>}
+        </div>
+      ) : (
+        <p className="mt-5 rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">当前没有复习任务。完成知识点配套题并通过批改后，会自动加入这里。</p>
+      )}
+    </section>
+  );
+}
 
 export default function ReviewDashboardPanel() {
   const [dashboard, setDashboard] = useState(emptyReviewDashboard);
@@ -34,9 +89,20 @@ export default function ReviewDashboardPanel() {
   }, [refreshKey]);
 
   const names = useMemo(() => new Map(
-    (dashboard.mastery || []).map((item) => [item.kp_id, item.kp_name || item.kp_id]),
+    (dashboard.mastery || []).map((item) => [
+      item.kp_id,
+      isOpaqueKnowledgePointLabel(item.kp_name) ? '' : String(item.kp_name).trim(),
+    ]),
   ), [dashboard.mastery]);
   const queueEntries = dashboard.queue?.entries || [];
+  const masteryItems = useMemo(() => (dashboard.mastery || []).map((item) => ({
+    kp_id: item.kp_id,
+    kp_name: readableKnowledgePointName(item.kp_name),
+    score: Number(item.mastery_score || 0) / 100,
+    confidence: item.mastery_confidence == null ? null : Number(item.mastery_confidence),
+    attempt_count: item.attempt_count || 0,
+    retention: item.retention_estimate == null ? null : Number(item.retention_estimate),
+  })), [dashboard.mastery]);
 
   return (
     <div className="space-y-5">
@@ -46,11 +112,16 @@ export default function ReviewDashboardPanel() {
             <h2 className="text-xl font-black text-slate-900">复习与掌握</h2>
             <p className="mt-1 text-sm text-slate-500">仅统计已完成并通过批改的知识点题目；生成知识卡本身不会进入复习队列。</p>
           </div>
-          <button type="button" onClick={() => { setLoading(true); setRefreshKey((value) => value + 1); }} className="inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm text-emerald-800">
+          <button
+            type="button"
+            aria-label="刷新复习数据"
+            onClick={() => { setLoading(true); setRefreshKey((value) => value + 1); }}
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm text-emerald-800"
+          >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />刷新
           </button>
         </div>
-        {error && <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             [BrainCircuit, '已评估知识点', dashboard.summary?.knowledge_point_count ?? 0],
@@ -59,46 +130,31 @@ export default function ReviewDashboardPanel() {
             [History, '掌握记录', dashboard.summary?.history_count ?? 0],
           ].map(([Icon, label, value]) => (
             <div key={label} className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
-              <div className="flex items-center gap-2">
-                {React.createElement(Icon, { size: 18, className: 'text-emerald-700' })}
-                <h3 className="text-sm font-semibold text-slate-800">{label}</h3>
-              </div>
+              {React.createElement(Icon, { size: 18, className: 'text-emerald-700' })}
               <div className="mt-3 text-2xl font-black text-slate-900">{value}</div>
+              <div className="mt-1 text-xs text-slate-500">{label}</div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm">
-        <h3 className="font-black text-slate-900">复习队列</h3>
-        <div className="mt-4 space-y-3">
-          {queueEntries.map((entry) => {
-            const unit = entry.memory_unit || {};
-            return (
-              <article key={`${unit.kp_id}:${unit.next_review_at}`} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong className="text-slate-900">{names.get(unit.kp_id) || unit.prompt_abstract || unit.kp_id}</strong>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${entry.is_due ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{entry.is_due ? '已到期' : '待复习'}</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
-                  <span>掌握度 {Number(unit.mastery_score || 0).toFixed(1)}%</span>
-                  <span>预计保持率 {(Number(entry.retention_estimate || 0) * 100).toFixed(0)}%</span>
-                  <span>下次复习 {formatTime(unit.next_review_at)}</span>
-                </div>
-              </article>
-            );
-          })}
-          {!loading && queueEntries.length === 0 && <p className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">当前没有复习任务。完成知识点配套题并通过批改后，会自动加入这里。</p>}
-        </div>
-      </section>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <MasteryHeatmap items={masteryItems} />
+        <ReviewQueueCard
+          entries={queueEntries}
+          names={names}
+          dueCount={dashboard.summary?.due_count ?? 0}
+          loading={loading}
+        />
+      </div>
 
-      <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm">
+      <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm" aria-label="知识点掌握度">
         <h3 className="font-black text-slate-900">知识点掌握度</h3>
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           {(dashboard.mastery || []).map((item) => (
             <article key={item.kp_id} className="rounded-2xl border border-slate-100 p-4">
               <div className="flex items-center justify-between gap-3 text-sm">
-                <strong className="truncate text-slate-900">{item.kp_name || item.kp_id}</strong>
+                <strong className="truncate text-slate-900">{readableKnowledgePointName(item.kp_name)}</strong>
                 <span className="font-bold text-slate-700">{Number(item.mastery_score || 0).toFixed(1)}%</span>
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><i className={`block h-full rounded-full ${masteryTone(Number(item.mastery_score || 0))}`} style={{ width: `${Math.max(0, Math.min(100, Number(item.mastery_score || 0)))}%` }} /></div>
@@ -113,12 +169,12 @@ export default function ReviewDashboardPanel() {
         </div>
       </section>
 
-      <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm">
+      <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm" aria-label="最近复习与掌握变化">
         <h3 className="font-black text-slate-900">最近复习与掌握变化</h3>
         <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
           {(dashboard.mastery_history || []).map((item) => (
             <div key={item.history_id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 px-4 py-3 text-sm">
-              <span className="font-medium text-slate-800">{item.kp_name || item.kp_id}</span>
+              <span className="font-medium text-slate-800">{readableKnowledgePointName(item.kp_name)}</span>
               <span className="text-slate-600">掌握度 {Number(item.mastery_score || 0).toFixed(1)}%</span>
               <time className="text-xs text-slate-400">{formatTime(item.calculated_at)}</time>
             </div>

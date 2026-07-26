@@ -139,6 +139,63 @@ def test_learning_path_api_returns_an_actionable_empty_state_before_planning(tmp
     }
 
 
+def test_current_learning_plan_api_returns_prose_and_structured_stages(
+    tmp_path: Path,
+) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+    client = TestClient(create_app(container, auth_required=True))
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "plan-reader",
+            "display_name": "规划同学",
+            "password": "correct-horse-2026",
+        },
+    )
+    learner_id = registered.json()["user"]["user_id"]
+    now = datetime.now(timezone.utc)
+    container.learning_plan_service.plan_repository.save_current(
+        learner_id,
+        LearningPlanResult(
+            generated_scope="long_term",
+            long_term_plan=LongTermPlan(
+                plan_id="LP_CURRENT_API",
+                learner_id=learner_id,
+                content="【最终目标】完成教材阶段学习。",
+                version=1,
+                status="active",
+                created_at=now,
+                updated_at=now,
+                stages=[
+                    LongTermPlanStage(
+                        stage=1,
+                        book=["《中医学基础》"],
+                        goal="建立基础理论框架。",
+                    )
+                ],
+            ),
+        ),
+    )
+
+    response = client.get("/api/v1/learning-plans/current")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["long_term"]["content"].startswith("【最终目标】")
+    assert body["long_term"]["structured"]["stages"] == [
+        {
+            "stage": 1,
+            "book": ["《中医学基础》"],
+            "goal": "建立基础理论框架。",
+        }
+    ]
+    assert body["long_term"]["stage_progress"][0]["pass_rule"] == (
+        "all_exit_evidence_verified"
+    )
+
+
 def test_review_queue_starts_only_after_question_completion(tmp_path: Path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     client = TestClient(create_app(container, auth_required=False))

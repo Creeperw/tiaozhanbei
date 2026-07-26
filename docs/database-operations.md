@@ -67,6 +67,11 @@ ORDER BY version;
 `POST /api/v1/auth/onboarding/complete` 核验调查活动并将该字段改为 `false`。不要手工批量清零，
 否则会破坏“先建立画像再进入学习页”的业务门禁。
 
+迁移 `012_workshop_note_folders.sql` 新增按用户隔离的学习笔记本表
+`workshop_note_folders`。升级后执行一次 `init-db` 即可；既有笔记无需搬迁，服务端会继续从
+笔记的 `context.notebook` 统计归属。后续新建笔记时会自动补齐同名持久化笔记本，前端也会
+把尚未建表登记的既有笔记按其上下文归入虚拟同名笔记本。
+
 ## 4. 兼容业务库初始化
 
 当 `BACKEND_HANDOFF_ENABLED=true` 且配置了 `MYSQL_PASSWORD` 时，应用装载兼容业务模块并连接

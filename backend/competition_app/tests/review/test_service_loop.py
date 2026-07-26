@@ -134,6 +134,70 @@ def test_question_completion_without_prior_card_is_idempotently_admitted() -> No
     assert first.next_review_at == NOW + timedelta(minutes=20)
 
 
+def test_question_attempt_maps_each_internal_kp_id_to_a_readable_name() -> None:
+    service = ReviewService(InMemoryReviewRepository())
+    attempt = {
+        "attempt_id": "QUESTION_ATTEMPT_NAMES_1",
+        "kp_ids": ["050122", "008709"],
+        "kp_names": {
+            "050122": "四君子汤",
+            "008709": "补气剂",
+        },
+        "is_correct": False,
+        "score": 0,
+        "max_score": 5,
+        "answered_at": NOW.isoformat(),
+    }
+
+    assert service.ingest_question_attempts(learner_id="L1", attempts=[attempt]) == 2
+    assert service.repository.get_memory_unit("L1", "050122").prompt_abstract == "四君子汤"
+    assert service.repository.get_memory_unit("L1", "008709").prompt_abstract == "补气剂"
+
+
+def test_replayed_attempt_repairs_legacy_raw_kp_id_without_regrading() -> None:
+    service = ReviewService(InMemoryReviewRepository())
+    attempt = {
+        "attempt_id": "QUESTION_ATTEMPT_NAMES_2",
+        "kp_ids": ["050122"],
+        "is_correct": True,
+        "score": 5,
+        "max_score": 5,
+        "answered_at": NOW.isoformat(),
+    }
+
+    assert service.ingest_question_attempts(learner_id="L1", attempts=[attempt]) == 1
+    legacy = service.repository.get_memory_unit("L1", "050122")
+    assert legacy.prompt_abstract == "知识点名称待补充"
+
+    repaired = {
+        **attempt,
+        "kp_names": {"050122": "四君子汤"},
+    }
+    assert service.ingest_question_attempts(learner_id="L1", attempts=[repaired]) == 0
+    current = service.repository.get_memory_unit("L1", "050122")
+    assert current.prompt_abstract == "四君子汤"
+    assert current.mastery_score == legacy.mastery_score
+    assert current.review_stage == legacy.review_stage
+
+
+def test_review_queue_never_presents_an_internal_id_as_the_knowledge_point_name() -> None:
+    service = ReviewService(InMemoryReviewRepository())
+    service.ingest_question_attempts(
+        learner_id="L1",
+        attempts=[{
+            "attempt_id": "QUESTION_ATTEMPT_UNKNOWN_NAME",
+            "kp_ids": ["003299"],
+            "is_correct": False,
+            "answered_at": NOW.isoformat(),
+        }],
+    )
+
+    entry = service.get_queue("L1", now=NOW).entries[0]
+
+    assert entry.memory_unit.kp_id == "003299"
+    assert entry.memory_unit.prompt_abstract == "知识点名称待补充"
+
+
 def test_unfinished_or_rejected_grading_never_enters_review_queue() -> None:
     service = ReviewService(InMemoryReviewRepository())
     base = {

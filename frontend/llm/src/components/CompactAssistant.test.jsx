@@ -54,6 +54,9 @@ describe('CompactAssistant', () => {
     expect(screen.getByRole('button', { name: '新建对话' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '折叠智能助教' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '打开完整智能助教' })).toBeInTheDocument();
+    expect(screen.getByText('六智能体按需协作')).toBeInTheDocument();
+    expect(screen.getByLabelText('多智能体协作能力')).toHaveTextContent('按任务自动组队');
+    expect(screen.getByLabelText('多智能体协作能力')).toHaveTextContent('需要时检索与审核');
     fireEvent.click(screen.getByRole('button', { name: '打开完整智能助教' }));
     expect(onOpenFull).toHaveBeenCalledWith(null);
   });
@@ -101,13 +104,18 @@ describe('CompactAssistant', () => {
     });
   });
 
-  it('keeps the collapsed pointer target close to the visible character body', () => {
+  it('keeps the collapsed pointer target close to the smaller character without a circular backdrop', () => {
     const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
     const restoreRule = stylesheet.match(/\.compact-assistant\.is-collapsed\[data-floating="true"\] \.compact-assistant__restore\s*\{([^}]+)\}/)?.[1] || '';
+    const figureRule = stylesheet.match(/\.compact-assistant__character-figure\s*\{([^}]+)\}/)?.[1] || '';
 
     expect(restoreRule).toContain('width: 58px;');
     expect(restoreRule).toContain('background: transparent;');
     expect(restoreRule).toContain('box-shadow: none;');
+    expect(figureRule).toContain('width: 64px;');
+    expect(figureRule).toContain('height: 80px;');
+    expect(stylesheet).not.toContain('compact-assistant__restore::before');
+    expect(stylesheet).toContain('.compact-assistant__character-shadow { display: none; }');
   });
 
   it('keeps a robot fallback when the character image cannot load', () => {
@@ -241,6 +249,36 @@ describe('CompactAssistant', () => {
     expect(expandedAssistant).toHaveAttribute('data-floating', 'true');
     expect(expandedAssistant).toHaveStyle({ left: '480px', top: '80px' });
     expect(onCollapsedChange).toHaveBeenCalledWith(false);
+  });
+
+  it('keeps a previously positioned assistant inside the viewport after resize', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 700 });
+    render(<CompactAssistant initiallyCollapsed onOpenFull={vi.fn()} />);
+
+    const floatingAssistant = screen.getByLabelText('常驻智能助教');
+    const restoreButton = screen.getByRole('button', { name: '展开智能助教' });
+    vi.spyOn(floatingAssistant, 'getBoundingClientRect').mockReturnValue({
+      left: 820,
+      top: 520,
+      right: 924,
+      bottom: 652,
+      width: 104,
+      height: 132,
+      x: 820,
+      y: 520,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerDown(restoreButton, { clientX: 850, clientY: 560, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 900, clientY: 600, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 900, clientY: 600, pointerId: 1 });
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 });
+    fireEvent(window, new Event('resize'));
+
+    expect(Number.parseFloat(floatingAssistant.style.left)).toBeLessThanOrEqual(278);
+    expect(Number.parseFloat(floatingAssistant.style.top)).toBeLessThanOrEqual(704);
   });
 
   it('drags the expanded assistant from its header', () => {

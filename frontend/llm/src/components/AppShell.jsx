@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   MessageSquareMore,
+  PencilLine,
   Settings,
   ShieldCheck,
   Sprout,
@@ -212,7 +213,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
         <div className="app-shell__account">
           <button type="button" className="app-shell__avatar-button" aria-label="打开个人信息" onClick={() => setProfileOpen(true)}>
             {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{avatarInitial}</span>}
-            <i aria-hidden="true"><UserRound size={13} /></i>
+            <i aria-hidden="true"><PencilLine size={10} /></i>
           </button>
           <div className="app-shell__account-summary" onClick={() => setProfileOpen(true)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfileOpen(true); } }}>
             <span className="app-shell__section-label">当前用户</span>
@@ -222,10 +223,12 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
           <div className="app-shell__account-actions">
             <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}>
               <Bell aria-hidden="true" size={17} />
+              <span className="app-shell__account-action-label">通知</span>
               {unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
             </button>
             <button type="button" className="icon-button" aria-label="退出登录" onClick={onLogout}>
               <LogOut aria-hidden="true" size={17} />
+              <span className="app-shell__account-action-label">退出</span>
             </button>
           </div>
         </div>

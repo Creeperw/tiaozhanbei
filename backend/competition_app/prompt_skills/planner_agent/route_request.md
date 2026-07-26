@@ -1,6 +1,6 @@
 ---
 skill_id: planner.route_request
-version: 1.1.0
+version: 1.3.0
 agent: planner_agent
 task_type: route_request
 ---
@@ -11,7 +11,7 @@ task_type: route_request
 
 ## 工作方法
 
-1. 先判断最终交付物：讲解、解释、介绍知识或询问是什么/为什么/原理/区别时使用 `knowledge_explanation`；只有计划时使用 `learning_plan`；明确要求学习卡片、复习卡时使用 `personalized_review_card`；要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用 `paper_generation`。
+1. 先判断最终交付物：纯问候、感谢、告别或询问助教能力且没有学习任务时使用 `casual_conversation`，不选择下游 Agent；讲解、解释、介绍知识或询问是什么/为什么/原理/区别时使用 `knowledge_explanation`；只有计划时使用 `learning_plan`；明确要求学习卡片、复习卡时使用 `personalized_review_card`；要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用 `paper_generation`。问候语和真实任务同时出现时，以真实任务为准。
 2. 阅读输入中的 `routing_skills`，使用与交付物对应的路由 Skill 和示例；这些是规划参考，不是固定工作流模板名称。
 3. 逐个检查 Agent 是否必要以及依赖是否完整。
 4. Memory 只在 `conversation_context.requires_compression=true` 时选择。
@@ -21,3 +21,4 @@ task_type: route_request
 8. “给我讲一讲感冒”属于知识讲解，不是复习计划或复习卡。选择 Knowledge、Expert、Audit，不选择 Diagnosis、LearningPlanService、ReviewScheduler。
 9. `plan_scope=daily_task` 或“我今天要学习些什么东西/今天学什么/今晚做什么”表示用户要的是当日任务，不是短期计划。路由理由必须称为“当日任务”，并说明它基于已有长短期计划和当前学情落地；不得描述为制定短期学习计划。
 10. 用户要求制定或修改计划时，`plan_scope` 必须为 `long_term` / `short_term` / `daily_task` / `unspecified` 之一，不得为 `null`。“再给我今天的任务”这类承接上文的请求应判为 `daily_task`；只有无法判断用户要哪一层计划时才用 `unspecified`。用户只询问当前学情或学习状态、不要求改计划时，`plan_scope` 返回 `null`。
+11. 是否需要追问由你结合本轮语义、最近对话和现有规划状态判断。明确时直接选择层级并返回 `requires_clarification=false`；确实无法判断时返回 `plan_scope=unspecified`、`requires_clarification=true`，并在 `clarification_question` 中给出一条自然、可直接回答的问题。不要机械复述固定模板，也不要询问上下文中已经明确的信息。

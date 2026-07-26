@@ -32,6 +32,18 @@ class LongTermPlanStage(ContractModel):
     goal: str = Field(min_length=1)
 
 
+class StageEvidenceRecord(ContractModel):
+    """System-verified evidence used by a long-term stage progression gate."""
+
+    evidence_id: str = Field(min_length=1)
+    stage: int = Field(ge=1)
+    requirement: str = Field(min_length=1)
+    source_type: Literal["completed_daily_task", "audited_assessment"]
+    source_id: str = Field(min_length=1)
+    verified_by: str = Field(min_length=1)
+    verified_at: datetime
+
+
 class ShortTermTaskBlock(ContractModel):
     content: str = Field(min_length=1)
     estimated_minutes: int = Field(gt=0)
@@ -184,6 +196,7 @@ class LongTermPlan(ContractModel):
     created_at: datetime
     updated_at: datetime
     stages: list[LongTermPlanStage] = Field(default_factory=list)
+    stage_evidence: list[StageEvidenceRecord] = Field(default_factory=list)
     planning_route: ResolvedPlanningRoute | None = None
     goal_contract: GoalContract | None = None
     milestones: list[PlanMilestone] = Field(default_factory=list)

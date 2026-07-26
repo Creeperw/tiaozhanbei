@@ -11,6 +11,7 @@ import {
   Layers3,
   LoaderCircle,
   PlayCircle,
+  Search,
   Undo2,
 } from 'lucide-react';
 import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
@@ -44,6 +45,10 @@ function playerUrl(video, autoplay = false) {
 
 function cleanDisplayText(value) {
   return String(value || '').replace(/^\?+\s*/, '').trim();
+}
+
+function searchableText(value) {
+  return String(value || '').toLowerCase().replace(/[\s·、，。；：:（）()《》]/g, '');
 }
 
 const headingDigits = {
@@ -145,25 +150,27 @@ function VideoCard({ video, mode = 'section', displayTitle = '' }) {
   );
 }
 
-function Directory({ title, icon, items, selectedId, onSelect, emptyText, unitLabel, className = '' }) {
+function Directory({ title, icon, items, selectedId, onSelect, emptyText, unitLabel, className = '', selectedExtra = null }) {
   return (
     <section className={`textbook-directory ${className}`.trim()}>
       <header>{React.createElement(icon, { 'aria-hidden': 'true', size: 17 })}<h2>{title}</h2><span>{items.length}</span></header>
       <div className="textbook-directory__items">
         {items.length ? items.map((item, index) => (
-          <button
-            type="button"
-            key={item.id}
-            className={selectedId === item.id ? 'is-active' : ''}
-            onClick={() => onSelect(item)}
-          >
-            <small>{String(index + 1).padStart(2, '0')}</small>
-            <span>
-              <strong>{item.name}</strong>
-              <em>{item.alias || `${item.children_count || item.count || 0} ${unitLabel}`}</em>
-            </span>
-            <ChevronRight aria-hidden="true" size={15} />
-          </button>
+          <React.Fragment key={item.id}>
+            <button
+              type="button"
+              className={selectedId === item.id ? 'is-active' : ''}
+              onClick={() => onSelect(selectedId === item.id ? null : item)}
+            >
+              <small>{String(index + 1).padStart(2, '0')}</small>
+              <span>
+                <strong>{item.name}</strong>
+                <em>{item.alias || `${item.children_count || item.count || 0} ${unitLabel}`}</em>
+              </span>
+              <ChevronRight aria-hidden="true" size={15} />
+            </button>
+            {selectedId === item.id && selectedExtra}
+          </React.Fragment>
         )) : <p className="textbook-directory__empty">{emptyText}</p>}
       </div>
     </section>
@@ -184,6 +191,8 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState('');
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [searchCatalog, setSearchCatalog] = useState(null);
 
   useEffect(() => {
     if (!book) {
@@ -201,7 +210,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
           '章',
         );
         setChapters(next);
-        setSelectedChapter((current) => next.find((item) => item.id === current?.id) || null);
+        setSelectedChapter((current) => next.find((item) => item.id === current?.id) || next[0] || null);
       })
       .catch((loadError) => {
         if (loadError.name !== 'AbortError') setError(loadError.message || '章节目录加载失败。');
@@ -284,6 +293,91 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ? [...timestampKnowledgePoints, ...plainKnowledgePoints]
       : timestampKnowledgePoints)
     : knowledgePoints;
+  const normalizedCatalogQuery = searchableText(catalogQuery);
+  useEffect(() => {
+    if (!normalizedCatalogQuery || !chapters.length) {
+      setSearchCatalog(null);
+      return undefined;
+    }
+    const controller = new AbortController();
+    const loadSearchCatalog = async () => {
+      const chapterResults = await Promise.allSettled(chapters.map(async (chapter) => {
+        const sectionPayload = await loadAtlasNodes({
+          level: 3,
+          route,
+          lv1: book,
+          chapter: chapter.name,
+          chapterId: chapter.id,
+          signal: controller.signal,
+        });
+        const chapterSections = Array.isArray(sectionPayload.nodes) ? sectionPayload.nodes : [];
+        const pointResults = await Promise.allSettled(chapterSections.map(async (section) => {
+          const pointPayload = await loadAtlasNodes({
+            level: 4,
+            route,
+            lv1: book,
+            chapter: chapter.name,
+            chapterId: chapter.id,
+            lv2: section.name,
+            sectionId: section.id,
+            signal: controller.signal,
+          });
+          return { section, points: Array.isArray(pointPayload.nodes) ? pointPayload.nodes : [] };
+        }));
+        return {
+          chapter,
+          sectionsWithPoints: pointResults
+            .filter((result) => result.status === 'fulfilled')
+            .map((result) => result.value),
+        };
+      }));
+      setSearchCatalog(
+        chapterResults
+          .filter((result) => result.status === 'fulfilled')
+          .map((result) => result.value),
+      );
+    };
+    loadSearchCatalog().catch((loadError) => {
+      if (loadError.name !== 'AbortError') setSearchCatalog([]);
+    });
+    return () => controller.abort();
+  }, [book, chapters, normalizedCatalogQuery, route]);
+
+  const searchMatches = useMemo(() => {
+    if (!normalizedCatalogQuery || !Array.isArray(searchCatalog)) return null;
+    return searchCatalog.map(({ chapter, sectionsWithPoints }) => ({
+      chapter,
+      sections: sectionsWithPoints
+        .filter(({ section, points }) => (
+          searchableText(section.name).includes(normalizedCatalogQuery)
+          || points.some((point) => searchableText(point.name).includes(normalizedCatalogQuery))
+        ))
+        .map(({ section }) => section),
+    })).filter(({ chapter, sections }) => (
+      searchableText(chapter.name).includes(normalizedCatalogQuery) || sections.length > 0
+    ));
+  }, [normalizedCatalogQuery, searchCatalog]);
+
+  const filteredChapters = useMemo(() => {
+    if (!normalizedCatalogQuery) return chapters;
+    if (!searchMatches) return [];
+    return searchMatches.map(({ chapter }) => chapter);
+  }, [chapters, normalizedCatalogQuery, searchMatches]);
+  const filteredSections = useMemo(() => {
+    if (!normalizedCatalogQuery) return sections;
+    const match = searchMatches?.find(({ chapter }) => chapter.id === selectedChapter?.id);
+    return match?.sections || [];
+  }, [normalizedCatalogQuery, searchMatches, sections, selectedChapter?.id]);
+  useEffect(() => {
+    if (!normalizedCatalogQuery || !searchMatches?.length) return;
+    const matchingChapter = searchMatches.find(({ chapter }) => (
+      searchableText(chapter.name).includes(normalizedCatalogQuery)
+    ))?.chapter || searchMatches[0].chapter;
+    if (matchingChapter && matchingChapter.id !== selectedChapter?.id) {
+      setSelectedChapter(matchingChapter);
+      setSelectedSection(null);
+    }
+  }, [normalizedCatalogQuery, searchMatches, selectedChapter?.id]);
   const sectionVideo = exactVideos[0] || null;
   const recommendedVideo = recommendedVideos[0] || null;
   const activeTimestampVideo = videoHistory.at(-1)?.video || null;
@@ -328,6 +422,15 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             <span><Film aria-hidden="true" size={14} />章节视频与知识点片段</span>
           </div>
         </div>
+        <div className="textbook-chapter-learning__progress" aria-label="课程学习进度">
+          <div className="textbook-progress-ring"><strong>0%</strong><span>学习进度</span></div>
+          <button type="button" className="textbook-start-learning" onClick={() => {
+            const firstChapter = chapters[0];
+            if (firstChapter) setSelectedChapter(firstChapter);
+          }}>
+            <PlayCircle aria-hidden="true" size={18} />开始学习
+          </button>
+        </div>
       </header>
 
       {error && <div className="textbook-chapter-learning__error" role="alert">{error}</div>}
@@ -337,38 +440,59 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
         </div>
       ) : (
         <div className="textbook-chapter-learning__body">
+          <aside className="textbook-learning-nav" aria-label="课程导航">
+            <button type="button" className="is-active"><BookOpen aria-hidden="true" size={18} />课程内容</button>
+            <button type="button"><Layers3 aria-hidden="true" size={18} />作业与考试</button>
+            <button type="button"><Layers3 aria-hidden="true" size={18} />知识图谱</button>
+            <button type="button"><BookOpen aria-hidden="true" size={18} />学习笔记</button>
+          </aside>
+          <div className="textbook-learning-main">
+            <div className="textbook-learning-main__toolbar">
+              <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
+              <div className="textbook-learning-filters">
+                <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
+                <button type="button" className="is-active">全部</button><button type="button">未完成</button><button type="button">学习中</button><button type="button">已完成</button>
+              </div>
+            </div>
           {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
             <Directory
               title="章节"
               icon={BookOpen}
               className="textbook-directory--chapters"
-              items={chapters}
+              items={filteredChapters}
               selectedId={selectedChapter?.id}
               onSelect={(chapter) => {
+                if (!chapter) {
+                  setSelectedChapter(null);
+                  setSelectedSection(null);
+                  setDetail(null);
+                  setVideoHistory([]);
+                  return;
+                }
                 setSelectedChapter(chapter);
                 setSelectedSection(null);
                 setDetail(null);
                 setVideoHistory([]);
               }}
-              emptyText="该教材暂无章节数据。"
+              emptyText={normalizedCatalogQuery ? '没有找到匹配的章节或小节。' : '该教材暂无章节数据。'}
               unitLabel="个小节"
+              selectedExtra={selectedChapter ? (
+                <Directory
+                  title=""
+                  icon={Layers3}
+                  className="textbook-directory--sections"
+                  items={filteredSections}
+                  selectedId={selectedSection?.id}
+                  onSelect={(section) => {
+                    setSelectedSection(section);
+                    setDetail(null);
+                    setVideoHistory([]);
+                  }}
+                  emptyText={normalizedCatalogQuery ? '没有找到匹配的小节。' : '该章节暂无小节数据。'}
+                  unitLabel="个知识点"
+                />
+              ) : null}
             />
-            <div className="textbook-catalog-stage__section-reveal">
-              <Directory
-                title="小节"
-                icon={Layers3}
-                className="textbook-directory--sections"
-                items={sections}
-                selectedId={selectedSection?.id}
-                onSelect={(section) => {
-                  setSelectedSection(section);
-                  setDetail(null);
-                  setVideoHistory([]);
-                }}
-                emptyText="该章节暂无小节数据。"
-                unitLabel="个知识点"
-              />
-            </div>
           </div>}
 
           {selectedSection && (
@@ -450,6 +574,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             ) : <p className="textbook-section-content__empty">请先选择一个小节。</p>}
           </section>
           )}
+          </div>
         </div>
       )}
     </main>

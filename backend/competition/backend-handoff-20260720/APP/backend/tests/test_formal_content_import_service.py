@@ -102,6 +102,61 @@ class FormalContentImportServiceTests(unittest.TestCase):
         self.assertEqual([version.status for version in versions], ["superseded", "active"])
         self.assertEqual(versions[-1].question_type, "single_choice")
 
+    def test_difficulty_is_null_today_but_accepts_future_source_metadata(self):
+        with TemporaryDirectory() as tmp:
+            paths = self._write_source_files(
+                Path(tmp), bridges=[{"question_id": "Q_1", "kp_id": "KP_1"}]
+            )
+            import_formal_learning_content(
+                self.db,
+                knowledge_points_path=paths["knowledge_points"],
+                questions_path=paths["questions"],
+                question_kp_links_path=paths["bridges"],
+                data_version="without-difficulty",
+            )
+            self.db.commit()
+            self.assertIsNone(
+                self.db.query(database.QuestionBankItem)
+                .filter_by(question_id="Q_1")
+                .one()
+                .difficulty
+            )
+
+            questions = json.loads(paths["questions"].read_text(encoding="utf-8"))
+            questions[0]["difficulty"] = "D4"
+            paths["questions"].write_text(
+                json.dumps(questions, ensure_ascii=False), encoding="utf-8"
+            )
+            import_formal_learning_content(
+                self.db,
+                knowledge_points_path=paths["knowledge_points"],
+                questions_path=paths["questions"],
+                question_kp_links_path=paths["bridges"],
+                data_version="with-difficulty",
+            )
+            self.db.commit()
+
+        self.assertEqual(
+            self.db.query(database.QuestionBankItem)
+            .filter_by(question_id="Q_1")
+            .one()
+            .difficulty,
+            4,
+        )
+        self.assertTrue(
+            self.db.query(database.QuestionBankItem)
+            .filter_by(question_id="Q_1")
+            .one()
+            .difficulty_source.startswith("formal-content:")
+        )
+        self.assertEqual(
+            self.db.query(database.QuestionVersionRecord)
+            .filter_by(question_id="Q_1", status="active")
+            .one()
+            .standard_difficulty,
+            4,
+        )
+
     def test_new_snapshot_deactivates_formal_question_missing_from_the_source(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

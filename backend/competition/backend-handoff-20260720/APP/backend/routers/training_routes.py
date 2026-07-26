@@ -781,8 +781,6 @@ def grade_practice(
         ))
         rebuild_system_data(db, user_id=current_user.id)
         db.commit()
-    if controlled_submission is not None:
-        grading.pop("standard_answer", None)
     writeback = result.writeback
     response = {
         "grading": grading,

@@ -215,6 +215,20 @@ def test_reconcile_parent_status_marks_completed_only_when_all_items_report_comp
     assert stored.learning_task.status == "completed"
 
 
+def test_ensure_current_snapshot_redelivers_current_version_idempotently() -> None:
+    engine = build_engine()
+    repository = SqlLearningPlanRepository(engine)
+    learner_id = "LEARNER_REPAIR"
+    repository.save_current(learner_id, build_plan(learner_id))
+    runtime = FakeBackendHandoffRuntime()
+    runtime.failures = 0
+    coordinator = DailyTaskExecutionCoordinator(engine, repository, runtime)
+
+    assert coordinator.ensure_current_snapshot(learner_id) is True
+    assert runtime.calls[-1][1]["task_id"] == "TASK_1"
+    assert runtime.calls[-1][1]["version"] == 1
+
+
 def test_reconcile_parent_status_rejects_incomplete_item_evidence() -> None:
     engine = build_engine()
     repository = SqlLearningPlanRepository(engine)

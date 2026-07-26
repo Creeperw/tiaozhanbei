@@ -135,7 +135,17 @@ class LearningGovernanceServiceTests(unittest.TestCase):
             self.db,
             1,
             insights=insights,
-            plan_context={"learning_task": {"kp_ids": ["KP_FJ_001"], "estimated_minutes": 25}},
+            plan_context={
+                "learning_task": {
+                    "items": [
+                        {
+                            "item_type": "knowledge_practice",
+                            "kp_id": "KP_FJ_001",
+                        }
+                    ],
+                    "estimated_minutes": 25,
+                }
+            },
         )
 
         self.assertEqual(insights["mastery_heatmap"][0]["kp_name"], "四君子汤")

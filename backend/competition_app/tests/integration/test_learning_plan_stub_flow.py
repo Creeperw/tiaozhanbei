@@ -47,6 +47,16 @@ class CountingPlanModel(StubChatModel):
         return await super().complete_json(role, payload, on_delta)
 
 
+class CountingPlannerModel(StubChatModel):
+    def __init__(self) -> None:
+        self.planner_calls = 0
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if role == "planner_agent":
+            self.planner_calls += 1
+        return await super().complete_json(role, payload, on_delta)
+
+
 def plan_input(record) -> dict:
     return record.model_dump(mode="json")
 
@@ -461,6 +471,49 @@ async def test_long_plan_continues_after_user_supplies_exact_exam_goal(tmp_path)
         resumed.learning_plan.long_term_plan.planning_route.route_id
         == "tcm_physician_standard_degree"
     )
+
+
+@pytest.mark.asyncio
+async def test_generic_plan_scope_followup_resumes_without_repeating_question(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    planner_model = CountingPlannerModel()
+    container.review_card_use_case.orchestrator.agent_registry.get(
+        "planner_agent"
+    ).chat_model = planner_model
+    thread_id = "THREAD_GENERIC_PLAN_SCOPE_FOLLOWUP"
+    user_profile = {
+        "learning_goal": "中医执业医师资格考试",
+        "learning_background": "零基础",
+        "time_constraints": "每周学习4天，每天4小时",
+    }
+
+    interrupted = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            thread_id=thread_id,
+            learner_id="LEARNER_GENERIC_PLAN_SCOPE_FOLLOWUP",
+            user_request="请结合我的学习状态，为我制定一份学习计划。",
+            user_profile=user_profile,
+        )
+    )
+    resumed = await container.review_card_use_case.resume(
+        thread_id,
+        WorkflowResumeRequest(answer="长期规划"),
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["requested_scope"] == "unspecified"
+    assert resumed.status == "success"
+    assert resumed.learning_plan.generated_scope == "long_term"
+    assert resumed.learning_plan.long_term_plan is not None
+    assert resumed.learning_plan.short_term_plan is None
+    assert resumed.learning_plan.learning_task is None
+    assert planner_model.planner_calls == 2
 
 
 @pytest.mark.asyncio

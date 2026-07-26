@@ -17,7 +17,6 @@ import { API_BASE, MAIN_API_BASE, fetchJsonWithAuthFallback, fetchWithAuth } fro
 import { knowledgeQueryFromContext } from './exam-atlas/examAtlasPageContext';
 import { getKnowledgeScopeNotice, getSearchFeedback } from '../knowledgePageState';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
-import CompactAssistant from './CompactAssistant';
 import { isKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import KnowledgeWorkspaceNav from './knowledge-atlas/KnowledgeWorkspaceNav';
 import KnowledgeRecognitionReports from './knowledge-reports/KnowledgeRecognitionReports';
@@ -51,7 +50,7 @@ const scopeLabel = {
   public: '公共',
 };
 
-const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
+const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   const isAdmin = currentUser?.role === 'admin';
   const atlasEnabled = isKnowledgeAtlasEnabled();
   const [activeScope, setActiveScope] = useState('personal');
@@ -388,13 +387,6 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
             <KnowledgeAtlas initialContext={navigationContext} onDisabled={handleAtlasDisabled} workspaceNavigation={workspaceNavigation} />
           </React.Suspense>
         </KnowledgeAtlasErrorBoundary>
-        <CompactAssistant
-          className="knowledge-page__atlas-assistant"
-          currentUser={currentUser?.username || 'User'}
-          contextLabel={navigationContext.query || navigationContext.subject || '知识星球探索'}
-          initiallyCollapsed
-          onOpenFull={(sessionId) => onNavigate?.('assistant', sessionId)}
-        />
       </div>
     );
   }
@@ -672,15 +664,6 @@ const KnowledgePage = ({ currentUser, navigationContext = {}, onNavigate }) => {
           </div>
         </section>
       </main>
-      <CompactAssistant
-        className="knowledge-workbench__assistant"
-        currentUser={currentUser?.username || 'User'}
-        dailyGoal={contextBrief?.goal || ''}
-        contextLabel={searchQuery ? `资料检索 · ${searchQuery}` : `${scopeLabel[activeScope]}资料库`}
-        initiallyCollapsed
-        characterHint="点我询问相关内容"
-        onOpenFull={(sessionId) => onNavigate?.('assistant', sessionId)}
-      />
       </div>
     </section>
   );

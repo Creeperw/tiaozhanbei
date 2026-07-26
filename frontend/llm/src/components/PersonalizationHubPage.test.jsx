@@ -8,7 +8,7 @@ import PersonalizationHubPage from './PersonalizationHubPage';
 vi.mock('./PersonalizationPage', () => ({
   default: ({ view }) => <div data-testid="personalization-task">{view}</div>,
 }));
-vi.mock('./ReportsPage', () => ({ default: () => <div>reports-task</div> }));
+vi.mock('./LearningInsightsReportPage', () => ({ default: () => <div>reports-task</div> }));
 vi.mock('./ProfileConflictList', () => ({ default: () => <div>conflicts-task</div> }));
 vi.mock('./ReviewDashboardPanel', () => ({ default: () => <div>review-task</div> }));
 

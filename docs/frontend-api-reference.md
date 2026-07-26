@@ -62,7 +62,9 @@ export async function fetchWithAuth(url, options = {}) {
 
 Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `AUTH_COOKIE_SECURE=true`。
 
-公开路径只有首页静态资源、`/health`、`/openapi.json`、`/docs` 和 `/api/v1/auth/*`。其余接口默认需要登录。
+公开路径只有首页静态资源（包括兼容保留的 `/hero_word.txt`）、`/health`、`/openapi.json`、
+`/docs` 和 `/api/v1/auth/*`。其余接口默认需要登录。当前首页问候语由用户画像、当前学习阶段
+和资格目标组合生成，不依赖 `/hero_word.txt`；该静态文件仅供旧版前端兼容，缺失时不得影响业务数据加载。
 
 ### 2.2 内容类型
 
@@ -334,6 +336,28 @@ Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `
 
 前端不需要重复拼装用户画像、学习状态、已有计划和系统数据。登录态下服务端会读取可信数据。只有上传内容或用户刚刚明确确认、但尚未持久化的信息才需要随请求提交。
 
+规划生成后统一读取：
+
+`GET /api/v1/learning-plans/current`
+
+该接口同时返回 `long_term.content`、`short_term.content` 和各自的 `structured` 字段，不需要
+前端从对话正文再次解析。`long_term.stage_progress[].indicators` 是阶段门禁：
+`pass_rule=all_exit_evidence_verified`，只有全部指标为 `satisfied` 时 `can_advance=true`。
+把本人已完成的正式今日任务绑定到某项批准路线指标时调用：
+
+`POST /api/v1/learning-plans/current/stages/{stage}/evidence`
+
+```json
+{
+  "requirement": "完成中医基础概念图并独立释读一段基础医古文",
+  "task_id": "TASK_xxx"
+}
+```
+
+后端会重新核验登录用户、当前计划、阶段原始 `exit_evidence`、任务归属和任务完成状态；
+任意自定义指标、未完成任务或其他用户任务均返回 `422`。短期计划的
+`acceptance_gate` 会展示周期验收标准，但单个今日任务完成不会自动把整个短期计划判为通过。
+
 ### 4.2 SSE 帧
 
 响应头：
@@ -483,6 +507,16 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 | `GET` | `/api/v1/learning-activity/summary?days=30&recent_limit=20` | 当前用户行为指标、计数器和最近事件 |
 | `GET` | `/api/v1/learning-activity/trends?days=30` | 当前用户学习趋势 |
 
+平台首页采用同一组正式接口组合展示，不维护单独的本地模拟数据：
+
+- 首屏摘要、签到状态、今日任务、最近学习和复习队列读取 `/api/v1/dashboard/home`；
+- 首页学习动态读取同一响应的 `learning_activity.recent_activities`。该数组由当前用户近 30 天正式行为记录与训练工坊任务合并产生；训练任务项可额外包含 `title`、`task_type`，没有记录时返回空数组；
+- “学习路径规划”阶段卡读取 `/api/v1/learning-path`，点击阶段后使用同一树接口进入路线总览；
+- “了解详情”按需读取 `/api/v1/learning-context` 中的长期、短期规划正文；
+- 资格目标选择器读取 `/api/v1/qualification-targets`，变更后写入 `/api/personalization/learning-target`，页面不得自建与服务端五条资格路线不一致的列表；
+- 学习动态和复习动态只显示接口已经返回的正式记录；无数据时显示空状态，不生成占位任务；
+- 所有按钮通过前端白名单动作映射进入学习工坊、复习页或个性数据页，不直接执行服务端返回的任意 URL。
+
 长期规划的结构化阶段位于 `learning-context.long_term_plan.stages`，元素固定为 `{ "stage": 1, "book": ["《教材》"], "goal": "阶段目标" }`。长期规划更新时，正文、`stages`、`planning_route`、版本号及 `/api/v1/learning-path` 投影会作为同一次写入一起变化；前端不得从规划正文二次解析阶段。流式对话的长期规划完成消息会由系统附加同源的 `long_term_plan_stages` JSON 小块，供即时渲染，不是模型自由生成字段。
 
 注册调查不是只供前端展示的数据。`learning-context.user_profile` 会将已持久化的调查转换为
@@ -525,6 +559,17 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 
 学习工坊右栏使用 `GET /api/v1/dashboard/home` 的 `current_learning_task`，不要自行从任务正文解析章节或知识点。后端会以知识仓库为准把模型给出的可读知识点名称解析为正式 ID，并返回可执行知识卡动作：
 
+资源物化遵循“按需桥接”原则：后端以 `learning_chapter` 限定教材范围，将自然语言知识点映射到
+规范 `kp_id`，确认公共知识库中至少存在 3 道配套题后，才把该知识点和题目版本冻结到当前用户的
+每日任务执行库。视频同样只能引用知识库已发布的规范片段。前端不得为缺失资源自行拼接 ID、题目或
+视频地址；未映射成功的标签仍可出现在计划文字中，但不会出现在可执行资源数组中。
+任务落库时，`focus_knowledge_points`、`expected_output` 和 `completion_criteria` 会按最终冻结的
+视频/题目原子项重新校准；完成率及 `daily_task.acceptance_gate` 只使用这组服务端事实。
+
+历史任务只有文字或 `recall` 项时，`GET /api/v1/dashboard/home` 会幂等尝试修复；前端也可显式调用
+`POST /api/v1/learning-tasks/current/materialize-resources` 后重新读取首页。成功响应中的
+`learning_task.items` 只包含具备服务端完成证据的 `video_section` 与 `knowledge_practice`。
+
 ```json
 {
   "current_learning_task": {
@@ -539,6 +584,29 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
       "source": "knowledge_repository"
     },
     "focus_knowledge_points": ["四君子汤"],
+    "recommended_resources": {
+      "chapter_videos": [
+        {
+          "task_item_id": "DTI_VIDEO_xxx",
+          "title": "观看《方剂学》补益剂·补气章节视频",
+          "resource": {
+            "provider": "bilibili",
+            "bvid": "BV_xxx",
+            "page": 1,
+            "start_seconds": 0,
+            "end_seconds": 600
+          }
+        }
+      ],
+      "knowledge_practice": [
+        {
+          "task_item_id": "DTI_PRACTICE_xxx",
+          "kp_id": "KP_xxx",
+          "kp_name": "四君子汤",
+          "required_question_count": 3
+        }
+      ]
+    },
     "knowledge_cards": [
       {
         "kp_id": "KP_xxx",
@@ -832,6 +900,8 @@ Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍
 | `GET` | `/api/v1/workshop/favorites?folder_id={folder_id}` | 查询当前用户收藏，可按收藏簿筛选 |
 | `POST` | `/api/v1/workshop/favorites` | 保存收藏；相同用户、收藏簿、资源类型和资源 ID 幂等更新 |
 | `DELETE` | `/api/v1/workshop/favorites/{favorite_id}` | 取消收藏 |
+| `GET` | `/api/v1/workshop/note-folders` | 当前用户笔记本及每本笔记数量 |
+| `POST` | `/api/v1/workshop/note-folders` | 新建笔记本，正文 `{ "name": "经方笔记" }` |
 | `GET` | `/api/v1/workshop/notes?note_type={type}&query={text}` | 查询当前用户笔记，可按类型和文本筛选 |
 | `POST` | `/api/v1/workshop/notes` | 新建学习笔记 |
 | `PUT` | `/api/v1/workshop/notes/{note_id}` | 修改笔记标题、正文或类型 |
@@ -855,6 +925,27 @@ Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍
   }
 }
 ```
+
+笔记本列表响应示例：
+
+```json
+{
+  "items": [
+    {
+      "folder_id": "NOTEF_01J...",
+      "name": "经方笔记",
+      "note_count": 3,
+      "created_at": "2026-07-26T10:00:00+00:00",
+      "updated_at": "2026-07-26T10:30:00+00:00"
+    }
+  ],
+  "total": 1
+}
+```
+
+创建笔记时可在 `context.notebook` 写入笔记本名称。服务端会把笔记归入该用户的同名
+笔记本；同名笔记本不存在时自动创建。`folder_id` 仅用于笔记本列表的稳定渲染标识，
+当前笔记归属仍以 `context.notebook` 的名称表达；前端不得自行生成或跨用户复用标识。
 
 笔记请求示例：
 
@@ -909,8 +1000,8 @@ Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍
     ],
     "kp_ids": ["050122"],
     "kp_names": ["四君子汤的组成与配伍"],
-    "difficulty": 2,
-    "difficulty_source": "formal_question_bank",
+    "difficulty": null,
+    "difficulty_source": null,
     "request_id": "6f718df8-72cf-4af8-90ec-5739216c59dd",
     "source_scope": "formal_question_bank"
   }
@@ -962,7 +1053,7 @@ Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍
 
 受控练习的响应不会返回 `standard_answer`。`request_id` 有效期为 30 分钟且只能成功消费一次：未签发或不属于当前用户返回 `400`，重复提交返回 `409`，过期返回 `410`，答案为空返回 `422`。该提交不是可任意重放的幂等请求：前端提交期间应禁用按钮；若响应在网络中断时丢失，先刷新错题/学习行为确认是否已写入，再决定重新取题，不能生成新的 `request_id` 冒充原题。
 
-`kp_names` 是前端唯一可展示的知识点标签，`kp_ids` 仅用于接口联动，不得直接渲染。`difficulty` 使用 `D1—D5`；`difficulty_source=formal_question_bank|question_bank_snapshot` 表示题库标注或题目快照，`system_default` 表示源题缺少有效难度后明确回退到 `D2`。资源匹配报告中的 `1-|题目难度-目标难度|/4` 只计算难度匹配度，不生成题目难度。
+`kp_names` 是前端唯一可展示的知识点标签，`kp_ids` 仅用于接口联动，不得直接渲染。当前正式题库没有可信难度元数据，因此 `difficulty` 与 `difficulty_source` 均可为 `null`，前端不得显示默认 D2。后续题库补充明确的来源难度时，接口仍兼容 1—5 数值和对应来源；只有字段可用时才参与匹配评分，缺失时按其他可用分项重新归一化。
 
 提交答案后，后端优先使用题库已有解析；没有解析时由 Expert 题目讲解模型依据服务端题干、
 参考答案、评分要点和知识点生成 `question_explanation`，再由独立审核模型核验。解析生成过程
@@ -996,7 +1087,7 @@ Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍
       "attempt_item_id": "ITEM_xxx",
       "stem": "四君子汤的组成包括哪些药物？",
       "question_type": "multiple_choice",
-      "difficulty": 2,
+      "difficulty": null,
       "kp_ids": ["050122"],
       "error_type": "待结合作答情况分析",
       "summary": "错因暂不自动下结论。",
@@ -1194,7 +1285,7 @@ AI 病患模拟使用：
 
 题目类型：`single_choice`、`multiple_choice`、`fill_blank`、`short_answer`、`case_quiz`。答案提交后才形成学习行为，进而更新掌握度和复习队列。
 
-试卷读取响应顶层包含 `total_score`，各题包含 `max_score`、`kp_names`、`difficulty` 与 `difficulty_source`。未声明总分时保留新试卷明确给出的题目分值；对历史遗留的“每题错误写成 100 分”数据，读取时自动归一化为整卷 100 分。前端只能使用服务端的 `total_score`/`max_score`，不得用题数乘固定分值。
+试卷读取响应顶层包含 `total_score`，各题包含 `max_score`、`kp_names`，并可选返回 `difficulty` 与 `difficulty_source`。未声明总分时保留新试卷明确给出的题目分值；对历史遗留的“每题错误写成 100 分”数据，读取时自动归一化为整卷 100 分。前端只能使用服务端的 `total_score`/`max_score`，不得用题数乘固定分值；难度为空时不得自行补默认值。
 
 交卷响应的 `items[]` 固定包含 `is_correct`、`score`、`max_score`、`submitted_answer`、
 `standard_answer`、`explanation`、`grading_analysis`、`mistake_ids`。其中 `explanation`
@@ -1419,7 +1510,6 @@ AI 病患模拟使用：
   "query": "围绕四君子汤组卷",
   "inputs": {
     "topic": "四君子汤",
-    "difficulty": 1,
     "question_count": 25,
     "types": ["fill_blank"],
     "distribution": {"fill_blank": 25}

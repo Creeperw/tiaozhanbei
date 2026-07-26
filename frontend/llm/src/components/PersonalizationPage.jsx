@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Trash2, Save, Search, Edit2, X, RotateCcw, Database, Clock, Sparkles, ArrowUpCircle, ChevronDown, Lock, LockOpen } from 'lucide-react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Trash2, Save, Search, Edit2, X, RotateCcw, Database, Clock, Sparkles, ArrowUpCircle, ChevronDown, BookOpen, Flag, GraduationCap, Loader2, Lock, Pencil, PieChart, Target, UserRound } from 'lucide-react';
 import { API_BASE, MAIN_API_BASE, fetchWithAuth } from '../utils/api';
+import { useModalFocus } from './ui/useModalFocus';
 
 const emptyProfile = {
   display_name: '', constitution: '', health_goals: '', diet_restrictions: '',
@@ -22,19 +23,33 @@ const candidateStatusLabels = { pending: '待确认', promoted: '已晋升', ign
 
 const userProfileColumns = {
   background: [
-    { key: 'education_major', lockKey: 'education_major', label: '学历/专业', source: 'survey' },
-    { key: 'learning_background', lockKey: 'learning_background', label: '学习基础', source: 'context' },
-    { key: 'constitution', lockKey: 'learner_group', label: '用户群体', source: 'profile' },
-    { key: 'health_goals', lockKey: 'learning_goal', label: '学习目标', source: 'profile' },
-    { key: 'diet_restrictions', lockKey: 'time_constraints', label: '可投入时间', source: 'profile' },
+    { key: 'education_major', label: '专业背景', target: 'learner', icon: GraduationCap },
+    { key: 'learning_background', label: '当前基础', target: 'learner', icon: BookOpen },
+    { key: 'health_goals', label: '学习目标', icon: Flag },
+    { key: 'diet_restrictions', label: '可投入时间', icon: Clock },
   ],
   preferences: [
-    { key: 'exercise_preferences', lockKey: 'resource_preferences', label: '资源偏好' },
-    { key: 'medical_history', lockKey: 'current_difficulties', label: '当前困难/薄弱点' },
-    { key: 'custom_needs', lockKey: 'learning_needs', label: '个性化学习需求' },
-    { key: 'learning_habits', lockKey: 'learning_habits', label: '学习习惯', source: 'survey' },
+    { key: 'exercise_preferences', lockKey: 'resource_preferences', label: '资源偏好', icon: BookOpen },
+    { key: 'medical_history', lockKey: 'current_difficulties', label: '当前困难/薄弱点', icon: Target },
+    { key: 'custom_needs', lockKey: 'learning_needs', label: '个性化学习需求', icon: Sparkles },
+    { key: 'learning_habits', lockKey: 'learning_habits', label: '学习习惯', target: 'learner', icon: Clock },
   ],
 };
+
+const getProfileFieldValue = (field, profile, learnerProfile) => (
+  field.target === 'learner' ? learnerProfile?.[field.key] : profile?.[field.key]
+);
+
+const formatProfileValue = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean).join('、');
+  return String(value ?? '').trim();
+};
+
+const copyLearnerProfile = (value = {}) => ({
+  ...value,
+  locked_fields: [...(value.locked_fields || [])],
+  lock_reason: { ...(value.lock_reason || {}) },
+});
 
 const formatTime = (value) => {
   if (!value) return '无';
@@ -55,44 +70,6 @@ const softInputClass = "w-full rounded-2xl border border-emerald-100/80 bg-white
 const softTextareaClass = "w-full resize-none rounded-[22px] border border-emerald-100/80 bg-white/75 p-4 text-slate-700 shadow-inner shadow-emerald-50/80 outline-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-slate-300 focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100/80";
 const softCardClass = "rounded-[28px] border border-emerald-100/70 bg-white/82 shadow-sm shadow-emerald-100/50 backdrop-blur-sm";
 const softIconButtonClass = "rounded-xl p-2 text-slate-500 transition-[color,background-color,transform] duration-150 hover:-translate-y-0.5 hover:bg-emerald-50 hover:text-emerald-700 active:translate-y-px";
-
-function ProfileField({ field, value, isLocked, onToggle, onChange }) {
-  const actionLabel = `${isLocked ? '解锁' : '锁定'}${field.label}`;
-  return (
-    <label className="block min-w-0">
-      <span className="mb-1.5 block text-sm font-semibold text-slate-700">{field.label}</span>
-      <span className="relative block">
-        <input
-          type="text"
-          aria-label={field.label}
-          value={value || ''}
-          disabled={isLocked}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={`请填写${field.label}`}
-          className={`h-12 w-full rounded-xl border py-0 pl-3.5 pr-12 text-[0.95rem] outline-none transition-[border-color,background-color,box-shadow,color] duration-150 placeholder:text-slate-300 ${
-            isLocked
-              ? 'cursor-not-allowed border-slate-200 bg-slate-100/80 text-slate-500'
-              : 'border-slate-200 bg-white text-slate-800 hover:border-emerald-200 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100/70'
-          }`}
-        />
-        <button
-          type="button"
-          aria-label={actionLabel}
-          aria-pressed={isLocked}
-          title={isLocked ? `点击解锁并编辑${field.label}` : `点击锁定${field.label}`}
-          onClick={onToggle}
-          className={`absolute right-1.5 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg transition-[color,background-color,transform] duration-150 active:scale-95 ${
-            isLocked
-              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-              : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-700'
-          }`}
-        >
-          {isLocked ? <Lock size={17} aria-hidden="true" /> : <LockOpen size={17} aria-hidden="true" />}
-        </button>
-      </span>
-    </label>
-  );
-}
 
 const toOptions = (entries) => entries.map(([value, label]) => ({ value, label }));
 const categoryOptions = toOptions(Object.entries(categoryLabels));
@@ -177,6 +154,130 @@ function MemoryForm({ value, onChange, onSubmit, submitText, onCancel }) {
   );
 }
 
+function LearningProfileEditor({ profile, learnerProfile, saving, onClose, onSave }) {
+  const dialogRef = useModalFocus(true);
+  const titleId = useId();
+  const [draftProfile, setDraftProfile] = useState(() => ({ ...emptyProfile, ...profile }));
+  const [draftLearnerProfile, setDraftLearnerProfile] = useState(
+    () => copyLearnerProfile(learnerProfile),
+  );
+
+  useEffect(() => {
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape' && !saving) onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [onClose, saving]);
+
+  const updateValue = (field, value) => {
+    if (field.target === 'learner') {
+      setDraftLearnerProfile((current) => ({ ...current, [field.key]: value }));
+      return;
+    }
+    setDraftProfile((current) => ({ ...current, [field.key]: value }));
+  };
+
+  const toggleLock = (field) => {
+    setDraftLearnerProfile((current) => {
+      const locked = current.locked_fields || [];
+      const isLocked = locked.includes(field.lockKey);
+      const lockReason = { ...(current.lock_reason || {}) };
+      if (isLocked) delete lockReason[field.lockKey];
+      else lockReason[field.lockKey] = '用户在学习画像中锁定';
+      return {
+        ...current,
+        locked_fields: isLocked
+          ? locked.filter((item) => item !== field.lockKey)
+          : [...locked, field.lockKey],
+        lock_reason: lockReason,
+      };
+    });
+  };
+
+  const renderField = (field) => {
+    const value = getProfileFieldValue(field, draftProfile, draftLearnerProfile);
+    const isPreference = Boolean(field.lockKey);
+    const isLocked = isPreference && (draftLearnerProfile.locked_fields || []).includes(field.lockKey);
+    const Icon = field.icon;
+    return (
+      <div key={field.key} className="rounded-2xl border border-emerald-100/90 bg-white p-4 shadow-sm shadow-emerald-100/45">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <label htmlFor={`learning-profile-editor-${field.key}`} className="flex items-center gap-2 text-base font-semibold text-slate-800">
+            {Icon && <Icon aria-hidden="true" size={18} className="text-emerald-600" />}
+            {field.label}
+          </label>
+          {isPreference && (
+            <button
+              type="button"
+              aria-pressed={isLocked}
+              aria-label={`${isLocked ? '解除锁定' : '锁定'}${field.label}`}
+              onClick={() => toggleLock(field)}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition-colors ${isLocked ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50'}`}
+            >
+              <Lock aria-hidden="true" size={15} />{isLocked ? '已锁定' : '锁定'}
+            </button>
+          )}
+        </div>
+        <textarea
+          id={`learning-profile-editor-${field.key}`}
+          aria-label={field.label}
+          rows={2}
+          value={value || ''}
+          onChange={(event) => updateValue(field, event.target.value)}
+          placeholder={`请填写${field.label}`}
+          className={`${softTextareaClass} min-h-[88px] text-base leading-6`}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-sm" onMouseDown={() => !saving && onClose()}>
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="flex max-h-[min(92dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-[30px] border border-white/85 bg-[#f8fbf9] shadow-2xl shadow-slate-950/20"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-emerald-100 bg-white px-5 py-5 sm:px-7">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800"><Pencil aria-hidden="true" size={16} />学习画像</div>
+            <h2 id={titleId} className="mt-2 text-2xl font-bold tracking-tight text-slate-950">编辑画像</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">修改基础信息与学习偏好；锁定的偏好不会被智能分析自动覆盖。</p>
+          </div>
+          <button type="button" data-autofocus aria-label="关闭编辑画像" disabled={saving} onClick={onClose} className="icon-button"><X aria-hidden="true" size={20} /></button>
+        </header>
+        <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+          <div className="grid gap-5 lg:grid-cols-2">
+            <section aria-label="编辑基础信息">
+              <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900"><UserRound aria-hidden="true" size={19} className="text-emerald-600" />基础信息</h3>
+              <div className="space-y-3">{userProfileColumns.background.map(renderField)}</div>
+            </section>
+            <section aria-label="编辑学习偏好">
+              <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900"><Sparkles aria-hidden="true" size={19} className="text-emerald-600" />学习偏好</h3>
+              <div className="space-y-3">{userProfileColumns.preferences.map(renderField)}</div>
+            </section>
+          </div>
+        </div>
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-emerald-100 bg-white px-5 py-4 sm:px-7">
+          <p className="text-sm text-slate-600">已锁定 {draftLearnerProfile.locked_fields?.length || 0} 项学习偏好</p>
+          <div className="flex gap-3">
+            <button type="button" disabled={saving} onClick={onClose} className="button button--secondary">取消</button>
+            <button type="button" disabled={saving} onClick={() => onSave(draftProfile, draftLearnerProfile)} className="button button--primary">
+              {saving ? <Loader2 aria-hidden="true" size={17} className="animate-spin" /> : <Save aria-hidden="true" size={17} />}
+              {saving ? '正在保存' : '保存画像'}
+            </button>
+          </div>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 export default function PersonalizationPage({ onBackHome, onBack, embedded = false, view = 'profile' }) {
   const [profile, setProfile] = useState(emptyProfile);
   const [learnerProfile, setLearnerProfile] = useState({ locked_fields: [], survey: {}, lock_reason: {} });
@@ -194,6 +295,8 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   const [savedAnalysisFrequency, setSavedAnalysisFrequency] = useState('daily');
   const [isSavingAnalysisFrequency, setIsSavingAnalysisFrequency] = useState(false);
   const analysisFrequencySaveRef = useRef(0);
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [message, setMessage] = useState('');
   const isUnifiedView = view === 'unified';
   const isUserProfileView = view === 'user-profile';
@@ -252,26 +355,6 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
     } finally {
       setIsSavingAnalysisFrequency(false);
     }
-  };
-
-  const toggleLockedField = (field) => {
-    setLearnerProfile((current) => {
-      const locked = current.locked_fields || [];
-      const isLocked = locked.includes(field);
-      const lockReason = { ...(current.lock_reason || {}) };
-      if (isLocked) {
-        delete lockReason[field];
-      } else if (!lockReason[field]) {
-        lockReason[field] = '用户在用户画像页锁定';
-      }
-      return {
-        ...current,
-        locked_fields: isLocked
-          ? locked.filter((item) => item !== field)
-          : [...locked, field],
-        lock_reason: lockReason,
-      };
-    });
   };
 
   const load = async () => {
@@ -335,27 +418,43 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
     }
   };
 
+  // `load` intentionally follows the current filter and candidate status.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [queryString, candidateStatus]);
-  const saveProfile = async () => {
-    await fetchWithAuth(`${API_BASE}/personalization/profile`, { method: 'PUT', body: JSON.stringify(profile) });
-    await fetchWithAuth(`${API_BASE}/personalization/learner-profile`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        learner_group: profile.constitution,
-        learning_goal: profile.health_goals,
-        education_major: learnerProfile.education_major,
-        learning_background: learnerProfile.learning_background,
-        time_constraints: profile.diet_restrictions,
-        resource_preferences: profile.exercise_preferences,
-        current_difficulties: profile.medical_history,
-        learning_needs: profile.custom_needs,
-        learning_habits: learnerProfile.learning_habits,
-        locked_fields: learnerProfile.locked_fields || [],
-        lock_reason: learnerProfile.lock_reason || {},
-      }),
-    });
-    notify('画像与设置已保存');
-    await load();
+  const saveProfile = async (nextProfile = profile, nextLearnerProfile = learnerProfile) => {
+    setIsSavingProfile(true);
+    try {
+      const [profileResponse, learnerResponse] = await Promise.all([
+        fetchWithAuth(`${API_BASE}/personalization/profile`, { method: 'PUT', body: JSON.stringify(nextProfile) }),
+        fetchWithAuth(`${API_BASE}/personalization/learner-profile`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            learner_group: nextProfile.constitution,
+            learning_goal: nextProfile.health_goals,
+            education_major: nextLearnerProfile.education_major,
+            learning_background: nextLearnerProfile.learning_background,
+            time_constraints: nextProfile.diet_restrictions,
+            resource_preferences: nextProfile.exercise_preferences,
+            current_difficulties: nextProfile.medical_history,
+            learning_needs: nextProfile.custom_needs,
+            learning_habits: nextLearnerProfile.learning_habits,
+            locked_fields: nextLearnerProfile.locked_fields || [],
+            lock_reason: nextLearnerProfile.lock_reason || {},
+          }),
+        }),
+      ]);
+      if (!profileResponse.ok || !learnerResponse.ok) throw new Error('画像保存失败');
+      setProfile(nextProfile);
+      setLearnerProfile(nextLearnerProfile);
+      setProfileEditorOpen(false);
+      notify('学习画像已保存');
+      await load();
+    } catch (error) {
+      console.error(error);
+      notify(error.message || '画像保存失败');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const addMemory = async () => {
@@ -443,12 +542,12 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
   };
 
   const rootClassName = embedded
-    ? 'text-gray-800'
+    ? `text-gray-800${isUserProfileView ? ' user-profile-page' : ''}`
     : 'min-h-screen bg-[radial-gradient(circle_at_top_left,#dcfce7,transparent_34%),radial-gradient(circle_at_top_right,#ccfbf1,transparent_30%),linear-gradient(135deg,#f8fafc_0%,#f0fdfa_46%,#ecfdf5_100%)] p-6 text-gray-800';
 
   return (
     <div className={rootClassName}>
-      <div className="max-w-7xl mx-auto">
+      <div className={isUserProfileView ? 'user-profile-page__content mx-auto max-w-7xl' : 'mx-auto max-w-7xl'}>
         {!(embedded && isUserProfileView) && <div className={embedded ? 'mb-6 overflow-hidden rounded-[30px] border border-emerald-100/80 bg-gradient-to-br from-white via-emerald-50/70 to-teal-50/60 p-4 shadow-sm shadow-emerald-100/45 sm:p-5' : 'relative mb-6 overflow-hidden rounded-[36px] border border-white/80 bg-white/72 p-6 shadow-xl shadow-emerald-100/50 backdrop-blur-xl'}>
           {!embedded && <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-emerald-200/40 blur-3xl" />}
           {!embedded && <div className="absolute right-24 bottom-0 w-40 h-40 rounded-full bg-teal-200/35 blur-3xl" />}
@@ -537,70 +636,70 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
         </div>}
 
         <div className={isProfileView ? 'mx-auto max-w-7xl' : ''}>
-          {isUserProfileView && <section className="user-profile-panel bg-white/86 rounded-[32px] border border-white/80 shadow-lg shadow-emerald-100/45 p-5 backdrop-blur-sm sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-emerald-100 pb-5">
-              <div className="flex items-center gap-2 text-slate-900">
-                <Database size={22} className="text-emerald-700" />
-                <h2 className="text-2xl font-bold tracking-tight">用户画像</h2>
-              </div>
-              {message && <span role="status" className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2.5 text-base text-emerald-700">{message}</span>}
-            </div>
-
-            <div className="mt-6 grid items-start gap-8 lg:grid-cols-2">
-              <section aria-label="学习基础画像" className="min-w-0">
-                <div className="mb-5 min-h-[62px]">
-                  <h3 className="text-lg font-semibold leading-7 text-emerald-950">学习基础与目标</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">确认学习起点、目标和稳定可投入的时间。</p>
+          {isUserProfileView && (() => {
+            const profileFields = [...userProfileColumns.background, ...userProfileColumns.preferences];
+            const completedFields = profileFields.filter((field) => formatProfileValue(getProfileFieldValue(field, profile, learnerProfile))).length;
+            const completion = Math.round((completedFields / profileFields.length) * 100);
+            const renderReadOnlyField = (field) => {
+              const Icon = field.icon;
+              const value = formatProfileValue(getProfileFieldValue(field, profile, learnerProfile));
+              const isLocked = field.lockKey && (learnerProfile.locked_fields || []).includes(field.lockKey);
+              return (
+                <div key={field.key} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 border-b border-emerald-100/85 py-4 last:border-b-0 xl:grid-cols-[auto_minmax(7.5rem,11.5rem)_minmax(0,1fr)]">
+                  <Icon aria-hidden="true" size={21} className="mt-0.5 text-emerald-600" />
+                  <div className="min-w-0 space-y-1 xl:contents">
+                    <dt className="text-base font-semibold text-slate-700 sm:text-lg lg:text-[1.2rem] xl:col-start-2">{field.label}</dt>
+                    <dd className="flex min-w-0 items-start justify-between gap-2 text-base text-slate-900 sm:text-lg lg:text-[1.2rem] xl:col-start-3">
+                      <span className={value ? 'min-w-0 break-words font-medium leading-7' : 'min-w-0 font-normal leading-7 text-slate-400'}>{value || '暂未填写'}</span>
+                      {isLocked && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1.5 text-sm font-semibold text-emerald-700"><Lock aria-hidden="true" size={14} />已锁定</span>}
+                    </dd>
+                  </div>
                 </div>
-                <div className="grid gap-4">
-                  {userProfileColumns.background.map((field) => {
-                    const value = field.source === 'survey'
-                      ? learnerProfile.education_major
-                      : field.source === 'context'
-                        ? learnerProfile.learning_background
-                        : profile[field.key];
-                    const isLocked = (learnerProfile.locked_fields || []).includes(field.lockKey);
-                    const updateValue = (nextValue) => {
-                      if (field.source === 'survey') {
-                        setLearnerProfile((current) => ({ ...current, education_major: nextValue }));
-                      } else if (field.source === 'context') {
-                        setLearnerProfile((current) => ({ ...current, learning_background: nextValue }));
-                      } else {
-                        setProfile((current) => ({ ...current, [field.key]: nextValue }));
-                      }
-                    };
-                    return <ProfileField key={field.key} field={field} value={value} isLocked={isLocked} onToggle={() => toggleLockedField(field.lockKey)} onChange={updateValue} />;
-                  })}
+              );
+            };
+            return <>
+              <section className="user-profile-panel flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/86 p-5 shadow-lg shadow-emerald-100/45 backdrop-blur-sm sm:p-6 lg:min-h-0 lg:flex-1 lg:p-7 xl:p-8">
+                <header className="flex flex-wrap items-center justify-between gap-5 border-b border-emerald-100 pb-5 lg:pb-6">
+                  <div className="flex items-center gap-4 text-slate-900">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 lg:h-16 lg:w-16"><Database aria-hidden="true" size={29} /></div>
+                    <div>
+                      <h2 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl lg:text-[2.35rem]">我的学习画像</h2>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    <div aria-label={`画像完整度 ${completion}%`} className="flex min-h-15 items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/75 px-4 py-2.5 shadow-sm shadow-emerald-100/50 lg:px-5 lg:py-3">
+                      <div className="relative grid h-10 w-10 place-items-center rounded-full" style={{ background: `conic-gradient(#10b981 ${completion}%, #d1fae5 0)` }}>
+                        <span className="grid h-7 w-7 place-items-center rounded-full bg-white"><PieChart aria-hidden="true" size={15} className="text-emerald-700" /></span>
+                      </div>
+                      <div><p className="text-sm font-semibold text-slate-700 lg:text-base">画像完整度</p><p className="text-xl font-black tabular-nums text-emerald-600 lg:text-2xl">{completion}%</p></div>
+                    </div>
+                    <button type="button" onClick={() => setProfileEditorOpen(true)} className="inline-flex min-h-15 items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-base font-bold text-white shadow-lg shadow-emerald-200 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-emerald-300 active:translate-y-px lg:px-6 lg:text-lg"><Pencil aria-hidden="true" size={20} />编辑画像</button>
+                  </div>
+                </header>
+                {message && <p role="status" className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-base text-emerald-700">{message}</p>}
+
+                <div className="mt-5 grid flex-1 gap-5 lg:mt-6 lg:min-h-0 lg:grid-cols-2 lg:gap-6">
+                  <section aria-label="基础信息" className="flex min-h-0 flex-col rounded-[26px] border border-emerald-100 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/35 p-5 sm:p-6 lg:p-7">
+                    <h3 className="mb-4 flex items-center gap-2.5 text-2xl font-bold text-emerald-950 lg:text-[1.7rem]"><UserRound aria-hidden="true" size={28} className="text-emerald-600" />基础信息</h3>
+                    <dl className="flex flex-1 flex-col justify-between">{userProfileColumns.background.map(renderReadOnlyField)}</dl>
+                  </section>
+                  <section aria-label="学习偏好" className="flex min-h-0 flex-col rounded-[26px] border border-teal-100 bg-gradient-to-br from-teal-50/65 via-white to-emerald-50/40 p-5 sm:p-6 lg:p-7">
+                    <div className="mb-4">
+                      <h3 className="flex items-center gap-2.5 text-2xl font-bold text-emerald-950 lg:text-[1.7rem]"><Sparkles aria-hidden="true" size={28} className="text-emerald-600" />学习偏好</h3>
+                    </div>
+                    <dl className="flex flex-1 flex-col justify-between">{userProfileColumns.preferences.map(renderReadOnlyField)}</dl>
+                  </section>
                 </div>
               </section>
-
-              <section aria-label="学习偏好画像" className="min-w-0 lg:border-l lg:border-slate-100 lg:pl-8">
-                <div className="mb-5 min-h-[62px]">
-                  <h3 className="text-lg font-semibold leading-7 text-emerald-950">学习偏好与需求</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">锁定后，智能分析只给出建议，不会自动覆盖内容。</p>
-                </div>
-                <div className="grid gap-4">
-                  {userProfileColumns.preferences.map((field) => {
-                    const value = field.source === 'survey' ? learnerProfile.learning_habits : profile[field.key];
-                    const isLocked = (learnerProfile.locked_fields || []).includes(field.lockKey);
-                    const updateValue = (nextValue) => {
-                      if (field.source === 'survey') {
-                        setLearnerProfile((current) => ({ ...current, learning_habits: nextValue }));
-                      } else {
-                        setProfile((current) => ({ ...current, [field.key]: nextValue }));
-                      }
-                    };
-                    return <ProfileField key={field.key} field={field} value={value} isLocked={isLocked} onToggle={() => toggleLockedField(field.lockKey)} onChange={updateValue} />;
-                  })}
-                </div>
-              </section>
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
-              <p className="text-sm leading-6 text-slate-500">已锁定 {learnerProfile.locked_fields?.length || 0} 项；保存后同步到学习计划与推荐流程。</p>
-              <button type="button" onClick={saveProfile} className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 py-3 text-base font-medium text-white shadow-lg shadow-emerald-100 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-emerald-200 active:translate-y-px"><Save size={18}/>保存用户画像</button>
-            </div>
-          </section>}
+              {profileEditorOpen && <LearningProfileEditor
+                profile={profile}
+                learnerProfile={learnerProfile}
+                saving={isSavingProfile}
+                onClose={() => setProfileEditorOpen(false)}
+                onSave={saveProfile}
+              />}
+            </>;
+          })()}
 
           {isMemoryView && <section className="bg-white/86 rounded-[32px] border border-white/80 shadow-lg shadow-emerald-100/45 p-5 backdrop-blur-sm sm:p-6">
             <div className="mb-5 flex flex-wrap items-start justify-between gap-3">

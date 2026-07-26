@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
-  ArrowUpRight,
+  ArrowRight,
   BookMarked,
+  CalendarDays,
+  ChevronRight,
+  CirclePlay,
   ClipboardCheck,
+  Clock3,
   FileText,
   Files,
   FolderHeart,
   HeartPulse,
-  Lightbulb,
   NotebookPen,
-  Sparkles,
+  Stethoscope,
   Target,
+  TrendingUp,
   UploadCloud,
 } from 'lucide-react';
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
@@ -180,14 +184,6 @@ function ArtifactResult({ taskResult }) {
 
 const trainingCards = [
   {
-    key: 'question_training',
-    initialMode: 'objective',
-    title: '综合套题',
-    description: '覆盖核心知识点，系统巩固基础能力。',
-    icon: ClipboardCheck,
-    tone: 'emerald',
-  },
-  {
     key: 'paper_workspace',
     title: '智能组卷',
     description: '按学习目标组卷，灵活安排练习节奏。',
@@ -195,36 +191,46 @@ const trainingCards = [
     tone: 'green',
   },
   {
-    key: 'special_training',
-    initialMode: 'case_training',
-    title: '专项训练',
-    description: '聚焦案例简答，针对题型强化训练。',
-    icon: Target,
-    tone: 'teal',
-  },
-  {
     key: 'topic_training',
     initialMode: 'objective',
     title: '专题训练',
-    description: '按知识点训练，承接每日任务并覆盖全部教材。',
-    icon: Lightbulb,
-    tone: 'cyan',
+    description: '真实病例场景训练，提升临床思维。',
+    icon: Stethoscope,
+    tone: 'teal',
+  },
+  {
+    key: 'question_training',
+    initialMode: 'objective',
+    title: '综合套题',
+    description: '按知识点分类训练，逐个击破薄弱点。',
+    icon: ClipboardCheck,
+    tone: 'emerald',
   },
   {
     key: 'ai_patient_simulation',
     title: '模拟病患',
-    description: '置身临床情境，训练辨证与问诊思路。',
+    description: '模拟问诊与辨证，训练临床沟通与思路。',
     icon: HeartPulse,
     tone: 'rose',
   },
-  {
-    key: 'question_workspace',
-    title: '上传题库',
-    description: '上传学习资料，沉淀个人专属题库。',
-    icon: UploadCloud,
-    tone: 'amber',
-  },
 ];
+
+const featuredTrainingCard = {
+  key: 'special_training',
+  initialMode: 'case_training',
+  title: '专项训练',
+  description: '覆盖核心知识点，系统巩固基础能力。',
+  icon: Target,
+  tone: 'cyan',
+};
+
+const uploadQuestionBankCard = {
+  key: 'question_workspace',
+  title: '上传题库',
+  description: '上传学习资料，沉淀个人专属题库。',
+  icon: UploadCloud,
+  tone: 'amber',
+};
 
 const utilityCards = [
   {
@@ -237,18 +243,128 @@ const utilityCards = [
   {
     key: 'question_favorites',
     title: '知识收藏',
-    description: '汇总重点内容，随时回顾复习。',
+    description: '重点内容，随时回顾。',
     icon: BookMarked,
     available: true,
   },
   {
     key: 'study_notes',
     title: '学习笔记',
-    description: '沉淀学习心得，形成个人知识脉络。',
+    description: '记录心得，沉淀思考。',
     icon: NotebookPen,
     available: true,
   },
 ];
+
+const DEFAULT_TRAINING_OVERVIEW_STATS = Object.freeze({
+  streakDays: null,
+  lastAccuracy: null,
+  windowPracticeCount: null,
+  todayGoal: 20,
+  averageAccuracy: null,
+  totalHours: null,
+  totalQuestions: null,
+  recentTaskKey: 'question_training',
+});
+
+const finiteNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const nonNegativeNumberOrNull = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  return parsed === null ? null : Math.max(0, parsed);
+};
+
+const percentageOrNull = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  return parsed === null ? null : Math.min(100, Math.max(0, parsed));
+};
+
+const resumableTrainingCards = [
+  featuredTrainingCard,
+  ...trainingCards,
+  ...utilityCards,
+  uploadQuestionBankCard,
+  {
+    key: 'knowledge_cards',
+    title: '知识卡片',
+    initialMode: 'knowledge_cards',
+  },
+];
+
+function normalizeTrainingOverviewStats(stats = {}) {
+  const safeStats = stats && typeof stats === 'object' && !Array.isArray(stats) ? stats : {};
+  const recentTaskKey = resumableTrainingCards.some((card) => card.key === safeStats.recentTaskKey)
+    ? safeStats.recentTaskKey
+    : DEFAULT_TRAINING_OVERVIEW_STATS.recentTaskKey;
+
+  return {
+    streakDays: nonNegativeNumberOrNull(safeStats.streakDays),
+    lastAccuracy: percentageOrNull(safeStats.lastAccuracy),
+    windowPracticeCount: nonNegativeNumberOrNull(safeStats.windowPracticeCount),
+    todayGoal: nonNegativeNumberOrNull(safeStats.todayGoal) ?? DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
+    averageAccuracy: percentageOrNull(safeStats.averageAccuracy),
+    totalHours: nonNegativeNumberOrNull(safeStats.totalHours),
+    totalQuestions: nonNegativeNumberOrNull(safeStats.totalQuestions),
+    recentTaskKey,
+  };
+}
+
+const scoreAsPercentage = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  if (parsed === null) return null;
+  return Math.round((parsed <= 1 ? parsed * 100 : parsed) * 10) / 10;
+};
+
+const recentTaskKeyFromActivity = (activity = {}) => {
+  const source = `${activity.resource_type || ''} ${activity.activity_type || ''}`.toLowerCase();
+  if (source.includes('favorite')) return 'question_favorites';
+  if (source.includes('note')) return 'study_notes';
+  if (source.includes('mistake')) return 'mistake_variation';
+  if (source.includes('paper')) return 'paper_workspace';
+  if (source.includes('patient') || source.includes('case')) return 'ai_patient_simulation';
+  if (source.includes('topic')) return 'topic_training';
+  if (source.includes('special') || source.includes('knowledge_point')) return 'special_training';
+  return source.includes('question') || source.includes('practice') ? 'question_training' : null;
+};
+
+const isScoredTrainingActivity = (activity = {}) => {
+  const activityType = String(activity.activity_type || '').toLowerCase();
+  return ['question', 'practice', 'paper', 'case', 'grading', 'exam']
+    .some((type) => activityType.includes(type));
+};
+
+const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, checkin = {}) => {
+  const lifetime = statistics?.lifetime || {};
+  const currentWindow = statistics?.current_window || {};
+  const recentActivities = Array.isArray(activitySummary?.recent_activities)
+    ? activitySummary.recent_activities
+    : [];
+  const latestScoredActivity = recentActivities.find(
+    (activity) => (
+      isScoredTrainingActivity(activity)
+      && finiteNumberOrNull(activity?.score) !== null
+    ),
+  );
+  const latestResumableActivity = recentActivities.find(recentTaskKeyFromActivity);
+  const focusMinutes = nonNegativeNumberOrNull(lifetime.focus_minutes);
+
+  return {
+    streakDays: nonNegativeNumberOrNull(checkin?.streak),
+    lastAccuracy: scoreAsPercentage(latestScoredActivity?.score)
+      ?? scoreAsPercentage(currentWindow.score_rate),
+    windowPracticeCount: nonNegativeNumberOrNull(currentWindow.questions_completed),
+    todayGoal: DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
+    averageAccuracy: scoreAsPercentage(currentWindow.score_rate),
+    totalHours: focusMinutes === null ? null : Math.round((focusMinutes / 60) * 10) / 10,
+    totalQuestions: nonNegativeNumberOrNull(lifetime.questions_completed),
+    recentTaskKey: recentTaskKeyFromActivity(latestResumableActivity)
+      || DEFAULT_TRAINING_OVERVIEW_STATS.recentTaskKey,
+  };
+};
 
 const workspaceTitles = {
   question_training: '综合套题',
@@ -276,44 +392,132 @@ const normalizeTaskIntent = (taskType = '') => legacyTaskTypes[taskType] || {
 };
 
 function TrainingBannerIllustration() {
+  const [hint, setHint] = useState('快来跟我一起练习吧');
+  const phrases = ['快来跟我一起练习吧', '今天也要加油哦', '温故而知新', '学而时习之', '坚持就是胜利'];
   return (
-    <div className="practice-overview__illustration" aria-hidden="true">
-      <div className="practice-overview__speech-bubble">快来跟我一起练习吧</div>
-      <img
-        className="practice-overview__character"
-        src="/assistant-character/lizhizhen-center-cutout.png"
-        alt=""
-      />
+    <div className="practice-overview__illustration">
+      <span className="practice-overview__character-note" aria-live="polite">{hint}</span>
+      <button
+        type="button"
+        className="practice-overview__character-button"
+        onClick={() => {
+          const next = phrases.filter((phrase) => phrase !== hint);
+          setHint(next[Math.floor(Math.random() * next.length)]);
+        }}
+        aria-label="和李时珍互动"
+      >
+        <img
+          className="practice-overview__character"
+          src="/assistant-character/lizhizhen-center-cutout.png"
+          alt=""
+        />
+      </button>
     </div>
   );
 }
 
-function TrainingOverview({ onOpenModule }) {
+function OverviewMetricCard({ icon: Icon, label, value, hint, tone = 'green' }) {
+  return (
+    <div className={`practice-overview__hero-metric practice-overview__hero-metric--${tone}`}>
+      <span className="practice-overview__metric-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 21 })}</span>
+      <span className="practice-overview__metric-copy">
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <em>{hint}</em>
+      </span>
+    </div>
+  );
+}
+
+function OverviewSummaryMetric({ icon: Icon, label, value, hint, tone = 'green', progress }) {
+  return (
+    <div className={`practice-overview__summary-metric practice-overview__summary-metric--${tone}`}>
+      <span className="practice-overview__summary-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 22 })}</span>
+      <span className="practice-overview__summary-copy">
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <em>{hint}</em>
+        {progress !== undefined && (
+          <span
+            className="practice-overview__progress"
+            role="progressbar"
+            aria-label="今日目标完成度"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress}
+          >
+            <span style={{ width: `${progress}%` }} />
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function TrainingOverview({ onOpenModule, overviewStats }) {
+  const stats = normalizeTrainingOverviewStats(overviewStats);
+  const recentCard = resumableTrainingCards
+    .find((card) => card.key === stats.recentTaskKey) || trainingCards[2];
+  const formatPercent = (value) => value === null ? '--' : `${value}%`;
+  const formatHours = (value) => value === null ? '--' : `${value} 小时`;
+  const formatDays = (value) => value === null ? '--' : `${value} 天`;
+  const formatQuestions = (value) => value === null ? '累计练习待接入' : `累计练习 ${value} 题`;
+
   return (
     <section className="practice-overview" aria-labelledby="practice-overview-title">
       <header className="practice-overview__banner">
-        <div>
-          <span className="practice-overview__eyebrow"><Sparkles size={16} aria-hidden="true" />训练中心</span>
-          <h1 id="practice-overview-title">训练工坊，实战精进</h1>
-          <p>聚焦实战训练，强化能力，在每一次复盘中稳步精进。</p>
+        <div className="practice-overview__hero-copy">
+          <span className="practice-overview__greeting"><span>准备开始今天的训练</span> <span aria-hidden="true">🌿</span></span>
+          <h1 id="practice-overview-title">训练工坊</h1>
+          <p>今日建议完成 <strong>{stats.todayGoal}</strong> 道综合题，预计 <strong>15</strong> 分钟</p>
+          <div className="practice-overview__hero-actions">
+            <button type="button" className="practice-overview__primary-action" onClick={() => onOpenModule(featuredTrainingCard)}>
+              <CirclePlay aria-hidden="true" size={18} />开始今日训练
+            </button>
+            <button type="button" className="practice-overview__secondary-action" onClick={() => onOpenModule(recentCard)}>
+              <Clock3 aria-hidden="true" size={17} />继续上次练习
+            </button>
+          </div>
+        </div>
+        <div className="practice-overview__hero-metrics">
+          <OverviewMetricCard
+            icon={CalendarDays}
+            label="连续学习"
+            value={formatDays(stats.streakDays)}
+            hint="再接再厉，保持节奏"
+          />
+          <OverviewMetricCard
+            icon={TrendingUp}
+            label="上次正确率"
+            value={formatPercent(stats.lastAccuracy)}
+            hint="稳保持，稳步提升"
+            tone="mint"
+          />
         </div>
         <TrainingBannerIllustration />
       </header>
 
       <div className="practice-overview__layout">
-        <section className="practice-overview__main" aria-label="训练路径">
-          <div className="practice-overview__section-heading">
-            <div>
-              <span>训练路径</span>
-              <h2>选择今天的练习方式</h2>
-            </div>
-          </div>
+        <section className="practice-overview__main" aria-label="训练模块">
+          <button type="button" className="practice-overview__featured-card" onClick={() => onOpenModule(featuredTrainingCard)}>
+            <span className="practice-overview__featured-icon"><Target aria-hidden="true" size={30} /></span>
+            <span className="practice-overview__featured-copy">
+              <span className="practice-overview__featured-title"><strong>{featuredTrainingCard.title}</strong><em>推荐</em></span>
+              <small>覆盖核心知识点，系统巩固基础能力。</small>
+              <span>20 题 <i /> 15 分钟 <i /> 覆盖核心知识点</span>
+            </span>
+            <span className="practice-overview__featured-action">
+              <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
+              <small>上次练习：待接入</small>
+              <small>正确率：{formatPercent(stats.lastAccuracy)}</small>
+            </span>
+          </button>
           <div className="practice-overview__training-grid">
             {trainingCards.map((card) => {
               const Icon = card.icon;
               return (
                 <button
-                  key={`${card.title}-${card.key}`}
+                  key={card.key}
                   type="button"
                   className={`practice-overview__training-card practice-overview__training-card--${card.tone}`}
                   onClick={() => onOpenModule(card)}
@@ -323,57 +527,69 @@ function TrainingOverview({ onOpenModule }) {
                     <strong>{card.title}</strong>
                     <small>{card.description}</small>
                   </span>
-                  <ArrowUpRight className="practice-overview__card-arrow" aria-hidden="true" size={20} />
+                  <ChevronRight className="practice-overview__card-arrow" aria-hidden="true" size={19} />
                 </button>
               );
             })}
           </div>
+
+          <section className="practice-overview__summary" role="region" aria-label="学习概览">
+            <OverviewSummaryMetric
+              icon={CalendarDays}
+              label="近 30 天练习"
+              value={stats.windowPracticeCount === null ? '--' : `${stats.windowPracticeCount} 题`}
+              hint="正式审核完成题目"
+            />
+            <OverviewSummaryMetric
+              icon={Target}
+              label="平均正确率"
+              value={formatPercent(stats.averageAccuracy)}
+              hint={stats.averageAccuracy === null ? '暂无数据' : '继续保持'}
+            />
+            <OverviewSummaryMetric
+              icon={Clock3}
+              label="累计学习"
+              value={formatHours(stats.totalHours)}
+              hint={formatQuestions(stats.totalQuestions)}
+              tone="purple"
+            />
+          </section>
         </section>
 
-        <aside className="practice-overview__utilities" aria-label="常用学习工具">
-          <div className="practice-overview__section-heading">
-            <div>
-              <span>常用工具</span>
-              <h2>复盘与沉淀</h2>
-            </div>
-          </div>
+        <aside className="practice-overview__utilities" aria-label="学习工具">
           <div className="practice-overview__utility-list">
-            {utilityCards.map((card) => {
+            {utilityCards.filter((card) => card.available).map((card) => {
               const Icon = card.icon;
-              const content = <>
-                <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
-                <span><strong>{card.title}</strong><small>{card.description}</small></span>
-              </>;
-              return card.available ? (
+              return (
                 <button
                   key={card.title}
                   type="button"
                   className="practice-overview__utility-card"
                   onClick={() => onOpenModule(card)}
                 >
-                  {content}
+                  <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
+                  <span><strong>{card.title}</strong><small>{card.description}</small></span>
+                  <ChevronRight aria-hidden="true" size={18} />
                 </button>
-              ) : (
-                <div key={card.title} className="practice-overview__utility-card" aria-disabled="true">
-                  {content}
-                </div>
               );
             })}
+            <button
+              type="button"
+              className="practice-overview__utility-card practice-overview__utility-card--upload"
+              onClick={() => onOpenModule(uploadQuestionBankCard)}
+            >
+              <span className="practice-overview__utility-icon"><UploadCloud aria-hidden="true" size={22} /></span>
+              <span><strong>上传题库</strong><small>上传学习资料，沉淀个人专属题库。</small><em>支持 Word / Excel / TXT · 智能解析</em></span>
+              <ChevronRight aria-hidden="true" size={18} />
+            </button>
           </div>
         </aside>
       </div>
-
-      <footer className="practice-overview__summary" aria-label="学习摘要">
-        <span><ClipboardCheck aria-hidden="true" size={18} /><b>今日练习</b><em>暂无记录</em></span>
-        <span><Target aria-hidden="true" size={18} /><b>正确率</b><em>暂无记录</em></span>
-        <span><BookMarked aria-hidden="true" size={18} /><b>累计学习</b><em>暂无记录</em></span>
-        <p>保持练习，积累每一次进步。</p>
-      </footer>
     </section>
   );
 }
 
-export default function PracticePage({ navigationContext = {} }) {
+export default function PracticePage({ navigationContext = {}, overviewStats }) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
   const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
   const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
@@ -381,7 +597,32 @@ export default function PracticePage({ navigationContext = {} }) {
   const [taskResult, setTaskResult] = useState(null);
   const [mobilePage, setMobilePage] = useState('task');
   const [view, setView] = useState(() => (navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'));
+  const [loadedOverviewStats, setLoadedOverviewStats] = useState(DEFAULT_TRAINING_OVERVIEW_STATS);
   const taskItemId = navigationContext.taskItemId || navigationContext.task_item_id || '';
+
+  useEffect(() => {
+    if (overviewStats !== undefined) return undefined;
+
+    let active = true;
+    const requestOverview = (path) => fetchJsonWithAuthFallback({
+      paths: [path],
+      fallback: {},
+    }).then((result) => result.data).catch(() => ({}));
+
+    Promise.all([
+      requestOverview('/v1/learning-statistics/overview?days=30'),
+      requestOverview('/v1/learning-activity/summary?days=7&recent_limit=100'),
+      requestOverview('/v1/checkin'),
+    ]).then(([statistics, activitySummary, checkin]) => {
+      if (active) {
+        setLoadedOverviewStats(buildTrainingOverviewStats(statistics, activitySummary, checkin));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [overviewStats]);
 
   useEffect(() => {
     const request = async (path, body) => {
@@ -439,7 +680,12 @@ export default function PracticePage({ navigationContext = {} }) {
   const taskResultApproved = isTrainingTaskResultApproved(taskResult);
 
   if (view === 'overview') {
-    return <TrainingOverview onOpenModule={openWorkshopModule} />;
+    return (
+      <TrainingOverview
+        onOpenModule={openWorkshopModule}
+        overviewStats={overviewStats ?? loadedOverviewStats}
+      />
+    );
   }
 
   if (activeTaskType === 'question_workspace') {

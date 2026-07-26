@@ -1010,6 +1010,41 @@ class LangGraphOrchestrator(Orchestrator):
                     if str(key).strip() and item not in (None, "")
                 }
             )
+        selected_scope = value.get("plan_scope")
+        is_scope_clarification_answer = (
+            value.get("clarification_kind") == "plan_scope"
+            or selected_scope in {
+                "long_term",
+                "short_term",
+                "daily_task",
+            }
+        ) and (
+            requested_scope == "unspecified"
+            or root_context.get("plan_scope") == "unspecified"
+        )
+        is_scope_selection = selected_scope in {
+            "long_term",
+            "short_term",
+            "daily_task",
+        } and is_scope_clarification_answer
+        if is_scope_clarification_answer:
+            answer = str(value.get("answer") or "").strip()
+            if is_scope_selection:
+                root_context["plan_scope"] = selected_scope
+                root_context["plan_scope_hint"] = selected_scope
+                root_context["continued_plan_scope"] = selected_scope
+                root_context["explicit_long_term_change"] = selected_scope == "long_term"
+                root_context["explicit_short_term_change"] = selected_scope == "short_term"
+            if answer:
+                root_context["latest_resume_answer"] = answer
+                messages = root_context.setdefault("messages", [])
+                if not any(
+                    item.get("role") == "user" and item.get("content") == answer
+                    for item in messages
+                    if isinstance(item, dict)
+                ):
+                    messages.append({"role": "user", "content": answer})
+            return
         change = value.get("plan_change_context")
         if not isinstance(change, dict):
             answer = str(value.get("answer") or "").strip()

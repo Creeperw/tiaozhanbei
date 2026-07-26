@@ -31,6 +31,11 @@ export const deleteFavorite = (favoriteId) => request(
   { method: 'DELETE' },
 );
 
+export const loadNoteFolders = () => request('/workshop/note-folders');
+export const createNoteFolder = (name) => request(
+  '/workshop/note-folders',
+  jsonOptions('POST', { name }),
+);
 export const loadNotes = ({ source = '', noteType = '', query = '' } = {}) => {
   const params = new URLSearchParams();
   if (source) params.set('source', source);

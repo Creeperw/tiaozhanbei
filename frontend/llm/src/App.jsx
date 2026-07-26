@@ -12,6 +12,7 @@ import LearningStageLanding from './components/learning-stage/LearningStageLandi
 import TextbookChapterLearning from './components/workshop-textbook/TextbookChapterLearning';
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
+import CompactAssistant from './components/CompactAssistant';
 import RegistrationJourney from './components/RegistrationJourney';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
@@ -49,6 +50,7 @@ export default function App() {
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const [stageTransition, setStageTransition] = useState(null);
+  const [floatingAssistantSessionId, setFloatingAssistantSessionId] = useState(null);
   const currentPage = getIntentPage(pageIntent);
   const shellPage = currentPage === 'practice' && pageIntent.params.view === 'workspace'
     ? 'training-workshop'
@@ -132,6 +134,9 @@ export default function App() {
         return;
       }
       if (destination.page === 'training-workshop') setNavigationRevision((value) => value + 1);
+      if (destination.page === 'assistant' && params.newConversation) {
+        setNavigationRevision((value) => value + 1);
+      }
       setPageIntent(createPageIntent(destination));
       return;
     }
@@ -206,6 +211,7 @@ export default function App() {
       case 'assistant':
         return (
           <ChatInterface
+            key={`assistant-${navigationRevision}`}
             embedded
             currentUser={currentUser?.username || 'User'}
             currentUserRole={currentUser?.role || 'user'}
@@ -217,6 +223,7 @@ export default function App() {
             onNavigate={navigateToPage}
             preferredSessionId={selectedSessionId}
             initialContext={pageIntent.params.context || ''}
+            forceNewConversation={Boolean(pageIntent.params.newConversation)}
           />
         );
       case 'practice':
@@ -256,7 +263,6 @@ export default function App() {
         return (
           <KnowledgePage
             onBackHome={() => navigateToPage('dashboard')}
-            onNavigate={navigateToPage}
             currentUser={currentUser}
             navigationContext={{
               ...pageIntent.params,
@@ -289,6 +295,23 @@ export default function App() {
         onMidpoint={openStagePathAtMidpoint}
         onComplete={finishStageTransition}
       />
+      {shellConfig.currentPage !== 'assistant' && (
+        <CompactAssistant
+          className="global-assistant-dock"
+          currentUser={currentUser?.display_name || currentUser?.username || '同学'}
+          preferredSessionId={floatingAssistantSessionId}
+          contextLabel={shellConfig.pageTitle}
+          initiallyCollapsed
+          characterHint="六智能体助教"
+          onOpenFull={(sessionId) => {
+            if (sessionId) setFloatingAssistantSessionId(sessionId);
+            navigateToPage({
+              page: 'assistant',
+              params: sessionId ? { sessionId } : {},
+            });
+          }}
+        />
+      )}
     </AppShell>
   );
 }

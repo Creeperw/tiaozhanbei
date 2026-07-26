@@ -79,6 +79,14 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
         encoding="utf-8",
     )
     (frontend_root / "favicon.ico").write_bytes(b"icon")
+    (frontend_root / "favicon.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"/>',
+        encoding="utf-8",
+    )
+    (frontend_root / "hero_word.txt").write_text(
+        "今天，从这里开始\n循序渐进",
+        encoding="utf-8",
+    )
     (assets_root / "app.js").write_text("window.loaded = true", encoding="utf-8")
     (assets_root / "app.css").write_text("body { color: green; }", encoding="utf-8")
     (covers_root / "方剂学.jpg").write_bytes(b"textbook-cover")
@@ -95,6 +103,13 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
         assert cover.status_code == 200
         assert cover.content == b"textbook-cover"
         assert client.get("/favicon.ico").status_code == 200
+        assert client.get("/favicon.svg").status_code == 200
+        assert client.get("/favicon.svg").headers["content-type"].startswith(
+            "image/svg+xml"
+        )
+        hero_word = client.get("/hero_word.txt")
+        assert hero_word.status_code == 200
+        assert hero_word.text.splitlines() == ["今天，从这里开始", "循序渐进"]
         protected = client.post(
             "/api/v1/review-cards",
             json={"learner_id": "anonymous", "user_request": "生成复习卡"},
@@ -230,6 +245,10 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     )
     assert folder.status_code == 201
     folder_id = folder.json()["folder"]["folder_id"]
+    notebook = alice_client.post(
+        "/api/v1/workshop/note-folders", json={"name": "经方笔记"}
+    )
+    assert notebook.status_code == 201
 
     favorite = alice_client.post(
         "/api/v1/workshop/favorites",
@@ -255,7 +274,10 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
             "source": "智能组卷",
             "resource_type": "question",
             "resource_id": "Q_SIJUNZI",
-            "context": {"question_content": "四君子汤的君药是？"},
+            "context": {
+                "notebook": "经方笔记",
+                "question_content": "四君子汤的君药是？",
+            },
         },
     )
     assert favorite.status_code == 201
@@ -264,6 +286,7 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     note_id = note.json()["note"]["note_id"]
 
     assert bob_client.get("/api/v1/workshop/favorite-folders").json()["items"] == []
+    assert bob_client.get("/api/v1/workshop/note-folders").json()["items"] == []
     assert bob_client.get("/api/v1/workshop/favorites").json()["items"] == []
     assert bob_client.get("/api/v1/workshop/notes").json()["items"] == []
     assert bob_client.delete(f"/api/v1/workshop/favorites/{favorite_id}").status_code == 404
@@ -285,8 +308,12 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     restarted.cookies.set(SESSION_COOKIE, alice_client.cookies.get(SESSION_COOKIE))
     persisted_favorites = restarted.get("/api/v1/workshop/favorites").json()["items"]
     persisted_notes = restarted.get("/api/v1/workshop/notes").json()["items"]
+    persisted_notebooks = restarted.get("/api/v1/workshop/note-folders").json()["items"]
     assert persisted_favorites[0]["content"]["standard_answer"] == ["A"]
     assert persisted_notes[0]["content"] == "人参、白术、茯苓、炙甘草。"
+    assert len(persisted_notebooks) == 1
+    assert persisted_notebooks[0]["name"] == "经方笔记"
+    assert persisted_notebooks[0]["note_count"] == 1
 
     assert restarted.delete(f"/api/v1/workshop/favorites/{favorite_id}").status_code == 204
     assert restarted.delete(f"/api/v1/workshop/notes/{note_id}").status_code == 204

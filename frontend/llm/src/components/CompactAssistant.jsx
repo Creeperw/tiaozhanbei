@@ -209,6 +209,29 @@ export default function CompactAssistant({
     };
   }, [collapsed, dragging, onFloatingDockChange]);
 
+  useEffect(() => {
+    if (!floating) return undefined;
+    const keepAssistantInViewport = () => {
+      setFloatingPosition((current) => {
+        if (!current) return current;
+        const width = collapsed ? 104 : Math.min(320, Math.max(0, window.innerWidth - 16));
+        const height = collapsed ? 132 : Math.min(560, Math.max(0, window.innerHeight - 16));
+        return {
+          left: Math.min(
+            Math.max(8, window.innerWidth - width - 8),
+            Math.max(8, current.left),
+          ),
+          top: Math.min(
+            Math.max(8, window.innerHeight - height - 8),
+            Math.max(8, current.top),
+          ),
+        };
+      });
+    };
+    window.addEventListener('resize', keepAssistantInViewport);
+    return () => window.removeEventListener('resize', keepAssistantInViewport);
+  }, [collapsed, floating]);
+
   const startFloatingDrag = (event, allowInteractiveTarget = false) => {
     if (!allowInteractiveTarget && event.target.closest('button, a, input, textarea, select')) return;
     const rect = floatingRef.current?.getBoundingClientRect();
@@ -416,7 +439,7 @@ export default function CompactAssistant({
               />
             )}
           </span>
-          <div><strong>智能助教</strong><small>李时珍 · 中医药专项助手</small></div>
+          <div><strong>智能助教</strong><small>六智能体按需协作</small></div>
         </div>
         <div className="compact-assistant__controls">
           <button
@@ -447,6 +470,10 @@ export default function CompactAssistant({
       <div className="compact-assistant__context" aria-label="助教当前上下文">
         <span>当前上下文</span>
         <strong>{contextLabel}</strong>
+      </div>
+      <div className="compact-assistant__orchestration" aria-label="多智能体协作能力">
+        <span><i aria-hidden="true" />按任务自动组队</span>
+        <span><i aria-hidden="true" />需要时检索与审核</span>
       </div>
 
       {visibleExecutionEvents.length > 0 && (

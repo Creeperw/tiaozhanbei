@@ -398,7 +398,11 @@ def _assembly_context() -> dict:
 
 @pytest.mark.asyncio
 async def test_paper_assembly_generates_only_the_hard_question_gap() -> None:
-    result = await PaperAssemblyAgent(AssemblyModel()).run(_assembly_context())
+    context = _assembly_context()
+    context["dependency_outputs"]["question_pool"].payload.units[
+        0
+    ].resolved_kp_ids = ["KP_1"]
+    result = await PaperAssemblyAgent(AssemblyModel()).run(context)
 
     assert len(result.payload.items) == 2
     generated = result.payload.items[1].question
@@ -407,6 +411,7 @@ async def test_paper_assembly_generates_only_the_hard_question_gap() -> None:
     assert generated.options == ["A. 甲", "B. 乙"]
     assert generated.reference_answer == "A"
     assert generated.analysis == "甲为正确答案。"
+    assert [bridge.kp_id for bridge in generated.bridges] == ["KP_1"]
     assert result.payload.learner_questions()[1].options == ["A. 甲", "B. 乙"]
 
 

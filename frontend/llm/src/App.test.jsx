@@ -44,6 +44,13 @@ vi.mock('./components/learning-stage/StagePageTransition', () => ({
   ) : null,
 }));
 vi.mock('./components/ChatInterface', () => ({ default: ({ embedded }) => <div>Assistant page {String(embedded)}</div> }));
+vi.mock('./components/CompactAssistant', () => ({
+  default: ({ onOpenFull }) => (
+    <button type="button" aria-label="全局悬浮智能助教" onClick={() => onOpenFull('session-floating')}>
+      Floating assistant
+    </button>
+  ),
+}));
 vi.mock('./components/KnowledgePage', () => ({
   default: ({ navigationContext = {} }) => (
     <div
@@ -148,6 +155,17 @@ describe('authenticated application shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Go admin' }));
     expect(screen.getByText('Admin page')).toBeInTheDocument();
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'admin-feedback');
+  });
+
+  it('opens the full assistant from the global floating assistant and hides the duplicate dock there', async () => {
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: '全局悬浮智能助教' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '全局悬浮智能助教' }));
+
+    expect(screen.getByText('Assistant page true')).toBeInTheDocument();
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'assistant');
+    expect(screen.queryByRole('button', { name: '全局悬浮智能助教' })).not.toBeInTheDocument();
   });
 
   it('resets the training workshop when its primary navigation entry is selected again', async () => {

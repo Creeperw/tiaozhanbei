@@ -192,6 +192,8 @@ def test_practice_next_uses_complete_formal_bank_without_exposing_answer(tmp_pat
     assert "difficulty" not in body["question"]
     assert "answer" not in body["question"]
     assert runtime.issued[0][1]["standard_answer"] == "A"
+    assert runtime.issued[0][1]["difficulty"] is None
+    assert runtime.issued[0][1]["difficulty_source"] is None
 
 
 def test_practice_next_does_not_fall_back_to_another_kp_for_explicit_target(tmp_path: Path) -> None:
