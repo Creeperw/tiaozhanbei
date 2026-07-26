@@ -22,7 +22,7 @@ const routePayload = {
   }],
 };
 
-function installLearningPathFetch(dashboardPayload = {}) {
+function installLearningPathFetch(dashboardPayload = {}, options = {}) {
   const fetchMock = vi.fn((url) => {
     const path = String(url);
     if (path.includes('/qualification-targets')) {
@@ -37,6 +37,9 @@ function installLearningPathFetch(dashboardPayload = {}) {
     }
     if (path.endsWith('/personalization/learning-target')) {
       return Promise.resolve(response({ target: { exam_track_id: 'track-tcm' } }));
+    }
+    if (path.includes('/learning-path?parent_id=') && options.stagePayload) {
+      return Promise.resolve(response(options.stagePayload));
     }
     if (path.includes('/learning-path')) return Promise.resolve(response(routePayload));
     if (path.includes('/learning-context')) {
@@ -165,5 +168,47 @@ describe('LearningPathPage', () => {
     fireEvent.click(await screen.findByRole('tab', { name: '学习任务' }));
 
     expect(screen.getByRole('button', { name: /完成今日章节学习/ })).toBeInTheDocument();
+  });
+
+  it('drills from a stage into its textbook and opens the textbook chapters', async () => {
+    const onNavigate = vi.fn();
+    const fetchMock = installLearningPathFetch({}, {
+      stagePayload: {
+        schema_version: '1.0',
+        nodes: [{
+          node_id: 'book-1',
+          parent_id: 'stage-1',
+          membership_id: 'book-1',
+          node_type: 'book',
+          title: '《中医基础理论》',
+          description: '中医基础理论教材',
+          order: 1,
+          status: 'in_progress',
+          child_count: 12,
+          navigation: {
+            route_id: 'textbook_tcm_foundation',
+            book: '中医基础理论',
+          },
+        }],
+      },
+    });
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /进入中医基础与文化语言/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /进入《中医基础理论》/ }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/learning-path?parent_id=stage-1'),
+      expect.any(Object),
+    );
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: {
+        view: 'textbook-chapters',
+        route: 'textbook_tcm_foundation',
+        lv1: '中医基础理论',
+        source: 'learning-plan',
+      },
+    });
   });
 });

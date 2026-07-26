@@ -1,12 +1,11 @@
 const PRIMARY_NAV = [
   { key: 'dashboard', label: '平台首页' },
   { key: 'learning-path', label: '学习路径' },
-  { key: 'assistant', label: '智能助教' },
   { key: 'practice', label: '学习工坊' },
   { key: 'training-workshop', label: '训练工坊' },
   { key: 'personalization', label: '个性数据' },
-  { key: 'settings', label: '用户设置' },
 ];
+const INTERNAL_ALLOWED_PAGES = ['assistant', 'knowledge', 'settings'];
 const SUPPORT_NAV = [
   { key: 'admin-feedback', label: '管理入口', roles: ['admin'] },
 ];
@@ -38,7 +37,11 @@ export function getAppShellConfig({ currentUser, currentPage, selectedSessionId 
       : null;
   const requestedPage = knowledgeView ? 'knowledge' : currentPage;
   const visibleSupportNav = SUPPORT_NAV.filter((item) => !item.roles || item.roles.includes(role));
-  const allowedPages = new Set([...PRIMARY_NAV.map((item) => item.key), 'knowledge', ...visibleSupportNav.map((item) => item.key)]);
+  const allowedPages = new Set([
+    ...PRIMARY_NAV.map((item) => item.key),
+    ...INTERNAL_ALLOWED_PAGES,
+    ...visibleSupportNav.map((item) => item.key),
+  ]);
   const normalizedPage = allowedPages.has(requestedPage) ? requestedPage : 'dashboard';
   const homeAction = normalizedPage === 'dashboard' ? null : { key: 'dashboard', label: '返回主页' };
   const shellMode = ['assistant', 'practice', 'training-workshop', 'knowledge'].includes(normalizedPage) ? 'workspace' : 'standard';
