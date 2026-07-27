@@ -14,7 +14,6 @@ import TextbookChapterLearning from './components/workshop-textbook/TextbookChap
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
 import CompactAssistant from './components/CompactAssistant';
-import RegistrationJourney from './components/RegistrationJourney';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -84,15 +83,8 @@ export default function App() {
   }, []);
 
   const handleLogin = (user) => {
+    // 注册/登录完成后直接进入系统，不再强制走注册调查流程。
     setCurrentUser(user);
-    if (!user?.onboarding_required) navigateToPage('dashboard');
-  };
-
-  const handleOnboardingSaved = (payload) => {
-    setCurrentUser(payload?.user || {
-      ...currentUser,
-      onboarding_required: false,
-    });
     navigateToPage('dashboard');
   };
 
@@ -171,16 +163,6 @@ export default function App() {
 
   if (!currentUser) {
     return <AuthPage onLogin={handleLogin} />;
-  }
-
-  if (currentUser.onboarding_required) {
-    return (
-      <RegistrationJourney
-        existingUser={currentUser}
-        onComplete={(user) => handleOnboardingSaved({ user })}
-        onExit={handleLogout}
-      />
-    );
   }
 
   const renderAuthenticatedPage = () => {

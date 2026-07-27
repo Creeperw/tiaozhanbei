@@ -15,7 +15,11 @@ import {
   Undo2,
 } from 'lucide-react';
 import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
-import { loadSectionLearningDetail } from './textbookChapterApi';
+import {
+  completeTextbookSection,
+  loadSectionLearningDetail,
+  loadTextbookProgress,
+} from './textbookChapterApi';
 import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
 import './textbookChapterLearning.css';
 
@@ -150,28 +154,25 @@ function VideoCard({ video, mode = 'section', displayTitle = '' }) {
   );
 }
 
-function Directory({ title, icon, items, selectedId, onSelect, emptyText, unitLabel, className = '', selectedExtra = null }) {
+function Directory({ title, icon, items, selectedId, onSelect, emptyText, unitLabel, className = '', selectedExtra = null, showCompletion = false, getItemStatus = () => 'pending' }) {
   return (
     <section className={`textbook-directory ${className}`.trim()}>
       <header>{React.createElement(icon, { 'aria-hidden': 'true', size: 17 })}<h2>{title}</h2><span>{items.length}</span></header>
       <div className="textbook-directory__items">
-        {items.length ? items.map((item, index) => (
-          <React.Fragment key={item.id}>
-            <button
-              type="button"
-              className={selectedId === item.id ? 'is-active' : ''}
-              onClick={() => onSelect(selectedId === item.id ? null : item)}
-            >
-              <small>{String(index + 1).padStart(2, '0')}</small>
-              <span>
-                <strong>{item.name}</strong>
-                <em>{item.alias || `${item.children_count || item.count || 0} ${unitLabel}`}</em>
-              </span>
-              <ChevronRight aria-hidden="true" size={15} />
-            </button>
-            {selectedId === item.id && selectedExtra}
-          </React.Fragment>
-        )) : <p className="textbook-directory__empty">{emptyText}</p>}
+        {items.length ? items.map((item, index) => {
+          const completionStatus = showCompletion ? getItemStatus(item) : 'pending';
+          return (
+            <React.Fragment key={item.id}>
+              <button type="button" className={selectedId === item.id ? 'is-active' : ''} onClick={() => onSelect(selectedId === item.id ? null : item)}>
+                <small>{String(index + 1).padStart(2, '0')}</small>
+                <span><strong>{item.name}</strong><em>{item.alias || `${item.children_count || item.count || 0} ${unitLabel}`}</em></span>
+                {showCompletion && <span className={`textbook-completion-dot ${completionStatus === 'completed' ? 'is-completed' : ''} ${completionStatus === 'partial' ? 'is-partial' : ''}`} aria-label={completionStatus === 'completed' ? '已完成' : completionStatus === 'partial' ? '部分完成' : '未完成'} />}
+                <ChevronRight aria-hidden="true" size={15} />
+              </button>
+              {selectedId === item.id && selectedExtra}
+            </React.Fragment>
+          );
+        }) : <p className="textbook-directory__empty">{emptyText}</p>}
       </div>
     </section>
   );
@@ -182,6 +183,10 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const book = navigationContext.lv1 || navigationContext.book || '';
   const [chapters, setChapters] = useState([]);
   const [sections, setSections] = useState([]);
+  const [sectionsByChapter, setSectionsByChapter] = useState({});
+  const [completedSectionIds, setCompletedSectionIds] = useState(() => new Set());
+  const [lastSectionId, setLastSectionId] = useState('');
+  const [progressLoading, setProgressLoading] = useState(true);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [selectedSection, setSelectedSection] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -198,55 +203,36 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   useEffect(() => {
     if (!book) {
       setLoading(false);
+      setProgressLoading(false);
       setError('缺少教材信息，无法加载章节目录。');
       return undefined;
     }
     const controller = new AbortController();
-    setLoading(true);
-    setError('');
-    loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal })
-      .then((payload) => {
-        const next = sortByHeadingNumber(
-          Array.isArray(payload.nodes) ? payload.nodes : [],
-          '章',
-        );
-        setChapters(next);
-        setSelectedChapter((current) => next.find((item) => item.id === current?.id) || next[0] || null);
-      })
-      .catch((loadError) => {
-        if (loadError.name !== 'AbortError') setError(loadError.message || '章节目录加载失败。');
-      })
-      .finally(() => setLoading(false));
+    setLoading(true); setProgressLoading(true); setError('');
+    setChapters([]); setSections([]); setSectionsByChapter({}); setSelectedChapter(null); setSelectedSection(null);
+    setCompletedSectionIds(new Set()); setLastSectionId('');
+    const chapterPromise = loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal }).then(async (payload) => {
+      const next = sortByHeadingNumber(Array.isArray(payload.nodes) ? payload.nodes : [], '章');
+      setChapters(next); setSelectedChapter((current) => next.find((item) => item.id === current?.id) || next[0] || null);
+      const results = await Promise.all(next.map(async (chapter) => {
+        const sectionPayload = await loadAtlasNodes({ level: 3, route, lv1: book, chapter: chapter.name, chapterId: chapter.id, signal: controller.signal });
+        return [chapter.id, sortByHeadingNumber(Array.isArray(sectionPayload.nodes) ? sectionPayload.nodes : [], '节')];
+      }));
+      setSectionsByChapter(Object.fromEntries(results));
+    }).catch((loadError) => { if (loadError.name !== 'AbortError') setError(loadError.message || '章节目录加载失败。'); });
+    const progressPromise = loadTextbookProgress(book, { signal: controller.signal }).then((payload) => {
+      setCompletedSectionIds(new Set(Array.isArray(payload.completed_section_ids) ? payload.completed_section_ids : []));
+      setLastSectionId(payload.last_section_id || '');
+    }).catch((loadError) => { if (loadError.name !== 'AbortError') setError((current) => current || loadError.message || '教材学习进度加载失败。'); });
+    Promise.allSettled([chapterPromise, progressPromise]).then(() => { if (!controller.signal.aborted) { setLoading(false); setProgressLoading(false); } });
     return () => controller.abort();
   }, [book, route]);
 
   useEffect(() => {
-    if (!selectedChapter) {
-      setSections([]);
-      setSelectedSection(null);
-      return undefined;
-    }
-    const controller = new AbortController();
-    setError('');
-    loadAtlasNodes({
-      level: 3,
-      route,
-      lv1: book,
-      chapter: selectedChapter.name,
-      chapterId: selectedChapter.id,
-      signal: controller.signal,
-    }).then((payload) => {
-      const next = sortByHeadingNumber(
-        Array.isArray(payload.nodes) ? payload.nodes : [],
-        '节',
-      );
-      setSections(next);
-      setSelectedSection((current) => next.find((item) => item.id === current?.id) || null);
-    }).catch((loadError) => {
-      if (loadError.name !== 'AbortError') setError(loadError.message || '小节目录加载失败。');
-    });
-    return () => controller.abort();
-  }, [book, route, selectedChapter]);
+    if (!selectedChapter) { setSections([]); setSelectedSection(null); return; }
+    const next = sectionsByChapter[selectedChapter.id];
+    if (next) { setSections(next); setSelectedSection((current) => next.find((item) => item.id === current?.id) || null); }
+  }, [selectedChapter, sectionsByChapter]);
 
   useEffect(() => {
     setActiveKnowledgePoint(null);
@@ -295,6 +281,25 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       : timestampKnowledgePoints)
     : knowledgePoints;
   const normalizedCatalogQuery = searchableText(catalogQuery);
+  const allSections = useMemo(() => Object.values(sectionsByChapter).flat(), [sectionsByChapter]);
+  const progress = allSections.length ? Math.round((completedSectionIds.size / allSections.length) * 100) : 0;
+  const getChapterCompletionStatus = (chapter) => {
+    const list = sectionsByChapter[chapter.id] || [];
+    // 有后端章节状态时，先作为小节进度尚未返回时的初始兜底。
+    if (completedSectionIds.size === 0) {
+      const status = String(chapter.status || chapter.learning_status || '').toLowerCase();
+      const progressValue = Number(chapter.progress ?? chapter.progress_rate ?? 0);
+      if (status === 'completed' || progressValue >= 1) return 'completed';
+      if (['in_progress', 'current', 'learning'].includes(status) || (progressValue > 0 && progressValue < 1)) return 'partial';
+      return 'pending';
+    }
+    if (!list.length) return 'pending';
+    const completedCount = list.filter((section) => completedSectionIds.has(section.id)).length;
+    if (completedCount === list.length) return 'completed';
+    if (completedCount > 0) return 'partial';
+    return 'pending';
+  };
+  const isSectionCompleted = (section) => completedSectionIds.has(section.id);
   useEffect(() => {
     if (!normalizedCatalogQuery || !chapters.length) {
       setSearchCatalog(null);
@@ -359,6 +364,12 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     ));
   }, [normalizedCatalogQuery, searchCatalog]);
 
+  const sectionMatchesStatus = (section) => {
+    if (catalogStatus === 'all') return true;
+    const completed = isSectionCompleted(section);
+    return catalogStatus === 'completed' ? completed : !completed;
+  };
+
   const filteredChapters = useMemo(() => {
     const queryMatches = !normalizedCatalogQuery
       ? chapters
@@ -367,20 +378,30 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
         : [];
     if (catalogStatus === 'all') return queryMatches;
     return queryMatches.filter((chapter) => {
-      const status = String(chapter.status || chapter.learning_status || '').toLowerCase();
-      const progress = Number(chapter.progress ?? chapter.progress_rate ?? 0);
-      if (catalogStatus === 'completed') return status === 'completed' || progress >= 1;
-      if (catalogStatus === 'in_progress') {
-        return ['current', 'in_progress', 'learning'].includes(status) || (progress > 0 && progress < 1);
+      const status = getChapterCompletionStatus(chapter);
+      if (catalogStatus === 'completed') {
+        // 已完成筛选包含整章完成和部分完成的章节。
+        return status === 'completed' || status === 'partial';
       }
-      return !status || ['pending', 'not_started', 'locked'].includes(status) || progress <= 0;
+      // 未完成筛选包含未开始和部分完成的章节。
+      return status === 'pending' || status === 'partial';
     });
-  }, [catalogStatus, chapters, normalizedCatalogQuery, searchMatches]);
+  }, [catalogStatus, chapters, completedSectionIds, normalizedCatalogQuery, searchMatches, sectionsByChapter]);
   const filteredSections = useMemo(() => {
-    if (!normalizedCatalogQuery) return sections;
-    const match = searchMatches?.find(({ chapter }) => chapter.id === selectedChapter?.id);
-    return match?.sections || [];
-  }, [normalizedCatalogQuery, searchMatches, sections, selectedChapter?.id]);
+    const querySections = !normalizedCatalogQuery
+      ? sections
+      : searchMatches?.find(({ chapter }) => chapter.id === selectedChapter?.id)?.sections || [];
+    return querySections.filter(sectionMatchesStatus);
+  }, [catalogStatus, normalizedCatalogQuery, searchMatches, sections, selectedChapter?.id, completedSectionIds]);
+  useEffect(() => {
+    if (catalogStatus === 'all' || !filteredChapters.length) return;
+    if (!filteredChapters.some((chapter) => chapter.id === selectedChapter?.id)) {
+      setSelectedChapter(filteredChapters[0]);
+      setSelectedSection(null);
+      setDetail(null);
+      setVideoHistory([]);
+    }
+  }, [catalogStatus, filteredChapters, selectedChapter?.id]);
   useEffect(() => {
     if (!normalizedCatalogQuery || !searchMatches?.length) return;
     const matchingChapter = searchMatches.find(({ chapter }) => (
@@ -396,6 +417,24 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const activeTimestampVideo = videoHistory.at(-1)?.video || null;
   const activeTimestampName = videoHistory.at(-1)?.knowledgePointName || '';
   const videoBackDisabled = videoHistory.length === 0;
+
+  const findSectionLocation = (sectionId) => {
+    for (const chapter of chapters) { const section = (sectionsByChapter[chapter.id] || []).find((item) => item.id === sectionId); if (section) return { chapter, section }; }
+    return null;
+  };
+  const openSection = async (section, chapter = selectedChapter) => {
+    if (!section || !chapter) return;
+    setSelectedChapter(chapter); setSelectedSection(section); setLastSectionId(section.id);
+    setCompletedSectionIds((current) => current.has(section.id) ? current : new Set([...current, section.id]));
+    try { await completeTextbookSection({ book, route, chapter_id: chapter.id, chapter_name: chapter.name, section_id: section.id, section_name: section.name }); }
+    catch (saveError) { if (saveError.name !== 'AbortError') setError((current) => current || saveError.message || '保存小节学习进度失败。'); }
+  };
+  const startOrContinueLearning = () => {
+    const location = progress > 0 ? findSectionLocation(lastSectionId) : null;
+    const firstChapter = chapters[0]; const firstSection = firstChapter ? (sectionsByChapter[firstChapter.id] || [])[0] : null;
+    const target = location || (firstChapter && firstSection ? { chapter: firstChapter, section: firstSection } : null);
+    if (target) openSection(target.section, target.chapter);
+  };
 
   const playKnowledgePoint = (kp) => {
     if (!kp?.timestamp_video) return;
@@ -434,9 +473,6 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   return (
     <main className="textbook-chapter-learning">
       <header className="textbook-chapter-learning__hero">
-        <button className="textbook-chapter-learning__back" type="button" onClick={() => onNavigate?.({ page: 'practice', params: {} })}>
-          <ArrowLeft aria-hidden="true" size={14} />返回
-        </button>
         <div className="textbook-chapter-learning__cover">
           <img src={textbookCoverUrl(book)} alt={`《${book}》教材封面`} />
         </div>
@@ -449,14 +485,16 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             <span><Film aria-hidden="true" size={14} />章节视频与知识点片段</span>
           </div>
         </div>
-        <div className="textbook-chapter-learning__progress" aria-label="课程学习进度">
-          <div className="textbook-progress-ring"><strong>0%</strong><span>学习进度</span></div>
-          <button type="button" className="textbook-start-learning" onClick={() => {
-            const firstChapter = chapters[0];
-            if (firstChapter) setSelectedChapter(firstChapter);
-          }}>
-            <PlayCircle aria-hidden="true" size={18} />开始学习
+        <div className="textbook-chapter-learning__actions">
+          <button className="textbook-chapter-learning__back" type="button" onClick={() => onNavigate?.({ page: 'practice', params: {} })}>
+            <ArrowLeft aria-hidden="true" size={14} />返回
           </button>
+          <div className="textbook-chapter-learning__progress" aria-label="课程学习进度">
+            <div className="textbook-progress-ring" style={{ background: `conic-gradient(#3b936c ${progress}%, #dce6e1 0)` }}><div><strong>{progress}%</strong><span>学习进度</span></div></div>
+            <button type="button" className="textbook-start-learning" onClick={startOrContinueLearning} disabled={progressLoading || !allSections.length}>
+              <PlayCircle aria-hidden="true" size={18} />{progress > 0 ? '继续学习' : '开始学习'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -484,7 +522,6 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
                 {[
                   ['all', '全部'],
                   ['pending', '未完成'],
-                  ['in_progress', '学习中'],
                   ['completed', '已完成'],
                 ].map(([value, label]) => (
                   <button
@@ -527,6 +564,8 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
                     : '该教材暂无章节数据。'
               }
               unitLabel="个小节"
+              showCompletion
+              getItemStatus={getChapterCompletionStatus}
               selectedExtra={selectedChapter ? (
                 <Directory
                   title=""
@@ -535,12 +574,13 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
                   items={filteredSections}
                   selectedId={selectedSection?.id}
                   onSelect={(section) => {
-                    setSelectedSection(section);
-                    setDetail(null);
-                    setVideoHistory([]);
+                    if (!section) { setSelectedSection(null); setDetail(null); setVideoHistory([]); return; }
+                    openSection(section, selectedChapter);
                   }}
                   emptyText={normalizedCatalogQuery ? '没有找到匹配的小节。' : '该章节暂无小节数据。'}
                   unitLabel="个知识点"
+                  showCompletion
+                  getItemStatus={(section) => (isSectionCompleted(section) ? 'completed' : 'pending')}
                 />
               ) : null}
             />

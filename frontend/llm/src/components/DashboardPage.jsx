@@ -61,6 +61,11 @@ function getTrackId(target, tracks, requestedTrackId) {
   return tracks?.[0]?.track_id || '';
 }
 
+export function visibleWorkshopTextbooks({ allTextbooks = [], plannedBooks = [], remainingTextbooks = [], showAllTextbooks = false } = {}) {
+  if (!plannedBooks.length) return allTextbooks;
+  return showAllTextbooks ? [...plannedBooks, ...remainingTextbooks] : plannedBooks;
+}
+
 function getTrackLabel(target, tracks, trackId) {
   return target?.exam_name
     || tracks?.find((track) => track.track_id === trackId)?.title_normalized
@@ -315,9 +320,9 @@ export default function DashboardPage({
   const remainingTextbooks = useMemo(() => (
     allTextbooks.filter((book) => !planBookNames.has(normalizedBookName(book)))
   ), [allTextbooks, planBookNames]);
-  const visibleTextbooks = useMemo(() => (
-    showAllTextbooks ? [...plannedBooks, ...remainingTextbooks] : plannedBooks
-  ), [plannedBooks, remainingTextbooks, showAllTextbooks]);
+  const visibleTextbooks = useMemo(() => visibleWorkshopTextbooks({
+    allTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks,
+  }), [allTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks]);
   const currentBookName = taskBookName || normalizedBookName(currentPlanBook);
   const currentChapter = currentLearningTask?.learning_chapter?.title || '';
   const currentBookProgress = Number(currentPlanBook?.progress || 0);
@@ -376,7 +381,8 @@ export default function DashboardPage({
       page: 'practice',
       params: {
         view: 'textbook-chapters',
-        route: node.navigation?.route_id || 'textbook_14_5',
+        // 学习工坊教材目录来自全量教材路线，不能沿用考试路线的筛选 route。
+        route: 'textbook_14_5',
         lv1: name,
         source: 'textbook-library',
       },
@@ -454,7 +460,7 @@ export default function DashboardPage({
                     books={visibleTextbooks}
                     emptyText="当前计划暂未匹配到教材"
                     onOpen={openTextbook}
-                    remainingCount={showAllTextbooks ? 0 : remainingTextbooks.length}
+                    remainingCount={plannedBooks.length > 0 && !showAllTextbooks ? remainingTextbooks.length : 0}
                     onExpandAll={() => setShowAllTextbooks(true)}
                   />
                 </>

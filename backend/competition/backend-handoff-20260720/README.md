@@ -114,6 +114,31 @@ FastAPI / APP.backend.main:app
 
 `frontend/0717/`、`frontend/0717_2/` 是本地历史备份，不是正式前端，禁止合并回 `frontend/llm/`。
 
+## 教材小节学习进度数据
+
+教材章节学习页复用后端已有的 `learning_activity_records` 表，不新建数据库表。
+
+- `activity_type`: `textbook_section_completed`
+- `resource_type`: `textbook_section`
+- `resource_id`: 小节 ID
+- `completion_status`: `completed`
+- `payload_json`: JSON，保存 `book`、`route`、`chapter_id`、`chapter_name`、`section_id`、`section_name`
+
+接口：
+
+- `GET /api/learning-activity/textbook-progress?book=<教材名>`: 只返回当前登录用户、当前教材的已完成小节 ID、最近一次点击的小节和历史记录。
+- `POST /api/learning-activity/textbook-progress`: 当前用户点击小节时追加一条历史记录。
+
+数据通过 `user_id` 隔离，历史记录实际落在后端配置的数据库中，不写入浏览器 `localStorage`。默认本地开发配置为 SQLite：
+
+- 默认文件：`backend/competition/backend-handoff-20260720/APP/backend/runtime/health_agent.db`
+- 可通过环境变量 `BACKEND_RUNTIME_ROOT` 改变运行时目录；也可通过 `SQLITE_PATH` 直接指定 SQLite 文件。
+- 生产环境可设置 `USE_SQLITE=false`，并通过 `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DATABASE` 使用 MySQL；此时历史记录位于 MySQL 的 `learning_activity_records` 表。
+
+记录结构对应后端 `LearningActivityRecord` 模型：`id`、`user_id`、`activity_type`、`resource_id`、`resource_type`、`completion_status`、`payload_json`、`created_at`。教材记录的 `payload_json` 包含 `book`、`route`、`chapter_id`、`chapter_name`、`section_id`、`section_name`。每次点击小节都会追加历史记录；读取进度时按当前用户和教材去重得到已完成小节，并按时间顺序取最近点击小节。前端根据教材目录的小节总数和已完成小节 ID 计算学习进度百分比。
+
+运行时数据库和上传/向量数据属于本地运行数据，不作为 Git 源码提交；部署或迁移时需要单独备份 `APP/backend/runtime/health_agent.db`，或备份对应 MySQL 数据库。
+
 ## 5. 前端功能文件与组件
 
 ### 5.1 入口、壳层与公共模型

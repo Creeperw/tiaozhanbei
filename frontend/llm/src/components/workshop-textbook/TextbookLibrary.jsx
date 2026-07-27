@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowRight, Layers3, Search } from 'lucide-react';
 import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
+import { textbookPlanningLabel } from './textbookPlanning';
 import './textbookLibrary.css';
 
 export default function TextbookLibrary({
@@ -40,7 +41,7 @@ export default function TextbookLibrary({
                   <img src={textbookCoverUrl(name)} alt="" loading="lazy" />
                 </span>
                 <span className="textbook-library-card__body">
-                  <small>{item.stage_title || '专业教材'}</small>
+                  <small>{textbookPlanningLabel(name) || item.stage_title || '专业教材'}</small>
                   <strong>《{name}》</strong>
                   <span>{textbookIntroduction(name)}</span>
                   <em><Layers3 aria-hidden="true" size={14} />进入章节学习<ArrowRight aria-hidden="true" size={15} /></em>

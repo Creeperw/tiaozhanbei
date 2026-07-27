@@ -9620,8 +9620,8 @@ textarea:focus-visible {
   }
 
   .app-shell__topbar .app-shell__mark {
-    width: 42px;
-    height: 42px;
+    width: 48px;
+    height: 48px;
     flex-basis: 42px;
     border-radius: 13px;
     box-shadow: 0 8px 18px rgba(4, 120, 87, .15);
@@ -9847,6 +9847,204 @@ textarea:focus-visible {
     white-space: nowrap;
   }
 
+
+  .app-shell__profile-menu-wrap {
+    position: relative;
+  }
+
+  .app-shell__profile-menu {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(234px, calc(100vw - 24px));
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid #dce9e3;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 20px 50px rgba(31, 72, 58, .18);
+    transform-origin: top right;
+  }
+
+  .app-shell__profile-menu[data-state="open"] {
+    animation: app-shell-profile-menu-in 180ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  .app-shell__profile-menu[data-state="closing"] {
+    animation: app-shell-profile-menu-out 180ms ease both;
+    pointer-events: none;
+  }
+
+  .app-shell__profile-menu-identity {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-bottom: 1px solid #edf2ef;
+    padding: 18px 18px 16px;
+  }
+
+  .app-shell__profile-menu-avatar {
+    display: grid;
+    width: 68px;
+    height: 68px;
+    flex: 0 0 68px;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid #d9eee4;
+    border-radius: 20px;
+    background: linear-gradient(145deg, #e4faf2, #c8f3e3);
+    color: #087557;
+    font-size: 1.45rem;
+    font-weight: 800;
+    box-shadow: 0 7px 18px rgba(31, 72, 58, .1);
+  }
+
+  .app-shell__profile-menu-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .app-shell__profile-menu-identity-copy {
+    display: grid;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .app-shell__profile-menu-identity-copy strong {
+    overflow: hidden;
+    color: #17372c;
+    font-size: 1.12rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-shell__profile-menu-identity-copy small {
+    color: #7b9188;
+    font-size: .72rem;
+  }
+
+  .app-shell__profile-menu-shortcuts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+    padding: 14px;
+  }
+
+  .app-shell__profile-shortcut {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 15px;
+    background: #f7faf8;
+    padding: 11px 14px;
+    color: #243b33;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  }
+
+  .app-shell__profile-shortcut:hover,
+  .app-shell__profile-shortcut:focus-visible {
+    border-color: #c8e6d8;
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(31, 72, 58, .08);
+    outline: none;
+    transform: translateY(-2px);
+  }
+
+  .app-shell__profile-shortcut-icon {
+    display: grid;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    border-radius: 14px;
+  }
+
+  .app-shell__profile-shortcut--mistake_variation .app-shell__profile-shortcut-icon { background: #fff0f0; color: #ef5350; }
+  .app-shell__profile-shortcut--question_favorites .app-shell__profile-shortcut-icon { background: #fff7e5; color: #e9a219; }
+  .app-shell__profile-shortcut--study_notes .app-shell__profile-shortcut-icon { background: #eaf8ef; color: #3b9a63; }
+
+  .app-shell__profile-shortcut-copy {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .app-shell__profile-shortcut-copy strong {
+    overflow: hidden;
+    font-size: .84rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-shell__profile-shortcut-copy small {
+    overflow: hidden;
+    color: #7b9188;
+    font-size: .66rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-shell__profile-menu-divider {
+    height: 1px;
+    background: #edf2ef;
+  }
+
+  .app-shell__profile-menu-actions {
+    display: grid;
+    gap: 2px;
+    padding: 8px;
+  }
+
+  .app-shell__profile-menu-actions button {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    gap: 11px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    padding: 0 10px;
+    color: #60736b;
+    font-size: .78rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease;
+  }
+
+  .app-shell__profile-menu-actions button:hover,
+  .app-shell__profile-menu-actions button:focus-visible {
+    background: #f2f8f5;
+    color: #176a4e;
+    outline: none;
+  }
+
+  .app-shell__profile-menu-actions .app-shell__profile-menu-logout:hover,
+  .app-shell__profile-menu-actions .app-shell__profile-menu-logout:focus-visible {
+    background: #fff5f5;
+    color: #b33b49;
+  }
+
+  .app-shell__profile-menu-chevron {
+    margin-left: auto;
+    transform: rotate(-90deg);
+  }
+
+  @keyframes app-shell-profile-menu-in {
+    from { opacity: 0; transform: translateY(-6px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes app-shell-profile-menu-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(-4px) scale(.985); }
+  }
   .app-shell__topbar-logout:hover {
     border-color: #f0c5c9;
     background: #fff5f5;

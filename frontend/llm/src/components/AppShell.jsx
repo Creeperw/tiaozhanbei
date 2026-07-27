@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
   Bell,
+  BookMarked,
   ChartNoAxesColumnIncreasing,
   ChevronDown,
   ClipboardList,
   Database,
   Dumbbell,
+  FolderHeart,
   GraduationCap,
   Home,
   LogOut,
@@ -16,6 +18,7 @@ import {
   ShieldCheck,
   Sprout,
   UserRound,
+  NotebookPen,
   X,
 } from 'lucide-react';
 import { getAppShellConfig } from '../appShell';
@@ -124,99 +127,120 @@ function QualificationTargetSection({
   );
 }
 
+const profileMenuItems = [
+  { key: 'mistake_variation', label: '收藏夹', description: '错题库', icon: FolderHeart },
+  { key: 'question_favorites', label: '笔记本', description: '题目收藏', icon: BookMarked },
+  { key: 'study_notes', label: '学情分析', description: '学习笔记', icon: NotebookPen },
+];
+
 function DesktopTopbar({
-  shell,
-  displayName,
-  avatarUrl,
-  avatarInitial,
-  unreadNotifications,
-  targetOptions,
-  selectedTargetId,
-  targetLoading,
-  targetError,
-  onNavigate,
-  onLogout,
-  onOpenProfile,
-  onSelectTarget,
+  shell, displayName, avatarUrl, avatarInitial, unreadNotifications,
+  targetOptions, selectedTargetId, targetLoading, targetError,
+  onNavigate, onLogout, onOpenProfile, onSelectTarget,
 }) {
+  const [profileMenuMounted, setProfileMenuMounted] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const openTimerRef = useRef(null);
+  const unmountTimerRef = useRef(null);
+  const profileMenuRef = useRef(null);
+
+  useEffect(() => () => {
+    window.clearTimeout(openTimerRef.current);
+    window.clearTimeout(unmountTimerRef.current);
+  }, []);
+
+  const openProfileMenu = () => {
+    window.clearTimeout(unmountTimerRef.current);
+    setProfileMenuMounted(true);
+    setProfileMenuOpen(true);
+  };
+
+  const closeProfileMenu = () => {
+    window.clearTimeout(openTimerRef.current);
+    if (!profileMenuMounted) return;
+    setProfileMenuOpen(false);
+    unmountTimerRef.current = window.setTimeout(() => setProfileMenuMounted(false), 180);
+  };
+
+  const toggleProfileMenu = () => {
+    if (profileMenuOpen) closeProfileMenu();
+    else openProfileMenu();
+  };
+
+  useEffect(() => {
+    if (!profileMenuOpen) return undefined;
+    const closeOnOutsidePointer = (event) => {
+      if (!profileMenuRef.current?.contains(event.target)) closeProfileMenu();
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
+  }, [profileMenuOpen]);
+
+  const navigateFromProfileMenu = (taskType) => {
+    closeProfileMenu();
+    onNavigate({ page: 'practice', params: { view: 'workspace', taskType } });
+  };
+
   return (
     <header className="app-shell__topbar">
       <div className="app-shell__topbar-inner">
         <ShellIdentity />
-        <NavItems
-          items={[...shell.primaryNav, ...shell.supportNav]}
-          currentPage={shell.currentPage}
-          onNavigate={onNavigate}
-        />
+        <NavItems items={[...shell.primaryNav, ...shell.supportNav]} currentPage={shell.currentPage} onNavigate={onNavigate} />
         <div className="app-shell__topbar-actions">
-          <label
-            className={`app-shell__topbar-target${targetError ? ' is-error' : ''}`}
-            title={targetError || '选择后打开对应教材学习路线'}
-          >
+          <label className={'app-shell__topbar-target' + (targetError ? ' is-error' : '')} title={targetError || '选择后打开对应教材学习路线'}>
             <GraduationCap aria-hidden="true" size={17} />
             <span className="sr-only">资格考试路径</span>
-            <select
-              aria-label="资格考试路径"
-              value={selectedTargetId}
-              disabled={targetLoading || !targetOptions.length}
-              onChange={(event) => onSelectTarget(event.target.value)}
-            >
-              {!targetOptions.length && (
-                <option value="">{targetLoading ? '正在读取考试目录…' : '暂无可用考试'}</option>
-              )}
-              {targetOptions.map((item) => (
-                <option key={item.target_id} value={item.target_id}>{item.official_name}</option>
-              ))}
+            <select aria-label="资格考试路径" value={selectedTargetId} disabled={targetLoading || !targetOptions.length} onChange={(event) => onSelectTarget(event.target.value)}>
+              {!targetOptions.length && <option value="">{targetLoading ? '正在读取考试目录…' : '暂无可用考试'}</option>}
+              {targetOptions.map((item) => <option key={item.target_id} value={item.target_id}>{item.official_name}</option>)}
             </select>
             <ChevronDown aria-hidden="true" size={15} />
           </label>
-
-          <button
-            type="button"
-            className="app-shell__assistant-entry"
-            aria-label="AI 智能助教"
-            onClick={() => onNavigate({ page: 'assistant', params: { newConversation: true } })}
-          >
-            <MessageSquareMore aria-hidden="true" size={18} />
-            <span>AI 智能助教</span>
+          <button type="button" className="app-shell__assistant-entry" aria-label="AI 智能助教" onClick={() => onNavigate({ page: 'assistant', params: { newConversation: true } })}>
+            <MessageSquareMore aria-hidden="true" size={18} /><span>AI 智能助教</span>
           </button>
-
-          <button
-            type="button"
-            className="app-shell__topbar-icon"
-            aria-label={`通知，${unreadNotifications} 条未读`}
-            onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}
-          >
+          <button type="button" className="app-shell__topbar-icon" aria-label={'通知，' + unreadNotifications + ' 条未读'} onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}>
             <Bell aria-hidden="true" size={19} />
-            {unreadNotifications > 0 && (
-              <span className="app-shell__notification-badge">
-                {unreadNotifications > 99 ? '99+' : unreadNotifications}
-              </span>
+            {unreadNotifications > 0 && <span className="app-shell__notification-badge">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
+          </button>
+          <div ref={profileMenuRef} className="app-shell__profile-menu-wrap">
+            <button type="button" className="app-shell__topbar-account" aria-label="打开个人菜单" aria-expanded={profileMenuOpen} aria-haspopup="menu" onClick={toggleProfileMenu}>
+              <span className="app-shell__topbar-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : avatarInitial}</span>
+              <span className="app-shell__topbar-user">{displayName}</span>
+              <ChevronDown aria-hidden="true" size={15} />
+            </button>
+            {profileMenuMounted && (
+              <div className="app-shell__profile-menu" data-state={profileMenuOpen ? 'open' : 'closing'} role="menu" aria-label="个人菜单">
+                <div className="app-shell__profile-menu-identity">
+                  <span className="app-shell__profile-menu-avatar" aria-hidden="true">
+                    {avatarUrl ? <img src={avatarUrl} alt="" /> : avatarInitial}
+                  </span>
+                  <span className="app-shell__profile-menu-identity-copy">
+                    <strong>{displayName}</strong>
+                    <small>我的学习空间</small>
+                  </span>
+                </div>
+                <div className="app-shell__profile-menu-shortcuts">
+                  {profileMenuItems.map(({ key, label, description, icon: Icon }) => (
+                    <button key={key} type="button" className={'app-shell__profile-shortcut app-shell__profile-shortcut--' + key} role="menuitem" onClick={() => navigateFromProfileMenu(key)}>
+                      <span className="app-shell__profile-shortcut-icon">{React.createElement(Icon, { "aria-hidden": true, size: 21 })}</span>
+                      <span className="app-shell__profile-shortcut-copy"><strong>{label}</strong><small>{description}</small></span>
+                    </button>
+                  ))}
+                </div>
+                <div className="app-shell__profile-menu-divider" />
+                <div className="app-shell__profile-menu-actions">
+                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onOpenProfile(); }}><UserRound aria-hidden="true" size={18} /><span>账号设置</span></button>
+                  <button type="button" role="menuitem" className="app-shell__profile-menu-logout" onClick={onLogout}><LogOut aria-hidden="true" size={18} /><span>退出</span></button>
+                </div>
+              </div>
             )}
-          </button>
-
-          <button
-            type="button"
-            className="app-shell__topbar-account"
-            aria-label="打开个人信息"
-            onClick={onOpenProfile}
-          >
-            <span className="app-shell__topbar-avatar">
-              {avatarUrl ? <img src={avatarUrl} alt="" /> : avatarInitial}
-            </span>
-            <span className="app-shell__topbar-user">{displayName}</span>
-            <ChevronDown aria-hidden="true" size={15} />
-          </button>
-
-          <button type="button" className="app-shell__topbar-icon app-shell__topbar-logout" aria-label="退出登录" onClick={onLogout}>
-            <LogOut aria-hidden="true" size={18} />
-          </button>
+          </div>
         </div>
       </div>
     </header>
   );
 }
-
 function MobileDrawer({
   mounted,
   open,

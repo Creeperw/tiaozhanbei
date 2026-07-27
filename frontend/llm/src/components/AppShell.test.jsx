@@ -313,7 +313,13 @@ describe('AppShell', () => {
     );
 
     expect(screen.getByText('明同学')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '打开个人信息' }));
+    const profileButton = screen.getByRole('button', { name: '打开个人菜单' });
+    await user.click(profileButton);
+    expect(screen.getByRole('menu', { name: '个人菜单' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /收藏夹错题库/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /笔记本题目收藏/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /学情分析学习笔记/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitem', { name: '账号设置' }));
     expect(screen.getByRole('dialog', { name: '完善个人信息' })).toBeInTheDocument();
   });
 });
