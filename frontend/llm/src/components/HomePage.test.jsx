@@ -102,6 +102,17 @@ describe('HomePage', () => {
     expect(onNavigate).toHaveBeenLastCalledWith({ page: 'learning-path', params: {} });
   });
 
+  it('routes the secondary hero action to a new assistant conversation', () => {
+    const onNavigate = vi.fn();
+    render(<HomePage onNavigate={onNavigate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '多智能体助教' }));
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'assistant',
+      params: { newConversation: true },
+    });
+  });
+
   it.each([
     ['多智能体协同', 'multi-agent'],
     ['个性化学习路径', 'learning-path'],

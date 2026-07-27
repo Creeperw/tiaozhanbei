@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -16,7 +16,8 @@ describe('AppShell', () => {
     expect(document.querySelector('.app-shell__topbar')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: '平台导航' })).toBeInTheDocument();
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '平台首页' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('link', { name: '平台首页' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: '返回主页' })).toHaveLength(2);
   });
 
   it('opens a desktop module menu by hover and keyboard focus', async () => {
@@ -33,7 +34,7 @@ describe('AppShell', () => {
     await waitFor(() => expect(screen.getByRole('menuitem', { name: '智能助教' })).toHaveFocus());
   });
 
-  it('places the learning target dropdown directly after the dashboard', async () => {
+  it('places the learning target dropdown first in the desktop navigation', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
       const path = String(url);
@@ -54,9 +55,8 @@ describe('AppShell', () => {
 
     const navigation = screen.getByRole('navigation', { name: '平台导航' });
     const entries = [...navigation.querySelectorAll(':scope > .app-shell__nav-group')];
-    expect(entries[0]).toHaveTextContent('平台首页');
-    expect(entries[1]).toHaveTextContent('学习目标');
-    expect(entries[2]).toHaveTextContent('学习路径');
+    expect(entries[0]).toHaveTextContent('学习目标');
+    expect(entries[1]).toHaveTextContent('学习路径');
 
     const targetButton = screen.getByRole('button', { name: '学习目标' });
     await user.hover(targetButton);
@@ -77,18 +77,28 @@ describe('AppShell', () => {
     });
   });
 
-  it('opens the dashboard directly without a dropdown', async () => {
+  it('returns to the dashboard from the brand identity', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();
     renderShell({ currentPage: 'personalization', onNavigate });
 
-    const dashboard = screen.getByRole('link', { name: '平台首页' });
-    expect(dashboard).not.toHaveAttribute('aria-haspopup');
-    await user.click(dashboard);
+    const home = screen.getAllByRole('button', { name: '返回主页' })[0];
+    await user.click(home);
 
     expect(onNavigate).toHaveBeenCalledWith({ page: 'dashboard', params: {} });
-    expect(screen.queryByRole('menuitem', { name: '平台总览' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('menuitem', { name: '继续学习' })).not.toBeInTheDocument();
+  });
+
+  it('returns home and closes the mobile drawer from its brand identity', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ currentPage: 'personalization', onNavigate });
+
+    await user.click(screen.getByRole('button', { name: '打开导航菜单' }));
+    const drawer = screen.getByRole('dialog', { name: '主导航' });
+    await user.click(within(drawer).getByRole('button', { name: '返回主页' }));
+
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'dashboard', params: {} });
+    expect(drawer.parentElement).toHaveAttribute('data-state', 'closing');
   });
 
   it('opens the learning path directly without a dropdown', async () => {

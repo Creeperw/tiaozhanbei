@@ -194,7 +194,15 @@ textarea:focus-visible {
 .app-shell__identity-toggle {
   border: 0;
   padding: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
+}
+
+.app-shell__identity-toggle:focus-visible {
+  outline: 3px solid rgba(8, 151, 105, 0.28);
+  outline-offset: 4px;
+  border-radius: var(--radius-lg);
 }
 
 .app-shell__nav {

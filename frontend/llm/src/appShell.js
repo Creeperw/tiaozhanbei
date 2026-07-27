@@ -1,6 +1,5 @@
 const intent = (page, params = {}) => ({ page, params });
 const PRIMARY_NAV = [
-  { key: 'dashboard', label: '平台首页', intent: intent('dashboard') },
   { key: 'learning-target', label: '学习目标', kind: 'learning-target' },
   { key: 'learning-path', label: '学习路径', intent: intent('learning-path') },
   { key: 'practice', label: '学习工坊', children: [{ label: '智能助教', intent: intent('assistant', { newConversation: true }) }, { label: '知识图谱', intent: intent('knowledge', { view: 'atlas' }) }, { label: '个人知识库', intent: intent('knowledge', { view: 'personal' }) }, { label: '资料上传', intent: intent('knowledge', { view: 'upload' }) }] },
@@ -41,6 +40,7 @@ export function getAppShellConfig({ currentUser, currentPage, selectedSessionId 
   const requestedPage = knowledgeView ? 'knowledge' : currentPage;
   const visibleSupportNav = SUPPORT_NAV.filter((item) => !item.roles || item.roles.includes(role));
   const allowedPages = new Set([
+    'dashboard',
     ...PRIMARY_NAV.filter((item) => item.kind !== 'learning-target').map((item) => item.key),
     ...INTERNAL_ALLOWED_PAGES,
     ...visibleSupportNav.map((item) => item.key),

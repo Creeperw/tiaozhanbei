@@ -11,7 +11,6 @@ test('defaults authenticated users to dashboard and exposes top-level training n
 
   assert.equal(config.defaultPage, 'dashboard');
   assert.deepEqual(config.primaryNav.map(({ key, label }) => ({ key, label })), [
-    { key: 'dashboard', label: '平台首页' },
     { key: 'learning-target', label: '学习目标' },
     { key: 'learning-path', label: '学习路径' },
     { key: 'practice', label: '学习工坊' },
@@ -52,18 +51,18 @@ test('keeps the learning target dropdown out of page routing', () => {
   });
 
   assert.equal(config.currentPage, 'dashboard');
-  assert.equal(config.primaryNav[1].kind, 'learning-target');
+  assert.equal(config.primaryNav[0].kind, 'learning-target');
 });
 
-test('uses the platform home as a direct dashboard link without dropdown options', () => {
+test('keeps dashboard as the default without exposing it in the primary navigation', () => {
   const config = getAppShellConfig({
     currentUser: { username: 'alice', role: 'user' },
     currentPage: 'personalization',
   });
-  const dashboard = config.primaryNav.find((item) => item.key === 'dashboard');
 
-  assert.deepEqual(dashboard.intent, { page: 'dashboard', params: {} });
-  assert.equal('children' in dashboard, false);
+  assert.equal(config.defaultPage, 'dashboard');
+  assert.equal(config.primaryNav.some((item) => item.key === 'dashboard'), false);
+  assert.deepEqual(config.homeAction, { key: 'dashboard', label: '返回主页' });
 });
 
 test('uses the learning path as a direct link without dropdown options', () => {

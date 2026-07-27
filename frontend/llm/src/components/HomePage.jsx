@@ -69,6 +69,13 @@ export default function HomePage({ onNavigate }) {
               开始学习路径
               <ArrowRight aria-hidden="true" size={19} />
             </button>
+            <button
+              type="button"
+              className="platform-home__secondary-action"
+              onClick={() => navigate({ page: 'assistant', params: { newConversation: true } })}
+            >
+              多智能体助教
+            </button>
           </div>
         </div>
 
