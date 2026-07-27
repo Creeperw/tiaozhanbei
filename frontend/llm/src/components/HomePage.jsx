@@ -88,7 +88,7 @@ export default function HomePage({ onNavigate }) {
             <video
               ref={videoRef}
               className="platform-home__video"
-              src="/platform-assets/home/platform-agents.mp4"
+              src="/platform-assets/home/platform-agents.mp4?v=20260727"
               autoPlay={!reducedMotion}
               muted
               loop={!reducedMotion}

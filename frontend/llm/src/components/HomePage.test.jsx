@@ -69,18 +69,29 @@ describe('HomePage', () => {
     expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
   });
 
-  it('renders the core video with autoplay-safe presentation attributes', () => {
+  it('renders the homepage background video with autoplay-safe presentation attributes', () => {
     const { container } = render(<HomePage onNavigate={vi.fn()} />);
     const video = container.querySelector('video');
 
     expect(video).toBeInTheDocument();
-    expect(video).toHaveAttribute('src', '/platform-assets/home/platform-agents.mp4');
+    expect(video).toHaveAttribute('src', '/platform-assets/home/platform-agents.mp4?v=20260727');
     expect(video).toHaveAttribute('preload', 'metadata');
     expect(video).toHaveProperty('autoplay', true);
     expect(video).toHaveProperty('muted', true);
     expect(video).toHaveProperty('loop', true);
     expect(video).toHaveProperty('playsInline', true);
     expect(video).toHaveProperty('controls', false);
+  });
+
+  it('uses long progressive fades to hide every video edge', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
+
+    expect(css).toMatch(
+      /linear-gradient\(90deg,\s*transparent 0%,\s*rgba\(0, 0, 0, 0\.16\) 9%,\s*#000 29%,\s*#000 62%,\s*rgba\(0, 0, 0, 0\.55\) 76%,\s*rgba\(0, 0, 0, 0\.12\) 90%,\s*transparent 100%\)/,
+    );
+    expect(css).toMatch(
+      /linear-gradient\(180deg,\s*transparent 0%,\s*rgba\(0, 0, 0, 0\.16\) 6%,\s*#000 18%,\s*#000 58%,\s*rgba\(0, 0, 0, 0\.5\) 72%,\s*rgba\(0, 0, 0, 0\.1\) 88%,\s*transparent 100%\)/,
+    );
   });
 
   it('routes the hero call to action to the learning path', () => {
@@ -141,15 +152,87 @@ describe('HomePage', () => {
     await waitFor(() => expect(pause).toHaveBeenCalled());
   });
 
-  it('uses the broadly supported H.264 video served by the backend', () => {
+  it('uses the requested H.264 homepage video served by the backend', () => {
     const media = readFileSync(resolve(
       process.cwd(),
       '../../backend/competition_app/static/platform-assets/home/platform-agents.mp4',
     ));
     const containerMarkers = media.toString('latin1');
+    const metadataOffset = containerMarkers.indexOf('moov');
+    const mediaDataOffset = containerMarkers.indexOf('mdat');
 
+    expect(metadataOffset).toBeGreaterThan(0);
+    expect(metadataOffset).toBeLessThan(mediaDataOffset);
     expect(containerMarkers).toContain('avc1');
     expect(containerMarkers).not.toContain('hvc1');
+  });
+
+  it('keeps the desktop video compact at a 16:9 ratio and aligned near the hero top', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
+
+    expect(css).toMatch(
+      /\.platform-home__video,\s*\.platform-home__video-fallback\s*\{[^}]*height:\s*auto;[^}]*aspect-ratio:\s*16\s*\/\s*9;/,
+    );
+    expect(css).toMatch(
+      /\.platform-home__visual\s*\{[^}]*align-items:\s*flex-start;/,
+    );
+    expect(css).toMatch(
+      /\.platform-home__video\s*\{[^}]*object-position:\s*center top;/,
+    );
+  });
+
+  it('moves the desktop hero content upward without shifting the mobile layout', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
+
+    expect(css).toMatch(
+      /\.platform-home\s*\{[^}]*padding:\s*clamp\(8px, 1vw, 14px\) clamp\(20px, 4vw, 64px\) 42px;/,
+    );
+    expect(css).toMatch(
+      /\.platform-home__hero\s*\{[^}]*min-height:\s*460px;/,
+    );
+    expect(css).toMatch(
+      /\.platform-home__copy\s*\{[^}]*transform:\s*translateY\(-28px\);/,
+    );
+    expect(css).toMatch(
+      /\.platform-home__capabilities\s*\{[^}]*margin-top:\s*8px;/,
+    );
+    expect(css).toMatch(
+      /\.platform-home__capabilities\s*\{[^}]*background:[^}]*linear-gradient\(90deg, transparent,[^}]*top[^}]*linear-gradient\(90deg, transparent,[^}]*bottom/s,
+    );
+    expect(css).toMatch(
+      /\.platform-home__capability\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/,
+    );
+    expect(css).toMatch(
+      /\.platform-home__capability \+ \.platform-home__capability::before\s*\{[^}]*background:\s*linear-gradient\(180deg, transparent,[^}]*transparent\);/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 820px\)[\s\S]*?\.platform-home__copy\s*\{[^}]*transform:\s*none;/,
+    );
+  });
+
+  it('adapts the fading capability dividers to two-column and single-column layouts', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
+
+    expect(css).toMatch(
+      /@media \(max-width: 1120px\)[\s\S]*?\.platform-home__capability:nth-child\(odd\)::before\s*\{[^}]*content:\s*none;/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 1120px\)[\s\S]*?\.platform-home__capability:nth-child\(n \+ 3\)::after\s*\{[^}]*linear-gradient\(90deg, transparent,[^}]*transparent\);/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 560px\)[\s\S]*?\.platform-home__capability \+ \.platform-home__capability::before\s*\{[^}]*background:\s*linear-gradient\(90deg, transparent,[^}]*transparent\);/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 560px\)[\s\S]*?\.platform-home__capability::after\s*\{[^}]*content:\s*none;/,
+    );
+  });
+
+  it('lets the headline wrap before it can overlap the video at medium desktop widths', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
+
+    expect(css).toMatch(
+      /@media \(max-width: 1120px\)[\s\S]*?\.platform-home__headline h1\s*\{[^}]*width:\s*auto;/,
+    );
   });
 
   it('uses accessible contrast for capability descriptions', () => {
