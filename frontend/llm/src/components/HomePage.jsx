@@ -70,6 +70,14 @@ export default function HomePage({ onNavigate }) {
   }, [reducedMotion]);
 
   const navigate = (intent) => onNavigate?.(intent);
+  const handleVideoCanPlay = () => {
+    if (reducedMotion) {
+      videoRef.current?.pause();
+      return;
+    }
+
+    videoRef.current?.play()?.catch(() => setVideoFailed(true));
+  };
 
   return (
     <main className="platform-home">
@@ -126,16 +134,14 @@ export default function HomePage({ onNavigate }) {
             <video
               ref={videoRef}
               className="platform-home__video"
-              src="/design-images/home/platform-agents.mp4"
+              src="/platform-assets/home/platform-agents.mp4"
               autoPlay={!reducedMotion}
               muted
               loop={!reducedMotion}
               playsInline
               preload="metadata"
               aria-label="多智能体协同学习动画"
-              onLoadedData={() => {
-                if (reducedMotion) videoRef.current?.pause();
-              }}
+              onLoadedData={handleVideoCanPlay}
               onError={() => setVideoFailed(true)}
             />
           )}

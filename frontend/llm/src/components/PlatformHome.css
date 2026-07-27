@@ -303,7 +303,7 @@
 }
 
 .platform-home__capability-copy > span {
-  color: #7a8882;
+  color: #53635d;
   font-size: 13px;
   line-height: 1.7;
 }
@@ -412,6 +412,7 @@
 
   .platform-home__target-selector {
     align-items: stretch;
+    flex-direction: column;
     margin-bottom: 27px;
   }
 
@@ -435,6 +436,7 @@
   .platform-home__target-selector [role='status'],
   .platform-home__target-selector [role='alert'] {
     margin: 8px 0 0;
+    width: 100%;
   }
 
   .platform-home__eyebrow {

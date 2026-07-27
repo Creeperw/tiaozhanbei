@@ -1,4 +1,6 @@
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -74,7 +76,7 @@ describe('HomePage', () => {
     const video = container.querySelector('video');
 
     expect(video).toBeInTheDocument();
-    expect(video).toHaveAttribute('src', '/design-images/home/platform-agents.mp4');
+    expect(video).toHaveAttribute('src', '/platform-assets/home/platform-agents.mp4');
     expect(video).toHaveAttribute('preload', 'metadata');
     expect(video).toHaveProperty('autoplay', true);
     expect(video).toHaveProperty('muted', true);
@@ -120,6 +122,17 @@ describe('HomePage', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('replaces a video blocked by the browser playback policy with the visual fallback', async () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValueOnce(
+      new Error('Autoplay is blocked'),
+    );
+    const { container } = render(<HomePage onNavigate={vi.fn()} />);
+
+    fireEvent.loadedData(container.querySelector('video'));
+
+    expect(await screen.findByTestId('platform-video-fallback')).toBeInTheDocument();
+  });
+
   it('does not autoplay or loop and pauses once loaded when reduced motion is preferred', async () => {
     installMotionPreference(true);
     const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
@@ -131,5 +144,38 @@ describe('HomePage', () => {
     fireEvent.loadedData(video);
 
     await waitFor(() => expect(pause).toHaveBeenCalled());
+  });
+
+  it('uses the broadly supported H.264 video served by the backend', () => {
+    const media = readFileSync(resolve(
+      process.cwd(),
+      '../../backend/competition_app/static/platform-assets/home/platform-agents.mp4',
+    ));
+    const containerMarkers = media.toString('latin1');
+
+    expect(containerMarkers).toContain('avc1');
+    expect(containerMarkers).not.toContain('hvc1');
+  });
+
+  it('stacks the compact selector and gives feedback messages full width', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
+    const compactStyles = css.match(
+      /@media \(max-width: 560px\) \{([\s\S]*?)\n\}\n\n@media \(prefers-reduced-motion: reduce\)/,
+    )?.[1] || '';
+
+    expect(compactStyles).toMatch(
+      /\.platform-home__target-selector\s*\{[^}]*flex-direction:\s*column;/,
+    );
+    expect(compactStyles).toMatch(
+      /\.platform-home__target-selector \[role='status'\],[\s\S]*?\{[^}]*width:\s*100%;/,
+    );
+  });
+
+  it('uses accessible contrast for capability descriptions', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
+
+    expect(css).toMatch(
+      /\.platform-home__capability-copy > span\s*\{[^}]*color:\s*#53635d;/,
+    );
   });
 });
