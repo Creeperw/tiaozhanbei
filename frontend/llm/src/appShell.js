@@ -11,6 +11,7 @@ const SUPPORT_NAV = [
 
 export const PAGE_TITLES = {
   dashboard: '培训助手首页',
+  'qualification-route': '资格考试学习路线',
   assistant: '智能助教',
   practice: '学习工坊',
   'training-workshop': '训练工坊',
@@ -38,12 +39,13 @@ export function getAppShellConfig({ currentUser, currentPage, selectedSessionId 
   const allowedPages = new Set([
     ...PRIMARY_NAV.map((item) => item.key),
     'assistant',
+    'qualification-route',
     'knowledge',
     ...visibleSupportNav.map((item) => item.key),
   ]);
   const normalizedPage = allowedPages.has(requestedPage) ? requestedPage : 'dashboard';
   const homeAction = normalizedPage === 'dashboard' ? null : { key: 'dashboard', label: '返回主页' };
-  const shellMode = ['assistant', 'practice', 'training-workshop', 'knowledge'].includes(normalizedPage) ? 'workspace' : 'standard';
+  const shellMode = ['assistant', 'practice', 'training-workshop', 'knowledge', 'qualification-route'].includes(normalizedPage) ? 'workspace' : 'standard';
 
   return {
     defaultPage: 'dashboard',

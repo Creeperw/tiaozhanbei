@@ -245,12 +245,41 @@ class AuditAgent:
                 "原创题缺少题型所需选项、答案或解析: "
                 + ", ".join(incomplete_generated)
             )
+        missing_answers = [
+            question_id
+            for question_id in selected_ids
+            if not str(paper.answer_key.get(question_id) or "").strip()
+        ]
+        if missing_answers:
+            deterministic_findings.append(
+                "入卷题目缺少标准答案: " + ", ".join(missing_answers)
+            )
+        missing_explanations = [
+            question_id
+            for question_id in selected_ids
+            if not str(paper.explanations.get(question_id) or "").strip()
+        ]
+        if missing_explanations:
+            deterministic_findings.append(
+                "入卷题目缺少解析: " + ", ".join(missing_explanations)
+            )
         if set(paper.answer_key) != set(selected_ids):
             deterministic_findings.append("答案键与入卷题目不一致。")
-        decision = "revise" if deterministic_findings else model_output.decision
+        model_blocking_findings = self._blocking_paper_findings(
+            model_output.findings
+        )
+        decision = (
+            "revise"
+            if deterministic_findings or model_blocking_findings
+            else model_output.decision
+        )
         if audit_format_drifted and not deterministic_findings:
             decision = "pass"
-        if decision == "revise" and not deterministic_findings:
+        if (
+            decision == "revise"
+            and not deterministic_findings
+            and not model_blocking_findings
+        ):
             # The system owns count/type/source/answer gates. Once those pass,
             # model-only wording or coverage advice must not trigger a full
             # paper rebuild and another large structured response.
@@ -268,6 +297,7 @@ class AuditAgent:
             context.get("audit_feedback") is not None
             and decision == "revise"
             and not deterministic_findings
+            and not model_blocking_findings
         ):
             decision = "pass"
             model_output = model_output.model_copy(
@@ -281,6 +311,7 @@ class AuditAgent:
         if (
             decision == "revise"
             and not deterministic_findings
+            and not model_blocking_findings
             and not blueprint.question_count_is_hard_constraint
         ):
             # Model-level improvement notes are advisory. Candidate shortages or
@@ -296,6 +327,26 @@ class AuditAgent:
             verified_claim_ids=[],
         )
         return envelope(context, "audit_agent", "audit_result", result)
+
+    @staticmethod
+    def _blocking_paper_findings(findings: list[str]) -> list[str]:
+        """Fail closed when a nominal pass explicitly describes a violation."""
+
+        blocking_markers = (
+            "违反约束",
+            "违反去重约束",
+            "违反“",
+            "硬约束未满足",
+            "必须补充",
+            "要求：补充",
+            "修改要求：",
+            "严重主题偏离",
+        )
+        return [
+            finding
+            for finding in findings
+            if any(marker in finding for marker in blocking_markers)
+        ]
 
     @staticmethod
     def _normalize_question_type(value: str) -> str:

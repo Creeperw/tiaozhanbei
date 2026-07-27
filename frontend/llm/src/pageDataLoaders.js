@@ -982,8 +982,8 @@ export async function loadDailyTaskPracticeQuestion({ fetcher, taskItemId }) {
   try {
     const { data, source } = await fetcher({
       paths: [
-        `/v1/daily-task-items/${encodedTaskItemId}/practice/next`,
         `/daily-task-items/${encodedTaskItemId}/practice/next`,
+        `/v1/daily-task-items/${encodedTaskItemId}/practice/next`,
       ],
       fallback,
       validator: isDailyTaskPracticeQuestionPayloadValid,
@@ -1002,8 +1002,8 @@ export async function recordDailyTaskVideoEvidence({ fetcher, taskItemId, eviden
   try {
     const { data, source } = await fetcher({
       paths: [
-        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence`,
         `/daily-task-items/${encodedTaskItemId}/video-evidence`,
+        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence`,
       ],
       fallback: null,
       options: {
@@ -1030,8 +1030,8 @@ export async function confirmDailyTaskIframeVideo({ fetcher, taskItemId }) {
   try {
     const { data, source } = await fetcher({
       paths: [
-        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence/confirm`,
         `/daily-task-items/${encodedTaskItemId}/video-evidence/confirm`,
+        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence/confirm`,
       ],
       fallback: null,
       options: { method: 'POST', body: JSON.stringify({ confirmed: true }) },

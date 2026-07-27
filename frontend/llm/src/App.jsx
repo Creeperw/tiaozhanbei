@@ -6,6 +6,7 @@ import PersonalizationHubPage from './components/PersonalizationHubPage';
 import SettingsHubPage from './components/SettingsHubPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
+import QualificationRoutePage from './components/QualificationRoutePage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
 import LearningStageLanding from './components/learning-stage/LearningStageLanding';
@@ -107,41 +108,13 @@ export default function App() {
   const shellConfig = getAppShellConfig({ currentUser, currentPage: shellPage, selectedSessionId });
 
   const navigateToPage = (destination, context = null) => {
-    if (typeof destination === 'object') {
-      const params = destination.params || {};
-      if (destination.page === 'knowledge') {
-        const carriesAtlasContext = Boolean(
-          params.trackId || params.membershipId || params.route || params.lv1 || params.lv2 || params.kpId || params.kp_id,
-        );
-        const preferredContext = carriesAtlasContext
-          ? {}
-          : knowledgeNavigationContext?.trackId
-            ? knowledgeNavigationContext
-            : { route: 'textbook_14_5' };
-        setPageIntent(createPageIntent({
-          ...destination,
-          params: { view: 'atlas', source: 'navigation', ...preferredContext, ...params },
-        }));
-        return;
-      }
-      if (destination.page === 'personalization') {
-        const settingsView = legacyPersonalizationSettingsView(params.view);
-        if (settingsView) {
-          setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
-          return;
-        }
-        setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'user-profile' }));
-        return;
-      }
-      if (destination.page === 'training-workshop') setNavigationRevision((value) => value + 1);
-      if (destination.page === 'assistant' && params.newConversation) {
-        setNavigationRevision((value) => value + 1);
-      }
-      setPageIntent(createPageIntent(destination));
-      return;
-    }
-    const params = typeof context === 'string' ? { sessionId: context } : (context || {});
-    if (destination === 'knowledge') {
+    const contextualParams = typeof context === 'string' ? { sessionId: context } : (context || {});
+    const nextIntent = typeof destination === 'object'
+      ? createPageIntent(destination, contextualParams)
+      : createPageIntent(destination, contextualParams);
+    const { page, params } = nextIntent;
+
+    if (page === 'knowledge') {
       const carriesAtlasContext = Boolean(
         params.trackId || params.membershipId || params.route || params.lv1 || params.lv2 || params.kpId || params.kp_id,
       );
@@ -150,22 +123,28 @@ export default function App() {
         : knowledgeNavigationContext?.trackId
           ? knowledgeNavigationContext
           : { route: 'textbook_14_5' };
-      setPageIntent(createPageIntent(destination, {
+      setPageIntent(createPageIntent(page, {
         view: 'atlas', source: 'navigation', ...preferredContext, ...params,
       }));
       return;
     }
-    if (destination === 'personalization') {
+    if (page === 'personalization') {
       const settingsView = legacyPersonalizationSettingsView(params.view);
       if (settingsView) {
         setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
         return;
       }
-      setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'user-profile' }));
+      setPageIntent(createPageIntent(page, { ...params, view: params.view || 'user-profile' }));
       return;
     }
-    if (destination === 'training-workshop') setNavigationRevision((value) => value + 1);
-    setPageIntent(createPageIntent(destination, params));
+    if (
+      page === 'training-workshop'
+      || (page === 'practice' && params.view === 'workspace')
+      || (page === 'assistant' && params.newConversation)
+    ) {
+      setNavigationRevision((value) => value + 1);
+    }
+    setPageIntent(nextIntent);
   };
 
   const startStageTransition = useCallback((selection) => {
@@ -208,6 +187,8 @@ export default function App() {
     switch (shellConfig.currentPage) {
       case 'dashboard':
         return <HomePage currentUser={currentUser} onNavigate={navigateToPage} />;
+      case 'qualification-route':
+        return <QualificationRoutePage currentUser={currentUser} onNavigate={navigateToPage} />;
       case 'assistant':
         return (
           <ChatInterface
@@ -236,7 +217,14 @@ export default function App() {
           );
         }
         if (pageIntent.params.view === 'workspace') {
-          return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
+          return (
+            <PracticePage
+              key={`practice-workspace-${navigationRevision}`}
+              navigationContext={pageIntent.params}
+              onNavigate={navigateToPage}
+              onBackHome={() => navigateToPage('dashboard')}
+            />
+          );
         }
         if (pageIntent.params.view === 'stages') {
           return (
@@ -258,7 +246,14 @@ export default function App() {
           />
         );
       case 'training-workshop':
-        return <PracticePage key={`training-workshop-${navigationRevision}`} navigationContext={pageIntent.params} />;
+        return (
+          <PracticePage
+            key={`training-workshop-${navigationRevision}`}
+            navigationContext={pageIntent.params}
+            onNavigate={navigateToPage}
+            onBackHome={() => navigateToPage('dashboard')}
+          />
+        );
       case 'knowledge':
         return (
           <KnowledgePage

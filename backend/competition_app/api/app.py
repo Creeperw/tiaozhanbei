@@ -49,6 +49,9 @@ QUALIFICATION_TARGET_CATALOG = (
     / "qualification_targets"
     / "tcm_qualification_targets.v1.json"
 )
+WORKSHOP_NOTE_IMAGE_ROOT = (
+    Path(__file__).resolve().parents[1] / "data" / "workshop_note_images"
+)
 
 _PRACTICE_TYPE_ALIASES = {
     "单项选择题": "single_choice",
@@ -118,6 +121,26 @@ def _practice_mode_matches(question_type: object, mode: str) -> bool:
     if mode == "case":
         return normalized in _CASE_PRACTICE_TYPES
     return True
+
+
+def _sanitize_practice_question_labels(payload: dict) -> dict:
+    question = payload.get("question") if isinstance(payload, dict) else None
+    if not isinstance(question, dict):
+        return payload
+    kp_ids = {
+        str(value).strip()
+        for value in question.get("kp_ids") or []
+        if str(value).strip()
+    }
+    raw_names = question.get("kp_names") or []
+    if isinstance(raw_names, dict):
+        raw_names = raw_names.values()
+    question["kp_names"] = list(dict.fromkeys(
+        str(value).strip()
+        for value in raw_names
+        if str(value).strip() and str(value).strip() not in kp_ids
+    ))
+    return payload
 
 
 def _profile_practice_query(context: dict) -> str:
@@ -444,6 +467,21 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is not None and learner_id != user.user_id:
             raise HTTPException(status_code=403, detail="无权访问其他用户的数据")
         return user
+
+    async def canonical_review_queue(learner_id: str, *, limit: int = 200):
+        """Refresh and read the single review queue used by every user-facing metric."""
+
+        if backend_handoff is not None and hasattr(
+            backend_handoff, "load_learning_context"
+        ):
+            behavior = await asyncio.to_thread(
+                backend_handoff.load_learning_context, learner_id
+            )
+            container.review_service.ingest_question_attempts(
+                learner_id=learner_id,
+                attempts=behavior.get("question_attempt", []),
+            )
+        return container.review_service.get_queue(learner_id, limit=limit)
 
     @app.get("/api/v1/qualification-papers/catalog")
     async def qualification_paper_catalog(
@@ -959,6 +997,59 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=404, detail="笔记不存在")
         return Response(status_code=204)
 
+    @app.post("/api/v1/workshop/note-images", status_code=201)
+    async def upload_workshop_note_image(
+        request: Request, file: UploadFile = File(...)
+    ) -> dict:
+        user = current_user(request)
+        media_type = str(file.content_type or "").lower()
+        extensions = {
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+        }
+        if media_type not in extensions:
+            raise HTTPException(
+                status_code=422, detail="笔记图片仅支持 JPG、PNG、WebP 或 GIF"
+            )
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=422, detail="上传图片不能为空")
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="笔记图片不能超过 5 MB")
+        user_directory = WORKSHOP_NOTE_IMAGE_ROOT / user.user_id
+        user_directory.mkdir(parents=True, exist_ok=True)
+        image_id = uuid4().hex
+        target = user_directory / f"{image_id}{extensions[media_type]}"
+        target.write_bytes(content)
+        return {
+            "image_id": image_id,
+            "url": f"/api/v1/workshop/note-images/{image_id}",
+            "media_type": media_type,
+        }
+
+    @app.get("/api/v1/workshop/note-images/{image_id}")
+    async def get_workshop_note_image(image_id: str, request: Request):
+        user = current_user(request)
+        if not re.fullmatch(r"[a-f0-9]{32}", image_id):
+            raise HTTPException(status_code=404, detail="笔记图片不存在")
+        user_directory = WORKSHOP_NOTE_IMAGE_ROOT / user.user_id
+        for extension, media_type in (
+            (".jpg", "image/jpeg"),
+            (".png", "image/png"),
+            (".webp", "image/webp"),
+            (".gif", "image/gif"),
+        ):
+            target = user_directory / f"{image_id}{extension}"
+            if target.is_file():
+                return FileResponse(
+                    target,
+                    media_type=media_type,
+                    headers={"Cache-Control": "private, max-age=86400"},
+                )
+        raise HTTPException(status_code=404, detail="笔记图片不存在")
+
     @app.post("/api/v1/auth/onboarding/complete")
     async def complete_registration_onboarding(request: Request):
         user = current_user(request)
@@ -1387,11 +1478,32 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=503, detail="学习成果统计服务未启用")
         if days not in {7, 30, 90}:
             raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
-        return await asyncio.to_thread(
+        result = await asyncio.to_thread(
             backend_handoff.load_learning_statistics,
             user.user_id,
             days=days,
         )
+        queue = await canonical_review_queue(user.user_id)
+        lifetime = dict(result.get("lifetime") or {})
+        lifetime.update(
+            {
+                "review_queue_total": len(queue.entries),
+                "reviews_due": queue.due_count,
+                "review_tasks_pending": queue.active_task_count,
+            }
+        )
+        definitions = dict(result.get("metric_definitions") or {})
+        definitions["reviews_due"] = {
+            "label": "当前到期复习数",
+            "formula": "count(canonical review memory where next_review_at <= calculated_at)",
+            "sources": ["canonical_review_memory"],
+        }
+        return {
+            **result,
+            "lifetime": lifetime,
+            "metric_definitions": definitions,
+            "review_projection_source": "canonical_review_memory",
+        }
 
     @app.get("/api/v1/learning-context")
     async def learning_context(request: Request) -> dict:
@@ -1627,13 +1739,27 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=503, detail="学情洞察服务未启用")
         if days not in {7, 30, 90}:
             raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
-        return await asyncio.to_thread(
+        result = await asyncio.to_thread(
             backend_handoff.load_learning_insights,
             user.user_id,
             days=days,
             plan_context=current_plan_context(user.user_id),
             run_automation=run_automation,
         )
+        queue = await canonical_review_queue(user.user_id)
+        overview = {
+            **dict(result.get("overview") or {}),
+            "due_review_count": queue.due_count,
+            "review_projection_source": "canonical_review_memory",
+        }
+        data_sources = list(result.get("data_sources") or [])
+        if "canonical_review_memory" not in data_sources:
+            data_sources.append("canonical_review_memory")
+        return {
+            **result,
+            "overview": overview,
+            "data_sources": data_sources,
+        }
 
     @app.get("/api/v1/resource-match-report")
     async def resource_match_report(
@@ -1997,7 +2123,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 mode=mode,
             )
             if personal.get("available") or scope == "user":
-                return personal
+                return _sanitize_practice_question_labels(personal)
 
         context: dict = {}
         try:
@@ -2053,7 +2179,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         "strategy": "current_learning_adaptive_v1",
                         "reason": "active_claim",
                     }
-                    return resumed
+                    return _sanitize_practice_question_labels(resumed)
 
         current_task_kp_ids = [
             str(value).strip()
@@ -2106,17 +2232,18 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "strategy": "current_learning_adaptive_v1",
                     "reason": reason,
                 }
-                return issued
+                return _sanitize_practice_question_labels(issued)
         except Exception:
             # Keep projected formal questions usable while the read-only bank
             # is temporarily unavailable; never reinterpret this as an empty bank.
             pass
-        return await asyncio.to_thread(
+        cached = await asyncio.to_thread(
             runtime.issue_cached_public_practice,
             user.user_id,
             kp_id=kp_id,
             mode=mode,
         )
+        return _sanitize_practice_question_labels(cached)
 
     @app.get("/api/v1/workshop/knowledge-cards")
     async def list_workshop_knowledge_cards(

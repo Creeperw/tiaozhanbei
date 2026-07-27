@@ -213,8 +213,9 @@ function WeakPointsCard({ weakPoints, onNavigate }) {
               page: 'practice',
               params: {
                 view: 'workspace',
-                taskType: 'question_training',
+                taskType: 'topic_training',
                 ...(first?.kp_id ? { kpId: first.kp_id, kpName: first.kp_name } : {}),
+                returnTo: { page: 'personalization', params: { view: 'reports' } },
               },
             });
           }}
@@ -284,11 +285,10 @@ export default function LearningInsightsReportPage({ onNavigate }) {
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">我的学情报告</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40">
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm" aria-label={`报告统计周期：${dateRange}`}>
             <CalendarDays aria-hidden="true" size={17} className="text-slate-500" />
             <span>{dateRange}</span>
-            <span aria-hidden="true" className="text-slate-400">⌄</span>
-          </button>
+          </span>
           <span className="inline-flex items-center gap-1.5 text-sm text-slate-500" title="统计来自当前学习行为、练习记录和能力评估数据">
             数据说明
             <Info aria-hidden="true" size={16} />

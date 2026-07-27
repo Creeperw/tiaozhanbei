@@ -87,6 +87,25 @@ class PlannerAgent:
         self.chat_model = chat_model or StubChatModel()
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[PlannerDecision]:
+        if self._is_casual_conversation(str(context.get("user_request") or "")):
+            if context.get("terminal_trace"):
+                context["terminal_trace"].validation(
+                    "planner_agent", valid=True, detail="deterministic casual boundary"
+                )
+            return envelope(
+                context,
+                "planner_agent",
+                "planner_decision",
+                PlannerDecision(
+                    task_type="casual_conversation",
+                    plan_scope=None,
+                    selected_agents=[],
+                    routing_reason="纯问候、致谢、告别或助教能力询问，无需调用业务智能体。",
+                    risk_level="low",
+                    requires_audit=False,
+                    requires_learning_plan_output=False,
+                ),
+            )
         routing_skill = prompt_skill_registry.load("planner_agent", "route_request")
         skills = prompt_skill_registry.load_many(
             [

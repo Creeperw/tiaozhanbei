@@ -145,7 +145,8 @@ class PersonalizedPracticeRuntime(PracticeRuntime):
                 "question_type": "single_choice",
                 "stem": "第一道客观题",
                 "options": [],
-                "kp_ids": ["KP_1"],
+                "kp_ids": ["KP_1", "KP_2"],
+                "kp_names": ["知识点一", "知识点一", "KP_2"],
                 "request_id": request_id,
                 "source_scope": "formal_question_bank",
             },
@@ -316,4 +317,5 @@ def test_practice_next_resumes_latest_unfinished_claim_on_refresh(tmp_path: Path
     assert response.status_code == 200
     assert response.json()["question"]["question_id"] == "FORMAL_Q_1"
     assert response.json()["question"]["request_id"] == "claim-1"
+    assert response.json()["question"]["kp_names"] == ["知识点一"]
     assert runtime.issued == []

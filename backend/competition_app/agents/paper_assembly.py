@@ -55,6 +55,8 @@ class PaperAssemblyAgent:
                         "question_type": item.question_type,
                         "stem": item.stem,
                         "tags": item.tags,
+                        "has_reference_answer": bool(item.reference_answer.strip()),
+                        "has_analysis": bool((item.analysis or "").strip()),
                     }
                     for item in unit.items
                 ],
@@ -149,6 +151,12 @@ class PaperAssemblyAgent:
                 system_constraints.append(
                     f"模型选择的题目{selected.question_id}不在蓝图单元"
                     f"{selected.unit_id}候选池中，系统已丢弃该越界选择。"
+                )
+                continue
+            if not self._has_complete_solution(question):
+                system_constraints.append(
+                    f"候选题{selected.question_id}缺少标准答案或解析，"
+                    "系统已跳过并由完整候选或原创题补足。"
                 )
                 continue
             normalized_stem = self._normalize_stem(question.stem)
@@ -289,6 +297,8 @@ class PaperAssemblyAgent:
                 for candidate in unit.items:
                     if len(items) >= required_total or candidate.question_id in selected_ids:
                         continue
+                    if not self._has_complete_solution(candidate):
+                        continue
                     if blueprint_unit.question_type_preferences and not self._matches_question_type(
                         candidate.question_type, blueprint_unit.question_type_preferences
                     ):
@@ -335,6 +345,7 @@ class PaperAssemblyAgent:
                     (unit, candidate)
                     for unit in candidate_pool.units
                     for candidate in unit.items
+                    if self._has_complete_solution(candidate)
                 ),
                 None,
             )
@@ -395,6 +406,13 @@ class PaperAssemblyAgent:
             ],
         )
         return envelope(context, "expert_agent", "exam_paper_draft", draft)
+
+    @staticmethod
+    def _has_complete_solution(question: QuestionDetail) -> bool:
+        return bool(
+            question.reference_answer.strip()
+            and (question.analysis or "").strip()
+        )
 
     @classmethod
     def _normalize_model_output(

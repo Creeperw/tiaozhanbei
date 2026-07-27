@@ -84,7 +84,14 @@ vi.mock('./QuestionWorkspacePage', () => ({
 }));
 
 vi.mock('./KnowledgeCardLibrary', () => ({
-  default: () => <div data-testid="knowledge-card-library" />,
+  default: ({ initialResource, directVideo, taskItemId }) => (
+    <div
+      data-testid="knowledge-card-library"
+      data-resource={initialResource || ''}
+      data-video-title={directVideo?.title || ''}
+      data-task-item-id={taskItemId || ''}
+    />
+  ),
 }));
 
 vi.mock('./KnowledgePointTrainingHub', () => ({
@@ -124,7 +131,7 @@ describe('PracticePage training modules', () => {
       '模拟病患',
     ]);
     expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /知识收藏/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /题目收藏/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /学习笔记/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
@@ -139,7 +146,7 @@ describe('PracticePage training modules', () => {
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['错题库', '知识收藏', '学习笔记', '上传题库']);
+    ).toEqual(['错题库', '题目收藏', '学习笔记', '上传题库']);
   });
 
   it('renders the local overview statistics contract without replacing main workshop modules', () => {
@@ -154,7 +161,7 @@ describe('PracticePage training modules', () => {
     }} />);
 
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
-    expect(screen.getByText('8 天')).toBeInTheDocument();
+    expect(screen.queryByText('8 天')).not.toBeInTheDocument();
     expect(screen.getByText('76%')).toBeInTheDocument();
     expect(within(learningOverview).getByText('6 题')).toBeInTheDocument();
     expect(within(learningOverview).getByText('82%')).toBeInTheDocument();
@@ -210,8 +217,8 @@ describe('PracticePage training modules', () => {
 
     render(<PracticePage />);
 
-    expect(await screen.findByText('5 天')).toBeInTheDocument();
-    expect(screen.getByText('75%')).toBeInTheDocument();
+    expect(screen.queryByText('5 天')).not.toBeInTheDocument();
+    expect(await screen.findByText('75%')).toBeInTheDocument();
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
     expect(within(learningOverview).getByText('近 30 天练习')).toBeInTheDocument();
     expect(within(learningOverview).getByText('7 题')).toBeInTheDocument();
@@ -262,7 +269,7 @@ describe('PracticePage training modules', () => {
   });
 
   it.each([
-    ['知识收藏', 'question-favorites-panel'],
+    ['题目收藏', 'question-favorites-panel'],
     ['学习笔记', 'study-notes-panel'],
   ])('opens the %s personal library', async (title, panelTestId) => {
     render(<PracticePage />);
@@ -280,6 +287,41 @@ describe('PracticePage training modules', () => {
 
     expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '案例简答' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('returns a deep-linked daily task to its caller instead of the generic workshop overview', () => {
+    const onNavigate = vi.fn();
+    render(
+      <PracticePage
+        navigationContext={{
+          view: 'workspace',
+          taskType: 'question_training',
+          returnTo: { page: 'qualification-route', params: {} },
+        }}
+        onNavigate={onNavigate}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '返回今日学习' }));
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'qualification-route', params: {} });
+  });
+
+  it('passes a direct daily video into the knowledge-card player', () => {
+    render(
+      <PracticePage
+        navigationContext={{
+          view: 'workspace',
+          taskType: 'knowledge_cards',
+          taskItemId: 'ITEM_VIDEO',
+          resourceView: 'videos',
+          directVideo: { title: '章节精讲', url: 'https://example.test/video.mp4' },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-resource', 'videos');
+    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-video-title', '章节精讲');
+    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-task-item-id', 'ITEM_VIDEO');
   });
 
   it('binds a daily knowledge-practice item to its formal knowledge point', async () => {
@@ -318,17 +360,12 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('button', { name: '全部题目' })).not.toBeInTheDocument();
   });
 
-  it('provides task and result views without the legacy evidence inspector', async () => {
+  it('keeps feedback inside the question workflow without a persistent training artifact panel', async () => {
     render(<PracticePage navigationContext={{ taskType: 'question_training' }} />);
 
-    const viewTabs = await screen.findByRole('tablist', { name: '移动端训练视图' });
-    expect(viewTabs).toBeInTheDocument();
-    expect(within(viewTabs).getByRole('tab', { name: '任务' })).toHaveAttribute('aria-selected', 'true');
-
-    fireEvent.click(within(viewTabs).getByRole('tab', { name: '结果' }));
-    expect(within(viewTabs).getByRole('tab', { name: '结果' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByTestId('practice-result-panel')).toHaveAttribute('data-mobile-active', 'true');
-    expect(within(viewTabs).queryByRole('tab', { name: '证据' })).not.toBeInTheDocument();
+    expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '移动端训练视图' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('practice-result-panel')).not.toBeInTheDocument();
     expect(screen.queryByText('证据检查器')).not.toBeInTheDocument();
     expect(screen.queryByTestId('practice-inspector')).not.toBeInTheDocument();
   });

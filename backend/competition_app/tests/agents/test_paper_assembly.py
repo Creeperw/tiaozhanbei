@@ -67,6 +67,21 @@ def test_duplicate_question_constraint_is_user_readable() -> None:
     assert "保留首次选择" in message
 
 
+def test_candidate_must_have_both_answer_and_explanation_before_selection() -> None:
+    question = (
+        _assembly_context()["dependency_outputs"]["question_pool"]
+        .payload.units[0].items[0]
+    )
+
+    assert PaperAssemblyAgent._has_complete_solution(question)
+    assert not PaperAssemblyAgent._has_complete_solution(
+        question.model_copy(update={"analysis": ""})
+    )
+    assert not PaperAssemblyAgent._has_complete_solution(
+        question.model_copy(update={"reference_answer": ""})
+    )
+
+
 class AssemblyModel:
     async def complete_json(self, role, payload, on_delta=None):
         return {

@@ -25,6 +25,7 @@ import { buildAgentPresentation } from '../agentPresentationModel';
 import { buildTraceFromEvents, useLangGraphStore } from '../stores/useLangGraphStore';
 import { createWorkflowRunId, getWorkflowRun, streamWorkflowTurn } from '../workflowChatClient';
 import { formatMessageTime } from '../chatTime';
+import { workshopActionIntent } from '../pageIntent';
 
 const CodeHighlighter = lazy(() => import('./CodeHighlighter'));
 
@@ -1460,25 +1461,13 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   }
 
   const handleWorkflowAction = (action) => {
-    const params = action?.params || {};
-    const taskTypes = {
-      'workshop.paper': 'paper_workspace',
-      'workshop.knowledge_card': 'knowledge_cards',
-      'workshop.question_training': 'question_training',
-    };
-    const taskType = taskTypes[action?.destination];
-    if (!taskType) return;
-    onNavigate?.({
-      page: 'practice',
-      params: {
-        view: 'workspace',
-        taskType,
-        ...params,
-        paperId: params.paper_id || params.paperId,
-        cardId: params.card_id || params.cardId,
-        kpId: params.kp_id || params.kpId,
+    const intent = workshopActionIntent(action, {
+      returnTo: {
+        page: 'assistant',
+        params: currentSessionId ? { sessionId: currentSessionId } : {},
       },
     });
+    if (intent) onNavigate?.(intent);
   };
 
   const handleMainWorkflowSend = async (answerOverride = null) => {

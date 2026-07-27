@@ -1,13 +1,15 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import AppShell from './AppShell';
 
 vi.mock('./UserProfileModal', () => ({
   default: ({ open }) => open ? <div role="dialog" aria-label="完善个人信息">profile modal</div> : null,
 }));
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('AppShell', () => {
   it('exposes an accessible current page and mobile navigation drawer', async () => {
@@ -35,8 +37,8 @@ describe('AppShell', () => {
     expect(menuButton).toHaveFocus();
   });
 
-  it('opens the training workshop in a fixed expanded workspace shell without a duplicate heading', () => {
-    render(
+  it('opens the training workshop under the desktop top navigation without a duplicate heading', () => {
+    const { container } = render(
       <AppShell
         currentUser={{ username: 'alice', role: 'user' }}
         currentPage="training-workshop"
@@ -47,7 +49,8 @@ describe('AppShell', () => {
       </AppShell>,
     );
 
-    expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false');
+    expect(container.querySelector('.app-shell__topbar')).toBeInTheDocument();
+    expect(container.querySelector('.app-shell__sidebar')).not.toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
     expect(screen.queryByRole('heading', { name: '训练工坊' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '学习工坊' })).toBeInTheDocument();
@@ -91,6 +94,52 @@ describe('AppShell', () => {
     expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: {} });
   });
 
+  it('keeps qualification selection in the top navigation and opens the matching homepage route', async () => {
+    const onNavigate = vi.fn();
+    const fetchMock = vi.fn((url, options = {}) => {
+      const path = String(url);
+      const payload = path.includes('/qualification-targets')
+        ? {
+          items: [
+            { target_id: 'target-tcm', exam_track_id: 'track-tcm', official_name: '中医执业医师资格考试' },
+            { target_id: 'target-integrated', exam_track_id: 'track-integrated', official_name: '中西医结合执业医师资格考试' },
+          ],
+        }
+        : path.endsWith('/personalization/learning-target') && options.method === 'PUT'
+          ? { success: true, target: { exam_track_id: 'track-integrated' } }
+          : path.endsWith('/personalization/learning-target')
+            ? { target: { exam_track_id: 'track-tcm' } }
+            : {};
+      return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify(payload) });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const user = userEvent.setup();
+
+    render(
+      <AppShell
+        currentUser={{ username: 'alice', role: 'user' }}
+        currentPage="dashboard"
+        onNavigate={onNavigate}
+        onLogout={vi.fn()}
+      >
+        <div>Dashboard content</div>
+      </AppShell>,
+    );
+
+    const selector = await screen.findByRole('combobox', { name: '资格考试路径' });
+    expect(selector).toHaveValue('target-tcm');
+    await user.selectOptions(selector, 'target-integrated');
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/personalization\/learning-target$/),
+      expect.objectContaining({ method: 'PUT' }),
+    ));
+    expect(onNavigate).toHaveBeenCalledWith({
+      page: 'qualification-route',
+      params: { qualificationTargetId: 'target-integrated' },
+    });
+  });
+
   it('opens moved intervention notifications from the notification action', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();
@@ -109,8 +158,8 @@ describe('AppShell', () => {
     expect(onNavigate).toHaveBeenCalledWith({ page: 'settings', params: { view: 'governance' } });
   });
 
-  it('keeps the desktop shell expanded without a collapse control', () => {
-    render(
+  it('keeps a persistent desktop top navigation without a collapse control', () => {
+    const { container } = render(
       <AppShell
         currentUser={{ username: 'alice', role: 'user' }}
         currentPage="dashboard"
@@ -123,18 +172,19 @@ describe('AppShell', () => {
 
     expect(screen.queryByRole('heading', { name: '培训助手首页' })).not.toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveAttribute('data-page', 'dashboard');
-    expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false');
+    expect(container.querySelector('.app-shell__topbar')).toBeInTheDocument();
+    expect(container.querySelector('.app-shell__sidebar')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /侧栏/ })).not.toBeInTheDocument();
   });
 
-  it('keeps the fixed expanded sidebar open when changing modules', async () => {
-    const { rerender } = render(
+  it('keeps the desktop top navigation mounted when changing modules', async () => {
+    const { container, rerender } = render(
       <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="dashboard" onNavigate={vi.fn()} onLogout={vi.fn()}>
         <div>Dashboard content</div>
       </AppShell>,
     );
 
-    expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false');
+    expect(container.querySelector('.app-shell__topbar')).toBeInTheDocument();
 
     rerender(
       <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="assistant" onNavigate={vi.fn()} onLogout={vi.fn()}>
@@ -142,7 +192,7 @@ describe('AppShell', () => {
       </AppShell>,
     );
 
-    await waitFor(() => expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false'));
+    await waitFor(() => expect(container.querySelector('.app-shell__topbar')).toBeInTheDocument());
   });
 
   it('marks assistant and knowledge as workspace pages and omits a duplicate module heading', () => {
@@ -249,7 +299,7 @@ describe('AppShell', () => {
     await waitFor(() => expect(container.querySelector('.app-shell__drawer-backdrop')).not.toBeInTheDocument(), { timeout: 500 });
   });
 
-  it('places an editable avatar beside the current user details', async () => {
+  it('keeps the current user profile accessible from the top navigation', async () => {
     const user = userEvent.setup();
     render(
       <AppShell
@@ -262,7 +312,6 @@ describe('AppShell', () => {
       </AppShell>,
     );
 
-    expect(screen.getByText('当前用户')).toBeInTheDocument();
     expect(screen.getByText('明同学')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '打开个人信息' }));
     expect(screen.getByRole('dialog', { name: '完善个人信息' })).toBeInTheDocument();

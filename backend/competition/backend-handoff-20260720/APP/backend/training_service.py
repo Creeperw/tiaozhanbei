@@ -92,6 +92,17 @@ def _choice_tokens(value: str) -> set[str]:
     return set(parts)
 
 
+def _true_false_token(value: str) -> bool | None:
+    """Normalize the common UI, import and textbook representations."""
+
+    compact = re.sub(r"[\s\[\]()（）{}'\"。.]", "", value or "").lower()
+    if compact in {"√", "✓", "✔", "对", "正确", "是", "true", "t", "1"}:
+        return True
+    if compact in {"×", "✕", "✖", "错", "错误", "否", "false", "f", "0"}:
+        return False
+    return None
+
+
 def _objective_grading_payload(submission: dict[str, Any]) -> dict[str, Any]:
     question_type = _text(submission.get("question_type"))
     student_answer = _text(submission.get("student_answer"))
@@ -114,13 +125,23 @@ def _objective_grading_payload(submission: dict[str, Any]) -> dict[str, Any]:
         is_correct = bool(correct) and selected == correct
         score = 0 if wrong or not correct else (100 if is_correct else round(100 * len(selected & correct) / len(correct)))
         rule_note = "多选题含错误选项，按规则计 0 分。" if wrong else "多选题按正确选项覆盖情况计分。"
+    elif question_type in {"single_choice", "单选题", "单项选择题"}:
+        selected = _choice_tokens(student_answer)
+        correct = _choice_tokens(standard_answer)
+        is_correct = len(selected) == 1 and selected == correct
+        score = 100 if is_correct else 0
+        rule_note = "单选题由系统按标准选项精确判分。"
+    elif question_type in {"true_false", "判断题"}:
+        selected = _true_false_token(student_answer)
+        correct = _true_false_token(standard_answer)
+        is_correct = selected is not None and selected == correct
+        score = 100 if is_correct else 0
+        rule_note = "判断题由系统在统一正确/错误表述后精确判分。"
     elif question_type in {"fill_blank", "填空题"}:
         is_correct, score = _fill_blank_score(student_answer, standard_answer)
         rule_note = "填空题按标准答案中的有效填空单元覆盖情况计分，不设置保底分。"
     else:
         is_correct, score = _score_answer(student_answer, standard_answer)
-        if question_type in {"single_choice", "true_false", "单选题", "单项选择题", "判断题"} and not is_correct:
-            score = 0
         rule_note = "客观题由系统依据标准答案自动判分。"
     topic_note = f"本题考查{point_text}。" if point_text else "本题的知识点名称暂未匹配，系统不会用内部编号代替。"
     analysis = f"{topic_note}{rule_note}"

@@ -109,11 +109,11 @@ describe('CompactAssistant', () => {
     const restoreRule = stylesheet.match(/\.compact-assistant\.is-collapsed\[data-floating="true"\] \.compact-assistant__restore\s*\{([^}]+)\}/)?.[1] || '';
     const figureRule = stylesheet.match(/\.compact-assistant__character-figure\s*\{([^}]+)\}/)?.[1] || '';
 
-    expect(restoreRule).toContain('width: 58px;');
+    expect(restoreRule).toContain('width: 40px;');
     expect(restoreRule).toContain('background: transparent;');
     expect(restoreRule).toContain('box-shadow: none;');
-    expect(figureRule).toContain('width: 64px;');
-    expect(figureRule).toContain('height: 80px;');
+    expect(figureRule).toContain('width: 40px;');
+    expect(figureRule).toContain('height: 52px;');
     expect(stylesheet).not.toContain('compact-assistant__restore::before');
     expect(stylesheet).toContain('.compact-assistant__character-shadow { display: none; }');
   });

@@ -192,6 +192,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState('');
   const [catalogQuery, setCatalogQuery] = useState('');
+  const [catalogStatus, setCatalogStatus] = useState('all');
   const [searchCatalog, setSearchCatalog] = useState(null);
 
   useEffect(() => {
@@ -359,10 +360,22 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   }, [normalizedCatalogQuery, searchCatalog]);
 
   const filteredChapters = useMemo(() => {
-    if (!normalizedCatalogQuery) return chapters;
-    if (!searchMatches) return [];
-    return searchMatches.map(({ chapter }) => chapter);
-  }, [chapters, normalizedCatalogQuery, searchMatches]);
+    const queryMatches = !normalizedCatalogQuery
+      ? chapters
+      : searchMatches
+        ? searchMatches.map(({ chapter }) => chapter)
+        : [];
+    if (catalogStatus === 'all') return queryMatches;
+    return queryMatches.filter((chapter) => {
+      const status = String(chapter.status || chapter.learning_status || '').toLowerCase();
+      const progress = Number(chapter.progress ?? chapter.progress_rate ?? 0);
+      if (catalogStatus === 'completed') return status === 'completed' || progress >= 1;
+      if (catalogStatus === 'in_progress') {
+        return ['current', 'in_progress', 'learning'].includes(status) || (progress > 0 && progress < 1);
+      }
+      return !status || ['pending', 'not_started', 'locked'].includes(status) || progress <= 0;
+    });
+  }, [catalogStatus, chapters, normalizedCatalogQuery, searchMatches]);
   const filteredSections = useMemo(() => {
     if (!normalizedCatalogQuery) return sections;
     const match = searchMatches?.find(({ chapter }) => chapter.id === selectedChapter?.id);
@@ -404,6 +417,20 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     });
   };
 
+  const textbookReturnIntent = {
+    page: 'practice',
+    params: { ...navigationContext, view: 'textbook-chapters' },
+  };
+
+  const openCourseTool = (taskType) => onNavigate?.({
+    page: 'practice',
+    params: {
+      view: 'workspace',
+      taskType,
+      returnTo: textbookReturnIntent,
+    },
+  });
+
   return (
     <main className="textbook-chapter-learning">
       <header className="textbook-chapter-learning__hero">
@@ -441,17 +468,35 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <button type="button" className="is-active"><BookOpen aria-hidden="true" size={18} />课程内容</button>
-            <button type="button"><Layers3 aria-hidden="true" size={18} />作业与考试</button>
-            <button type="button"><Layers3 aria-hidden="true" size={18} />知识图谱</button>
-            <button type="button"><BookOpen aria-hidden="true" size={18} />学习笔记</button>
+            <span className="is-active"><BookOpen aria-hidden="true" size={18} />课程内容</span>
+            <button type="button" onClick={() => openCourseTool('question_training')}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
+            <button type="button" onClick={() => onNavigate?.({
+              page: 'knowledge',
+              params: { view: 'atlas', route, lv1: book, source: 'textbook-chapters' },
+            })}><Layers3 aria-hidden="true" size={18} />知识图谱</button>
+            <button type="button" onClick={() => openCourseTool('study_notes')}><BookOpen aria-hidden="true" size={18} />学习笔记</button>
           </aside>
           <div className="textbook-learning-main">
             <div className="textbook-learning-main__toolbar">
               <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
               <div className="textbook-learning-filters">
                 <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
-                <button type="button" className="is-active">全部</button><button type="button">未完成</button><button type="button">学习中</button><button type="button">已完成</button>
+                {[
+                  ['all', '全部'],
+                  ['pending', '未完成'],
+                  ['in_progress', '学习中'],
+                  ['completed', '已完成'],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={catalogStatus === value ? 'is-active' : ''}
+                    aria-pressed={catalogStatus === value}
+                    onClick={() => setCatalogStatus(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
@@ -474,7 +519,13 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
                 setDetail(null);
                 setVideoHistory([]);
               }}
-              emptyText={normalizedCatalogQuery ? '没有找到匹配的章节或小节。' : '该教材暂无章节数据。'}
+              emptyText={
+                normalizedCatalogQuery
+                  ? '没有找到匹配的章节或小节。'
+                  : catalogStatus !== 'all'
+                    ? '当前筛选条件下没有章节。'
+                    : '该教材暂无章节数据。'
+              }
               unitLabel="个小节"
               selectedExtra={selectedChapter ? (
                 <Directory

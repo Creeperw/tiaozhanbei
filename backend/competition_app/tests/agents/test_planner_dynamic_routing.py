@@ -114,7 +114,8 @@ class DailyTaskSemanticPlannerModel:
 
 @pytest.mark.asyncio
 async def test_plain_greeting_never_enters_learning_plan_or_resource_chain() -> None:
-    result = await PlannerAgent(CapturingPlannerModel()).run(
+    model = CapturingPlannerModel()
+    result = await PlannerAgent(model).run(
         {
             "case_id": "C_GREETING",
             "trace_id": "T_GREETING",
@@ -131,6 +132,7 @@ async def test_plain_greeting_never_enters_learning_plan_or_resource_chain() -> 
     assert result.payload.plan_scope is None
     assert result.payload.selected_agents == []
     assert result.payload.requires_audit is False
+    assert model.payload is None
 
 
 @pytest.mark.parametrize(

@@ -18,7 +18,7 @@ import {
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import { generateWorkshopPaperWithAgents, loadPaper, loadPapers, savePaperAnswers, setPaperTimerPaused, submitPaper } from '../pageDataLoaders';
 import { groupPaperItems } from './paperQuestionGroups';
-import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
+import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from './WorkshopSaveActions';
 
 const questionTypes = [
   ['single_choice', '单选题'],
@@ -83,7 +83,7 @@ const questionTypeLabel = (value) => ({
   多项选择题: '多选题',
 }[value] || value || '题目');
 
-export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId = '' }) {
+export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId = '', onExit }) {
   const [topic, setTopic] = useState('围绕四君子汤与脾胃气虚证完成训练');
   const [distribution, setDistribution] = useState({
     single_choice: 1,
@@ -332,6 +332,11 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
       const saved = await save();
       if (!saved) return;
     }
+    if (onExit) {
+      sessionStorage.removeItem(paperStorageKey);
+      onExit();
+      return;
+    }
     await returnToPaperLibrary();
   };
 
@@ -437,7 +442,21 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
           </div>
           <div className="flex items-start gap-3 text-lg font-medium leading-8 text-slate-950">
             <span className="mt-0.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-sm font-bold text-emerald-800">{position}</span>
-            <PaperQuestionContent content={currentItem.stem} />
+            <span className="min-w-0 flex-1"><PaperQuestionContent content={currentItem.stem} /></span>
+            <FavoriteQuestionIconButton
+              question={{
+                resource_id: currentItem.paper_item_id,
+                title: `智能组卷 · ${String(currentItem.stem || '').slice(0, 80)}`,
+                content: {
+                  question_content: currentItem.stem,
+                  question_type: currentItem.question_type,
+                  options: currentOptions,
+                  standard_answer: currentResult?.standard_answer || [],
+                  explanation: currentResult?.explanation || '',
+                },
+              }}
+              source="智能组卷"
+            />
           </div>
 
           <fieldset className="mt-6" disabled={loading || answerLocked}>

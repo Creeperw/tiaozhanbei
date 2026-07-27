@@ -41,6 +41,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   const [answerMode, setAnswerMode] = useState('practice');
   const [duration, setDuration] = useState(60);
   const [activePaperId, setActivePaperId] = useState(paperId);
+  const [activeTaskItemId, setActiveTaskItemId] = useState(taskItemId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -57,8 +58,18 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   const total = Object.values(distribution).reduce((sum, value) => sum + value, 0);
   const selectedTypes = questionTypes.filter(([key]) => distribution[key] > 0);
 
-  if (activePaperId || taskItemId) {
-    return <PaperGenerationPanel enabled paperId={activePaperId} taskItemId={taskItemId} />;
+  if (activePaperId || activeTaskItemId) {
+    return (
+      <PaperGenerationPanel
+        enabled
+        paperId={activePaperId}
+        taskItemId={activeTaskItemId}
+        onExit={() => {
+          setActivePaperId('');
+          setActiveTaskItemId('');
+        }}
+      />
+    );
   }
 
   const setCount = (key, value) => {
@@ -84,7 +95,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
         distribution: Object.fromEntries(Object.entries(distribution).filter(([, value]) => value > 0)),
         answerMode,
         durationMinutes: answerMode === 'test' ? duration : null,
-        taskItemId,
+        taskItemId: activeTaskItemId,
       });
       if (response.error) throw new Error(response.error);
       const loaded = await loadPaper({ fetcher: fetchJsonWithAuthFallback, paperId: response.paperId });

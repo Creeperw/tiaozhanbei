@@ -1,4 +1,5 @@
 import unittest
+from datetime import timedelta
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -10,6 +11,7 @@ from APP.backend import database
 from APP.backend.auth import get_current_user
 from APP.backend.database import get_db
 from APP.backend.routers import training_routes
+from APP.backend.time_utils import utc_now
 
 
 class DailyTaskRoutesTests(unittest.TestCase):
@@ -170,6 +172,35 @@ class DailyTaskRoutesTests(unittest.TestCase):
             self.assertEqual(db.query(database.LearningAttemptRecord).filter_by(
                 daily_task_item_id="ITEM_1", request_id=request_id
             ).count(), 0)
+
+    def test_next_replaces_an_expired_daily_claim(self):
+        with self.Session() as db:
+            snapshot = db.query(database.DailyTaskQuestionSnapshotRecord).filter_by(
+                question_version_id="QV_2"
+            ).one()
+            db.add(database.CorePracticeSubmissionClaim(
+                user_id=1,
+                request_id="expired-request",
+                question_id="Q_2",
+                daily_task_item_id="ITEM_1",
+                question_version_id="QV_2",
+                daily_task_snapshot_id=snapshot.id,
+                created_at=utc_now() - timedelta(minutes=31),
+            ))
+            db.commit()
+
+        issued = self.client.get("/daily-task-items/ITEM_1/practice/next")
+
+        self.assertEqual(issued.status_code, 200)
+        request_id = issued.json()["question"]["request_id"]
+        self.assertNotEqual(request_id, "expired-request")
+        with self.Session() as db:
+            claims = db.query(database.CorePracticeSubmissionClaim).filter_by(
+                user_id=1,
+                daily_task_item_id="ITEM_1",
+            ).all()
+            self.assertEqual(len(claims), 1)
+            self.assertEqual(claims[0].request_id, request_id)
 
 
 if __name__ == "__main__":

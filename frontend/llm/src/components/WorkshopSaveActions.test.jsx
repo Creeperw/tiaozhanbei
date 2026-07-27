@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
+import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from './WorkshopSaveActions';
 import * as api from './workshopLibraryApi';
 
 vi.mock('./workshopLibraryApi', () => ({
@@ -55,5 +55,18 @@ describe('WorkshopSaveActions', () => {
       title: '智能组卷 · 第 1 题', context: question.content, resource_id: 'Q1',
     })));
     expect(screen.getByText('笔记已保存')).toBeInTheDocument();
+  });
+
+  it('favorites a question immediately from the solving screen', async () => {
+    api.saveFavorite.mockResolvedValue({ favorite: { favorite_id: 'V1' } });
+    render(<FavoriteQuestionIconButton question={question} source="题目训练" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '收藏本题' }));
+    await waitFor(() => expect(api.saveFavorite).toHaveBeenCalledWith(expect.objectContaining({
+      folder_id: 'F1',
+      resource_id: 'Q1',
+      source: '题目训练',
+    })));
+    expect(screen.getByRole('button', { name: '本题已收藏' })).toBeDisabled();
   });
 });

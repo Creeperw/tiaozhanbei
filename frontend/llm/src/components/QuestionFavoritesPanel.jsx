@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, BookMarked, ChevronDown, ChevronUp, FolderPlus, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
+import { BookMarked, ChevronDown, ChevronUp, FolderPlus, Loader2, Play, Plus, Search, Star, Trash2, X } from 'lucide-react';
 import {
   createFavoriteFolder,
   deleteFavorite,
@@ -54,7 +54,7 @@ export default function QuestionFavoritesPanel() {
       setSelectedFolderId(
         nextFolders.some((item) => item.folder_id === preferredFolderId)
           ? preferredFolderId
-          : '',
+          : nextFolders[0]?.folder_id || '',
       );
     } catch (reason) {
       setError(reason.message || '收藏加载失败');
@@ -112,42 +112,59 @@ export default function QuestionFavoritesPanel() {
       && (!keyword || `${item.title} ${item.content?.question_content || ''}`.toLocaleLowerCase().includes(keyword));
   });
 
-  const leaveFolder = () => {
-    setSelectedFolderId('');
-    setExpandedId('');
-    setQuery('');
-    setSourceFilter('');
-    setDateFilter('');
-  };
-
-  return <section className="workshop-library" aria-labelledby="favorites-title">
-    <header className="workshop-library__header">
-      <div><span>个人知识沉淀</span><h2 id="favorites-title">{selectedFolder?.name || '知识收藏'}</h2><p>{selectedFolder ? `${folderFavorites.length} 道收藏题目` : '按收藏簿整理训练题目，复盘答案与解析。'}</p></div>
-    </header>
+  return <section className="question-collection" aria-labelledby="favorites-title">
     {error && <p role="alert" className="workshop-library__error">{error}</p>}
-    {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载收藏…</p> : !selectedFolder ? <div className="workshop-library__folder-grid" role="region" aria-label="收藏簿卡片">
-      {folders.map((folder, index) => <button key={folder.folder_id} type="button" className="workshop-library__folder-card" onClick={() => setSelectedFolderId(folder.folder_id)}><BookMarked size={25} aria-hidden="true" /><span>{folder.name}</span><small>{folder.favorite_count} 项</small><i aria-hidden="true">{String(index + 1).padStart(2, '0')}</i></button>)}
-      <button type="button" className="workshop-library__folder-card workshop-library__folder-card--new" onClick={() => setFolderComposerOpen(true)}><Plus size={25} aria-hidden="true" /><span>新建收藏簿</span></button>
-    </div> : <div className="workshop-library__layout">
-      <div className="workshop-library__detail-header">
-        <button type="button" onClick={leaveFolder}><ArrowLeft size={16} />返回收藏簿列表</button>
-        <button type="button" className="workshop-library__danger" onClick={removeFolder}><Trash2 size={14} />删除当前收藏簿</button>
+    {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载题目收藏…</p> : (
+      <div className="question-collection__shell">
+        <aside className="question-collection__sidebar" aria-label="收藏题单">
+          <header><BookMarked size={20} /><strong>我的题单</strong><button type="button" aria-label="新建收藏题单" onClick={() => setFolderComposerOpen(true)}><Plus size={16} /></button></header>
+          <nav>
+            {folders.map((folder) => (
+              <button
+                key={folder.folder_id}
+                type="button"
+                className={selectedFolderId === folder.folder_id ? 'is-active' : ''}
+                onClick={() => { setSelectedFolderId(folder.folder_id); setExpandedId(''); }}
+              >
+                <Star size={15} aria-hidden="true" />
+                <span>{folder.name}</span>
+                <small>{folder.favorite_count}</small>
+              </button>
+            ))}
+          </nav>
+          {!folders.length && <p>点击上方“+”新建题单；首次收藏题目时也会自动创建默认收藏。</p>}
+        </aside>
+
+        <main className="question-collection__main">
+          <section className="question-collection__summary">
+            <span className="question-collection__star"><Star size={34} fill="currentColor" aria-hidden="true" /></span>
+            <div><small>题目收藏</small><h2 id="favorites-title">{selectedFolder?.name || '我的收藏'}</h2><p>{folderFavorites.length} 道题 · 集中复盘题干、答案与解析</p></div>
+            <button type="button" disabled={!visibleFavorites.length} onClick={() => setExpandedId(visibleFavorites[0]?.favorite_id || '')}><Play size={16} fill="currentColor" />开始复习</button>
+            {selectedFolder && <button type="button" className="question-collection__delete-folder" onClick={removeFolder} aria-label="删除当前题单"><Trash2 size={15} /></button>}
+          </section>
+
+          <div className="question-collection__filters">
+            <label><Search size={16} /><input aria-label="搜索收藏" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索题目" /></label>
+            <select aria-label="筛选收藏来源" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><option value="">全部来源</option>{sources.map((source) => <option key={source}>{source}</option>)}</select>
+            <select aria-label="筛选收藏日期" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}><option value="">全部日期</option>{dates.map((date) => <option key={date}>{date}</option>)}</select>
+          </div>
+
+          <div className="question-collection__items">
+            {visibleFavorites.length === 0 ? <div className="workshop-library__empty workshop-library__empty--compact"><BookMarked size={24} /><p>{query || sourceFilter || dateFilter ? '暂无符合条件的收藏' : '这个题单还没有题目。'}</p><small>在任何解题界面点击书签图标即可收藏。</small></div> : visibleFavorites.map((item, index) => {
+              const open = expandedId === item.favorite_id;
+              return <article key={item.favorite_id} className={open ? 'is-open' : ''}>
+                <button type="button" className="question-collection__item-toggle" aria-expanded={open} onClick={() => setExpandedId(open ? '' : item.favorite_id)}>
+                  <span className="question-collection__position">{index + 1}</span>
+                  <span><strong>{item.title}</strong><small>{item.source} · {String(item.updated_at || '').slice(0, 10)}</small></span>
+                  {open ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+                </button>
+                {open && <div className="workshop-library__item-body"><FavoriteContent item={item} /><button type="button" className="workshop-library__delete" onClick={() => removeFavorite(item.favorite_id)}><Trash2 size={14} />取消收藏</button></div>}
+              </article>;
+            })}
+          </div>
+        </main>
       </div>
-      <div className="workshop-notes__filters">
-        <label className="workshop-notes__search"><Search size={16} /><input aria-label="搜索收藏" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索题目" /></label>
-        <label>来源<select aria-label="筛选收藏来源" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><option value="">全部</option>{sources.map((source) => <option key={source}>{source}</option>)}</select></label>
-        <label>日期<select aria-label="筛选收藏日期" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}><option value="">全部</option>{dates.map((date) => <option key={date}>{date}</option>)}</select></label>
-      </div>
-      <div className="workshop-library__items">
-        {visibleFavorites.length === 0 ? <div className="workshop-library__empty workshop-library__empty--compact"><BookMarked size={24} /><p>{query || sourceFilter || dateFilter ? '暂无符合条件的收藏' : '这个收藏簿还没有内容。'}</p><small>完成题目批改后，可在解析下方加入收藏。</small></div> : visibleFavorites.map((item) => {
-          const open = expandedId === item.favorite_id;
-          return <article key={item.favorite_id} className={open ? 'is-open' : ''}>
-            <button type="button" className="workshop-library__item-toggle" aria-expanded={open} onClick={() => setExpandedId(open ? '' : item.favorite_id)}><span><strong>{item.title}</strong><small>{item.source} · {String(item.updated_at || '').slice(0, 10)}</small></span>{open ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</button>
-            {open && <div className="workshop-library__item-body"><FavoriteContent item={item} /><button type="button" className="workshop-library__delete" onClick={() => removeFavorite(item.favorite_id)}><Trash2 size={14} />取消收藏</button></div>}
-          </article>;
-        })}
-      </div>
-    </div>}
+    )}
     {folderComposerOpen && <div className="workshop-save-dialog" role="dialog" aria-modal="true" aria-labelledby="favorite-folder-dialog-title">
       <div>
         <form onSubmit={addFolder}>

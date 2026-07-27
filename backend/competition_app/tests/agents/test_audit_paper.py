@@ -31,6 +31,17 @@ class InvalidAuditModel:
         return {"result": "试卷整体可用"}
 
 
+class ContradictoryPassingAuditModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        return {
+            "decision": "pass",
+            "findings": [
+                "题1与题2考查内容重复，违反去重约束。",
+                "修改要求：请替换题2后重新审核。",
+            ],
+        }
+
+
 def test_paper_audit_uses_the_same_subjective_question_aliases_as_assembly() -> None:
     assert AuditAgent._matches_question_type("临床案例问答", ["简答题"])
     assert AuditAgent._matches_question_type("病例分析_实践技能", ["病例分析题"])
@@ -124,6 +135,40 @@ async def test_paper_audit_passes_when_hard_question_count_is_met() -> None:
     result = await AuditAgent(PassingAuditModel()).run(_audit_context(20))
 
     assert result.payload.decision == "pass"
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_fails_closed_on_contradictory_pass_findings() -> None:
+    result = await AuditAgent(ContradictoryPassingAuditModel()).run(
+        _audit_context(2, required_count=2)
+    )
+
+    assert result.payload.decision == "revise"
+    assert any("违反去重约束" in finding for finding in result.payload.findings)
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_revises_when_any_selected_question_lacks_explanation() -> None:
+    context = _audit_context(2, required_count=2)
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.explanations["Q1"] = None
+
+    result = await AuditAgent(PassingAuditModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert any("缺少解析" in finding and "Q1" in finding for finding in result.payload.findings)
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_revises_when_any_selected_question_lacks_answer() -> None:
+    context = _audit_context(2, required_count=2)
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.answer_key["Q2"] = ""
+
+    result = await AuditAgent(PassingAuditModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert any("缺少标准答案" in finding and "Q2" in finding for finding in result.payload.findings)
 
 
 @pytest.mark.asyncio

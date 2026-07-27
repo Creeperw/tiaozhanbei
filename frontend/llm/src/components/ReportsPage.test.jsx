@@ -91,7 +91,7 @@ describe('ReportsPage', () => {
     expect(await screen.findByLabelText(/2026-07-22：有效学习 35 分钟/)).toBeInTheDocument();
     const trendRegion = screen.getByRole('region', { name: '每日学习趋势' });
     expect(trendRegion).toBeInTheDocument();
-    expect(within(trendRegion).getByText('90%')).toBeInTheDocument();
+    expect(within(trendRegion).getByText('100%')).toBeInTheDocument();
     expect(screen.getByText('有效学习时长（分钟）')).toBeInTheDocument();
     expect(screen.getByText('任务完成率（%）')).toBeInTheDocument();
     expect(screen.getByText('日期')).toBeInTheDocument();

@@ -3,14 +3,15 @@ import {
   BookOpen,
   Bell,
   ChartNoAxesColumnIncreasing,
+  ChevronDown,
   ClipboardList,
   Database,
   Dumbbell,
+  GraduationCap,
   Home,
   LogOut,
   Menu,
   MessageSquareMore,
-  PencilLine,
   Settings,
   ShieldCheck,
   Sprout,
@@ -22,6 +23,9 @@ import HomeButton from './HomeButton';
 import UserProfileModal from './UserProfileModal';
 import { useModalFocus } from './ui/useModalFocus';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import { loadLearningTarget, saveLearningTarget } from './exam-atlas/examAtlasApi';
+
+const LEARNING_TARGET_CHANGED_EVENT = 'shizhen:learning-target-changed';
 
 const navIconMap = {
   dashboard: Home,
@@ -34,6 +38,7 @@ const navIconMap = {
   settings: Settings,
   'admin-feedback': ShieldCheck,
   'admin-knowledge': Database,
+  'qualification-route': GraduationCap,
 };
 
 function NavItems({ items, currentPage, onNavigate }) {
@@ -75,7 +80,157 @@ function ShellIdentity() {
   );
 }
 
-function MobileDrawer({ mounted, open, shell, onClose, onNavigate, onLogout, displayName }) {
+function QualificationTargetSection({
+  options,
+  selectedTargetId,
+  loading,
+  error,
+  onSelect,
+  idSuffix = 'desktop',
+}) {
+  const titleId = `qualification-target-title-${idSuffix}`;
+  return (
+    <section className="app-shell__target-section" aria-labelledby={titleId}>
+      <header>
+        <GraduationCap aria-hidden="true" size={17} />
+        <span id={titleId}>资格考试路径</span>
+      </header>
+      <label className="app-shell__target-control">
+        <span>当前考试</span>
+        <select
+          aria-label="资格考试路径"
+          value={selectedTargetId}
+          disabled={loading || !options.length}
+          onChange={(event) => onSelect(event.target.value)}
+        >
+          {!options.length && <option value="">{loading ? '正在读取考试目录…' : '暂无可用考试'}</option>}
+          {options.map((item) => (
+            <option key={item.target_id} value={item.target_id}>{item.official_name}</option>
+          ))}
+        </select>
+      </label>
+      <p className={error ? 'is-error' : ''} role={error ? 'alert' : undefined}>
+        {error || '选择后打开对应教材学习路线'}
+      </p>
+      <button
+        type="button"
+        className="app-shell__target-open"
+        disabled={loading || !selectedTargetId}
+        onClick={() => onSelect(selectedTargetId)}
+      >
+        打开当前学习路线
+      </button>
+    </section>
+  );
+}
+
+function DesktopTopbar({
+  shell,
+  displayName,
+  avatarUrl,
+  avatarInitial,
+  unreadNotifications,
+  targetOptions,
+  selectedTargetId,
+  targetLoading,
+  targetError,
+  onNavigate,
+  onLogout,
+  onOpenProfile,
+  onSelectTarget,
+}) {
+  return (
+    <header className="app-shell__topbar">
+      <div className="app-shell__topbar-inner">
+        <ShellIdentity />
+        <NavItems
+          items={[...shell.primaryNav, ...shell.supportNav]}
+          currentPage={shell.currentPage}
+          onNavigate={onNavigate}
+        />
+        <div className="app-shell__topbar-actions">
+          <label
+            className={`app-shell__topbar-target${targetError ? ' is-error' : ''}`}
+            title={targetError || '选择后打开对应教材学习路线'}
+          >
+            <GraduationCap aria-hidden="true" size={17} />
+            <span className="sr-only">资格考试路径</span>
+            <select
+              aria-label="资格考试路径"
+              value={selectedTargetId}
+              disabled={targetLoading || !targetOptions.length}
+              onChange={(event) => onSelectTarget(event.target.value)}
+            >
+              {!targetOptions.length && (
+                <option value="">{targetLoading ? '正在读取考试目录…' : '暂无可用考试'}</option>
+              )}
+              {targetOptions.map((item) => (
+                <option key={item.target_id} value={item.target_id}>{item.official_name}</option>
+              ))}
+            </select>
+            <ChevronDown aria-hidden="true" size={15} />
+          </label>
+
+          <button
+            type="button"
+            className="app-shell__assistant-entry"
+            aria-label="AI 智能助教"
+            onClick={() => onNavigate({ page: 'assistant', params: { newConversation: true } })}
+          >
+            <MessageSquareMore aria-hidden="true" size={18} />
+            <span>AI 智能助教</span>
+          </button>
+
+          <button
+            type="button"
+            className="app-shell__topbar-icon"
+            aria-label={`通知，${unreadNotifications} 条未读`}
+            onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}
+          >
+            <Bell aria-hidden="true" size={19} />
+            {unreadNotifications > 0 && (
+              <span className="app-shell__notification-badge">
+                {unreadNotifications > 99 ? '99+' : unreadNotifications}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className="app-shell__topbar-account"
+            aria-label="打开个人信息"
+            onClick={onOpenProfile}
+          >
+            <span className="app-shell__topbar-avatar">
+              {avatarUrl ? <img src={avatarUrl} alt="" /> : avatarInitial}
+            </span>
+            <span className="app-shell__topbar-user">{displayName}</span>
+            <ChevronDown aria-hidden="true" size={15} />
+          </button>
+
+          <button type="button" className="app-shell__topbar-icon app-shell__topbar-logout" aria-label="退出登录" onClick={onLogout}>
+            <LogOut aria-hidden="true" size={18} />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function MobileDrawer({
+  mounted,
+  open,
+  shell,
+  onClose,
+  onNavigate,
+  onLogout,
+  displayName,
+  targetOptions,
+  selectedTargetId,
+  targetLoading,
+  targetError,
+  onSelectTarget,
+}) {
   const dialogRef = useModalFocus(open);
   if (!mounted) return null;
   return (
@@ -118,6 +273,14 @@ function MobileDrawer({ mounted, open, shell, onClose, onNavigate, onLogout, dis
             />
           </div>
         )}
+        <QualificationTargetSection
+          options={targetOptions}
+          selectedTargetId={selectedTargetId}
+          loading={targetLoading}
+          error={targetError}
+          onSelect={onSelectTarget}
+          idSuffix="mobile"
+        />
         <div className="app-shell__drawer-account">
           <span>{displayName}</span>
           <button type="button" className="button button--secondary" onClick={onLogout}>
@@ -137,6 +300,10 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
   const drawerExitTimerRef = useRef(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [accountProfile, setAccountProfile] = useState(null);
+  const [targetOptions, setTargetOptions] = useState([]);
+  const [selectedTargetId, setSelectedTargetId] = useState('');
+  const [targetLoading, setTargetLoading] = useState(true);
+  const [targetError, setTargetError] = useState('');
   const displayName = currentUser?.display_name || currentUser?.username || 'User';
   const avatarUrl = accountProfile?.avatar_url || null;
   const avatarInitial = displayName.trim().slice(0, 1).toUpperCase() || '用';
@@ -177,6 +344,35 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
     return () => { cancelled = true; };
   }, [currentUser?.user_id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadQualificationTarget = async () => {
+      setTargetLoading(true);
+      setTargetError('');
+      try {
+        const [catalogResponse, targetPayload] = await Promise.all([
+          fetchWithAuth(`${API_BASE}/v1/qualification-targets`),
+          loadLearningTarget(),
+        ]);
+        const catalog = await readJsonResponse(catalogResponse, { items: [] });
+        if (!catalogResponse.ok) throw new Error(catalog.detail || '资格考试目录暂时无法读取');
+        const options = Array.isArray(catalog.items) ? catalog.items : [];
+        const activeTarget = targetPayload?.target || targetPayload || {};
+        const selected = options.find((item) => item.exam_track_id === activeTarget.exam_track_id) || options[0];
+        if (!cancelled) {
+          setTargetOptions(options);
+          setSelectedTargetId(selected?.target_id || '');
+        }
+      } catch (requestError) {
+        if (!cancelled) setTargetError(requestError.message || '资格考试目录暂时无法读取');
+      } finally {
+        if (!cancelled) setTargetLoading(false);
+      }
+    };
+    loadQualificationTarget();
+    return () => { cancelled = true; };
+  }, [currentUser?.user_id]);
+
   const openDrawer = () => {
     window.clearTimeout(drawerExitTimerRef.current);
     setDrawerMounted(true);
@@ -194,45 +390,43 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
     if (updatedUser) onUserUpdated?.(updatedUser);
   };
 
+  const selectQualificationTarget = async (targetId) => {
+    const selected = targetOptions.find((item) => item.target_id === targetId);
+    if (!selected || targetLoading) return;
+    const previousTargetId = selectedTargetId;
+    setSelectedTargetId(targetId);
+    setTargetLoading(true);
+    setTargetError('');
+    try {
+      await saveLearningTarget(selected.exam_track_id);
+      window.dispatchEvent(new CustomEvent(LEARNING_TARGET_CHANGED_EVENT, { detail: selected }));
+      onNavigate({ page: 'qualification-route', params: { qualificationTargetId: selected.target_id } });
+      if (drawerOpen) closeDrawer();
+    } catch (requestError) {
+      setSelectedTargetId(previousTargetId);
+      setTargetError(requestError.message || '资格考试路径保存失败');
+    } finally {
+      setTargetLoading(false);
+    }
+  };
+
   return (
     <div className="app-shell" data-mode={shell.shellMode}>
-      <aside className="app-shell__sidebar" data-collapsed="false">
-        <div className="app-shell__sidebar-head">
-          <ShellIdentity />
-        </div>
-
-        <NavItems items={shell.primaryNav} currentPage={shell.currentPage} onNavigate={onNavigate} />
-
-        {shell.supportNav.length > 0 && (
-          <div className="app-shell__support">
-            <span className="app-shell__section-label">支持入口</span>
-            <NavItems items={shell.supportNav} currentPage={shell.currentPage} onNavigate={onNavigate} />
-          </div>
-        )}
-
-        <div className="app-shell__account">
-          <button type="button" className="app-shell__avatar-button" aria-label="打开个人信息" onClick={() => setProfileOpen(true)}>
-            {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{avatarInitial}</span>}
-            <i aria-hidden="true"><PencilLine size={10} /></i>
-          </button>
-          <div className="app-shell__account-summary" onClick={() => setProfileOpen(true)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setProfileOpen(true); } }}>
-            <span className="app-shell__section-label">当前用户</span>
-            <strong>{displayName}</strong>
-            <small>{currentUser?.role === 'admin' ? '管理员支持权限' : '个人学习者'}</small>
-          </div>
-          <div className="app-shell__account-actions">
-            <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}>
-              <Bell aria-hidden="true" size={17} />
-              <span className="app-shell__account-action-label">通知</span>
-              {unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
-            </button>
-            <button type="button" className="icon-button" aria-label="退出登录" onClick={onLogout}>
-              <LogOut aria-hidden="true" size={17} />
-              <span className="app-shell__account-action-label">退出</span>
-            </button>
-          </div>
-        </div>
-      </aside>
+      <DesktopTopbar
+        shell={shell}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        avatarInitial={avatarInitial}
+        unreadNotifications={unreadNotifications}
+        targetOptions={targetOptions}
+        selectedTargetId={selectedTargetId}
+        targetLoading={targetLoading}
+        targetError={targetError}
+        onNavigate={onNavigate}
+        onLogout={onLogout}
+        onOpenProfile={() => setProfileOpen(true)}
+        onSelectTarget={selectQualificationTarget}
+      />
 
       <div className="app-shell__workspace">
         <header className="app-shell__mobile-header">
@@ -276,6 +470,11 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
         onClose={closeDrawer}
         onNavigate={onNavigate}
         onLogout={onLogout}
+        targetOptions={targetOptions}
+        selectedTargetId={selectedTargetId}
+        targetLoading={targetLoading}
+        targetError={targetError}
+        onSelectTarget={selectQualificationTarget}
       />
       <UserProfileModal
         open={profileOpen}

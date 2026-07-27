@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BookMarked, Loader2, NotebookPen, Plus, X } from 'lucide-react';
+import { Bookmark, BookMarked, Check, Loader2, NotebookPen, Plus, X } from 'lucide-react';
 import {
   createFavoriteFolder,
   createNote,
@@ -72,7 +72,7 @@ export function FavoriteQuestionButton({ question, source = '训练工坊' }) {
     <button type="button" className="workshop-save-action" onClick={() => setOpen(true)}><BookMarked size={15} />加入收藏</button>
     {open && <div className="workshop-save-dialog" role="dialog" aria-modal="true" aria-labelledby="favorite-dialog-title">
       <div>
-        <header><h3 id="favorite-dialog-title">加入知识收藏</h3><button type="button" aria-label="关闭收藏窗口" onClick={() => setOpen(false)}><X size={18} /></button></header>
+        <header><h3 id="favorite-dialog-title">加入题目收藏</h3><button type="button" aria-label="关闭收藏窗口" onClick={() => setOpen(false)}><X size={18} /></button></header>
         <label>选择收藏簿<select value={selectedFolderId} onChange={(event) => setSelectedFolderId(event.target.value)}><option value="">请选择</option>{folders.map((folder) => <option key={folder.folder_id} value={folder.folder_id}>{folder.name}</option>)}</select></label>
         <label>或新建收藏簿<div className="workshop-save-dialog__inline"><input value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} placeholder="收藏簿名称" /><button type="button" onClick={addFolder} disabled={loading || !newFolderName.trim()}><Plus size={14} />新建</button></div></label>
         {status && <p role="status">{status}</p>}
@@ -80,6 +80,56 @@ export function FavoriteQuestionButton({ question, source = '训练工坊' }) {
       </div>
     </div>}
   </>;
+}
+
+export function FavoriteQuestionIconButton({ question, source = '训练工坊' }) {
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const saveImmediately = async () => {
+    if (loading || saved || !question?.resource_id) return;
+    setLoading(true);
+    setError('');
+    try {
+      const payload = await loadFavoriteFolders();
+      let folder = (payload.items || []).find((item) => item.name === '默认收藏')
+        || (payload.items || [])[0];
+      if (!folder) {
+        const created = await createFavoriteFolder('默认收藏');
+        folder = created.folder;
+      }
+      await saveFavorite({
+        folder_id: folder.folder_id,
+        resource_type: 'question',
+        resource_id: question.resource_id,
+        title: question.title,
+        source,
+        content: question.content,
+      });
+      setSaved(true);
+    } catch (reason) {
+      setError(reason.message || '收藏失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <span className="question-favorite-control">
+      <button
+        type="button"
+        className={saved ? 'is-saved' : ''}
+        aria-label={saved ? '本题已收藏' : '收藏本题'}
+        title={saved ? '本题已收藏' : '收藏本题'}
+        disabled={loading || saved}
+        onClick={saveImmediately}
+      >
+        {saved ? <Check size={17} aria-hidden="true" /> : <Bookmark size={17} aria-hidden="true" />}
+      </button>
+      {error && <small role="alert">{error}</small>}
+    </span>
+  );
 }
 
 export function NoteQuestionButton({ question, source = '训练工坊' }) {

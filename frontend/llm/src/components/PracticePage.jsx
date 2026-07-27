@@ -31,7 +31,6 @@ import KnowledgeCardLibrary from './KnowledgeCardLibrary';
 import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
 import QuestionFavoritesPanel from './QuestionFavoritesPanel';
 import StudyNotesPanel from './StudyNotesPanel';
-import { isTrainingTaskResultApproved } from '../pageDataLoaders.js';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -242,8 +241,8 @@ const utilityCards = [
   },
   {
     key: 'question_favorites',
-    title: '知识收藏',
-    description: '重点内容，随时回顾。',
+    title: '题目收藏',
+    description: '集中复盘收藏题目与解析。',
     icon: BookMarked,
     available: true,
   },
@@ -374,7 +373,7 @@ const workspaceTitles = {
   mistake_variation: '错题库',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
-  question_favorites: '知识收藏',
+  question_favorites: '题目收藏',
   study_notes: '学习笔记',
 };
 
@@ -460,7 +459,6 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
     .find((card) => card.key === stats.recentTaskKey) || trainingCards[2];
   const formatPercent = (value) => value === null ? '--' : `${value}%`;
   const formatHours = (value) => value === null ? '--' : `${value} 小时`;
-  const formatDays = (value) => value === null ? '--' : `${value} 天`;
   const formatQuestions = (value) => value === null ? '累计练习待接入' : `累计练习 ${value} 题`;
 
   return (
@@ -480,12 +478,6 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
           </div>
         </div>
         <div className="practice-overview__hero-metrics">
-          <OverviewMetricCard
-            icon={CalendarDays}
-            label="连续学习"
-            value={formatDays(stats.streakDays)}
-            hint="再接再厉，保持节奏"
-          />
           <OverviewMetricCard
             icon={TrendingUp}
             label="上次正确率"
@@ -589,16 +581,36 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
   );
 }
 
-export default function PracticePage({ navigationContext = {}, overviewStats }) {
+export default function PracticePage({
+  navigationContext = {},
+  overviewStats,
+  onNavigate,
+}) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
   const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
   const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
   const [activeInitialMode, setActiveInitialMode] = useState(() => initialTaskIntent.initialMode);
-  const [taskResult, setTaskResult] = useState(null);
-  const [mobilePage, setMobilePage] = useState('task');
   const [view, setView] = useState(() => (navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'));
   const [loadedOverviewStats, setLoadedOverviewStats] = useState(DEFAULT_TRAINING_OVERVIEW_STATS);
   const taskItemId = navigationContext.taskItemId || navigationContext.task_item_id || '';
+  const returnIntent = navigationContext.returnTo;
+  const returnLabel = returnIntent?.page === 'assistant'
+    ? '返回智能助教'
+    : returnIntent?.page === 'qualification-route'
+      ? '返回今日学习'
+      : returnIntent?.page === 'personalization' && returnIntent?.params?.view === 'reports'
+        ? '返回学情报告'
+        : returnIntent?.page === 'practice' && returnIntent?.params?.view === 'textbook-chapters'
+          ? '返回教材学习'
+      : '返回训练工坊';
+
+  const leaveWorkspace = () => {
+    if (returnIntent && onNavigate) {
+      onNavigate(returnIntent);
+      return;
+    }
+    setView('overview');
+  };
 
   useEffect(() => {
     if (overviewStats !== undefined) return undefined;
@@ -649,35 +661,15 @@ export default function PracticePage({ navigationContext = {}, overviewStats }) 
 
   const handlePracticeResult = (result, question) => {
     const grading = result?.grading || {};
-    setTaskResult({
-      task_id: result?.attempt_id || `practice-${question.question_id}`,
-      task_type: 'practice_grading',
-      status: 'completed',
-      title: `${question.question_type}批改结果`,
-      summary: grading.is_correct ? '回答正确，学习记录已更新。' : '回答错误，已进入错题记录。',
-      artifact: {
-        artifact_type: 'grading_result',
-        title: '练习批改结果',
-        content: { grading, remediation: {} },
-      },
-      evidence_pack: {},
-      audit: { decision: 'pass', reason: '正式题库受控批改已完成' },
-      trace: [],
-      learning_updates: { writeback: result?.writeback || {} },
-      next_actions: [],
-    });
-    setMobilePage('result');
+    void grading;
+    void question;
   };
 
   const openWorkshopModule = ({ key, initialMode }) => {
     setActiveTaskType(key);
     setActiveInitialMode(initialMode || key);
-    setTaskResult(null);
-    setMobilePage('task');
     setView('workspace');
   };
-
-  const taskResultApproved = isTrainingTaskResultApproved(taskResult);
 
   if (view === 'overview') {
     return (
@@ -692,8 +684,8 @@ export default function PracticePage({ navigationContext = {}, overviewStats }) 
     return (
       <div className="space-y-5 text-slate-800">
         <div className="practice-workspace__toolbar">
-          <button type="button" className="practice-workspace__back" onClick={() => setView('overview')}>
-            <ArrowLeft aria-hidden="true" size={18} />返回训练工坊
+          <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}>
+            <ArrowLeft aria-hidden="true" size={18} />{returnLabel}
           </button>
         </div>
         <QuestionWorkspacePage />
@@ -704,14 +696,14 @@ export default function PracticePage({ navigationContext = {}, overviewStats }) 
   const isSP = activeTaskType === 'ai_patient_simulation';
 
   if (isSP) {
-    return <SimulatedPatientChat onBack={() => setView('overview')} />;
+    return <SimulatedPatientChat onBack={leaveWorkspace} />;
   }
 
   return (
     <div className="space-y-5 text-slate-800">
       <div className="practice-workspace__toolbar">
-        <button type="button" className="practice-workspace__back" onClick={() => setView('overview')}>
-          <ArrowLeft aria-hidden="true" size={18} />返回训练工坊
+        <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}>
+          <ArrowLeft aria-hidden="true" size={18} />{returnLabel}
         </button>
       </div>
       <header>
@@ -719,35 +711,17 @@ export default function PracticePage({ navigationContext = {}, overviewStats }) 
         <h1 className="mt-1 text-2xl font-semibold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
       </header>
 
-      <div className="practice-mobile-tabs" role="tablist" aria-label="移动端训练视图">
-        {[
-          ['task', '任务'],
-          ['result', '结果'],
-        ].map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={mobilePage === key}
-            onClick={() => setMobilePage(key)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       {selectedKnowledgePoint && (
         <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" aria-label="当前考纲知识点">
           <div className="font-semibold">当前训练上下文：{selectedKnowledgePoint.kpName}</div>
-          <div className="mt-1 font-mono text-xs text-emerald-800">{selectedKnowledgePoint.kpId}</div>
           <p className="mt-2 leading-6 text-emerald-900">
-            该知识点已带入训练工坊；当前兼容示例题不代表该知识点的正式题目，正式题源筛选将在题库接入后启用。
+            已按该知识点筛选训练内容，作答结果会写回掌握度与复习记录。
           </p>
         </section>
       )}
 
       <div className="min-w-0 space-y-5">
-          <section data-mobile-active={String(mobilePage === 'task')} className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
+          <section className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
             {activeTaskType === 'question_training' && !taskItemId ? (
               <QualificationPaperPanel enabled />
             ) : activeTaskType === 'mistake_variation' ? (
@@ -759,6 +733,9 @@ export default function PracticePage({ navigationContext = {}, overviewStats }) 
                 cardId={navigationContext.cardId || navigationContext.card_id || ''}
                 kpId={navigationContext.kpId || navigationContext.kp_id || ''}
                 taskItemId={taskItemId}
+                initialResource={navigationContext.resourceView || navigationContext.resource_view || ''}
+                directVideo={navigationContext.directVideo || navigationContext.video || null}
+                directTitle={navigationContext.directTitle || navigationContext.kpName || navigationContext.kp_name || ''}
               />
             ) : activeTaskType === 'question_favorites' ? (
               <QuestionFavoritesPanel />
@@ -782,31 +759,6 @@ export default function PracticePage({ navigationContext = {}, overviewStats }) 
               <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
                 此模块正在准备中，暂不支持提交任务。
               </div>
-            )}
-
-          </section>
-
-          <section
-            data-testid="practice-result-panel"
-            data-mobile-active={String(mobilePage === 'result')}
-            aria-busy="false"
-            aria-labelledby="training-artifact-title"
-            className="practice-result-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50"
-          >
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-              <FileText size={16} aria-hidden="true" />
-              <h2 id="training-artifact-title" className="text-sm font-semibold text-slate-900">训练产物</h2>
-            </div>
-            {taskResult && !taskResultApproved ? (
-              <div role="alert" className="mt-4 border border-rose-300 bg-rose-50 px-4 py-4 text-rose-950">
-                <h3 className="text-base font-semibold">{displayValue(taskResult.title || taskResult.artifact?.title)}</h3>
-                <p className="mt-2 text-sm font-semibold leading-6">审核未通过/任务未完成，该候选内容不可作为学习依据。</p>
-                <p className="mt-2 text-sm leading-6">状态：{displayValue(taskResult.status)}</p>
-                <p className="mt-1 text-sm leading-6">审核原因：{displayValue(taskResult.audit?.reason)}</p>
-                <p className="mt-3 text-sm font-semibold">请调整输入后重试。</p>
-              </div>
-            ) : (
-              <div className="mt-4 [overflow-wrap:anywhere]"><ArtifactResult taskResult={taskResult} /></div>
             )}
           </section>
       </div>

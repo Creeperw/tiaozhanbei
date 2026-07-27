@@ -833,8 +833,8 @@ test('bound daily-task practice keeps the item id in next and grade contracts', 
 
   assert.equal(loaded.practice.question.question_id, 'Q_BOUND');
   assert.deepEqual(requests[0].paths, [
-    '/v1/daily-task-items/ITEM%2FBOUND/practice/next',
     '/daily-task-items/ITEM%2FBOUND/practice/next',
+    '/v1/daily-task-items/ITEM%2FBOUND/practice/next',
   ]);
   assert.equal(JSON.parse(requests[1].options.body).daily_task_item_id, 'ITEM/BOUND');
   assert.equal(graded.result.grading.is_correct, true);

@@ -283,7 +283,9 @@ def _knowledge_point_names(db: Session, kp_ids: list[str]) -> list[str]:
         for row in rows
         if str(row.name or "").strip() and str(row.name).strip() != str(row.kp_id)
     }
-    return [names[kp_id] for kp_id in kp_ids if kp_id in names]
+    return list(dict.fromkeys(
+        names[kp_id] for kp_id in kp_ids if kp_id in names
+    ))
 
 
 def _normalized_question_type(value: str | None) -> str:

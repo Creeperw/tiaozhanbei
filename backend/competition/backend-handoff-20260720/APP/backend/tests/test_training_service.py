@@ -68,6 +68,53 @@ class TrainingServicePhase4Tests(unittest.TestCase):
         self.assertEqual(payload["grading"]["analysis"].count("感冒辨证"), 1)
         self.assertNotIn("022758", payload["grading"]["analysis"])
 
+    def test_single_choice_accepts_json_array_standard_answer(self):
+        service = self._service()
+        payload = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-single",
+                "question_type": "single_choice",
+                "stem": "请选择正确项",
+                "student_answer": "A",
+                "standard_answer": '["A"]',
+                "knowledge_points": ["KP_1"],
+                "knowledge_point_names": ["理论形成时期"],
+            },
+        )
+
+        self.assertTrue(payload["grading"]["is_correct"])
+        self.assertEqual(payload["grading"]["score"], 100)
+        self.assertIsNone(payload["mistake_record"])
+
+    def test_true_false_accepts_equivalent_ui_and_textbook_tokens(self):
+        service = self._service()
+        for student_answer, standard_answer in (
+            ("正确", '["√"]'),
+            ("true", "对"),
+            ("错误", '["×"]'),
+            ("false", "错"),
+        ):
+            with self.subTest(
+                student_answer=student_answer,
+                standard_answer=standard_answer,
+            ):
+                payload = service.grade_practice_submission(
+                    profile={},
+                    memories=[],
+                    submission={
+                        "question_id": "q-true-false",
+                        "question_type": "true_false",
+                        "stem": "判断正误",
+                        "student_answer": student_answer,
+                        "standard_answer": standard_answer,
+                        "knowledge_points": ["KP_1"],
+                    },
+                )
+                self.assertTrue(payload["grading"]["is_correct"])
+                self.assertEqual(payload["grading"]["score"], 100)
+
     def test_fill_blank_has_no_base_score_and_receives_deterministic_audit(self):
         service = self._service()
         payload = service.grade_practice_submission(

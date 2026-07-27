@@ -78,7 +78,13 @@ describe('LearningInsightsReportPage', () => {
     screen.getByRole('button', { name: '去专项巩固' }).click();
     expect(onNavigate).toHaveBeenCalledWith({
       page: 'practice',
-      params: { view: 'workspace', taskType: 'question_training', kpId: 'KP_1', kpName: '方剂组成与功效' },
+      params: {
+        view: 'workspace',
+        taskType: 'topic_training',
+        kpId: 'KP_1',
+        kpName: '方剂组成与功效',
+        returnTo: { page: 'personalization', params: { view: 'reports' } },
+      },
     });
     expect(screen.queryByText('知识点掌握热力图')).not.toBeInTheDocument();
     expect(screen.queryByText('复习队列')).not.toBeInTheDocument();

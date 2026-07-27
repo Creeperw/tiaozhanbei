@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import SmartPaperPanel from './SmartPaperPanel';
@@ -16,7 +16,12 @@ vi.mock('../pageDataLoaders', () => ({
 }));
 
 vi.mock('./PaperGenerationPanel', () => ({
-  default: () => <div>paper workspace</div>,
+  default: ({ onExit }) => (
+    <div>
+      paper workspace
+      <button type="button" onClick={onExit}>退出试卷</button>
+    </div>
+  ),
 }));
 
 describe('SmartPaperPanel', () => {
@@ -39,5 +44,15 @@ describe('SmartPaperPanel', () => {
     expect(screen.getByText('历史一')).toBeInTheDocument();
     expect(screen.getByLabelText('专项练主题')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '试卷存档' })).toHaveClass('smart-paper__archive-grid');
+  });
+
+  it('returns a task-bound paper to the current smart-paper archive', async () => {
+    render(<SmartPaperPanel taskItemId="TASK_ITEM_1" />);
+
+    expect(screen.getByText('paper workspace')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '退出试卷' }));
+
+    expect(await screen.findByText('待办一')).toBeInTheDocument();
+    expect(screen.queryByText('paper workspace')).not.toBeInTheDocument();
   });
 });

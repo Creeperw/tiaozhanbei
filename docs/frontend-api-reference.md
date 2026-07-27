@@ -251,6 +251,15 @@ Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `
 | `POST` | `/api/v1/auth/login` | `{username, password}` | 与注册成功响应相同 |
 | `POST` | `/api/v1/auth/logout` | 无 | `{"status":"logged_out"}` |
 | `GET` | `/api/v1/auth/me` | 无 | `{"user": AuthUser}` |
+| `GET` | `/api/v1/auth/me/profile` | 无 | 当前用户及账户资料 |
+| `PATCH` | `/api/v1/auth/me/profile` | 可修改的账户资料字段 | 更新后的当前用户及账户资料 |
+| `PUT` | `/api/v1/auth/me/avatar` | `multipart/form-data`，字段名 `file` | 更新后的当前用户及账户资料 |
+| `GET` | `/api/v1/auth/me/avatar` | 无 | 当前用户头像文件；尚未设置时返回 `404` |
+
+资料和头像接口均只操作 Cookie 对应的当前用户。`GET/PATCH /profile` 返回
+`{"user": AuthUser, "profile": AccountProfile}`；`profile.avatar_url` 在已设置头像时包含
+带版本参数的同源私有地址。头像上传的格式、大小和内容校验以运行中 OpenAPI 与服务端
+校验结果为准，前端必须使用服务端返回的 `avatar_url`，不得自行拼接其他用户的资源路径。
 
 旧接口 `/token`、`/register`、`/send-code`、`/reset-password` 已停用并返回 `410`，新前端不得调用。
 
@@ -511,9 +520,10 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 
 - 首屏摘要、签到状态、今日任务、最近学习和复习队列读取 `/api/v1/dashboard/home`；
 - 首页学习动态读取同一响应的 `learning_activity.recent_activities`。该数组由当前用户近 30 天正式行为记录与训练工坊任务合并产生；训练任务项可额外包含 `title`、`task_type`，没有记录时返回空数组；
-- “学习路径规划”阶段卡读取 `/api/v1/learning-path`，点击阶段后使用同一树接口进入路线总览；
+- 桌面顶部导航（移动端抽屉）中的“资格考试路径”读取 `/api/v1/qualification-targets`；用户切换后以 `PUT /api/personalization/learning-target` 保存 `exam_track_id`，并打开前端 `qualification-route` 子页，不得只在前端临时切换文案；
+- `qualification-route` 子页收到资格目标变化后读取该目标的 `textbook_route_id`，再通过 `/api/v1/learning-routes/{textbook_route_id}` 呈现对应经典路线的阶段；点击阶段后使用响应中的 `stages[].books` 展开教材层。目标尚未加载时才以 `/api/v1/learning-path` 作为当前个性化路线回退；
 - “了解详情”按需读取 `/api/v1/learning-context` 中的长期、短期规划正文；
-- 资格目标选择器读取 `/api/v1/qualification-targets`，变更后写入 `/api/personalization/learning-target`，页面不得自建与服务端五条资格路线不一致的列表；
+- 资格目标栏目在桌面侧栏和移动导航抽屉中使用同一数据与保存逻辑；平台首页不得再渲染第二个目标选择器，也不得自建与服务端五条资格路线不一致的列表。再次点击“打开当前学习路线”应能直接进入当前考试子页，无需切换目标；
 - 学习动态和复习动态只显示接口已经返回的正式记录；无数据时显示空状态，不生成占位任务；
 - 所有按钮通过前端白名单动作映射进入学习工坊、复习页或个性数据页，不直接执行服务端返回的任意 URL。
 
@@ -824,12 +834,16 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 - `knowledge_points_practiced`、`knowledge_points_assessed`、`knowledge_points_mastered`；
 - `paper_attempts_completed`、`case_sessions_completed`；
 - `mistakes_recorded`、`active_mistakes`；
-- `review_queue_total`、`reviews_due`、`review_tasks_completed`；
+- `review_queue_total`、`reviews_due`、`review_tasks_completed`、`review_tasks_pending`；
 - `focus_minutes`、`knowledge_cards_saved`。
 
 `metric_definitions` 给出前端可展示的中文标签、计算公式和数据表，
 `counting_policy` 说明草稿、只打开题目、审核拒绝和重复批改版本是否计数。
 同一 `attempt_item_id` 即使产生多条审核记录也只计一次；不同用户的数据由服务端登录身份隔离。
+其中 `review_queue_total`、`reviews_due` 和 `review_tasks_pending` 统一投影自
+`canonical_review_memory`，与 `/api/v1/review-dashboard` 的 `queue`、`summary.due_count`
+及 `/api/v1/learning-insights` 的 `overview.due_review_count` 保持同一口径；前端不得再把
+旧复习状态表的计数与当前队列混合。响应中的 `review_projection_source` 可用于排查数据来源。
 
 这个接口回答“完成了多少正式成果”。行为趋势继续使用
 `learning-activity/summary`，学情判断继续使用 `learning-insights`，三者不能互相替代。
@@ -888,9 +902,9 @@ Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍
 
 正式模块键只有：`question_training`、`knowledge_cards`、`paper_workspace`。前端不要恢复已移除的“讲义生成”入口。
 
-### 6.2 知识收藏与学习笔记
+### 6.2 题目收藏与学习笔记
 
-知识收藏和学习笔记是当前登录用户的私有数据。所有接口均从 `competition_session` 解析用户，前端不得传递或猜测 `user_id`。题目收藏和题目笔记应在批改完成后创建；`content` / `context` 可保存题干、选项、用户答案、标准答案和解析。
+题目收藏和学习笔记是当前登录用户的私有数据。所有接口均从 `competition_session` 解析用户，前端不得传递或猜测 `user_id`。每个解题界面均可显示即时收藏图标；没有收藏簿时前端创建“默认收藏”，随后以相同资源 ID 幂等保存。批改后再次保存同题时可用标准答案和解析补全 `content`。学习笔记正文使用 Markdown，图片必须先上传到用户隔离的笔记图片接口，再把返回 URL 写入 Markdown。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -902,10 +916,20 @@ Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍
 | `DELETE` | `/api/v1/workshop/favorites/{favorite_id}` | 取消收藏 |
 | `GET` | `/api/v1/workshop/note-folders` | 当前用户笔记本及每本笔记数量 |
 | `POST` | `/api/v1/workshop/note-folders` | 新建笔记本，正文 `{ "name": "经方笔记" }` |
-| `GET` | `/api/v1/workshop/notes?note_type={type}&query={text}` | 查询当前用户笔记，可按类型和文本筛选 |
+| `GET` | `/api/v1/workshop/notes?note_type={type}&q={text}` | 查询当前用户笔记，可按类型和文本筛选 |
 | `POST` | `/api/v1/workshop/notes` | 新建学习笔记 |
 | `PUT` | `/api/v1/workshop/notes/{note_id}` | 修改笔记标题、正文或类型 |
 | `DELETE` | `/api/v1/workshop/notes/{note_id}` | 删除笔记 |
+| `POST` | `/api/v1/workshop/note-images` | 上传笔记图片；`multipart/form-data` 字段名 `file` |
+| `GET` | `/api/v1/workshop/note-images/{image_id}` | 读取当前登录用户自己的笔记图片 |
+
+笔记图片约束：
+
+- 只接受 `image/jpeg`、`image/png`、`image/webp`、`image/gif`，单文件不超过 5 MB；
+- 成功返回 `201`，字段包括 32 位 `image_id`、同源私有 `url` 和 `media_type`；
+- 图片 URL 仍要求 Cookie 登录，其他用户即使知道 `image_id` 也只能在自己的目录中查询，返回 `404`；
+- 不支持的文件类型、空文件和超限文件返回 `422`；
+- 前端 Markdown 图片语法使用 `![替代文本](/api/v1/workshop/note-images/{image_id})`，不得把本地对象 URL 写入持久化正文。
 
 收藏请求示例：
 
@@ -1053,7 +1077,7 @@ Atlas 的章节、小节和小节学习详情接口。`GET /api/v1/workshop` 仍
 
 受控练习的响应不会返回 `standard_answer`。`request_id` 有效期为 30 分钟且只能成功消费一次：未签发或不属于当前用户返回 `400`，重复提交返回 `409`，过期返回 `410`，答案为空返回 `422`。该提交不是可任意重放的幂等请求：前端提交期间应禁用按钮；若响应在网络中断时丢失，先刷新错题/学习行为确认是否已写入，再决定重新取题，不能生成新的 `request_id` 冒充原题。
 
-`kp_names` 是前端唯一可展示的知识点标签，`kp_ids` 仅用于接口联动，不得直接渲染。当前正式题库没有可信难度元数据，因此 `difficulty` 与 `difficulty_source` 均可为 `null`，前端不得显示默认 D2。后续题库补充明确的来源难度时，接口仍兼容 1—5 数值和对应来源；只有字段可用时才参与匹配评分，缺失时按其他可用分项重新归一化。
+`kp_names` 是前端唯一可展示的知识点标签，`kp_ids` 仅用于接口联动，不得直接渲染。服务端会在首次下发、刷新恢复未完成题目和缓存回退三条路径统一去除重复名称及误作名称返回的知识点 ID。当前正式题库没有可信难度元数据，因此 `difficulty` 与 `difficulty_source` 均可为 `null`，前端不得显示默认 D2。后续题库补充明确的来源难度时，接口仍兼容 1—5 数值和对应来源；只有字段可用时才参与匹配评分，缺失时按其他可用分项重新归一化。
 
 提交答案后，后端优先使用题库已有解析；没有解析时由 Expert 题目讲解模型依据服务端题干、
 参考答案、评分要点和知识点生成 `question_explanation`，再由独立审核模型核验。解析生成过程
@@ -1519,6 +1543,10 @@ AI 病患模拟使用：
 ```
 
 学习工坊的正式“生成试卷”按钮不再调用上述兼容 `paper_generation`，而是同步调用 `POST /api/v1/review-cards`，提交自然语言组卷要求及 `exam_constraints.question_count`、`question_types`、`question_type_distribution`。这样题库不足时仍可继续网络检索或由 Expert 补题，并强制经过 Audit；前端从 `ui_actions` 中查找 `destination=workshop.paper` 的 `params.paper_id`，再调用 `/api/v1/workshop/papers/{paper_id}` 打开计时答题页。系统当前没有可靠的题目难度评级数据，因此页面、组卷契约和推荐计算均不使用难度等级。
+
+发布门禁会逐题核验标准答案和解析。正式题库候选缺少任一项时不会直接入卷，系统改用其他完整候选或由
+Expert 按蓝图补题；题量、精确题型分布、题干去重、答案键、答案与解析任一硬约束未满足时，
+Audit 必须返回修订或拒绝，不能发布 `paper_id`。
 
 对话组卷成功时，`assistant_message` 只包含“组卷并通过审核”的提示，不包含试卷正文、答案或解析；试卷内容仅由答题页按 `paper_id` 读取。当前 UI 继续通过兼容任务接口使用的类型为 `knowledge_card_generation`、`mistake_variation`。普通客观题和案例简答直接使用 `/api/v1/workshop/practice/*`；AI 病患模拟使用独立病例会话接口，不通过此字段伪装。
 

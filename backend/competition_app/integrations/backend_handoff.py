@@ -1541,12 +1541,12 @@ class BackendHandoffRuntime:
                     "stem": stem,
                     "options": options,
                     "kp_ids": kp_ids,
-                    "kp_names": [
+                    "kp_names": list(dict.fromkeys(
                         kp_names[kp_id]
                         for kp_id in kp_ids
                         if str(kp_names.get(kp_id) or "").strip()
                         and kp_names[kp_id] != kp_id
-                    ],
+                    )),
                     "request_id": request_id,
                     "source_scope": "formal_question_bank",
                 },
