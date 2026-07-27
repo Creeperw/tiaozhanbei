@@ -73,7 +73,11 @@ def run_review_card(
 
 
 @app.command("serve")
-def serve(host: str | None = None, port: int | None = None) -> None:
+def serve(
+    host: str | None = None,
+    port: int | None = None,
+    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload on code changes"),
+) -> None:
     import uvicorn
 
     settings = Settings.from_env()
@@ -82,6 +86,7 @@ def serve(host: str | None = None, port: int | None = None) -> None:
         host=host or settings.api_host,
         port=port or settings.api_port,
         factory=False,
+        reload=reload,
     )
 
 
