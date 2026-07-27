@@ -55,6 +55,28 @@ test('keeps the learning target dropdown out of page routing', () => {
   assert.equal(config.primaryNav[1].kind, 'learning-target');
 });
 
+test('uses the platform home as a direct dashboard link without dropdown options', () => {
+  const config = getAppShellConfig({
+    currentUser: { username: 'alice', role: 'user' },
+    currentPage: 'personalization',
+  });
+  const dashboard = config.primaryNav.find((item) => item.key === 'dashboard');
+
+  assert.deepEqual(dashboard.intent, { page: 'dashboard', params: {} });
+  assert.equal('children' in dashboard, false);
+});
+
+test('uses the learning path as a direct link without dropdown options', () => {
+  const config = getAppShellConfig({
+    currentUser: { username: 'alice', role: 'user' },
+    currentPage: 'dashboard',
+  });
+  const learningPath = config.primaryNav.find((item) => item.key === 'learning-path');
+
+  assert.deepEqual(learningPath.intent, { page: 'learning-path', params: {} });
+  assert.equal('children' in learningPath, false);
+});
+
 test('keeps admin entry out of standard learner navigation and returns it for administrators', () => {
   const config = getAppShellConfig({
     currentUser: { username: 'admin', role: 'admin' },
@@ -86,6 +108,20 @@ test('defines dropdown destinations as explicit navigation intents', () => {
   assert.equal(config.primaryNav.find((item) => item.key === 'practice').children[0].label, '智能助教');
   assert.equal(config.primaryNav.find((item) => item.key === 'practice').children[1].label, '知识图谱');
   assert.equal(config.primaryNav.some((item) => item.key === 'settings'), false);
+});
+
+test('uses personalization as a direct user-profile link without dropdown options', () => {
+  const config = getAppShellConfig({
+    currentUser: { username: 'alice', role: 'user' },
+    currentPage: 'dashboard',
+  });
+  const personalization = config.primaryNav.find((item) => item.key === 'personalization');
+
+  assert.deepEqual(personalization.intent, {
+    page: 'personalization',
+    params: { view: 'user-profile' },
+  });
+  assert.equal('children' in personalization, false);
 });
 
 test('hides support navigation for standard learners', () => {

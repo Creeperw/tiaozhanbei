@@ -3,8 +3,9 @@ import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import { loadLearningTarget, saveLearningTarget } from './exam-atlas/examAtlasApi';
 
 const FALLBACK_TARGET_NAME = '中医执业医师资格考试';
+const TARGET_SELECTED_EVENT = 'competition:learning-target-selected';
 
-export default function LearningTargetSelector({ className = '', onSaved, variant = 'select' }) {
+export default function LearningTargetSelector({ className = '', onSaved, onSelected, variant = 'select' }) {
   const [options, setOptions] = useState([]);
   const [selectedId, setSelectedId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -68,7 +69,20 @@ export default function LearningTargetSelector({ className = '', onSaved, varian
   const selectTargetById = async (targetId) => {
     if (savingRef.current) return;
     const selected = options.find((item) => item.target_id === targetId);
-    if (!selected || selected.target_id === selectedId) return;
+    if (!selected) return;
+    if (selected.target_id === selectedId) {
+      try {
+        const selectedTarget = {
+          ...selected,
+          target: { exam_track_id: selected.exam_track_id },
+        };
+        if (onSelected) await onSelected(selectedTarget);
+        else window.dispatchEvent(new CustomEvent(TARGET_SELECTED_EVENT, { detail: selectedTarget }));
+      } catch {
+        // Navigation callback failures must not affect the persisted target.
+      }
+      return;
+    }
 
     const previousId = selectedId;
     savingRef.current = true;
@@ -93,10 +107,17 @@ export default function LearningTargetSelector({ className = '', onSaved, varian
       if (mountedRef.current) setSaving(false);
     }
 
+    const selectedTarget = { ...selected, target: savedTarget };
     try {
-      await onSaved?.({ ...selected, target: savedTarget });
+      await onSaved?.(selectedTarget);
     } catch {
       // Consumer callback failures must not roll back a target already persisted by the server.
+    }
+    try {
+      if (onSelected) await onSelected(selectedTarget);
+      else window.dispatchEvent(new CustomEvent(TARGET_SELECTED_EVENT, { detail: selectedTarget }));
+    } catch {
+      // Navigation callback failures must not roll back a target already persisted by the server.
     }
   };
 

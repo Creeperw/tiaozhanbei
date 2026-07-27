@@ -213,7 +213,13 @@ export default function App() {
           />
         );
       case 'learning-path':
-        return <LearningPathPage currentUser={currentUser} onNavigate={navigateToPage} />;
+        return (
+          <LearningPathPage
+            key={pageIntent.params.examTrackId || 'current-learning-path'}
+            currentUser={currentUser}
+            onNavigate={navigateToPage}
+          />
+        );
       case 'assistant':
         return (
           <ChatInterface

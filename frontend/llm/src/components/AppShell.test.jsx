@@ -59,7 +59,7 @@ describe('AppShell', () => {
     expect(entries[2]).toHaveTextContent('学习路径');
 
     const targetButton = screen.getByRole('button', { name: '学习目标' });
-    await user.click(targetButton);
+    await user.hover(targetButton);
     expect(targetButton).toHaveAttribute('aria-expanded', 'true');
     const currentTarget = await screen.findByRole('menuitemradio', { name: '中医执业医师资格考试' });
     const nextTarget = screen.getByRole('menuitemradio', { name: '中医执业助理医师资格考试' });
@@ -67,7 +67,43 @@ describe('AppShell', () => {
     expect(nextTarget).toHaveAttribute('aria-checked', 'false');
     await user.click(nextTarget);
     await waitFor(() => expect(targetButton).toHaveAttribute('aria-expanded', 'false'));
-    expect(onNavigate).not.toHaveBeenCalled();
+    expect(onNavigate).toHaveBeenCalledWith({
+      page: 'learning-path',
+      params: {
+        targetId: 'target-b',
+        examTrackId: 'track-b',
+        textbookRouteId: '',
+      },
+    });
+  });
+
+  it('opens the dashboard directly without a dropdown', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ currentPage: 'personalization', onNavigate });
+
+    const dashboard = screen.getByRole('link', { name: '平台首页' });
+    expect(dashboard).not.toHaveAttribute('aria-haspopup');
+    await user.click(dashboard);
+
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'dashboard', params: {} });
+    expect(screen.queryByRole('menuitem', { name: '平台总览' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: '继续学习' })).not.toBeInTheDocument();
+  });
+
+  it('opens the learning path directly without a dropdown', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ onNavigate });
+
+    const learningPath = screen.getByRole('link', { name: '学习路径' });
+    expect(learningPath).not.toHaveAttribute('aria-haspopup');
+    await user.click(learningPath);
+
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} });
+    expect(screen.queryByRole('menuitem', { name: '路径规划' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: '当前阶段' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: '教材学习' })).not.toBeInTheDocument();
   });
 
   it('navigates with the persisted dropdown intent and closes the menu', async () => {
@@ -80,6 +116,22 @@ describe('AppShell', () => {
 
     expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: { taskType: 'paper_generation' } });
     expect(screen.queryByRole('menuitem', { name: '试卷生成' })).not.toBeInTheDocument();
+  });
+
+  it('opens the user profile directly from personalization without a dropdown', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ onNavigate });
+
+    const personalization = screen.getByRole('link', { name: '个性数据' });
+    expect(personalization).not.toHaveAttribute('aria-haspopup');
+    await user.click(personalization);
+
+    expect(onNavigate).toHaveBeenCalledWith({
+      page: 'personalization',
+      params: { view: 'user-profile' },
+    });
+    expect(screen.queryByRole('menu', { name: '个性数据菜单' })).not.toBeInTheDocument();
   });
 
   it('shows settings, notifications, and logout in the avatar menu', async () => {

@@ -124,6 +124,38 @@ describe('LearningTargetSelector', () => {
     expect(window.location.href).toBe(originalLocation);
   });
 
+  it('opens the selected path after saving a new target', async () => {
+    const onSelected = vi.fn();
+    installTargetApi();
+    render(<LearningTargetSelector variant="menu" onSelected={onSelected} />);
+
+    fireEvent.click(await screen.findByRole('menuitemradio', {
+      name: '中西医结合执业医师资格考试',
+    }));
+
+    await waitFor(() => expect(onSelected).toHaveBeenCalledWith(expect.objectContaining({
+      target_id: 'target-b',
+      exam_track_id: 'track-b',
+      target: { exam_track_id: 'track-b' },
+    })));
+  });
+
+  it('opens the current target path without saving it again', async () => {
+    const onSelected = vi.fn();
+    const fetchMock = installTargetApi();
+    render(<LearningTargetSelector variant="menu" onSelected={onSelected} />);
+
+    fireEvent.click(await screen.findByRole('menuitemradio', {
+      name: '中医执业医师资格考试',
+    }));
+
+    expect(onSelected).toHaveBeenCalledWith(expect.objectContaining({
+      target_id: 'target-a',
+      exam_track_id: 'track-a',
+    }));
+    expect(fetchMock.mock.calls.filter(([, options = {}]) => options.method === 'PUT')).toHaveLength(0);
+  });
+
   it('does not roll back a persisted selection when onSaved throws', async () => {
     const onSaved = vi.fn(() => {
       throw new Error('消费方回调失败');
