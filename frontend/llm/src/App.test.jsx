@@ -12,6 +12,11 @@ vi.mock('./utils/api', () => ({
 
 vi.mock('./components/AuthPage', () => ({ default: () => <div>Auth</div> }));
 vi.mock('./components/HomePage', () => ({ default: () => <div>Home portal</div> }));
+vi.mock('./components/CapabilityDetailPage', () => ({
+  default: ({ capabilityKey }) => (
+    <div data-testid="capability-detail" data-capability={capabilityKey}>Capability detail</div>
+  ),
+}));
 vi.mock('./components/LearningPathPage', () => ({ default: () => <div>Learning path page</div> }));
 vi.mock('./components/DashboardPage', () => ({
   default: ({ navigationContext = {}, onKnowledgeContextChange }) => (
@@ -84,6 +89,7 @@ vi.mock('./components/AppShell', () => ({
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: { view: 'atlas' } })}>Go knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'dashboard', params: {} })}>Go dashboard</button>
+      <button type="button" onClick={() => onNavigate({ page: 'capability-detail', params: { capability: 'multi-agent' } })}>Go capability detail</button>
       <button type="button" onClick={() => onNavigate({ page: 'learning-path', params: {} })}>Go learning path</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: {} })}>Go learning workshop</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'stages' } })}>Go learning stages</button>
@@ -162,6 +168,16 @@ describe('authenticated application shell', () => {
 
     expect(screen.getByText('Learning path page')).toBeInTheDocument();
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'learning-path');
+  });
+
+  it('renders a platform capability detail page with its selected capability', async () => {
+    render(<App />);
+    expect(await screen.findByText('Home portal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go capability detail' }));
+
+    expect(screen.getByTestId('capability-detail')).toHaveAttribute('data-capability', 'multi-agent');
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'capability-detail');
   });
 
   it('resets the training workshop when its primary navigation entry is selected again', async () => {

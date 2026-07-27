@@ -12,6 +12,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   assert.equal(config.defaultPage, 'dashboard');
   assert.deepEqual(config.primaryNav.map(({ key, label }) => ({ key, label })), [
     { key: 'dashboard', label: '平台首页' },
+    { key: 'learning-target', label: '学习目标' },
     { key: 'learning-path', label: '学习路径' },
     { key: 'practice', label: '学习工坊' },
     { key: 'training-workshop', label: '训练工坊' },
@@ -31,6 +32,27 @@ test('allows the dedicated learning path page while keeping dashboard as the def
   assert.equal(config.defaultPage, 'dashboard');
   assert.equal(config.currentPage, 'learning-path');
   assert.equal(config.pageTitle, '学习路径');
+});
+
+test('allows internal platform capability detail pages without adding a navigation item', () => {
+  const config = getAppShellConfig({
+    currentUser: { username: 'alice', role: 'user' },
+    currentPage: 'capability-detail',
+  });
+
+  assert.equal(config.currentPage, 'capability-detail');
+  assert.equal(config.pageTitle, '平台核心能力');
+  assert.equal(config.primaryNav.some((item) => item.key === 'capability-detail'), false);
+});
+
+test('keeps the learning target dropdown out of page routing', () => {
+  const config = getAppShellConfig({
+    currentUser: { username: 'alice', role: 'user' },
+    currentPage: 'learning-target',
+  });
+
+  assert.equal(config.currentPage, 'dashboard');
+  assert.equal(config.primaryNav[1].kind, 'learning-target');
 });
 
 test('keeps admin entry out of standard learner navigation and returns it for administrators', () => {

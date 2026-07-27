@@ -195,23 +195,11 @@ describe('LearningPathPage', () => {
     expect(screen.getByRole('button', { name: /完成今日章节学习/ })).toBeInTheDocument();
   });
 
-  it('uses the shared persisted target selector without navigating after a save', async () => {
-    const onNavigate = vi.fn();
-    const fetchMock = installLearningPathFetch();
-    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
-    const select = await screen.findByRole('combobox', { name: '学习目标' });
+  it('does not duplicate the learning target selector inside the learning path page', () => {
+    installLearningPathFetch();
+    render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
-    fireEvent.change(select, { target: { value: 'target-integrated' } });
-
-    expect(await screen.findByRole('status')).toHaveTextContent('学习目标已更新');
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/personalization/learning-target'),
-      expect.objectContaining({
-        method: 'PUT',
-        body: expect.stringContaining('"exam_track_id":"track-integrated"'),
-      }),
-    );
-    expect(onNavigate).not.toHaveBeenCalled();
+    expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
   });
 
   it('drills from a stage into its textbook and opens the textbook chapters', async () => {
@@ -352,13 +340,9 @@ describe('LearningPathPage', () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
-  it('exposes focusable target controls and keyboard-operable ARIA task tabs', async () => {
+  it('exposes keyboard-operable ARIA task tabs', async () => {
     installLearningPathFetch();
     render(<LearningPathPage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
-
-    const target = await screen.findByRole('combobox', { name: '学习目标' });
-    expect(target).toHaveClass('learning-target-selector__input');
-    expect(target).not.toHaveAttribute('tabindex', '-1');
 
     const learningTab = screen.getByRole('tab', { name: '学习任务' });
     const reviewTab = screen.getByRole('tab', { name: '复习任务' });

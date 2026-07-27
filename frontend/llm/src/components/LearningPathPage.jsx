@@ -4,7 +4,6 @@ import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import LearningStageLanding from './learning-stage/LearningStageLanding';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import { adaptPlannedPathNode, loadPlannedLearningPath } from './learning-tree/learningPathApi';
-import LearningTargetSelector from './LearningTargetSelector';
 import './LearningPathPage.css';
 
 function formatReviewDate(value) {
@@ -537,10 +536,8 @@ export default function LearningPathPage({ currentUser, onNavigate }) {
     <div className="learning-path-page" aria-busy={loading}>
       <header className="learning-path-page__intro">
         <div>
-          <span>学习路径</span>
           <h1>{displayName}，按计划稳步推进</h1>
         </div>
-        <LearningTargetSelector className="learning-path-page__target-select" />
       </header>
 
       {error && <div className="learning-path-page__notice" role="alert">{error}</div>}

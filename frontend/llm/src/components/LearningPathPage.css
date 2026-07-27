@@ -8,13 +8,14 @@
 
 .learning-path-page__intro {
   display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  width: 300px;
+  min-width: 0;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  border: 1px solid #deebe5;
-  border-radius: 18px;
-  padding: 18px 20px;
-  background: linear-gradient(135deg, #f6fcf9 0%, #fff 68%);
+  justify-content: flex-start;
+  justify-self: end;
+  text-align: left;
 }
 
 .learning-path-page__intro > div {
@@ -22,16 +23,18 @@
   gap: 4px;
 }
 
-.learning-path-page__intro > div > span {
-  color: #16845f;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
 .learning-path-page__intro h1 {
   margin: 0;
   color: #17372e;
-  font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+  font-size: clamp(1.2rem, 2.3vw, 1.625rem);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.app-shell__main[data-page="learning-path"] .learning-path-page__notice,
+.app-shell__main[data-page="learning-path"] .learning-path-page__learning-area {
+  grid-column: 1 / -1;
+  margin-inline: 20px;
 }
 
 .learning-path-page__target-select {
@@ -420,13 +423,39 @@
 }
 
 @media (max-width: 767px) {
+  .app-shell__main[data-page="learning-path"] {
+    display: block;
+  }
+
+  .app-shell__main[data-page="learning-path"] > .app-shell__page-header {
+    margin-bottom: var(--space-4);
+  }
+
+  .app-shell__main[data-page="learning-path"] > .learning-path-page {
+    display: grid;
+  }
+
   .learning-path-page {
     padding: 12px;
   }
 
   .learning-path-page__intro {
-    align-items: stretch;
-    flex-direction: column;
+    width: auto;
+    grid-column: auto;
+    grid-row: auto;
+    justify-content: flex-start;
+    justify-self: stretch;
+    border: 1px solid #deebe5;
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #f6fcf9 0%, #fff 68%);
+    text-align: left;
+  }
+
+  .app-shell__main[data-page="learning-path"] .learning-path-page__notice,
+  .app-shell__main[data-page="learning-path"] .learning-path-page__learning-area {
+    grid-column: auto;
+    margin-inline: 0;
   }
 
   .learning-path-page__target-select {

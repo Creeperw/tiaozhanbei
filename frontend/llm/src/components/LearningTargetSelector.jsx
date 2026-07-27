@@ -4,7 +4,7 @@ import { loadLearningTarget, saveLearningTarget } from './exam-atlas/examAtlasAp
 
 const FALLBACK_TARGET_NAME = '中医执业医师资格考试';
 
-export default function LearningTargetSelector({ className = '', onSaved }) {
+export default function LearningTargetSelector({ className = '', onSaved, variant = 'select' }) {
   const [options, setOptions] = useState([]);
   const [selectedId, setSelectedId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -65,9 +65,9 @@ export default function LearningTargetSelector({ className = '', onSaved }) {
     };
   }, [load]);
 
-  const selectTarget = async (event) => {
+  const selectTargetById = async (targetId) => {
     if (savingRef.current) return;
-    const selected = options.find((item) => item.target_id === event.target.value);
+    const selected = options.find((item) => item.target_id === targetId);
     if (!selected || selected.target_id === selectedId) return;
 
     const previousId = selectedId;
@@ -100,7 +100,13 @@ export default function LearningTargetSelector({ className = '', onSaved }) {
     }
   };
 
-  const rootClassName = ['learning-target-selector', className].filter(Boolean).join(' ');
+  const selectTarget = (event) => selectTargetById(event.target.value);
+
+  const rootClassName = [
+    'learning-target-selector',
+    variant === 'menu' ? 'learning-target-selector--menu' : '',
+    className,
+  ].filter(Boolean).join(' ');
 
   return (
     <div className={rootClassName}>
@@ -112,6 +118,21 @@ export default function LearningTargetSelector({ className = '', onSaved }) {
         <div className="learning-target-selector__load-error">
           <span role="alert">{error}</span>
           <button type="button" onClick={load}>重试加载学习目标</button>
+        </div>
+      ) : variant === 'menu' ? (
+        <div className="learning-target-selector__options" role="menu" aria-label="资格考试选项">
+          {options.map((item) => (
+            <button
+              key={item.target_id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={item.target_id === selectedId}
+              disabled={saving}
+              onClick={() => selectTargetById(item.target_id)}
+            >
+              {item.official_name}
+            </button>
+          ))}
         </div>
       ) : (
         <label className="learning-target-selector__control">

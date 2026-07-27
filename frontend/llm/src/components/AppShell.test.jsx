@@ -33,6 +33,43 @@ describe('AppShell', () => {
     await waitFor(() => expect(screen.getByRole('menuitem', { name: '智能助教' })).toHaveFocus());
   });
 
+  it('places the learning target dropdown directly after the dashboard', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const path = String(url);
+      const payload = path.endsWith('/qualification-targets')
+        ? { items: [
+          { target_id: 'target-a', exam_track_id: 'track-a', official_name: '中医执业医师资格考试' },
+          { target_id: 'target-b', exam_track_id: 'track-b', official_name: '中医执业助理医师资格考试' },
+        ] }
+        : path.endsWith('/personalization/learning-target') && options.method === 'PUT'
+          ? { target: { exam_track_id: 'track-b' } }
+          : path.endsWith('/personalization/learning-target')
+            ? { target: { exam_track_id: 'track-a' } }
+            : {};
+      return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify(payload) });
+    }));
+    const onNavigate = vi.fn();
+    renderShell({ onNavigate });
+
+    const navigation = screen.getByRole('navigation', { name: '平台导航' });
+    const entries = [...navigation.querySelectorAll(':scope > .app-shell__nav-group')];
+    expect(entries[0]).toHaveTextContent('平台首页');
+    expect(entries[1]).toHaveTextContent('学习目标');
+    expect(entries[2]).toHaveTextContent('学习路径');
+
+    const targetButton = screen.getByRole('button', { name: '学习目标' });
+    await user.click(targetButton);
+    expect(targetButton).toHaveAttribute('aria-expanded', 'true');
+    const currentTarget = await screen.findByRole('menuitemradio', { name: '中医执业医师资格考试' });
+    const nextTarget = screen.getByRole('menuitemradio', { name: '中医执业助理医师资格考试' });
+    expect(currentTarget).toHaveAttribute('aria-checked', 'true');
+    expect(nextTarget).toHaveAttribute('aria-checked', 'false');
+    await user.click(nextTarget);
+    await waitFor(() => expect(targetButton).toHaveAttribute('aria-expanded', 'false'));
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
   it('navigates with the persisted dropdown intent and closes the menu', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();

@@ -6,6 +6,7 @@ import PersonalizationHubPage from './components/PersonalizationHubPage';
 import SettingsHubPage from './components/SettingsHubPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
+import CapabilityDetailPage from './components/CapabilityDetailPage';
 import LearningPathPage from './components/LearningPathPage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
@@ -204,6 +205,13 @@ export default function App() {
     switch (shellConfig.currentPage) {
       case 'dashboard':
         return <HomePage currentUser={currentUser} onNavigate={navigateToPage} />;
+      case 'capability-detail':
+        return (
+          <CapabilityDetailPage
+            capabilityKey={pageIntent.params.capability}
+            onNavigate={navigateToPage}
+          />
+        );
       case 'learning-path':
         return <LearningPathPage currentUser={currentUser} onNavigate={navigateToPage} />;
       case 'assistant':

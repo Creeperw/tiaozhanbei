@@ -60,15 +60,13 @@ describe('HomePage', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the platform headline and the real learning target selector', async () => {
+  it('renders the platform headline without duplicating the global learning target selector', () => {
     render(<HomePage onNavigate={vi.fn()} />);
 
     expect(screen.getByRole('heading', {
       name: '多智能体协同，让中医药学习更高效',
     })).toBeInTheDocument();
-    const selector = await screen.findByRole('combobox', { name: '学习目标' });
-    expect(selector).toHaveValue('target-a');
-    expect(screen.getByRole('option', { name: '中西医结合执业医师资格考试' })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
   });
 
   it('renders the core video with autoplay-safe presentation attributes', () => {
@@ -85,31 +83,28 @@ describe('HomePage', () => {
     expect(video).toHaveProperty('controls', false);
   });
 
-  it('routes both hero calls to action to their intended modules', () => {
+  it('routes the hero call to action to the learning path', () => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole('button', { name: '开始学习路径' }));
     expect(onNavigate).toHaveBeenLastCalledWith({ page: 'learning-path', params: {} });
-
-    fireEvent.click(screen.getByRole('button', { name: '了解多智能体如何协同' }));
-    expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'assistant',
-      params: { newConversation: true },
-    });
   });
 
   it.each([
-    ['多智能体协同', { page: 'assistant', params: {} }],
-    ['个性化学习路径', { page: 'learning-path', params: {} }],
-    ['知识图谱驱动', { page: 'knowledge', params: { view: 'atlas' } }],
-    ['数据驱动成长', { page: 'personalization', params: {} }],
+    ['多智能体协同', 'multi-agent'],
+    ['个性化学习路径', 'learning-path'],
+    ['知识图谱驱动', 'knowledge-graph'],
+    ['数据驱动成长', 'data-growth'],
   ])('routes the %s capability card', (name, intent) => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }));
-    expect(onNavigate).toHaveBeenCalledWith(intent);
+    expect(onNavigate).toHaveBeenCalledWith({
+      page: 'capability-detail',
+      params: { capability: intent },
+    });
   });
 
   it('replaces a failed video with a silent visual fallback', () => {
@@ -155,20 +150,6 @@ describe('HomePage', () => {
 
     expect(containerMarkers).toContain('avc1');
     expect(containerMarkers).not.toContain('hvc1');
-  });
-
-  it('stacks the compact selector and gives feedback messages full width', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
-    const compactStyles = css.match(
-      /@media \(max-width: 560px\) \{([\s\S]*?)\n\}\n\n@media \(prefers-reduced-motion: reduce\)/,
-    )?.[1] || '';
-
-    expect(compactStyles).toMatch(
-      /\.platform-home__target-selector\s*\{[^}]*flex-direction:\s*column;/,
-    );
-    expect(compactStyles).toMatch(
-      /\.platform-home__target-selector \[role='status'\],[\s\S]*?\{[^}]*width:\s*100%;/,
-    );
   });
 
   it('uses accessible contrast for capability descriptions', () => {
