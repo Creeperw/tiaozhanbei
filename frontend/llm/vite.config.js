@@ -30,17 +30,22 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/v1': {
-        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:7860',
+        target: process.env.VITE_MAIN_API_TARGET || 'http://127.0.0.1:7861',
         changeOrigin: true,
       },
       '/api': {
-        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:7860',
+        target: process.env.VITE_HANDOFF_API_TARGET || 'http://127.0.0.1:7860',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/health': {
-        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:7860',
+        target: process.env.VITE_MAIN_API_TARGET || 'http://127.0.0.1:7861',
         changeOrigin: true,
+      },
+      '/handoff-health': {
+        target: process.env.VITE_HANDOFF_API_TARGET || 'http://127.0.0.1:7860',
+        changeOrigin: true,
+        rewrite: () => '/health',
       },
     },
   },

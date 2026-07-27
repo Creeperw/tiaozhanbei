@@ -18,7 +18,10 @@ const mockEmptyList = { success: true, data: { total: 0, list: [] } };
 
 function mockAPIForActions(actionMap) {
   mockFetchWithAuth.mockImplementation((url, opts) => {
-    const body = JSON.parse(opts.body || '{}');
+    if (url.endsWith('/acupuncture-cases')) {
+      return Promise.resolve({ ok: true, _json: { success: true, data: { cases: [] } } });
+    }
+    const body = JSON.parse(opts?.body || '{}');
     const action = body.action;
     const data = actionMap[action];
     if (data) return Promise.resolve({ ok: true, _json: data });
@@ -56,8 +59,21 @@ describe('SimulatedPatientChat', () => {
     await act(async () => { fireEvent.click(screen.getByText('开始今天的问诊吧')); });
     await waitFor(() => {
       expect(screen.getByText('随心练')).toBeDefined();
+      expect(screen.getByText('针灸专练')).toBeDefined();
       expect(screen.getByText('题型专练')).toBeDefined();
     });
+  });
+
+  it('opens the dedicated acupuncture practice flow', async () => {
+    await act(async () => { render(<SimulatedPatientChat />); });
+    await waitFor(() => screen.getByText('开始今天的问诊吧'));
+    await act(async () => { fireEvent.click(screen.getByText('开始今天的问诊吧')); });
+    await act(async () => { fireEvent.click(screen.getByText('针灸专练')); });
+    await act(async () => { fireEvent.click(screen.getByText('开始问诊')); });
+
+    expect(screen.getByText('确认患者配合意愿')).toBeInTheDocument();
+    const startRequest = mockFetchWithAuth.mock.calls.find(([, options]) => JSON.parse(options?.body || '{}').action === 'start');
+    expect(startRequest).toBeUndefined();
   });
 
   it('starts a session and shows first patient message', async () => {

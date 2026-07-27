@@ -54,3 +54,21 @@ def test_simulated_patient_shortcut_routes_ignore_the_path_user_id() -> None:
 
     assert response.status_code == 200
     assert response.json()["data"]["user_id"] == "owner"
+
+
+def test_acupuncture_cases_load_from_versioned_data_file() -> None:
+    app = FastAPI()
+    app.include_router(simulated_patient_routes.router)
+
+    @app.middleware("http")
+    async def identity(request, call_next):
+        request.state.current_user = SimpleNamespace(user_id="owner")
+        return await call_next(request)
+
+    response = TestClient(app).get("/api/v1/simulated-patient/acupuncture-cases")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert len(payload["data"]["cases"]) == 10
+    assert payload["data"]["cases"][0]["caseId"] == "acup_00001"

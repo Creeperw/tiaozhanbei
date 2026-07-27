@@ -1,0 +1,594 @@
+[
+  {
+    "caseId": "acup_00001",
+    "title": "腕关节挫伤 — 太溪穴上病下取",
+    "patientInfo": {
+      "ageRange": "36-50",
+      "gender": "female",
+      "chiefComplaint": "右腕关节扭伤后疼痛10天，活动受限",
+      "historySummary": "患者10天前骑自行车滑倒，右手着地致腕关节挫伤，伤后疼痛难忍。到中医院拍X线片示无骨折，服跌打损伤药外贴伤湿止痛膏无效。查体：右腕关节轻微肿胀，整个腕关节有广泛性压痛。无继往病史。"
+    },
+    "cooperationWillingness": {
+      "scenario": "hesitant",
+      "patientLine": "医生，我这个手腕疼了十来天了，贴膏药吃药都不管用。针灸真的能治好吗？我怕扎针以后更疼……",
+      "candidateOptions": [
+        {
+          "text": "您放心，您的伤在手腕，但我针刺的穴位在脚踝处，离伤处很远。这是中医「上病下取」的原理，我先在您脚上点按一下，您感受一下手腕是不是松快了些，有效果咱们再下针，好吗？",
+          "isCorrect": true,
+          "reason": "解释了远端取穴原理，用点按试效降低恐惧，给患者控制感"
+        },
+        {
+          "text": "你这手腕挫伤都十天了还不好，不扎针怎么行？忍着点吧，我直接扎手腕最疼的地方。",
+          "isCorrect": false,
+          "reason": "未做任何解释安抚，且要在痛点直接针刺，会加剧患者恐惧"
+        },
+        {
+          "text": "针灸不一定有效，你先回去继续贴膏药吧，一个月后还不好再来。",
+          "isCorrect": false,
+          "reason": "消极推诿，未发挥针灸治疗优势，延误病情"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["feet"],
+    "regionImages": {
+      "feet": "脚部.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "太溪",
+        "code": "KI3",
+        "region": "feet",
+        "imagePath": "脚部.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "足内侧，内踝后方，内踝尖与跟腱之间的凹陷处",
+        "needleDepth": { "min": 0.5, "max": 0.8, "unit": "寸" },
+        "needleAngle": "直刺0.5-0.8寸",
+        "retentionTime": { "min": 15, "max": 25, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！太溪穴定位准确，进针深度符合标准。临床上这个精度可以确保「得气有如鱼吞钩」，针感传导到位，远端腕关节痛随之缓解。继续保持！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确，在临床可接受范围内。太溪穴位于内踝尖与跟腱之间，建议用指尖先触诊确认内踝最高点和跟腱边缘，两者之间凹陷处即为进针点。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次定位偏差较大。太溪穴后方有胫后动静脉通过，定位不准可能误伤血管。请重新复习内踝尖与跟腱之间的体表标志定位法，用指尖仔细触诊后再次尝试。" }
+    },
+    "tags": ["腕关节挫伤", "急性软组织损伤", "上病下取", "足少阴肾经", "远端取穴"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "一、针灸速效治病（1）> (一) 腕关节挫伤", "textbookRefs": ["经络腧穴学", "刺法灸法学"] }
+  },
+  {
+    "caseId": "acup_00002",
+    "title": "膝关节痛（足太阴经证）— 隐白穴通经止痛",
+    "patientInfo": {
+      "ageRange": "36-50",
+      "gender": "male",
+      "chiefComplaint": "右膝关节疼痛2周，劳累及天气变化时加重",
+      "historySummary": "患者2周前无明显诱因出现右膝关节处痛，平时走路微痛，劳累或天气变化时症状加重。查体：右膝近阴陵泉附近沿足太阴脾经走向二寸范围内压痛，按之痛甚，局部无肿胀。无外伤史。诊断为外邪风寒湿侵袭致足太阴经经脉闭阻。"
+    },
+    "cooperationWillingness": {
+      "scenario": "willing",
+      "patientLine": "医生，我这个膝盖疼了半个月了，走路都不利索。我听邻居说针灸治腿痛效果挺好，您就给我扎吧。",
+      "candidateOptions": [
+        {
+          "text": "好的，感谢您的信任。我先说明一下：根据您疼痛的位置在脾经路线上，我需要取脚大趾上的隐白穴来通经止痛。这个穴位在趾甲角旁边，进针很浅，只有0.1-0.2寸，感觉像蚊子叮一下。留针20-30分钟，过程中有任何不适随时告诉我。",
+          "isCorrect": true,
+          "reason": "告知取穴思路和穴位位置，说明进针极浅打消顾虑，体现知情同意"
+        },
+        {
+          "text": "好，那你躺下吧，我给你膝盖上直接扎几针。",
+          "isCorrect": false,
+          "reason": "未辨证选穴，直接在疼痛局部取穴不符合远端循经取穴原则，且缺乏沟通"
+        },
+        {
+          "text": "你这病问题不大，先回去热敷几天看看，不行再来。",
+          "isCorrect": false,
+          "reason": "推诿患者，未及时给予有效治疗"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["feet"],
+    "regionImages": {
+      "feet": "脚部.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "隐白",
+        "code": "SP1",
+        "region": "feet",
+        "imagePath": "脚部.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "足大趾末节内侧，距趾甲角0.1寸（约韭菜叶宽）",
+        "needleDepth": { "min": 0.1, "max": 0.2, "unit": "寸" },
+        "needleAngle": "直刺0.1-0.2寸，浅刺疾出",
+        "retentionTime": { "min": 20, "max": 30, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！隐白穴定位准确，浅刺深度恰当。临床上「经脉所过，主治所及」，远端的隐白穴可疏通足太阴脾经整条经脉的气血，膝关节痛随之缓解。继续保持！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。隐白穴位于趾甲角旁仅0.1寸，非常精细，略有偏差可以理解。建议用指腹仔细触摸趾甲根部外侧缘，甲角旁开一韭菜叶宽即为标准位置。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次偏差较大。隐白穴是井穴，定位要求精确。进针过深可能刺伤趾骨骨膜引起剧痛。请重新对照足大趾内侧甲角旁0.1寸的定位标准，用甲紫标记后再尝试。" }
+    },
+    "tags": ["膝关节痛", "足太阴脾经", "井穴", "经脉所过主治所及", "远端取穴"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "二、针灸速效治病（2）> (二) 隐白穴针刺法治愈膝关节痛", "textbookRefs": ["经络腧穴学", "针灸治疗学"] }
+  },
+  {
+    "caseId": "acup_00003",
+    "title": "定时肩痛（卯时发作）— 三间穴子午流注针法",
+    "patientInfo": {
+      "ageRange": "31-45",
+      "gender": "female",
+      "chiefComplaint": "左肩每日清晨6:30左右定时疼痛5天",
+      "historySummary": "患者5天来每于清晨6:30左右左肩肩髎穴处必痛，痛时不触碰亦痛，翻身或手按之时痛甚，过了这个时间段即不痛。无外伤史。余无不适。按子午流注理论，清晨5-7点为卯时，气血流注于手阳明大肠经。按《灵枢》「病时间甚者取其输」原则，选手阳明大肠经之输穴三间治之。"
+    },
+    "cooperationWillingness": {
+      "scenario": "hesitant",
+      "patientLine": "医生，我这个肩膀特别奇怪，每天早上六点半准时疼，过了那个点就没事了。我同事说我是不是心理作用……针灸能治这种怪病吗？",
+      "candidateOptions": [
+        {
+          "text": "这不是心理作用，中医叫「定时发病」，古籍早有记载。早上5-7点是气血流注大肠经的时辰，您疼痛的位置正好在这条经上，所以到了那个时辰就会发作。我在您手上取一个跟肩部相连的穴位，叫三间穴，调节这条经的气血。咱们试试看？",
+          "isCorrect": true,
+          "reason": "用子午流注理论给予合理解释，化解「心理作用」的疑虑，建立患者信心"
+        },
+        {
+          "text": "定点疼痛确实不太常见，我也说不清楚什么原因。要不先给你开点止痛药，观察几天再说？",
+          "isCorrect": false,
+          "reason": "未运用中医时间医学理论进行辨证，放弃了针灸特色优势"
+        },
+        {
+          "text": "你这病很奇怪，我只能试试看，不保证效果。",
+          "isCorrect": false,
+          "reason": "虽然诚实但过于消极，没有给患者建立治疗信心，应先用理论解释再告知不确定性"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["arms"],
+    "regionImages": {
+      "arms": "胳膊.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "三间",
+        "code": "LI3",
+        "region": "arms",
+        "imagePath": "胳膊.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "微握拳，手食指本节（第2掌指关节）后，桡侧凹陷处",
+        "needleDepth": { "min": 0.3, "max": 0.5, "unit": "寸" },
+        "needleAngle": "直刺0.3-0.5寸",
+        "retentionTime": { "min": 30, "max": 45, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！三间穴定位准确，深度合适。子午流注针法的核心就是选穴精准、时机恰当，你的操作完美体现了「谨候气之所在而刺之」的经典原则。临床上这种定时发病，按子午流注取穴往往一次见效！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。三间穴位于第二掌指关节后方凹陷中，握拳时关节处皮肤会绷紧，可帮助定位。微调方向可使针感更明显。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次定位偏差较大。三间穴紧邻第二掌指关节，进针过深可能刺入关节腔。请先让患者微握拳，在第二掌指关节后方的桡侧凹陷处用指甲掐一标记后再进针。" }
+    },
+    "tags": ["肩痛", "子午流注", "手阳明大肠经", "输穴", "定时发病", "时间针法"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "二、针灸速效治病（2）> (三) 子午流注针法治疗肩痛", "textbookRefs": ["经络腧穴学", "刺法灸法学", "针灸治疗学"] }
+  },
+  {
+    "caseId": "acup_00004",
+    "title": "急性腰扭伤（咳则加重）— 鱼际穴宣肺理气",
+    "patientInfo": {
+      "ageRange": "36-50",
+      "gender": "male",
+      "chiefComplaint": "洗澡滑倒致腰骶部疼痛，咳嗽时痛剧，不能入睡",
+      "historySummary": "患者昨晚洗澡时因地滑腰部闪了一下，初时无不适，到夜间休息时感腰骶部L5-S1附近疼痛，咳则痛剧，辗转反侧不能入睡。查体：L5-S1处有弥漫性压痛，腰俞正下方痛甚，腰前屈后伸不利。X线片未见骨折。急性腰扭伤诊断明确。"
+    },
+    "cooperationWillingness": {
+      "scenario": "refusing",
+      "patientLine": "我腰疼得一夜没睡，咳嗽一下像刀割一样。但我特别怕针，一看到针就心慌出冷汗。有没有不扎针的办法？求求你了……",
+      "candidateOptions": [
+        {
+          "text": "完全理解，晕针的人确实不适合强求。这样，我们先用手指点按您手掌上的鱼际穴，同时您试着咳嗽几声，看看疼痛有没有减轻。如果有效，我们也可以用梅花针轻轻叩刺腰部代替，不破皮不深入。您觉得可以吗？",
+          "isCorrect": true,
+          "reason": "尊重患者意愿，先指压试效建立信任，再提供替代方案（梅花针叩刺+拔罐），循序渐进"
+        },
+        {
+          "text": "不扎针病好不了！你这腰扭伤不赶紧治，拖成慢性腰肌劳损就麻烦了。怕也得扎！",
+          "isCorrect": false,
+          "reason": "威胁恐吓式沟通，完全无视患者的晕针恐惧，可能造成心理创伤"
+        },
+        {
+          "text": "怕针那就没办法了，给你开点止痛药回去躺着吧。",
+          "isCorrect": false,
+          "reason": "未提供针灸体系内的替代疗法，如指压、梅花针、拔罐、灸法等"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["arms"],
+    "regionImages": {
+      "arms": "胳膊.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "鱼际",
+        "code": "LU10",
+        "region": "arms",
+        "imagePath": "胳膊.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "手拇指本节（第1掌指关节）后凹陷处，约当第1掌骨中点桡侧，赤白肉际处",
+        "needleDepth": { "min": 0.5, "max": 0.8, "unit": "寸" },
+        "needleAngle": "向掌心斜刺0.5-0.8寸",
+        "retentionTime": { "min": 30, "max": 40, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！鱼际穴定位准确，斜刺方向正确。此穴为手太阴肺经荥穴，针泻鱼际可宣肺理气，肺气下行则诸气皆行，逆乱之气各归其经，通则不痛。配合患者主动咳嗽和腰部活动，效果更佳！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。鱼际穴位于手掌大鱼际肌最丰厚处的赤白肉际线上，注意针尖应向掌心方向斜刺，不可直刺过深以免伤及深部血管。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次偏差较大。鱼际穴下有丰富的血管和神经，直刺过深可能伤及正中神经返支。请重新定位：第1掌骨中点桡侧缘，赤白肉际交界处，针尖务必向掌心方向斜刺。" }
+    },
+    "tags": ["急性腰扭伤", "咳引腰痛", "手太阴肺经", "荥穴", "随咳进针法"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "八、鱼际穴针刺治疗腰扭伤一例", "textbookRefs": ["经络腧穴学", "刺法灸法学", "针灸治疗学"] }
+  },
+  {
+    "caseId": "acup_00005",
+    "title": "胸胁屏伤（咳引胸痛）— 鱼际穴宣肺通络",
+    "patientInfo": {
+      "ageRange": "31-45",
+      "gender": "male",
+      "chiefComplaint": "右侧胸胁痛5天，咳嗽、打喷嚏、深呼吸时加重",
+      "historySummary": "患者5天前无明显诱因出现右侧胸胁痛，咳嗽、打喷嚏、深呼吸时加重，自按患处痛甚。曾到医院拍片及常规检查无异常，按软组织损伤处理予伤湿止痛膏外贴及三七伤药片口服，迁延5-6天无效。查体：痛点位于右侧乳头斜向内上方2寸处有压痛，主动咳嗽和深呼吸时痛加重。"
+    },
+    "cooperationWillingness": {
+      "scenario": "willing",
+      "patientLine": "医生，我胸口这个位置疼了快一个星期了，咳嗽一下就像针扎一样。医院查了也没查出什么，您给看看能不能用针灸治？",
+      "candidateOptions": [
+        {
+          "text": "您这个情况在中医叫「胸胁屏伤」，是气机逆乱导致的。片子没有问题反而是好事，说明骨头内脏都没事。我在您手上鱼际穴扎针，通过调节肺气来理顺您胸胁部的气机。进针后请您配合做深呼吸和咳嗽动作，效果会更好。",
+          "isCorrect": true,
+          "reason": "给出明确中医诊断，解释片子没问题不是坏事，告知配合动作的重要性"
+        },
+        {
+          "text": "胸痛可不是小事，万一是心脏病呢？你还是再去大医院做个全面检查吧，针灸治不了这个。",
+          "isCorrect": false,
+          "reason": "已排除器质性病变的情况下制造不必要的恐慌，且低估了针灸治疗胸胁屏伤的疗效"
+        },
+        {
+          "text": "行吧，我给你在胸口疼的地方扎几针，你忍着啊。",
+          "isCorrect": false,
+          "reason": "未辨证取穴，直接在胸部痛点针刺有气胸风险，违反安全操作规范"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["arms"],
+    "regionImages": {
+      "arms": "胳膊.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "鱼际",
+        "code": "LU10",
+        "region": "arms",
+        "imagePath": "胳膊.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "手拇指本节（第1掌指关节）后凹陷处，约当第1掌骨中点桡侧，赤白肉际处",
+        "needleDepth": { "min": 0.5, "max": 0.8, "unit": "寸" },
+        "needleAngle": "向掌心斜刺0.5-0.8寸",
+        "retentionTime": { "min": 25, "max": 35, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！鱼际为手太阴肺经荥穴，肺主一身之气。针泻鱼际可宣肺理气，肺气行则诸气皆行，气机宣畅各归其经。配合患者主动咳嗽和深呼吸，针效如桴鼓！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。注意鱼际穴针刺时角度要向掌心方向斜刺，保持0.5-0.8寸深度。行针时可嘱患者配合深呼吸和扩胸运动，以带动胸部气血运行。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次偏差较大。鱼际穴位于大鱼际肌赤白肉际处，定位错误可能导致针感不佳或刺伤深部结构。请重新确认第1掌骨中点桡侧的赤白肉际线。" }
+    },
+    "tags": ["胸胁屏伤", "咳引胸痛", "手太阴肺经", "荥穴", "随咳进针法"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "十九、针刺鱼际穴治疗胸胁屏伤一例", "textbookRefs": ["经络腧穴学", "刺法灸法学"] }
+  },
+  {
+    "caseId": "acup_00006",
+    "title": "急性荨麻疹 — 间使穴清热凉血",
+    "patientInfo": {
+      "ageRange": "15-25",
+      "gender": "male",
+      "chiefComplaint": "四肢及前胸后背突发大面积风团伴剧烈瘙痒2天",
+      "historySummary": "患者2天前在自家大棚劳作后自觉四肢瘙痒，随后前胸后背乃起大面积风团，瘙痒难耐。到村卫生室按过敏性皮炎处理，予葡萄糖酸钙口服液服后风团瘙痒渐消，然第二天午后复起。查体：前胸、后背、四肢部位有散在大面积风团及大量抓痕，风团稍高皮面，皮肤划痕征（+）。无继往病史。诊断为急性荨麻疹。"
+    },
+    "cooperationWillingness": {
+      "scenario": "hesitant",
+      "patientLine": "我全身都起了这些疙瘩，痒得想死的心都有了……昨天吃了药消下去了，今天又发起来。针灸能治这种过敏吗？还有，我从来没扎过针，会不会很疼？",
+      "candidateOptions": [
+        {
+          "text": "您放心，荨麻疹针灸效果很好。中医讲「诸痛痒疮皆属于心」，我在您前臂间使穴扎针，通过调节心包经来清热凉血止痒。针很细，感觉是酸麻胀而不是疼。而且很多患者扎上十分钟左右，风团就开始消退了，您可以亲眼看到变化。",
+          "isCorrect": true,
+          "reason": "用中医理论解释病机，说明穴位选择依据，描述预期效果给患者信心，告知真实针感"
+        },
+        {
+          "text": "这是过敏，得吃抗过敏药才行。针灸治不了这个，你去皮肤科开点氯雷他定吧。",
+          "isCorrect": false,
+          "reason": "否定针灸对荨麻疹的疗效，临床实践和文献已证实针灸治疗荨麻疹有确切效果"
+        },
+        {
+          "text": "那你忍着吧，我给你全身都扎上，痒的地方都扎几针，总有一个管用的。",
+          "isCorrect": false,
+          "reason": "无辨证的大量盲目取穴，增加患者痛苦且效果不可预期"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["arms"],
+    "regionImages": {
+      "arms": "胳膊.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "间使",
+        "code": "PC5",
+        "region": "arms",
+        "imagePath": "胳膊.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "前臂掌侧，腕横纹上3寸，掌长肌腱与桡侧腕屈肌腱之间",
+        "needleDepth": { "min": 0.8, "max": 1.2, "unit": "寸" },
+        "needleAngle": "直刺0.8-1.2寸",
+        "retentionTime": { "min": 25, "max": 35, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！间使穴属手厥阴心包经，具有清热凉血之功。「诸痛痒疮皆属于心」，取此穴治疗急性荨麻疹正中病机。临床上针刺十分钟左右风团即开始消退，效果立竿见影！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。间使穴位于两筋之间（掌长肌腱与桡侧腕屈肌腱），针刺时注意避开正中神经和血管。可让患者握拳屈腕使肌腱更明显，便于定位。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次偏差较大。间使穴紧邻正中神经和尺动脉，定位不准有刺伤神经血管的风险。请重新以腕横纹上3寸（患者四横指）定位，在两筋之间进针。" }
+    },
+    "tags": ["急性荨麻疹", "手厥阴心包经", "清热凉血", "皮肤划痕征", "诸痛痒疮皆属于心"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "四、针灸速效治病（4）> (二) 独取间使穴针刺治疗急性荨麻疹", "textbookRefs": ["经络腧穴学", "针灸治疗学"] }
+  },
+  {
+    "caseId": "acup_00007",
+    "title": "颈性眩晕 — 涌泉穴引邪下行",
+    "patientInfo": {
+      "ageRange": "60-75",
+      "gender": "male",
+      "chiefComplaint": "发作性头晕目眩3年余，头转动即感天旋地转",
+      "historySummary": "患者3年前有头颈部不适伴颈肩痛、颈枕痛、颈背痛病史。每次发作时自感天旋地转，有如坐过山车之感，不敢睁眼，须仰躺片刻方可缓解。头稍转动即感头晕目眩，有时两眼发黑站立不稳。颈椎片示退行性改变，头部CT未发现异常。有高血压病史。证属肝肾亏虚、风邪上逆，治当引邪下行。依《灵枢》「病在上，取之下」和「头有病，取之足」之原则，选涌泉穴。"
+    },
+    "cooperationWillingness": {
+      "scenario": "hesitant",
+      "patientLine": "我这个头晕三四年了，各大医院跑遍了都治不好。朋友介绍我来试试针灸，但我年纪大了，心脏也不太好，经得起针灸吗？",
+      "candidateOptions": [
+        {
+          "text": "您放心，针灸治疗眩晕有独特优势。我取的穴位在脚底涌泉穴，离您的心脏和头部都很远，非常安全。进针大约1寸深，会有酸胀感传到脚底。按照《黄帝内经》「头有病，取之足」的原则，把上逆的风邪引下来，头就清爽了。我先轻轻点按一下给您感受好吗？",
+          "isCorrect": true,
+          "reason": "针对高龄患者特别说明安全性，远端取穴打消顾虑，经典理论背书增加信心"
+        },
+        {
+          "text": "年纪大了没办法，这是颈椎退行性变，治不好的。我给你开点晕车药备着吧。",
+          "isCorrect": false,
+          "reason": "对老年患者消极暗示，且针灸对颈性眩晕有明确疗效已被大量临床验证"
+        },
+        {
+          "text": "你这病主要在颈椎，我给你在脖子上直接扎几针效果最快。",
+          "isCorrect": false,
+          "reason": "在颈椎局部针刺对老年退行性病变风险较大，且不符合「病在上取之下」的经典治则"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["feet"],
+    "regionImages": {
+      "feet": "脚部.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "涌泉",
+        "code": "KI1",
+        "region": "feet",
+        "imagePath": "脚部.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "足底（去趾）前1/3处，足趾跖屈时呈凹陷处",
+        "needleDepth": { "min": 0.5, "max": 1.0, "unit": "寸" },
+        "needleAngle": "直刺0.5-1.0寸",
+        "retentionTime": { "min": 15, "max": 25, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！涌泉穴为足少阴肾经井穴，是「病在上取之下」的经典代表。针刺此穴可将上逆之风邪引而下行，使清阳上升、浊阴下降，眩晕自止。临床应用得当效果如神！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。涌泉穴位于足底前1/3凹陷处，让患者足趾跖屈时凹陷更明显。进针时注意足底皮肤较厚，需稍用力快速刺入以减少疼痛。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次偏差较大。涌泉穴过度偏向足心中央或足趾方向都会影响疗效。请重新定位：将足底分为三等份，前1/3与后2/3交点处的凹陷中即是标准位置，用指尖按压确认凹陷后再进针。" }
+    },
+    "tags": ["颈性眩晕", "足少阴肾经", "井穴", "病在上取之下", "引邪下行", "老年病"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "二十、颈性眩晕> 病例1", "textbookRefs": ["经络腧穴学", "刺法灸法学", "针灸治疗学"] }
+  },
+  {
+    "caseId": "acup_00008",
+    "title": "双小腿发凉（下肢寒痹）— 承山穴+委中刺络拔罐",
+    "patientInfo": {
+      "ageRange": "31-45",
+      "gender": "female",
+      "chiefComplaint": "双膝关节以下发凉怕冷3年，加重数日",
+      "historySummary": "患者3年前因一次感冒后时感两腿发凉，近日症状加重。双膝关节以下犹如泡在冷水里一样，怕凉怕风，夏天不敢穿裙子短裤，必须穿厚长裤，影响活动及走路。经中西医治疗罔效。查体：两小腿皮温略低，腓肠肌按之稍硬。余无不适。按下肢痹证处理。"
+    },
+    "cooperationWillingness": {
+      "scenario": "willing",
+      "patientLine": "医生，我这两条腿像泡在冰水里一样，夏天都得穿秋裤。折腾三年了，什么方法都试过了，你就放心给我扎，只要能治好，怎么扎都行！",
+      "candidateOptions": [
+        {
+          "text": "感谢您的信任！您这个情况属于下肢寒痹，经脉被寒湿闭阻了。我取小腿后面的承山穴针刺，配合膝后委中穴刺络拔罐放出瘀血，寒湿之邪随血而出，经络一通，腿就暖和了。罐子拔上去您会看到瘀血出来，那是好现象。",
+          "isCorrect": true,
+          "reason": "明确病机解释让患者理解治疗原理，预告知刺络拔罐会出瘀血以免引起恐慌"
+        },
+        {
+          "text": "三年了都不好，估计针灸也难治好。不过既然你来了我就试试吧，不保证效果啊。",
+          "isCorrect": false,
+          "reason": "消极预期会影响治疗效果，对病程长的患者应给予合理期望而非预设失败"
+        },
+        {
+          "text": "好，那我就在你两条腿上扎满针，再加电针强刺激，坚持一个月看看。",
+          "isCorrect": false,
+          "reason": "取穴过多、刺激过强，不符合用针稀疏原则，容易造成患者不必要的痛苦"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["legs"],
+    "regionImages": {
+      "legs": "腿部.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "承山",
+        "code": "BL57",
+        "region": "legs",
+        "imagePath": "腿部.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "小腿后面正中，委中穴与昆仑穴之间，当伸直小腿或足跟上提时腓肠肌肌腹下出现尖角凹陷处",
+        "needleDepth": { "min": 1.0, "max": 2.0, "unit": "寸" },
+        "needleAngle": "直刺1-2寸",
+        "retentionTime": { "min": 25, "max": 35, "unit": "分钟" }
+      },
+      {
+        "name": "委中",
+        "code": "BL40",
+        "region": "legs",
+        "imagePath": "腿部.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "腘横纹中点，股二头肌腱与半腱肌腱之间",
+        "needleDepth": { "min": 0, "max": 0, "unit": "寸" },
+        "needleAngle": "仅刺络拔罐，不作针刺",
+        "retentionTime": { "min": 8, "max": 12, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！承山穴定位准确，深度恰当。此穴为足太阳膀胱经要穴，专治小腿发凉、后头痛、便秘等症。配合委中刺络拔罐放出瘀血2-3毫升，寒湿随血而去，经络一通腿即回暖。临床效果立竿见影！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。承山穴位于腓肠肌肌腹下方的人字纹凹陷顶端，让患者伸直小腿或踮脚尖可使凹陷更明显。注意针刺深度根据患者胖瘦调整，瘦人宜浅，胖人可深。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次偏差较大。承山穴过深可能刺伤胫神经，位置偏离则无法得气。请重新定位：先找到腘横纹中点的委中穴和外踝尖的昆仑穴，两者连线中点偏上处，腓肠肌人字纹凹陷顶端。" }
+    },
+    "tags": ["下肢寒痹", "小腿发凉", "足太阳膀胱经", "刺络拔罐", "承山穴", "寒则留之"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "三、针灸速效治病（3）> (一) 小腿发凉证", "textbookRefs": ["经络腧穴学", "刺法灸法学", "针灸治疗学"] }
+  },
+  {
+    "caseId": "acup_00009",
+    "title": "产后鸡爪风 — 液门+外关补气益阳",
+    "patientInfo": {
+      "ageRange": "21-35",
+      "gender": "female",
+      "chiefComplaint": "产后双手五指屈伸无力、冷痛2个月",
+      "historySummary": "患者2个月前生产后用冰冷的自来水洗尿布，遂渐觉双手五指屈伸无力，双腕关节以下稍觉冷痛。症状晨起严重，活动后稍缓解，近日双手五指指尖亦觉麻痛。经多方治疗无效。查体：双手五指无红肿但抚之皮温略低，双手握拳无力，五指屈伸困难，状态形似鸡爪。诊断为产后风之鸡爪风。"
+    },
+    "cooperationWillingness": {
+      "scenario": "hesitant",
+      "patientLine": "医生，我生完孩子后手就变成这样了，像鸡爪子一样伸不开。我还在哺乳期，针灸会不会影响喂奶？会不会落下什么病根？",
+      "candidateOptions": [
+        {
+          "text": "您放心，针灸是纯物理疗法，不进入血液循环，完全不影响哺乳。您这属于产后气血亏虚又受了寒湿，我取手背上的液门和外关两个穴位，帮助补气益阳、温通经络。治疗期间您双手要注意保暖，不能再碰冷水了。一般7次左右可以恢复。",
+          "isCorrect": true,
+          "reason": "明确回答哺乳期安全性，解释病因（产后体虚+寒湿），给出生活指导，设定合理预期"
+        },
+        {
+          "text": "你现在喂奶呢，针灸怕有影响。等你断奶了再来治吧，先忍几个月。",
+          "isCorrect": false,
+          "reason": "错误认为针灸影响哺乳，延误治疗可能导致病情慢性化、关节变形"
+        },
+        {
+          "text": "这个病很难治，我只能尽量试试。你每天来扎，先扎一个月看看有没有变化。",
+          "isCorrect": false,
+          "reason": "消极预期加过长治疗承诺，应给出合理的疗程预期（一般7次左右）"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["arms"],
+    "regionImages": {
+      "arms": "胳膊.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "液门",
+        "code": "SJ2",
+        "region": "arms",
+        "imagePath": "胳膊.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "手背部，第4、5指间，指蹼缘后方赤白肉际处",
+        "needleDepth": { "min": 0.3, "max": 0.5, "unit": "寸" },
+        "needleAngle": "直刺0.3-0.5寸",
+        "retentionTime": { "min": 25, "max": 35, "unit": "分钟" }
+      },
+      {
+        "name": "外关",
+        "code": "SJ5",
+        "region": "arms",
+        "imagePath": "胳膊.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "前臂背侧，腕背横纹上2寸，尺骨与桡骨之间",
+        "needleDepth": { "min": 0.5, "max": 1.0, "unit": "寸" },
+        "needleAngle": "直刺0.5-1.0寸",
+        "retentionTime": { "min": 25, "max": 35, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！液门为手少阳三焦经荥穴，乃八邪穴之一，有除寒湿、益阳气之功；外关通阳维脉，可维络诸阳。二穴合用补气益阳、温通经络，对产后受寒所致手指拘挛效果如神！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。液门穴位于第4、5指缝根部赤白肉际处，较浅；外关在腕背横纹上2寸两骨之间。行针时可配合帮患者做推拿理指法，促进气血运行。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次偏差较大。液门穴在指缝根部，位置细小需精确；外关穴过深可能伤及骨间神经。请重新确认：液门在4-5指缝赤白肉际，外关在腕背横纹上2寸（患者三横指）两骨间。" }
+    },
+    "tags": ["产后风", "鸡爪风", "手少阳三焦经", "八邪穴", "阳维脉", "产后体虚"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "四、针灸速效治病（4）> (一) 针刺液门+外关穴治疗产后鸡爪风", "textbookRefs": ["经络腧穴学", "刺法灸法学", "针灸治疗学"] }
+  },
+  {
+    "caseId": "acup_00010",
+    "title": "牙痛（上牙痛）— 液门穴清热止痛",
+    "patientInfo": {
+      "ageRange": "26-40",
+      "gender": "female",
+      "chiefComplaint": "左上智齿发炎疼痛2天，牙龈肿胀，影响睡眠及饮食",
+      "historySummary": "患者2天前左上智齿发炎疼痛，牙龈局部肿胀，严重影响睡眠及饮食。到某医院就医，服甲硝唑和止痛药后症状稍缓解，因怕迁延日久症状加重来求针灸治疗。查体：左上智齿牙龈红肿，局部压痛明显。诊断为牙痛（上牙痛，手少阳经证）。"
+    },
+    "cooperationWillingness": {
+      "scenario": "willing",
+      "patientLine": "牙疼不是病，疼起来真要命啊！吃了止痛药也不怎么管用，晚上根本睡不着。医生您快给我扎吧，能止住疼就行！",
+      "candidateOptions": [
+        {
+          "text": "好的，牙痛针灸止痛效果很快。我在您手上取液门穴，这是手少阳三焦经的穴位，其经脉循行正好经过牙齿和喉咙。针进去有酸麻胀感后留针40分钟，大多数人扎一次疼痛就能减轻大半。针后2小时内注意手不要沾水。",
+          "isCorrect": true,
+          "reason": "说明经脉循行与牙齿的关系解释选穴原理，给出针刺后护理指导，设定合理预期"
+        },
+        {
+          "text": "牙疼应该扎脸上的穴位吧？来，我给你在腮帮子上扎几针，靠近牙的地方效果更好。",
+          "isCorrect": false,
+          "reason": "在面部炎症区域附近直接针刺有加重感染的风险，且不符合手少阳经远端取穴原则"
+        },
+        {
+          "text": "牙疼还是得靠牙医，针灸只能暂时止痛，治标不治本。你还是去拔牙吧。",
+          "isCorrect": false,
+          "reason": "低估针灸治疗牙痛的疗效，针灸可通过调节经络从根本上清热消炎而非仅止痛"
+        }
+      ],
+      "acceptanceOutcome": true
+    },
+    "applicableRegions": ["arms"],
+    "regionImages": {
+      "arms": "胳膊.png"
+    },
+    "standardAcupoints": [
+      {
+        "name": "液门",
+        "code": "SJ2",
+        "region": "arms",
+        "imagePath": "胳膊.png",
+        "coordinates": { "x": 0, "y": 0, "unit": "px" },
+        "locationDescription": "手背部，第4、5指间，指蹼缘后方赤白肉际处",
+        "needleDepth": { "min": 0.5, "max": 1.0, "unit": "寸" },
+        "needleAngle": "直刺0.5-1.0寸",
+        "retentionTime": { "min": 35, "max": 45, "unit": "分钟" }
+      }
+    ],
+    "positionTolerance": { "value": 15, "unit": "px" },
+    "feedbackScripts": {
+      "excellent": { "threshold": "位置偏差 ≤ 5px 且深度选择在范围内", "title": "优秀", "message": "非常精准！液门穴属手少阳三焦经，其经脉循行入系舌本，善于治疗头面五官疾病。临床对各种牙痛——龋齿、牙髓炎、根尖周炎等，经1次针刺后大多可获显著缓解。留针40分钟可确保充分刺激量！" },
+      "pass": { "threshold": "位置偏差 5-15px 且深度选择在范围内", "title": "合格", "message": "位置基本准确。液门穴位于第4、5指缝根部赤白肉际处，进针不宜过浅（不足0.5寸难以得气），也不宜过深（超过1寸可能伤及骨膜）。注意针后2小时勿洗手。" },
+      "needsImprovement": { "threshold": "位置偏差 > 15px 或深度选择超出范围", "title": "需要加强", "message": "本次偏差较大。液门穴在手指缝根部，定位非常精细。错误定位可能导致完全无效。请重新确认：第4指与第5指之间的指蹼缘后方，赤白肉际交界处即是标准位置。" }
+    },
+    "tags": ["牙痛", "手少阳三焦经", "荥穴", "头面五官疾病", "远端取穴", "清热止痛"],
+    "source": { "caseBook": "针灸临床笔记", "chapter": "五、针灸速效治病（5）> (二) 针刺液门穴治疗牙痛一例", "textbookRefs": ["经络腧穴学", "针灸治疗学"] }
+  }
+]

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -22,6 +23,8 @@ from competition_app.simulated_patient.schemas import (
 from competition_app.simulated_patient.llm_adapter import ProjectLLMProvider
 
 router = APIRouter(prefix="/api/v1/simulated-patient", tags=["simulated-patient"])
+
+ACUPUNCTURE_CASE_DATA_PATH = Path(__file__).resolve().parents[3] / "docs" / "针灸交互训练-案例数据v1.json"
 
 # ── 引擎引用（由 app.py 在启动时注入） ─────────────────
 _engine: Optional[SimulatedPatientEngine] = None
@@ -63,6 +66,16 @@ def _get_case_data_path() -> str:
     if legacy.is_file():
         return str(legacy)
     return str(case_path)
+
+
+def _load_acupuncture_cases() -> list[dict]:
+    if not ACUPUNCTURE_CASE_DATA_PATH.is_file():
+        return []
+    try:
+        payload = json.loads(ACUPUNCTURE_CASE_DATA_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    return payload if isinstance(payload, list) else []
 
 
 # ── 请求模型 ──────────────────────────────────────────
@@ -125,6 +138,18 @@ async def simulated_patient_entry(request: Request, body: SPRequest):
         "is_complete": result.is_complete,
         "turn_count": result.turn_count,
         "help_available": result.help_available,
+    }
+
+
+@router.get("/acupuncture-cases")
+async def get_acupuncture_cases(request: Request):
+    current_user = getattr(request.state, "current_user", None)
+    user_id = str(getattr(current_user, "user_id", "") or "").strip()
+    if not user_id:
+        return {"success": False, "error": "请先登录后继续", "data": {"cases": []}}
+    return {
+        "success": True,
+        "data": {"cases": _load_acupuncture_cases()},
     }
 
 

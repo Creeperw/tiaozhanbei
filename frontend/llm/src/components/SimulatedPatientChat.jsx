@@ -6,6 +6,7 @@ import {
   Star, Activity, FileText, RotateCcw, X, User
 } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
+import AcupuncturePractice from './acupuncture/AcupuncturePractice';
 
 // ── localStorage keys ────────────────────────────────────
 const STORAGE_SESSION = 'sp-session-id';
@@ -118,7 +119,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
     fetchWithAuth('/api/v1/auth/me', {}).then(r => readJsonResponse(r, {})).then(d => {
       const u = d?.user;
       if (u?.username) setCurrentUserName(u.display_name || u.username);
-    }).catch(() => {});
+    }).catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -190,6 +191,10 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
   const handleStartPractice = () => setView('practice_select');
 
   const handleStartSession = async () => {
+    if (practiceMode === 'acupuncture') {
+      setView('acupuncture');
+      return;
+    }
     const payload = {};
     if (practiceMode === 'topic' && specialtyInput.trim()) {
       payload.specialty = specialtyInput.trim();
@@ -559,6 +564,12 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
               随心练
             </button>
             <button
+              className={`sp-welcome__mode-option${practiceMode === 'acupuncture' ? ' is-active' : ''}`}
+              onClick={() => setPracticeMode('acupuncture')}
+            >
+              针灸专练
+            </button>
+            <button
               className={`sp-welcome__mode-option${practiceMode === 'topic' ? ' is-active' : ''}`}
               onClick={() => setPracticeMode('topic')}
             >
@@ -595,104 +606,104 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
   const renderReport = () => {
     if (!report || typeof report !== 'object') return null;
     try {
-    const breakdown = report.score_breakdown || {};
-    const correct = report.correct_answer || {};
-    const knowledge = report.knowledge_points || report.knowledge_analysis?.details || [];
-    const comparison = report.syndrome_comparison || {};
-    const errorAnalysis = report.error_analysis || {};
-    const isPass = report.diagnosis_correct;
+      const breakdown = report.score_breakdown || {};
+      const correct = report.correct_answer || {};
+      const knowledge = report.knowledge_points || report.knowledge_analysis?.details || [];
+      const comparison = report.syndrome_comparison || {};
+      const errorAnalysis = report.error_analysis || {};
+      const isPass = report.diagnosis_correct;
 
-    const dims = [
-      { key: 'syndrome_score', maxKey: 'syndrome_max', label: '证型诊断' },
-      { key: 'prescription_name_score', maxKey: 'prescription_name_max', label: '方剂名称' },
-      { key: 'prescription_comp_score', maxKey: 'prescription_comp_max', label: '方剂组成' },
-      { key: 'inquiry_score', maxKey: 'inquiry_max', label: '问诊内容' },
-      { key: 'time_efficiency_score', maxKey: 'time_efficiency_max', label: '时间效率' },
-      { key: 'compassion_score', maxKey: 'compassion_max', label: '人文关怀' },
-    ];
+      const dims = [
+        { key: 'syndrome_score', maxKey: 'syndrome_max', label: '证型诊断' },
+        { key: 'prescription_name_score', maxKey: 'prescription_name_max', label: '方剂名称' },
+        { key: 'prescription_comp_score', maxKey: 'prescription_comp_max', label: '方剂组成' },
+        { key: 'inquiry_score', maxKey: 'inquiry_max', label: '问诊内容' },
+        { key: 'time_efficiency_score', maxKey: 'time_efficiency_max', label: '时间效率' },
+        { key: 'compassion_score', maxKey: 'compassion_max', label: '人文关怀' },
+      ];
 
-    return (
-      <div className="sp-report">
-        <div className="sp-report__card">
-          <div className="sp-report__header">
-            <div className="sp-report__total-score">{report.score ?? '--'}</div>
-            <div className={`sp-report__verdict ${isPass ? 'sp-report__verdict--pass' : 'sp-report__verdict--fail'}`}>
-              {isPass ? '✅ 正确' : '❌ 错误'}
+      return (
+        <div className="sp-report">
+          <div className="sp-report__card">
+            <div className="sp-report__header">
+              <div className="sp-report__total-score">{report.score ?? '--'}</div>
+              <div className={`sp-report__verdict ${isPass ? 'sp-report__verdict--pass' : 'sp-report__verdict--fail'}`}>
+                {isPass ? '✅ 正确' : '❌ 错误'}
+              </div>
             </div>
-          </div>
 
-          <div className="sp-report__section">
-            <div className="sp-report__section-title"><Star size={15} /> 得分明细</div>
-            <div className="sp-report__breakdown">
-              {dims.map(d => {
-                const score = breakdown[d.key] ?? 0;
-                const max = breakdown[d.maxKey] ?? (d.key.includes('syndrome') ? 40 : d.key.includes('prescription') ? 15 : d.key.includes('inquiry') ? 15 : d.key.includes('time') ? 8 : 7);
-                const pct = max > 0 ? (score / max) * 100 : 0;
-                return (
-                  <div key={d.key} className="sp-report__breakdown-item">
-                    <div className="sp-report__breakdown-label">{d.label}</div>
-                    <div className="sp-report__breakdown-bar-track">
-                      <div className={`sp-report__breakdown-bar-fill ${barClass(score, max)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+            <div className="sp-report__section">
+              <div className="sp-report__section-title"><Star size={15} /> 得分明细</div>
+              <div className="sp-report__breakdown">
+                {dims.map(d => {
+                  const score = breakdown[d.key] ?? 0;
+                  const max = breakdown[d.maxKey] ?? (d.key.includes('syndrome') ? 40 : d.key.includes('prescription') ? 15 : d.key.includes('inquiry') ? 15 : d.key.includes('time') ? 8 : 7);
+                  const pct = max > 0 ? (score / max) * 100 : 0;
+                  return (
+                    <div key={d.key} className="sp-report__breakdown-item">
+                      <div className="sp-report__breakdown-label">{d.label}</div>
+                      <div className="sp-report__breakdown-bar-track">
+                        <div className={`sp-report__breakdown-bar-fill ${barClass(score, max)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      </div>
+                      <div className="sp-report__breakdown-score">{score}/{max} ({levelLabel(score, max)})</div>
                     </div>
-                    <div className="sp-report__breakdown-score">{score}/{max} ({levelLabel(score, max)})</div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {correct.syndrome && (
+              <div className="sp-report__section">
+                <div className="sp-report__section-title"><FileText size={15} /> 正确答案</div>
+                <div className="sp-report__text-item">疾病/证型：{correct.syndrome || '-'}</div>
+                {correct.prescription_name && <div className="sp-report__text-item">方剂名称：{correct.prescription_name}</div>}
+                {correct.prescription_composition && <div className="sp-report__text-item">方剂组成：{correct.prescription_composition}</div>}
+              </div>
+            )}
+
+            {knowledge.length > 0 && (
+              <div className="sp-report__section">
+                <div className="sp-report__section-title"><HelpCircle size={15} /> 相关知识点</div>
+                {knowledge.slice(0, 5).map((kp, i) => (
+                  <div key={i} className="sp-report__text-item">
+                    {kp.kp_name || kp.name || kp}: {kp.kp_description || kp.description || ''}
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                ))}
+              </div>
+            )}
 
-          {correct.syndrome && (
-            <div className="sp-report__section">
-              <div className="sp-report__section-title"><FileText size={15} /> 正确答案</div>
-              <div className="sp-report__text-item">疾病/证型：{correct.syndrome || '-'}</div>
-              {correct.prescription_name && <div className="sp-report__text-item">方剂名称：{correct.prescription_name}</div>}
-              {correct.prescription_composition && <div className="sp-report__text-item">方剂组成：{correct.prescription_composition}</div>}
-            </div>
-          )}
+            {comparison.comparison && (
+              <div className="sp-report__section">
+                <div className="sp-report__section-title"><AlertCircle size={15} /> 疾病辨析</div>
+                <div className="sp-report__text-item">你的回答：{comparison.user_syndrome || '-'}</div>
+                <div className="sp-report__text-item">正确答案：{comparison.correct_syndrome || '-'}</div>
+                <div className="sp-report__text-item">辨析说明：{comparison.comparison}</div>
+              </div>
+            )}
 
-          {knowledge.length > 0 && (
-            <div className="sp-report__section">
-              <div className="sp-report__section-title"><HelpCircle size={15} /> 相关知识点</div>
-              {knowledge.slice(0, 5).map((kp, i) => (
-                <div key={i} className="sp-report__text-item">
-                  {kp.kp_name || kp.name || kp}: {kp.kp_description || kp.description || ''}
-                </div>
-              ))}
-            </div>
-          )}
+            {(errorAnalysis.suggestion || errorAnalysis.review_schedule) && (
+              <div className="sp-report__section">
+                <div className="sp-report__section-title"><Activity size={15} /> 综合建议</div>
+                {errorAnalysis.suggestion && <div className="sp-report__text-item">💡 建议：{errorAnalysis.suggestion}</div>}
+                {report.error_reason && <div className="sp-report__text-item">❌ 错因：{report.error_reason}</div>}
+                {errorAnalysis.review_schedule && <div className="sp-report__text-item">📅 {errorAnalysis.review_schedule}</div>}
+              </div>
+            )}
 
-          {comparison.comparison && (
-            <div className="sp-report__section">
-              <div className="sp-report__section-title"><AlertCircle size={15} /> 疾病辨析</div>
-              <div className="sp-report__text-item">你的回答：{comparison.user_syndrome || '-'}</div>
-              <div className="sp-report__text-item">正确答案：{comparison.correct_syndrome || '-'}</div>
-              <div className="sp-report__text-item">辨析说明：{comparison.comparison}</div>
+            <div className="sp-report__actions">
+              <button className="sp-report__action sp-report__action--outline" onClick={handleAddCollection}>
+                <Bookmark className="sp-report__action-icon" /> 加入收藏夹
+              </button>
+              <button className="sp-report__action sp-report__action--outline" onClick={handleRest}>
+                <Coffee className="sp-report__action-icon" /> 休息一下
+              </button>
+              <button className="sp-report__action sp-report__action--primary" onClick={handleNextPatient}>
+                <ArrowRight className="sp-report__action-icon" /> 接诊下一位
+              </button>
             </div>
-          )}
-
-          {(errorAnalysis.suggestion || errorAnalysis.review_schedule) && (
-            <div className="sp-report__section">
-              <div className="sp-report__section-title"><Activity size={15} /> 综合建议</div>
-              {errorAnalysis.suggestion && <div className="sp-report__text-item">💡 建议：{errorAnalysis.suggestion}</div>}
-              {report.error_reason && <div className="sp-report__text-item">❌ 错因：{report.error_reason}</div>}
-              {errorAnalysis.review_schedule && <div className="sp-report__text-item">📅 {errorAnalysis.review_schedule}</div>}
-            </div>
-          )}
-
-          <div className="sp-report__actions">
-            <button className="sp-report__action sp-report__action--outline" onClick={handleAddCollection}>
-              <Bookmark className="sp-report__action-icon" /> 加入收藏夹
-            </button>
-            <button className="sp-report__action sp-report__action--outline" onClick={handleRest}>
-              <Coffee className="sp-report__action-icon" /> 休息一下
-            </button>
-            <button className="sp-report__action sp-report__action--primary" onClick={handleNextPatient}>
-              <ArrowRight className="sp-report__action-icon" /> 接诊下一位
-            </button>
           </div>
         </div>
-      </div>
-    );
+      );
     } catch (e) {
       console.error('renderReport error:', e);
       return <div className="sp-report"><div className="sp-report__card"><p>评分报告渲染出错，请重试</p></div></div>;
@@ -909,7 +920,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
           </div>
         )}
         {viewingReportExpanded && !hasReport && (
-          <p style={{textAlign:'center',color:'#94a3b8',padding:12,fontSize:'0.84rem'}}>暂无评分数据</p>
+          <p style={{ textAlign: 'center', color: '#94a3b8', padding: 12, fontSize: '0.84rem' }}>暂无评分数据</p>
         )}
       </div>
     );
@@ -982,14 +993,16 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       </button>
 
       <div className="sp-chat__main">
-        {view === 'report' ? renderReport() :
-         view === 'consultation' ? (
-           <>
-             {renderConsultation()}
-             {renderHistoryReportToggle()}
-           </>
-         ) :
-         renderWelcome()
+        {view === 'acupuncture' ? (
+          <AcupuncturePractice onBack={() => setView('practice_select')} />
+        ) : view === 'report' ? renderReport() :
+          view === 'consultation' ? (
+            <>
+              {renderConsultation()}
+              {renderHistoryReportToggle()}
+            </>
+          ) :
+            renderWelcome()
         }
       </div>
     </div>
