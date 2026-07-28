@@ -342,6 +342,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
     app = FastAPI(title="Competition App", version="0.1.0", lifespan=lifespan)
     static_root = Path(__file__).parents[1] / "static"
+    platform_assets_root = static_root / "platform-assets"
     chat_root = Path(__file__).parents[1] / "chat_static"
     auth_root = Path(__file__).parents[1] / "auth_static"
     frontend_root = container.frontend_dist_root
@@ -376,6 +377,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "textbook-covers"),
             name="frontend_textbook_covers",
         )
+    app.mount(
+        "/platform-assets",
+        StaticFiles(directory=platform_assets_root),
+        name="platform_assets",
+    )
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
@@ -411,6 +417,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "/assistant-character/",
                     "/learning-stage/",
                     "/textbook-covers/",
+                    "/platform-assets/",
                 )
             )
             or path.startswith(("/auth", "/docs", "/redoc"))

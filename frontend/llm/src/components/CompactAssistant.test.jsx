@@ -54,7 +54,7 @@ describe('CompactAssistant', () => {
     expect(screen.getByRole('button', { name: '新建对话' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '折叠智能助教' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '打开完整智能助教' })).toBeInTheDocument();
-    expect(screen.getByText('六智能体按需协作')).toBeInTheDocument();
+    expect(screen.getByText('多智能体按需协作')).toBeInTheDocument();
     expect(screen.getByLabelText('多智能体协作能力')).toHaveTextContent('按任务自动组队');
     expect(screen.getByLabelText('多智能体协作能力')).toHaveTextContent('需要时检索与审核');
     fireEvent.click(screen.getByRole('button', { name: '打开完整智能助教' }));

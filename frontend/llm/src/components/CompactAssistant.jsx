@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowUp,
   Bot,
@@ -8,6 +8,11 @@ import {
   MessageSquarePlus,
   PanelRightClose,
   PanelRightOpen,
+  Maximize2,
+  Minimize2,
+  Minus,
+  Plus,
+  RotateCcw,
 } from 'lucide-react';
 import { buildAssistantGreeting, createNewAssistantState } from '../assistantDockModel';
 import {
@@ -34,6 +39,9 @@ const assistantCharacterImages = {
   left: '/assistant-character/lizhizhen-left-cutout.png',
   right: '/assistant-character/lizhizhen-right-cutout.png',
 };
+
+const CHARACTER_BASE_WIDTH = 40;
+const CHARACTER_BASE_HEIGHT = 70;
 
 const executionEventLabels = {
   handoff_prepared: '按需通信',
@@ -88,6 +96,15 @@ export default function CompactAssistant({
   const [floatingPosition, setFloatingPosition] = useState(null);
   const [characterFailed, setCharacterFailed] = useState(false);
   const [characterPose, setCharacterPose] = useState('center');
+  const [characterScale, setCharacterScale] = useState(() => {
+    const saved = localStorage.getItem('compactAssistantCharacterScale');
+    const parsed = saved ? parseFloat(saved) : 1.0;
+    return Number.isFinite(parsed) ? Math.max(0.5, Math.min(3.0, parsed)) : 1.0;
+  });
+  const scaleSaveTimerRef = useRef(null);
+  const [isScaleDragging, setIsScaleDragging] = useState(false);
+  const [isToolbarVisible, setIsToolbarVisible] = useState(false);
+  const toolbarHideTimerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,22 +180,32 @@ export default function CompactAssistant({
     }
   }, [messages, sending]);
 
+  // Collapsed drag: pointerdown only records start position, does NOT set dragging
   useEffect(() => {
-    if (!dragging) return undefined;
+    if (!dragging || !collapsed) return undefined;
+    const drag = dragRef.current;
+    if (!drag) return undefined;
+
+    const threshold = drag.pointerType === 'touch' ? 12 : 8;
 
     const moveFloatingAssistant = (event) => {
-      const drag = dragRef.current;
-      if (!drag) return;
-      const deltaX = event.clientX - drag.pointerX;
-      const deltaY = event.clientY - drag.pointerY;
-      if (Math.hypot(deltaX, deltaY) > 4) drag.moved = true;
+      const deltaX = event.clientX - drag.startX;
+      const deltaY = event.clientY - drag.startY;
+      const distance = Math.hypot(deltaX, deltaY);
+      if (!drag.active && distance >= threshold) {
+        drag.active = true;
+        drag.originLeft = drag.left;
+        drag.originTop = drag.top;
+      }
+      if (!drag.active) return;
+      drag.moved = true;
       if (collapsed) {
         setCharacterPose(deltaX < -10 ? 'left' : deltaX > 10 ? 'right' : 'center');
       }
       const maxLeft = Math.max(8, window.innerWidth - drag.width - 8);
       const maxTop = Math.max(8, window.innerHeight - drag.height - 8);
-      const nextLeft = Math.min(maxLeft, Math.max(8, drag.left + deltaX));
-      const nextTop = Math.min(maxTop, Math.max(8, drag.top + deltaY));
+      const nextLeft = Math.min(maxLeft, Math.max(8, drag.originLeft + deltaX));
+      const nextTop = Math.min(maxTop, Math.max(8, drag.originTop + deltaY));
       drag.lastLeft = nextLeft;
       drag.lastTop = nextTop;
       setFloatingPosition({
@@ -187,11 +214,10 @@ export default function CompactAssistant({
       });
     };
     const finishFloatingDrag = () => {
-      const drag = dragRef.current;
-      suppressExpandRef.current = Boolean(drag?.moved);
-      if (drag?.moved) {
-        const rightGap = window.innerWidth - ((drag.lastLeft ?? drag.left) + drag.width);
-        const bottomGap = window.innerHeight - ((drag.lastTop ?? drag.top) + drag.height);
+      suppressExpandRef.current = Boolean(drag?.moved && drag?.active);
+      if (drag?.moved && drag?.active) {
+        const rightGap = window.innerWidth - ((drag.lastLeft ?? drag.originLeft ?? drag.left) + drag.width);
+        const bottomGap = window.innerHeight - ((drag.lastTop ?? drag.originTop ?? drag.top) + drag.height);
         onFloatingDockChange?.(rightGap <= 32 && bottomGap <= 32);
       }
       dragRef.current = null;
@@ -209,22 +235,68 @@ export default function CompactAssistant({
     };
   }, [collapsed, dragging, onFloatingDockChange]);
 
+  // Expanded header drag remains unchanged
+  useEffect(() => {
+    if (!dragging || collapsed) return undefined;
+    const drag = dragRef.current;
+    if (!drag) return undefined;
+
+    const moveFloatingAssistant = (event) => {
+      const deltaX = event.clientX - drag.startX;
+      const deltaY = event.clientY - drag.startY;
+      if (Math.hypot(deltaX, deltaY) > 4) drag.moved = true;
+      const maxLeft = Math.max(8, window.innerWidth - drag.width - 8);
+      const maxTop = Math.max(8, window.innerHeight - drag.height - 8);
+      const nextLeft = Math.min(maxLeft, Math.max(8, drag.originLeft + deltaX));
+      const nextTop = Math.min(maxTop, Math.max(8, drag.originTop + deltaY));
+      drag.lastLeft = nextLeft;
+      drag.lastTop = nextTop;
+      setFloatingPosition({
+        left: nextLeft,
+        top: nextTop,
+      });
+    };
+    const finishFloatingDrag = () => {
+      suppressExpandRef.current = Boolean(drag?.moved);
+      if (drag?.moved) {
+        const rightGap = window.innerWidth - ((drag.lastLeft ?? drag.originLeft ?? drag.left) + drag.width);
+        const bottomGap = window.innerHeight - ((drag.lastTop ?? drag.originTop ?? drag.top) + drag.height);
+        onFloatingDockChange?.(rightGap <= 32 && bottomGap <= 32);
+      }
+      dragRef.current = null;
+      setDragging(false);
+    };
+
+    window.addEventListener('pointermove', moveFloatingAssistant);
+    window.addEventListener('pointerup', finishFloatingDrag);
+    window.addEventListener('pointercancel', finishFloatingDrag);
+    return () => {
+      window.removeEventListener('pointermove', moveFloatingAssistant);
+      window.removeEventListener('pointerup', finishFloatingDrag);
+      window.removeEventListener('pointercancel', finishFloatingDrag);
+    };
+  }, [collapsed, dragging, onFloatingDockChange]);
+
   useEffect(() => {
     if (!floating) return undefined;
     const keepAssistantInViewport = () => {
+      const rect = floatingRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const actualWidth = rect.width;
+      const actualHeight = rect.height;
       setFloatingPosition((current) => {
         if (!current) return current;
-        const width = collapsed ? 104 : Math.min(320, Math.max(0, window.innerWidth - 16));
-        const height = collapsed ? 132 : Math.min(560, Math.max(0, window.innerHeight - 16));
+        if (!collapsed) {
+          const width = Math.min(320, Math.max(0, window.innerWidth - 16));
+          const height = Math.min(560, Math.max(0, window.innerHeight - 16));
+          return {
+            left: Math.min(Math.max(8, window.innerWidth - width - 8), Math.max(8, current.left)),
+            top: Math.min(Math.max(8, window.innerHeight - height - 8), Math.max(8, current.top)),
+          };
+        }
         return {
-          left: Math.min(
-            Math.max(8, window.innerWidth - width - 8),
-            Math.max(8, current.left),
-          ),
-          top: Math.min(
-            Math.max(8, window.innerHeight - height - 8),
-            Math.max(8, current.top),
-          ),
+          left: Math.min(Math.max(8, window.innerWidth - actualWidth - 8), Math.max(8, current.left)),
+          top: Math.min(Math.max(8, window.innerHeight - actualHeight - 8), Math.max(8, current.top)),
         };
       });
     };
@@ -238,13 +310,17 @@ export default function CompactAssistant({
     if (!rect) return;
     suppressExpandRef.current = false;
     dragRef.current = {
-      pointerX: event.clientX,
-      pointerY: event.clientY,
+      pointerType: event.pointerType || 'mouse',
+      startX: event.clientX,
+      startY: event.clientY,
       left: rect.left,
       top: rect.top,
+      originLeft: rect.left,
+      originTop: rect.top,
       width: rect.width || 56,
       height: rect.height || 56,
       moved: false,
+      active: false,
     };
     setDragging(true);
   };
@@ -284,12 +360,104 @@ export default function CompactAssistant({
     onCollapsedChange?.(true);
   };
 
+  const clampViewportX = (left, width) => Math.max(8, Math.min(window.innerWidth - width - 8, left));
+  const clampViewportY = (top, height) => Math.max(8, Math.min(window.innerHeight - height - 8, top));
+
+  const saveCharacterScale = useCallback((scale) => {
+    if (scaleSaveTimerRef.current) clearTimeout(scaleSaveTimerRef.current);
+    scaleSaveTimerRef.current = setTimeout(() => {
+      localStorage.setItem('compactAssistantCharacterScale', String(scale));
+    }, 300);
+  }, []);
+
+  // Synchronous scale + position update: both state changes happen in the same updater,
+  // so React 18 batching commits them together — no two-frame jump.
+  const handleScaleChange = useCallback((delta, reset = false) => {
+    setCharacterScale((prevScale) => {
+      const nextScale = reset ? 1.0 : Math.max(0.5, Math.min(3.0, prevScale + delta));
+      saveCharacterScale(nextScale);
+
+      // Compute new position to keep bottom-center stable — no rAF, no getBoundingClientRect
+      setFloatingPosition((pos) => {
+        if (!pos) return pos;
+        const oldW = CHARACTER_BASE_WIDTH * prevScale;
+        const oldH = CHARACTER_BASE_HEIGHT * prevScale;
+        const newW = CHARACTER_BASE_WIDTH * nextScale;
+        const newH = CHARACTER_BASE_HEIGHT * nextScale;
+        const left = pos.left + (oldW - newW) / 2;
+        const top = pos.top + (oldH - newH);
+        return {
+          left: clampViewportX(left, newW),
+          top: clampViewportY(top, newH),
+        };
+      });
+
+      return nextScale;
+    });
+  }, [saveCharacterScale]);
+
+  const handleRangeChange = useCallback((event) => {
+    const percent = Number(event.target.value);
+    const newScale = Math.max(0.5, Math.min(3.0, percent / 100));
+    setCharacterScale((prevScale) => {
+      setFloatingPosition((pos) => {
+        if (!pos) return pos;
+        const oldW = CHARACTER_BASE_WIDTH * prevScale;
+        const oldH = CHARACTER_BASE_HEIGHT * prevScale;
+        const newW = CHARACTER_BASE_WIDTH * newScale;
+        const newH = CHARACTER_BASE_HEIGHT * newScale;
+        const left = pos.left + (oldW - newW) / 2;
+        const top = pos.top + (oldH - newH);
+        return {
+          left: clampViewportX(left, newW),
+          top: clampViewportY(top, newH),
+        };
+      });
+      return newScale;
+    });
+  }, []);
+
+  const handleRangePointerUp = useCallback(() => {
+    setIsScaleDragging(false);
+    setCharacterScale((prev) => {
+      localStorage.setItem('compactAssistantCharacterScale', String(prev));
+      return prev;
+    });
+  }, []);
+
+  const handleScaleToggleClick = (event, delta) => {
+    event.stopPropagation();
+    handleScaleChange(delta);
+  };
+
+  // Toolbar visibility: React state + pointerEnter/pointerLeave with 250ms delayed hide
+  const showScaleToolbar = useCallback(() => {
+    if (toolbarHideTimerRef.current) {
+      clearTimeout(toolbarHideTimerRef.current);
+      toolbarHideTimerRef.current = null;
+    }
+    setIsToolbarVisible(true);
+  }, []);
+
+  const scheduleHideScaleToolbar = useCallback(() => {
+    if (isScaleDragging) return;
+    if (toolbarHideTimerRef.current) clearTimeout(toolbarHideTimerRef.current);
+    toolbarHideTimerRef.current = window.setTimeout(() => {
+      setIsToolbarVisible(false);
+    }, 250);
+  }, [isScaleDragging]);
+
   const floatingStyle = floatingPosition ? {
     left: floatingPosition.left,
     top: floatingPosition.top,
     right: 'auto',
     bottom: 'auto',
   } : undefined;
+
+  const visualWidth = CHARACTER_BASE_WIDTH * characterScale;
+  const visualHeight = CHARACTER_BASE_HEIGHT * characterScale;
+  const hitWidth = Math.max(44, visualWidth);
+  const hitHeight = Math.max(60, visualHeight);
 
   const send = async () => {
     const content = input.trim();
@@ -359,53 +527,128 @@ export default function CompactAssistant({
     .filter((event) => executionEventLabels[event?.event])
     .slice(-6);
 
+  const handleCollapsedPointerDown = (event) => {
+    if (event.target.closest('.compact-assistant__scale-toggle, .compact-assistant__scale-toolbar, .compact-assistant__scale-value, .compact-assistant__scale-slider')) return;
+    startFloatingDrag(event, true);
+  };
+
   if (collapsed) {
     return (
       <aside
         ref={floatingRef}
-        className={`compact-assistant is-collapsed${dragging ? ' is-dragging' : ''} ${className}`.trim()}
+        className={`compact-assistant is-collapsed${dragging ? ' is-dragging' : ''}${isScaleDragging ? ' is-scale-dragging' : ''} ${className}`.trim()}
         aria-label="常驻智能助教"
         data-state="collapsed"
         data-floating={String(floating)}
-        style={floating ? floatingStyle : undefined}
+        style={{
+          '--character-scale': characterScale,
+          '--character-visual-width': `${visualWidth}px`,
+          '--character-visual-height': `${visualHeight}px`,
+          '--character-hit-width': `${hitWidth}px`,
+          '--character-hit-height': `${hitHeight}px`,
+          ...(floating ? floatingStyle : undefined),
+        }}
       >
-        <button
-          type="button"
-          className="compact-assistant__restore"
-          aria-label="展开智能助教"
-          title="拖拽移动，点击展开智能助教"
-          onPointerDown={floating ? (event) => startFloatingDrag(event, true) : undefined}
-          onClick={restoreAssistant}
+        <div
+          className={`compact-assistant__collapsed-controls${isToolbarVisible ? ' is-toolbar-visible' : ''}`}
+          onPointerEnter={showScaleToolbar}
+          onPointerLeave={scheduleHideScaleToolbar}
         >
-          {!characterFailed ? (
-            <span
-              className="compact-assistant__character"
-              data-pose={characterPose}
-              data-testid="lizhizhen-assistant-character"
-              aria-hidden="true"
+          <div className="compact-assistant__hit-area" onPointerDown={floating ? handleCollapsedPointerDown : undefined}>
+            {!characterFailed ? (
+              <button
+                type="button"
+                className="compact-assistant__restore"
+                aria-label="展开智能助教"
+                title="拖拽移动，点击展开智能助教"
+                onClick={restoreAssistant}
+              >
+                <span
+                  className="compact-assistant__character"
+                  data-pose={characterPose}
+                  data-testid="lizhizhen-assistant-character"
+                  aria-hidden="true"
+                >
+                  <span className="compact-assistant__character-shadow" />
+                  <span className="compact-assistant__character-figure">
+                    {Object.entries(assistantCharacterImages).map(([pose, src]) => (
+                      <img
+                        key={pose}
+                        src={src}
+                        alt=""
+                        data-pose={pose}
+                        draggable="false"
+                        onError={() => setCharacterFailed(true)}
+                      />
+                    ))}
+                  </span>
+                  <span className="compact-assistant__character-hint">{characterHint}</span>
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="compact-assistant__restore"
+                aria-label="展开智能助教"
+                onClick={restoreAssistant}
+              >
+                <span className="compact-assistant__character-fallback" data-testid="assistant-character-fallback" aria-hidden="true">
+                  <Bot size={21} />
+                  <PanelRightOpen size={15} />
+                </span>
+              </button>
+            )}
+          </div>
+          <div
+            className="compact-assistant__scale-toolbar"
+            onPointerEnter={showScaleToolbar}
+            onPointerLeave={scheduleHideScaleToolbar}
+          >
+            <button
+              type="button"
+              className="compact-assistant__scale-toggle"
+              aria-label="缩小角色"
+              title="缩小5%"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => handleScaleToggleClick(e, -0.05)}
             >
-              <span className="compact-assistant__character-shadow" />
-              <span className="compact-assistant__character-figure">
-                {Object.entries(assistantCharacterImages).map(([pose, src]) => (
-                  <img
-                    key={pose}
-                    src={src}
-                    alt=""
-                    data-pose={pose}
-                    draggable="false"
-                    onError={() => setCharacterFailed(true)}
-                  />
-                ))}
-              </span>
-              <span className="compact-assistant__character-hint">{characterHint}</span>
-            </span>
-          ) : (
-            <span className="compact-assistant__character-fallback" data-testid="assistant-character-fallback" aria-hidden="true">
-              <Bot size={21} />
-              <PanelRightOpen size={15} />
-            </span>
-          )}
-        </button>
+              <Minus size={11} />
+            </button>
+            <input
+              type="range"
+              className="compact-assistant__scale-slider"
+              min={50}
+              max={300}
+              step={1}
+              value={Math.round(characterScale * 100)}
+              onPointerDown={(e) => { e.stopPropagation(); setIsScaleDragging(true); }}
+              onChange={handleRangeChange}
+              onPointerUp={handleRangePointerUp}
+              aria-label="角色缩放滑条"
+            />
+            <button
+              type="button"
+              className="compact-assistant__scale-toggle"
+              aria-label="放大角色"
+              title="放大5%"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => handleScaleToggleClick(e, 0.05)}
+            >
+              <Plus size={11} />
+            </button>
+            <span className="compact-assistant__scale-value">{Math.round(characterScale * 100)}%</span>
+            <button
+              type="button"
+              className="compact-assistant__scale-toggle"
+              aria-label="恢复默认大小"
+              title="恢复100%"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); handleScaleChange(0, true); }}
+            >
+              <RotateCcw size={10} />
+            </button>
+          </div>
+        </div>
       </aside>
     );
   }
@@ -439,7 +682,10 @@ export default function CompactAssistant({
               />
             )}
           </span>
-          <div><strong>智能助教</strong><small>六智能体按需协作</small></div>
+          <div className="flex flex-col gap-0.5">
+            <strong className="text-lg font-bold text-slate-900">智能助教</strong>
+            <small className="text-sm font-semibold text-[#2E7D32] bg-[#E8F5E9] px-2 py-0.5 rounded-full">多智能体按需协作</small>
+          </div>
         </div>
         <div className="compact-assistant__controls">
           <button
@@ -458,6 +704,27 @@ export default function CompactAssistant({
             title="折叠智能助教"
             onClick={collapseAssistant}
           ><PanelRightClose aria-hidden="true" size={15} /></button>
+          <div className="compact-assistant__resize-controls">
+            <button
+              type="button"
+              className="compact-assistant__resize-btn"
+              aria-label="缩小角色"
+              title="缩小角色"
+              onClick={() => handleScaleChange(-0.05)}
+            >
+              <Minus aria-hidden="true" size={12} />
+            </button>
+            <span className="compact-assistant__resize-value">{Math.round(characterScale * 100)}%</span>
+            <button
+              type="button"
+              className="compact-assistant__resize-btn"
+              aria-label="放大角色"
+              title="放大角色"
+              onClick={() => handleScaleChange(0.05)}
+            >
+              <Plus aria-hidden="true" size={12} />
+            </button>
+          </div>
           <button
             type="button"
             aria-label="打开完整智能助教"

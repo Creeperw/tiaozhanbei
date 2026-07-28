@@ -12,11 +12,11 @@ const displayKnowledgePointName = (item) => {
 const masteryTone = (value) => {
   if (value === null || value === undefined) return 'bg-slate-100';
   const score = clampRatio(value);
-  if (score >= 0.8) return 'bg-emerald-700';
-  if (score >= 0.6) return 'bg-emerald-500';
-  if (score >= 0.4) return 'bg-emerald-300';
-  if (score >= 0.2) return 'bg-emerald-100';
-  return 'bg-emerald-50';
+  if (score >= 0.8) return 'bg-[#A5D6A7]';
+  if (score >= 0.6) return 'bg-[#C8E6C9]';
+  if (score >= 0.4) return 'bg-[#D0F0E0]';
+  if (score >= 0.2) return 'bg-[#E8F5E9]';
+  return 'bg-[#F0F9F4]';
 };
 
 export default function MasteryHeatmap({ items = [] }) {
@@ -37,7 +37,7 @@ export default function MasteryHeatmap({ items = [] }) {
         <h2 className="flex items-center gap-2 text-xl font-bold text-slate-950">知识点掌握热力图 <span aria-hidden="true" className="text-base font-normal text-slate-400">ⓘ</span></h2>
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>弱</span>
-          {['bg-emerald-50', 'bg-emerald-100', 'bg-emerald-300', 'bg-emerald-500', 'bg-emerald-700'].map((tone) => <i key={tone} aria-hidden="true" className={`h-4 w-4 rounded-sm ${tone}`} />)}
+          {['bg-[#F0F9F4]', 'bg-[#E8F5E9]', 'bg-[#D0F0E0]', 'bg-[#C8E6C9]', 'bg-[#A5D6A7]'].map((tone) => <i key={tone} aria-hidden="true" className={`h-4 w-4 rounded-sm ${tone}`} />)}
           <span>强</span>
         </div>
       </div>
@@ -57,7 +57,7 @@ export default function MasteryHeatmap({ items = [] }) {
                     const unavailable = value === null || value === undefined;
                     const knowledgePointName = displayKnowledgePointName(item);
                     return (
-                      <span key={key} title={unavailable ? `${knowledgePointName}：${label}数据不足` : `${knowledgePointName}：${label} ${key === 'attempt_count' ? integer(item.attempt_count) : `${Math.round(clampRatio(value) * 100)}%`}`} className={`grid h-12 place-items-center rounded-lg text-sm font-semibold ${masteryTone(value)}`}>
+                      <span key={key} title={unavailable ? `${knowledgePointName}：${label}数据不足` : `${knowledgePointName}：${label} ${key === 'attempt_count' ? integer(item.attempt_count) : `${Math.round(clampRatio(value) * 100)}%`}`} className={`grid h-12 place-items-center rounded-lg text-base font-semibold ${masteryTone(value)}`}>
                         {unavailable ? '—' : key === 'attempt_count' ? integer(item.attempt_count) : `${Math.round(clampRatio(value) * 100)}%`}
                       </span>
                     );

@@ -48,10 +48,19 @@ export default function LearningTrendDualAxisChart({ series = [] }) {
   const yForCompletion = (value) => padding.top + innerHeight - clamp(value, 0, 1) * innerHeight;
   const completionPoints = linePoints(data, (item) => item.completionRate, xFor, yForCompletion);
   const barWidth = Math.min(22, Math.max(8, innerWidth / Math.max(data.length * 1.8, 1)));
-  const labelStep = Math.max(1, Math.ceil(data.length / 5));
+  const labelStep = Math.max(1, Math.ceil(data.length / 6));
   const dateLabelIndexes = data.map((_, index) => index).filter((index) => (
-    index === 0 || index === data.length - 1 || index % labelStep === 0
+    index === 0 || index % labelStep === 0
   ));
+  // 检查最后一个点是否需要显示：离前一个已选标签足够远（≥80% 的 labelStep，且至少为 2）
+  const lastIndex = data.length - 1;
+  const lastSelected = dateLabelIndexes[dateLabelIndexes.length - 1];
+  if (lastSelected !== undefined && lastIndex !== lastSelected) {
+    const distance = lastIndex - lastSelected;
+    if (distance >= Math.max(2, Math.ceil(labelStep * 0.8))) {
+      dateLabelIndexes.push(lastIndex);
+    }
+  }
 
   return (
     <section className="rounded-[28px] border border-emerald-100 bg-white p-5 shadow-sm shadow-emerald-950/5" aria-label="每日学习趋势">
@@ -60,16 +69,16 @@ export default function LearningTrendDualAxisChart({ series = [] }) {
           <div className="flex items-center gap-2 text-lg font-bold text-slate-950">学习趋势</div>
         </div>
         <div className="flex flex-wrap gap-2 text-sm font-medium">
-          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-emerald-800"><i className="h-2.5 w-2.5 rounded-full bg-emerald-600" />有效学习时长</span>
-          <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1.5 text-sky-800"><i className="h-2.5 w-2.5 rounded-full bg-sky-600" />任务完成率</span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#E8F5E9] px-3 py-1.5 text-[#2E7D32]"><i className="h-2.5 w-2.5 rounded-full bg-[#A5D6A7]" />有效学习时长</span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#E8F5E9] px-3 py-1.5 text-[#2E7D32]"><i className="h-2.5 w-2.5 rounded-full bg-[#2E7D32]" />任务完成率</span>
         </div>
       </div>
 
       {data.length > 0 ? (
         <figure className="mt-4">
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
-            <span>最新有效学习 <strong className="font-mono text-base text-emerald-800">{latest.minutes} 分钟</strong></span>
-            <span>最新任务完成率 <strong className="font-mono text-base text-sky-800">{Math.round(latest.completionRate * 100)}%</strong></span>
+            <span>最新有效学习 <strong className="font-mono text-base text-[#2E7D32]">{latest.minutes} 分钟</strong></span>
+            <span>最新任务完成率 <strong className="font-mono text-base text-[#2E7D32]">{Math.round(latest.completionRate * 100)}%</strong></span>
           </div>
           <svg
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
@@ -91,8 +100,8 @@ export default function LearningTrendDualAxisChart({ series = [] }) {
             <line x1={padding.left} x2={padding.left} y1={padding.top} y2={chartHeight - padding.bottom} stroke="#cfe0d8" />
             <line x1={chartWidth - padding.right} x2={chartWidth - padding.right} y1={padding.top} y2={chartHeight - padding.bottom} stroke="#d9e7f3" />
             <line x1={padding.left} x2={chartWidth - padding.right} y1={chartHeight - padding.bottom} y2={chartHeight - padding.bottom} stroke="#cfe0d8" />
-            <text x={17} y={chartHeight / 2} fill="#34705c" fontSize="15" textAnchor="middle" transform={`rotate(-90 17 ${chartHeight / 2})`}>有效学习时长（分钟）</text>
-            <text x={chartWidth - 17} y={chartHeight / 2} fill="#3677a8" fontSize="15" textAnchor="middle" transform={`rotate(90 ${chartWidth - 17} ${chartHeight / 2})`}>任务完成率（%）</text>
+            <text x={17} y={chartHeight / 2} fill="#2E7D32" fontSize="15" textAnchor="middle" transform={`rotate(-90 17 ${chartHeight / 2})`}>有效学习时长（分钟）</text>
+            <text x={chartWidth - 17} y={chartHeight / 2} fill="#2E7D32" fontSize="15" textAnchor="middle" transform={`rotate(90 ${chartWidth - 17} ${chartHeight / 2})`}>任务完成率（%）</text>
             {data.map((item, index) => {
               const x = xFor(index);
               const y = yForMinutes(item.minutes);
@@ -105,15 +114,15 @@ export default function LearningTrendDualAxisChart({ series = [] }) {
                   width={barWidth}
                   height={Math.max(0, baseline - y)}
                   rx="3"
-                  fill="#3f986c"
+                  fill="#A5D6A7"
                   fillOpacity=".9"
                 />
               );
             })}
-            <polyline fill="none" points={completionPoints} stroke="#3b82b6" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" />
+            <polyline fill="none" points={completionPoints} stroke="#2E7D32" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" />
             {data.map((item, index) => (
               <g key={`${item.date}-${index}`}>
-                <circle cx={xFor(index)} cy={yForCompletion(item.completionRate)} fill="#3b82b6" r="4.75" />
+                <circle cx={xFor(index)} cy={yForCompletion(item.completionRate)} fill="#2E7D32" r="4.75" />
                 <title>{`${item.date || '未标注日期'}：有效学习 ${item.minutes} 分钟，任务完成率 ${Math.round(item.completionRate * 100)}%`}</title>
               </g>
             ))}
