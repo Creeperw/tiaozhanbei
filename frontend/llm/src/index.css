@@ -8923,11 +8923,25 @@ textarea:focus-visible {
   padding: 0 10px 10px;
 }
 
+.app-shell__main[data-page="qualification-route"] .home-portal__route[data-view="orbit"] {
+  background:
+    radial-gradient(circle at 50% 56%, rgba(214, 244, 229, .78), rgba(244, 251, 247, .28) 34%, transparent 61%),
+    linear-gradient(rgba(17, 112, 83, .042) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 112, 83, .042) 1px, transparent 1px),
+    linear-gradient(145deg, #fbfefa, #f1f9f4);
+  background-size: auto, 32px 32px, 32px 32px, auto;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__route-header h2 {
+  color: #167e5e;
+}
+
 .home-portal__route-orbit-layout > .learning-path-orbit {
   width: 100%;
   min-height: 0;
   border: 0;
   border-radius: 16px;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -9180,70 +9194,6 @@ textarea:focus-visible {
   cursor: pointer;
 }
 
-.home-portal__feature-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 18px;
-  padding-bottom: 18px;
-}
-
-.home-portal__feature-card {
-  display: flex;
-  min-width: 0;
-  min-height: 150px;
-  align-items: center;
-  gap: 15px;
-  border: 1px solid rgba(219,227,236,.82);
-  border-radius: 16px;
-  padding: 18px;
-  color: #18312a;
-  background: #fff;
-  text-align: left;
-  cursor: pointer;
-  box-shadow: 0 12px 30px rgba(18,80,57,.045);
-}
-
-.home-portal__feature-card:hover,
-.home-portal__feature-card:focus-visible {
-  border-color: #a8d9c2;
-  background: #fbfffd;
-}
-
-.home-portal__feature-card img {
-  width: 70px;
-  height: 70px;
-  flex: 0 0 auto;
-  object-fit: contain;
-}
-
-.home-portal__feature-card > span {
-  display: grid;
-  min-width: 0;
-  gap: 6px;
-}
-
-.home-portal__feature-card strong {
-  font-size: .88rem;
-  font-weight: 820;
-}
-
-.home-portal__feature-card small {
-  color: #82908b;
-  font-size: .62rem;
-  line-height: 1.45;
-}
-
-.home-portal__feature-card em {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  color: #13845f;
-  font-size: .62rem;
-  font-style: normal;
-  font-weight: 800;
-}
-
 @media (max-width: 980px) {
   .home-portal__hero {
     --hero-content-top: 10px;
@@ -9274,9 +9224,6 @@ textarea:focus-visible {
     min-width: 165px;
   }
 
-  .home-portal__feature-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 767px) {
@@ -10308,6 +10255,373 @@ textarea:focus-visible {
 
 /* The profile is an information dashboard, not a display poster. Keep its
    hierarchy clear while using a consistent reading scale and denser rhythm. */
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan {
+  display: grid;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  gap: 16px;
+  padding: 0;
+}
+
+.home-today-card,
+.home-study-calendar {
+  min-width: 0;
+  border: 1px solid rgba(207, 220, 214, .9);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 12px 30px rgba(36, 75, 61, .07), 0 2px 5px rgba(36, 75, 61, .04);
+}
+
+.home-today-card {
+  padding: 20px;
+}
+
+.home-today-card__header,
+.home-study-calendar > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.home-today-card__header h3,
+.home-study-calendar > header h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: #19352d;
+  font-size: .94rem;
+  font-weight: 850;
+  letter-spacing: -.02em;
+}
+
+.home-today-card__header h3 svg,
+.home-study-calendar > header h3 svg {
+  color: #4f8957;
+}
+
+.home-today-card__progress {
+  display: grid;
+  grid-template-columns: auto 56px;
+  align-items: center;
+  gap: 9px;
+}
+
+.home-today-card__progress strong {
+  color: #6f7f87;
+  font-size: .68rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-today-card__progress > span {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #e9ebe7;
+}
+
+.home-today-card__progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #518950;
+  transition: width 260ms ease;
+}
+
+.home-today-card__list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.home-today-card__task {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 16px;
+  padding: 10px 12px;
+  color: #263b35;
+  background: #f6f7f5;
+  text-align: left;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.home-today-card__task:hover,
+.home-today-card__task:focus-visible {
+  background: #eef4ef;
+  transform: translateY(-1px);
+}
+
+.home-today-card__task:focus-visible {
+  outline: 2px solid rgba(79, 137, 87, .38);
+  outline-offset: 2px;
+}
+
+.home-today-card__check {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 2px solid #cdd3d5;
+  border-radius: 50%;
+  color: #fff;
+  background: #fff;
+}
+
+.home-today-card__task[data-status="completed"] .home-today-card__check {
+  border-color: #548c55;
+  background: #548c55;
+}
+
+.home-today-card__task > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #243a34;
+  font-size: .68rem;
+  font-weight: 720;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-today-card__task[data-status="completed"] > strong {
+  color: #83908c;
+  text-decoration: line-through;
+}
+
+.home-today-card__task > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #75838b;
+  font-size: .56rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.home-today-card__empty {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  border-radius: 16px;
+  color: #80938a;
+  background: #f7f9f7;
+  text-align: center;
+}
+
+.home-today-card__empty strong { color: #486158; font-size: .68rem; }
+.home-today-card__empty p { margin: 0; font-size: .56rem; }
+
+.home-today-card__add {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+  border: 0;
+  border-radius: 14px;
+  color: #4d8052;
+  background: #eaf1eb;
+  font-size: .65rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.home-today-card__add:hover,
+.home-today-card__add:focus-visible {
+  color: #2f693d;
+  background: #ddeadd;
+}
+
+.home-plan__refresh-timer {
+  display: none;
+}
+
+.home-study-calendar {
+  padding: 20px 20px 16px;
+}
+
+.home-study-calendar > header > div {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.home-study-calendar > header button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: #74857d;
+  background: transparent;
+  cursor: pointer;
+}
+
+.home-study-calendar > header button:hover,
+.home-study-calendar > header button:focus-visible {
+  color: #376f47;
+  background: #edf3ed;
+}
+
+.home-study-calendar > header strong {
+  min-width: 84px;
+  color: #2d413b;
+  font-size: .64rem;
+  text-align: center;
+}
+
+.home-study-calendar__weekdays,
+.home-study-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  text-align: center;
+}
+
+.home-study-calendar__weekdays {
+  margin-top: 20px;
+  color: #82908d;
+  font-size: .56rem;
+}
+
+.home-study-calendar__grid {
+  gap: 5px 2px;
+  margin-top: 7px;
+}
+
+.home-study-calendar__grid > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-self: center;
+  place-items: center;
+  border-radius: 10px;
+  color: #283c36;
+  font-size: .6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-study-calendar__grid > span[data-outside="true"] {
+  color: #c3ccc8;
+}
+
+.home-study-calendar__grid > span[data-learned="true"] {
+  color: #4f8053;
+  background: #edf3ed;
+}
+
+.home-study-calendar__grid > span[data-today="true"] {
+  color: #fff;
+  background: #548c55;
+  font-weight: 850;
+  box-shadow: 0 7px 14px rgba(72, 126, 77, .22);
+}
+
+.home-study-calendar__legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 14px;
+  border-top: 1px solid #e6ebe7;
+  padding-top: 13px;
+  color: #74827e;
+  font-size: .55rem;
+}
+
+.home-study-calendar__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-study-calendar__legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.home-study-calendar__legend i[data-state="today"] { background: #548c55; }
+.home-study-calendar__legend i[data-state="learned"] { background: #dfe9df; }
+
+/* Qualification overview: improve the four primary text areas without
+  increasing card dimensions, so the route, task and calendar stay in one
+  desktop viewport. Calendar numerals use a fuller weight for quick scanning. */
+@media (min-width: 1181px) {
+  .app-shell__main[data-page="qualification-route"] .home-portal__hero-desc,
+  .app-shell__main[data-page="qualification-route"] .home-portal__hero-copy .home-portal__hero-desc {
+    font-size: .86rem;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__route-full-link {
+    font-size: .76rem;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-today-card__header h3,
+  .app-shell__main[data-page="qualification-route"] .home-study-calendar > header h3 {
+    font-size: 1.08rem;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-today-card__task > strong {
+    font-size: .76rem;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-today-card__task > small,
+  .app-shell__main[data-page="qualification-route"] .home-study-calendar__weekdays,
+  .app-shell__main[data-page="qualification-route"] .home-study-calendar__legend {
+    font-size: .64rem;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-today-card__add,
+  .app-shell__main[data-page="qualification-route"] .home-study-calendar > header strong {
+    font-size: .76rem;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-study-calendar__grid > span {
+    font-size: .72rem;
+    font-weight: 680;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-study-calendar__weekdays {
+    font-weight: 650;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-today-card__progress strong {
+    font-size: .72rem;
+  }
+}
+
+@media (max-width: 1180px) and (min-width: 761px) {
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan {
+    max-width: 680px;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 430px) {
+  .home-today-card,
+  .home-study-calendar { border-radius: 18px; padding: 16px; }
+  .home-today-card__task { grid-template-columns: 24px minmax(0, 1fr); }
+  .home-today-card__task > small { grid-column: 2; }
+  .home-study-calendar__grid > span { width: 29px; height: 29px; }
+}
+
 .personalization-hub__task--profile .user-profile-panel {
   border-radius: 24px;
   padding: clamp(20px, 2vw, 28px);

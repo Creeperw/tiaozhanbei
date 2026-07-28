@@ -120,6 +120,12 @@ describe('QualificationRoutePage', () => {
         refresh_due_at: '2026-07-28T08:00:00+08:00',
         server_time: '2026-07-27T08:00:00+08:00',
       },
+      learning_activity: {
+        trends: {
+          series: [{ date: '2026-07-23', login_days: 1, focus_minutes: 12 }],
+        },
+        recent_activities: [],
+      },
       review_queue: {
         entries: [{
           is_due: true,
@@ -140,20 +146,37 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByText(/距离中医类别执业医师资格考试还有/)).toBeInTheDocument();
     expect(screen.queryByLabelText('六智能体协作角色')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '学习路径规划' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
+    expect(screen.getByText('阶段学习路径')).toBeInTheDocument();
     expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '今日学习计划' })).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: '学习计划日历' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /任务未完成/ })).toBeInTheDocument();
-    expect(screen.getByText('第一章 中医学理论体系')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '今日任务' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: '学习日历' })).toBeInTheDocument();
+    expect(screen.getByLabelText('今日任务完成 1/2')).toBeInTheDocument();
+    expect(screen.getByLabelText('2026年7月23日，已学习')).toBeInTheDocument();
     expect(screen.getByText('完成阴阳学说训练')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /添加新任务/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /进入功能/ })).toHaveLength(4);
 
     fireEvent.click(screen.getByRole('button', { name: /查看阶段卡片/ }));
     expect(screen.getByRole('button', { name: '返回学习路径' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
-    expect(screen.getByRole('heading', { name: '学习路径规划' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
+  });
+
+  it('opens the assistant with the current learning context when adding a task', async () => {
+    const onNavigate = vi.fn();
+    installHomeFetch({ current_learning_task: null });
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /添加新任务/ }));
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'assistant',
+      params: expect.objectContaining({
+        newConversation: true,
+        context: expect.stringContaining('为今天添加一项可执行的学习任务'),
+      }),
+    });
   });
 
   it('reloads the homepage route when the sidebar changes the qualification target', async () => {
@@ -171,6 +194,7 @@ describe('QualificationRoutePage', () => {
     }));
 
     expect(await screen.findByText('中西医结合基础阶段')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '中西医结合执业医师资格考试学习路径规划' })).toBeInTheDocument();
   });
 
   it('opens reviewed knowledge points and current daily learning items', async () => {
@@ -261,30 +285,7 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByText('【本周安排】完成中医基础理论复习。')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '长期规划和短期规划说明' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
-    expect(await screen.findByRole('heading', { name: '学习路径规划' })).toBeInTheDocument();
-  });
-
-  it('routes all new homepage feature cards to executable pages', async () => {
-    const onNavigate = vi.fn();
-    installHomeFetch({});
-    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
-
-    fireEvent.click(await screen.findByRole('button', { name: /智能问答/ }));
-    expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'assistant',
-      params: { newConversation: true },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /资料检索/ }));
-    expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'practice',
-      params: {
-        view: 'overview',
-        libraryOnly: true,
-        expandAll: true,
-        hidePlan: true,
-      },
-    });
+    expect(await screen.findByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
   });
 
   it('records a daily check-in and keeps the new homepage usable after summary failure', async () => {
@@ -295,7 +296,7 @@ describe('QualificationRoutePage', () => {
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('首页数据暂不可用');
-    expect(screen.getByRole('button', { name: /智能问答/ })).toBeEnabled();
+  expect(screen.getByRole('button', { name: '今日签到' })).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: '今日签到' }));
     expect(await screen.findByRole('button', { name: '今日已签到，连续4天' })).toBeDisabled();
