@@ -64,9 +64,9 @@ describe('HomePage', () => {
     render(<HomePage onNavigate={vi.fn()} />);
 
     expect(screen.getByRole('heading', {
-      name: '多智能体协同，让中医药学习更高效',
+      name: '多智能体助力学习，让中医学习与考证更高效',
     })).toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '考试类别' })).not.toBeInTheDocument();
   });
 
   it('renders the homepage background video with autoplay-safe presentation attributes', () => {
@@ -98,7 +98,7 @@ describe('HomePage', () => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '开始学习路径' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
     expect(onNavigate).toHaveBeenLastCalledWith({ page: 'learning-path', params: {} });
   });
 
@@ -113,11 +113,26 @@ describe('HomePage', () => {
     });
   });
 
+  it('renders both hero actions as static text without SVG goo filter animation', () => {
+    const { container } = render(<HomePage onNavigate={vi.fn()} />);
+    const learningAction = screen.getByRole('button', { name: '开始学习' });
+    const assistantAction = screen.getByRole('button', { name: '多智能体助教' });
+
+    expect(learningAction).toBeInTheDocument();
+    expect(assistantAction).toBeInTheDocument();
+    expect(learningAction.textContent).toContain('开始学习');
+    expect(assistantAction.textContent).toContain('多智能体助教');
+
+    expect(container.querySelectorAll('feColorMatrix[values*="25 -9"]')).toHaveLength(0);
+    expect(container.querySelectorAll('feComposite[operator="atop"]')).toHaveLength(0);
+    expect(container.querySelector('.text-morph')).toBeNull();
+  });
+
   it.each([
     ['多智能体协同', 'multi-agent'],
     ['个性化学习路径', 'learning-path'],
-    ['知识图谱驱动', 'knowledge-graph'],
-    ['数据驱动成长', 'data-growth'],
+    ['专项训练与模拟', 'knowledge-graph'],
+    ['知识库与资料溯源', 'data-growth'],
   ])('routes the %s capability card', (name, intent) => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);
@@ -242,7 +257,7 @@ describe('HomePage', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/components/PlatformHome.css'), 'utf8');
 
     expect(css).toMatch(
-      /@media \(max-width: 1120px\)[\s\S]*?\.platform-home__headline h1\s*\{[^}]*width:\s*auto;/,
+      /@media \(max-width: 1120px\)[\s\S]*?\.platform-home__title-reveal\s*\{[^}]*width:\s*auto;/,
     );
   });
 

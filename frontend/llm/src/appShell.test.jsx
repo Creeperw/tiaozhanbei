@@ -11,7 +11,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
 
   assert.equal(config.defaultPage, 'dashboard');
   assert.deepEqual(config.primaryNav.map(({ key, label }) => ({ key, label })), [
-    { key: 'learning-target', label: '学习目标' },
+    { key: 'learning-target', label: '考试类别' },
     { key: 'learning-path', label: '学习路径' },
     { key: 'practice', label: '学习工坊' },
     { key: 'training-workshop', label: '训练工坊' },

@@ -167,16 +167,24 @@ textarea:focus-visible {
   letter-spacing: 0;
 }
 
+.app-shell__identity-copy {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .app-shell__identity strong {
   color: var(--color-ink);
-  font-size: 0.9375rem;
-  font-weight: 700;
+  font-size: 1.18rem;
+  font-weight: 800;
 }
 
 .app-shell__identity span {
-  margin-top: 2px;
+  margin-top: 0;
   color: var(--color-ink-muted);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .app-shell__mark {

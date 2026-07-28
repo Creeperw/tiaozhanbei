@@ -8,8 +8,8 @@ describe('CapabilityDetailPage', () => {
   it.each([
     ['multi-agent', '多智能体协同', '进入智能助教', 6],
     ['learning-path', '个性化学习路径', '查看我的学习路径', 3],
-    ['knowledge-graph', '知识图谱驱动', '探索知识图谱', 3],
-    ['data-growth', '数据驱动成长', '查看学情报告', 3],
+    ['knowledge-graph', '专项训练与模拟', '进入训练工坊', 3],
+    ['data-growth', '知识库与资料溯源', '进入知识库', 3],
   ])('renders the %s capability content', (key, title, actionLabel, featureCount) => {
     render(<CapabilityDetailPage capabilityKey={key} onNavigate={vi.fn()} />);
 
@@ -22,11 +22,11 @@ describe('CapabilityDetailPage', () => {
     const onNavigate = vi.fn();
     render(<CapabilityDetailPage capabilityKey="data-growth" onNavigate={onNavigate} />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: '查看学情报告' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: '进入知识库' })[0]);
 
     expect(onNavigate).toHaveBeenCalledWith({
-      page: 'personalization',
-      params: { view: 'reports' },
+      page: 'knowledge',
+      params: {},
     });
   });
 

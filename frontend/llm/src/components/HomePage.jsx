@@ -4,6 +4,7 @@ import {
   BrainCircuit,
 } from 'lucide-react';
 import { PLATFORM_CAPABILITIES } from '../platformCapabilities';
+import ScrollTextReveal from './originkit/ScrollTextReveal';
 import './PlatformHome.css';
 
 function getReducedMotionPreference() {
@@ -50,13 +51,11 @@ export default function HomePage({ onNavigate }) {
       <section className="platform-home__hero" aria-labelledby="platform-home-title">
         <div className="platform-home__copy">
           <div className="platform-home__headline">
-            <p className="platform-home__eyebrow">AI 驱动的中医药智能学习平台</p>
-            <h1 id="platform-home-title">
-              多智能体协同，<br />让中医药学习<span>更高效</span>
-            </h1>
+            <p className="platform-home__eyebrow">面向中医药资格证书考试的智能备考平台</p>
+            <ScrollTextReveal id="platform-home-title" className="platform-home__title-reveal" />
             <p className="platform-home__description">
-              融合多智能体协同与中医知识图谱，个性化规划学习路径，
-              实时伴学答疑，精准提升学习效果，助力资格考试通关。
+              围绕考试大纲与个人学习进度，提供学情诊断、学习规划、专项训练和实时答疑，
+              帮助你查漏补缺，稳步提升备考效率。
             </p>
           </div>
 
@@ -66,7 +65,7 @@ export default function HomePage({ onNavigate }) {
               className="platform-home__primary-action"
               onClick={() => navigate({ page: 'learning-path', params: {} })}
             >
-              开始学习路径
+              开始学习
               <ArrowRight aria-hidden="true" size={19} />
             </button>
             <button

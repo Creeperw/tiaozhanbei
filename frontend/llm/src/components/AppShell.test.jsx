@@ -55,10 +55,10 @@ describe('AppShell', () => {
 
     const navigation = screen.getByRole('navigation', { name: '平台导航' });
     const entries = [...navigation.querySelectorAll(':scope > .app-shell__nav-group')];
-    expect(entries[0]).toHaveTextContent('学习目标');
+    expect(entries[0]).toHaveTextContent('考试类别');
     expect(entries[1]).toHaveTextContent('学习路径');
 
-    const targetButton = screen.getByRole('button', { name: '学习目标' });
+    const targetButton = screen.getByRole('button', { name: '考试类别' });
     await user.hover(targetButton);
     expect(targetButton).toHaveAttribute('aria-expanded', 'true');
     const currentTarget = await screen.findByRole('menuitemradio', { name: '中医执业医师资格考试' });

@@ -7,7 +7,7 @@ import { useModalFocus } from './ui/useModalFocus';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 
 function ShellIdentity({ onNavigate }) {
-  return <button type="button" className="app-shell__identity app-shell__identity-toggle" aria-label="返回主页" onClick={() => onNavigate?.({ page: 'dashboard', params: {} })}><div className="app-shell__mark"><Sprout aria-hidden="true" size={21} /></div><div><strong>时珍智训</strong><span>中医药备考平台</span></div></button>;
+  return <button type="button" className="app-shell__identity app-shell__identity-toggle" aria-label="返回主页" onClick={() => onNavigate?.({ page: 'dashboard', params: {} })}><div className="app-shell__mark"><Sprout aria-hidden="true" size={21} /></div><div className="app-shell__identity-copy"><strong>时珍智训</strong><span>中医备考平台</span></div></button>;
 }
 
 function MenuItems({ items, onNavigate, onClose }) {
@@ -57,9 +57,9 @@ function LearningTargetNavigationMenu({ openKey, setOpenKey }) {
 
   return <div ref={ref} className="app-shell__nav-group app-shell__target-group" onMouseEnter={() => setOpenKey('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpenKey(null); }}>
     <button ref={triggerRef} type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpenKey(open ? null : 'learning-target')} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpenKey('learning-target'); window.setTimeout(() => ref.current?.querySelector('[role="menuitemradio"]')?.focus(), 0); } }}>
-      学习目标<ChevronDown aria-hidden="true" size={15} />
+      考试类别<ChevronDown aria-hidden="true" size={15} />
     </button>
-    {open && <div className="app-shell__nav-menu app-shell__target-menu" aria-label="选择学习目标" onKeyDown={(event) => { const entries = [...ref.current.querySelectorAll('[role="menuitemradio"]')]; const index = entries.indexOf(document.activeElement); if (event.key === 'Escape') { event.stopPropagation(); setOpenKey(null); triggerRef.current?.focus(); } if (event.key === 'ArrowDown' && entries.length) { event.preventDefault(); entries[(index + 1) % entries.length]?.focus(); } if (event.key === 'ArrowUp' && entries.length) { event.preventDefault(); entries[(index - 1 + entries.length) % entries.length]?.focus(); } if (event.key === 'Home' && entries.length) { event.preventDefault(); entries[0]?.focus(); } if (event.key === 'End' && entries.length) { event.preventDefault(); entries[entries.length - 1]?.focus(); } }}>
+    {open && <div className="app-shell__nav-menu app-shell__target-menu" aria-label="选择考试类别" onKeyDown={(event) => { const entries = [...ref.current.querySelectorAll('[role="menuitemradio"]')]; const index = entries.indexOf(document.activeElement); if (event.key === 'Escape') { event.stopPropagation(); setOpenKey(null); triggerRef.current?.focus(); } if (event.key === 'ArrowDown' && entries.length) { event.preventDefault(); entries[(index + 1) % entries.length]?.focus(); } if (event.key === 'ArrowUp' && entries.length) { event.preventDefault(); entries[(index - 1 + entries.length) % entries.length]?.focus(); } if (event.key === 'Home' && entries.length) { event.preventDefault(); entries[0]?.focus(); } if (event.key === 'End' && entries.length) { event.preventDefault(); entries[entries.length - 1]?.focus(); } }}>
       <LearningTargetSelector className="app-shell__target-selector" variant="menu" onSelected={openSelectedPath} />
     </div>}
   </div>;
