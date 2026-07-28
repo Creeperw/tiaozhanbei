@@ -8,6 +8,19 @@ MySQL/SQLite、Qwen 与 FAISS，负责用户认证、学习行为汇总、三层
 会使相关下层失效。自然语言请求的层级由 Planner 模型判断；前后端规则仅提供可覆盖的
 `plan_scope_hint`。
 
+规划正文由 Diagnosis 智能体生成并保持自然语言原文；正文必须给出具体 `《书名》`、阶段
+目标、推进安排、可观察产出和验收条件。Diagnosis 内部调用不对前端展示的
+`PlanContractCompilerAgent`（内部 A 智能体），把当前层正文中的执行语义提取为最小 JSON
+合同。编译器只允许逐字提取和提供来源锚点，不得补期限、补节点、补教材或改写正文；缺失或
+冲突时返回问题，由 Diagnosis 最多修订一次。随后 `PlanContractValidator` 对可信路线、阶段
+书目和父子期限做确定性校验，系统才装配并持久化正式计划。A 智能体不是顶层工作流节点，
+因此不进入前端现有智能体路径显示。
+
+期限以结构字段为准：长期规划的 `total_duration_days` 必须等于各阶段 `duration_days` 之和；
+短期规划的 `duration_days` 不得超过所属长期阶段的期限。例如长期阶段为 30 天，则该阶段的
+任一短期规划最多为 30 天，31 天会被拒绝。短期推进节点和今日章节/知识点同样使用结构字段，
+不再依靠正则解析或重写规划正文。
+
 新用户和新规划只支持五类教材型资格目标：中医执业医师、中医执业助理医师、
 中西医结合执业医师、中西医结合执业助理医师及执业药师职业资格考试（中药学类）。
 注册页从 `/api/v1/qualification-targets` 获取官方名称、考试轨道和教材路线映射，保存后同时
@@ -52,17 +65,32 @@ Stub 模式不调用外部模型和向量服务，适合前端联调、接口契
 
 ## 2. Live 模式
 
-Live 模式默认使用：
+Live 模式默认按以下顺序使用对话模型：
 
-- 对话模型：`qwen3.7-max-2026-05-17`（阿里云兼容接口）
+- `qwen3.7-flash`
+- `qwen3.7-max-preview`
+- `glm-5.2`
+- `qwen3.7-flash-2026-07-15`
+- `qwen-plus`
 - Embedding：`Qwen/Qwen3-Embedding-4B`（SiliconFlow）
 - 编排：LangGraph
+
+模型顺序由 `CHAT_MODELS` 配置。当前模型遇到配额/限流、模型不存在、接口不兼容、持续服务
+异常、空响应或无法修复的结构化输出时，会将该模型移出本进程的活动位置并按顺序切到下一项；
+成功切换后，后续请求继续使用新的活动模型。系统不会为了“用完额度”发送无业务意义的请求。
+`CHAT_MODEL` 仅用于兼容旧部署；配置 `CHAT_MODELS` 后以候选列表为准。
+
+Planner 负责所有正常用户输入的意图判定，包括问候、感谢和能力询问。纯闲聊的用户可见回复
+也由 Planner 模型生成；规划信息不足时，是否追问及具体问题由 Planner 结合当前话语、最近
+对话和已有计划决定。确定性规则只负责 schema、依赖、安全边界和模型失败后的错误控制，
+不能在正常路径中替代智能体回复。
 
 至少设置：
 
 ```bash
 export COMPETITION_APP_MODE=live
 export COMPETITION_EXECUTION_ENGINE=langgraph
+export CHAT_MODELS='qwen3.7-flash,qwen3.7-max-preview,glm-5.2,qwen3.7-flash-2026-07-15,qwen-plus'
 export DASHSCOPE_API_KEY='...'
 export SILICONFLOW_API_KEY='...'
 export EXA_API_KEY='...'                 # 仅网络资源检索需要
@@ -138,7 +166,7 @@ fetch('/api/v1/auth/me', {
 主要入口：
 
 | 场景 | 接口 |
-|---|---|
+| --- | --- |
 | 健康检查 | `GET /health` |
 | 注册/登录/退出 | `POST /api/v1/auth/register`、`/login`、`/logout` |
 | 当前用户 | `GET /api/v1/auth/me` |

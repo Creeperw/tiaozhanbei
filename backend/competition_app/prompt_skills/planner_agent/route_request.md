@@ -11,7 +11,7 @@ task_type: route_request
 
 ## 工作方法
 
-1. 先判断最终交付物：纯问候、感谢、告别或询问助教能力且没有学习任务时使用 `casual_conversation`，不选择下游 Agent；讲解、解释、介绍知识或询问是什么/为什么/原理/区别时使用 `knowledge_explanation`；只有计划时使用 `learning_plan`；明确要求学习卡片、复习卡时使用 `personalized_review_card`；要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用 `paper_generation`。问候语和真实任务同时出现时，以真实任务为准。
+1. 先判断最终交付物：纯问候、感谢、告别或询问助教能力且没有学习任务时使用 `casual_conversation`，不选择下游 Agent，并在 `casual_response` 中结合本轮话语和最近对话生成简洁自然的用户回复；讲解、解释、介绍知识或询问是什么/为什么/原理/区别时使用 `knowledge_explanation`；只有计划时使用 `learning_plan`；明确要求学习卡片、复习卡时使用 `personalized_review_card`；要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用 `paper_generation`。问候语和真实任务同时出现时，以真实任务为准。
 2. 阅读输入中的 `routing_skills`，使用与交付物对应的路由 Skill 和示例；这些是规划参考，不是固定工作流模板名称。
 3. 逐个检查 Agent 是否必要以及依赖是否完整。
 4. Memory 只在 `conversation_context.requires_compression=true` 时选择。

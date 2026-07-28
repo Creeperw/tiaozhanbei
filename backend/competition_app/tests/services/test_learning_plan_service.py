@@ -7,6 +7,15 @@ from competition_app.agents.learning_plan_service import LearningPlanServiceAdap
 from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings
 from competition_app.contracts.base import AgentEnvelope
+from competition_app.agents.diagnosis import DiagnosisResult
+from competition_app.contracts.resource import AuditResult
+from competition_app.contracts.plan_compilation import (
+    CompiledLongTermContract,
+    CompiledLongTermStage,
+    CompiledPlanContractResult,
+    PlanCompilationEnvelope,
+    PlanSourceAnchor,
+)
 from competition_app.contracts.default_route import ResolvedPlanningRoute
 from competition_app.contracts.learning_plan import (
     GoalContract,
@@ -1261,6 +1270,102 @@ async def test_adapter_injects_repository_and_passes_available_minutes(
     assert adapter.service.route_repository is repository
     with pytest.raises(ValueError, match="current learning task exceeds available_minutes"):
         await adapter.run(context)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("decision", "digest", "message"),
+    [
+        ("revise", "a" * 64, "requires a passing audit"),
+        ("pass", "b" * 64, "approval does not match current proposal"),
+    ],
+)
+async def test_adapter_rejects_unapproved_long_term_plan_before_materialization(
+    repository: DefaultRouteRepository,
+    decision: str,
+    digest: str,
+    message: str,
+) -> None:
+    adapter = LearningPlanServiceAdapter(route_repository=repository)
+    value = structured_proposal(repository)
+    contract = CompiledLongTermContract(
+        scope="long_term",
+        long_term_plan_content=value.long_term_plan_content,
+        total_duration_days=30,
+        stages=[
+            CompiledLongTermStage(
+                stage=1,
+                stage_name="基础阶段",
+                books=["《中医基础理论》"],
+                goal="建立基础框架。",
+                duration_days=30,
+                schedule_summary="使用《中医基础理论》建立基础框架。",
+            )
+        ],
+        field_anchors={
+            "/long_term_plan_content": [
+                PlanSourceAnchor(
+                    source_field="long_term_plan_content",
+                    source_quote=value.long_term_plan_content,
+                )
+            ]
+        },
+    )
+    diagnosis = DiagnosisResult(
+        learning_plan_proposal=value,
+        plan_scope="long_term",
+        compiled_plan_contract=PlanCompilationEnvelope(
+            result=CompiledPlanContractResult(status="compiled", contract=contract),
+            source_digest="c" * 64,
+        ),
+    )
+    audit = AuditResult(
+        audit_result_id="AUDIT_GATE",
+        decision=decision,
+        subject_digest=digest,
+        plan_scope="long_term",
+    )
+    context = {
+        "case_id": "CASE_GATE",
+        "trace_id": "TRACE_GATE",
+        "request_id": "REQUEST_GATE",
+        "execution_id": "EXECUTION_GATE",
+        "step_id": "learning_plan",
+        "learner_id": "LEARNER_GATE",
+        "dependency_outputs": {
+            "diagnosis": AgentEnvelope(
+                artifact_id="ART_DIAGNOSIS_GATE",
+                artifact_type="diagnosis_result",
+                producer="diagnosis_agent",
+                payload=diagnosis,
+                case_id="CASE_GATE",
+                trace_id="TRACE_GATE",
+                request_id="REQUEST_GATE",
+                execution_id="EXECUTION_GATE",
+                step_id="diagnosis",
+                task_type="learning_plan",
+                learner_id="LEARNER_GATE",
+            ),
+            "audit": AgentEnvelope(
+                artifact_id="ART_AUDIT_GATE",
+                artifact_type="audit_result",
+                producer="audit_agent",
+                payload=audit,
+                case_id="CASE_GATE",
+                trace_id="TRACE_GATE",
+                request_id="REQUEST_GATE",
+                execution_id="EXECUTION_GATE",
+                step_id="audit",
+                task_type="learning_plan",
+                learner_id="LEARNER_GATE",
+            ),
+        },
+    }
+
+    with pytest.raises(RuntimeError, match=message):
+        await adapter.run(context)
+
+    assert adapter.service.get_current("LEARNER_GATE") is None
 
 
 def test_container_shares_route_repository_between_resolver_and_service(tmp_path: Path) -> None:

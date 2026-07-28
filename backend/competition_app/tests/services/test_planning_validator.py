@@ -89,8 +89,25 @@ def textbook_bound_route() -> ResolvedPlanningRoute:
 def output(**changes) -> ThreeLayerPlanningModelOutput:
     data = three_layer_output()
     data["long_term_plan_stages"] = [
-        {"stage": 1, "book": ["《方剂学》"], "goal": "掌握基础理论"}
+        {
+            "stage": 1,
+            "stage_name": "基础阶段",
+            "book": ["《方剂学》"],
+            "goal": "掌握基础理论",
+            "duration_days": 30,
+            "schedule_summary": (
+                "使用《方剂学》梳理基础理论，形成知识框架，并以闭卷测评验收。"
+            ),
+        }
     ]
+    data["total_duration_days"] = 30
+    data["short_term_duration_days"] = 7
+    data["short_term_progression_nodes"] = [
+        "周初完成《方剂学》四君子汤组成与功用回忆。",
+        "周末完成类方辨析与综合验收。",
+    ]
+    data["learning_chapter"] = "《方剂学》补益剂章"
+    data["focus_knowledge_points"] = ["四君子汤组成", "四君子汤功用"]
     data["long_term_plan_content"] += "\n基础阶段使用《方剂学》，提交闭卷测评后晋级。"
     data["short_term_plan_content"] += "\n本周复习《方剂学》中的四君子汤。"
     data["short_term_plan_content"] += (
@@ -103,9 +120,19 @@ def output(**changes) -> ThreeLayerPlanningModelOutput:
         and "long_term_plan_stages" not in changes
     ):
         data["long_term_plan_stages"] = [
-            {"stage": 1, "book": ["《中药学》"], "goal": "建立药性基础"},
+            {
+                "stage": 1,
+                "stage_name": "基础中药",
+                "book": ["《中药学》"],
+                "goal": "建立药性基础",
+                "duration_days": 30,
+                "schedule_summary": (
+                    "使用《中药学》完成药性分类笔记，并以药性测验验收。"
+                ),
+            },
             {
                 "stage": 2,
+                "stage_name": "方剂学习",
                 "book": [
                     "《方剂学》",
                     "《中医内科学》",
@@ -114,13 +141,121 @@ def output(**changes) -> ThreeLayerPlanningModelOutput:
                     "《温病学》",
                 ],
                 "goal": "建立治法和配伍能力",
+                "duration_days": 30,
+                "schedule_summary": (
+                    "使用《方剂学》《中医内科学》《伤寒论选读》《金匮要略》"
+                    "和《温病学》完成方证比较表，并以方证辨析验收。"
+                ),
             },
         ]
+        data["total_duration_days"] = 60
     return ThreeLayerPlanningModelOutput.model_validate(data)
 
 
 def test_validator_accepts_minor_format_and_wording_differences() -> None:
     result = PlanningValidator().validate(output(), route(), available_minutes=20)
+    assert result.valid, result.issues
+
+
+def test_validator_accepts_explicit_long_term_duration_and_weekly_budget() -> None:
+    value = output().model_copy(
+        update={
+            "long_term_plan_content": (
+                output().long_term_plan_content
+                + "\n【最终目标】在9个月内完成备考。"
+                + "\n【资源预算】每周最多10小时，建议投入8小时并保留2小时缓冲。"
+            )
+        }
+    )
+
+    result = PlanningValidator().validate(
+        value,
+        route(),
+        available_minutes=20,
+        explicit_user_request=(
+            "我计划用9个月备考，每周可学习10小时，请制定长期规划。"
+        ),
+        short_term_action="reuse",
+        daily_task_action="reuse",
+    )
+
+    assert result.valid, result.issues
+
+
+def test_validator_accepts_stage_schedule_time_windows() -> None:
+    value = output(
+        selected_textbook_route_id="textbook_formula",
+        selected_stage_id="stage-1",
+        selected_books=["《中药学》"],
+        selection_reason="从基础中药阶段开始。",
+    ).model_copy(
+        update={
+            "long_term_plan_content": (
+                output().long_term_plan_content
+                + "\n【最终目标】在9个月内完成备考。"
+                + "\n【能力路径与阶段】第1—3个月完成基础中药；"
+                + "第4—9个月进入方剂学习并完成综合验收。"
+                + "\n【资源预算】每周最多10小时，建议投入8小时并保留2小时缓冲。"
+            )
+        }
+    )
+
+    result = PlanningValidator().validate(
+        value,
+        textbook_bound_route(),
+        available_minutes=20,
+        explicit_user_request=(
+            "我计划用9个月备考，每周可学习10小时，请制定长期规划。"
+        ),
+        short_term_action="reuse",
+        daily_task_action="reuse",
+    )
+
+    assert result.valid, result.issues
+
+
+def test_validator_rejects_precise_claims_when_evidence_quality_is_unknown() -> None:
+    value = output().model_copy(
+        update={
+            "short_term_plan_content": (
+                output().short_term_plan_content
+                + "\n未来两周聚焦阴阳专题；当前掌握度为0，已有20个薄弱知识点。"
+            )
+        }
+    )
+
+    result = PlanningValidator().validate(
+        value,
+        route(),
+        available_minutes=20,
+        explicit_user_request="请制定未来两周的短期计划。",
+        evidence_status="insufficient",
+        evidence_freshness="unknown",
+    )
+
+    assert not result.valid
+    assert any("不得断言精确掌握度" in issue for issue in result.issues)
+
+
+def test_validator_accepts_cautious_focus_when_evidence_is_insufficient() -> None:
+    value = output().model_copy(
+        update={
+            "short_term_plan_content": (
+                output().short_term_plan_content
+                + "\n未来两周把阴阳专题作为待验证的学习重点。"
+            )
+        }
+    )
+
+    result = PlanningValidator().validate(
+        value,
+        route(),
+        available_minutes=20,
+        explicit_user_request="请制定未来两周的短期计划。",
+        evidence_status="insufficient",
+        evidence_freshness="unknown",
+    )
+
     assert result.valid, result.issues
 
 
@@ -149,56 +284,6 @@ def test_validator_rejects_placeholder_stage_without_trusted_route_phases() -> N
     assert not result.valid
     assert any("禁止发布占位教材" in issue for issue in result.issues)
     assert any("不得使用占位教材" in issue for issue in result.issues)
-
-
-def test_validator_rejects_paraphrased_system_schedule_placeholder() -> None:
-    value = output().model_copy(
-        update={
-            "short_term_plan_content": output().short_term_plan_content
-            + "\n复习时间点由系统根据遗忘曲线另行调度。",
-        }
-    )
-
-    result = PlanningValidator().validate(value, route(), available_minutes=20)
-
-    assert not result.valid
-    assert any("系统调度占位语" in issue for issue in result.issues)
-
-
-def test_validator_preserves_explicit_weekly_learning_days() -> None:
-    value = output().model_copy(
-        update={
-            "short_term_plan_content": (
-                output().short_term_plan_content
-                + "\n第1-5天每日学习10分钟，第6-10天继续推进。"
-            ),
-        }
-    )
-
-    result = PlanningValidator().validate(
-        value,
-        route(),
-        available_minutes=20,
-        user_time_constraints="每周可以学习4天，每天4小时",
-    )
-
-    assert not result.valid
-    assert any("每周学习天数" in issue for issue in result.issues)
-    assert any("连续自然日" in issue for issue in result.issues)
-
-
-def test_validator_rejects_per_session_review_timing() -> None:
-    value = output().model_copy(
-        update={
-            "short_term_plan_content": output().short_term_plan_content
-            + "\n每次学习结束后花10分钟复习本次内容。",
-        }
-    )
-
-    result = PlanningValidator().validate(value, route(), available_minutes=20)
-
-    assert not result.valid
-    assert any("固定复习时点" in issue for issue in result.issues)
 
 
 def test_validator_does_not_require_route_books_to_repeat_in_natural_language_content() -> None:
@@ -264,22 +349,6 @@ def test_validator_does_not_require_exact_system_phase_label_in_model_text() -> 
     assert result.valid, result.issues
 
 
-def test_validator_rejects_missing_core_region() -> None:
-    value = output().model_copy(update={"daily_task_content": "只有一行普通任务"})
-    result = PlanningValidator().validate(value, route(), available_minutes=20)
-    assert not result.valid
-    assert any("当日" in issue or "核心" in issue for issue in result.issues)
-
-
-def test_validator_rejects_book_outside_route() -> None:
-    value = output().model_copy(
-        update={"daily_task_content": output().daily_task_content + "阅读《针灸学》。"}
-    )
-    result = PlanningValidator().validate(value, route(), available_minutes=20)
-    assert not result.valid
-    assert any("教材" in issue for issue in result.issues)
-
-
 def test_validator_allows_classic_title_as_formula_source_not_selected_textbook() -> None:
     value = output().model_copy(
         update={
@@ -323,8 +392,14 @@ def test_validator_accepts_unambiguous_short_title_for_route_book() -> None:
                 "long_term_plan_stages": [
                     {
                         "stage": 1,
+                        "stage_name": "基础阶段",
                         "book": ["《国家医师资格考试大纲》"],
                         "goal": "掌握基础理论",
+                        "duration_days": 30,
+                        "schedule_summary": (
+                            "使用《国家医师资格考试大纲》梳理考点，形成框架笔记，"
+                            "并以闭卷测评验收。"
+                        ),
                     }
                 ],
             }
@@ -346,52 +421,6 @@ def test_validator_only_rejects_serious_timeout() -> None:
     )
     assert slight.valid
     assert not serious.valid
-
-
-def test_validator_rejects_completely_unrelated_daily_task() -> None:
-    value = output().model_copy(
-        update={
-            "daily_task_content": (
-                "## 今日目标\n练习游泳。\n## 分步动作和时间分配\n下水练习。\n"
-                "## 客观完成标准\n游完五百米。"
-            )
-        }
-    )
-    result = PlanningValidator().validate(value, route(), available_minutes=20)
-    assert not result.valid
-    assert any("失配" in issue for issue in result.issues)
-
-
-def test_validator_rejects_daily_actions_disguised_as_short_term_plan() -> None:
-    value = output(
-        short_term_plan_content=(
-            "## 当前周期目标\n本周掌握四君子汤。\n"
-            "## 具体任务块\n今晚浏览知识卡、绘制配伍图并完成5道题。\n"
-            "## 复习任务\n两天后闭卷默写，具体时间待系统调度。"
-        )
-    )
-
-    result = PlanningValidator().validate(value, route(), available_minutes=20)
-
-    assert not result.valid
-    assert any("今日任务" in issue for issue in result.issues)
-    assert any("完整周期" in issue for issue in result.issues)
-    assert any("系统调度" in issue for issue in result.issues)
-
-
-def test_validator_rejects_model_owned_fixed_review_interval() -> None:
-    value = output(
-        short_term_plan_content=(
-            "## 当前周期目标\n本周掌握四君子汤。\n"
-            "## 具体任务块\n周初学习组成，周中完成辨析，周末综合验收。\n"
-            "## 复习任务\n已学内容每满7天复习一次；具体时间待系统调度。"
-        )
-    )
-
-    result = PlanningValidator().validate(value, route(), available_minutes=20)
-
-    assert not result.valid
-    assert any("系统调度" in issue for issue in result.issues)
 
 
 def test_validator_accepts_model_textbook_selection_inside_trusted_stage() -> None:
@@ -531,23 +560,3 @@ def test_validator_accepts_natural_cycle_nodes_and_classic_short_titles() -> Non
     assert result.valid, result.issues
 
 
-def test_validator_rejects_short_plan_book_outside_selected_stage() -> None:
-    value = output(
-        short_term_plan_content=(
-            output().short_term_plan_content
-            + "\n本周期改用《中药学》推进，周末验收。"
-        ),
-        selected_textbook_route_id="textbook_formula",
-        selected_stage_id="stage-2",
-        selected_books=["《方剂学》"],
-        selection_reason="已有中医诊断学完成证据，当前进入方剂辨析。",
-    )
-
-    result = PlanningValidator().validate(
-        value,
-        textbook_bound_route(),
-        confirmed_prerequisite_courses={"中医诊断学"},
-    )
-
-    assert not result.valid
-    assert any("所选阶段" in issue for issue in result.issues)

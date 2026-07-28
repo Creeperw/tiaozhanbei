@@ -23,12 +23,16 @@ class PlanningValidator:
         *,
         available_minutes: int | None = None,
         user_time_constraints: str = "",
+        explicit_user_request: str = "",
+        evidence_status: str = "unknown",
+        evidence_freshness: str = "unknown",
         long_term_action: str = "update",
         short_term_action: str = "update",
         daily_task_action: str = "update",
         confirmed_prerequisite_courses: set[str] | None = None,
         unmet_prerequisite_courses: set[str] | None = None,
         path_candidates: dict[str, Any] | None = None,
+        parent_stage_duration_days: int | None = None,
     ) -> PlanningValidationResult:
         issues: list[str] = []
         actions = {
@@ -41,78 +45,68 @@ class PlanningValidator:
             path_candidates=path_candidates,
             actions=actions,
         )
-        if actions["long"] == "update" and not self._has_groups(
-            output.long_term_plan_content,
-            (
-                ("目标契约", "最终目标"),
-                ("长期阶段", "阶段路径", "能力路径", "能力路径与阶段"),
-                ("重规划", "调整触发"),
-            ),
-        ):
-            issues.append("长期计划缺少目标、阶段路径或重规划触发器等核心区域。")
-        if actions["short"] == "update" and not self._has_groups(
-            output.short_term_plan_content,
-            (
-                ("周期目标", "当前主目标"),
-                ("本周期任务", "任务表", "具体任务", "任务块"),
-            ),
-        ):
-            issues.append("短期计划缺少周期目标或任务安排等核心区域。")
-        if actions["short"] == "update":
-            cycle_markers = set(
-                re.findall(
-                    r"第[一二12]周|周初|周中|周末|前半周?|后半周?|"
-                    r"本周|本周期|首个节点|下个节点|第二个节点|周期末|"
-                    r"第?[一二12](?:个)?节点|"
-                    r"第一阶段|第二阶段|阶段[一二12]|"
-                    r"前段|中段|验收段|"
-                    r"第?\d+\s*[-—至~]\s*\d+天|前\d+天|后\d+天",
-                    output.short_term_plan_content,
-                )
+        if actions["long"] == "update":
+            if output.total_duration_days <= 0:
+                issues.append("长期规划必须提供大于0的结构化总期限 total_duration_days。")
+            stage_duration_total = sum(
+                int(self._field(stage, "duration_days") or 0)
+                for stage in output.long_term_plan_stages
             )
-            if len(cycle_markers) < 2:
-                issues.append("短期计划必须覆盖完整周期，并至少给出两个推进或验收节点。")
-            if re.search(r"今晚|今天|今日|明早", output.short_term_plan_content):
-                issues.append("短期计划混入了今日任务；具体当日动作应只写入今日任务。")
-            if re.search(
-                r"(?:[一二两三四五六七八九十\d]+天后|明天|后天|"
-                r"每(?:满|隔)?[一二两三四五六七八九十\d]+天)",
-                output.short_term_plan_content,
+            if any(
+                int(self._field(stage, "duration_days") or 0) <= 0
+                for stage in output.long_term_plan_stages
             ):
-                issues.append("短期计划不得自行指定系统调度日期。")
-            if re.search(
-                r"(?:系统.{0,30}(?:调度|安排)|(?:调度|安排).{0,30}系统)",
-                output.short_term_plan_content,
+                issues.append("长期规划的每个阶段都必须提供大于0的 duration_days。")
+            if (
+                output.total_duration_days > 0
+                and stage_duration_total != output.total_duration_days
             ):
-                issues.append("短期计划不得包含系统调度占位语；复习时间由复习队列独立管理。")
-            if re.search(
-                r"(?:每次|每个)[^。；\n]{0,30}(?:开始前|结束前|开始时|结束时|结束后)",
-                output.short_term_plan_content,
+                issues.append("长期规划总期限必须等于各阶段期限之和。")
+            for index, stage in enumerate(output.long_term_plan_stages, start=1):
+                if not str(self._field(stage, "stage_name") or "").strip():
+                    issues.append(f"长期规划第{index}阶段缺少具体阶段名称。")
+                if not str(self._field(stage, "schedule_summary") or "").strip():
+                    issues.append(
+                        f"长期规划第{index}阶段缺少包含书名、重点、产出和验收条件的详细安排。"
+                    )
+        if actions["short"] == "update":
+            if output.short_term_duration_days <= 0:
+                issues.append("短期计划必须提供大于0的结构化周期 short_term_duration_days。")
+            if len(output.short_term_progression_nodes) < 2:
+                issues.append("短期计划必须至少提供两个结构化推进或验收节点。")
+            if (
+                isinstance(parent_stage_duration_days, int)
+                and parent_stage_duration_days > 0
+                and output.short_term_duration_days > parent_stage_duration_days
             ):
                 issues.append(
-                    "短期计划不得自行安排每次学习前后的固定复习时点；只描述复习对象、形式与验收。"
+                    "短期计划期限不能超过所属长期阶段期限："
+                    f"短期{output.short_term_duration_days}天，"
+                    f"父阶段{parent_stage_duration_days}天。"
                 )
-            weekly_days_match = re.search(
-                r"每周[^\d]{0,12}(\d+)\s*天",
-                str(user_time_constraints or ""),
-            )
-            if weekly_days_match and int(weekly_days_match.group(1)) < 7:
-                if re.search(r"每日|每天", output.short_term_plan_content):
-                    issues.append(
-                        "短期计划不得把用户的每周学习天数改写为每日任务；请按学习日安排。"
-                    )
-                if re.search(
-                    r"第\s*\d+\s*[-—至~]\s*\d+\s*天",
-                    output.short_term_plan_content,
+            if (
+                str(evidence_status).casefold() != "sufficient"
+                or str(evidence_freshness).casefold() in {"unknown", "stale", "expired"}
+            ):
+                unsupported_patterns = (
+                    r"掌握度(?:为|是|达到)?\s*\d+(?:\.\d+)?%?",
+                    r"\d+\s*个(?:核心)?薄弱知识点",
+                    r"(?:多次|反复|高频)[^。；\n]{0,16}(?:答错|错误|错题)",
+                    r"(?:零|0)正确|正确率(?:为|是|达到)?\s*0(?:\.0+)?%?",
+                )
+                if any(
+                    re.search(pattern, output.short_term_plan_content)
+                    for pattern in unsupported_patterns
                 ):
                     issues.append(
-                        "短期计划应按学习日或周期节点推进，不得把非连续学习安排写成连续自然日。"
+                        "学习行为证据不足或新鲜度未知，短期计划不得断言精确掌握度、"
+                        "错误频次或薄弱知识点总数；请改为待验证的学习重点。"
                     )
-        if (
-            actions["daily"] == "update"
-            and len(output.daily_task_content.strip()) < 30
-        ):
-            issues.append("当日任务缺少今日目标或今日任务等核心区域。")
+        if actions["daily"] == "update":
+            if not output.learning_chapter.strip():
+                issues.append("当日任务必须提供结构化 learning_chapter。")
+            if not 1 <= len(output.focus_knowledge_points) <= 5:
+                issues.append("当日任务必须提供1—5个结构化重点知识点名称。")
 
         textbook_resolution = self._field(route, "textbook_route")
         textbook_route = (
@@ -263,60 +257,6 @@ class PlanningValidator:
                             + "、".join(omitted_unmet)
                             + "。"
                         )
-                selected_stage_mentions = self._planned_book_mentions(
-                    "\n".join(
-                        content
-                        for content, action in (
-                            (output.short_term_plan_content, actions["short"]),
-                            (output.daily_task_content, actions["daily"]),
-                        )
-                        if action == "update"
-                    )
-                )
-                outside_selected_stage = sorted(
-                    book
-                    for book in selected_stage_mentions
-                    if not any(
-                        self._book_matches(book, allowed)
-                        for allowed in [*stage_books, *prerequisite_books]
-                    )
-                )
-                if outside_selected_stage:
-                    issues.append(
-                        "短期计划或今日任务使用了所选阶段外教材："
-                        + "、".join(outside_selected_stage)
-                        + "。"
-                    )
-        allowed_books = {
-            str(book)
-            for phase in phases
-            for book in (self._field(phase, "books") or [])
-            if str(book).strip()
-        }
-        if textbook_route is not None:
-            allowed_books.update(
-                f"《{self._field(rule, 'course')}》"
-                for rule in (self._field(textbook_route, "prerequisites") or [])
-                if str(self._field(rule, "course") or "").strip()
-            )
-        if allowed_books:
-            checked = []
-            if actions["long"] == "update":
-                checked.append(output.long_term_plan_content)
-            if actions["short"] == "update":
-                checked.append(output.short_term_plan_content)
-            if actions["daily"] == "update":
-                checked.append(output.daily_task_content)
-            mentioned = self._planned_book_mentions("\n".join(checked))
-            outside = sorted(
-                book
-                for book in mentioned
-                if not any(
-                    self._book_matches(book, allowed) for allowed in allowed_books
-                )
-            )
-            if outside:
-                issues.append("计划使用了默认路线外教材：" + "、".join(outside) + "。")
 
         if (
             available_minutes is not None
@@ -327,14 +267,6 @@ class PlanningValidator:
             issues.append(
                 f"当日任务严重超时：预计{output.estimated_minutes}分钟，预算{available_minutes}分钟。"
             )
-        if (
-            actions["short"] == "update"
-            and actions["daily"] == "update"
-            and not self._meaningfully_related(
-                output.short_term_plan_content, output.daily_task_content
-            )
-        ):
-            issues.append("当日任务与短期计划完全失配。")
         return PlanningValidationResult(valid=not issues, issues=issues)
 
     @classmethod
@@ -469,26 +401,6 @@ class PlanningValidator:
         return getattr(value, name, None)
 
     @staticmethod
-    def _planned_book_mentions(content: str) -> set[str]:
-        """Find books used as study material, not titles cited as factual sources."""
-        mentions: set[str] = set()
-        for match in re.finditer(r"《[^》]{1,80}》", content):
-            prefix = content[max(0, match.start() - 24):match.start()]
-            if re.search(r"(?:出处|出自|首见|源自|载于|记载)(?:为|于)?\s*$", prefix):
-                continue
-            if re.search(
-                r"(?:学习|阅读|研读|主学|选用|使用|改用|核对|复习|教材)"
-                r"[^。；;！？!?\n]{0,20}$",
-                prefix,
-            ):
-                mentions.add(match.group())
-        return mentions
-
-    @staticmethod
-    def _has_groups(content: str, groups: tuple[tuple[str, ...], ...]) -> bool:
-        return all(any(marker in content for marker in group) for group in groups)
-
-    @staticmethod
     def _book_matches(candidate: str, allowed: str) -> bool:
         def base_title(value: str) -> str:
             title = value.strip().removeprefix("《").removesuffix("》")
@@ -511,17 +423,3 @@ class PlanningValidator:
             value.strip().removeprefix("《").removesuffix("》"),
         ).casefold()
 
-    @staticmethod
-    def _meaningfully_related(short_term: str, daily: str) -> bool:
-        ignored = set("今日目标当前周期短期任务计划分步动作时间分配客观完成标准每日本周未来进行完成学习复习" )
-
-        def ngrams(text: str) -> set[str]:
-            compact = "".join(
-                char
-                for char in re.sub(r"[#*`\s\d\W_]", "", text)
-                if char not in ignored
-            )
-            return {compact[index : index + 2] for index in range(max(0, len(compact) - 1))}
-
-        left, right = ngrams(short_term), ngrams(daily)
-        return bool(left and right and left.intersection(right))

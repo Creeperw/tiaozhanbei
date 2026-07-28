@@ -1,0 +1,439 @@
+.acupuncture-practice {
+    min-height: 100%;
+    overflow-y: auto;
+    padding: 28px clamp(18px, 4vw, 56px) 48px;
+    color: #20362c;
+    background: linear-gradient(180deg, #f5fcf8 0%, #fff 45%);
+}
+
+.acupuncture-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    max-width: 1080px;
+    margin: 0 auto 24px;
+}
+
+.acupuncture-header button,
+.acupuncture-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid #cfe5d8;
+    border-radius: 10px;
+    padding: 9px 13px;
+    color: #27714f;
+    background: #fff;
+    cursor: pointer;
+}
+
+.acupuncture-header span,
+.acupuncture-card__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #3b8b65;
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+.acupuncture-header h1 {
+    margin: 4px 0 0;
+    font-size: clamp(1.35rem, 3vw, 2rem);
+}
+
+.acupuncture-case-picker {
+    display: grid;
+    grid-template-columns: auto minmax(240px, 1fr);
+    align-items: center;
+    gap: 12px;
+    max-width: 1080px;
+    margin: 0 auto 18px;
+    color: #426152;
+    font-size: .84rem;
+    font-weight: 700;
+}
+
+.acupuncture-case-picker select {
+    min-width: 0;
+    border: 1px solid #cfe5d8;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #294638;
+    background: #fff;
+}
+
+.acupuncture-steps {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(84px, 1fr));
+    max-width: 1080px;
+    margin: 0 auto 28px;
+    overflow-x: auto;
+    border: 1px solid #dcebe2;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .86);
+}
+
+.acupuncture-steps span {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+    min-width: 84px;
+    padding: 12px 6px;
+    color: #87978e;
+    font-size: .72rem;
+}
+
+.acupuncture-steps b {
+    display: grid;
+    width: 25px;
+    height: 25px;
+    place-items: center;
+    border-radius: 50%;
+    color: #72847a;
+    background: #edf4ef;
+}
+
+.acupuncture-steps .is-current,
+.acupuncture-steps .is-complete {
+    color: #08794f;
+}
+
+.acupuncture-steps .is-current b,
+.acupuncture-steps .is-complete b {
+    color: #fff;
+    background: #169867;
+}
+
+.acupuncture-practice main {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.acupuncture-card {
+    display: grid;
+    justify-items: center;
+    gap: 18px;
+    max-width: 650px;
+    margin: 0 auto;
+    border: 1px solid #d9eae0;
+    border-radius: 20px;
+    padding: clamp(24px, 5vw, 44px);
+    text-align: center;
+    background: #fff;
+    box-shadow: 0 16px 42px rgba(39, 113, 79, .09);
+}
+
+.acupuncture-card--wide {
+    max-width: 860px;
+}
+
+.acupuncture-card h2,
+.acupuncture-card p {
+    margin: 0;
+}
+
+.acupuncture-card p {
+    max-width: 640px;
+    color: #667a70;
+    line-height: 1.7;
+}
+
+.acupuncture-card code {
+    border-radius: 5px;
+    padding: 2px 5px;
+    color: #08794f;
+    background: #edf9f2;
+}
+
+.acupuncture-choice-row,
+.acupuncture-score-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.acupuncture-choice-row button,
+.acupuncture-region-grid button {
+    border: 1px solid #d2e5da;
+    border-radius: 12px;
+    padding: 12px 20px;
+    color: #42584d;
+    background: #fbfefc;
+    cursor: pointer;
+}
+
+.acupuncture-choice-row button.is-selected,
+.acupuncture-region-grid button.is-selected {
+    border-color: #169867;
+    color: #08794f;
+    background: #e9f9f0;
+    box-shadow: 0 0 0 2px rgba(22, 152, 103, .1);
+}
+
+.acupuncture-choice-row button.is-declined {
+    border-color: #dca5a5;
+    color: #a44242;
+    background: #fff5f5;
+}
+
+.acupuncture-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 0;
+    border-radius: 11px;
+    padding: 12px 24px;
+    color: #fff;
+    font-weight: 700;
+    background: #169867;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(22, 152, 103, .2);
+}
+
+.acupuncture-primary:disabled,
+.acupuncture-secondary:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+}
+
+.acupuncture-notice,
+.acupuncture-empty-data {
+    width: min(100%, 600px);
+    border: 1px dashed #d4a65d;
+    border-radius: 11px;
+    padding: 12px 14px;
+    color: #855f22;
+    background: #fffaf0;
+    font-size: .86rem;
+    line-height: 1.6;
+}
+
+.acupuncture-region-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(130px, 1fr));
+    width: 100%;
+    gap: 12px;
+}
+
+.acupuncture-region-grid button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.acupuncture-map {
+    position: relative;
+    width: min(100%, 360px);
+    min-height: 360px;
+    height: 360px;
+    overflow: hidden;
+    border: 1px solid #cfe4d7;
+    border-radius: 12px;
+    background: radial-gradient(circle at 50% 40%, #f4fcf7, #eaf6ef);
+}
+
+.acupuncture-map.is-interactive {
+    cursor: crosshair;
+}
+
+.acupuncture-map svg {
+    width: 230px;
+    height: 340px;
+    margin-top: 20px;
+    fill: rgba(22, 152, 103, .08);
+    stroke: #70b493;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 5;
+}
+
+.acupuncture-map>img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 12px 20px 14px;
+}
+
+.acupuncture-maps-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+}
+
+.acupuncture-map__regions {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.acupuncture-map__regions span,
+.acupuncture-standard-list span {
+    border-radius: 999px;
+    padding: 5px 9px;
+    color: #16724f;
+    background: #dff5e9;
+    font-size: .74rem;
+}
+
+.acupuncture-standard-list span {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.acupuncture-standard-list small {
+    color: #4f7461;
+    font-size: .7rem;
+    font-weight: 500;
+}
+
+.acupuncture-map small {
+    position: absolute;
+    right: 12px;
+    bottom: 10px;
+    color: #83a393;
+}
+
+.acupuncture-map__needle,
+.acupuncture-map__standard {
+    position: absolute;
+    z-index: 2;
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    transform: translate(-50%, -50%);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    color: #fff;
+    background: #df5b4d;
+    font-size: .68rem;
+    box-shadow: 0 2px 7px rgba(71, 34, 28, .25);
+}
+
+.acupuncture-map__standard {
+    width: 18px;
+    height: 18px;
+    border-color: #0c6847;
+    background: #f8d45b;
+}
+
+.acupuncture-needling-layout {
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) 280px;
+    align-items: center;
+    gap: 28px;
+    width: 100%;
+}
+
+.acupuncture-controls {
+    display: grid;
+    gap: 20px;
+    text-align: left;
+}
+
+.acupuncture-controls label {
+    display: grid;
+    gap: 10px;
+    color: #51665b;
+}
+
+.acupuncture-controls label span {
+    display: flex;
+    justify-content: space-between;
+}
+
+.acupuncture-controls strong {
+    color: #08794f;
+}
+
+.acupuncture-controls input {
+    accent-color: #169867;
+}
+
+.acupuncture-needle-summary {
+    border-radius: 10px;
+    padding: 12px;
+    color: #08794f;
+    text-align: center;
+    background: #edf9f2;
+}
+
+.acupuncture-summary-list,
+.acupuncture-criteria {
+    display: grid;
+    width: 100%;
+    gap: 10px;
+}
+
+.acupuncture-summary-list span,
+.acupuncture-criteria article {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #e1ece5;
+    border-radius: 11px;
+    padding: 13px 15px;
+    background: #fbfefc;
+}
+
+.acupuncture-criteria article {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    text-align: left;
+}
+
+.acupuncture-standard-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 7px;
+}
+
+.acupuncture-score {
+    color: #08794f;
+    font-size: 4.6rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.acupuncture-score small {
+    margin-left: 5px;
+    font-size: 1rem;
+}
+
+@media (max-width: 760px) {
+
+    .acupuncture-region-grid,
+    .acupuncture-needling-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .acupuncture-header {
+        align-items: flex-start;
+    }
+
+    .acupuncture-case-picker {
+        grid-template-columns: 1fr;
+    }
+
+    .acupuncture-map {
+        min-height: 350px;
+    }
+
+    .acupuncture-map>img {
+        height: 350px;
+        padding-inline: 28px;
+    }
+}

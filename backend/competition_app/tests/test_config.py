@@ -17,7 +17,14 @@ def test_stub_mode_does_not_require_external_secrets(monkeypatch: pytest.MonkeyP
     settings = Settings.from_env()
 
     assert settings.mode == "stub"
-    assert settings.chat_model == "qwen3.7-max-2026-05-17"
+    assert settings.chat_model == "qwen3.7-flash"
+    assert settings.chat_models == (
+        "qwen3.7-flash",
+        "qwen3.7-max-preview",
+        "glm-5.2",
+        "qwen3.7-flash-2026-07-15",
+        "qwen-plus",
+    )
     assert settings.embedding_model == "Qwen/Qwen3-Embedding-4B"
     assert settings.execution_engine == "langgraph"
 
@@ -130,7 +137,7 @@ def test_incoming_model_configuration_cannot_replace_main_model_stack() -> None:
     )
 
     assert settings.chat_base_url == CHAT_BASE_URL
-    assert settings.chat_model == "qwen3.7-max-2026-05-17"
+    assert settings.chat_model == "qwen3.7-flash"
     assert not hasattr(settings, "voice_model_path")
 
 
@@ -219,3 +226,39 @@ def test_compatibility_config_delegates_models_to_main_settings(monkeypatch) -> 
     assert reloaded.MANAGER_REVIEWER_MODEL == "deepseek-v4-flash"
     assert reloaded.EmbeddingConfig.EMBEDDING_MODEL_ID == "Qwen/Qwen3-Embedding-4B"
     assert reloaded.VOICE_MODE == "disabled"
+
+
+def test_chat_models_preserve_order_remove_duplicates_and_override_legacy_model() -> None:
+    settings = Settings.from_env(
+        {
+            "COMPETITION_APP_MODE": "stub",
+            "CHAT_MODEL": "legacy-model",
+            "CHAT_MODELS": "qwen3.7-flash, glm-5.2, qwen3.7-flash, qwen-plus",
+        }
+    )
+
+    assert settings.chat_models == ("qwen3.7-flash", "glm-5.2", "qwen-plus")
+    assert settings.chat_model == "qwen3.7-flash"
+
+
+def test_direct_settings_normalizes_model_configuration() -> None:
+    legacy = Settings(chat_model="legacy-model")
+    configured = Settings(
+        chat_model="legacy-model",
+        chat_models=("first", "second", "first"),
+    )
+
+    assert legacy.chat_models == ("legacy-model",)
+    assert configured.chat_model == "first"
+    assert configured.chat_models == ("first", "second")
+
+
+def test_direct_settings_rejects_empty_model_candidates() -> None:
+    with pytest.raises(SettingsError, match="chat_models"):
+        Settings(chat_models=())
+
+
+@pytest.mark.parametrize("chat_model", ["", "   "])
+def test_direct_settings_rejects_empty_legacy_model(chat_model: str) -> None:
+    with pytest.raises(SettingsError, match="chat_model"):
+        Settings(chat_model=chat_model)

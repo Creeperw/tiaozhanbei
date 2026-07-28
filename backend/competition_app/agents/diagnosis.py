@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from competition_app.agents.common import envelope
+from competition_app.agents.plan_contract_compiler import PlanContractCompilerAgent
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.default_route import ResolvedPlanningRoute
@@ -22,6 +23,12 @@ from competition_app.contracts.learning_plan import (
     TextbookSelectionContext,
 )
 from competition_app.contracts.review import DailyReviewPolicy
+from competition_app.contracts.plan_compilation import (
+    CompiledLongTermContract,
+    CompiledPlanContractResult,
+    CompiledShortTermContract,
+    PlanCompilationEnvelope,
+)
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
@@ -52,6 +59,9 @@ class DiagnosisResult(BaseModel):
         default_factory=lambda: DailyReviewPolicy(capacity=1)
     )
     learning_plan_proposal: LearningPlanProposal | None = None
+    compiled_plan_contract: PlanCompilationEnvelope | None = None
+    trusted_plan_route: dict[str, Any] = Field(default_factory=dict)
+    parent_plan_constraints: dict[str, Any] = Field(default_factory=dict)
     requires_clarification: bool = False
     clarification_questions: list[str] = Field(default_factory=list)
     clarification_reason: str | None = None
@@ -61,8 +71,15 @@ class DiagnosisResult(BaseModel):
 
 
 class DiagnosisAgent:
-    def __init__(self, chat_model: ChatModel | None = None) -> None:
+    def __init__(
+        self,
+        chat_model: ChatModel | None = None,
+        plan_contract_compiler: PlanContractCompilerAgent | None = None,
+    ) -> None:
         self.chat_model = chat_model or StubChatModel()
+        self.plan_contract_compiler = (
+            plan_contract_compiler or PlanContractCompilerAgent(self.chat_model)
+        )
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[DiagnosisResult]:
         dependency_outputs = context.get("dependency_outputs", {})
@@ -331,11 +348,19 @@ class DiagnosisAgent:
                 "sustainable_schedule": user_profile.get("time_constraints"),
                 "daily_available_minutes": user_profile.get("daily_available_minutes"),
                 "weekly_available_minutes": user_profile.get("weekly_available_minutes"),
+                "explicit_request": str(context.get("user_request", "")),
                 "preferences": user_profile.get("user_preference", {}),
             },
             "learning_evidence": {
                 "current_status": current_status,
                 "behavior_summary": behavior_metrics,
+                "evidence_status": monitoring_snapshot.get("evidence_status") or "unknown",
+                "freshness_status": monitoring_snapshot.get("freshness_status") or "unknown",
+                "precision_policy": (
+                    "只有 evidence_status=sufficient 且 freshness_status 不是 stale 时，"
+                    "才能在用户正文中断言精确掌握度、错误次数或薄弱知识点总数；"
+                    "否则应明确证据仍在积累，并以待验证的学习重点表述。"
+                ),
                 "retrieval_summary": getattr(knowledge, "retrieval_summary", ""),
                 "evidence_summaries": [item.content_summary for item in evidence_items[:3]],
                 "confirmed_prerequisite_courses": sorted(
@@ -397,6 +422,22 @@ class DiagnosisAgent:
                 ),
             )
             raw_dict = raw_output if isinstance(raw_output, dict) else {}
+            compiled_plan_contract: PlanCompilationEnvelope | None = None
+            if plan_scope in {"long_term", "short_term", "daily_task"}:
+                compiled_plan_contract = await self.plan_contract_compiler.compile(
+                    context,
+                    plan_scope=plan_scope,
+                    diagnosis_output=raw_dict,
+                    trusted_route=self._compiler_route_context(route_context),
+                    parent_plan_constraints=self._parent_plan_constraints(
+                        context, plan_scope
+                    ),
+                )
+                if compiled_plan_contract.result.status == "compiled":
+                    raw_dict = self._apply_compiled_contract(
+                        raw_dict,
+                        compiled_plan_contract.result,
+                    )
             three_layer: ThreeLayerPlanningModelOutput | None = None
             if plan_scope in {"long_term", "short_term", "daily_task"}:
                 three_layer = self._expand_scoped_planning_output(
@@ -415,12 +456,22 @@ class DiagnosisAgent:
                     resolved_route,
                     available_minutes=context.get("available_minutes"),
                     user_time_constraints=str(user_profile.get("time_constraints") or ""),
+                    explicit_user_request=str(context.get("user_request") or ""),
+                    evidence_status=str(
+                        monitoring_snapshot.get("evidence_status") or "unknown"
+                    ),
+                    evidence_freshness=str(
+                        monitoring_snapshot.get("freshness_status") or "unknown"
+                    ),
                     long_term_action=change_decision.long_term_action,
                     short_term_action=change_decision.short_term_action,
                     daily_task_action=change_decision.daily_task_action,
                     confirmed_prerequisite_courses=confirmed_prerequisite_courses,
                     unmet_prerequisite_courses=unmet_prerequisite_courses,
                     path_candidates=context.get("path_candidates"),
+                    parent_stage_duration_days=self._parent_plan_constraints(
+                        context, plan_scope
+                    ).get("current_stage_duration_days"),
                 )
                 if not validation.valid:
                     revision_payload = {
@@ -467,12 +518,22 @@ class DiagnosisAgent:
                         resolved_route,
                         available_minutes=context.get("available_minutes"),
                         user_time_constraints=str(user_profile.get("time_constraints") or ""),
+                        explicit_user_request=str(context.get("user_request") or ""),
+                        evidence_status=str(
+                            monitoring_snapshot.get("evidence_status") or "unknown"
+                        ),
+                        evidence_freshness=str(
+                            monitoring_snapshot.get("freshness_status") or "unknown"
+                        ),
                         long_term_action=change_decision.long_term_action,
                         short_term_action=change_decision.short_term_action,
                         daily_task_action=change_decision.daily_task_action,
                         confirmed_prerequisite_courses=confirmed_prerequisite_courses,
                         unmet_prerequisite_courses=unmet_prerequisite_courses,
                         path_candidates=context.get("path_candidates"),
+                        parent_stage_duration_days=self._parent_plan_constraints(
+                            context, plan_scope
+                        ).get("current_stage_duration_days"),
                     )
                     if not validation.valid:
                         if any(
@@ -536,6 +597,39 @@ class DiagnosisAgent:
                         raise ValueError(
                             "三层规划修订后仍未通过校验：" + "; ".join(validation.issues)
                         )
+                if plan_scope in {"long_term", "short_term", "daily_task"}:
+                    final_scoped_output = self._scoped_output_for_compilation(
+                        plan_scope,
+                        three_layer,
+                    )
+                    final_compilation = await self.plan_contract_compiler.compile(
+                        context,
+                        plan_scope=plan_scope,
+                        diagnosis_output=final_scoped_output,
+                        trusted_route=self._compiler_route_context(route_context),
+                        parent_plan_constraints=self._parent_plan_constraints(
+                            context, plan_scope
+                        ),
+                    )
+                    if final_compilation.result.status != "compiled":
+                        raise ValueError(
+                            "最终规划正文未能编译为可审核合同："
+                            + "; ".join(
+                                f"{issue.code}@{issue.field_path}"
+                                for issue in final_compilation.result.issues
+                            )
+                        )
+                    compiled_plan_contract = final_compilation
+                    raw_dict = self._apply_compiled_contract(
+                        final_scoped_output,
+                        compiled_plan_contract.result,
+                    )
+                    three_layer = self._expand_scoped_planning_output(
+                        plan_scope,
+                        raw_dict,
+                        context,
+                        route_context,
+                    )
             standard = DiagnosisStandardOutput.model_validate(raw_dict)
             natural_language_keys = {
                 "summary",
@@ -598,8 +692,159 @@ class DiagnosisAgent:
                 else self._build_plan_proposal(output, resolved_route, context)
             ),
             plan_scope=plan_scope,
+            compiled_plan_contract=compiled_plan_contract,
+            trusted_plan_route=self._compiler_route_context(route_context),
+            parent_plan_constraints=self._parent_plan_constraints(context, plan_scope),
         )
         return envelope(context, "diagnosis_agent", "diagnosis_result", result)
+
+    @staticmethod
+    def _scoped_output_for_compilation(
+        plan_scope: str,
+        output: ThreeLayerPlanningModelOutput,
+    ) -> dict[str, Any]:
+        value = output.model_dump(mode="json")
+        if plan_scope == "short_term":
+            value["duration_days"] = value.get("short_term_duration_days")
+            value["progression_nodes"] = value.get(
+                "short_term_progression_nodes"
+            )
+        fields = {
+            "long_term": (
+                "long_term_plan_content",
+                "total_duration_days",
+                "long_term_plan_stages",
+            ),
+            "short_term": (
+                "short_term_plan_content",
+                "duration_days",
+                "progression_nodes",
+                "expected_output",
+                "completion_criteria",
+                "selected_textbook_route_id",
+                "selected_stage_id",
+                "selected_books",
+                "selection_reason",
+            ),
+            "daily_task": (
+                "daily_task_content",
+                "learning_chapter",
+                "focus_knowledge_points",
+                "estimated_minutes",
+                "expected_output",
+                "completion_criteria",
+            ),
+        }[plan_scope]
+        return {field: value[field] for field in fields if value.get(field) is not None}
+
+    @classmethod
+    def _compiler_route_context(cls, route_context: dict[str, Any]) -> dict[str, Any]:
+        textbook_resolution = route_context.get("textbook_route") or {}
+        textbook_route = (
+            textbook_resolution.get("route")
+            if textbook_resolution.get("planning_status") == "resolved"
+            else None
+        ) or {}
+        stages = list(textbook_route.get("stages") or [])
+        if not stages:
+            stages = cls._planning_phases(route_context)
+        return {
+            "planning_status": route_context.get("planning_status"),
+            "stages": [
+                {
+                    "stage_id": stage.get("stage_id") or stage.get("phase_id"),
+                    "name": stage.get("name"),
+                    "books": cls._string_list(stage.get("books")),
+                    "goal": stage.get("objective"),
+                    "exit_evidence": cls._string_list(stage.get("exit_evidence")),
+                }
+                for stage in stages
+            ],
+        }
+
+    @staticmethod
+    def _parent_plan_constraints(
+        context: dict[str, Any], plan_scope: Any
+    ) -> dict[str, Any]:
+        if plan_scope != "short_term":
+            return {}
+        parent = context.get("current_long_term_plan") or {}
+        stages = (
+            parent.get("stages", [])
+            if isinstance(parent, dict)
+            else getattr(parent, "stages", [])
+        ) or []
+        selection = (
+            parent.get("textbook_selection")
+            if isinstance(parent, dict)
+            else getattr(parent, "textbook_selection", None)
+        ) or {}
+        selected_stage_id = (
+            selection.get("stage_id")
+            if isinstance(selection, dict)
+            else getattr(selection, "stage_id", None)
+        )
+        selected_stage = next(
+            (
+                stage
+                for stage in stages
+                if str(
+                    stage.get("stage_id")
+                    if isinstance(stage, dict)
+                    else getattr(stage, "stage_id", "")
+                )
+                == str(selected_stage_id or "")
+            ),
+            stages[0] if stages else None,
+        )
+        duration_days = (
+            selected_stage.get("duration_days")
+            if isinstance(selected_stage, dict)
+            else getattr(selected_stage, "duration_days", None)
+            if selected_stage is not None
+            else None
+        )
+        return {
+            "current_stage_id": selected_stage_id,
+            "current_stage_duration_days": duration_days,
+        }
+
+    @staticmethod
+    def _apply_compiled_contract(
+        raw_output: dict[str, Any],
+        compiled: CompiledPlanContractResult,
+    ) -> dict[str, Any]:
+        normalized = dict(raw_output)
+        contract = compiled.contract
+        if isinstance(contract, CompiledLongTermContract):
+            normalized.update(
+                long_term_plan_content=contract.long_term_plan_content,
+                total_duration_days=contract.total_duration_days,
+                long_term_plan_stages=[
+                    {
+                        "stage": stage.stage,
+                        "stage_name": stage.stage_name,
+                        "book": stage.books,
+                        "goal": stage.goal,
+                        "duration_days": stage.duration_days,
+                        "schedule_summary": stage.schedule_summary,
+                    }
+                    for stage in contract.stages
+                ],
+            )
+        elif isinstance(contract, CompiledShortTermContract):
+            normalized.update(
+                short_term_plan_content=contract.short_term_plan_content,
+                duration_days=contract.duration_days,
+                progression_nodes=contract.progression_nodes,
+                expected_output=contract.expected_output,
+                completion_criteria=contract.completion_criteria,
+                selected_stage_id=contract.selected_stage_id,
+                selected_books=contract.selected_books,
+            )
+        else:
+            normalized.update(contract.model_dump(exclude={"scope", "field_anchors"}))
+        return normalized
 
     async def _clarification_questions(
         self,
@@ -680,6 +925,15 @@ class DiagnosisAgent:
         """Repair empty model-owned book arrays from the trusted route before parsing."""
 
         normalized = dict(raw_output)
+        if "duration_days" in normalized:
+            normalized.setdefault(
+                "short_term_duration_days", normalized.pop("duration_days")
+            )
+        if "progression_nodes" in normalized:
+            normalized.setdefault(
+                "short_term_progression_nodes",
+                normalized.pop("progression_nodes"),
+            )
         stages = normalized.get("long_term_plan_stages")
         if not isinstance(stages, list):
             return normalized
@@ -740,14 +994,26 @@ class DiagnosisAgent:
                 return value.get(name, default)
             return getattr(value, name, default)
 
-        trusted_stages = [
-            {
-                "stage": index,
-                "book": cls._string_list(phase.get("books")),
-                "goal": str(phase.get("objective") or "完成本阶段目标"),
-            }
-            for index, phase in enumerate(cls._planning_phases(route_context), start=1)
-        ]
+        model_stages = raw_output.get("long_term_plan_stages")
+        model_stages = model_stages if isinstance(model_stages, list) else []
+        trusted_stages = []
+        for index, phase in enumerate(cls._planning_phases(route_context), start=1):
+            proposed = (
+                model_stages[index - 1]
+                if index <= len(model_stages)
+                and isinstance(model_stages[index - 1], dict)
+                else {}
+            )
+            trusted_stages.append(
+                {
+                    "stage": index,
+                    "stage_name": str(phase.get("name") or f"阶段{index}"),
+                    "book": cls._string_list(phase.get("books")),
+                    "goal": str(phase.get("objective") or "完成本阶段目标"),
+                    "duration_days": int(proposed.get("duration_days") or 0),
+                    "schedule_summary": str(proposed.get("schedule_summary") or ""),
+                }
+            )
         if not trusted_stages or any(not stage["book"] for stage in trusted_stages):
             raise ValueError("长期规划缺少包含明确教材的系统可信路线，禁止生成占位阶段。")
 
@@ -770,10 +1036,38 @@ class DiagnosisAgent:
         ) or {}
         textbook_stages = list(textbook_route.get("stages") or [])
         if textbook_route.get("route_id") and textbook_stages:
+            trusted_route_id = str(textbook_route.get("route_id"))
+            stages_by_id = {
+                str(stage.get("stage_id")): stage
+                for stage in textbook_stages
+                if stage.get("stage_id")
+            }
+            selected_stage = stages_by_id.get(str(selection["selected_stage_id"] or ""))
+            if (
+                str(selection["selected_textbook_route_id"] or "")
+                != trusted_route_id
+                or selected_stage is None
+            ):
+                selection = {
+                    "selected_textbook_route_id": None,
+                    "selected_stage_id": None,
+                    "selected_books": [],
+                    "selection_reason": None,
+                }
+            elif selection["selected_books"]:
+                trusted_books = {
+                    cls._normalized_book_name(book)
+                    for book in selected_stage.get("books", [])
+                }
+                if any(
+                    cls._normalized_book_name(book) not in trusted_books
+                    for book in selection["selected_books"]
+                ):
+                    selection["selected_books"] = []
             first_stage = textbook_stages[0]
             selection = {
                 "selected_textbook_route_id": selection["selected_textbook_route_id"]
-                or textbook_route.get("route_id"),
+                or trusted_route_id,
                 "selected_stage_id": selection["selected_stage_id"]
                 or first_stage.get("stage_id"),
                 "selected_books": selection["selected_books"]
@@ -812,6 +1106,9 @@ class DiagnosisAgent:
                 field(current_task, "completion_criteria") or "完成本层规划要求。"
             ),
             "long_term_plan_stages": trusted_stages,
+            "total_duration_days": 0,
+            "short_term_duration_days": 0,
+            "short_term_progression_nodes": [],
             **selection,
         }
         if plan_scope == "long_term":
@@ -838,46 +1135,21 @@ class DiagnosisAgent:
             common["selected_path_candidate_id"] = (
                 scoped.selected_path_candidate_id
             )
-            common["long_term_plan_content"] = cls._repair_full_capacity_mandate(
-                str(common["long_term_plan_content"]),
-                str(
-                    (
-                        context.get("user_profile")
-                        if isinstance(context.get("user_profile"), dict)
-                        else {}
-                    ).get("time_constraints")
-                    or ""
-                ),
-            )
+            common["total_duration_days"] = scoped.total_duration_days
+            common["long_term_plan_stages"] = [
+                stage.model_dump() for stage in scoped.long_term_plan_stages
+            ]
         elif plan_scope == "short_term":
             scoped = ShortTermPlanningModelOutput.model_validate({
                 key: value
                 for key, value in raw_output.items()
                 if key in ShortTermPlanningModelOutput.model_fields
             })
-            common.update(scoped.model_dump())
-            common["short_term_plan_content"] = cls._repair_short_term_plan_constraints(
-                str(common["short_term_plan_content"]),
-                str(
-                    (
-                        context.get("user_profile")
-                        if isinstance(context.get("user_profile"), dict)
-                        else {}
-                    ).get("time_constraints")
-                    or ""
-                ),
+            common.update(
+                scoped.model_dump(exclude={"duration_days", "progression_nodes"})
             )
-            common["short_term_plan_content"] = cls._repair_full_capacity_mandate(
-                str(common["short_term_plan_content"]),
-                str(
-                    (
-                        context.get("user_profile")
-                        if isinstance(context.get("user_profile"), dict)
-                        else {}
-                    ).get("time_constraints")
-                    or ""
-                ),
-            )
+            common["short_term_duration_days"] = scoped.duration_days
+            common["short_term_progression_nodes"] = scoped.progression_nodes
             common.update({
                 "daily_task_content": "本次仅制定短期计划；当日任务需另行安排。",
                 "estimated_minutes": fallback_minutes,
@@ -945,6 +1217,10 @@ class DiagnosisAgent:
                 + "\n\n推进节奏按前段建立理解框架、中段完成辨析练习、周期末依据上述验收标准检查结果。"
             )
         return re.sub(r"\n{3,}", "\n\n", repaired).strip()
+
+    @staticmethod
+    def _normalized_book_name(value: Any) -> str:
+        return re.sub(r"[《》\s·•（）()\-—_:：]", "", str(value or "")).lower()
 
     @staticmethod
     def _repair_full_capacity_mandate(
@@ -1085,8 +1361,7 @@ class DiagnosisAgent:
             )
             return (
                 questions,
-                str(context.get("planner_routing_reason") or "").strip()
-                or "智能体需要确认本次规划范围后继续。",
+                "为了按正确的时间范围安排学习，我需要先确认你想制定哪一层计划。",
             )
         if plan_scope == "short_term" and not self._has_plan_content(current_long_term_plan):
             return (
@@ -1171,16 +1446,11 @@ class DiagnosisAgent:
             context.get("current_long_term_plan"),
             output.long_term_plan_content,
         )
-        if change_decision.long_term_action != "reuse":
-            long_content = cls._replace_route_milestone_section(
-                long_content, route_context
-            )
         short_content = cls._trusted_reuse_content(
             change_decision.short_term_action,
             context.get("current_short_term_plan"),
             output.short_term_plan_content,
         )
-        short_content = cls._remove_time_allocation_section(short_content)
         daily_content = cls._trusted_reuse_task_content(
             change_decision.daily_task_action,
             context.get("current_learning_task"),
@@ -1224,8 +1494,19 @@ class DiagnosisAgent:
             long_term_stages = [
                 LongTermPlanStage(
                     stage=index,
+                    stage_name=str(phase.get("name") or f"阶段{index}"),
                     book=cls._string_list(phase.get("books")),
                     goal=str(phase.get("objective") or "完成本阶段目标"),
+                    duration_days=(
+                        output.long_term_plan_stages[index - 1].duration_days
+                        if index <= len(output.long_term_plan_stages)
+                        else 0
+                    ),
+                    schedule_summary=(
+                        output.long_term_plan_stages[index - 1].schedule_summary
+                        if index <= len(output.long_term_plan_stages)
+                        else ""
+                    ),
                 )
                 for index, phase in enumerate(trusted_phases, start=1)
             ]
@@ -1241,10 +1522,20 @@ class DiagnosisAgent:
                 for stage in (existing_stages or [])
             ]
         short_term_package = ShortTermLearningPackage(
-            time_window_weeks=cls._short_term_window_weeks(context),
+            time_window_weeks=(
+                max(1, (output.short_term_duration_days + 6) // 7)
+                if output.short_term_duration_days > 0
+                else None
+            ),
+            duration_days=(
+                output.short_term_duration_days
+                if output.short_term_duration_days > 0
+                else None
+            ),
+            progression_nodes=output.short_term_progression_nodes,
             current_goal=short_content,
             task_blocks=(
-                cls._short_term_task_blocks(short_content)
+                output.short_term_progression_nodes or [short_content]
                 if context.get("plan_scope") == "short_term"
                 else [daily_content]
             ),
@@ -1460,10 +1751,6 @@ class DiagnosisAgent:
             context.get("current_long_term_plan"),
             output.long_term_plan_content,
         )
-        if output.long_term_plan_action != "reuse":
-            long_term_content = cls._replace_route_milestone_section(
-                long_term_content, route_context
-            )
         short_term_content = cls._trusted_reuse_content(
             output.short_term_plan_action,
             context.get("current_short_term_plan"),
@@ -1485,10 +1772,6 @@ class DiagnosisAgent:
             knowledge_topic,
             output.learning_task.task_content,
         )
-        if output.short_term_plan_action != "reuse":
-            short_term_content = cls._remove_time_allocation_section(
-                bounded_text(short_term_content)
-            )
         if route_context.get("planning_status") == "provisional":
             if output.long_term_plan_action != "reuse" and "临时规划" not in long_term_content:
                 long_term_content = "【临时规划】" + long_term_content
@@ -1850,22 +2133,6 @@ class DiagnosisAgent:
         return confirmed, unmet
 
     @staticmethod
-    def _short_term_task_blocks(content: str) -> list[str]:
-        bracketed = re.search(
-            r"【(?:具体任务块|本周期任务|任务块)】(.*?)(?=【[^】]+】|$)",
-            content,
-            flags=re.DOTALL,
-        )
-        markdown = re.search(
-            r"(?ms)^#{1,6}\s*(?:具体任务块|本周期任务|任务块)\s*$\s*"
-            r"(.*?)(?=^#{1,6}\s|\Z)",
-            content,
-        )
-        extracted = (bracketed or markdown)
-        task_text = extracted.group(1).strip() if extracted else content.strip()
-        return [task_text]
-
-    @staticmethod
     def _selection_clarification_questions(issues: list[str]) -> list[str]:
         questions: list[str] = []
         prefix = "所选阶段的强前置尚未确认："
@@ -1889,81 +2156,6 @@ class DiagnosisAgent:
         return content.replace("当前主题", normalized_topic).replace(
             "本主题", normalized_topic
         )
-
-    @staticmethod
-    def _remove_time_allocation_section(content: str) -> str:
-        cleaned = re.sub(
-            r"【时间分配】.*?(?=【[^】]+】|$)",
-            "",
-            content,
-            flags=re.DOTALL,
-        )
-        return re.sub(
-            r"(?ms)^#{1,6}\s*时间分配\s*$.*?(?=^#{1,6}\s|\Z)",
-            "",
-            cleaned,
-        ).strip()
-
-    @classmethod
-    def _replace_route_milestone_section(
-        cls, content: str, route_context: dict[str, Any]
-    ) -> str:
-        phases = cls._planning_phases(route_context)
-        if not phases:
-            return content
-        milestone_lines = []
-        for index, phase in enumerate(phases, start=1):
-            name = str(phase.get("name") or f"阶段{index}")
-            objective = str(phase.get("objective") or "完成本阶段目标")
-            evidence = "、".join(cls._string_list(phase.get("exit_evidence")))
-            evidence = evidence or "提交可核验的阶段学习证据"
-            milestone_lines.append(
-                f"{index}. {name}：达到“{objective}”；验收证据为{evidence}。"
-            )
-        replacement = "【阶段里程碑】\n" + "\n".join(milestone_lines)
-        bracket_pattern = r"【阶段里程碑】.*?(?=【[^】]+】|$)"
-        if re.search(bracket_pattern, content, flags=re.DOTALL):
-            return re.sub(
-                bracket_pattern,
-                replacement,
-                content,
-                count=1,
-                flags=re.DOTALL,
-            ).strip()
-        markdown_pattern = (
-            r"(?ms)^#{1,6}\s*阶段里程碑\s*$.*?(?=^#{1,6}\s|\Z)"
-        )
-        if re.search(markdown_pattern, content):
-            return re.sub(markdown_pattern, replacement, content, count=1).strip()
-        route_facts = [
-            str(phase.get("name") or "")
-            for phase in phases
-        ] + [
-            evidence
-            for phase in phases
-            for evidence in cls._string_list(phase.get("exit_evidence"))
-        ]
-        if all(fact in content for fact in route_facts if fact):
-            return content
-        return f"{content.rstrip()}\n\n{replacement}"
-
-    @staticmethod
-    def _short_term_window_weeks(context: dict[str, Any]) -> int:
-        candidates = [
-            str(context.get("user_request") or ""),
-            str(context.get("original_user_request") or ""),
-        ]
-        candidates.extend(
-            str(message.get("content") or "")
-            for message in reversed(context.get("messages") or [])
-            if isinstance(message, dict) and message.get("role") == "user"
-        )
-        for text in candidates:
-            if re.search(r"(?:两|二|2)\s*(?:周|个星期)|14\s*天", text):
-                return 2
-            if re.search(r"(?:一|1)\s*(?:周|个星期)|7\s*天", text):
-                return 1
-        return 1
 
     @classmethod
     def _inject_package_topic(

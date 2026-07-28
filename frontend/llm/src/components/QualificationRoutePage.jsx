@@ -31,15 +31,10 @@ import {
 import { workshopActionIntent } from '../pageIntent';
 
 function formatReviewDate(value) {
-  if (!value) return '待安排';
+  if (!value) return '最近';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '待安排';
+  if (Number.isNaN(date.getTime())) return '最近';
   return date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-}
-
-function reviewEntryTitle(entry) {
-  const unit = entry?.memory_unit || {};
-  return unit.prompt_abstract || entry?.task?.title || unit.kp_id || '待复习知识点';
 }
 
 const DEFAULT_EXAM_DATE = '2026-11-29T23:59:59+08:00';
@@ -102,37 +97,6 @@ function examCountdown(targetDate) {
 
 function examDateForTarget(target) {
   return target?.exam_date || target?.examDate || DEFAULT_EXAM_DATE;
-}
-
-function TaskProgress({ value }) {
-  const percent = Math.max(0, Math.min(100, Number(value) || 0));
-  const tone = percent < 35 ? 'coral' : percent < 70 ? 'amber' : percent < 100 ? 'teal' : 'green';
-  return <span className={`home-portal__task-progress home-portal__task-progress--${tone}`} style={{ '--task-progress': `${percent}%` }} aria-hidden="true" />;
-}
-
-function ReviewTaskRail({ items, learningItems, onOpen, onOpenLearning }) {
-  const [activeTab, setActiveTab] = useState('review');
-  return (
-    <section className="home-portal__review-rail" aria-label="复习任务">
-      <div className="home-portal__activity-tabs" role="tablist" aria-label="任务类型">
-        <span className="home-portal__activity-indicator" data-active-tab={activeTab} aria-hidden="true" />
-        <button type="button" className={activeTab === 'learning' ? 'is-active' : ''} role="tab" aria-selected={activeTab === 'learning'} onClick={() => setActiveTab('learning')}>学习任务</button>
-        <button type="button" className={activeTab === 'review' ? 'is-active' : ''} role="tab" aria-selected={activeTab === 'review'} onClick={() => setActiveTab('review')}>复习任务</button>
-      </div>
-      <header><strong>{activeTab === 'review' ? '复习任务' : '学习任务'}</strong><small>{activeTab === 'review' ? `${items.length} 题` : `${learningItems.length} 项`}</small></header>
-      {activeTab === 'review' && <p className="home-portal__review-hint">根据掌握度与遗忘曲线智能安排</p>}
-      <div className="home-portal__review-list">
-        {activeTab === 'review' && items.map((entry, index) => {
-          const unit = entry.memory_unit || {};
-          const mastery = normalizePercent(unit.mastery_score) ?? 0;
-          return <button key={`${unit.memory_unit_id || unit.kp_id || index}`} type="button" className="home-portal__task-item" onClick={() => onOpen(entry)}><TaskProgress value={mastery} /><span><strong>{reviewEntryTitle(entry)}</strong><small>{entry.is_due ? '已到期 · 建议优先复习' : `掌握度 ${Math.round(mastery)}%`}</small></span><time>{formatReviewDate(unit.next_review_at)}</time></button>;
-        })}
-        {activeTab === 'learning' && learningItems.map((item) => <button key={item.id} type="button" className="home-portal__task-item" onClick={() => onOpenLearning(item)}><TaskProgress value={item.progress} /><span><strong>{item.title}</strong><small>{item.detail}</small></span><time>{item.meta || '最近'}</time></button>)}
-        {((activeTab === 'review' && !items.length) || (activeTab === 'learning' && !learningItems.length)) && <p className="home-portal__task-empty">{activeTab === 'review' ? '当前没有复习任务。' : '完成一次学习后，近期记录会显示在这里。'}</p>}
-      </div>
-      {activeTab === 'review' && <p className="home-portal__review-note">完成知识点配套题并通过批改后，系统会自动加入复习队列。</p>}
-    </section>
-  );
 }
 
 function normalizePercent(value) {
@@ -379,13 +343,8 @@ function HomeLearningRoute({
   onNavigate,
   onCurrentProgress,
   selectedTarget,
-  currentTask,
-  planItems,
-  dailyTaskTimer,
-  onRefreshDailyTask,
-  onOpenLearning,
 }) {
-  const [routeView, setRouteView] = useState('plan');
+  const [routeView, setRouteView] = useState('orbit');
   const [routeState, setRouteState] = useState({
     loading: true,
     error: '',
@@ -415,7 +374,7 @@ function HomeLearningRoute({
     const routeLoader = selectedTarget?.textbook_route_id
       ? loadClassicLearningRoute(selectedTarget.textbook_route_id)
       : loadPlannedLearningPath();
-    setRouteView('plan');
+    setRouteView('orbit');
     setSelectedNode(null);
     setRouteState((current) => ({ ...current, loading: true, error: '' }));
     routeLoader
@@ -524,8 +483,8 @@ function HomeLearningRoute({
     }
   };
 
-  const returnToPlan = () => {
-    setRouteView('plan');
+  const returnToPath = () => {
+    setRouteView('orbit');
     setSelectedNode(null);
   };
 
@@ -542,27 +501,14 @@ function HomeLearningRoute({
       <header className="home-portal__route-header">
         <div>
           <div className="home-portal__route-kicker">
-            <h2>{routeView === 'plan' ? '当前学习计划' : '学习路径规划'}</h2>
+            <h2>学习路径规划</h2>
             {routeView !== 'details' && <button type="button" onClick={showPlanningDetails}>了解详情</button>}
           </div>
         </div>
-        {routeView === 'plan' ? (
-          <button type="button" className="home-portal__route-full-link" onClick={() => setRouteView('cards')}>查看完整学习路径 <ArrowRight aria-hidden="true" size={14} /></button>
-        ) : (
-          <button type="button" onClick={returnToPlan}>返回当前计划</button>
-        )}
+        {routeView === 'orbit' && <button type="button" className="home-portal__route-full-link" onClick={() => setRouteView('cards')}>查看阶段卡片 <ArrowRight aria-hidden="true" size={14} /></button>}
+        {routeView === 'cards' && <button type="button" onClick={returnToPath}>返回学习路径</button>}
+        {routeView === 'details' && <button type="button" onClick={returnToPath}>返回学习路径</button>}
       </header>
-      {routeView === 'plan' && (
-        <CurrentLearningPlan
-          currentTask={currentTask}
-          items={planItems}
-          stageName={routeState.stages.find((stage) => stage.status === 'in_progress')?.title || routeState.stages[0]?.title}
-          timer={dailyTaskTimer}
-          onExpire={onRefreshDailyTask}
-          onOpenItem={onOpenLearning}
-          onShowPath={() => setRouteView('orbit')}
-        />
-      )}
       {routeView === 'orbit' && (
         <div className="home-portal__route-orbit-layout" onWheelCapture={handleOrbitWheel}>
           {routeState.loading && <div className="home-portal__route-state">正在读取学习路径…</div>}
@@ -785,10 +731,6 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     : [];
   const planItems = [...currentTaskItems, ...activityItems]
     .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
-  const progressItems = planItems.slice(0, 5);
-  const reviewItems = (Array.isArray(payload.review_queue?.entries) ? payload.review_queue.entries : [])
-    .filter((entry) => entry?.memory_unit || entry?.task)
-    .slice(0, 8);
 
   const openActivityItem = (item) => {
     if (!item?.intent) return;
@@ -803,18 +745,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     openActivityItem(item);
   };
 
-  const openReviewItem = (entry) => onNavigate?.({
-    page: 'practice',
-    params: {
-      view: 'workspace',
-      taskType: 'question_training',
-      kpId: entry?.memory_unit?.kp_id || '',
-      reviewTaskId: entry?.task?.review_task_id || '',
-      returnTo: { page: 'qualification-route', params: {} },
-    },
-  });
-
-  const taskItems = progressItems;
+  const showLearningPath = () => {
+    document.querySelector('.home-portal__route')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  };
   const countdown = examCountdown(learningTarget.examDate);
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
   const heroTitle = `早上好，${displayName}，今天继续学习${currentProgress || '当前学习阶段'}`;
@@ -851,13 +784,18 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
           onNavigate={onNavigate}
           onCurrentProgress={setCurrentProgress}
           selectedTarget={learningTarget}
-          currentTask={currentTask}
-          planItems={planItems}
-          dailyTaskTimer={payload.daily_task_timer}
-          onRefreshDailyTask={refreshDailyTask}
-          onOpenLearning={openLearningItem}
         />
-        <ReviewTaskRail items={reviewItems} learningItems={taskItems} onOpen={openReviewItem} onOpenLearning={openLearningItem} />
+        <aside className="home-portal__plan-rail" aria-label="今日学习计划">
+          <CurrentLearningPlan
+            currentTask={currentTask}
+            items={planItems}
+            stageName={currentProgress}
+            timer={payload.daily_task_timer}
+            onExpire={refreshDailyTask}
+            onOpenItem={openLearningItem}
+            onShowPath={showLearningPath}
+          />
+        </aside>
       </section>
 
       <section className="home-portal__feature-grid" aria-label="学习功能">

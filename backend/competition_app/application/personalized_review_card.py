@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,6 +58,7 @@ class PlanChangeContext(BaseModel):
 
 
 class ReviewCardRequest(BaseModel):
+    operation_id: str | None = Field(default=None, min_length=8, max_length=96)
     thread_id: str | None = Field(default=None, min_length=8, max_length=128)
     conversation_id: str | None = Field(default=None, min_length=8, max_length=128)
     learner_id: str
@@ -155,6 +157,8 @@ class PersonalizedReviewCardUseCase:
         behavior_context_loader: Callable[[str], dict[str, Any]] | None = None,
         multiscale_state_loader: Callable[..., dict[str, Any]] | None = None,
         path_candidate_loader: Callable[..., dict[str, Any]] | None = None,
+        memory_retriever: Any | None = None,
+        memory_governance_writer: Callable[..., dict[str, Any]] | None = None,
         profile_update_writer: Callable[[str, dict[str, Any], str | None], dict[str, Any]] | None = None,
         profile_memory_extractor: Callable[[str, str, str | None], dict[str, Any]] | None = None,
         data_permission_gateway: AgentDataPermissionGateway | None = None,
@@ -174,6 +178,8 @@ class PersonalizedReviewCardUseCase:
         self.behavior_context_loader = behavior_context_loader
         self.multiscale_state_loader = multiscale_state_loader
         self.path_candidate_loader = path_candidate_loader
+        self.memory_retriever = memory_retriever
+        self.memory_governance_writer = memory_governance_writer
         self.profile_update_writer = profile_update_writer
         self.profile_memory_extractor = profile_memory_extractor
         self.data_permission_gateway = data_permission_gateway or AgentDataPermissionGateway()
@@ -187,8 +193,12 @@ class PersonalizedReviewCardUseCase:
             self.model_trace_recorder.reset()
         thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
         conversation_id = request.conversation_id or thread_id
-        execution_id = f"EXE_{uuid4().hex}"
-        case_id = f"CASE_{uuid4().hex}"
+        operation_id = request.operation_id or thread_id
+        operation_digest = hashlib.sha256(
+            f"{request.learner_id}:{operation_id}".encode("utf-8")
+        ).hexdigest()[:32]
+        execution_id = f"EXE_{operation_digest}"
+        case_id = f"CASE_{operation_digest}"
         self._remember_run(
             thread_id,
             {
@@ -232,14 +242,15 @@ class PersonalizedReviewCardUseCase:
                 request.learner_id,
                 request.user_request.strip().replace("\n", " ")[:40] or "新对话",
             )
-        if self.profile_memory_extractor is not None:
-            await asyncio.to_thread(
-                self.profile_memory_extractor,
+        behavior_context = await self._load_behavior_context(request.learner_id)
+        memory_retrieval = (
+            await self.memory_retriever.retrieve(
                 request.learner_id,
                 request.user_request,
-                execution_id,
             )
-        behavior_context = await self._load_behavior_context(request.learner_id)
+            if self.memory_retriever is not None
+            else {"items": [], "degraded": False, "error": None}
+        )
         effective_user_profile = self._merge_context_dict(
             request.user_profile, behavior_context.get("user_profile", {})
         )
@@ -430,6 +441,14 @@ class PersonalizedReviewCardUseCase:
                 current_short_term_plan=current_short_term_plan,
             ),
             "behavior_context_source": behavior_context.get("source"),
+            "relevant_personalization_memories": memory_retrieval.get("items", []),
+            "memory_retrieval_degraded": bool(memory_retrieval.get("degraded")),
+            "memory_retrieval_error": memory_retrieval.get("error"),
+            "confirmed_memories": [
+                str(item.get("content") or "")
+                for item in memory_retrieval.get("items", [])
+                if str(item.get("content") or "").strip()
+            ],
             # Every product entry point follows the same backend-owned planning
             # prerequisite policy. Tests that call agents directly remain able to
             # opt in explicitly without manufacturing persistence dependencies.
@@ -496,7 +515,7 @@ class PersonalizedReviewCardUseCase:
                 status="success",
                 execution_id=execution_id,
                 task_type="casual_conversation",
-                direct_response=self._casual_response(request.user_request),
+                direct_response=planner_output.payload.casual_response,
                 agent_outputs=[planner_output],
                 snapshot_path=snapshot_path,
                 writeback_intents=[],
@@ -603,27 +622,6 @@ class PersonalizedReviewCardUseCase:
             conversation_id, request.learner_id, persisted_messages, result
         )
         return result
-
-    @staticmethod
-    def _casual_response(user_request: str) -> str:
-        normalized = "".join(
-            character
-            for character in user_request.strip().lower()
-            if character not in "，。！？!?、,.；;：:~～ \t\r\n"
-        )
-        if normalized in {"谢谢", "谢谢你", "感谢", "感谢你", "多谢"}:
-            return "不客气。需要继续学习、练习、复习或调整计划时，直接告诉我就可以。"
-        if normalized in {"再见", "拜拜", "bye", "先这样", "下次再聊"}:
-            return "好的，今天先到这里。下次回来时，我可以接着你的学习进度继续。"
-        if normalized in {"你是谁", "你能做什么", "你可以做什么", "你会什么"}:
-            return (
-                "我是时珍智训智能助教，可以结合你的学习状态制定分层计划、"
-                "讲解知识点、安排今日任务、提供练习与复习，并生成审核后的试卷。"
-            )
-        return (
-            "你好！我是时珍智训智能助教。你可以直接告诉我想学习的知识点，"
-            "也可以让我制定计划、安排今日任务、出题或组卷。"
-        )
 
     async def resume(
         self,
@@ -1001,6 +999,11 @@ class PersonalizedReviewCardUseCase:
         agent_outputs = [planner_output, *[
             output for output in execution.outputs.values() if isinstance(output, AgentEnvelope)
         ]]
+        self._persist_memory_governance(
+            request=request,
+            execution_id=execution_id,
+            agent_outputs=agent_outputs,
+        )
         learning_plan_output = execution.outputs.get("learning_plan")
         learning_plan = (
             getattr(learning_plan_output, "payload", None) if learning_plan_output else None
@@ -1052,6 +1055,44 @@ class PersonalizedReviewCardUseCase:
                 agent_outputs=agent_outputs,
             )
         audit = execution.outputs["audit"].payload
+        if planner_output.payload.requires_learning_plan_output:
+            long_audit = execution.outputs["audit_long"].payload
+            short_audit = execution.outputs["audit_short"].payload
+            if getattr(learning_plan, "requires_clarification", False):
+                snapshot_path = self.snapshot_exporter.export(
+                    case_id,
+                    execution_id,
+                    {
+                        "request": request,
+                        "plan": execution_plan,
+                        "agent_outputs": agent_outputs,
+                        "learning_plan": learning_plan,
+                        "audit_long": long_audit,
+                        "audit_short": short_audit,
+                        "audit_resource": audit,
+                        "publication_blocked": True,
+                    },
+                )
+                return ReviewCardResult(
+                    status="success",
+                    execution_id=execution_id,
+                    task_type=planner_output.payload.task_type,
+                    agent_outputs=agent_outputs,
+                    learning_plan=learning_plan,
+                    snapshot_path=snapshot_path,
+                    writeback_intents=[],
+                    model_trace=self._model_trace(),
+                    coordination=self._execution_coordination(execution),
+                )
+            if (
+                long_audit.decision != "pass"
+                or long_audit.subject_type != "long_term_plan"
+                or short_audit.decision != "pass"
+                or short_audit.subject_type != "short_term_plan"
+                or audit.subject_type != "resource"
+                or short_audit.parent_subject_digest != long_audit.subject_digest
+            ):
+                raise RuntimeError("combined publication requires three independent passing audits")
         if audit.decision != "pass":
             raise RuntimeError(f"resource was not approved: {audit.decision}")
         resource = execution.outputs["expert"].payload
@@ -1134,6 +1175,47 @@ class PersonalizedReviewCardUseCase:
             coordination=self._execution_coordination(execution),
         )
 
+    def _persist_memory_governance(
+        self,
+        *,
+        request: ReviewCardRequest,
+        execution_id: str,
+        agent_outputs: list[AgentEnvelope[Any]],
+    ) -> None:
+        if self.memory_governance_writer is None:
+            return
+        memory_output = next(
+            (item for item in reversed(agent_outputs) if item.producer == "memory_agent"),
+            None,
+        )
+        payload = getattr(memory_output, "payload", None)
+        if payload is None:
+            return
+        candidates = [
+            {
+                "summary": candidate.summary,
+                "source_refs": [
+                    source.model_dump(mode="json") for source in candidate.source_refs
+                ],
+            }
+            for candidate in getattr(payload, "memory_candidates", [])
+        ]
+        governance = getattr(payload, "governance", None)
+        resolution = getattr(governance, "resolution", "none") if governance else "none"
+        if resolution == "needs_clarification":
+            raise RuntimeError("unresolved memory conflict cannot be finalized")
+        conflicts = [
+            conflict.model_dump(mode="json")
+            for conflict in getattr(governance, "conflicts", [])
+        ] if governance else []
+        self.memory_governance_writer(
+            request.learner_id,
+            execution_id=execution_id,
+            candidates=candidates,
+            resolution=resolution,
+            conflicts=conflicts,
+        )
+
     def _publish_paper_blueprint(
         self,
         *,
@@ -1152,6 +1234,8 @@ class PersonalizedReviewCardUseCase:
         blueprint = execution.outputs["paper_blueprint"].payload
         candidate_pool = execution.outputs["question_pool"].payload
         paper_publication: dict[str, Any] | None = None
+        workshop_operation_id = f"WORKSHOP_PAPER_{execution_id}"
+        workshop_publication_payload: dict[str, Any] | None = None
         if self.workshop_runtime is not None:
             self.data_permission_gateway.authorize(
                 agent="paper_assembly_agent",
@@ -1159,20 +1243,23 @@ class PersonalizedReviewCardUseCase:
                 action="write",
                 fields={"paper", "blueprint", "evidence_pack", "execution_id"},
             )
-            knowledge_output = execution.outputs.get("knowledge")
-            evidence_pack = getattr(knowledge_output, "payload", None)
-            paper_publication = self.workshop_runtime.publish_agent_paper(
-                request.learner_id,
-                execution_id=execution_id,
-                paper=paper.model_dump(mode="json"),
-                blueprint=blueprint.model_dump(mode="json"),
-                evidence_pack=(
+            evidence_pack = candidate_pool
+            workshop_publication_payload = {
+                "operation_id": workshop_operation_id,
+                "artifact_type": "paper",
+                "learner_id": request.learner_id,
+                "audit_result_id": audit.audit_result_id,
+                "publication": {
+                    "paper": paper.model_dump(mode="json"),
+                    "blueprint": blueprint.model_dump(mode="json"),
+                    "evidence_pack": (
                     evidence_pack.model_dump(mode="json")
                     if hasattr(evidence_pack, "model_dump")
                     else {}
                 ),
-                daily_task_item_id=request.daily_task_item_id,
-            )
+                    "daily_task_item_id": request.daily_task_item_id,
+                },
+            }
         publish_answers = self._paper_answers_requested(request)
         paper_content: dict[str, Any] = {
             "试卷说明": paper.instructions,
@@ -1254,8 +1341,32 @@ class PersonalizedReviewCardUseCase:
                 ),
             ),
         ]
+        if workshop_publication_payload is not None and self.writeback_executor:
+            writeback_intents.append(
+                WritebackIntent(
+                    intent_id=f"WBI_{uuid4().hex}",
+                    source_artifact_id=resource.resource_draft_id,
+                    effect_type="enqueue_workshop_publication",
+                    target_service="workshop_service",
+                    target_entity_type="paper",
+                    payload=workshop_publication_payload,
+                    preconditions=["audit_pass"],
+                    idempotency_key=f"{workshop_operation_id}:enqueue",
+                )
+            )
         if self.writeback_executor:
             self.writeback_executor.execute_batch(writeback_intents)
+            if workshop_publication_payload is not None:
+                paper_publication = self.writeback_executor.dispatch_workshop_publication(
+                    workshop_operation_id, self.workshop_runtime
+                )
+        elif workshop_publication_payload is not None:
+            publication = workshop_publication_payload["publication"]
+            paper_publication = self.workshop_runtime.publish_agent_paper(
+                request.learner_id,
+                execution_id=workshop_operation_id,
+                **publication,
+            )
         snapshot_path = self.snapshot_exporter.export(
             case_id,
             execution_id,
@@ -1341,12 +1452,14 @@ class PersonalizedReviewCardUseCase:
             audit_result_id=audit.audit_result_id,
             published_at=datetime.now(timezone.utc),
         )
-        card_publication = self._publish_knowledge_card(
+        workshop_operation_id = f"WORKSHOP_CARD_{execution_id}"
+        card_payload = self._build_knowledge_card_publication(
             request=request,
             execution_id=execution_id,
             execution=execution,
             resource=resource,
         )
+        card_publication: dict[str, Any] | None = None
         writeback_intents = [
             WritebackIntent(
                 intent_id=f"WBI_{uuid4().hex}",
@@ -1374,8 +1487,37 @@ class PersonalizedReviewCardUseCase:
                 ),
             ),
         ]
+        if card_payload is not None and self.writeback_executor:
+            writeback_intents.append(
+                WritebackIntent(
+                    intent_id=f"WBI_{uuid4().hex}",
+                    source_artifact_id=resource.resource_draft_id,
+                    effect_type="enqueue_workshop_publication",
+                    target_service="workshop_service",
+                    target_entity_type="knowledge_card",
+                    payload={
+                        "operation_id": workshop_operation_id,
+                        "artifact_type": "knowledge_card",
+                        "learner_id": request.learner_id,
+                        "audit_result_id": audit.audit_result_id,
+                        "publication": card_payload,
+                    },
+                    preconditions=["audit_pass"],
+                    idempotency_key=f"{workshop_operation_id}:enqueue",
+                )
+            )
         if self.writeback_executor:
             self.writeback_executor.execute_batch(writeback_intents)
+            if card_payload is not None:
+                card_publication = self.writeback_executor.dispatch_workshop_publication(
+                    workshop_operation_id, self.workshop_runtime
+                )
+        elif card_payload is not None and self.workshop_runtime is not None:
+            card_publication = self.workshop_runtime.save_knowledge_card(
+                request.learner_id,
+                source_execution_id=workshop_operation_id,
+                **card_payload,
+            )
         snapshot_path = self.snapshot_exporter.export(
             case_id,
             execution_id,
@@ -1418,7 +1560,7 @@ class PersonalizedReviewCardUseCase:
             ),
         )
 
-    def _publish_knowledge_card(
+    def _build_knowledge_card_publication(
         self,
         *,
         request: ReviewCardRequest,
@@ -1518,13 +1660,11 @@ class PersonalizedReviewCardUseCase:
             },
             "provenance": provenance,
         }
-        return self.workshop_runtime.save_knowledge_card(
-            request.learner_id,
-            kp_id=kp_ids[0],
-            title=resource.title,
-            resource_bundle=bundle,
-            source_execution_id=execution_id,
-        )
+        return {
+            "kp_id": kp_ids[0],
+            "title": resource.title,
+            "resource_bundle": bundle,
+        }
 
     async def _load_behavior_context(self, learner_id: str) -> dict[str, Any]:
         if self.behavior_context_loader is None:

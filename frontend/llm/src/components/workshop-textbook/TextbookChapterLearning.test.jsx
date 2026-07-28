@@ -77,7 +77,7 @@ describe('TextbookChapterLearning', () => {
 
     await screen.findByRole('button', { name: /第一节 一/ });
     expect(
-      [...document.querySelectorAll('.textbook-directory--sections strong')]
+      [...document.querySelectorAll('.textbook-directory--sections > .textbook-directory__items > button strong')]
         .map((node) => node.textContent),
     ).toEqual(['第一节 一', '第二节 二', '第三节 三', '第四节 四']);
   });

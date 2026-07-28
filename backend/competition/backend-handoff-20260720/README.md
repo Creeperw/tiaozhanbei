@@ -499,6 +499,13 @@ pwsh run.ps1
 
 默认后端端口 `7860`，前端端口 `5173`。停止：
 
+如需指定后端 Python 环境，先设置 `BACKEND_PYTHON`，例如：
+
+```powershell
+$env:BACKEND_PYTHON = 'D:\anaconda3\python.exe'
+pwsh run.ps1
+```
+
 ```powershell
 pwsh run.ps1 stop
 ```

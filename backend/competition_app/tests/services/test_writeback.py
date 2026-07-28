@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import StatementError
@@ -14,6 +16,7 @@ def build_engine():
         connection.execute(text("CREATE TABLE review_tasks (review_task_id VARCHAR(128) PRIMARY KEY, learner_id VARCHAR(128), primary_kp_id VARCHAR(128), status VARCHAR(32), payload_json TEXT)"))
         connection.execute(text("CREATE TABLE review_resource_bindings (binding_id VARCHAR(128) PRIMARY KEY, review_task_id VARCHAR(128), resource_id VARCHAR(128), resource_version INTEGER, audit_result_id VARCHAR(128))"))
         connection.execute(text("CREATE TABLE audit_results (audit_result_id VARCHAR(128) PRIMARY KEY, resource_id VARCHAR(128), decision VARCHAR(32), payload_json TEXT)"))
+        connection.execute(text("CREATE TABLE workshop_publication_outbox (operation_id VARCHAR(128) PRIMARY KEY, artifact_type VARCHAR(64) NOT NULL, learner_id VARCHAR(128) NOT NULL, status VARCHAR(32) NOT NULL, payload_json TEXT NOT NULL, attempt_count INTEGER NOT NULL DEFAULT 0, last_error VARCHAR(255), delivered_at DATETIME)"))
     return engine
 
 
@@ -124,3 +127,102 @@ def test_execute_batch_replays_only_when_all_idempotency_keys_exist() -> None:
     )]
     assert executor.execute_batch(intents) is True
     assert executor.execute_batch(intents) is False
+
+
+def test_workshop_publication_is_enqueued_atomically_then_dispatched() -> None:
+    engine = build_engine()
+    executor = WritebackExecutor(engine)
+    audit = WritebackIntent(
+        intent_id="WAO", source_artifact_id="D", effect_type="record_audit",
+        target_service="audit_service", target_entity_type="audit_result",
+        payload={"audit_result_id": "AUO", "resource_id": "RO", "decision": "pass"},
+        idempotency_key="KAO",
+    )
+    resource = WritebackIntent(
+        intent_id="WRO", source_artifact_id="D", effect_type="publish_resource",
+        target_service="resource_service", target_entity_type="resource_version",
+        payload={"resource_id": "RO", "version": 1, "status": "published", "audit_result_id": "AUO"},
+        preconditions=["audit_pass"], idempotency_key="KRO",
+    )
+    publication = WritebackIntent(
+        intent_id="WWO", source_artifact_id="D", effect_type="enqueue_workshop_publication",
+        target_service="workshop_service", target_entity_type="knowledge_card",
+        payload={
+            "operation_id": "OP_CARD_1", "artifact_type": "knowledge_card", "learner_id": "L1", "audit_result_id": "AUO",
+            "publication": {"kp_id": "KP1", "title": "卡片", "resource_bundle": {"schema_version": "1.0"}},
+        },
+        preconditions=["audit_pass"], idempotency_key="KWO",
+    )
+
+    assert executor.execute_batch([audit, resource, publication]) is True
+
+    class Runtime:
+        calls = 0
+
+        def save_knowledge_card(self, learner_id, **kwargs):
+            self.calls += 1
+            return {"card_id": "CARD1"}
+
+    runtime = Runtime()
+    assert executor.dispatch_workshop_publication("OP_CARD_1", runtime) == {"card_id": "CARD1"}
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT status FROM workshop_publication_outbox")).scalar_one() == "delivered"
+    assert runtime.calls == 1
+
+    assert executor.dispatch_workshop_publication("OP_CARD_1", runtime) is None
+    with engine.connect() as connection:
+        row = connection.execute(text(
+            "SELECT status, attempt_count FROM workshop_publication_outbox"
+        )).one()
+    assert row.status == "delivered"
+    assert row.attempt_count == 1
+    assert runtime.calls == 1
+
+
+def test_pending_workshop_dispatcher_continues_after_failure() -> None:
+    engine = build_engine()
+    executor = WritebackExecutor(engine)
+    with engine.begin() as connection:
+        for operation_id, kp_id in (("OP_FAIL", "FAIL"), ("OP_OK", "KP1")):
+            connection.execute(text(
+                "INSERT INTO workshop_publication_outbox "
+                "(operation_id, artifact_type, learner_id, status, payload_json, attempt_count) "
+                "VALUES (:operation_id, 'knowledge_card', 'L1', 'pending', :payload_json, 0)"
+            ), {
+                "operation_id": operation_id,
+                "payload_json": json.dumps({
+                    "kp_id": kp_id,
+                    "title": "卡片",
+                    "resource_bundle": {"schema_version": "1.0"},
+                }),
+            })
+
+    class Runtime:
+        def save_knowledge_card(self, learner_id, **kwargs):
+            if kwargs["kp_id"] == "FAIL":
+                raise RuntimeError("temporary workshop outage")
+            return {"card_id": "CARD1"}
+
+    assert executor.dispatch_pending_workshop_publications(Runtime()) == 1
+    with engine.connect() as connection:
+        statuses = dict(connection.execute(text(
+            "SELECT operation_id, status FROM workshop_publication_outbox"
+        )).tuples().all())
+    assert statuses == {"OP_FAIL": "pending", "OP_OK": "delivered"}
+
+
+def test_failed_writeback_does_not_call_workshop_runtime() -> None:
+    engine = build_engine()
+    executor = WritebackExecutor(engine)
+    bad_publication = WritebackIntent(
+        intent_id="WWF", source_artifact_id="D", effect_type="enqueue_workshop_publication",
+        target_service="workshop_service", target_entity_type="knowledge_card",
+        payload={"operation_id": "OP_BAD"},
+        idempotency_key="KWF",
+    )
+
+    with pytest.raises(KeyError):
+        executor.execute_batch([bad_publication])
+
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT COUNT(*) FROM workshop_publication_outbox")).scalar_one() == 0

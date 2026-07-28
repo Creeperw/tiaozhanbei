@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextvars import ContextVar
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -22,23 +23,34 @@ class ModelCallTrace(BaseModel):
 
 class ModelTraceRecorder:
     def __init__(self) -> None:
-        self._items: list[ModelCallTrace] = []
+        self._items: ContextVar[list[ModelCallTrace] | None] = ContextVar(
+            f"model_trace_items_{id(self)}", default=None
+        )
+
+    def _current(self) -> list[ModelCallTrace]:
+        items = self._items.get()
+        if items is None:
+            items = []
+            self._items.set(items)
+        return items
 
     def begin(self, agent: str, payload: dict[str, Any]) -> int:
-        self._items.append(
+        items = self._current()
+        items.append(
             ModelCallTrace(
-                sequence=len(self._items) + 1,
+                sequence=len(items) + 1,
                 agent=agent,
                 raw_input=_sanitize(payload),
             )
         )
-        return len(self._items) - 1
+        return len(items) - 1
 
     def reset(self) -> None:
-        self._items.clear()
+        self._items.set([])
 
     def succeed(self, index: int, payload: dict[str, Any]) -> None:
-        self._items[index] = self._items[index].model_copy(
+        items = self._current()
+        items[index] = items[index].model_copy(
             update={"raw_output": _sanitize(payload)}
         )
 
@@ -50,7 +62,8 @@ class ModelTraceRecorder:
         response_text: str | None,
         reasoning_text: str | None = None,
     ) -> None:
-        self._items[index] = self._items[index].model_copy(
+        items = self._current()
+        items[index] = items[index].model_copy(
             update={
                 "transport_input": _sanitize(request_payload),
                 "raw_output_text": _sanitize(response_text),
@@ -59,10 +72,11 @@ class ModelTraceRecorder:
         )
 
     def fail(self, index: int, error: BaseException) -> None:
-        self._items[index] = self._items[index].model_copy(
+        items = self._current()
+        items[index] = items[index].model_copy(
             update={"error_type": type(error).__name__}
         )
 
     @property
     def items(self) -> list[ModelCallTrace]:
-        return list(self._items)
+        return list(self._current())

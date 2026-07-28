@@ -86,6 +86,12 @@ def _fill_blank_score(student_answer: str, standard_answer: str) -> tuple[bool, 
 
 def _choice_tokens(value: str) -> set[str]:
     compact = re.sub(r"选项|答案|[\[\]()（）{}'\"]", "", value or "", flags=re.IGNORECASE).upper()
+    labeled = re.findall(
+        r"(?:^|[\s,，、;；/|])([A-H])\s*(?=[.．、:：)）])",
+        compact,
+    )
+    if labeled:
+        return set(labeled)
     parts = [item for item in re.split(r"[\s,，、;；/|]+", compact) if item]
     if len(parts) == 1 and re.fullmatch(r"[A-H]+", parts[0]):
         return set(parts[0])

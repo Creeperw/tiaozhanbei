@@ -1,7 +1,27 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Callable
+
+
+class PlannerLikeCasualBoundary:
+    """Offline model behavior only; production routing is decided by the LLM."""
+
+    @staticmethod
+    def matches(request: str) -> bool:
+        normalized = "".join(
+            character
+            for character in request.strip().lower()
+            if character not in "，。！？!?、,.；;：:~～ \t\r\n"
+        )
+        return normalized in {
+            "你好", "你好啊", "您好", "您好啊", "嗨", "hi", "hello",
+            "在吗", "早上好", "上午好", "下午好", "晚上好",
+            "谢谢", "谢谢你", "感谢", "感谢你", "多谢", "不客气",
+            "再见", "拜拜", "bye", "先这样", "下次再聊",
+            "你是谁", "你能做什么", "你可以做什么", "你会什么",
+        }
 
 
 class StubChatModel:
@@ -13,6 +33,65 @@ class StubChatModel:
     ) -> dict[str, Any]:
         business_payload = payload.get("payload", payload)
         if role == "memory_agent":
+            if "current_user_request" in business_payload:
+                current_request = str(
+                    business_payload.get("current_user_request") or ""
+                )
+                relevant_memories = list(
+                    business_payload.get("relevant_memories") or []
+                )
+                conflict_answer = str(
+                    business_payload.get("memory_conflict_answer") or ""
+                ).strip()
+                conflict = next(
+                    (
+                        item
+                        for item in relevant_memories
+                        if isinstance(item, dict)
+                        and "每天最多学习二十分钟" in str(item.get("content") or "")
+                        and "一小时" in current_request
+                    ),
+                    None,
+                )
+                resolution = "none"
+                requires_clarification = False
+                questions = []
+                conflicts = []
+                if conflict is not None:
+                    conflicts = [
+                        {
+                            "memory_id": int(conflict["id"]),
+                            "proposed_memory": "以后每天可以学习一小时。",
+                            "reason": "新的稳定每日时长与现有上限不能同时成立。",
+                        }
+                    ]
+                    if any(word in conflict_answer for word in ("仅本次", "这次")):
+                        resolution = "use_current_once"
+                    elif any(word in conflict_answer for word in ("替换", "更新")):
+                        resolution = "replace_existing"
+                    elif any(word in conflict_answer for word in ("保留", "原来")):
+                        resolution = "keep_existing"
+                    else:
+                        resolution = "needs_clarification"
+                        requires_clarification = True
+                        questions = [
+                            "当前一小时安排与原有每天最多二十分钟的记忆冲突。请确认：保留原记忆、仅本次采用一小时，还是用一小时替换原记忆？"
+                        ]
+                return self._emit(
+                    {
+                        "governance_notes": (
+                            "发现一条需要用户确认的稳定时间约束冲突。"
+                            if conflict is not None
+                            else "本轮未发现与相关学习记忆不能同时成立的信息。"
+                        ),
+                        "memory_candidates": [],
+                        "conflicts": conflicts,
+                        "requires_clarification": requires_clarification,
+                        "clarification_questions": questions,
+                        "resolution": resolution,
+                    },
+                    on_delta,
+                )
             messages = business_payload.get("messages", [])
             user_text = " ".join(
                 str(item.get("content", "")) for item in messages if item.get("role") == "user"
@@ -128,6 +207,7 @@ class StubChatModel:
                 keyword in request_text
                 for keyword in ("讲一讲", "讲讲", "解释", "介绍", "是什么", "为什么", "原理", "区别")
             ) and not requests_resource and not requests_paper
+            casual_request = PlannerLikeCasualBoundary.matches(request_text)
             is_plan = not requests_resource and (
                 plan_scope in {"long_term", "short_term", "daily_task", "unspecified"}
                 or plan_scope_hint in {"long_term", "short_term", "daily_task", "unspecified"}
@@ -146,13 +226,17 @@ class StubChatModel:
             )
             return self._emit({
                 "task_type": (
-                    "paper_generation"
+                    "casual_conversation"
+                    if casual_request
+                    else "paper_generation"
                     if requests_paper
                     else "knowledge_explanation" if requests_explanation
                     else "learning_plan" if is_plan else "personalized_review_card"
                 ),
                 "selected_agents": (
-                    [
+                    []
+                    if casual_request
+                    else [
                         "knowledge_base_agent",
                         "expert_agent",
                         "audit_agent",
@@ -183,8 +267,15 @@ class StubChatModel:
                     ]
                 ),
                 "plan_scope": plan_scope or plan_scope_hint,
+                "casual_response": (
+                    "你好！我是时珍智训智能助教。你想先聊聊当前学习情况，还是直接开始一项学习任务？"
+                    if casual_request
+                    else None
+                ),
                 "routing_reason": (
-                    "用户要求生成试卷蓝图，需要知识检索、专家蓝图生成和审核。"
+                    "用户本轮是在进行日常交流，不需要启动学习业务流程。"
+                    if casual_request
+                    else "用户要求生成试卷蓝图，需要知识检索、专家蓝图生成和审核。"
                     if requests_paper
                     else "用户要求知识讲解，需要教材检索、专家讲解和审核，不生成学习规划。"
                     if requests_explanation
@@ -193,7 +284,7 @@ class StubChatModel:
                     else "用户同时需要学习计划和可直接学习的资源，需要完成计划落地、专家生成和审核。"
                 ),
                 "risk_level": "low",
-                "requires_audit": True,
+                "requires_audit": not casual_request,
                 "fallback_policy": "fail_closed",
             }, on_delta)
         if role == "knowledge_base_agent":
@@ -226,6 +317,116 @@ class StubChatModel:
                 ),
                 "quality_labels": ["教材证据已覆盖"],
                 "uncertainty": [],
+            }, on_delta)
+        if role == "plan_contract_compiler":
+            scope = str(business_payload.get("plan_scope") or "")
+            diagnosis = business_payload.get("diagnosis_output") or {}
+            route = business_payload.get("trusted_route") or {}
+            required_fields = {
+                "long_term": (
+                    "long_term_plan_content",
+                    "total_duration_days",
+                    "long_term_plan_stages",
+                ),
+                "short_term": (
+                    "short_term_plan_content",
+                    "duration_days",
+                    "progression_nodes",
+                    "expected_output",
+                    "completion_criteria",
+                    "selected_books",
+                ),
+                "daily_task": (
+                    "daily_task_content",
+                    "learning_chapter",
+                    "focus_knowledge_points",
+                    "estimated_minutes",
+                    "expected_output",
+                    "completion_criteria",
+                ),
+            }
+            missing = [
+                field
+                for field in required_fields.get(scope, ())
+                if diagnosis.get(field) in (None, "", [])
+            ]
+            if missing:
+                return self._emit({
+                    "status": "needs_revision",
+                    "contract_version": "1.0",
+                    "issues": [
+                        {
+                            "code": "missing_required_field",
+                            "category": "missing",
+                            "field_path": f"/{field}",
+                            "source_refs": [field],
+                        }
+                        for field in missing
+                    ],
+                }, on_delta)
+            if scope == "long_term":
+                stages = list(diagnosis.get("long_term_plan_stages") or [])
+                contract_stages = [
+                    {
+                        "stage": int(stage.get("stage", index)),
+                        "stage_name": str(stage["stage_name"]),
+                        "books": list(stage.get("book") or []),
+                        "goal": str(stage["goal"]),
+                        "duration_days": int(stage["duration_days"]),
+                        "schedule_summary": str(stage["schedule_summary"]),
+                    }
+                    for index, stage in enumerate(stages, start=1)
+                ]
+                total = int(diagnosis["total_duration_days"])
+                return self._emit({
+                    "status": "compiled",
+                    "contract_version": "1.0",
+                    "contract": {
+                        "scope": "long_term",
+                        "long_term_plan_content": diagnosis["long_term_plan_content"],
+                        "total_duration_days": total,
+                        "stages": contract_stages,
+                        "field_anchors": {
+                            "/long_term_plan_content": [{"source_field": "long_term_plan_content", "source_quote": diagnosis["long_term_plan_content"]}],
+                            "/total_duration_days": [{"source_field": "total_duration_days", "source_quote": str(diagnosis["total_duration_days"])}],
+                            "/stages": [{"source_field": "long_term_plan_stages", "source_quote": json.dumps(stages, ensure_ascii=False, sort_keys=True)}],
+                        },
+                    },
+                }, on_delta)
+            if scope == "short_term":
+                nodes = list(diagnosis.get("progression_nodes") or [])
+                books = list(diagnosis.get("selected_books") or [])
+                return self._emit({
+                    "status": "compiled",
+                    "contract_version": "1.0",
+                    "contract": {
+                        "scope": "short_term",
+                        "short_term_plan_content": diagnosis["short_term_plan_content"],
+                        "duration_days": int(diagnosis["duration_days"]),
+                        "progression_nodes": nodes,
+                        "expected_output": diagnosis["expected_output"],
+                        "completion_criteria": diagnosis["completion_criteria"],
+                        "selected_stage_id": diagnosis.get("selected_stage_id"),
+                        "selected_books": books,
+                        "field_anchors": {
+                            "/short_term_plan_content": [{"source_field": "short_term_plan_content", "source_quote": diagnosis["short_term_plan_content"]}],
+                            "/duration_days": [{"source_field": "duration_days", "source_quote": str(diagnosis["duration_days"])}],
+                            "/progression_nodes": [{"source_field": "progression_nodes", "source_quote": json.dumps(nodes, ensure_ascii=False, sort_keys=True)}],
+                            "/selected_books": [{"source_field": "selected_books", "source_quote": json.dumps(books, ensure_ascii=False, sort_keys=True)}],
+                        },
+                    },
+                }, on_delta)
+            return self._emit({
+                "status": "compiled",
+                "contract_version": "1.0",
+                "contract": {
+                    "scope": "daily_task",
+                    **{key: diagnosis[key] for key in ("daily_task_content", "learning_chapter", "focus_knowledge_points", "estimated_minutes", "expected_output", "completion_criteria")},
+                    "field_anchors": {
+                        f"/{key}": [{"source_field": key, "source_quote": self._source_quote(diagnosis[key])}]
+                        for key in ("daily_task_content", "learning_chapter", "focus_knowledge_points", "estimated_minutes", "expected_output", "completion_criteria")
+                    },
+                },
             }, on_delta)
         if role == "diagnosis_agent":
             if "plan_actions" in business_payload:
@@ -260,25 +461,58 @@ class StubChatModel:
                         f"| 1. 路线解析失败 | 不可发布 | 建立{topic}基础 | "
                         "无 | 不可晋级 | 需要中断追问 |"
                     )
+                duration_match = re.search(
+                    r"(\d+(?:\.\d+)?|[一二两三四五六七八九十半]+)"
+                    r"(年|个月|月|周|星期)",
+                    request_text,
+                )
+                duration_text = "".join(duration_match.groups()) if duration_match else ""
+                deadline_text = (
+                    f"在{duration_text}内完成目标；第1个月建立基础，第2个月起按阶段验收推进。"
+                    if duration_text
+                    else "期限和稳定能力证据待用户确认。"
+                )
+                weekly_match = re.search(
+                    r"每周[^。；，,\n]{0,16}?"
+                    r"(\d+(?:\.\d+)?|[一二两三四五六七八九十半]+)"
+                    r"(小时|分钟)",
+                    request_text,
+                )
+                weekly_text = "".join(weekly_match.groups()) if weekly_match else ""
+                budget_text = (
+                    f"每周{weekly_text}为容量上限，建议保留反馈与机动缓冲。"
+                    if weekly_text
+                    else "每周最低学习投入和缓冲时间待用户确认。"
+                )
                 generated_long = (
-                    f"## 目标契约\n最终目标是系统掌握{topic}；期限和稳定能力证据待用户确认。\n"
+                    f"## 目标契约\n最终目标是系统掌握{topic}；{deadline_text}\n"
                     "## 能力图谱摘要\n围绕基础识记、理解辨析和应用反馈逐步推进。\n"
                     "## 长期阶段路径\n| 阶段 | 具体教材 | 阶段目标 | 验收证据 | 晋级条件 | 个性化状态 |\n"
                     "|---|---|---|---|---|---|\n"
                     + "\n".join(phase_rows)
                     + "\n## 长期维护与恢复\n中断时保留一次短时主动回忆，复盘后回到当前阶段。\n"
+                    f"## 资源预算\n{budget_text}\n"
                     "## 长期重规划触发器\n目标、期限、路线教材或稳定能力证据持续变化时调整。"
                 )
+                concrete_books = [
+                    str(book)
+                    for phase in phases
+                    for book in phase.get("books", [])
+                    if str(book).strip()
+                ]
+                current_books = concrete_books[:2]
+                current_books_text = "、".join(current_books)
                 weeks = "未来两周" if "两周" in request_text else "未来一周"
                 cycle_plan = (
-                    f"第1周完成{topic}的基础回忆和教材核对，形成遗漏清单；"
-                    "第2周完成类项辨析与综合自测，以纠错记录验收。"
+                    f"第1周使用{current_books_text}完成{topic}的基础回忆和教材核对，形成遗漏清单；"
+                    f"第2周继续使用{current_books_text}完成类项辨析与综合自测，以纠错记录验收。"
                     if "两周" in request_text
-                    else f"周初完成{topic}的基础回忆，周中进行教材核对和错因订正，"
+                    else f"周初使用{current_books_text}完成{topic}的基础回忆，"
+                    f"周中依据{current_books_text}进行教材核对和错因订正，"
                     "周末完成闭卷复述与综合验收。"
                 )
                 generated_short = (
-                    f"## 当前周期目标\n{weeks}在当前长期阶段推进{topic}，以回忆和核对记录验收。\n"
+                    f"## 当前周期目标\n{weeks}在当前长期阶段使用{current_books_text}推进{topic}，以回忆和核对记录验收。\n"
                     "## 本周期任务\n"
                     + cycle_plan
                     + "产出回忆与纠错记录；"
@@ -330,9 +564,16 @@ class StubChatModel:
                         [
                             {
                                 "stage": index,
+                                "stage_name": str(phase.get("name") or f"阶段{index}"),
                                 "book": list(phase.get("books", []))
                                 or ["路线解析失败（不可发布）"],
                                 "goal": str(phase.get("objective") or "完成本阶段目标"),
+                                "duration_days": 30,
+                                "schedule_summary": (
+                                    f"本阶段使用{'、'.join(phase.get('books', []))}，"
+                                    f"围绕{phase.get('objective', '阶段目标')}推进，"
+                                    f"以{'、'.join(phase.get('exit_evidence', [])) or '阶段学习证据'}验收。"
+                                ),
                             }
                             for index, phase in enumerate(phases, start=1)
                         ]
@@ -343,6 +584,13 @@ class StubChatModel:
                                 "goal": "必须先解析可信路线",
                             }
                         ]
+                    ),
+                    "total_duration_days": max(30, 30 * len(phases)),
+                    "duration_days": 14 if "两周" in request_text else 7,
+                    "progression_nodes": (
+                        ["第1周完成教材学习与遗漏整理", "第2周完成辨析、自测与验收"]
+                        if "两周" in request_text
+                        else ["周初完成教材学习与框架整理", "周末完成闭卷复述与综合验收"]
                     ),
                 }
                 textbook_stages = list(textbook_route.get("stages", []))
@@ -357,13 +605,15 @@ class StubChatModel:
                 if plan_scope == "long_term":
                     response = {
                         key: response[key]
-                        for key in ("long_term_plan_content", "long_term_plan_stages")
+                        for key in ("long_term_plan_content", "total_duration_days", "long_term_plan_stages")
                     }
                 elif plan_scope == "short_term":
                     response = {
                         key: response[key]
                         for key in (
                             "short_term_plan_content",
+                            "duration_days",
+                            "progression_nodes",
                             "expected_output",
                             "completion_criteria",
                             "selected_textbook_route_id",
@@ -516,20 +766,27 @@ class StubChatModel:
                 unit_id = str(business_payload.get("unit_id", "UNIT_01"))
                 preferences = business_payload.get("question_type_preferences") or ["单项选择题"]
                 question_type = "单项选择题" if any("选择" in str(item) for item in preferences) else str(preferences[0])
-                return self._emit({
-                    "generated_items": [
-                        {
-                            "unit_id": unit_id,
-                            "question_type": question_type,
-                            "stem": f"{business_payload.get('knowledge_module', '当前主题')}补充练习题{index + 1}",
-                            "options": ["A. 符合教学结论", "B. 不符合教学结论"] if "选择" in question_type else [],
-                            "reference_answer": "A" if "选择" in question_type else "依据当前教学材料作答。",
-                            "analysis": "用于补足用户明确题量，正式发布前由系统审核完整性。",
-                            "selection_rationale": "按蓝图单元补足硬题量。",
-                            "source_tier": "model_knowledge",
-                        }
+                if business_payload.get("assembly_output_mode") == "natural_language_document":
+                    generated_lines = [
+                        (
+                            f"单元{unit_id}原创{question_type}："
+                            f"题干：{business_payload.get('knowledge_module', '当前主题')}补充练习题{index + 1}；"
+                            f"选项：{'A. 符合教学结论、B. 不符合教学结论' if '选择' in question_type else ''}；"
+                            f"参考答案：{'A' if '选择' in question_type else '依据当前教学材料作答。'}；"
+                            "解析：用于补足用户明确题量，正式发布前由系统审核完整性。"
+                        )
                         for index in range(count)
                     ]
+                    return self._emit(
+                        {
+                            "assembly_document": "\n".join(
+                                ["【试卷标题】缺口题补充原稿", *generated_lines]
+                            )
+                        },
+                        on_delta,
+                    )
+                return self._emit({
+                    "generated_items": []
                 }, on_delta)
             if phase == "knowledge_explanation":
                 topic = str(business_payload.get("topic", "当前主题"))
@@ -546,38 +803,69 @@ class StubChatModel:
                 }, on_delta)
             if phase == "paper_blueprint":
                 constraints = business_payload.get("exam_constraints", {})
-                total_score = constraints.get("total_score", 100)
+                total_score = constraints.get("total_score")
                 duration = constraints.get("duration_minutes")
+                if business_payload.get("blueprint_output_mode") != "natural_language_document":
+                    numeric_score = (
+                        float(total_score)
+                        if isinstance(total_score, (int, float)) and total_score > 0
+                        else 100.0
+                    )
+                    return self._emit({
+                        "title": "四君子汤章节练习试卷",
+                        "source_status": "user_provided_unverified",
+                        "scope_summary": "围绕四君子汤组成、功效主治和配伍意义进行教学练习。",
+                        "duration_minutes": duration,
+                        "total_score": numeric_score,
+                        "units": [
+                            {
+                                "knowledge_module": "组成与功效主治",
+                                "learning_objective": "识别组成并理解功效主治。",
+                                "retrieval_query": "四君子汤 组成 功效 主治",
+                                "question_type_preferences": ["单项选择题", "简答题"],
+                                "required_question_count": 2,
+                                "score_total": numeric_score * 0.5,
+                                "candidate_limit": 8,
+                                "selection_rules": ["优先选择直接考查核心概念的题目"],
+                            },
+                            {
+                                "knowledge_module": "配伍意义与辨析",
+                                "learning_objective": "说明君臣佐使并完成方剂辨析。",
+                                "retrieval_query": "四君子汤 配伍意义 君臣佐使 辨析",
+                                "question_type_preferences": [],
+                                "required_question_count": 2,
+                                "score_total": numeric_score * 0.5,
+                                "candidate_limit": 8,
+                                "selection_rules": ["与上一单元全卷去重"],
+                            },
+                        ],
+                        "assumptions": ["题型未完全指定，按候选题实际类型组卷。"],
+                        "acceptance_criteria": ["题目全部来自候选池", "全卷题目ID不重复"],
+                    }, on_delta)
+                total_score_text = (
+                    f"全卷总分：{total_score}分。"
+                    if isinstance(total_score, (int, float)) and total_score > 0
+                    else "用户未明确总分，蓝图不预设总分。"
+                )
+                duration_text = (
+                    f"建议作答时长：{duration}分钟。"
+                    if isinstance(duration, int) and duration > 0
+                    else "用户未明确正式作答时长。"
+                )
                 return self._emit({
-                    "title": "四君子汤章节练习试卷",
-                    "source_status": "user_provided_unverified",
-                    "scope_summary": "围绕四君子汤组成、功效主治和配伍意义进行教学练习。",
-                    "duration_minutes": duration,
-                    "total_score": total_score,
-                    "units": [
-                        {
-                            "knowledge_module": "组成与功效主治",
-                            "learning_objective": "识别组成并理解功效主治。",
-                            "retrieval_query": "四君子汤 组成 功效 主治",
-                            "question_type_preferences": ["单项选择题", "简答题"],
-                            "required_question_count": 2,
-                            "score_total": float(total_score) * 0.5,
-                            "candidate_limit": 8,
-                            "selection_rules": ["优先选择直接考查核心概念的题目"],
-                        },
-                        {
-                            "knowledge_module": "配伍意义与辨析",
-                            "learning_objective": "说明君臣佐使并完成方剂辨析。",
-                            "retrieval_query": "四君子汤 配伍意义 君臣佐使 辨析",
-                            "question_type_preferences": [],
-                            "required_question_count": 2,
-                            "score_total": float(total_score) * 0.5,
-                            "candidate_limit": 8,
-                            "selection_rules": ["与上一单元全卷去重"],
-                        },
-                    ],
-                    "assumptions": ["题型未完全指定，按候选题实际类型组卷。"],
-                    "acceptance_criteria": ["题目全部来自候选池", "全卷题目ID不重复"],
+                    "blueprint_document": (
+                        "【标题】四君子汤章节练习试卷\n"
+                        "【范围】围绕四君子汤组成、功效主治和配伍意义进行教学练习。\n"
+                        f"【时间与分值】{duration_text}{total_score_text}\n"
+                        "【单元一：组成与功效主治】学习目标：识别组成并理解功效主治。"
+                        "检索表达：四君子汤 组成 功效 主治。题型偏好：单项选择题、简答题。"
+                        "目标题数：2题。选题规则：优先选择直接考查核心概念的题目。\n"
+                        "【单元二：配伍意义与辨析】学习目标：说明君臣佐使并完成方剂辨析。"
+                        "检索表达：四君子汤 配伍意义 君臣佐使 辨析。题型偏好：由候选题决定。"
+                        "目标题数：2题。选题规则：与上一单元全卷去重。\n"
+                        "【假设】题型未完全指定时，按候选题实际类型组卷。\n"
+                        "【验收条件】题目全部来自候选池或经审核的原创补充题；全卷题目不得重复。"
+                    ),
                 }, on_delta)
             if phase == "paper_assembly":
                 selected = []
@@ -620,6 +908,33 @@ class StubChatModel:
                         "selection_rationale": "正式候选去重后不足，按用户硬题量补充。",
                         "source_tier": "model_knowledge",
                     })
+                if business_payload.get("assembly_output_mode") == "natural_language_document":
+                    selected_lines = [
+                        f"单元{item['unit_id']}选用候选题{item['question_id']}。"
+                        for item in selected
+                    ]
+                    generated_lines = [
+                        (
+                            f"单元{item['unit_id']}原创{item['question_type']}："
+                            f"题干：{item['stem']}；选项：{'、'.join(item['options'])}；"
+                            f"参考答案：{item['reference_answer']}；解析：{item['analysis']}。"
+                        )
+                        for item in generated
+                    ]
+                    return self._emit(
+                        {
+                            "assembly_document": "\n".join(
+                                [
+                                    "【试卷标题】四君子汤章节练习试卷",
+                                    "【正式候选题选择】",
+                                    *selected_lines,
+                                    "【原创缺口题】",
+                                    *generated_lines,
+                                ]
+                            )
+                        },
+                        on_delta,
+                    )
                 return self._emit({
                     "title": "四君子汤章节练习试卷",
                     "instructions": "请按题目顺序作答；本卷仅用于教学练习。",
@@ -669,8 +984,182 @@ class StubChatModel:
                 "blueprint_content": None,
             }, on_delta)
         if role == "audit_agent":
-            return self._emit({"decision": "pass"}, on_delta)
+            return self._emit(
+                {
+                    "decision": "pass",
+                    "findings": ["已核验目标、期限、教材、负荷、来源与发布边界。"],
+                    "audit_report": (
+                        "审核已逐项核对业务正文、可信来源、时间与层级约束。"
+                        "当前未发现阻断发布的问题，系统仍需执行确定性合同门禁。"
+                    ),
+                },
+                on_delta,
+            )
+        if role == "paper_blueprint_compiler":
+            document = str(business_payload.get("blueprint_document") or "")
+            duration_match = re.search(r"作答时长：(\d+)分钟", document)
+            score_match = re.search(r"全卷总分：(\d+(?:\.\d+)?)分", document)
+            return self._emit(
+                {
+                    "status": "compiled",
+                    "contract_version": "1.0",
+                    "contract": {
+                        "title": "四君子汤章节练习试卷",
+                        "scope_summary": "围绕四君子汤组成、功效主治和配伍意义进行教学练习。",
+                        "duration_minutes": (
+                            int(duration_match.group(1)) if duration_match else None
+                        ),
+                        "total_score": (
+                            float(score_match.group(1)) if score_match else None
+                        ),
+                        "units": [
+                            {
+                                "unit_key": "组成与功效主治",
+                                "knowledge_module": "组成与功效主治",
+                                "learning_objective": "识别组成并理解功效主治。",
+                                "retrieval_query": "四君子汤 组成 功效 主治",
+                                "question_type_preferences": ["单项选择题", "简答题"],
+                                "required_question_count": 2,
+                                "selection_rules": ["优先选择直接考查核心概念的题目"],
+                            },
+                            {
+                                "unit_key": "配伍意义与辨析",
+                                "knowledge_module": "配伍意义与辨析",
+                                "learning_objective": "说明君臣佐使并完成方剂辨析。",
+                                "retrieval_query": "四君子汤 配伍意义 君臣佐使 辨析",
+                                "question_type_preferences": [],
+                                "required_question_count": 2,
+                                "selection_rules": ["与上一单元全卷去重"],
+                            },
+                        ],
+                        "assumptions": ["题型未完全指定时，按候选题实际类型组卷。"],
+                        "acceptance_criteria": [
+                            "题目全部来自候选池或经审核的原创补充题",
+                            "全卷题目不得重复",
+                        ],
+                        "field_anchors": {
+                            "/title": [
+                                {"source_field": "blueprint_document", "source_quote": "四君子汤章节练习试卷"}
+                            ],
+                            "/scope_summary": [
+                                {"source_field": "blueprint_document", "source_quote": "围绕四君子汤组成、功效主治和配伍意义进行教学练习。"}
+                            ],
+                            "/units": [
+                                {"source_field": "blueprint_document", "source_quote": "【单元一：组成与功效主治】"},
+                                {"source_field": "blueprint_document", "source_quote": "【单元二：配伍意义与辨析】"},
+                            ],
+                        },
+                    },
+                },
+                on_delta,
+            )
+        if role == "paper_assembly_compiler":
+            document = str(business_payload.get("assembly_document") or "")
+            catalog = business_payload.get("candidate_catalog", [])
+            title_match = re.search(r"【试卷标题】([^\n]+)", document)
+            title = title_match.group(1).strip() if title_match else "四君子汤章节练习试卷"
+            selected_items = []
+            for unit in catalog:
+                unit_id = str(unit.get("unit_id") or "")
+                for item in unit.get("items", []):
+                    question_id = str(item.get("question_id") or "")
+                    quote = f"单元{unit_id}选用候选题{question_id}。"
+                    if quote in document:
+                        selected_items.append(
+                            {
+                                "unit_id": unit_id,
+                                "question_id": question_id,
+                                "source_anchors": [
+                                    {
+                                        "source_field": "assembly_document",
+                                        "source_quote": quote,
+                                    }
+                                ],
+                            }
+                        )
+            generated_items = []
+            generated_pattern = re.compile(
+                r"单元(?P<unit>\S+)原创(?P<type>[^：:\n]+)："
+                r"题干：(?P<stem>.*?)；选项：(?P<options>.*?)；"
+                r"参考答案：(?P<answer>.*?)；解析：(?P<explanation>.*?)(?=\n|$)"
+            )
+            for match in generated_pattern.finditer(document):
+                quote = match.group(0)
+                generated_items.append(
+                    {
+                        "unit_id": match.group("unit"),
+                        "question_type": match.group("type"),
+                        "stem": match.group("stem"),
+                        "options": [
+                            item.strip()
+                            for item in match.group("options").split("、")
+                            if item.strip()
+                        ],
+                        "reference_answer": match.group("answer"),
+                        "explanation": match.group("explanation").rstrip("。"),
+                        "source_basis_refs": [],
+                        "source_anchors": [
+                            {
+                                "source_field": "assembly_document",
+                                "source_quote": quote,
+                            }
+                        ],
+                    }
+                )
+            return self._emit(
+                {
+                    "status": "compiled",
+                    "contract_version": "1.0",
+                    "contract": {
+                        "title": title,
+                        "selected_items": selected_items,
+                        "generated_items": generated_items,
+                        "field_anchors": {
+                            "/title": [
+                                {
+                                    "source_field": "assembly_document",
+                                    "source_quote": title,
+                                }
+                            ]
+                        },
+                    },
+                },
+                on_delta,
+            )
+        if role == "paper_audit_findings_compiler":
+            findings = [
+                str(item).strip()
+                for item in business_payload.get("findings", [])
+                if str(item).strip()
+            ]
+            return self._emit(
+                {
+                    "status": "compiled",
+                    "contract_version": "1.0",
+                    "issues": [
+                        {
+                            "issue_type": "unresolved",
+                            "message": finding,
+                            "blocking": False,
+                            "source_anchors": [
+                                {
+                                    "source_field": "findings",
+                                    "source_quote": finding,
+                                }
+                            ],
+                        }
+                        for finding in findings
+                    ],
+                },
+                on_delta,
+            )
         return self._emit({"producer": role, "status": "success"}, on_delta)
+
+    @staticmethod
+    def _source_quote(value: Any) -> str:
+        return value if isinstance(value, str) else json.dumps(
+            value, ensure_ascii=False, sort_keys=True
+        )
 
     @staticmethod
     def _emit(result: dict[str, Any], on_delta: Callable[[str], None] | None) -> dict[str, Any]:

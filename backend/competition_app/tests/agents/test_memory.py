@@ -88,6 +88,16 @@ class CountingMemoryModel:
 
     async def complete_json(self, role, payload, on_delta=None):
         self.calls += 1
+        business_payload = payload.get("payload", payload)
+        if "current_user_request" in business_payload:
+            return {
+                "governance_notes": "没有发现相关记忆冲突。",
+                "memory_candidates": [],
+                "conflicts": [],
+                "requires_clarification": False,
+                "clarification_questions": [],
+                "resolution": "none",
+            }
         return {
             "summary": "已压缩长对话。",
             "preserved_facts": [],
@@ -98,12 +108,105 @@ class CountingMemoryModel:
 
 
 @pytest.mark.asyncio
-async def test_memory_agent_does_not_call_model_below_compression_threshold() -> None:
+async def test_memory_agent_governs_short_conversation_without_compressing() -> None:
     model = CountingMemoryModel()
     context = build_context()
     context["messages"] = [{"message_id": "M5", "role": "user", "content": "短对话"}]
 
-    with pytest.raises(ValueError, match="compression threshold"):
-        await MemoryAgent(model, compression_threshold_chars=100).run(context)
+    envelope = await MemoryAgent(model, compression_threshold_chars=100).run(context)
 
-    assert model.calls == 0
+    assert model.calls == 1
+    assert envelope.payload.context_summary is None
+    assert envelope.payload.governance is not None
+    assert envelope.payload.governance.requires_clarification is False
+
+
+class OmittedOptionalMemoryFieldsModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        business_payload = payload.get("payload", payload)
+        if "current_user_request" in business_payload:
+            return {
+                "governance_notes": "本轮没有可持久化信息或记忆冲突。",
+                "resolution": "none",
+            }
+        return {"summary": "本轮只有需要压缩的对话摘要。"}
+
+
+@pytest.mark.asyncio
+async def test_memory_agent_accepts_omitted_empty_list_fields() -> None:
+    context = build_context()
+    context["messages"] = [
+        {"message_id": "M6", "role": "user", "content": "请总结本轮对话内容。"}
+    ]
+
+    envelope = await MemoryAgent(
+        OmittedOptionalMemoryFieldsModel(), compression_threshold_chars=1
+    ).run(context)
+
+    assert envelope.payload.context_summary is not None
+    assert envelope.payload.context_summary.preserved_facts == []
+    assert envelope.payload.context_summary.unresolved_questions == []
+    assert envelope.payload.context_summary.temporary_constraints == []
+    assert envelope.payload.memory_candidates == []
+
+
+class ConflictingMemoryModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        business_payload = payload.get("payload", payload)
+        answer = str(business_payload.get("memory_conflict_answer") or "")
+        return {
+            "governance_notes": "新的稳定每日时长与已有学习时长上限不能同时成立。",
+            "memory_candidates": [],
+            "conflicts": [
+                {
+                    "memory_id": 7,
+                    "proposed_memory": "以后每天学习一小时。",
+                    "reason": "与每天最多二十分钟冲突。",
+                }
+            ],
+            "requires_clarification": not bool(answer),
+            "clarification_questions": (
+                ["请确认保留原记忆、仅本次采用，还是替换原记忆？"]
+                if not answer
+                else []
+            ),
+            "resolution": "replace_existing" if answer else "needs_clarification",
+        }
+
+
+@pytest.mark.asyncio
+async def test_memory_agent_interrupts_on_conflict_and_accepts_confirmed_resolution() -> None:
+    context = build_context()
+    context.update(
+        {
+            "user_request": "以后每天学习一小时。",
+            "messages": [
+                {
+                    "message_id": "M7",
+                    "role": "user",
+                    "content": "以后每天学习一小时。",
+                }
+            ],
+            "relevant_personalization_memories": [
+                {
+                    "id": 7,
+                    "category": "preference",
+                    "title": "每日时长",
+                    "content": "每天最多二十分钟。",
+                    "similarity": 0.93,
+                }
+            ],
+        }
+    )
+    agent = MemoryAgent(ConflictingMemoryModel(), compression_threshold_chars=100)
+
+    interrupted = await agent.run(context)
+
+    assert interrupted.payload.requires_clarification is True
+    assert interrupted.payload.interrupt_type == "memory_conflict"
+
+    context["memory_conflict_answer"] = "请用一小时替换原来的记忆"
+    resumed = await agent.run(context)
+
+    assert resumed.payload.requires_clarification is False
+    assert resumed.payload.governance.resolution == "replace_existing"

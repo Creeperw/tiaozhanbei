@@ -35,9 +35,16 @@ class ResourceDraft(ContractModel):
 class AuditResult(ContractModel):
     audit_result_id: str
     decision: Literal["pass", "revise", "reject", "needs_human_review"]
+    audit_report: str = ""
     findings: list[str] = Field(default_factory=list)
     structured_findings: list[RepairIssue] = Field(default_factory=list)
     verified_claim_ids: list[str] = Field(default_factory=list)
+    subject_digest: str | None = Field(default=None, min_length=64, max_length=64)
+    subject_type: Literal[
+        "long_term_plan", "short_term_plan", "resource"
+    ] | None = None
+    parent_subject_digest: str | None = Field(default=None, min_length=64, max_length=64)
+    plan_scope: Literal["long_term", "short_term", "daily_task"] | None = None
 
 
 class ResourceVersion(ContractModel):

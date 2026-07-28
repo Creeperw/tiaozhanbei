@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from contextvars import ContextVar
 from typing import Any, Callable
 
 import httpx
@@ -12,6 +13,19 @@ from competition_app.llm.prompts import COMMON_SYSTEM_PROMPT
 
 class ModelResponseError(RuntimeError):
     """Raised when a model request or structured response cannot be completed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        reason: str = "invalid_response",
+        failover_eligible: bool = False,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.reason = reason
+        self.failover_eligible = failover_eligible
 
 
 def _compact_output_contract(schema: Any) -> str:
@@ -399,10 +413,50 @@ class OpenAICompatibleChatModel(ChatModel):
         self._api_key = api_key
         self.timeout_seconds = timeout_seconds
         self.transport = transport
-        self.last_request_payload: dict[str, Any] | None = None
-        self.last_response_text: str | None = None
-        self.last_reasoning_text: str | None = None
-        self.last_error_details: dict[str, Any] | None = None
+        self._last_request_payload: ContextVar[dict[str, Any] | None] = ContextVar(
+            f"model_request_{id(self)}", default=None
+        )
+        self._last_response_text: ContextVar[str | None] = ContextVar(
+            f"model_response_{id(self)}", default=None
+        )
+        self._last_reasoning_text: ContextVar[str | None] = ContextVar(
+            f"model_reasoning_{id(self)}", default=None
+        )
+        self._last_error_details: ContextVar[dict[str, Any] | None] = ContextVar(
+            f"model_error_{id(self)}", default=None
+        )
+
+    @property
+    def last_request_payload(self) -> dict[str, Any] | None:
+        return self._last_request_payload.get()
+
+    @last_request_payload.setter
+    def last_request_payload(self, value: dict[str, Any] | None) -> None:
+        self._last_request_payload.set(value)
+
+    @property
+    def last_response_text(self) -> str | None:
+        return self._last_response_text.get()
+
+    @last_response_text.setter
+    def last_response_text(self, value: str | None) -> None:
+        self._last_response_text.set(value)
+
+    @property
+    def last_reasoning_text(self) -> str | None:
+        return self._last_reasoning_text.get()
+
+    @last_reasoning_text.setter
+    def last_reasoning_text(self, value: str | None) -> None:
+        self._last_reasoning_text.set(value)
+
+    @property
+    def last_error_details(self) -> dict[str, Any] | None:
+        return self._last_error_details.get()
+
+    @last_error_details.setter
+    def last_error_details(self, value: dict[str, Any] | None) -> None:
+        self._last_error_details.set(value)
 
     async def complete_json(
         self,
@@ -463,18 +517,29 @@ class OpenAICompatibleChatModel(ChatModel):
         self.last_reasoning_text = None
         self.last_error_details = None
         for attempt in range(2):
+            attempt_deltas: list[str] = []
             if attempt:
                 messages.append(
                     {"role": "user", "content": "The previous response was invalid JSON. Return valid JSON only."}
                 )
-            content = await self._request(messages, on_delta=on_delta)
+            content = await self._request(
+                messages,
+                on_delta=attempt_deltas.append if on_delta is not None else None,
+            )
             try:
                 parsed = _normalize_common_output(_parse_json_object(content), role)
             except (TypeError, json.JSONDecodeError):
                 continue
             if isinstance(parsed, dict):
+                if on_delta is not None:
+                    for delta in attempt_deltas:
+                        on_delta(delta)
                 return parsed
-        raise ModelResponseError("Model returned invalid structured output after one repair attempt")
+        raise ModelResponseError(
+            "Model returned invalid structured output after one repair attempt",
+            reason="invalid_json",
+            failover_eligible=True,
+        )
 
     async def _request(
         self,
@@ -512,7 +577,14 @@ class OpenAICompatibleChatModel(ChatModel):
                     )
                     response.raise_for_status()
                     body = response.json()
-                    content = str(body["choices"][0]["message"]["content"])
+                    raw_content = body["choices"][0]["message"].get("content")
+                    content = str(raw_content or "").strip()
+                    if not content:
+                        raise ModelResponseError(
+                            "Chat model returned empty content",
+                            reason="empty_response",
+                            failover_eligible=True,
+                        )
                     self.last_response_text = content
                     reasoning = body["choices"][0]["message"].get("reasoning_content")
                     self.last_reasoning_text = str(reasoning) if reasoning else None
@@ -552,6 +624,12 @@ class OpenAICompatibleChatModel(ChatModel):
                             on_delta(str(content))
                 self.last_response_text = "".join(parts)
                 self.last_reasoning_text = "".join(reasoning_parts) or None
+                if not self.last_response_text.strip():
+                    raise ModelResponseError(
+                        "Chat model stream returned no content",
+                        reason="empty_stream",
+                        failover_eligible=True,
+                    )
                 return self.last_response_text
         except httpx.HTTPStatusError as exc:
             status_code = exc.response.status_code
@@ -582,13 +660,42 @@ class OpenAICompatibleChatModel(ChatModel):
                     on_delta=on_delta,
                     _retry_count=_retry_count + 1,
                 )
+            reason = (
+                "quota_exhausted"
+                if status_code in {402, 429}
+                else "model_access_denied"
+                if status_code == 403
+                else "model_unavailable"
+                if status_code in {404, 410}
+                else "provider_incompatible"
+                if status_code in {400, 415, 422}
+                else "transient_provider_error"
+                if status_code in {408, 409, 425} or status_code >= 500
+                else "http_error"
+            )
             raise ModelResponseError(
-                f"Chat model request failed: HTTP {status_code}"
+                f"Chat model request failed: HTTP {status_code}",
+                status_code=status_code,
+                reason=reason,
+                failover_eligible=status_code in {
+                    400, 402, 403, 404, 408, 409, 410, 415, 422, 425, 429
+                } or status_code >= 500,
             ) from exc
+        except ModelResponseError:
+            raise
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
             self.last_error_details = {
                 "error_type": type(exc).__name__,
                 "status_code": None,
                 "retry_count": _retry_count,
             }
-            raise ModelResponseError(f"Chat model request failed: {type(exc).__name__}") from exc
+            reason = (
+                "transport_error"
+                if isinstance(exc, httpx.HTTPError)
+                else "invalid_response"
+            )
+            raise ModelResponseError(
+                f"Chat model request failed: {type(exc).__name__}",
+                reason=reason,
+                failover_eligible=True,
+            ) from exc

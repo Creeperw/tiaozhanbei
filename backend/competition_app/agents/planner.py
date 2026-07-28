@@ -50,7 +50,7 @@ AGENT_CAPABILITIES = {
     "learning_plan_service": "将规划建议转成带系统ID、版本和状态的正式计划与任务",
     "review_scheduler": "为需要立即生成复习资源的任务建立复习调度壳",
     "expert_agent": "根据正式学习任务和证据生成教学资源",
-    "audit_agent": "审核专家资源的事实、适配性和安全边界",
+    "audit_agent": "审核长期/短期规划或专家资源的事实、约束、适配性和安全边界",
 }
 
 KNOWLEDGE_EXPLANATION_AGENTS = (
@@ -80,6 +80,7 @@ class PlannerDecision(BaseModel):
     requires_learning_plan_output: bool = False
     requires_clarification: bool = False
     clarification_question: str | None = None
+    casual_response: str | None = None
 
 
 class PlannerAgent:
@@ -87,25 +88,6 @@ class PlannerAgent:
         self.chat_model = chat_model or StubChatModel()
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[PlannerDecision]:
-        if self._is_casual_conversation(str(context.get("user_request") or "")):
-            if context.get("terminal_trace"):
-                context["terminal_trace"].validation(
-                    "planner_agent", valid=True, detail="deterministic casual boundary"
-                )
-            return envelope(
-                context,
-                "planner_agent",
-                "planner_decision",
-                PlannerDecision(
-                    task_type="casual_conversation",
-                    plan_scope=None,
-                    selected_agents=[],
-                    routing_reason="纯问候、致谢、告别或助教能力询问，无需调用业务智能体。",
-                    risk_level="low",
-                    requires_audit=False,
-                    requires_learning_plan_output=False,
-                ),
-            )
         routing_skill = prompt_skill_registry.load("planner_agent", "route_request")
         skills = prompt_skill_registry.load_many(
             [
@@ -116,68 +98,73 @@ class PlannerAgent:
             ]
         )
         try:
+            model_context = build_model_context(
+                context,
+                target_agent="planner_agent",
+                prompt_skill=routing_skill,
+                payload={
+                    "user_request": context.get("user_request", ""),
+                    "plan_scope": context.get("plan_scope"),
+                    "plan_scope_hint": context.get("plan_scope_hint"),
+                    "continued_plan_scope": context.get("continued_plan_scope"),
+                    "available_minutes": context.get("available_minutes"),
+                    "existing_plan_state": {
+                        "has_long_term_plan": bool(
+                            context.get("current_long_term_plan", {}).get("content")
+                        ),
+                        "has_short_term_plan": bool(
+                            context.get("current_short_term_plan", {}).get("content")
+                        ),
+                    },
+                    "multi_scale_learning_state": context.get(
+                        "planner_multiscale_summary", {}
+                    ),
+                    "conversation_context": {
+                        "message_count": len(context.get("messages", [])),
+                        "total_characters": sum(
+                            len(str(item.get("content", "")))
+                            for item in context.get("messages", [])
+                        ),
+                        "requires_compression": bool(
+                            context.get("conversation_requires_compression", False)
+                        ),
+                        "recent_turns": [
+                            {
+                                "role": str(item.get("role", "")),
+                                "content": str(item.get("content", ""))[:1200],
+                            }
+                            for item in context.get("messages", [])[-8:]
+                            if isinstance(item, dict)
+                        ],
+                    },
+                    "agent_capability_catalog": AGENT_CAPABILITIES,
+                    "hard_routing_rules": [
+                        "只选择完成当前任务所必需的Agent，不要求所有Agent参与。",
+                        "纯问候、感谢、告别、询问助教能力等不包含学习任务的输入使用casual_conversation，不选择任何下游Agent。",
+                        "casual_conversation必须结合本轮话语和最近对话生成casual_response；问候与真实任务并存时必须处理真实任务。",
+                        "长期或短期规划必须选择audit_agent并在审核通过后才能由learning_plan_service发布；当日任务无需选择audit_agent。",
+                        "plan_scope 是明确指定，有值时必须原样保留并路由为 learning_plan。",
+                        "plan_scope_hint 只是规则提示，必须结合用户本轮语义和最近对话独立判断，可以改写。",
+                        "continued_plan_scope 表示当前话语是上一轮规划调研的补充或纠正；有值时必须延续 learning_plan 和该层级。",
+                        "制定或修改计划时必须输出 long_term、short_term、daily_task 或 unspecified 之一；纯学情查询可返回 null。",
+                        "是否需要追问由Planner结合本轮语义和最近对话判断；只有无法判断规划层级时才使用unspecified，并给出一条自然、可直接回答的clarification_question。",
+                        "用户同时要求学习计划和学习卡片、复习卡或可直接学习资源时，交付物属于资源生成链路；该链路仍会先生成并落地学习计划。",
+                        "用户要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用paper_generation；该链路只需要Knowledge、Expert、Audit，不强制生成学习计划或复习调度任务。",
+                        "用户要求讲解、解释、介绍某个知识点或询问是什么、为什么、原理、区别时使用knowledge_explanation；只运行Knowledge、Expert、Audit，不生成学习计划、学习任务或复习调度。",
+                        "只有生成教学资源时才选择expert_agent；选择expert_agent时必须选择audit_agent。",
+                        "Planner只负责编排，不生成学习规划内容、工具参数或系统ID。",
+                    ],
+                    "routing_skills": [skill.as_model_input() for skill in skills],
+                    "output_schema": PlannerModelOutput.model_json_schema(),
+                },
+                permission_note="只能输出任务类型、参与Agent、路由理由、编排风险、审核需求，以及纯闲聊时面向用户的自然回复；不得生成检索表达、学习规划、调用工具或写业务状态。",
+            )
+            model_context["_result_validator"] = lambda result: PlannerModelOutput.model_validate(
+                self._normalize_output(result, context)
+            ).model_dump(mode="json")
             raw_output = await self.chat_model.complete_json(
                     "planner_agent",
-                    build_model_context(
-                        context,
-                        target_agent="planner_agent",
-                        prompt_skill=routing_skill,
-                        payload={
-                            "user_request": context.get("user_request", ""),
-                            "plan_scope": context.get("plan_scope"),
-                            "plan_scope_hint": context.get("plan_scope_hint"),
-                            "continued_plan_scope": context.get("continued_plan_scope"),
-                            "available_minutes": context.get("available_minutes"),
-                            "existing_plan_state": {
-                                "has_long_term_plan": bool(
-                                    context.get("current_long_term_plan", {}).get("content")
-                                ),
-                                "has_short_term_plan": bool(
-                                    context.get("current_short_term_plan", {}).get("content")
-                                ),
-                            },
-                            "multi_scale_learning_state": context.get(
-                                "planner_multiscale_summary", {}
-                            ),
-                            "conversation_context": {
-                                "message_count": len(context.get("messages", [])),
-                                "total_characters": sum(
-                                    len(str(item.get("content", "")))
-                                    for item in context.get("messages", [])
-                                ),
-                                "requires_compression": bool(
-                                    context.get("conversation_requires_compression", False)
-                                ),
-                                "recent_turns": [
-                                    {
-                                        "role": str(item.get("role", "")),
-                                        "content": str(item.get("content", ""))[:1200],
-                                    }
-                                    for item in context.get("messages", [])[-8:]
-                                    if isinstance(item, dict)
-                                ],
-                            },
-                            "agent_capability_catalog": AGENT_CAPABILITIES,
-                            "hard_routing_rules": [
-                                "只选择完成当前任务所必需的Agent，不要求所有Agent参与。",
-                                "纯问候、感谢、告别、询问助教能力等不包含学习任务的输入使用casual_conversation，不选择任何下游Agent。",
-                                "仅制定学习或复习计划、且用户没有要求学习卡片或教学资源时，不需要review_scheduler、expert_agent、audit_agent。",
-                                "plan_scope 是明确指定，有值时必须原样保留并路由为 learning_plan。",
-                                "plan_scope_hint 只是规则提示，必须结合用户本轮语义和最近对话独立判断，可以改写。",
-                                "continued_plan_scope 表示当前话语是上一轮规划调研的补充或纠正；有值时必须延续 learning_plan 和该层级。",
-                                "制定或修改计划时必须输出 long_term、short_term、daily_task 或 unspecified 之一；纯学情查询可返回 null。",
-                                "是否需要追问由Planner结合本轮语义和最近对话判断；只有无法判断规划层级时才使用unspecified，并给出一条自然、可直接回答的clarification_question。",
-                                "用户同时要求学习计划和学习卡片、复习卡或可直接学习资源时，交付物属于资源生成链路；该链路仍会先生成并落地学习计划。",
-                                "用户要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用paper_generation；该链路只需要Knowledge、Expert、Audit，不强制生成学习计划或复习调度任务。",
-                                "用户要求讲解、解释、介绍某个知识点或询问是什么、为什么、原理、区别时使用knowledge_explanation；只运行Knowledge、Expert、Audit，不生成学习计划、学习任务或复习调度。",
-                                "只有生成教学资源时才选择expert_agent；选择expert_agent时必须选择audit_agent。",
-                                "Planner只负责编排，不生成学习规划内容、工具参数或系统ID。",
-                            ],
-                            "routing_skills": [skill.as_model_input() for skill in skills],
-                            "output_schema": PlannerModelOutput.model_json_schema(),
-                        },
-                        permission_note="只能输出任务类型、参与Agent、路由理由、编排风险和审核需求；不得生成检索表达、学习规划、调用工具或写业务状态。",
-                    ),
+                    model_context,
                 )
             model_output = PlannerModelOutput.model_validate(
                 self._normalize_output(raw_output, context)
@@ -201,6 +188,19 @@ class PlannerAgent:
                     )[:500],
                 }
             )
+        if (
+            model_output.task_type != "casual_conversation"
+            and "memory_agent" not in model_output.selected_agents
+        ):
+            model_output = model_output.model_copy(
+                update={
+                    "selected_agents": ["memory_agent", *model_output.selected_agents],
+                    "routing_reason": (
+                        model_output.routing_reason
+                        + " 系统强制先由记忆管理智能体检索相关学习记忆、提取候选并检查冲突。"
+                    )[:500],
+                }
+            )
         model_output = self.complete_required_selection(model_output)
         try:
             self.validate_selection(model_output)
@@ -210,11 +210,6 @@ class PlannerAgent:
                     "planner_agent", valid=False, detail=str(exc)
                 )
             raise ValueError("planner output validation failed") from exc
-        if (
-            "memory_agent" in model_output.selected_agents
-            and not context.get("conversation_requires_compression", False)
-        ):
-            raise ValueError("planner selected memory_agent below the compression threshold")
         if context.get("terminal_trace"):
             context["terminal_trace"].validation(
                 "planner_agent", valid=True, detail="PlannerModelOutput"
@@ -235,6 +230,7 @@ class PlannerAgent:
                 ),
                 requires_clarification=model_output.requires_clarification,
                 clarification_question=model_output.clarification_question,
+                casual_response=model_output.casual_response,
             ),
         )
 
@@ -267,10 +263,6 @@ class PlannerAgent:
         }
         task_type = str(raw.get("task_type", "")).strip()
         task_type = task_aliases.get(task_type, task_type)
-        casual_conversation = (
-            context.get("plan_scope") is None
-            and PlannerAgent._is_casual_conversation(request)
-        )
         status_only_request = any(
             phrase in request for phrase in ("学习状态", "状态如何", "学情", "掌握情况")
         ) and not any(
@@ -295,9 +287,7 @@ class PlannerAgent:
             if scoped_planning_request
             else model_plan_scope
         )
-        if casual_conversation:
-            task_type = "casual_conversation"
-        elif scoped_planning_request:
+        if scoped_planning_request:
             task_type = "learning_plan"
         if task_type not in {
             "casual_conversation", "knowledge_explanation", "learning_plan",
@@ -308,6 +298,24 @@ class PlannerAgent:
                 else "knowledge_explanation" if any(word in request for word in ("讲解", "解释", "介绍", "为什么"))
                 else "learning_plan" if any(word in request for word in ("学习计划", "复习计划", "制定计划"))
                 else "personalized_review_card"
+            )
+        clear_business_signals = (
+            explicit_planning_scope
+            or continued_planning_request
+            or context.get("plan_scope_hint") in valid_scopes
+            or any(
+                phrase in request
+                for phrase in (
+                    "制定计划", "学习计划", "学习规划", "复习计划", "长期规划", "短期计划",
+                    "今天任务", "今日任务", "安排任务", "安排一下学习", "组卷", "试卷",
+                    "模拟卷", "测试卷", "讲解", "解释", "介绍", "为什么", "学习卡",
+                    "复习卡", "学习资源", "直接学习",
+                )
+            )
+        )
+        if task_type == "casual_conversation" and clear_business_signals:
+            raise ValueError(
+                "planner classified an explicit business request as casual conversation"
             )
         if task_type == "casual_conversation":
             plan_scope = None
@@ -329,11 +337,14 @@ class PlannerAgent:
             plan_scope = None
         requires_clarification = bool(raw.get("requires_clarification"))
         clarification_question = str(raw.get("clarification_question") or "").strip() or None
+        casual_response = str(raw.get("casual_response") or "").strip() or None
         if task_type == "learning_plan" and plan_scope == "unspecified":
             requires_clarification = True
         else:
             requires_clarification = False
             clarification_question = None
+        if task_type != "casual_conversation":
+            casual_response = None
         known_agents = set(AGENT_DEPENDENCIES)
         selected = [
             item for item in (raw.get("selected_agents") or raw.get("agents") or [])
@@ -342,7 +353,15 @@ class PlannerAgent:
         if task_type == "casual_conversation":
             selected = []
         elif scoped_planning_request:
-            selected = ["diagnosis_agent", "learning_plan_service"]
+            selected = [
+                "diagnosis_agent",
+                *(
+                    ["audit_agent"]
+                    if plan_scope in {"long_term", "short_term", "unspecified"}
+                    else []
+                ),
+                "learning_plan_service",
+            ]
         if task_type == "paper_generation":
             selected = ["knowledge_base_agent", "expert_agent", "audit_agent"]
         elif task_type == "knowledge_explanation":
@@ -353,6 +372,13 @@ class PlannerAgent:
             # learning plan. Dependency completion below only adds true backend
             # requirements such as DefaultRouteResolver for Diagnosis.
             selected = selected or ["diagnosis_agent", "learning_plan_service"]
+            if plan_scope in {"long_term", "short_term", "unspecified"} and "audit_agent" not in selected:
+                selected.insert(
+                    selected.index("learning_plan_service")
+                    if "learning_plan_service" in selected
+                    else len(selected),
+                    "audit_agent",
+                )
         else:
             selected = selected or [
                 "knowledge_base_agent", "diagnosis_agent",
@@ -379,14 +405,20 @@ class PlannerAgent:
             }[plan_scope]
             routing_reason = (
                 f"用户要的是{scope_label}。Diagnosis 基于现有计划、学习状态和可用时间"
-                f"生成{scope_label}建议，LearningPlanService 将其落地为正式结果；"
-                "当前不生成学习资源，因此不选择 Expert、Audit 或 ReviewScheduler。"
+                f"生成{scope_label}建议，"
+                + (
+                    "Audit 先审核该规划，审核通过后由 LearningPlanService 落地；"
+                    if plan_scope in {"long_term", "short_term"}
+                    else "LearningPlanService 将其落地为正式结果；"
+                )
+                + "当前不生成教学资源，因此不选择 Expert 或 ReviewScheduler。"
             )
         return {
             "task_type": task_type,
             "plan_scope": plan_scope,
             "requires_clarification": requires_clarification,
             "clarification_question": clarification_question,
+            "casual_response": casual_response,
             "selected_agents": list(dict.fromkeys(selected)),
             "routing_reason": routing_reason,
             "risk_level": (
@@ -405,21 +437,6 @@ class PlannerAgent:
         }
 
     @staticmethod
-    def _is_casual_conversation(request: str) -> bool:
-        normalized = "".join(
-            character
-            for character in request.strip().lower()
-            if character not in "，。！？!?、,.；;：:~～ \t\r\n"
-        )
-        return normalized in {
-            "你好", "你好啊", "您好", "您好啊", "嗨", "hi", "hello",
-            "在吗", "早上好", "上午好", "下午好", "晚上好",
-            "谢谢", "谢谢你", "感谢", "感谢你", "多谢", "不客气",
-            "再见", "拜拜", "bye", "先这样", "下次再聊",
-            "你是谁", "你能做什么", "你可以做什么", "你会什么",
-        }
-
-    @staticmethod
     def validate_selection(output: PlannerModelOutput) -> None:
         dependencies = AGENT_DEPENDENCIES
         selected = set(output.selected_agents)
@@ -433,7 +450,20 @@ class PlannerAgent:
         for agent in output.selected_agents:
             if output.task_type in {"paper_generation", "knowledge_explanation"}:
                 continue
-            required = [name for name in dependencies[agent] if name not in selected]
+            if output.task_type == "learning_plan" and agent == "audit_agent":
+                required_dependencies = ["diagnosis_agent"]
+            elif output.task_type == "learning_plan" and agent == "learning_plan_service":
+                required_dependencies = [
+                    "diagnosis_agent",
+                    *(
+                        ["audit_agent"]
+                        if output.plan_scope in {"long_term", "short_term"}
+                        else []
+                    ),
+                ]
+            else:
+                required_dependencies = dependencies[agent]
+            required = [name for name in required_dependencies if name not in selected]
             if required:
                 missing[agent] = required
         if missing:
@@ -444,9 +474,15 @@ class PlannerAgent:
         if output.task_type == "learning_plan" and "learning_plan_service" not in selected:
             raise ValueError("learning_plan task requires learning_plan_service")
         if output.task_type == "learning_plan" and selected.intersection(
-            {"review_scheduler", "expert_agent", "audit_agent"}
+            {"review_scheduler", "expert_agent"}
         ):
             raise ValueError("learning_plan task selected unnecessary resource-generation agents")
+        if (
+            output.task_type == "learning_plan"
+            and output.plan_scope in {"long_term", "short_term"}
+            and "audit_agent" not in selected
+        ):
+            raise ValueError("long/short-term learning plan requires audit_agent")
         if output.task_type == "personalized_review_card" and not set(
             PERSONALIZED_REVIEW_CARD_AGENTS
         ).issubset(selected):
@@ -537,6 +573,35 @@ class PlannerAgent:
                     )[:500],
                 }
             )
+        if output.task_type == "learning_plan":
+            selected_set = set(output.selected_agents) | {
+                "default_route_resolver",
+                "diagnosis_agent",
+                "learning_plan_service",
+            }
+            if output.plan_scope in {"long_term", "short_term", "unspecified"}:
+                selected_set.add("audit_agent")
+            else:
+                selected_set.discard("audit_agent")
+            selected = [
+                agent
+                for agent in (
+                    "memory_agent",
+                    "knowledge_base_agent",
+                    "default_route_resolver",
+                    "diagnosis_agent",
+                    "audit_agent",
+                    "learning_plan_service",
+                )
+                if agent in selected_set
+            ]
+            return output.model_copy(
+                update={
+                    "selected_agents": selected,
+                    "requires_audit": output.plan_scope
+                    in {"long_term", "short_term", "unspecified"},
+                }
+            )
         dependencies = AGENT_DEPENDENCIES
         selected = list(output.selected_agents)
         changed = True
@@ -551,6 +616,13 @@ class PlannerAgent:
                         changed = True
         if output.task_type == "learning_plan" and "learning_plan_service" not in selected:
             selected.append("learning_plan_service")
+            changed = True
+        if (
+            output.task_type == "learning_plan"
+            and output.plan_scope in {"long_term", "short_term"}
+            and "audit_agent" not in selected
+        ):
+            selected.append("audit_agent")
             changed = True
         if changed:
             # learning_plan_service itself requires Diagnosis; close once more.
@@ -657,6 +729,66 @@ class PlannerAgent:
                 steps=steps,
             )
         if decision.task_type == "personalized_review_card":
+            if decision.requires_learning_plan_output:
+                memory_dependencies = ["memory"] if "memory_agent" in selected else []
+                steps = []
+                if "memory_agent" in selected:
+                    steps.append(ExecutionStep(step_id="memory", agent="memory_agent"))
+                steps.extend([
+                    ExecutionStep(
+                        step_id="knowledge", agent="knowledge_base_agent",
+                        depends_on=memory_dependencies,
+                    ),
+                    ExecutionStep(
+                        step_id="route_resolution", agent="default_route_resolver",
+                        depends_on=memory_dependencies,
+                    ),
+                    ExecutionStep(
+                        step_id="diagnosis_long", agent="diagnosis_agent",
+                        plan_scope="long_term",
+                        depends_on=[*memory_dependencies, "knowledge", "route_resolution"],
+                        timeout_seconds=300.0,
+                    ),
+                    ExecutionStep(
+                        step_id="audit_long", agent="audit_agent",
+                        action="review_learning_plan", plan_scope="long_term",
+                        audit_subject="long_term_plan", depends_on=["diagnosis_long"],
+                    ),
+                    ExecutionStep(
+                        step_id="diagnosis_short", agent="diagnosis_agent",
+                        plan_scope="short_term",
+                        depends_on=[*memory_dependencies, "knowledge", "route_resolution", "diagnosis_long", "audit_long"],
+                        timeout_seconds=300.0,
+                    ),
+                    ExecutionStep(
+                        step_id="audit_short", agent="audit_agent",
+                        action="review_learning_plan", plan_scope="short_term",
+                        audit_subject="short_term_plan", depends_on=["diagnosis_short", "audit_long"],
+                    ),
+                    ExecutionStep(
+                        step_id="learning_plan", agent="learning_plan_service",
+                        action="materialize_combined_plan",
+                        depends_on=["diagnosis_long", "audit_long", "diagnosis_short", "audit_short"],
+                    ),
+                    ExecutionStep(
+                        step_id="schedule", agent="review_scheduler",
+                        depends_on=["knowledge", "diagnosis_short"],
+                    ),
+                    ExecutionStep(
+                        step_id="expert", agent="expert_agent",
+                        depends_on=["knowledge", "diagnosis_short", "learning_plan", "schedule"],
+                    ),
+                    ExecutionStep(
+                        step_id="audit", agent="audit_agent",
+                        audit_subject="resource",
+                        depends_on=["knowledge", "diagnosis_short", "schedule", "expert", "audit_long", "audit_short"],
+                    ),
+                ])
+                return ExecutionPlan(
+                    plan_id="PLAN_DYNAMIC_COMBINED_REVIEW_CARD",
+                    task_type=decision.task_type,
+                    steps=steps,
+                )
             if not decision.requires_learning_plan_output:
                 selected.discard("learning_plan_service")
             step_id_by_agent = {
@@ -718,17 +850,40 @@ class PlannerAgent:
             "audit_agent": "audit",
         }
         ordered_agents = [name for name in dependencies if name in selected]
+        if decision.task_type == "learning_plan":
+            ordered_agents = [
+                name
+                for name in (
+                    "memory_agent",
+                    "knowledge_base_agent",
+                    "default_route_resolver",
+                    "diagnosis_agent",
+                    "audit_agent",
+                    "learning_plan_service",
+                )
+                if name in selected
+            ]
         steps = [
             ExecutionStep(
                 step_id=step_id_by_agent[agent],
                 agent=agent,
+                # Diagnosis may need one initial structured generation plus one
+                # validator-guided revision.  Each model request has its own
+                # bounded timeout, so the generic 60-second step deadline would
+                # otherwise cancel a valid failover/revision transaction early.
+                timeout_seconds=300.0 if agent == "diagnosis_agent" else 60.0,
                 depends_on=(
                     (
                         ["memory"]
                         if "memory_agent" in selected and agent != "memory_agent"
                         else []
                     )
-                    + [
+                    + (
+                        ["diagnosis"]
+                        if decision.task_type == "learning_plan" and agent == "audit_agent"
+                        else ["diagnosis", "audit"]
+                        if decision.task_type == "learning_plan" and agent == "learning_plan_service" and "audit_agent" in selected
+                        else [
                     step_id_by_agent[dependency]
                     for dependency in [
                         *dependencies[agent],
@@ -739,7 +894,8 @@ class PlannerAgent:
                         ),
                     ]
                     if dependency in selected
-                    ]
+                        ]
+                    )
                 ),
             )
             for agent in ordered_agents

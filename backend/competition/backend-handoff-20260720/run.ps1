@@ -18,6 +18,12 @@ param(
 $ErrorActionPreference = "Stop"
 
 $Script:Root       = (Resolve-Path "$PSScriptRoot").Path
+$Script:FrontendRoot = (Resolve-Path (Join-Path $Script:Root "../../../frontend/llm")).Path
+$Script:PythonExe  = if ($env:BACKEND_PYTHON) {
+    (Resolve-Path $env:BACKEND_PYTHON).Path
+} else {
+    (Get-Command python -ErrorAction Stop).Source
+}
 $Script:PidDir     = Join-Path $Script:Root ".run"
 $Script:LogDir     = Join-Path $Script:Root ".run/logs"
 $Script:BackendPid = Join-Path $Script:PidDir "backend.pid"
@@ -45,20 +51,20 @@ function Initialize-BackendDeps {
     $need = @("fastapi","uvicorn","sqlalchemy","langgraph","httpx","fastapi_mail","exa_py")
     $missing = @()
     foreach ($m in $need) {
-        $check = python -c "import $m" 2>&1
+        $check = & $Script:PythonExe -c "import $m" 2>&1
         if ($LASTEXITCODE -ne 0) { $missing += $m }
     }
     if ($missing.Count -eq 0) { return }
 
     # 哪个 python 在干活，先打出来，避免 pip 装到错的环境里。
-    $pyExe = (Get-Command python -ErrorAction Stop).Source
+    $pyExe = $Script:PythonExe
     Write-Host "==> 后端 Python 依赖缺失: $($missing -join ', ')"
     Write-Host "==> 准备安装到: $pyExe"
 
     # 中国大陆走清华镜像；若本机 pip config 已设过 index-url，把通用行 -i 抽掉
     # 留 pipconfig 默认的源，避开重复参数冲突。
     $globalIndex = ""
-    try { $globalIndex = (python -m pip config get global.index-url 2>&1 | Out-String).Trim() }
+    try { $globalIndex = (& $Script:PythonExe -m pip config get global.index-url 2>&1 | Out-String).Trim() }
     catch { $globalIndex = "" }
 
     if ($globalIndex -and $globalIndex -notmatch "(?i)error|warning") {
@@ -69,14 +75,14 @@ function Initialize-BackendDeps {
         $pipExtra = @("-i", "https://pypi.tuna.tsinghua.edu.cn/simple", "--timeout", "30", "--retries", "2")
     }
 
-    python -m pip install fastapi "uvicorn[standard]" sqlalchemy pymysql langgraph `
+    & $Script:PythonExe -m pip install fastapi "uvicorn[standard]" sqlalchemy pymysql langgraph `
         "python-jose[cryptography]" "passlib[argon2]" fastapi-mail exa-py `
         python-multipart email-validator python-docx numpy httpx @pipExtra | Out-Null
 
     # 再核验一次
     $still = @()
     foreach ($m in $need) {
-        $check = python -c "import $m" 2>&1
+        $check = & $Script:PythonExe -c "import $m" 2>&1
         if ($LASTEXITCODE -ne 0) { $still += $m }
     }
     if ($still.Count -gt 0) {
@@ -86,9 +92,9 @@ function Initialize-BackendDeps {
 }
 
 function Initialize-FrontendDeps {
-    if (Test-Path (Join-Path $Script:Root "frontend/llm/node_modules")) { return }
+    if (Test-Path (Join-Path $Script:FrontendRoot "node_modules")) { return }
     Write-Host "==> 前端 node_modules 缺失，正在 npm install ..."
-    Push-Location (Join-Path $Script:Root "frontend/llm")
+    Push-Location $Script:FrontendRoot
     try { npm install | Out-Null } finally { Pop-Location }
 }
 
@@ -98,19 +104,19 @@ function Write-Pid($pidVal, $path) {
 
 function Start-Backend {
     Write-Host "==> starting backend (uvicorn APP.backend.main:app)"
-    $proc = Start-Process -FilePath "python" `
-        -ArgumentList @("-m","uvicorn","APP.backend.main:app","--host","0.0.0.0","--port","8000") `
+    $proc = Start-Process -FilePath $Script:PythonExe `
+        -ArgumentList @("-m","uvicorn","APP.backend.main:app","--host","0.0.0.0","--port","7860") `
         -WorkingDirectory $Script:Root `
         -RedirectStandardOutput (Join-Path $Script:LogDir "backend.log") `
         -RedirectStandardError  (Join-Path $Script:LogDir "backend.err") `
-        -NoNewWindow -PassThru
+        -WindowStyle Hidden -PassThru
     Write-Pid $proc.Id $Script:BackendPid
     Write-Host "    pid=$($proc.Id), log=$Script:LogDir\backend.log"
 }
 
 function Start-Frontend {
     Write-Host "==> starting frontend (vite dev)"
-    Push-Location (Join-Path $Script:Root "frontend/llm")
+    Push-Location $Script:FrontendRoot
     try {
         # npm 在 Windows 上是 npm.cmd；先查 PATH（兼容 PS 5.1，避免使用 ?.Source）。
         $npm = $null
@@ -127,7 +133,7 @@ function Start-Frontend {
             -WorkingDirectory (Get-Location) `
             -RedirectStandardOutput (Join-Path $Script:LogDir "frontend.log") `
             -RedirectStandardError  (Join-Path $Script:LogDir "frontend.err") `
-            -NoNewWindow -PassThru
+            -WindowStyle Hidden -PassThru
     } finally {
         Pop-Location
     }
@@ -167,7 +173,7 @@ Start-Frontend
 
 @"
 启动完成：
-  - 后端 Swagger UI : http://127.0.0.1:8000/docs
+  - 后端 Swagger UI : http://127.0.0.1:7860/docs
   - 前端界面        : http://127.0.0.1:5173
   - 默认管理员账号  : admin / Admin@123456
 

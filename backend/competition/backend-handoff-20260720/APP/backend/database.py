@@ -142,6 +142,12 @@ class PersonalizationMemory(Base):
     title = Column(String(200), default="")
     content = Column(Text)
     source = Column(String(50), default="manual")
+    source_candidate_id = Column(
+        Integer,
+        nullable=True,
+        unique=True,
+        index=True,
+    )
     is_active = Column(Boolean, default=True, index=True)
     expires_at = Column(DateTime, nullable=True)
     superseded_by = Column(Integer, ForeignKey("personalization_memories.id"), nullable=True, index=True)
@@ -2247,6 +2253,19 @@ def run_recovery_action(
         connection = bind.connect().execution_options(isolation_level="AUTOCOMMIT")
         raw = connection.connection.driver_connection
         original_foreign_keys = raw.execute("PRAGMA foreign_keys").fetchone()[0]
+        original_foreign_keys = getattr(bind, "_runtime_schema_foreign_keys_baseline", None)
+        if original_foreign_keys is None:
+            original_foreign_keys = getattr(migration, "_foreign_keys_baseline", None)
+        if original_foreign_keys is None:
+            try:
+                with bind.begin() as baseline_connection:
+                    original_foreign_keys = baseline_connection.execute(
+                        text("PRAGMA foreign_keys")
+                    ).scalar_one()
+            except Exception:
+                original_foreign_keys = raw.execute(
+                    "PRAGMA foreign_keys"
+                ).fetchone()[0]
         if requires_foreign_keys_off:
             raw.execute("PRAGMA foreign_keys = OFF")
             if raw.execute("PRAGMA foreign_keys").fetchone()[0] != 0:
@@ -3117,6 +3136,54 @@ def _ensure_learning_governance_tables(bind):
     )
 
 
+def _ensure_personalization_memory_schema(bind):
+    inspector = inspect(bind)
+    if "personalization_memories" not in inspector.get_table_names():
+        return
+    columns = {
+        column["name"]
+        for column in inspector.get_columns("personalization_memories")
+    }
+    with bind.begin() as connection:
+        if "source_candidate_id" not in columns:
+            _add_column_if_missing_after_race(
+                connection,
+                "personalization_memories",
+                "source_candidate_id",
+                "ALTER TABLE personalization_memories "
+                "ADD COLUMN source_candidate_id INT NULL",
+            )
+        inspector = inspect(bind)
+        indexes = {
+            item["name"]
+            for item in inspector.get_indexes("personalization_memories")
+        }
+        unique_constraints = {
+            item["name"]
+            for item in inspector.get_unique_constraints("personalization_memories")
+        }
+        if "uq_personalization_memories_source_candidate" not in (
+            indexes | unique_constraints
+        ):
+            connection.execute(text(
+                "CREATE UNIQUE INDEX uq_personalization_memories_source_candidate "
+                "ON personalization_memories(source_candidate_id)"
+            ))
+
+
+def _capture_sqlite_foreign_keys_baseline(bind):
+    """Remember the caller's SQLite FK policy across pooled migration connections."""
+    connection = bind.connect().execution_options(isolation_level="AUTOCOMMIT")
+    try:
+        raw = connection.connection.driver_connection
+        baseline = raw.execute(
+            "PRAGMA foreign_keys"
+        ).fetchone()[0]
+        bind._runtime_schema_foreign_keys_baseline = baseline
+    finally:
+        connection.close()
+
+
 def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
     """Apply small additive schema updates that create_all will not add to existing tables."""
     if bind.dialect.name == "mysql":
@@ -3129,6 +3196,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
             # metadata bootstrap before additive repair can inspect FK targets.
             if not inspector.has_table("users"):
                 Base.metadata.create_all(bind=bind)
+                _ensure_personalization_memory_schema(bind)
                 _ensure_case_training_tables(bind)
                 _ensure_learning_governance_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
@@ -3140,6 +3208,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
                 # match the full SQLAlchemy metadata. Keep subsequent starts
                 # additive and avoid replaying the legacy phase-three repair.
                 Base.metadata.create_all(bind=bind)
+                _ensure_personalization_memory_schema(bind)
                 _ensure_case_training_tables(bind)
                 _ensure_learning_governance_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
@@ -3150,6 +3219,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
             inventory = _preflight_mysql_phase_three_schema(inspector)
             _repair_mysql_phase_three_schema(bind, inventory)
             if hasattr(bind, "connect"):
+                _ensure_personalization_memory_schema(bind)
                 _ensure_case_training_tables(bind)
                 _ensure_learning_governance_tables(bind)
                 _ensure_core_learning_contract_tables(bind)
@@ -3165,9 +3235,14 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
         return
     if bind.dialect.name != "sqlite":
         return
+    _capture_sqlite_foreign_keys_baseline(bind)
     RuntimeSchemaMigration.__table__.create(bind=bind, checkfirst=True)
     with bind.begin() as connection:
         existing_migration = _load_authoritative_learning_migration(connection)
+    if existing_migration is not None:
+        existing_migration._foreign_keys_baseline = getattr(
+            bind, "_runtime_schema_foreign_keys_baseline", 0
+        )
     if existing_migration is not None:
         if existing_migration.status == "recovery_failed":
             raise RuntimeError("authoritative_learning_schema_recovery_failed")
@@ -3203,6 +3278,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
             _ensure_core_learning_contract_tables(bind)
             _ensure_daily_task_contract_tables(bind)
             _ensure_formal_content_tables(bind)
+            _ensure_personalization_memory_schema(bind)
             return
         if existing_migration.status in {"prepared", "staged", "switching", "switched"}:
             recover_authoritative_learning_schema_for_sqlite(bind, existing_migration, checkpoint)
@@ -3271,6 +3347,19 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
         if "superseded_by" not in memory_columns:
             conn.execute(text("ALTER TABLE personalization_memories ADD COLUMN superseded_by INT NULL"))
             conn.execute(text("CREATE INDEX idx_personalization_memories_superseded_by ON personalization_memories(superseded_by)"))
+        if "source_candidate_id" not in memory_columns:
+            _add_column_if_missing_after_race(
+                conn,
+                "personalization_memories",
+                "source_candidate_id",
+                "ALTER TABLE personalization_memories ADD COLUMN source_candidate_id INT NULL",
+            )
+        if bind.dialect.name == "sqlite":
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "uq_personalization_memories_source_candidate "
+                "ON personalization_memories(source_candidate_id)"
+            ))
         if "superseded_at" not in memory_columns:
             conn.execute(text("ALTER TABLE personalization_memories ADD COLUMN superseded_at DATETIME NULL"))
         if "conflict_key" not in memory_columns:
@@ -3333,6 +3422,7 @@ def ensure_runtime_schema_for(bind, checkpoint=lambda stage: None):
     _ensure_core_learning_contract_tables(bind)
     _ensure_daily_task_contract_tables(bind)
     _ensure_formal_content_tables(bind)
+    _ensure_personalization_memory_schema(bind)
 
 
 def ensure_runtime_schema():

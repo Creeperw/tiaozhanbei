@@ -313,6 +313,12 @@ class Orchestrator:
         )
         step_context = dict(root_context)
         step_context["step_id"] = step.step_id
+        if step.plan_scope is not None:
+            step_context["plan_scope"] = step.plan_scope
+            if step.agent == "diagnosis_agent":
+                step_context["task_type"] = "learning_plan"
+        if step.audit_subject is not None:
+            step_context["audit_subject"] = step.audit_subject
         declared_dependency_outputs = {
             dependency: outputs[dependency] for dependency in step.depends_on
         }
@@ -320,6 +326,33 @@ class Orchestrator:
             declared_dependency_outputs,
             learner_id=str(root_context.get("learner_id") or ""),
         )
+        diagnosis_key = (
+            "diagnosis_long"
+            if step.plan_scope == "long_term"
+            else "diagnosis_short"
+            if step.plan_scope == "short_term"
+            else "diagnosis_short"
+            if "diagnosis_short" in dependency_outputs
+            else "diagnosis_long"
+            if "diagnosis_long" in dependency_outputs
+            else None
+        )
+        if diagnosis_key is not None and diagnosis_key in dependency_outputs:
+            dependency_outputs.setdefault("diagnosis", dependency_outputs[diagnosis_key])
+        if step.plan_scope == "short_term" and "diagnosis_long" in dependency_outputs:
+            long_diagnosis = dependency_outputs["diagnosis_long"].payload
+            long_proposal = getattr(long_diagnosis, "learning_plan_proposal", None)
+            if long_proposal is not None:
+                long_payload = long_proposal.model_dump(mode="json")
+                step_context["current_long_term_plan"] = {
+                    **long_payload,
+                    "plan_id": "PENDING_AUDITED_LONG_PLAN",
+                    "status": "active",
+                }
+        if step.agent == "learning_plan_service":
+            dependency_outputs.setdefault(
+                "audit", dependency_outputs.get("audit_short")
+            )
         step_context["dependency_outputs"] = dependency_outputs
         step_context["tool_registry"] = self.tool_registry
         step_context["trace_recorder"] = trace

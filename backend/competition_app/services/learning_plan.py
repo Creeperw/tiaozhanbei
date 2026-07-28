@@ -1089,6 +1089,7 @@ class LearningPlanService:
         validate_medical_education_safety(proposal)
         timestamp = now or datetime.now(timezone.utc)
         long_plan = LongTermPlan.model_validate(current_long_term_plan)
+        self._validate_short_term_parent_duration(long_plan, proposal)
         previous = self.plan_repository.get_current(learner_id)
         previous_short = previous.short_term_plan if previous is not None else None
         route = proposal.planning_route
@@ -1130,6 +1131,41 @@ class LearningPlanService:
             generated_scope="short_term",
             invalidated_layers=["daily_task"],
         )
+
+    @classmethod
+    def _validate_short_term_parent_duration(
+        cls,
+        long_plan: LongTermPlan,
+        proposal: LearningPlanProposal,
+    ) -> None:
+        stages = list(long_plan.stages or [])
+        if not stages:
+            raise ValueError("short-term plan requires a long-term parent stage")
+        selected_stage_id = cls._field(proposal.textbook_selection, "stage_id")
+        selected_stage = next(
+            (
+                stage
+                for stage in stages
+                if selected_stage_id
+                and str(cls._field(stage, "stage_id") or "") == str(selected_stage_id)
+            ),
+            stages[0],
+        )
+        parent_duration = cls._field(selected_stage, "duration_days")
+        short_duration = cls._field(
+            proposal.short_term_learning_package,
+            "duration_days",
+        )
+        if (
+            isinstance(parent_duration, int)
+            and parent_duration > 0
+            and isinstance(short_duration, int)
+            and short_duration > parent_duration
+        ):
+            raise ValueError(
+                "short-term plan duration cannot exceed its long-term parent stage: "
+                f"short={short_duration}, parent={parent_duration}"
+            )
 
     def is_current_parent(
         self,
