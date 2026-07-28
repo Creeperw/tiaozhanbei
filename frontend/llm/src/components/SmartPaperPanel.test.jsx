@@ -45,7 +45,6 @@ describe('SmartPaperPanel', () => {
     expect(screen.getByLabelText('专项练主题')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '试卷存档' })).toHaveClass('smart-paper__archive-grid');
   });
-
   it('returns a task-bound paper to the current smart-paper archive', async () => {
     render(<SmartPaperPanel taskItemId="TASK_ITEM_1" />);
 

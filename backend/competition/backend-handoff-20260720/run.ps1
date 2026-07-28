@@ -3,7 +3,8 @@
 # 与 run.sh 等价行为：
 #   - 不需要 MySQL / vLLM：默认 SQLite + DeepSeek API
 #   - 自动补齐 Python/Node 依赖
-#   - 前后端写 PID 到 .run/，下次启动时清理
+#   - 前端构建后由 FastAPI 在 7860 统一提供
+#   - 后端 PID 写入 .run/，下次启动时清理
 #
 # 用法（在 PowerShell 中）：
 #   .\run.ps1         # 启动
@@ -28,13 +29,12 @@ $Script:PythonExe  = if ($env:BACKEND_PYTHON) {
 $Script:PidDir     = Join-Path $Script:Root ".run"
 $Script:LogDir     = Join-Path $Script:Root ".run/logs"
 $Script:BackendPid = Join-Path $Script:PidDir "backend.pid"
-$Script:FrontPid   = Join-Path $Script:PidDir "frontend.pid"
 
 New-Item -ItemType Directory -Force -Path $Script:PidDir | Out-Null
 New-Item -ItemType Directory -Force -Path $Script:LogDir | Out-Null
 
 function Stop-Existing {
-    foreach ($pf in @($Script:BackendPid, $Script:FrontPid)) {
+    foreach ($pf in @($Script:BackendPid)) {
         $name = [System.IO.Path]::GetFileNameWithoutExtension($pf)
         if (Test-Path $pf) {
             $pid_v = (Get-Content $pf).Trim()
@@ -118,8 +118,8 @@ function Start-Backend {
     Write-Host "    pid=$($proc.Id), log=$Script:LogDir\backend.log"
 }
 
-function Start-Frontend {
-    Write-Host "==> starting frontend (vite dev)"
+function Build-Frontend {
+    Write-Host "==> building frontend for integrated port 7860"
     Push-Location $Script:FrontendRoot
     try {
         # npm 在 Windows 上是 npm.cmd；先查 PATH（兼容 PS 5.1，避免使用 ?.Source）。
@@ -132,22 +132,11 @@ function Start-Frontend {
         }
         if (-not $npm) { throw "npm 未安装或不在 PATH；先装 Node.js LTS" }
 
-        $node = (Get-Command "node" -ErrorAction Stop).Source
-        $vite = Join-Path $Script:FrontendRoot "node_modules/vite/bin/vite.js"
-        if (-not (Test-Path $vite)) { throw "Vite entry not found: $vite" }
-
-        # Manage the actual listener PID and never drift to 5174+.
-        $proc = Start-Process -FilePath $node `
-            -ArgumentList @($vite,"--host","0.0.0.0","--port","5173","--strictPort") `
-            -WorkingDirectory (Get-Location) `
-            -RedirectStandardOutput (Join-Path $Script:LogDir "frontend.log") `
-            -RedirectStandardError  (Join-Path $Script:LogDir "frontend.err") `
-            -WindowStyle Hidden -PassThru
+        & $npm run build
+        if ($LASTEXITCODE -ne 0) { throw "frontend build failed (exit=$LASTEXITCODE)" }
     } finally {
         Pop-Location
     }
-    Write-Pid $proc.Id $Script:FrontPid
-    Write-Host "    pid=$($proc.Id), log=$Script:LogDir\frontend.log"
 }
 
 # ---------- 主流程 ----------
@@ -176,25 +165,24 @@ switch ($Cmd) {
 Set-Location $Script:Root
 Initialize-BackendDeps
 Initialize-FrontendDeps
+Build-Frontend
 
 Start-Backend
-Start-Frontend
 
 @"
 启动完成：
+  - 前端界面        : http://127.0.0.1:7860
   - 后端 Swagger UI : http://127.0.0.1:7860/docs
-  - 前端界面        : http://127.0.0.1:5173
   - 默认管理员账号  : admin / Admin@123456
 
 查看日志：
   Get-Content -Path "$Script:LogDir\backend.log" -Wait
-  Get-Content -Path "$Script:LogDir\frontend.log" -Wait
 
 停止服务：
   .\run.ps1 stop
 "@
 
-Write-Host "`n按 Ctrl+C 终止前台日志；关闭窗口也会结束本会话（后端/前端仍在后台）。"
+Write-Host "`n按 Ctrl+C 终止前台日志；关闭窗口也会结束本会话（服务仍在后台）。"
 Write-Host "如需彻底清理，请运行 .\run.ps1 stop`n"
 
 # 保持前台会话，便于观察 PID/日志路径；用户 Ctrl+C 后进程仍在后台。

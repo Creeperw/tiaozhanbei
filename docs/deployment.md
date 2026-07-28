@@ -138,14 +138,14 @@ curl --fail http://127.0.0.1:7860/openapi.json >/dev/null
 - `GET /api/v1/platform/openapi.json`：兼容业务接口契约；
 - `GET /docs`：主 FastAPI Swagger 文档。
 
-前后端分离开发时，后端仍运行在 `7860`，另一个终端执行：
+本地验收也使用统一端口。启动脚本会先构建前端，再由 FastAPI 提供页面和接口：
 
-```bash
-cd frontend/llm
-npm run dev
+```powershell
+$env:BACKEND_PYTHON = "D:\anaconda3\python.exe" # 按本机环境调整
+powershell -ExecutionPolicy Bypass -File backend/competition/backend-handoff-20260720/run.ps1 start
 ```
 
-访问 `http://127.0.0.1:5173`。Vite 已代理 `/api/v1`、`/api` 和 `/health`，前端业务代码只使用相对 URL。
+访问 `http://127.0.0.1:7860`。本地验收不再启动独立 Vite 端口。
 
 ## 6. 生产进程建议
 

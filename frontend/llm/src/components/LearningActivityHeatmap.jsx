@@ -26,11 +26,11 @@ const activityScore = (item) => {
 };
 
 const activityTone = (score) => {
-  if (score >= 0.76) return 'bg-emerald-700';
-  if (score >= 0.52) return 'bg-emerald-500';
-  if (score >= 0.28) return 'bg-emerald-300';
-  if (score > 0) return 'bg-emerald-100';
-  return 'bg-slate-100';
+  if (score >= 0.76) return 'bg-[#A5D6A7]';
+  if (score >= 0.52) return 'bg-[#C8E6C9]';
+  if (score >= 0.28) return 'bg-[#D0F0E0]';
+  if (score > 0) return 'bg-[#E8F5E9]';
+  return 'bg-[#F0F9F4]';
 };
 
 const weekStart = (date) => {
@@ -93,7 +93,7 @@ export default function LearningActivityHeatmap({ series = [] }) {
       </div>
       <div className="mt-3 flex items-center justify-end gap-2 text-xs text-slate-400">
         <span>低</span>
-        {['bg-slate-100', 'bg-emerald-100', 'bg-emerald-300', 'bg-emerald-500', 'bg-emerald-700'].map((tone) => <i key={tone} className={`h-3.5 w-3.5 rounded-[3px] ${tone}`} />)}
+        {['bg-[#F0F9F4]', 'bg-[#E8F5E9]', 'bg-[#D0F0E0]', 'bg-[#C8E6C9]', 'bg-[#A5D6A7]'].map((tone) => <i key={tone} className={`h-3.5 w-3.5 rounded-[3px] ${tone}`} />)}
         <span>高</span>
       </div>
     </section>

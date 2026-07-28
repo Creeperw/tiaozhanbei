@@ -109,23 +109,16 @@ python -m competition_app.cli.app serve
 9. 执行协调展示读取 `/api/v1/executions/{execution_id}/coordination`，只显示通信、修复的安全摘要，
    不展示或缓存原始交接正文。
 
-正式前端已使用主后端 HttpOnly Cookie，不在 localStorage 保存认证令牌。Vite 将
-`/api/v1/*`、迁移期 `/api/*` 和 `/health` 全部代理到同一个 `7860` 集成后端；其中
-`/api/*` 去掉 `/api` 前缀后交给主进程内挂载的兼容业务路由：
+正式前端已使用主后端 HttpOnly Cookie，不在 localStorage 保存认证令牌。前端构建产物与
+`/api/v1/*`、迁移期 `/api/*` 和 `/health` 全部由同一个 `7860` 集成后端提供；其中
+`/api/*` 交给主进程内挂载的兼容业务路由：
 
 ```powershell
-$env:BACKEND_HANDOFF_ENABLED = "true"
-cd backend
-python -m competition_app.cli.app serve
-
-# 另开一个 PowerShell
-cd frontend/llm
-npm install
-npm run dev
+$env:BACKEND_PYTHON = "D:\anaconda3\python.exe" # 按本机环境调整
+powershell -ExecutionPolicy Bypass -File backend/competition/backend-handoff-20260720/run.ps1 start
 ```
 
-打开 `http://127.0.0.1:5173`。登录、会话、首页、LangGraph 对话和交接业务全部由
-`http://127.0.0.1:7860` 提供。
+打开 `http://127.0.0.1:7860`。登录、会话、首页、LangGraph 对话和交接业务均由该端口提供。
 
 未登录时前端展示“承时珍医脉，启智慧学习”登录页，并在右侧直接提供账号表单；
 用户可在同一卡片内切换登录与注册，不再经过额外弹层。登录和注册仍分别调用

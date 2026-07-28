@@ -173,10 +173,10 @@ export default function ReviewDashboardPanel() {
         <h3 className="font-black text-slate-900">最近复习与掌握变化</h3>
         <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
           {(dashboard.mastery_history || []).map((item) => (
-            <div key={item.history_id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 px-4 py-3 text-sm">
-              <span className="font-medium text-slate-800">{readableKnowledgePointName(item.kp_name)}</span>
-              <span className="text-slate-600">掌握度 {Number(item.mastery_score || 0).toFixed(1)}%</span>
-              <time className="text-xs text-slate-400">{formatTime(item.calculated_at)}</time>
+            <div key={item.history_id} className="grid grid-cols-[minmax(0,1fr)_140px_140px] items-center gap-4 rounded-xl border border-slate-100 px-4 py-3 text-sm">
+              <span className="truncate font-medium text-slate-800">{readableKnowledgePointName(item.kp_name)}</span>
+              <span className="whitespace-nowrap text-slate-600">掌握度 {Number(item.mastery_score || 0).toFixed(1)}%</span>
+              <time className="whitespace-nowrap text-xs text-slate-400">{formatTime(item.calculated_at)}</time>
             </div>
           ))}
           {!loading && (dashboard.mastery_history || []).length === 0 && <p className="text-sm text-slate-500">完成首次有效作答后，这里会展示掌握度变化历史。</p>}
