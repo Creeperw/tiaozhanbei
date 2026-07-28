@@ -444,7 +444,7 @@ function LearningRoute({ onNavigate }) {
   );
 }
 
-export default function LearningPathPage({ currentUser, onNavigate }) {
+export default function LearningPathPage({ onNavigate }) {
   const [payload, setPayload] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -530,16 +530,8 @@ export default function LearningPathPage({ currentUser, onNavigate }) {
     },
   });
 
-  const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
-
   return (
     <div className="learning-path-page" aria-busy={loading}>
-      <header className="learning-path-page__intro">
-        <div>
-          <h1>{displayName}，按计划稳步推进</h1>
-        </div>
-      </header>
-
       {error && <div className="learning-path-page__notice" role="alert">{error}</div>}
 
       <section className="learning-path-page__learning-area" aria-label="学习路线与学习进度">

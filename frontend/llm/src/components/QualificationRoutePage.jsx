@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight,
   BookOpenText,
   CalendarDays,
   CalendarCheck2,
@@ -264,6 +263,9 @@ function HomeLearningRoute({
   selectedTarget,
 }) {
   const [routeView, setRouteView] = useState('orbit');
+  const [renderedRouteView, setRenderedRouteView] = useState('orbit');
+  const [routeTransitionPhase, setRouteTransitionPhase] = useState('idle');
+  const routeTransitionTimerRef = useRef(null);
   const [routeState, setRouteState] = useState({
     loading: true,
     error: '',
@@ -294,6 +296,8 @@ function HomeLearningRoute({
       ? loadClassicLearningRoute(selectedTarget.textbook_route_id)
       : loadPlannedLearningPath();
     setRouteView('orbit');
+    setRenderedRouteView('orbit');
+    setRouteTransitionPhase('idle');
     setSelectedNode(null);
     setRouteState((current) => ({ ...current, loading: true, error: '' }));
     routeLoader
@@ -337,11 +341,38 @@ function HomeLearningRoute({
     return () => { cancelled = true; };
   }, [selectedTarget?.textbook_route_id]);
 
+  useEffect(() => () => window.clearTimeout(routeTransitionTimerRef.current), []);
+
   const edges = routeState.nodes.slice(1).map((node, index) => ({
     from: routeState.nodes[index].membership_id,
     to: node.membership_id,
     kind: 'spine',
   }));
+
+  const changeRouteView = (nextView) => {
+    if (nextView === routeView) return;
+    window.clearTimeout(routeTransitionTimerRef.current);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion && typeof document.startViewTransition === 'function') {
+      document.startViewTransition(() => {
+        setRouteView(nextView);
+        setRenderedRouteView(nextView);
+      });
+      return;
+    }
+    setRouteView(nextView);
+    if (reduceMotion) {
+      setRenderedRouteView(nextView);
+      setRouteTransitionPhase('idle');
+      return;
+    }
+    setRouteTransitionPhase('exiting');
+    routeTransitionTimerRef.current = window.setTimeout(() => {
+      setRenderedRouteView(nextView);
+      setRouteTransitionPhase('entering');
+      window.requestAnimationFrame(() => setRouteTransitionPhase('idle'));
+    }, 85);
+  };
 
   const openNode = async (node) => {
     if (node?.node_type === 'stage') {
@@ -375,7 +406,7 @@ function HomeLearningRoute({
   };
 
   const showPlanningDetails = async () => {
-    setRouteView('details');
+    changeRouteView('details');
     if (planningDetails.loaded || planningDetails.loading) return;
     setPlanningDetails((current) => ({ ...current, loading: true, error: '' }));
     try {
@@ -403,7 +434,7 @@ function HomeLearningRoute({
   };
 
   const returnToPath = () => {
-    setRouteView('orbit');
+    changeRouteView('orbit');
     setSelectedNode(null);
   };
 
@@ -424,11 +455,33 @@ function HomeLearningRoute({
             {routeView !== 'details' && <button type="button" onClick={showPlanningDetails}>了解详情</button>}
           </div>
         </div>
-        {routeView === 'orbit' && <button type="button" className="home-portal__route-full-link" onClick={() => setRouteView('cards')}>查看阶段卡片 <ArrowRight aria-hidden="true" size={14} /></button>}
-        {routeView === 'cards' && <button type="button" onClick={returnToPath}>返回学习路径</button>}
-        {routeView === 'details' && <button type="button" onClick={returnToPath}>返回学习路径</button>}
+        <div
+          className="home-portal__route-switch"
+          data-view={routeView === 'cards' ? 'cards' : 'orbit'}
+          role="group"
+          aria-label="学习路径视图"
+        >
+          <span className="home-portal__route-switch-indicator" aria-hidden="true" />
+          <button
+            type="button"
+            className={routeView !== 'cards' ? 'is-active' : ''}
+            aria-pressed={routeView !== 'cards'}
+            onClick={returnToPath}
+          >
+            返回学习路径
+          </button>
+          <button
+            type="button"
+            className={routeView === 'cards' ? 'is-active' : ''}
+            aria-pressed={routeView === 'cards'}
+            onClick={() => changeRouteView('cards')}
+          >
+            查看阶段卡片
+          </button>
+        </div>
       </header>
-      {routeView === 'orbit' && (
+      <div className="home-portal__route-view-content" data-view={renderedRouteView} data-phase={routeTransitionPhase}>
+      {renderedRouteView === 'orbit' && (
         <div className="home-portal__route-orbit-layout" onWheelCapture={handleOrbitWheel}>
           {routeState.loading && <div className="home-portal__route-state">正在读取学习路径…</div>}
           {!routeState.loading && routeState.error && <div className="home-portal__route-state">{routeState.error}</div>}
@@ -448,15 +501,16 @@ function HomeLearningRoute({
           )}
         </div>
       )}
-      {!routeState.loading && !routeState.error && routeState.stages.length > 0 && routeView === 'cards' && (
+      {!routeState.loading && !routeState.error && routeState.stages.length > 0 && renderedRouteView === 'cards' && (
         <LearningStageLanding
           compact
+          compactTitle="长期学习规划"
           stages={routeState.stages}
-          onStageSelect={() => setRouteView('orbit')}
+          onStageSelect={() => changeRouteView('orbit')}
           onCreatePlan={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}
         />
       )}
-      {routeView === 'details' && (
+      {renderedRouteView === 'details' && (
         <div className="home-portal__route-details" role="region" aria-label="长期规划和短期规划说明" tabIndex="0">
           {planningDetails.loading && <div className="home-portal__route-details-state" role="status">正在读取规划说明…</div>}
           {!planningDetails.loading && planningDetails.error && <div className="home-portal__route-details-state" role="alert">{planningDetails.error}</div>}
@@ -474,6 +528,7 @@ function HomeLearningRoute({
           )}
         </div>
       )}
+      </div>
     </section>
   );
 }
@@ -681,11 +736,11 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     <div className="home-portal" aria-busy={loading}>
       <section className="home-portal__hero" aria-labelledby="home-portal-title">
         <div className="home-portal__hero-actions">
-          <button type="button" className="home-portal__checkin" onClick={() => onNavigate?.({ page: 'learning-path-tasks', params: {} })}>
-            <BookOpenText aria-hidden="true" size={18} />学习与复习任务
-          </button>
           <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
             <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
+          </button>
+          <button type="button" className="home-portal__checkin" onClick={() => onNavigate?.({ page: 'learning-path-tasks', params: {} })}>
+            <BookOpenText aria-hidden="true" size={18} />学习与复习任务
           </button>
         </div>
         <HeroTypewriter

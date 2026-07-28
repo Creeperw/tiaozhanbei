@@ -159,9 +159,14 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByRole('button', { name: /添加新任务/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /查看阶段卡片/ }));
-    expect(screen.getByRole('button', { name: '返回学习路径' })).toBeInTheDocument();
+    const pathViewButton = screen.getByRole('button', { name: '返回学习路径' });
+    const cardViewButton = screen.getByRole('button', { name: '查看阶段卡片' });
+    expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
+    expect(cardViewButton).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(cardViewButton);
+    expect(cardViewButton).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
+    expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
   });
 

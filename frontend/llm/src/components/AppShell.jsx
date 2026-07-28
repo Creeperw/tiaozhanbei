@@ -429,7 +429,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
   const avatarUrl = accountProfile?.avatar_url || null;
   const avatarInitial = displayName.trim().slice(0, 1).toUpperCase() || '用';
   const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice', 'training-workshop'].includes(shell.currentPage);
-  const shouldShowPageHeader = shell.currentPage !== 'dashboard'
+  const shouldShowPageHeader = !['dashboard', 'learning-path'].includes(shell.currentPage)
     && shell.shellMode !== 'workspace'
     && !['personalization', 'settings'].includes(shell.currentPage);
   const scrollRegion = ['assistant', 'knowledge'].includes(shell.currentPage) ? 'contained' : 'page';
@@ -579,7 +579,11 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
         >
           {shouldShowPageHeader && (
             <header className="app-shell__page-header">
-              {shouldShowHomeButton && <HomeButton onClick={() => onNavigate({ page: shell.homeAction.key, params: {} })} label={shell.homeAction.label} />}
+              {shouldShowHomeButton && <HomeButton
+                onClick={() => onNavigate({ page: shell.homeAction.key, params: {} })}
+                label={shell.homeAction.label}
+                className={shell.currentPage === 'learning-path-tasks' ? 'app-shell__learning-path-back' : ''}
+              />}
               <div>
                 <span className="app-shell__section-label">当前模块</span>
                 <h1>{shell.pageTitle}</h1>

@@ -20,6 +20,23 @@ describe('AppShell', () => {
     expect(screen.getAllByRole('button', { name: '返回主页' })).toHaveLength(2);
   });
 
+  it('keeps the learning path compact and returns task details to the path', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = renderShell({ currentPage: 'learning-path', onNavigate });
+
+    expect(document.querySelector('.app-shell__page-header')).not.toBeInTheDocument();
+
+    rerender(
+      <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="learning-path-tasks" onNavigate={onNavigate} onLogout={vi.fn()}>
+        <div>Task content</div>
+      </AppShell>,
+    );
+    await user.click(screen.getByRole('button', { name: '返回' }));
+
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} });
+  });
+
   it('opens a desktop module menu by hover and keyboard focus', async () => {
     const user = userEvent.setup();
     renderShell();

@@ -7106,6 +7106,242 @@ textarea:focus-visible {
   }
 }
 
+/* Learning path layout: compact overview, aligned plan rail and synchronized
+   route/card switching. */
+.app-shell__main[data-page="learning-path"] {
+  padding-top: 12px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero {
+  margin-top: 0;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions {
+  top: 20px;
+  right: 22px;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-copy {
+  width: 60%;
+  max-width: 60%;
+  min-height: 238px;
+  justify-content: flex-start;
+  padding: 42px 24px 20px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title,
+.app-shell__main[data-page="learning-path"] .home-portal__hero-copy .home-portal__hero-title {
+  display: block;
+  line-height: 1.08;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title > span {
+  display: inline;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title > .home-portal__hero-caret {
+  display: inline-block;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__learning-area {
+  align-items: start;
+  margin-top: 16px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route,
+.app-shell__main[data-page="learning-path"] .home-portal__plan-rail {
+  align-self: start;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header h2 {
+  font-size: clamp(1.35rem, 2vw, 1.65rem);
+  white-space: nowrap;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-kicker {
+  gap: 8px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-kicker button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__plan-rail .home-plan {
+  display: grid;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  gap: 16px;
+  padding: 0;
+}
+
+.home-portal__route-switch {
+  position: relative;
+  display: grid;
+  width: min(100%, 254px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 0 0 254px;
+  border: 1px solid #dce9e3;
+  border-radius: 999px;
+  padding: 4px;
+  background: #f1f7f4;
+}
+
+.home-portal__route-switch-indicator {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: #ccecdf;
+  box-shadow: 0 3px 10px rgba(25, 111, 80, .1);
+  transition: transform 190ms cubic-bezier(.22, .75, .28, 1);
+}
+
+.home-portal__route-switch[data-view="cards"] .home-portal__route-switch-indicator {
+  transform: translateX(100%);
+}
+
+.home-portal__route-header .home-portal__route-switch button {
+  position: relative;
+  z-index: 1;
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: #72857e;
+  background: transparent;
+  font-size: .7rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.home-portal__route-header .home-portal__route-switch button.is-active {
+  color: #174f3e;
+  font-weight: 800;
+}
+
+.home-portal__route-header .home-portal__route-switch button:focus-visible {
+  outline: 2px solid rgba(22, 126, 94, .3);
+  outline-offset: 2px;
+}
+
+.home-portal__route-view-content {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  opacity: 1;
+  transition: opacity 140ms ease;
+  view-transition-name: learning-route-content;
+}
+
+.home-portal__route-view-content[data-phase="exiting"],
+.home-portal__route-view-content[data-phase="entering"] {
+  opacity: 0;
+}
+
+.home-portal__route-view-content > .home-portal__route-orbit-layout,
+.home-portal__route-view-content > .learning-stage--embedded,
+.home-portal__route-view-content > .home-portal__route-details {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+::view-transition-old(learning-route-content) {
+  animation: learning-route-fade-out 90ms ease both;
+}
+
+::view-transition-new(learning-route-content) {
+  animation: learning-route-fade-in 170ms ease both;
+}
+
+@keyframes learning-route-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes learning-route-fade-in {
+  from { opacity: 0; }
+}
+
+.home-portal__route[data-view="cards"] .learning-stage--embedded::before {
+  content: none;
+}
+
+.home-portal__route .learning-stage__compact-title {
+  position: absolute;
+  z-index: 5;
+  top: 28px;
+  left: 22px;
+  margin: 0;
+  color: #278a69;
+  font-size: 1.58rem;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.2;
+}
+
+.app-shell__main[data-page="learning-path-tasks"] > .app-shell__page-header {
+  margin-bottom: 18px;
+}
+
+.app-shell__main[data-page="learning-path-tasks"] .app-shell__learning-path-back {
+  min-height: 34px;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: .78rem;
+  box-shadow: none;
+}
+
+@media (max-width: 980px) {
+  .app-shell__main[data-page="learning-path"] .home-portal__hero-copy {
+    width: 100%;
+    max-width: none;
+    min-height: 290px;
+    padding: 112px 18px 22px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__learning-area {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__plan-rail {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell__main[data-page="learning-path"] {
+    padding-top: 8px;
+  }
+
+  .home-portal__route-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .home-portal__route-switch {
+    width: 100%;
+    flex-basis: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-portal__route-switch-indicator,
+  .home-portal__route-view-content,
+  ::view-transition-old(learning-route-content),
+  ::view-transition-new(learning-route-content) {
+    transition: none;
+    animation: none;
+  }
+}
+
 /* Canonical desktop navigation for the branch-based topbar.  The previous
    sidebar selector (.app-shell__nav) does not match the grouped dropdown DOM. */
 @media (min-width: 900px) {

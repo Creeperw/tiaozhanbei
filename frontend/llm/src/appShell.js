@@ -47,7 +47,11 @@ export function getAppShellConfig({ currentUser, currentPage, selectedSessionId 
     ...visibleSupportNav.map((item) => item.key),
   ]);
   const normalizedPage = allowedPages.has(requestedPage) ? requestedPage : 'dashboard';
-  const homeAction = normalizedPage === 'dashboard' ? null : { key: 'dashboard', label: '返回主页' };
+  const homeAction = normalizedPage === 'dashboard'
+    ? null
+    : normalizedPage === 'learning-path-tasks'
+      ? { key: 'learning-path', label: '返回' }
+      : { key: 'dashboard', label: '返回主页' };
   const shellMode = ['assistant', 'practice', 'training-workshop', 'knowledge'].includes(normalizedPage) ? 'workspace' : 'standard';
 
   return {
