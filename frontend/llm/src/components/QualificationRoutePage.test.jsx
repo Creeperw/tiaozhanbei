@@ -142,12 +142,12 @@ describe('QualificationRoutePage', () => {
 
     render(<QualificationRoutePage currentUser={{ display_name: '林同学' }} onNavigate={vi.fn()} />);
 
-    expect(await screen.findByRole('heading', { name: /早上好，林同学，今天继续学习/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /早上好，林同学\s+今天继续学习/ })).toBeInTheDocument();
     expect(screen.getByText(/距离中医类别执业医师资格考试还有/)).toBeInTheDocument();
     expect(screen.queryByLabelText('多智能体协作角色')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
-    expect(screen.getByText('阶段学习路径')).toBeInTheDocument();
+    expect(screen.queryByText('阶段学习路径')).not.toBeInTheDocument();
     expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '今日学习计划' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '今日任务' })).toBeInTheDocument();
@@ -159,13 +159,13 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByRole('button', { name: /添加新任务/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
 
-    const pathViewButton = screen.getByRole('button', { name: '返回学习路径' });
-    const cardViewButton = screen.getByRole('button', { name: '查看阶段卡片' });
+    const pathViewButton = screen.getByRole('button', { name: '学习路径' });
+    const cardViewButton = screen.getByRole('button', { name: '阶段卡片' });
     expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
     expect(cardViewButton).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(cardViewButton);
     expect(cardViewButton).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
+    fireEvent.click(screen.getByRole('button', { name: '学习路径' }));
     expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
   });
@@ -290,7 +290,7 @@ describe('QualificationRoutePage', () => {
     expect(await screen.findByText('【最终目标】通过中医执业医师资格考试。')).toBeInTheDocument();
     expect(screen.getByText('【本周安排】完成中医基础理论复习。')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '长期规划和短期规划说明' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
+    fireEvent.click(screen.getByRole('button', { name: '学习路径' }));
     expect(await screen.findByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
   });
 

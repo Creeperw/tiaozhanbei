@@ -57,14 +57,15 @@ function HeroTypewriter({ title, subtitle }) {
     let cursor = 0;
     const word = String(title || '').trim();
 
+    const stepDelay = Math.max(12, Math.floor(850 / Math.max(word.length - 1, 1)));
     const tick = () => {
       if (cancelled) return;
       cursor += 1;
       setTypedText(word.slice(0, cursor));
-      if (cursor < word.length) timer = window.setTimeout(tick, 180);
+      if (cursor < word.length) timer = window.setTimeout(tick, stepDelay);
     };
 
-    timer = window.setTimeout(tick, 180);
+    tick();
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
@@ -438,14 +439,6 @@ function HomeLearningRoute({
     setSelectedNode(null);
   };
 
-  const handleOrbitWheel = (event) => {
-    if (!event.target.closest?.('.learning-path-orbit')) return;
-    const pageScroller = event.currentTarget.closest('.app-shell__main');
-    if (!pageScroller || pageScroller.scrollHeight <= pageScroller.clientHeight) return;
-    pageScroller.scrollTop += event.deltaY;
-    event.preventDefault();
-  };
-
   return (
       <section className="home-portal__route" data-view={routeView} aria-label={`${selectedTarget?.name || '当前考证'}学习路径规划`}>
       <header className="home-portal__route-header">
@@ -468,7 +461,7 @@ function HomeLearningRoute({
             aria-pressed={routeView !== 'cards'}
             onClick={returnToPath}
           >
-            返回学习路径
+            学习路径
           </button>
           <button
             type="button"
@@ -476,13 +469,13 @@ function HomeLearningRoute({
             aria-pressed={routeView === 'cards'}
             onClick={() => changeRouteView('cards')}
           >
-            查看阶段卡片
+            阶段卡片
           </button>
         </div>
       </header>
       <div className="home-portal__route-view-content" data-view={renderedRouteView} data-phase={routeTransitionPhase}>
       {renderedRouteView === 'orbit' && (
-        <div className="home-portal__route-orbit-layout" onWheelCapture={handleOrbitWheel}>
+        <div className="home-portal__route-orbit-layout">
           {routeState.loading && <div className="home-portal__route-state">正在读取学习路径…</div>}
           {!routeState.loading && routeState.error && <div className="home-portal__route-state">{routeState.error}</div>}
           {!routeState.loading && !routeState.error && routeState.stages.length === 0 && <div className="home-portal__route-state">尚未生成学习路径</div>}
@@ -495,7 +488,7 @@ function HomeLearningRoute({
               onDrill={openNode}
               onClearSelection={() => setSelectedNode(null)}
               directDrill
-              summaryLabel="阶段学习路径"
+              summaryLabel=""
               homeCompact
             />
           )}
@@ -504,7 +497,6 @@ function HomeLearningRoute({
       {!routeState.loading && !routeState.error && routeState.stages.length > 0 && renderedRouteView === 'cards' && (
         <LearningStageLanding
           compact
-          compactTitle="长期学习规划"
           stages={routeState.stages}
           onStageSelect={() => changeRouteView('orbit')}
           onCreatePlan={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}
@@ -730,7 +722,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
 
   const countdown = examCountdown(learningTarget.examDate);
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
-  const heroTitle = `早上好，${displayName}，今天继续学习${currentProgress || '当前学习阶段'}`;
+  const heroTitle = `早上好，${displayName}\n今天继续学习${currentProgress || '当前学习阶段'}`;
 
   return (
     <div className="home-portal" aria-busy={loading}>

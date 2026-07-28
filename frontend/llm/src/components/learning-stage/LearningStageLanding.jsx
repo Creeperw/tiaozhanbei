@@ -210,14 +210,6 @@ export default function LearningStageLanding({
           onPointerMove={updateMagnetism}
           onPointerLeave={resetMagnetism}
           onScroll={updateScrollState}
-          onWheel={(event) => {
-            const container = event.currentTarget;
-            if (!container || container.scrollWidth <= container.clientWidth) return;
-            if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
-              event.preventDefault();
-              container.scrollLeft += event.deltaY;
-            }
-          }}
         >
           {presentedStages.map((stage, index) => (
             <button
