@@ -7098,6 +7098,222 @@ textarea:focus-visible {
   }
 }
 
+/* Canonical desktop navigation for the branch-based topbar.  The previous
+   sidebar selector (.app-shell__nav) does not match the grouped dropdown DOM. */
+@media (min-width: 900px) {
+  .app-shell__desktop-nav {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-self: stretch;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(2px, .6vw, 9px);
+  }
+
+  .app-shell__nav-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .app-shell__nav-group > a,
+  .app-shell__nav-group > button {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 5px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    padding: 0 clamp(7px, .75vw, 13px);
+    color: #344d45;
+    font: inherit;
+    font-size: clamp(.75rem, .9vw, .9rem);
+    font-weight: 650;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .app-shell__nav-group > a:hover,
+  .app-shell__nav-group > a[aria-current="page"],
+  .app-shell__nav-group > button:hover,
+  .app-shell__nav-group > button[aria-expanded="true"] {
+    background: #eaf7f1;
+    color: #087454;
+  }
+
+  .app-shell__nav-menu {
+    position: absolute;
+    z-index: 50;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 176px;
+    border: 1px solid #dbe7e1;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 16px 32px rgba(19, 49, 39, .14);
+    padding: 6px;
+  }
+
+  .app-shell__nav-menu button {
+    display: flex;
+    width: 100%;
+    min-height: 38px;
+    align-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    padding: 0 10px;
+    color: #36554b;
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .app-shell__nav-menu button:hover {
+    background: #eef8f3;
+    color: #087454;
+  }
+
+  .app-shell__target-menu {
+    width: min(390px, calc(100vw - 32px));
+  }
+}
+
+/* The homepage now owns its layout in PlatformHome.css.  These final rules
+   neutralize the obsolete index-level homepage skin left by the old page. */
+.platform-home.platform-home {
+  display: block;
+  width: min(100%, 1512px);
+  min-height: 0;
+  gap: 0;
+  padding: clamp(8px, 1vw, 14px) clamp(20px, 4vw, 64px) 42px;
+  color: var(--platform-ink);
+}
+
+.platform-home .platform-home__hero {
+  position: relative;
+  display: grid;
+  min-height: 460px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: stretch;
+  gap: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.platform-home .platform-home__hero::after {
+  content: none;
+}
+
+.platform-home__hero .platform-home__title-reveal {
+  width: max-content;
+  max-width: 690px;
+  margin: 0;
+  color: #12231d;
+  font-size: clamp(40px, 4.2vw, 66px);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  line-height: 1.17;
+}
+
+.platform-home__hero .platform-home__title-reveal span {
+  background: none;
+  color: inherit;
+}
+
+.platform-home__hero .platform-home__title-reveal .scroll-text-reveal__accent {
+  color: var(--platform-green);
+}
+
+.platform-home .platform-home__capabilities {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 8px;
+}
+
+.platform-home__capabilities button.platform-home__capability {
+  display: grid;
+  min-height: 214px;
+  grid-template-columns: 48px minmax(0, 1fr);
+  justify-items: normal;
+  align-items: start;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 23px 22px 20px;
+  box-shadow: none;
+}
+
+.platform-home__capabilities button.platform-home__capability > .platform-home__capability-icon {
+  display: inline-flex;
+  width: 43px;
+  height: 43px;
+  align-items: center;
+  justify-content: center;
+  place-items: normal;
+  border-radius: 13px;
+}
+
+.platform-home__capabilities button.platform-home__capability > .platform-home__capability-copy {
+  display: flex;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  place-items: normal;
+  border-radius: 0;
+  background: transparent;
+  padding: 3px 4px 22px 8px;
+  color: inherit;
+}
+
+.platform-home__capabilities .platform-home__capability-copy strong {
+  margin: 0 0 9px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+@media (max-width: 1120px) {
+  .platform-home .platform-home__hero {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+
+  .platform-home .platform-home__capabilities {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .platform-home .platform-home__hero {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  .platform-home__hero .platform-home__title-reveal {
+    width: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .platform-home .platform-home__capabilities {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}
+
 /* Sidebar and contextual-assistant refinements from the sidebar branch. */
 .app-shell {
   width: 100%;
