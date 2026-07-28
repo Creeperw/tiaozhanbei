@@ -66,7 +66,7 @@ function contentSections(content) {
 }
 
 function EmptyState({ children }) {
-  return <p className="[overflow-wrap:anywhere] py-5 text-sm leading-6 text-slate-500">{children}</p>;
+  return <p className="[overflow-wrap:anywhere] py-5 text-[15px] leading-6 text-slate-500">{children}</p>;
 }
 
 function KnowledgeCardContent({ content }) {
@@ -707,12 +707,11 @@ export default function PracticePage({
         </button>
       </div>
       <header>
-        <span className="app-shell__section-label">训练工坊</span>
         <h1 className="mt-1 text-2xl font-semibold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
       </header>
 
       {selectedKnowledgePoint && (
-        <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" aria-label="当前考纲知识点">
+        <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-[15px] text-emerald-950" aria-label="当前考纲知识点">
           <div className="font-semibold">当前训练上下文：{selectedKnowledgePoint.kpName}</div>
           <p className="mt-2 leading-6 text-emerald-900">
             已按该知识点筛选训练内容，作答结果会写回掌握度与复习记录。
@@ -756,7 +755,7 @@ export default function PracticePage({
                 taskItemId={taskItemId}
               />
             ) : (
-              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-[15px] leading-6 text-slate-600">
                 此模块正在准备中，暂不支持提交任务。
               </div>
             )}

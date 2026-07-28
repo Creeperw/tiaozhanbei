@@ -34,7 +34,7 @@ function ReviewQueueCard({ entries, names, dueCount, loading }) {
     <section className="rounded-[24px] border border-emerald-100 bg-white/90 p-5 shadow-sm shadow-emerald-100/40 sm:p-6" aria-label="复习队列">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-black text-slate-900">复习队列</h2>
+          <h2 className="text-xl font-bold text-slate-900">复习队列</h2>
           <p className="mt-1 text-sm text-slate-500">优先处理已到期和即将复习的知识点。</p>
         </div>
         <span className="rounded-full bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700">{dueCount} 项到期</span>
@@ -52,7 +52,7 @@ function ReviewQueueCard({ entries, names, dueCount, loading }) {
             return (
               <article key={`${unit.kp_id}:${unit.next_review_at}`} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong className="min-w-0 truncate text-sm text-slate-900">{displayName}</strong>
+                  <strong className="min-w-0 truncate text-base font-medium text-slate-700">{displayName}</strong>
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${entry.is_due ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{entry.is_due ? '已到期' : '待复习'}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -109,7 +109,7 @@ export default function ReviewDashboardPanel() {
       <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-lg shadow-emerald-100/40">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-black text-slate-900">复习与掌握</h2>
+            <h2 className="text-xl font-bold text-slate-900">复习与掌握</h2>
             <p className="mt-1 text-sm text-slate-500">仅统计已完成并通过批改的知识点题目；生成知识卡本身不会进入复习队列。</p>
           </div>
           <button
@@ -149,12 +149,12 @@ export default function ReviewDashboardPanel() {
       </div>
 
       <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm" aria-label="知识点掌握度">
-        <h3 className="font-black text-slate-900">知识点掌握度</h3>
+        <h3 className="text-xl font-bold text-slate-900">知识点掌握度</h3>
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           {(dashboard.mastery || []).map((item) => (
             <article key={item.kp_id} className="rounded-2xl border border-slate-100 p-4">
               <div className="flex items-center justify-between gap-3 text-sm">
-                <strong className="truncate text-slate-900">{readableKnowledgePointName(item.kp_name)}</strong>
+                <strong className="truncate text-base font-medium text-slate-700">{readableKnowledgePointName(item.kp_name)}</strong>
                 <span className="font-bold text-slate-700">{Number(item.mastery_score || 0).toFixed(1)}%</span>
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><i className={`block h-full rounded-full ${masteryTone(Number(item.mastery_score || 0))}`} style={{ width: `${Math.max(0, Math.min(100, Number(item.mastery_score || 0)))}%` }} /></div>
@@ -170,7 +170,7 @@ export default function ReviewDashboardPanel() {
       </section>
 
       <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm" aria-label="最近复习与掌握变化">
-        <h3 className="font-black text-slate-900">最近复习与掌握变化</h3>
+        <h3 className="text-xl font-bold text-slate-900">最近复习与掌握变化</h3>
         <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
           {(dashboard.mastery_history || []).map((item) => (
             <div key={item.history_id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-100 px-4 py-3 text-sm">

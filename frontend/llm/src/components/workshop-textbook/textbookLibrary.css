@@ -2,7 +2,7 @@
 .textbook-library__heading { display:grid; grid-template-columns:minmax(160px,.7fr) minmax(300px,520px) minmax(220px,1fr); align-items:center; gap:24px; padding:2px 4px 12px; }
 .textbook-library__heading span { color:#16805b; font-size:10px; font-weight:900; letter-spacing:.16em; text-transform:uppercase; }
 .textbook-library__heading h2 { margin:3px 0 0; color:#173e30; font-size:25px; }
-.textbook-library__heading p { margin:0; color:#70877d; font-size:12px; }
+.textbook-library__heading p { margin:0; color:#70877d; font-size:15px; }
 .textbook-library__search { display:flex; align-items:center; gap:9px; width:100%; margin:0; border:1px solid #cfe1d7; border-radius:999px; padding:9px 14px; color:#6e8a7d; background:#fff; box-shadow:0 4px 12px rgba(30,82,58,.05); }
 .textbook-library__search input { width:100%; border:0; outline:0; color:#29483b; background:transparent; font-size:13px; }
 .textbook-library__list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
@@ -11,10 +11,10 @@
 .textbook-library-card__cover { display:block; aspect-ratio:3/4; width:96px; overflow:hidden; border-radius:9px 14px 14px 9px; background:#e8f2ec; box-shadow:inset 6px 0 rgba(0,0,0,.09),0 7px 15px rgba(35,105,76,.2); }
 .textbook-library-card__cover img { display:block; width:100%; height:100%; object-fit:cover; }
 .textbook-library-card__body { display:flex; min-width:0; flex-direction:column; align-items:flex-start; padding:4px 4px 2px 0; }
-.textbook-library-card__body>small { color:#4a8b6e; font-size:10px; font-weight:800; }
-.textbook-library-card__body>strong { margin:5px 0 6px; color:#173e30; font-size:20px; line-height:1.35; }
-.textbook-library-card__body>span { display:-webkit-box; overflow:hidden; color:#667d73; font-size:12px; line-height:1.7; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
-.textbook-library-card__body>em { display:flex; align-items:center; gap:5px; margin-top:auto; color:#28795a; font-size:11px; font-style:normal; font-weight:800; }
+.textbook-library-card__body>small { color:#4a8b6e; font-size:13px; font-weight:700; }
+.textbook-library-card__body>strong { margin:5px 0 6px; color:#173e30; font-size:22px; font-weight:800; line-height:1.35; }
+.textbook-library-card__body>span { display:-webkit-box; overflow:hidden; color:#667d73; font-size:14px; line-height:1.7; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
+.textbook-library-card__body>em { display:flex; align-items:center; gap:5px; margin-top:auto; color:#28795a; font-size:14px; font-style:normal; font-weight:700; }
 .textbook-library-card__body>em svg:last-child { margin-left:2px; }
 .textbook-library__empty { padding:60px 20px; border:1px dashed #c8ddd1; border-radius:18px; color:#71877d; background:#fff; text-align:center; }
 .textbook-library__expand { display:flex; flex-direction:column; align-items:center; gap:8px; padding:26px 0 8px; }
@@ -42,4 +42,4 @@
 .workshop-plan__focus button { display:inline-flex; align-items:center; gap:7px; margin-top:16px; border:0; border-radius:999px; padding:9px 14px; color:#176443; background:#fff; font-size:12px; font-weight:900; cursor:pointer; }
 @media (max-width:980px) { .workshop-plan{grid-template-columns:1fr}.workshop-plan__focus{min-height:180px} }
 @media (max-width:1180px) { .textbook-library__list{grid-template-columns:1fr} }
-@media (max-width:680px) { .textbook-library{padding:12px}.textbook-library__heading{display:flex;align-items:flex-start;flex-direction:column;gap:8px}.textbook-library__search{width:100%}.textbook-library-card{grid-template-columns:76px 1fr;gap:13px;min-height:124px;padding:11px}.textbook-library-card__cover{width:76px}.textbook-library-card__body>strong{font-size:17px}.textbook-library-card__body>span{-webkit-line-clamp:2} }
+@media (max-width:680px) { .textbook-library{padding:12px}.textbook-library__heading{display:flex;align-items:flex-start;flex-direction:column;gap:8px}.textbook-library__search{width:100%}.textbook-library-card{grid-template-columns:76px 1fr;gap:13px;min-height:124px;padding:11px}.textbook-library-card__cover{width:76px}.textbook-library-card__body>strong{font-size:19px}.textbook-library-card__body>span{-webkit-line-clamp:2} }

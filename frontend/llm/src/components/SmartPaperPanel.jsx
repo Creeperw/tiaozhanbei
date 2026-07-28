@@ -114,7 +114,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
         <div className="relative z-[1] max-w-2xl">
           <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-emerald-700"><BrainCircuit size={16} />智能组卷</span>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">把学习目标变成一张可作答的试卷</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">选择练习主题、题型和作答方式，系统完成检索、补题与审核后再发布试卷。</p>
+          <p className="mt-2 max-w-xl text-[15px] leading-6 text-slate-600">选择练习主题、题型和作答方式，系统完成检索、补题与审核后再发布试卷。</p>
         </div>
         <div className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full border-[28px] border-white/50" aria-hidden="true" />
       </header>
@@ -134,7 +134,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
         <main className="min-w-0 space-y-7 p-5 sm:p-7">
           <section aria-labelledby="paper-source-title">
             <div className="mb-4 flex items-start justify-between gap-4">
-              <div><h3 id="paper-source-title" className="text-base font-semibold text-slate-950">1. 选择出题范围</h3><p className="mt-1 text-sm leading-6 text-slate-500">明确主题，或交给系统依据学习状态选择。</p></div>
+              <div><h3 id="paper-source-title" className="text-base font-semibold text-slate-950">1. 选择出题范围</h3><p className="mt-1 text-[15px] leading-6 text-slate-500">明确主题，或交给系统依据学习状态选择。</p></div>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <button type="button" aria-pressed={kind === 'special'} onClick={() => setKind('special')} className={`rounded-xl border p-4 text-left transition duration-200 ${kind === 'special' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
@@ -153,7 +153,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
           </section>
 
           <section aria-labelledby="paper-types-title">
-            <div><h3 id="paper-types-title" className="text-base font-semibold text-slate-950">2. 设置题型与题量</h3><p className="mt-1 text-sm leading-6 text-slate-500">支持单一题型和混合组卷，总题量不超过 50 题。</p></div>
+            <div><h3 id="paper-types-title" className="text-base font-semibold text-slate-950">2. 设置题型与题量</h3><p className="mt-1 text-[15px] leading-6 text-slate-500">支持单一题型和混合组卷，总题量不超过 50 题。</p></div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {questionTypes.map(([key, label]) => (
                 <div key={key} className={`rounded-xl border p-3 transition ${distribution[key] > 0 ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-200 bg-white'}`}>
@@ -169,7 +169,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
           </section>
 
           <section aria-labelledby="paper-mode-title">
-            <div><h3 id="paper-mode-title" className="text-base font-semibold text-slate-950">3. 选择作答方式</h3><p className="mt-1 text-sm leading-6 text-slate-500">练习模式适合巩固，测试模式适合阶段验收。</p></div>
+            <div><h3 id="paper-mode-title" className="text-base font-semibold text-slate-950">3. 选择作答方式</h3><p className="mt-1 text-[15px] leading-6 text-slate-500">练习模式适合巩固，测试模式适合阶段验收。</p></div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <button type="button" aria-pressed={answerMode === 'practice'} onClick={() => setAnswerMode('practice')} className={`rounded-xl border p-4 text-left transition duration-200 ${answerMode === 'practice' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}>
                 <span className="flex items-center gap-2 text-sm font-semibold text-slate-950"><CheckCircle2 size={18} className="text-emerald-700" />练习模式</span>
@@ -200,7 +200,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
               {loading ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
               {loading ? '正在组卷并审核' : '生成试卷'}
             </button>
-            <p className="mt-3 text-xs leading-5 text-slate-500">审核通过后进入单题作答界面；不在对话区展开试卷正文。</p>
+            <p className="mt-3 text-[15px] leading-5 text-slate-500">审核通过后进入单题作答界面；不在对话区展开试卷正文。</p>
           </div>
         </aside>
       </div>
@@ -211,7 +211,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
 
 function PaperList({ papers, onOpen, empty, mode, compact = false }) {
   if (!papers.length) {
-    return <div className={`grid place-items-center px-5 text-center ${compact ? 'min-h-32 py-6' : 'min-h-64 py-12'}`}><div><FileCheck2 className="mx-auto text-slate-300" size={compact ? 26 : 34} /><h3 className="mt-3 text-sm font-semibold text-slate-800">{empty}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{mode === 'pending' ? '生成并审核通过的试卷将自动进入待办。' : '提交试卷后可随时回来查看结果与解析。'}</p></div></div>;
+    return <div className={`grid place-items-center px-5 text-center ${compact ? 'min-h-32 py-6' : 'min-h-64 py-12'}`}><div><FileCheck2 className="mx-auto text-slate-300" size={compact ? 26 : 34} /><h3 className="mt-3 text-sm font-semibold text-slate-800">{empty}</h3><p className="mt-1 text-[15px] leading-5 text-slate-500">{mode === 'pending' ? '生成并审核通过的试卷将自动进入待办。' : '提交试卷后可随时回来查看结果与解析。'}</p></div></div>;
   }
   return (
     <div className={`grid gap-3 ${compact ? 'max-h-52 overflow-y-auto p-3' : 'p-5 sm:p-7 md:grid-cols-2'}`}>

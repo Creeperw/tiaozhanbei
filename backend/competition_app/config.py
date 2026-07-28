@@ -167,7 +167,7 @@ class Settings:
     mode: Literal["stub", "live"] = "stub"
     execution_engine: Literal["langgraph", "legacy"] = "langgraph"
     api_host: str = "127.0.0.1"
-    api_port: int = 7860
+    api_port: int = 7861
     runtime_root: Path = DEFAULT_RUNTIME_ROOT
     frontend_dist_root: Path = DEFAULT_FRONTEND_DIST_ROOT
 
