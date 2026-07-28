@@ -6,7 +6,7 @@ const PRIMARY_NAV = [
   { key: 'training-workshop', label: '训练工坊', children: [{ label: '题目训练', intent: intent('training-workshop', { taskType: 'question_training' }) }, { label: 'AI 病患模拟', intent: intent('training-workshop', { taskType: 'simulated_patient' }) }, { label: '错题变式', intent: intent('training-workshop', { taskType: 'mistake_variation' }) }, { label: '试卷生成', intent: intent('training-workshop', { taskType: 'paper_generation' }) }] },
   { key: 'personalization', label: '个性数据', intent: intent('personalization', { view: 'user-profile' }) },
 ];
-const INTERNAL_ALLOWED_PAGES = ['assistant', 'knowledge', 'settings', 'capability-detail'];
+const INTERNAL_ALLOWED_PAGES = ['assistant', 'knowledge', 'settings', 'capability-detail', 'learning-path-tasks'];
 const SUPPORT_NAV = [
   { key: 'admin-feedback', label: '管理入口', roles: ['admin'], children: [{ label: '反馈管理', intent: intent('admin-feedback') }, { label: '知识治理', intent: intent('knowledge', { view: 'personal' }) }] },
 ];
@@ -14,6 +14,7 @@ const SUPPORT_NAV = [
 export const PAGE_TITLES = {
   dashboard: '培训助手首页',
   'learning-path': '学习路径',
+  'learning-path-tasks': '学习与复习任务',
   assistant: '智能助教',
   practice: '学习工坊',
   'training-workshop': '训练工坊',

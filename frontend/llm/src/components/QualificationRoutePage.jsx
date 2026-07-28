@@ -681,6 +681,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     <div className="home-portal" aria-busy={loading}>
       <section className="home-portal__hero" aria-labelledby="home-portal-title">
         <div className="home-portal__hero-actions">
+          <button type="button" className="home-portal__checkin" onClick={() => onNavigate?.({ page: 'learning-path-tasks', params: {} })}>
+            <BookOpenText aria-hidden="true" size={18} />学习与复习任务
+          </button>
           <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
             <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
           </button>

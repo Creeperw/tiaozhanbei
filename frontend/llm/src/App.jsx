@@ -7,6 +7,7 @@ import SettingsHubPage from './components/SettingsHubPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
 import CapabilityDetailPage from './components/CapabilityDetailPage';
+import QualificationRoutePage from './components/QualificationRoutePage';
 import LearningPathPage from './components/LearningPathPage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
@@ -213,6 +214,8 @@ export default function App() {
           />
         );
       case 'learning-path':
+        return <QualificationRoutePage currentUser={currentUser} onNavigate={navigateToPage} />;
+      case 'learning-path-tasks':
         return (
           <LearningPathPage
             key={pageIntent.params.examTrackId || 'current-learning-path'}

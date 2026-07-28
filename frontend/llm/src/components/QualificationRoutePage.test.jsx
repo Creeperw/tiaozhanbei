@@ -152,6 +152,7 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByRole('complementary', { name: '今日学习计划' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '今日任务' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '学习日历' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '学习与复习任务' })).toBeInTheDocument();
     expect(screen.getByLabelText('今日任务完成 1/2')).toBeInTheDocument();
     expect(screen.getByLabelText('2026年7月23日，已学习')).toBeInTheDocument();
     expect(screen.getByText('完成阴阳学说训练')).toBeInTheDocument();
