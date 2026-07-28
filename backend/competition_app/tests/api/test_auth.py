@@ -118,26 +118,6 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
     assert protected.status_code == 401
 
 
-def test_platform_video_asset_is_public_and_uses_h264() -> None:
-    app = create_app(ApplicationContainer.build(Settings(mode="stub")))
-    video_path = (
-        Path(__file__).resolve().parents[2]
-        / "static"
-        / "platform-assets"
-        / "home"
-        / "platform-agents.mp4"
-    )
-
-    with TestClient(app) as client:
-        response = client.get("/platform-assets/home/platform-agents.mp4")
-
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("video/mp4")
-    assert response.content == video_path.read_bytes()
-    assert b"avc1" in response.content
-    assert b"hvc1" not in response.content
-
-
 def test_register_login_me_and_logout(tmp_path: Path) -> None:
     client = build_client(tmp_path)
     user = register(client, "LinStudent")

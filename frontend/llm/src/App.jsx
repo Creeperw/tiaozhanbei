@@ -297,7 +297,7 @@ export default function App() {
           preferredSessionId={floatingAssistantSessionId}
           contextLabel={shellConfig.pageTitle}
           initiallyCollapsed
-          characterHint="多智能体助教"
+          characterHint="六智能体助教"
           onOpenFull={(sessionId) => {
             if (sessionId) setFloatingAssistantSessionId(sessionId);
             navigateToPage({

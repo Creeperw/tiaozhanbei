@@ -55,7 +55,7 @@ export default function HomePage({ currentUser, onNavigate }) {
     <div className="platform-home">
       <section className="platform-home__hero" aria-labelledby="platform-home-title">
         <div className="platform-home__hero-copy">
-          <span className="platform-home__eyebrow"><Bot size={16} aria-hidden="true" />多智能体协同学习系统</span>
+          <span className="platform-home__eyebrow"><Bot size={16} aria-hidden="true" />六智能体协同学习系统</span>
           <h1 id="platform-home-title">承时珍医脉<br /><span>启智慧学习</span></h1>
           <p>{displayName}，欢迎回来。系统会把你的目标、计划、学习行为和知识证据连接起来，让每一次学习都能形成下一步行动。</p>
           <div className="platform-home__hero-actions">
@@ -73,7 +73,7 @@ export default function HomePage({ currentUser, onNavigate }) {
           </div>
         </div>
 
-        <div className="platform-home__agent-orbit" aria-label="多智能体协作示意">
+        <div className="platform-home__agent-orbit" aria-label="六智能体协作示意">
           <div className="platform-home__agent-core">
             <BrainCircuit size={34} aria-hidden="true" />
             <strong>学习任务</strong>

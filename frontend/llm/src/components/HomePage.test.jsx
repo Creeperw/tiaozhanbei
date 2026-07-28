@@ -10,8 +10,8 @@ describe('HomePage', () => {
     render(<HomePage currentUser={{ display_name: '林同学' }} onNavigate={onNavigate} />);
 
     expect(screen.getByRole('heading', { name: '承时珍医脉启智慧学习' })).toBeInTheDocument();
-    expect(screen.getByLabelText('多智能体协作示意')).toHaveTextContent('规划调度');
-    expect(screen.getByLabelText('多智能体协作示意')).toHaveTextContent('质量审核');
+    expect(screen.getByLabelText('六智能体协作示意')).toHaveTextContent('规划调度');
+    expect(screen.getByLabelText('六智能体协作示意')).toHaveTextContent('质量审核');
 
     fireEvent.click(screen.getByRole('button', { name: /询问智能助教/ }));
     expect(onNavigate).toHaveBeenLastCalledWith({
