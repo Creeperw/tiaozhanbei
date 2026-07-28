@@ -146,13 +146,13 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByText(/距离中医类别执业医师资格考试还有/)).toBeInTheDocument();
     expect(screen.queryByLabelText('多智能体协作角色')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
     expect(screen.queryByText('阶段学习路径')).not.toBeInTheDocument();
     expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '今日学习计划' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '今日任务' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '学习日历' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '学习与复习任务' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '学习与复习任务' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('今日任务完成 1/2')).toBeInTheDocument();
     expect(screen.getByLabelText('2026年7月23日，已学习')).toBeInTheDocument();
     expect(screen.getByText('完成阴阳学说训练')).toBeInTheDocument();
@@ -160,14 +160,14 @@ describe('QualificationRoutePage', () => {
     expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
 
     const pathViewButton = screen.getByRole('button', { name: '学习路径' });
-    const cardViewButton = screen.getByRole('button', { name: '阶段卡片' });
+    const cardViewButton = screen.getByRole('button', { name: '学习阶段' });
     expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
     expect(cardViewButton).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(cardViewButton);
     expect(cardViewButton).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(screen.getByRole('button', { name: '学习路径' }));
     expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
   });
 
   it('opens the assistant with the current learning context when adding a task', async () => {
@@ -200,7 +200,7 @@ describe('QualificationRoutePage', () => {
     }));
 
     expect(await screen.findByText('中西医结合基础阶段')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '中西医结合执业医师资格考试学习路径规划' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '中西医结合执业医师资格考试' })).toBeInTheDocument();
   });
 
   it('opens reviewed knowledge points and current daily learning items', async () => {
@@ -290,8 +290,8 @@ describe('QualificationRoutePage', () => {
     expect(await screen.findByText('【最终目标】通过中医执业医师资格考试。')).toBeInTheDocument();
     expect(screen.getByText('【本周安排】完成中医基础理论复习。')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '长期规划和短期规划说明' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '学习路径' }));
-    expect(await screen.findByRole('heading', { name: '中医类别执业医师资格考试学习路径规划' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '返回' }));
+    expect(await screen.findByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
   });
 
   it('records a daily check-in and keeps the new homepage usable after summary failure', async () => {

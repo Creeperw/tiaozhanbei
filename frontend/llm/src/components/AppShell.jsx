@@ -27,9 +27,10 @@ import LearningTargetSelector from './LearningTargetSelector';
 import UserProfileModal from './UserProfileModal';
 import { useModalFocus } from './ui/useModalFocus';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
-import { loadLearningTarget, saveLearningTarget } from './exam-atlas/examAtlasApi';
 
 const LEARNING_TARGET_CHANGED_EVENT = 'shizhen:learning-target-changed';
+const NAV_MENU_EXIT_MS = 250;
+const NAV_MENU_LEAVE_DELAY_MS = 500;
 
 const navIconMap = {
   dashboard: Home,
@@ -92,14 +93,15 @@ function MenuItems({ items, onNavigate, onClose }) {
   ));
 }
 
-function NavigationMenu({ item, currentPage, onNavigate, openKey, setOpenKey }) {
-  const open = openKey === item.key;
+function NavigationMenu({ item, currentPage, onNavigate, menuState, onOpen, onRequestClose, onCloseNow }) {
+  const open = menuState === 'open';
+  const mounted = menuState !== 'closed';
   const ref = useRef(null);
   useEffect(() => {
-    const closeOutside = (event) => { if (open && !ref.current?.contains(event.target)) setOpenKey(null); };
+    const closeOutside = (event) => { if (mounted && !ref.current?.contains(event.target)) onRequestClose(item.key, 0); };
     document.addEventListener('mousedown', closeOutside);
     return () => document.removeEventListener('mousedown', closeOutside);
-  }, [open, setOpenKey]);
+  }, [item.key, mounted, onRequestClose]);
   const focusItem = (position) => {
     const entries = ref.current?.querySelectorAll('[role="menuitem"]');
     entries?.[position < 0 ? entries.length - 1 : position]?.focus();
@@ -108,53 +110,40 @@ function NavigationMenu({ item, currentPage, onNavigate, openKey, setOpenKey }) 
     return <div className="app-shell__nav-group"><a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} onClick={(event) => { event.preventDefault(); onNavigate(item.intent); }}>{item.label}</a></div>;
   }
   return (
-    <div ref={ref} className="app-shell__nav-group" onMouseEnter={() => setOpenKey(item.key)} onFocus={() => setOpenKey(item.key)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpenKey(null); }}>
-      <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} aria-haspopup="menu" aria-expanded={open} onClick={(event) => { event.preventDefault(); onNavigate({ page: item.key, params: {} }); }} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpenKey(item.key); window.setTimeout(() => focusItem(0), 0); } }}>
+    <div ref={ref} className="app-shell__nav-group" onMouseEnter={() => onOpen(item.key)} onMouseLeave={() => onRequestClose(item.key, NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen(item.key)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose(item.key, 0); }}>
+      <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} aria-haspopup="menu" aria-expanded={open} onClick={(event) => { event.preventDefault(); onNavigate({ page: item.key, params: {} }); }} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); onOpen(item.key); window.setTimeout(() => focusItem(0), 0); } }}>
         {item.label}<ChevronDown aria-hidden="true" size={15} />
       </a>
-      {open && <div className="app-shell__nav-menu" role="menu" aria-label={`${item.label}菜单`}><MenuItems items={item.children} onNavigate={onNavigate} onClose={() => setOpenKey(null)} /></div>}
+      {mounted && <div className="app-shell__nav-menu" data-state={menuState} role="menu" aria-label={`${item.label}菜单`}><MenuItems items={item.children} onNavigate={onNavigate} onClose={() => onCloseNow(item.key)} /></div>}
     </div>
   );
 }
 
-function LearningTargetNavigationMenu({ openKey, setOpenKey, onNavigate }) {
-  const open = openKey === 'learning-target';
+function LearningTargetNavigationMenu({ menuState, onOpen, onRequestClose, onCloseNow, onTargetSelected }) {
+  const open = menuState === 'open';
+  const mounted = menuState !== 'closed';
   const ref = useRef(null);
   const openSelectedPath = (selection) => {
-    setOpenKey(null);
-    onNavigate({
-      page: 'learning-path',
-      params: {
-        targetId: selection.target_id || '',
-        examTrackId: selection.exam_track_id || '',
-        textbookRouteId: selection.textbook_route_id || '',
-      },
-    });
+    onCloseNow('learning-target');
+    onTargetSelected(selection);
   };
   useEffect(() => {
-    const closeOutside = (event) => { if (open && !ref.current?.contains(event.target)) setOpenKey(null); };
+    const closeOutside = (event) => { if (mounted && !ref.current?.contains(event.target)) onRequestClose('learning-target', 0); };
     document.addEventListener('mousedown', closeOutside);
     return () => document.removeEventListener('mousedown', closeOutside);
-  }, [open, setOpenKey]);
+  }, [mounted, onRequestClose]);
   return (
-    <div ref={ref} className="app-shell__nav-group app-shell__target-group" onMouseEnter={() => setOpenKey('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpenKey(null); }}>
-      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpenKey(open ? null : 'learning-target')}>考试类别<ChevronDown aria-hidden="true" size={15} /></button>
-      {open && <div className="app-shell__nav-menu app-shell__target-menu" aria-label="选择考试类别"><LearningTargetSelector className="app-shell__target-selector" variant="menu" onSelected={openSelectedPath} /></div>}
+    <div ref={ref} className="app-shell__nav-group app-shell__target-group" onMouseEnter={() => onOpen('learning-target')} onMouseLeave={() => onRequestClose('learning-target', NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose('learning-target', 0); }}>
+      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => open ? onRequestClose('learning-target', 0) : onOpen('learning-target')}>考试类别<ChevronDown aria-hidden="true" size={15} /></button>
+      {mounted && <div className="app-shell__nav-menu app-shell__target-menu" data-state={menuState} aria-label="选择考试类别"><LearningTargetSelector className="app-shell__target-selector" variant="menu" onSelected={openSelectedPath} /></div>}
     </div>
   );
 }
 
-function MobileNavItems({ items, currentPage, onNavigate, onClose }) {
+function MobileNavItems({ items, currentPage, onNavigate, onClose, onTargetSelected }) {
   const [expanded, setExpanded] = useState(null);
   const openSelectedPath = (selection) => {
-    onNavigate({
-      page: 'learning-path',
-      params: {
-        targetId: selection.target_id || '',
-        examTrackId: selection.exam_track_id || '',
-        textbookRouteId: selection.textbook_route_id || '',
-      },
-    });
+    onTargetSelected(selection);
     onClose();
   };
   return (
@@ -234,20 +223,59 @@ const profileMenuItems = [
 
 function DesktopTopbar({
   shell, displayName, avatarUrl, avatarInitial, unreadNotifications,
-  targetOptions, selectedTargetId, targetLoading, targetError,
-  onNavigate, onLogout, onOpenProfile, onSelectTarget,
+  onNavigate, onLogout, onOpenProfile, onTargetSelected,
 }) {
   const [openKey, setOpenKey] = useState(null);
+  const [closingKey, setClosingKey] = useState(null);
   const [profileMenuMounted, setProfileMenuMounted] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const openTimerRef = useRef(null);
   const unmountTimerRef = useRef(null);
   const profileMenuRef = useRef(null);
+  const navMenuKeyRef = useRef(null);
+  const navMenuCloseTimerRef = useRef(null);
+  const navMenuExitTimerRef = useRef(null);
 
   useEffect(() => () => {
     window.clearTimeout(openTimerRef.current);
     window.clearTimeout(unmountTimerRef.current);
+    window.clearTimeout(navMenuCloseTimerRef.current);
+    window.clearTimeout(navMenuExitTimerRef.current);
   }, []);
+
+  const openNavMenu = (key) => {
+    window.clearTimeout(navMenuCloseTimerRef.current);
+    window.clearTimeout(navMenuExitTimerRef.current);
+    navMenuKeyRef.current = key;
+    setClosingKey(null);
+    setOpenKey(key);
+  };
+
+  const closeNavMenuNow = (key) => {
+    if (navMenuKeyRef.current !== key) return;
+    window.clearTimeout(navMenuCloseTimerRef.current);
+    window.clearTimeout(navMenuExitTimerRef.current);
+    navMenuKeyRef.current = null;
+    setClosingKey(null);
+    setOpenKey(null);
+  };
+
+  const requestNavMenuClose = (key, delay = 0) => {
+    window.clearTimeout(navMenuCloseTimerRef.current);
+    window.clearTimeout(navMenuExitTimerRef.current);
+    navMenuCloseTimerRef.current = window.setTimeout(() => {
+      if (navMenuKeyRef.current !== key) return;
+      setClosingKey(key);
+    }, delay);
+    navMenuExitTimerRef.current = window.setTimeout(() => {
+      if (navMenuKeyRef.current !== key) return;
+      navMenuKeyRef.current = null;
+      setClosingKey(null);
+      setOpenKey(null);
+    }, delay + NAV_MENU_EXIT_MS);
+  };
+
+  const menuStateFor = (key) => openKey !== key ? 'closed' : closingKey === key ? 'closing' : 'open';
 
   const openProfileMenu = () => {
     window.clearTimeout(unmountTimerRef.current);
@@ -294,8 +322,8 @@ function DesktopTopbar({
         <ShellIdentity onNavigate={onNavigate} />
         <nav aria-label="平台导航" className="app-shell__desktop-nav">
           {shell.primaryNav.map((item) => item.kind === 'learning-target'
-            ? <LearningTargetNavigationMenu key={item.key} openKey={openKey} setOpenKey={setOpenKey} onNavigate={onNavigate} />
-            : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} onNavigate={onNavigate} openKey={openKey} setOpenKey={setOpenKey} />)}
+            ? <LearningTargetNavigationMenu key={item.key} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} onTargetSelected={onTargetSelected} />
+            : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} onNavigate={onNavigate} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} />)}
         </nav>
         <div className="app-shell__topbar-actions">
           <button type="button" className="app-shell__assistant-entry" aria-label="AI 智能助教" onClick={() => onNavigate({ page: 'assistant', params: { newConversation: true } })}>
@@ -353,11 +381,7 @@ function MobileDrawer({
   onNavigate,
   onLogout,
   displayName,
-  targetOptions,
-  selectedTargetId,
-  targetLoading,
-  targetError,
-  onSelectTarget,
+  onTargetSelected,
 }) {
   const dialogRef = useModalFocus(open);
   if (!mounted) return null;
@@ -391,6 +415,7 @@ function MobileDrawer({
           currentPage={shell.currentPage}
           onNavigate={onNavigate}
           onClose={onClose}
+          onTargetSelected={onTargetSelected}
         />
         {shell.supportNav.length > 0 && (
           <div className="app-shell__support">
@@ -421,10 +446,6 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
   const drawerExitTimerRef = useRef(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [accountProfile, setAccountProfile] = useState(null);
-  const [targetOptions, setTargetOptions] = useState([]);
-  const [selectedTargetId, setSelectedTargetId] = useState('');
-  const [targetLoading, setTargetLoading] = useState(true);
-  const [targetError, setTargetError] = useState('');
   const displayName = currentUser?.display_name || currentUser?.username || 'User';
   const avatarUrl = accountProfile?.avatar_url || null;
   const avatarInitial = displayName.trim().slice(0, 1).toUpperCase() || '用';
@@ -465,35 +486,6 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
     return () => { cancelled = true; };
   }, [currentUser?.user_id]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadQualificationTarget = async () => {
-      setTargetLoading(true);
-      setTargetError('');
-      try {
-        const [catalogResponse, targetPayload] = await Promise.all([
-          fetchWithAuth(`${API_BASE}/v1/qualification-targets`),
-          loadLearningTarget(),
-        ]);
-        const catalog = await readJsonResponse(catalogResponse, { items: [] });
-        if (!catalogResponse.ok) throw new Error(catalog.detail || '资格考试目录暂时无法读取');
-        const options = Array.isArray(catalog.items) ? catalog.items : [];
-        const activeTarget = targetPayload?.target || targetPayload || {};
-        const selected = options.find((item) => item.exam_track_id === activeTarget.exam_track_id) || options[0];
-        if (!cancelled) {
-          setTargetOptions(options);
-          setSelectedTargetId(selected?.target_id || '');
-        }
-      } catch (requestError) {
-        if (!cancelled) setTargetError(requestError.message || '资格考试目录暂时无法读取');
-      } finally {
-        if (!cancelled) setTargetLoading(false);
-      }
-    };
-    loadQualificationTarget();
-    return () => { cancelled = true; };
-  }, [currentUser?.user_id]);
-
   const openDrawer = () => {
     window.clearTimeout(drawerExitTimerRef.current);
     setDrawerMounted(true);
@@ -511,31 +503,17 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
     if (updatedUser) onUserUpdated?.(updatedUser);
   };
 
-  const selectQualificationTarget = async (targetId) => {
-    const selected = targetOptions.find((item) => item.target_id === targetId);
-    if (!selected || targetLoading) return;
-    const previousTargetId = selectedTargetId;
-    setSelectedTargetId(targetId);
-    setTargetLoading(true);
-    setTargetError('');
-    try {
-      await saveLearningTarget(selected.exam_track_id);
-      window.dispatchEvent(new CustomEvent(LEARNING_TARGET_CHANGED_EVENT, { detail: selected }));
-      onNavigate({
-        page: 'learning-path',
-        params: {
-          targetId: selected.target_id,
-          examTrackId: selected.exam_track_id,
-          textbookRouteId: selected.textbook_route_id || '',
-        },
-      });
-      if (drawerOpen) closeDrawer();
-    } catch (requestError) {
-      setSelectedTargetId(previousTargetId);
-      setTargetError(requestError.message || '资格考试路径保存失败');
-    } finally {
-      setTargetLoading(false);
-    }
+  const handleTopbarTargetSelected = (selected) => {
+    if (!selected?.target_id) return;
+    window.dispatchEvent(new CustomEvent(LEARNING_TARGET_CHANGED_EVENT, { detail: selected }));
+    onNavigate({
+      page: 'learning-path',
+      params: {
+        targetId: selected.target_id,
+        examTrackId: selected.exam_track_id || '',
+        textbookRouteId: selected.textbook_route_id || '',
+      },
+    });
   };
 
   return (
@@ -546,14 +524,10 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
         avatarUrl={avatarUrl}
         avatarInitial={avatarInitial}
         unreadNotifications={unreadNotifications}
-        targetOptions={targetOptions}
-        selectedTargetId={selectedTargetId}
-        targetLoading={targetLoading}
-        targetError={targetError}
         onNavigate={onNavigate}
         onLogout={onLogout}
         onOpenProfile={() => setProfileOpen(true)}
-        onSelectTarget={selectQualificationTarget}
+        onTargetSelected={handleTopbarTargetSelected}
       />
 
       <div className="app-shell__workspace">
@@ -602,11 +576,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
         onClose={closeDrawer}
         onNavigate={onNavigate}
         onLogout={onLogout}
-        targetOptions={targetOptions}
-        selectedTargetId={selectedTargetId}
-        targetLoading={targetLoading}
-        targetError={targetError}
-        onSelectTarget={selectQualificationTarget}
+        onTargetSelected={handleTopbarTargetSelected}
       />
       <UserProfileModal
         open={profileOpen}

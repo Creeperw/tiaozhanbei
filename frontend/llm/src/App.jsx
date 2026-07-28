@@ -209,7 +209,7 @@ export default function App() {
           />
         );
       case 'learning-path':
-        return <QualificationRoutePage currentUser={currentUser} onNavigate={navigateToPage} />;
+        return <QualificationRoutePage key={pageIntent.params.examTrackId || 'current-learning-path'} currentUser={currentUser} onNavigate={navigateToPage} />;
       case 'learning-path-tasks':
         return (
           <LearningPathPage

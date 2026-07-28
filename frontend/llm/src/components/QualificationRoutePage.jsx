@@ -50,29 +50,35 @@ function splitHeroTitle(value) {
 
 function HeroTypewriter({ title, subtitle }) {
   const [typedText, setTypedText] = useState('');
+  const typedTextRef = useRef('');
+  const fullWord = String(title || '').trim();
 
   useEffect(() => {
     let cancelled = false;
     let timer;
     let cursor = 0;
-    const word = String(title || '').trim();
-
-    const stepDelay = Math.max(12, Math.floor(850 / Math.max(word.length - 1, 1)));
+    const previousText = typedTextRef.current;
+    const limit = Math.min(previousText.length, fullWord.length);
+    while (cursor < limit && previousText[cursor] === fullWord[cursor]) cursor += 1;
+    if (!fullWord) return undefined;
+    const remainingLength = fullWord.length - cursor;
+    const stepDelay = Math.max(12, Math.floor(850 / Math.max(remainingLength - 1, 1)));
     const tick = () => {
       if (cancelled) return;
       cursor += 1;
-      setTypedText(word.slice(0, cursor));
-      if (cursor < word.length) timer = window.setTimeout(tick, stepDelay);
+      const nextText = fullWord.slice(0, cursor);
+      typedTextRef.current = nextText;
+      setTypedText(nextText);
+      if (cursor < fullWord.length) timer = window.setTimeout(tick, stepDelay);
     };
 
-    tick();
+    timer = window.setTimeout(tick, 0);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [title]);
+  }, [fullWord]);
 
-  const fullWord = String(title || '').trim();
   const isTyping = typedText.length < fullWord.length;
   const typedSegments = splitHeroTitle(typedText);
   return (
@@ -285,11 +291,12 @@ function HomeLearningRoute({
   });
 
   useEffect(() => {
+    if (routeState.loading) return;
     const activeNode = routeState.nodes.find((node) => node.status === 'in_progress')
       || routeState.nodes.find((node) => node.status === 'next')
       || routeState.nodes[0];
-    onCurrentProgress?.(String(activeNode?.title || ''));
-  }, [onCurrentProgress, routeState.nodes]);
+    onCurrentProgress?.(String(activeNode?.title || '当前学习阶段'));
+  }, [onCurrentProgress, routeState.loading, routeState.nodes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -440,12 +447,14 @@ function HomeLearningRoute({
   };
 
   return (
-      <section className="home-portal__route" data-view={routeView} aria-label={`${selectedTarget?.name || '当前考证'}学习路径规划`}>
+      <section className="home-portal__route" data-view={routeView} aria-label={`${selectedTarget?.name || '当前考证'}学习路径`}>
       <header className="home-portal__route-header">
         <div>
           <div className="home-portal__route-kicker">
-            <h2>{selectedTarget?.name || '当前考证'}学习路径规划</h2>
-            {routeView !== 'details' && <button type="button" onClick={showPlanningDetails}>了解详情</button>}
+            <h2>{selectedTarget?.name || '当前考证'}</h2>
+            <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
+              {routeView === 'details' ? '返回' : '了解详情'}
+            </button>
           </div>
         </div>
         <div
@@ -469,7 +478,7 @@ function HomeLearningRoute({
             aria-pressed={routeView === 'cards'}
             onClick={() => changeRouteView('cards')}
           >
-            阶段卡片
+            学习阶段
           </button>
         </div>
       </header>
@@ -533,6 +542,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const [checkinMessage, setCheckinMessage] = useState('');
   const [currentProgress, setCurrentProgress] = useState('');
   const [learningTarget, setLearningTarget] = useState({ name: '中医执业医师资格考试', examDate: '' });
+  const [learningTargetReady, setLearningTargetReady] = useState(false);
   const [summaryRevision, setSummaryRevision] = useState(0);
   const [, setCountdownTick] = useState(0);
   const homeState = useMemo(() => buildHomePortalState(payload), [payload]);
@@ -556,7 +566,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         examDate: examDateForTarget(selected),
         targetId: selected.target_id,
       });
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      if (!cancelled) setLearningTargetReady(true);
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -722,7 +734,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
 
   const countdown = examCountdown(learningTarget.examDate);
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
-  const heroTitle = `早上好，${displayName}\n今天继续学习${currentProgress || '当前学习阶段'}`;
+  const heroTitle = currentProgress
+    ? `早上好，${displayName}\n今天继续学习${currentProgress}`
+    : '';
 
   return (
     <div className="home-portal" aria-busy={loading}>
@@ -731,12 +745,8 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
           <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
             <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
           </button>
-          <button type="button" className="home-portal__checkin" onClick={() => onNavigate?.({ page: 'learning-path-tasks', params: {} })}>
-            <BookOpenText aria-hidden="true" size={18} />学习与复习任务
-          </button>
         </div>
         <HeroTypewriter
-          key={heroTitle}
           title={heroTitle}
           subtitle={`距离${learningTarget.name}还有 ${countdown ?? 126} 天，保持稳定节奏。`}
         />
@@ -749,11 +759,17 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       )}
 
       <section className="home-portal__learning-area" aria-label="学习路线与学习进度">
-        <HomeLearningRoute
-          onNavigate={onNavigate}
-          onCurrentProgress={setCurrentProgress}
-          selectedTarget={learningTarget}
-        />
+        {learningTargetReady ? (
+          <HomeLearningRoute
+            onNavigate={onNavigate}
+            onCurrentProgress={setCurrentProgress}
+            selectedTarget={learningTarget}
+          />
+        ) : (
+          <section className="home-portal__route" aria-label="正在读取学习路径">
+            <div className="home-portal__route-state">正在读取学习路径…</div>
+          </section>
+        )}
         <aside className="home-portal__plan-rail" aria-label="今日学习计划">
           <CurrentLearningPlan
             currentTask={currentTask}

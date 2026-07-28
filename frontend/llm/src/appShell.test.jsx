@@ -13,7 +13,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   assert.deepEqual(config.primaryNav.map(({ key, label }) => ({ key, label })), [
     { key: 'learning-target', label: '考试类别' },
     { key: 'learning-path', label: '学习路径' },
-    { key: 'practice', label: '学习工坊' },
+    { key: 'practice', label: '教学资源' },
     { key: 'training-workshop', label: '训练工坊' },
     { key: 'personalization', label: '个性数据' },
   ]);
@@ -104,8 +104,8 @@ test('defines dropdown destinations as explicit navigation intents', () => {
       { label: '试卷生成', intent: { page: 'training-workshop', params: { taskType: 'paper_generation' } } },
     ],
   );
-  assert.equal(config.primaryNav.find((item) => item.key === 'practice').children[0].label, '智能助教');
-  assert.equal(config.primaryNav.find((item) => item.key === 'practice').children[1].label, '知识图谱');
+  assert.deepEqual(config.primaryNav.find((item) => item.key === 'practice').intent, { page: 'practice', params: {} });
+  assert.equal('children' in config.primaryNav.find((item) => item.key === 'practice'), false);
   assert.equal(config.primaryNav.some((item) => item.key === 'settings'), false);
 });
 
@@ -131,7 +131,7 @@ test('hides support navigation for standard learners', () => {
 
   assert.deepEqual(config.supportNav, []);
   assert.equal(config.primaryNav.some((item) => item.key === 'admin-feedback'), false);
-  assert.equal(config.pageTitle, '学习工坊');
+  assert.equal(config.pageTitle, '教学资源');
   assert.deepEqual(config.homeAction, { key: 'dashboard', label: '返回主页' });
 });
 
@@ -157,7 +157,7 @@ test('creates assistant navigation state that preserves a selected continue-lear
 });
 
 test('uses separate learning and training workshop labels and page titles', () => {
-  assert.equal(PAGE_TITLES.practice, '学习工坊');
+  assert.equal(PAGE_TITLES.practice, '教学资源');
   assert.equal(PAGE_TITLES['training-workshop'], '训练工坊');
 });
 

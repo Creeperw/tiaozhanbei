@@ -7316,6 +7316,34 @@ textarea:focus-visible {
   }
 }
 
+/* Navigation dropdowns stay mounted for their 250ms exit animation. */
+@media (min-width: 900px) {
+  .app-shell__nav-menu[data-state="open"] {
+    animation: app-shell-nav-menu-in 250ms ease both;
+  }
+
+  .app-shell__nav-menu[data-state="closing"] {
+    animation: app-shell-nav-menu-out 250ms ease both;
+    pointer-events: none;
+  }
+
+  .learning-target-selector__options button[aria-checked="true"] {
+    color: #086b4e;
+    background: #d8f6e8;
+    box-shadow: inset 0 0 0 1px rgba(69, 190, 142, .18);
+  }
+}
+
+@keyframes app-shell-nav-menu-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes app-shell-nav-menu-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
 @media (max-width: 760px) {
   .app-shell__main[data-page="learning-path"] {
     padding-top: 8px;
@@ -11675,5 +11703,97 @@ textarea:focus-visible {
   .app-shell__main[data-page="learning-path"] .home-portal__route {
     height: auto;
     min-height: 590px;
+  }
+}
+
+/* Learning-path refinements requested after the route/card layout pass. */
+.app-shell__main[data-page="learning-path"] .home-portal__hero-copy {
+  width: calc(100% - 135px);
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions {
+  width: auto;
+  align-items: flex-end;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__checkin {
+  width: auto;
+  min-height: 34px;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  font-size: .78rem;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header {
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 20px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header > div:first-child {
+  min-width: 0;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-kicker {
+  align-items: center;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-kicker h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-kicker .home-portal__route-detail-toggle {
+  width: 58px;
+  flex: 0 0 58px;
+  text-align: center;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-switch {
+  margin-left: 10px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route,
+.app-shell__main[data-page="learning-path"] .home-portal__route-view-content,
+.app-shell__main[data-page="learning-path"] .home-portal__route-orbit-layout,
+.app-shell__main[data-page="learning-path"] .learning-path-orbit,
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__stage,
+.app-shell__main[data-page="learning-path"] .learning-stage__grid {
+  overscroll-behavior: auto;
+  touch-action: pan-y;
+}
+
+.app-shell__main[data-page="learning-path"] .home-today-card__progress strong {
+  font-size: .8rem;
+}
+
+.app-shell__main[data-page="learning-path"] .home-today-card__empty strong {
+  font-size: .8rem;
+}
+
+.app-shell__main[data-page="learning-path"] .home-today-card__empty p {
+  font-size: .68rem;
+}
+
+.app-shell__main[data-page="learning-path"] .home-today-card__add {
+  font-size: .78rem;
+}
+
+.app-shell__main[data-page="practice"] .dashboard-daily__library {
+  border-color: #dceae2;
+  background: #eef8f3;
+}
+
+@media (max-width: 980px) {
+  .app-shell__main[data-page="learning-path"] .home-portal__hero-copy {
+    width: 100%;
+    padding-top: 70px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__hero-actions {
+    top: 18px;
+    right: 18px;
+    width: auto;
   }
 }

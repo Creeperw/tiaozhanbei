@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -37,18 +37,17 @@ describe('AppShell', () => {
     expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} });
   });
 
-  it('opens a desktop module menu by hover and keyboard focus', async () => {
+  it('opens teaching resources directly without a dropdown', async () => {
     const user = userEvent.setup();
-    renderShell();
-    const workshop = screen.getByRole('link', { name: '学习工坊' });
+    const onNavigate = vi.fn();
+    renderShell({ onNavigate });
+    const resources = screen.getByRole('link', { name: '教学资源' });
 
-    await user.hover(workshop);
-    expect(screen.getByRole('menuitem', { name: '智能助教' })).toBeVisible();
-
-    await user.unhover(workshop);
-    workshop.focus();
-    await user.keyboard('{ArrowDown}');
-    await waitFor(() => expect(screen.getByRole('menuitem', { name: '智能助教' })).toHaveFocus());
+    expect(resources).not.toHaveAttribute('aria-haspopup');
+    expect(resources.querySelector('svg')).not.toBeInTheDocument();
+    await user.click(resources);
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'practice', params: {} });
+    expect(screen.queryByRole('menu', { name: '教学资源菜单' })).not.toBeInTheDocument();
   });
 
   it('places the learning target dropdown first in the desktop navigation', async () => {
@@ -68,6 +67,8 @@ describe('AppShell', () => {
       return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify(payload) });
     }));
     const onNavigate = vi.fn();
+    const targetChanged = vi.fn();
+    window.addEventListener('shizhen:learning-target-changed', targetChanged);
     renderShell({ onNavigate });
 
     const navigation = screen.getByRole('navigation', { name: '平台导航' });
@@ -92,6 +93,8 @@ describe('AppShell', () => {
         textbookRouteId: '',
       },
     });
+    expect(targetChanged).toHaveBeenCalledWith(expect.objectContaining({ detail: expect.objectContaining({ target_id: 'target-b' }) }));
+    window.removeEventListener('shizhen:learning-target-changed', targetChanged);
   });
 
   it('returns to the dashboard from the brand identity', async () => {
@@ -143,6 +146,27 @@ describe('AppShell', () => {
 
     expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: { taskType: 'paper_generation' } });
     expect(screen.queryByRole('menuitem', { name: '试卷生成' })).not.toBeInTheDocument();
+  });
+
+  it('closes the training menu 500ms after the pointer leaves, with an exit phase', async () => {
+    vi.useFakeTimers();
+    try {
+      renderShell();
+      const trigger = screen.getByRole('link', { name: '训练工坊' });
+      const group = trigger.closest('.app-shell__nav-group');
+
+      fireEvent.mouseEnter(group);
+      expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'open');
+      fireEvent.mouseLeave(group);
+      await act(() => vi.advanceTimersByTimeAsync(499));
+      expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'open');
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'closing');
+      await act(() => vi.runOnlyPendingTimersAsync());
+      expect(screen.queryByRole('menu', { name: '训练工坊菜单' })).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('opens the user profile directly from personalization without a dropdown', async () => {

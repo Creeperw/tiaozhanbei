@@ -418,7 +418,9 @@ export default function DashboardPage({
         pathContent={(
           <div className="workshop-library-page">
               {textbooksLoading ? (
-                <div className="dashboard-daily__path-empty">教材目录正在准备中</div>
+                <div className="workshop-library-page__loading" role="status" aria-label="正在加载教材目录">
+                  <span aria-hidden="true" />
+                </div>
               ) : allTextbooks.length > 0 ? (
                 <>
                   {!hidePlan && <section className="workshop-plan" aria-label="当前学习计划">
@@ -432,7 +434,7 @@ export default function DashboardPage({
                         <span>{plannedBooks.length} 本计划教材</span>
                       </div>
                     </div>
-                    <div className="workshop-plan__focus">
+                    <div className={`workshop-plan__focus${currentBookName ? '' : ' is-awaiting-plan'}`}>
                       <span><Sparkles aria-hidden="true" size={14} />现在继续</span>
                       {currentBookName ? (
                         <>
