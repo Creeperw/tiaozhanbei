@@ -18,7 +18,7 @@ def _get_float_env(name: str, default: float) -> float:
         return default
 
 # --- 端口配置 ---
-# FastAPI 后端端口。vLLM 规划/执行模型占用 8000，因此后端改为 7860。
+# 集成 FastAPI 后端统一使用 7860。
 API_PORT = 7860
 
 

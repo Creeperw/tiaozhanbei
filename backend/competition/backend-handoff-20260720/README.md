@@ -491,13 +491,13 @@ Copy-Item .env.example .env
 ### 10.1 Windows 一键开发
 
 ```powershell
-Copy-Item .env.example .env
-# 填写至少 SECRET_KEY；需要模型时再填写对应 API Key
+Copy-Item ..\..\competition_app\.env.example ..\..\competition_app\.env.local
+# 在 competition_app/.env.local 填写至少 SECRET_KEY；需要模型时再填写对应 API Key
 pwsh run.ps1 deps
 pwsh run.ps1
 ```
 
-默认后端端口 `7860`，前端端口 `5173`。停止：
+脚本只启动一个集成后端：主应用与交接业务共同使用 `7860`；前端开发服务使用 `5173`。停止：
 
 如需指定后端 Python 环境，先设置 `BACKEND_PYTHON`，例如：
 
@@ -512,14 +512,17 @@ pwsh run.ps1 stop
 
 ### 10.2 手动启动后端
 
-必须从仓库根运行，`APP.backend` 导入才稳定：
+必须从仓库的 `backend` 目录启动主应用；交接业务由主进程内部挂载：
 
 ```powershell
-python -m pip install -r requirements.txt
-python -m uvicorn APP.backend.main:app --host 0.0.0.0 --port 7860
+Set-Location ..\..
+python -m pip install -r competition_app/requirements.txt
+$env:COMPETITION_APP_MODE='stub'
+$env:BACKEND_HANDOFF_ENABLED='true'
+python -m competition_app.cli.app serve --host 0.0.0.0 --port 7860
 ```
 
-默认 `USE_SQLITE=true`、`LLM_MODE=api`、`EMBEDDING_MODE=disabled`、`VOICE_MODE=disabled`。不需要 GPU 即可启动基础平台；聊天需要有效的模型配置。
+Stub 模式不需要 GPU；聊天和远程检索需要在 `competition_app/.env.local` 配置有效服务密钥。
 
 ### 10.3 手动启动前端
 

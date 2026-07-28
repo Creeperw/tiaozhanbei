@@ -18,6 +18,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $Script:Root       = (Resolve-Path "$PSScriptRoot").Path
+$Script:BackendRoot = (Resolve-Path (Join-Path $Script:Root "../..")).Path
 $Script:FrontendRoot = (Resolve-Path (Join-Path $Script:Root "../../../frontend/llm")).Path
 $Script:PythonExe  = if ($env:BACKEND_PYTHON) {
     (Resolve-Path $env:BACKEND_PYTHON).Path
@@ -48,7 +49,7 @@ function Stop-Existing {
 }
 
 function Initialize-BackendDeps {
-    $need = @("fastapi","uvicorn","sqlalchemy","langgraph","httpx","fastapi_mail","exa_py")
+    $need = @("fastapi","uvicorn","sqlalchemy","langgraph","httpx","fastapi_mail","exa_py","typer")
     $missing = @()
     foreach ($m in $need) {
         $check = & $Script:PythonExe -c "import $m" 2>&1
@@ -75,7 +76,7 @@ function Initialize-BackendDeps {
         $pipExtra = @("-i", "https://pypi.tuna.tsinghua.edu.cn/simple", "--timeout", "30", "--retries", "2")
     }
 
-    & $Script:PythonExe -m pip install fastapi "uvicorn[standard]" sqlalchemy pymysql langgraph `
+    & $Script:PythonExe -m pip install fastapi "uvicorn[standard]" sqlalchemy pymysql langgraph typer `
         "python-jose[cryptography]" "passlib[argon2]" fastapi-mail exa-py `
         python-multipart email-validator python-docx numpy httpx @pipExtra | Out-Null
 
@@ -103,10 +104,13 @@ function Write-Pid($pidVal, $path) {
 }
 
 function Start-Backend {
-    Write-Host "==> starting backend (uvicorn APP.backend.main:app)"
+    Write-Host "==> starting integrated backend (competition_app + handoff)"
+    $env:COMPETITION_APP_MODE = if ($env:COMPETITION_APP_MODE) { $env:COMPETITION_APP_MODE } else { "stub" }
+    $env:BACKEND_HANDOFF_ENABLED = "true"
+    $env:API_PORT = "7860"
     $proc = Start-Process -FilePath $Script:PythonExe `
-        -ArgumentList @("-m","uvicorn","APP.backend.main:app","--host","0.0.0.0","--port","7860") `
-        -WorkingDirectory $Script:Root `
+        -ArgumentList @("-m","competition_app.cli.app","serve","--host","0.0.0.0","--port","7860") `
+        -WorkingDirectory $Script:BackendRoot `
         -RedirectStandardOutput (Join-Path $Script:LogDir "backend.log") `
         -RedirectStandardError  (Join-Path $Script:LogDir "backend.err") `
         -WindowStyle Hidden -PassThru

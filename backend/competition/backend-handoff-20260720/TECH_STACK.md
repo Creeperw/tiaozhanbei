@@ -166,8 +166,8 @@ flowchart LR
 
 | 服务 | 默认端口 | 模型名 | 主要职责 |
 |---|---:|---|---|
-| Planner / Executor | 8000 | `sining` | 意图规划、工具调用、最终回答、多模态视觉输入 |
-| Manager / Reviewer / Compression / Title | 8001 | `qwen` | 信息抽取、摘要压缩、回答审核、标题生成 |
+| Planner / Executor | 主后端内置 | `sining` | 意图规划、工具调用、最终回答、多模态视觉输入 |
+| Manager / Reviewer / Compression / Title | 主后端内置 | `qwen` | 信息抽取、摘要压缩、回答审核、标题生成 |
 
 后端通过 `backend/health_llm.py` 中的 `VLLMClient` 调用 `/chat/completions`。
 
