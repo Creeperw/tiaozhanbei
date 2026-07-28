@@ -90,6 +90,25 @@ def test_casual_conversation_returns_direct_natural_language() -> None:
     assert "流程已在当前节点暂停" not in message
 
 
+def test_interruption_hides_internal_planner_routing_reason() -> None:
+    message = workflow_result_to_markdown({
+        "status": "interrupted",
+        "interrupt": {
+            "reason": (
+                "选择 Diagnosis Agent 并不选择 Memory Agent，"
+                "因为 requires_compression=false。系统已补全确定性依赖节点。"
+            ),
+            "questions": ["你希望制定长期计划还是短期计划？"],
+        },
+    })
+
+    assert "Diagnosis Agent" not in message
+    assert "Memory Agent" not in message
+    assert "requires_compression" not in message
+    assert "确定性依赖节点" not in message
+    assert "你希望制定长期计划还是短期计划？" in message
+
+
 def test_paper_message_keeps_exam_body_in_workspace() -> None:
     message = workflow_result_to_markdown({
         "status": "success",

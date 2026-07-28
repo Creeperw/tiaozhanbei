@@ -14,6 +14,7 @@ class RepairIssue(ContractModel):
         "route_or_prerequisite_error",
         "content_quality",
         "paper_blueprint_mismatch",
+        "plan_quality",
         "unresolved",
     ]
     message: str

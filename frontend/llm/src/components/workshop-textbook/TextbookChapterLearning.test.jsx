@@ -63,13 +63,13 @@ describe('TextbookChapterLearning', () => {
 
     await screen.findByRole('button', { name: /第一章 一/ });
     expect(
-      [...document.querySelectorAll('.textbook-directory--chapters strong')]
+      [...document.querySelectorAll('.textbook-directory--chapters > .textbook-directory__items > button strong')]
         .map((node) => node.textContent),
     ).toEqual(['第一章 一', '第二章 二', '第三章 三']);
 
     await screen.findByRole('button', { name: /第一节 一/ });
     expect(
-      [...document.querySelectorAll('.textbook-directory--sections strong')]
+      [...document.querySelectorAll('.textbook-directory--sections > .textbook-directory__items > button strong')]
         .map((node) => node.textContent),
     ).toEqual(['第一节 一', '第二节 二', '第三节 三', '第四节 四']);
   });

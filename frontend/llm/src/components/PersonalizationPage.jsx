@@ -645,13 +645,13 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
               const value = formatProfileValue(getProfileFieldValue(field, profile, learnerProfile));
               const isLocked = field.lockKey && (learnerProfile.locked_fields || []).includes(field.lockKey);
               return (
-                <div key={field.key} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 border-b border-emerald-100/85 py-4 last:border-b-0 xl:grid-cols-[auto_minmax(7.5rem,11.5rem)_minmax(0,1fr)]">
+                <div key={field.key} className="user-profile-panel__field grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 border-b border-emerald-100/85 py-4 last:border-b-0 xl:grid-cols-[auto_minmax(7.5rem,11.5rem)_minmax(0,1fr)]">
                   <Icon aria-hidden="true" size={21} className="mt-0.5 text-emerald-600" />
                   <div className="min-w-0 space-y-1 xl:contents">
-                    <dt className="text-base font-semibold text-slate-700 sm:text-lg lg:text-[1.2rem] xl:col-start-2">{field.label}</dt>
-                    <dd className="flex min-w-0 items-start justify-between gap-2 text-base text-slate-900 sm:text-lg lg:text-[1.2rem] xl:col-start-3">
+                    <dt className="user-profile-panel__field-label text-base font-semibold text-slate-700 sm:text-lg lg:text-[1.2rem] xl:col-start-2">{field.label}</dt>
+                    <dd className="user-profile-panel__field-value flex min-w-0 items-start justify-between gap-2 text-base text-slate-900 sm:text-lg lg:text-[1.2rem] xl:col-start-3">
                       <span className={value ? 'min-w-0 break-words font-medium leading-7' : 'min-w-0 font-normal leading-7 text-slate-400'}>{value || '暂未填写'}</span>
-                      {isLocked && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1.5 text-sm font-semibold text-emerald-700"><Lock aria-hidden="true" size={14} />已锁定</span>}
+                      {isLocked && <span className="user-profile-panel__lock inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1.5 text-sm font-semibold text-emerald-700"><Lock aria-hidden="true" size={13} />已锁定</span>}
                     </dd>
                   </div>
                 </div>
@@ -659,33 +659,33 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
             };
             return <>
               <section className="user-profile-panel flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/86 p-5 shadow-lg shadow-emerald-100/45 backdrop-blur-sm sm:p-6 lg:min-h-0 lg:flex-1 lg:p-7 xl:p-8">
-                <header className="flex flex-wrap items-center justify-between gap-5 border-b border-emerald-100 pb-5 lg:pb-6">
+                <header className="user-profile-panel__header flex flex-wrap items-center justify-between gap-5 border-b border-emerald-100 pb-5 lg:pb-6">
                   <div className="flex items-center gap-4 text-slate-900">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 lg:h-16 lg:w-16"><Database aria-hidden="true" size={29} /></div>
+                    <div className="user-profile-panel__heading-icon flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 lg:h-16 lg:w-16"><Database aria-hidden="true" size={25} /></div>
                     <div>
-                      <h2 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl lg:text-[2.35rem]">我的学习画像</h2>
+                      <h2 className="user-profile-panel__heading text-2xl font-black tracking-tight text-slate-950 sm:text-3xl lg:text-[2.35rem]">我的学习画像</h2>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center justify-end gap-3">
-                    <div aria-label={`画像完整度 ${completion}%`} className="flex min-h-15 items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/75 px-4 py-2.5 shadow-sm shadow-emerald-100/50 lg:px-5 lg:py-3">
+                  <div className="user-profile-panel__actions flex flex-wrap items-center justify-end gap-3">
+                    <div aria-label={`画像完整度 ${completion}%`} className="user-profile-panel__completion flex min-h-15 items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/75 px-4 py-2.5 shadow-sm shadow-emerald-100/50 lg:px-5 lg:py-3">
                       <div className="relative grid h-10 w-10 place-items-center rounded-full" style={{ background: `conic-gradient(#10b981 ${completion}%, #d1fae5 0)` }}>
                         <span className="grid h-7 w-7 place-items-center rounded-full bg-white"><PieChart aria-hidden="true" size={15} className="text-emerald-700" /></span>
                       </div>
                       <div><p className="text-sm font-semibold text-slate-700 lg:text-base">画像完整度</p><p className="text-xl font-black tabular-nums text-emerald-600 lg:text-2xl">{completion}%</p></div>
                     </div>
-                    <button type="button" onClick={() => setProfileEditorOpen(true)} className="inline-flex min-h-15 items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-base font-bold text-white shadow-lg shadow-emerald-200 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-emerald-300 active:translate-y-px lg:px-6 lg:text-lg"><Pencil aria-hidden="true" size={20} />编辑画像</button>
+                    <button type="button" onClick={() => setProfileEditorOpen(true)} className="user-profile-panel__edit inline-flex min-h-15 items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-base font-bold text-white shadow-lg shadow-emerald-200 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-emerald-300 active:translate-y-px lg:px-6 lg:text-lg"><Pencil aria-hidden="true" size={18} />编辑画像</button>
                   </div>
                 </header>
                 {message && <p role="status" className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-base text-emerald-700">{message}</p>}
 
-                <div className="mt-5 grid flex-1 gap-5 lg:mt-6 lg:min-h-0 lg:grid-cols-2 lg:gap-6">
-                  <section aria-label="基础信息" className="flex min-h-0 flex-col rounded-[26px] border border-emerald-100 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/35 p-5 sm:p-6 lg:p-7">
-                    <h3 className="mb-4 flex items-center gap-2.5 text-2xl font-bold text-emerald-950 lg:text-[1.7rem]"><UserRound aria-hidden="true" size={28} className="text-emerald-600" />基础信息</h3>
+                <div className="user-profile-panel__grid mt-5 grid flex-1 gap-5 lg:mt-6 lg:min-h-0 lg:grid-cols-2 lg:gap-6">
+                  <section aria-label="基础信息" className="user-profile-panel__card flex min-h-0 flex-col rounded-[26px] border border-emerald-100 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/35 p-5 sm:p-6 lg:p-7">
+                    <h3 className="user-profile-panel__card-title mb-4 flex items-center gap-2.5 text-2xl font-bold text-emerald-950 lg:text-[1.7rem]"><UserRound aria-hidden="true" size={22} className="text-emerald-600" />基础信息</h3>
                     <dl className="flex flex-1 flex-col justify-between">{userProfileColumns.background.map(renderReadOnlyField)}</dl>
                   </section>
-                  <section aria-label="学习偏好" className="flex min-h-0 flex-col rounded-[26px] border border-teal-100 bg-gradient-to-br from-teal-50/65 via-white to-emerald-50/40 p-5 sm:p-6 lg:p-7">
+                  <section aria-label="学习偏好" className="user-profile-panel__card flex min-h-0 flex-col rounded-[26px] border border-teal-100 bg-gradient-to-br from-teal-50/65 via-white to-emerald-50/40 p-5 sm:p-6 lg:p-7">
                     <div className="mb-4">
-                      <h3 className="flex items-center gap-2.5 text-2xl font-bold text-emerald-950 lg:text-[1.7rem]"><Sparkles aria-hidden="true" size={28} className="text-emerald-600" />学习偏好</h3>
+                      <h3 className="user-profile-panel__card-title flex items-center gap-2.5 text-2xl font-bold text-emerald-950 lg:text-[1.7rem]"><Sparkles aria-hidden="true" size={22} className="text-emerald-600" />学习偏好</h3>
                     </div>
                     <dl className="flex flex-1 flex-col justify-between">{userProfileColumns.preferences.map(renderReadOnlyField)}</dl>
                   </section>

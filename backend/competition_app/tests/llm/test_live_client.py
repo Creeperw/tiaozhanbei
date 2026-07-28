@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from competition_app.llm.openai_compatible import ModelResponseError, OpenAICompatibleChatModel
+from competition_app.llm.failover import FailoverChatModel
 
 
 @pytest.mark.asyncio
@@ -654,3 +655,267 @@ async def test_chat_client_ignores_stream_usage_event_without_choices() -> None:
         "status": "ok"
     }
     assert observed == ['{"status":"ok"}']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"choices": []},
+        {"choices": [{"message": {"content": ""}}]},
+        {"choices": [{"message": {"content": None}}]},
+    ],
+)
+async def test_chat_client_rejects_empty_success_response(body) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen3.7-flash",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ModelResponseError) as exc_info:
+        await client.complete_json("planner_agent", {})
+    assert exc_info.value.failover_eligible is True
+
+
+@pytest.mark.asyncio
+async def test_chat_client_rejects_stream_without_content() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text='data: {"choices":[],"usage":{"total_tokens":1}}\n\ndata: [DONE]\n\n',
+            headers={"content-type": "text/event-stream"},
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen3.7-flash",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ModelResponseError, match="no content"):
+        await client.complete_json("planner_agent", {}, on_delta=lambda _: None)
+
+
+@pytest.mark.asyncio
+async def test_chat_client_hides_invalid_json_repair_stream() -> None:
+    responses = iter(["not-json", '{"status":"ok"}'])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        content = next(responses)
+        event = json.dumps({"choices": [{"delta": {"content": content}}]})
+        return httpx.Response(
+            200,
+            text=f"data: {event}\n\ndata: [DONE]\n\n",
+            headers={"content-type": "text/event-stream"},
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen3.7-flash",
+        transport=httpx.MockTransport(handler),
+    )
+    observed: list[str] = []
+
+    assert await client.complete_json(
+        "planner_agent", {}, on_delta=observed.append
+    ) == {"status": "ok"}
+    assert observed == ['{"status":"ok"}']
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status_code", "reason"),
+    [
+        (402, "quota_exhausted"),
+        (403, "model_access_denied"),
+        (404, "model_unavailable"),
+        (503, "transient_provider_error"),
+    ],
+)
+async def test_chat_client_classifies_failover_http_errors(
+    status_code, reason, monkeypatch
+) -> None:
+    async def fake_sleep(delay: float) -> None:
+        return None
+
+    monkeypatch.setattr("competition_app.llm.openai_compatible.asyncio.sleep", fake_sleep)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code, json={"message": "unavailable"})
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen3.7-flash",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ModelResponseError) as exc_info:
+        await client.complete_json("planner_agent", {})
+    assert exc_info.value.reason == reason
+    assert exc_info.value.failover_eligible is True
+
+
+@pytest.mark.asyncio
+async def test_chat_client_does_not_failover_on_invalid_credentials() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"message": "invalid api key"})
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="invalid-value",
+        model="qwen3.7-flash",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ModelResponseError) as exc_info:
+        await client.complete_json("planner_agent", {})
+    assert exc_info.value.reason == "http_error"
+    assert exc_info.value.failover_eligible is False
+
+
+@pytest.mark.asyncio
+async def test_failover_switches_after_model_access_denied() -> None:
+    calls: list[str] = []
+
+    def first_handler(request: httpx.Request) -> httpx.Response:
+        calls.append("qwen3.7-flash")
+        return httpx.Response(403, json={"message": "model access denied"})
+
+    def second_handler(request: httpx.Request) -> httpx.Response:
+        calls.append("qwen3.7-max-preview")
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": '{"status":"ok"}'}}]},
+        )
+
+    failover = FailoverChatModel(
+        [
+            OpenAICompatibleChatModel(
+                "https://example.test/v1", "secret", "qwen3.7-flash",
+                transport=httpx.MockTransport(first_handler),
+            ),
+            OpenAICompatibleChatModel(
+                "https://example.test/v1", "secret", "qwen3.7-max-preview",
+                transport=httpx.MockTransport(second_handler),
+            ),
+        ]
+    )
+
+    assert await failover.complete_json("planner_agent", {}) == {"status": "ok"}
+    assert calls == ["qwen3.7-flash", "qwen3.7-max-preview"]
+    assert failover.failover_history[-1]["reason"] == "model_access_denied"
+
+
+@pytest.mark.asyncio
+async def test_failover_model_switches_in_configured_order_and_stays_on_success(
+    monkeypatch,
+) -> None:
+    calls: list[str] = []
+
+    async def fake_sleep(delay: float) -> None:
+        return None
+
+    monkeypatch.setattr("competition_app.llm.openai_compatible.asyncio.sleep", fake_sleep)
+
+    def first_handler(request: httpx.Request) -> httpx.Response:
+        calls.append("qwen3.7-flash")
+        return httpx.Response(402, json={"message": "quota exhausted"})
+
+    def second_handler(request: httpx.Request) -> httpx.Response:
+        calls.append("qwen3.7-max-preview")
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": '{"status":"ok"}'}}]},
+        )
+
+    failover = FailoverChatModel(
+        [
+            OpenAICompatibleChatModel(
+                "https://example.test/v1", "secret", "qwen3.7-flash",
+                transport=httpx.MockTransport(first_handler),
+            ),
+            OpenAICompatibleChatModel(
+                "https://example.test/v1", "secret", "qwen3.7-max-preview",
+                transport=httpx.MockTransport(second_handler),
+            ),
+        ]
+    )
+
+    assert await failover.complete_json("planner_agent", {}) == {"status": "ok"}
+    assert await failover.complete_json("planner_agent", {}) == {"status": "ok"}
+    assert calls == ["qwen3.7-flash", "qwen3.7-max-preview", "qwen3.7-max-preview"]
+    assert failover.model == "qwen3.7-max-preview"
+    assert failover.failover_history == [
+        {
+            "from_model": "qwen3.7-flash",
+            "to_model": "qwen3.7-max-preview",
+            "reason": "quota_exhausted",
+            "status_code": 402,
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_failover_retries_business_invalid_json_and_hides_failed_stream() -> None:
+    observed: list[str] = []
+
+    def invalid_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=(
+                'data: {"choices":[{"delta":{"content":"{\\"status\\":\\"bad\\"}"}}]}\n\n'
+                "data: [DONE]\n\n"
+            ),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    def valid_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=(
+                'data: {"choices":[{"delta":{"content":"{\\"status\\":\\"ok\\"}"}}]}\n\n'
+                "data: [DONE]\n\n"
+            ),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    failover = FailoverChatModel(
+        [
+            OpenAICompatibleChatModel(
+                "https://example.test/v1", "secret", "first",
+                transport=httpx.MockTransport(invalid_handler),
+            ),
+            OpenAICompatibleChatModel(
+                "https://example.test/v1", "secret", "second",
+                transport=httpx.MockTransport(valid_handler),
+            ),
+        ]
+    )
+    payload = {
+        "_result_validator": lambda result: (
+            result
+            if result.get("status") == "ok"
+            else (_ for _ in ()).throw(ValueError("invalid status"))
+        )
+    }
+
+    assert await failover.complete_json(
+        "planner_agent", payload, on_delta=observed.append
+    ) == {"status": "ok"}
+    assert observed == ['{"status":"ok"}']
+    assert failover.last_request_payload["failovers"][-1]["reason"] == (
+        "business_schema_invalid"
+    )
+
+    assert await failover.complete_json(
+        "planner_agent", payload, on_delta=lambda _: None
+    ) == {"status": "ok"}
+    assert "failovers" not in failover.last_request_payload

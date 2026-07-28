@@ -31,9 +31,8 @@ def test_live_container_uses_configured_question_vector_store_root(tmp_path: Pat
 
     assert plan_kp_resolver is not None
     assert refresh_kp_resolver is not None
-    assert plan_kp_resolver.__self__ is container.backend_handoff_runtime
-    assert refresh_kp_resolver.__self__ is container.backend_handoff_runtime
+    assert plan_kp_resolver is refresh_kp_resolver
+    assert plan_kp_resolver("不存在的知识点") is None
     assert plan_video_resolver is not None
     assert refresh_video_resolver is not None
-    assert plan_video_resolver.__self__ is container.knowledge_backend.map
-    assert refresh_video_resolver.__self__ is container.knowledge_backend.map
+    assert plan_video_resolver is refresh_video_resolver

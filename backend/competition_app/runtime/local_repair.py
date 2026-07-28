@@ -14,6 +14,7 @@ IssueType = Literal[
     "route_or_prerequisite_error",
     "content_quality",
     "paper_blueprint_mismatch",
+    "plan_quality",
     "unresolved",
 ]
 
@@ -43,6 +44,7 @@ class LocalRepairController:
         "route_or_prerequisite_error": "expert",
         "content_quality": "paper_assembly",
         "paper_blueprint_mismatch": "paper_assembly",
+        "plan_quality": "diagnosis",
         "unresolved": "",
     }
     _ALLOWED_TARGETS: dict[IssueType, frozenset[str]] = {
@@ -52,6 +54,7 @@ class LocalRepairController:
         "route_or_prerequisite_error": frozenset({"learning_plan", "schedule", "expert", "paper_assembly"}),
         "content_quality": frozenset({"expert", "paper_assembly"}),
         "paper_blueprint_mismatch": frozenset({"paper_assembly"}),
+        "plan_quality": frozenset({"diagnosis"}),
         "unresolved": frozenset(),
     }
 
@@ -99,7 +102,10 @@ class LocalRepairController:
                 issues=issues,
             )
 
-        chains = [self._chain_for(issue, audit_step_id) for issue in issues]
+        chains = [
+            self._chain_for(issue, audit_step_id, step_ids=frozenset(steps_by_id))
+            for issue in issues
+        ]
         if any(chain is None for chain in chains):
             return self._human_review_plan(
                 repair_id=repair_id,
@@ -115,7 +121,11 @@ class LocalRepairController:
                 audit_step_id=audit_step_id,
                 issues=issues,
             )
-        merged = self._merge_chains(resolved_chains, plan)
+        merged = self._merge_chains(
+            resolved_chains,
+            plan,
+            available_outputs=frozenset(outputs),
+        )
         if merged is None:
             return self._human_review_plan(
                 repair_id=repair_id,
@@ -199,7 +209,13 @@ class LocalRepairController:
             return "content_quality", "paper_assembly"
         return "unresolved", None
 
-    def _chain_for(self, issue: RepairIssue, audit_step_id: str) -> tuple[str, ...] | None:
+    def _chain_for(
+        self,
+        issue: RepairIssue,
+        audit_step_id: str,
+        *,
+        step_ids: frozenset[str],
+    ) -> tuple[str, ...] | None:
         issue_type = issue.issue_type
         if issue_type == "unresolved":
             return None
@@ -207,7 +223,12 @@ class LocalRepairController:
         if target is None:
             return None
         if issue_type in {"missing_evidence", "conflicting_evidence"}:
-            return ("knowledge", target, audit_step_id)
+            evidence_step_id = (
+                "question_pool"
+                if target == "paper_assembly" and "question_pool" in step_ids
+                else "knowledge"
+            )
+            return (evidence_step_id, target, audit_step_id)
         if issue_type == "learner_mismatch":
             return ("diagnosis", target, audit_step_id)
         if issue_type == "route_or_prerequisite_error":
@@ -215,7 +236,14 @@ class LocalRepairController:
         if issue_type == "content_quality":
             return (target, audit_step_id)
         if issue_type == "paper_blueprint_mismatch":
-            return ("paper_blueprint", "knowledge", "paper_assembly", audit_step_id)
+            return (
+                "paper_blueprint",
+                "question_pool",
+                "paper_assembly",
+                audit_step_id,
+            )
+        if issue_type == "plan_quality":
+            return ("diagnosis", audit_step_id)
         return None
 
     def _affected_target(self, issue: RepairIssue) -> str | None:
@@ -228,7 +256,10 @@ class LocalRepairController:
 
     @staticmethod
     def _merge_chains(
-        chains: Sequence[tuple[str, ...]], plan: ExecutionPlan
+        chains: Sequence[tuple[str, ...]],
+        plan: ExecutionPlan,
+        *,
+        available_outputs: frozenset[str],
     ) -> tuple[list[str], dict[str, list[str]]] | None:
         plan_order = {step.step_id: index for index, step in enumerate(plan.steps)}
         steps_by_id = {step.step_id: step for step in plan.steps}
@@ -243,6 +274,8 @@ class LocalRepairController:
         while pending:
             step_id = pending.pop()
             for dependency in steps_by_id[step_id].depends_on:
+                if dependency in available_outputs and dependency not in dependencies:
+                    continue
                 dependencies[step_id].add(dependency)
                 if dependency not in dependencies:
                     dependencies[dependency] = set()

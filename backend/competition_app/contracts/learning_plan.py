@@ -28,8 +28,11 @@ class PlanMilestone(ContractModel):
 
 class LongTermPlanStage(ContractModel):
     stage: int = Field(ge=1)
+    stage_name: str = ""
     book: list[str] = Field(min_length=1)
     goal: str = Field(min_length=1)
+    duration_days: int = Field(default=0, ge=0, le=3_650)
+    schedule_summary: str = ""
 
 
 class StageEvidenceRecord(ContractModel):
@@ -79,7 +82,11 @@ class TextbookSelectionContext(ContractModel):
 
 
 class ShortTermLearningPackage(ContractModel):
-    time_window_weeks: Literal[1, 2] | None = None
+    # Retained for API compatibility. New planning logic uses duration_days as
+    # the authoritative value and derives this display-oriented week count.
+    time_window_weeks: int | None = Field(default=None, ge=1, le=53)
+    duration_days: int | None = Field(default=None, ge=1, le=365)
+    progression_nodes: list[str] = Field(default_factory=list)
     current_goal: str = Field(min_length=1)
     task_blocks: list[str | ShortTermTaskBlock] = Field(min_length=1)
     review_minutes: int | None = Field(default=None, ge=0)

@@ -88,7 +88,7 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
 describe('QualificationRoutePage', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('renders the personalized header, current plan calendar, review rail, and feature entry layout', async () => {
+  it('renders the learning path by default with the current plan on the right', async () => {
     installHomeFetch({
       current_learning_task: {
         task_id: 'TASK_TODAY',
@@ -140,19 +140,20 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByText(/距离中医类别执业医师资格考试还有/)).toBeInTheDocument();
     expect(screen.queryByLabelText('六智能体协作角色')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '当前学习计划' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '学习路径规划' })).toBeInTheDocument();
+    expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: '今日学习计划' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '学习计划日历' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /任务未完成/ })).toBeInTheDocument();
     expect(screen.getByText('第一章 中医学理论体系')).toBeInTheDocument();
     expect(screen.getByText('完成阴阳学说训练')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '复习任务' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('button', { name: /四君子汤配伍/ })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /进入功能/ })).toHaveLength(4);
 
-    fireEvent.click(screen.getByRole('button', { name: /查看完整学习路径/ }));
-    expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '返回当前计划' }));
-    expect(screen.getByRole('heading', { name: '当前学习计划' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /查看阶段卡片/ }));
+    expect(screen.getByRole('button', { name: '返回学习路径' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
+    expect(screen.getByRole('heading', { name: '学习路径规划' })).toBeInTheDocument();
   });
 
   it('reloads the homepage route when the sidebar changes the qualification target', async () => {
@@ -221,20 +222,8 @@ describe('QualificationRoutePage', () => {
 
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /四君子汤配伍/ }));
-    expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'practice',
-      params: {
-        view: 'workspace',
-        taskType: 'question_training',
-        kpId: 'KP_1',
-        reviewTaskId: 'review-1',
-        returnTo: { page: 'qualification-route', params: {} },
-      },
-    });
-
     const plan = screen.getByLabelText('当前学习计划');
-    fireEvent.click(within(plan).getByRole('button', { name: /完成四君子汤练习/ }));
+    fireEvent.click(await within(plan).findByRole('button', { name: /完成四君子汤练习/ }));
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
       params: {
@@ -260,20 +249,6 @@ describe('QualificationRoutePage', () => {
       }),
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: '学习任务' }));
-    const rail = screen.getByRole('region', { name: '复习任务' });
-    fireEvent.click(within(rail).getByRole('button', { name: /完成四君子汤练习/ }));
-    expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'practice',
-      params: {
-        view: 'workspace',
-        taskType: 'question_training',
-        taskItemId: 'ITEM_1',
-        kpId: 'KP_1',
-        kpName: '四君子汤',
-        returnTo: { page: 'qualification-route', params: {} },
-      },
-    });
   });
 
   it('shows persisted long and short planning narratives from the route header', async () => {
@@ -285,8 +260,8 @@ describe('QualificationRoutePage', () => {
     expect(await screen.findByText('【最终目标】通过中医执业医师资格考试。')).toBeInTheDocument();
     expect(screen.getByText('【本周安排】完成中医基础理论复习。')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '长期规划和短期规划说明' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '返回当前计划' }));
-    expect(await screen.findByRole('heading', { name: '当前学习计划' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
+    expect(await screen.findByRole('heading', { name: '学习路径规划' })).toBeInTheDocument();
   });
 
   it('routes all new homepage feature cards to executable pages', async () => {

@@ -26,6 +26,34 @@ class FakeRetrievalTool:
         )
 
 
+class GenericQueryRetrievalTool(FakeRetrievalTool):
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    async def build_evidence_pack(self, query: str) -> EvidencePack:
+        self.queries.append(query)
+        if query == "中医药基础知识点":
+            raise LookupError("generic query is not a formal knowledge point")
+        return (await super().build_evidence_pack(query)).model_copy(
+            update={"query": query}
+        )
+
+
+class GenericQueryModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        if payload["payload"].get("phase") == "plan_retrieval":
+            return {
+                "kp_query": "中医药基础知识点",
+                "question_query": "感冒 练习题",
+                "retrieval_reason": "检索中医药基础内容。",
+            }
+        return {
+            "retrieval_summary": "教材中的感冒知识摘要。",
+            "quality_labels": ["教材依据相关"],
+            "uncertainty": [],
+        }
+
+
 def context() -> dict[str, object]:
     return {
         "case_id": "CASE_1",
@@ -44,6 +72,18 @@ def context() -> dict[str, object]:
 async def test_knowledge_agent_uses_retrieval_tool() -> None:
     output = await KnowledgeBaseAgent(FakeRetrievalTool()).run(context())
     assert output.payload.resolved_kp_ids == ["KP_FJ_018"]
+
+
+@pytest.mark.asyncio
+async def test_knowledge_agent_falls_back_to_concrete_user_topic() -> None:
+    retrieval = GenericQueryRetrievalTool()
+    ctx = context()
+    ctx["user_request"] = "给我讲讲感冒的知识点"
+
+    output = await KnowledgeBaseAgent(retrieval, GenericQueryModel()).run(ctx)
+
+    assert retrieval.queries == ["中医药基础知识点", "感冒"]
+    assert output.payload.query == "感冒"
 
 
 @pytest.mark.asyncio

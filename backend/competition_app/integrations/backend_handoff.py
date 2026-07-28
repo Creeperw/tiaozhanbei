@@ -556,6 +556,133 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def list_active_personalization_memories(
+        self, external_user_id: str
+    ) -> list[dict[str, Any]]:
+        """Read active, non-expired memories for the mapped host user only."""
+
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        sqlalchemy = importlib.import_module("sqlalchemy")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            rows = (
+                db.query(database.PersonalizationMemory)
+                .filter(
+                    database.PersonalizationMemory.user_id == user.id,
+                    database.PersonalizationMemory.is_active.is_(True),
+                    sqlalchemy.or_(
+                        database.PersonalizationMemory.expires_at.is_(None),
+                        database.PersonalizationMemory.expires_at > time_utils.utc_now(),
+                    ),
+                )
+                .order_by(
+                    database.PersonalizationMemory.updated_at.desc(),
+                    database.PersonalizationMemory.id.desc(),
+                )
+                .all()
+            )
+            return [
+                {
+                    "id": row.id,
+                    "category": row.category or "note",
+                    "importance": row.importance or "normal",
+                    "title": row.title or "",
+                    "content": row.content or "",
+                    "source": row.source or "",
+                    "confidence": float(row.confidence or 0.0),
+                    "updated_at": row.updated_at.isoformat()
+                    if row.updated_at
+                    else None,
+                }
+                for row in rows
+                if str(row.content or "").strip()
+            ]
+        finally:
+            db.close()
+
+    def persist_memory_governance(
+        self,
+        external_user_id: str,
+        *,
+        execution_id: str,
+        candidates: list[dict[str, Any]],
+        resolution: str = "none",
+        conflicts: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Persist pending candidates and only user-confirmed replacements."""
+
+        allowed_resolutions = {
+            "none", "keep_existing", "use_current_once", "replace_existing"
+        }
+        if resolution not in allowed_resolutions:
+            raise ValueError("memory governance is not ready for persistence")
+        database = importlib.import_module("APP.backend.database")
+        memory_service = importlib.import_module("APP.backend.health_memory")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            normalized_candidates = [
+                {
+                    "content": str(item.get("content") or item.get("summary") or "").strip(),
+                    "title": str(item.get("title") or "")[:200],
+                    "importance": "normal",
+                    "reason": str(item.get("reason") or "Memory Agent 提取，等待用户在学习记忆设置中确认。"),
+                    "confidence": float(item.get("confidence") or 0.8),
+                }
+                for item in candidates
+                if str(item.get("content") or item.get("summary") or "").strip()
+            ]
+            saved = memory_service.save_extracted_memories(
+                db,
+                user.id,
+                {"candidates": normalized_candidates},
+                source="memory_agent",
+                session_id=None,
+                commit=False,
+            )
+            replacement_result: dict[str, Any] = {"replaced": []}
+            if resolution == "replace_existing":
+                replacement_result = memory_service.apply_confirmed_memory_replacements(
+                    db,
+                    user.id,
+                    list(conflicts or []),
+                )
+            db.add(
+                database.AgentEvent(
+                    user_id=user.id,
+                    agent_name="memory_agent",
+                    event_type="learning_memory_governance",
+                    input_summary="学习记忆候选与冲突治理",
+                    output_summary=(
+                        f"候选{len(normalized_candidates)}条，决策{resolution}"
+                    ),
+                    payload=json.dumps(
+                        {
+                            "execution_id": execution_id,
+                            "resolution": resolution,
+                            "candidate_contents": [
+                                item["content"] for item in normalized_candidates
+                            ],
+                            "replacements": replacement_result.get("replaced", []),
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            )
+            db.commit()
+            return {
+                "candidates": saved.get("non_important_candidates", []),
+                "resolution": resolution,
+                **replacement_result,
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
     def load_multiscale_learning_state(
         self,
         external_user_id: str,

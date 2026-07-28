@@ -15,7 +15,14 @@ REPOSITORY_ROOT = BACKEND_ROOT.parent
 CHAT_BASE_URL = (
     "https://llm-1nvjq1o5rj1bf5yi.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
-CHAT_MODEL = "qwen3.7-max-2026-05-17"
+CHAT_MODELS = (
+    "qwen3.7-flash",
+    "qwen3.7-max-preview",
+    "glm-5.2",
+    "qwen3.7-flash-2026-07-15",
+    "qwen-plus",
+)
+CHAT_MODEL = CHAT_MODELS[0]
 EMBEDDING_BASE_URL = "https://api.siliconflow.cn/v1"
 EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-4B"
 
@@ -73,6 +80,10 @@ def _environment_values(environ: Mapping[str, str] | None) -> Mapping[str, str]:
     for path in paths:
         values.update(_load_dotenv(path))
     values.update(os.environ)
+    # An explicitly exported legacy CHAT_MODEL must not be shadowed by a
+    # CHAT_MODELS value loaded only from a dotenv file.
+    if "CHAT_MODEL" in os.environ and "CHAT_MODELS" not in os.environ:
+        values.pop("CHAT_MODELS", None)
     return values
 
 
@@ -139,6 +150,17 @@ def _parse_choice(
     return value
 
 
+def _parse_chat_models(values: Mapping[str, str]) -> tuple[str, ...]:
+    raw = values.get("CHAT_MODELS", "").strip()
+    if not raw:
+        configured_model = values.get("CHAT_MODEL", "").strip()
+        return (configured_model,) if configured_model else CHAT_MODELS
+    models = tuple(dict.fromkeys(item.strip() for item in raw.split(",") if item.strip()))
+    if not models:
+        raise SettingsError("CHAT_MODELS must contain at least one model name")
+    return models
+
+
 @dataclass(frozen=True)
 class Settings:
     # Main application runtime.
@@ -152,11 +174,29 @@ class Settings:
     # Main model stack. These fields remain compatible with existing callers.
     chat_base_url: str = CHAT_BASE_URL
     chat_model: str = CHAT_MODEL
+    chat_models: tuple[str, ...] = CHAT_MODELS
     embedding_base_url: str = EMBEDDING_BASE_URL
     embedding_model: str = EMBEDDING_MODEL
     embedding_mode: Literal["enabled", "disabled"] = "enabled"
     embedding_model_path: Path | None = None
     llm_timeout_seconds: float = 120.0
+
+    def __post_init__(self) -> None:
+        normalized_models = tuple(
+            dict.fromkeys(str(item).strip() for item in self.chat_models if str(item).strip())
+        )
+        if not normalized_models:
+            raise SettingsError("chat_models must contain at least one model name")
+        if self.chat_model != normalized_models[0]:
+            if self.chat_models == CHAT_MODELS:
+                compatibility_model = str(self.chat_model).strip()
+                if not compatibility_model:
+                    raise SettingsError("chat_model must contain a model name")
+                normalized_models = (compatibility_model,)
+            object.__setattr__(self, "chat_models", normalized_models)
+            object.__setattr__(self, "chat_model", normalized_models[0])
+        elif normalized_models != self.chat_models:
+            object.__setattr__(self, "chat_models", normalized_models)
 
     # Knowledge and external assets.
     question_vector_store_root: Path = DEFAULT_QUESTION_VECTOR_STORE_ROOT
@@ -262,6 +302,7 @@ class Settings:
         atlas_contract_raw = values.get("KNOWLEDGE_ATLAS_CONTRACT_PATH", "").strip()
         embedding_model_path_raw = values.get("EMBEDDING_MODEL_PATH", "").strip()
 
+        chat_models = _parse_chat_models(values)
         return cls(
             mode=cast(Literal["stub", "live"], mode),
             execution_engine=cast(Literal["langgraph", "legacy"], execution_engine),
@@ -275,7 +316,8 @@ class Settings:
                 base=REPOSITORY_ROOT,
             ),
             chat_base_url=values.get("CHAT_BASE_URL", CHAT_BASE_URL),
-            chat_model=values.get("CHAT_MODEL", CHAT_MODEL),
+            chat_model=chat_models[0],
+            chat_models=chat_models,
             embedding_base_url=values.get("EMBEDDING_BASE_URL", EMBEDDING_BASE_URL),
             embedding_model=values.get("EMBEDDING_MODEL", EMBEDDING_MODEL),
             embedding_mode=cast(

@@ -24,15 +24,19 @@ async def test_plain_greeting_is_a_lightweight_conversation_without_business_age
 
     assert result.status == "success"
     assert result.task_type == "casual_conversation"
-    assert result.direct_response.startswith("你好！")
+    assert result.direct_response == (
+        "你好！我是时珍智训智能助教。你想先聊聊当前学习情况，还是直接开始一项学习任务？"
+    )
     assert [item.producer for item in result.agent_outputs] == ["planner_agent"]
+    assert result.model_trace
+    assert result.model_trace[0].agent == "planner_agent"
     assert result.learning_plan is None
     assert result.resource is None
     assert result.audit is None
 
 
 @pytest.mark.asyncio
-async def test_planner_routes_plan_request_without_expert_or_audit(tmp_path) -> None:
+async def test_planner_routes_plan_request_through_plan_audit_without_expert(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
 
     result = await container.review_card_use_case.execute(
@@ -43,14 +47,19 @@ async def test_planner_routes_plan_request_without_expert_or_audit(tmp_path) -> 
     assert result.task_type == "learning_plan"
     assert producers == {
         "planner_agent",
+        "memory_agent",
         "default_route_resolver",
         "knowledge_base_agent",
         "diagnosis_agent",
+        "audit_agent",
         "learning_plan_service",
     }
     assert result.learning_plan is not None
     assert result.resource is None
-    assert result.audit is None
+    plan_audit = next(
+        item for item in result.agent_outputs if item.producer == "audit_agent"
+    )
+    assert plan_audit.payload.decision == "pass"
     assert result.review_task is None
 
 
@@ -196,7 +205,7 @@ async def test_long_conversation_forces_memory_compression_before_knowledge(tmp_
 
 
 @pytest.mark.asyncio
-async def test_planner_routes_plan_plus_learning_card_through_resource_chain(tmp_path) -> None:
+async def test_combined_plan_and_card_does_not_publish_unaudited_plan(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
 
     result = await container.review_card_use_case.execute(
@@ -209,8 +218,16 @@ async def test_planner_routes_plan_plus_learning_card_through_resource_chain(tmp
         "default_route_resolver", "learning_plan_service", "expert_agent", "audit_agent"
     }.issubset(producers)
     assert result.learning_plan is not None
-    assert result.resource is not None
-    assert "【本次目标】" in result.resource.content["学习提示"]
+    assert result.learning_plan.requires_clarification is True
+    assert result.learning_plan.requested_scope == "unspecified"
+    assert "三审" in result.learning_plan.reason
+    assert result.resource is None
+    assert result.resource_version is None
+    assert result.writeback_intents == []
+    planning_service = container.review_card_use_case.orchestrator.agent_registry.get(
+        "learning_plan_service"
+    ).service
+    assert planning_service.get_current("ROUTING_USER_1") is None
 
 
 @pytest.mark.asyncio
@@ -259,7 +276,7 @@ async def test_learning_status_request_reuses_existing_plans(tmp_path) -> None:
     assert result.learning_plan.short_term_plan.content == existing_short["content"]
     diagnosis = next(item for item in result.agent_outputs if item.producer == "diagnosis_agent")
     assert {item.producer for item in result.agent_outputs} == {
-        "planner_agent", "default_route_resolver", "diagnosis_agent", "learning_plan_service"
+            "planner_agent", "memory_agent", "default_route_resolver", "diagnosis_agent", "learning_plan_service"
     }
     assert diagnosis.payload.learning_plan_proposal.long_term_plan_action == "reuse"
     assert diagnosis.payload.learning_plan_proposal.short_term_plan_action == "reuse"
@@ -284,7 +301,7 @@ async def test_planner_routes_exam_paper_request_to_blueprint_chain(tmp_path) ->
 
     assert result.task_type == "paper_generation"
     assert {item.producer for item in result.agent_outputs} == {
-        "planner_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
+        "planner_agent", "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
     }
     assert result.learning_plan is None
     assert result.review_task is None
@@ -323,6 +340,8 @@ async def test_bound_paper_request_forwards_daily_task_item_id_to_publication(tm
 
     assert runtime.calls[0][0] == "PAPER_BOUND_USER"
     assert runtime.calls[0][1]["daily_task_item_id"] == "ITEM_BOUND"
+    assert runtime.calls[0][1]["evidence_pack"]["pool_id"]
+    assert runtime.calls[0][1]["evidence_pack"]["units"]
     assert result.ui_actions[0].params["paper_id"] == "PAPER_BOUND"
 
 
@@ -365,7 +384,7 @@ async def test_planner_routes_plain_explanation_without_learning_plan(tmp_path) 
 
     assert result.task_type == "knowledge_explanation"
     assert {item.producer for item in result.agent_outputs} == {
-        "planner_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
+        "planner_agent", "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
     }
     assert result.learning_plan is None
     assert result.review_task is None

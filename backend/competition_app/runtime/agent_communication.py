@@ -126,6 +126,16 @@ class CognitiveGapAnalyzer:
             else:
                 omitted.append(f"{step_id}:unsupported_dependency_output")
 
+        if (
+            step.agent == "audit_agent"
+            and (
+                root_context.get("task_type") == "learning_plan"
+                or step.audit_subject in {"long_term_plan", "short_term_plan"}
+            )
+            and "diagnosis_proposal" in known_values
+        ):
+            known_values["artifact"] = known_values["diagnosis_proposal"]
+
         catalog_needs = AGENT_NEED_CATALOG.get(step.agent)
         compatibility_mode = catalog_needs is None
         needs = () if compatibility_mode else catalog_needs
@@ -143,7 +153,11 @@ class CognitiveGapAnalyzer:
             and not (
                 step.agent == "audit_agent"
                 and need.field == "evidence"
-                and root_context.get("task_type") == "paper_generation"
+                    and (
+                        root_context.get("task_type")
+                        in {"paper_generation", "learning_plan"}
+                        or step.audit_subject in {"long_term_plan", "short_term_plan"}
+                    )
             )
         ]
         allowed_fields = (

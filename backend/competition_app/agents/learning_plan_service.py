@@ -10,6 +10,7 @@ from competition_app.contracts.learning_plan import (
 )
 from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
+from competition_app.services.plan_audit import plan_audit_subject_digest
 
 
 class LearningPlanServiceAdapter:
@@ -27,6 +28,85 @@ class LearningPlanServiceAdapter:
     async def run(
         self, context: dict[str, Any]
     ) -> AgentEnvelope[LearningPlanResult | LearningPlanClarificationResult]:
+        dependencies = context["dependency_outputs"]
+        if context.get("step_id") == "learning_plan" and {
+            "diagnosis_long", "audit_long", "diagnosis_short", "audit_short"
+        }.issubset(dependencies):
+            long_diagnosis = dependencies["diagnosis_long"].payload
+            short_diagnosis = dependencies["diagnosis_short"].payload
+            long_audit = dependencies["audit_long"].payload
+            short_audit = dependencies["audit_short"].payload
+            clarifications = [
+                item
+                for item in (long_diagnosis, short_diagnosis)
+                if getattr(item, "requires_clarification", False)
+            ]
+            if clarifications:
+                questions = [
+                    question
+                    for item in clarifications
+                    for question in item.clarification_questions
+                ]
+                result = LearningPlanClarificationResult(
+                    clarification_questions=list(dict.fromkeys(questions)),
+                    reason=(
+                        "长期规划或短期计划尚未形成可独立审核的完整合同；"
+                        "三审全部通过前不会发布计划或学习资源。"
+                    ),
+                    requested_scope="unspecified",
+                )
+                return envelope(
+                    context,
+                    "learning_plan_service",
+                    "learning_plan_clarification",
+                    result,
+                )
+            for scope, diagnosis, audit, subject_type in (
+                ("long_term", long_diagnosis, long_audit, "long_term_plan"),
+                ("short_term", short_diagnosis, short_audit, "short_term_plan"),
+            ):
+                expected_digest = plan_audit_subject_digest(
+                    plan_scope=scope,
+                    proposal=diagnosis.learning_plan_proposal,
+                    compiled_plan_contract=diagnosis.compiled_plan_contract,
+                    parent_plan_constraints=dict(
+                        getattr(diagnosis, "parent_plan_constraints", {}) or {}
+                    ),
+                )
+                failures = [
+                    name
+                    for name, failed in (
+                        ("decision", audit.decision != "pass"),
+                        ("subject_type", audit.subject_type != subject_type),
+                        ("plan_scope", audit.plan_scope != scope),
+                        ("subject_digest", audit.subject_digest != expected_digest),
+                    )
+                    if failed
+                ]
+                if failures:
+                    raise RuntimeError(
+                        "combined plan requires independent passing audits: "
+                        f"{scope}:{','.join(failures)}"
+                    )
+            if short_audit.parent_subject_digest != long_audit.subject_digest:
+                raise RuntimeError("short-term audit is not bound to the approved long-term plan")
+            long_result = self.service.materialize_long_term(
+                learner_id=str(context["learner_id"]),
+                proposal=long_diagnosis.learning_plan_proposal,
+                now=context.get("now"),
+            )
+            short_result = self.service.materialize_short_term(
+                learner_id=str(context["learner_id"]),
+                proposal=short_diagnosis.learning_plan_proposal,
+                now=context.get("now"),
+                current_long_term_plan=long_result.long_term_plan.model_dump(mode="json"),
+            )
+            result = self.service.get_current(str(context["learner_id"]))
+            if result is None:
+                raise RuntimeError("combined plan publication did not persist")
+            return envelope(
+                context, "learning_plan_service", "learning_plan_result", result
+            )
         diagnosis = context["dependency_outputs"]["diagnosis"].payload
         if getattr(diagnosis, "requires_clarification", False):
             clarification = LearningPlanClarificationResult(
@@ -41,6 +121,45 @@ class LearningPlanServiceAdapter:
                 clarification,
             )
         plan_scope = getattr(diagnosis, "plan_scope", None)
+        if (
+            context.get("requires_learning_plan_output") is True
+            and plan_scope not in {"long_term", "short_term", "daily_task"}
+        ):
+            clarification = LearningPlanClarificationResult(
+                clarification_questions=[
+                    "请先明确要制定长期规划、短期计划还是今日任务；"
+                    "对应计划独立审核通过后，再与本次学习资源联动。"
+                ],
+                reason=(
+                    "资源审核不能替代长期或短期计划审核，系统不会在组合资源链中"
+                    "直接激活未经独立审核的多层计划。"
+                ),
+                requested_scope="unspecified",
+            )
+            return envelope(
+                context,
+                "learning_plan_service",
+                "learning_plan_clarification",
+                clarification,
+            )
+        if plan_scope in {"long_term", "short_term"}:
+            audit_output = context["dependency_outputs"].get("audit")
+            audit = getattr(audit_output, "payload", None)
+            if audit is None or audit.decision != "pass":
+                raise RuntimeError("long/short-term plan requires a passing audit")
+            if audit.plan_scope != plan_scope:
+                raise RuntimeError("plan audit scope does not match proposal scope")
+            parent_constraints = dict(
+                getattr(diagnosis, "parent_plan_constraints", {}) or {}
+            )
+            expected_digest = plan_audit_subject_digest(
+                plan_scope=plan_scope,
+                proposal=diagnosis.learning_plan_proposal,
+                compiled_plan_contract=diagnosis.compiled_plan_contract,
+                parent_plan_constraints=parent_constraints,
+            )
+            if audit.subject_digest != expected_digest:
+                raise RuntimeError("plan audit approval does not match current proposal")
         parent_kind = (
             "long"
             if plan_scope == "short_term"
@@ -57,36 +176,20 @@ class LearningPlanServiceAdapter:
             if not self.service.is_current_parent(
                 str(context["learner_id"]), parent_plan, parent_kind
             ):
-                imported_parent = None
-                learner_id = str(context["learner_id"])
-                if (
-                    parent_kind == "long"
-                    and self.service.get_current(learner_id) is None
-                    and self.service.is_importable_long_term_parent(parent_plan)
-                ):
-                    imported_parent = self.service.import_long_term_parent(
-                        learner_id,
-                        parent_plan,
-                        diagnosis.learning_plan_proposal,
-                        now=context.get("now"),
-                    )
-                    parent_plan = imported_parent.model_dump(mode="json")
-                    context["current_long_term_plan"] = parent_plan
-                if imported_parent is None:
-                    parent_label = "长期规划" if parent_kind == "long" else "短期计划"
-                    clarification = LearningPlanClarificationResult(
-                        clarification_questions=[
-                            f"当前{parent_label}已失效或不是最新版本，是否先重新制定{parent_label}？"
-                        ],
-                        reason=f"本层计划必须基于当前有效的{parent_label}制定。",
-                        requested_scope=plan_scope,
-                    )
-                    return envelope(
-                        context,
-                        "learning_plan_service",
-                        "learning_plan_clarification",
-                        clarification,
-                    )
+                parent_label = "长期规划" if parent_kind == "long" else "短期计划"
+                clarification = LearningPlanClarificationResult(
+                    clarification_questions=[
+                        f"当前{parent_label}已失效或不是最新版本，是否先重新制定{parent_label}？"
+                    ],
+                    reason=f"本层计划必须基于当前有效且已独立审核的{parent_label}制定。",
+                    requested_scope=plan_scope,
+                )
+                return envelope(
+                    context,
+                    "learning_plan_service",
+                    "learning_plan_clarification",
+                    clarification,
+                )
         if plan_scope == "long_term":
             result = self.service.materialize_long_term(
                 learner_id=str(context["learner_id"]),
@@ -119,3 +222,22 @@ class LearningPlanServiceAdapter:
                 available_minutes=context.get("available_minutes"),
             )
         return envelope(context, "learning_plan_service", "learning_plan_result", result)
+
+    @staticmethod
+    def _parent_plan_constraints(
+        context: dict[str, Any], plan_scope: str | None
+    ) -> dict[str, Any]:
+        if plan_scope != "short_term":
+            return {}
+        parent = context.get("current_long_term_plan") or {}
+        stages = parent.get("stages", []) if isinstance(parent, dict) else []
+        if not stages:
+            return {}
+        current = next(
+            (stage for stage in stages if stage.get("status") in {"active", "current"}),
+            stages[0],
+        )
+        return {
+            "current_stage_id": current.get("stage_id"),
+            "current_stage_duration_days": current.get("duration_days"),
+        }

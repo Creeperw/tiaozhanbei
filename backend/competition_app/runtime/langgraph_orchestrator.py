@@ -18,6 +18,11 @@ from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.knowledge import EvidencePack
 from competition_app.contracts.local_repair import LocalRepairPlan
 from competition_app.contracts.resource import AuditResult
+from competition_app.contracts.paper import (
+    ExamPaperDraft,
+    PaperBlueprint,
+    QuestionCandidatePool,
+)
 from competition_app.runtime.event_stream import emit_runtime_event
 from competition_app.runtime.orchestrator import ExecutionResult, Orchestrator
 from competition_app.runtime.trace import CommunicationTrace, RepairTrace, TraceRecorder
@@ -412,6 +417,9 @@ class LangGraphOrchestrator(Orchestrator):
             "resolved_planning_route": ResolvedPlanningRoute,
             "evidence_pack": EvidencePack,
             "audit_result": AuditResult,
+            "paper_blueprint": PaperBlueprint,
+            "question_candidate_pool": QuestionCandidatePool,
+            "exam_paper_draft": ExamPaperDraft,
         }
         if isinstance(value, AgentEnvelope):
             payload_type = payload_types.get(str(value.artifact_type))
@@ -738,6 +746,7 @@ class LangGraphOrchestrator(Orchestrator):
                     root_context,
                     resume_value,
                     requested_scope=clarification.get("requested_scope"),
+                    interrupt_type=clarification.get("interrupt_type"),
                 )
                 emit_runtime_event(
                     "graph_resumed",
@@ -869,7 +878,10 @@ class LangGraphOrchestrator(Orchestrator):
                         step.step_id: {
                             "status": "waiting_human_review",
                             "error_type": "RepairPlanNeedsHumanReview",
-                            "error_message": "audit findings could not be safely repaired",
+                            "error_message": (
+                                "audit findings could not be safely repaired: "
+                                + "; ".join(str(item) for item in findings)
+                            ),
                         }
                     },
                 })
@@ -976,20 +988,29 @@ class LangGraphOrchestrator(Orchestrator):
     @staticmethod
     def _clarification_payload(result: Any, step: ExecutionStep) -> dict[str, Any] | None:
         payload = getattr(result, "payload", None)
-        if payload is None or not getattr(payload, "requires_clarification", False):
+        clarification_source = getattr(payload, "governance", None) or payload
+        if clarification_source is None or not getattr(
+            clarification_source, "requires_clarification", False
+        ):
             return None
-        questions = list(getattr(payload, "clarification_questions", []) or [])
+        questions = list(
+            getattr(clarification_source, "clarification_questions", []) or []
+        )
         return {
             "step_id": step.step_id,
             "agent": step.agent,
-            "reason": getattr(payload, "reason", None)
-            or getattr(payload, "clarification_reason", None)
+            "reason": getattr(clarification_source, "reason", None)
+            or getattr(clarification_source, "clarification_reason", None)
             or "需要用户补充信息后继续。",
             "questions": questions,
-            "requested_scope": getattr(payload, "requested_scope", None)
-            or getattr(payload, "plan_scope", None),
-            "profile_fields": list(getattr(payload, "clarification_fields", []) or []),
-            "interrupt_type": getattr(payload, "interrupt_type", None),
+            "requested_scope": getattr(clarification_source, "requested_scope", None)
+            or getattr(clarification_source, "plan_scope", None),
+            "profile_fields": list(
+                getattr(clarification_source, "clarification_fields", []) or []
+            ),
+            "interrupt_type": getattr(
+                clarification_source, "interrupt_type", None
+            ),
         }
 
     @staticmethod
@@ -998,8 +1019,22 @@ class LangGraphOrchestrator(Orchestrator):
         resume_value: Any,
         *,
         requested_scope: str | None = None,
+        interrupt_type: str | None = None,
     ) -> None:
         value = resume_value if isinstance(resume_value, dict) else {"answer": resume_value}
+        if interrupt_type == "memory_conflict":
+            answer = str(value.get("answer") or "").strip()
+            root_context["memory_conflict_answer"] = answer
+            root_context["latest_resume_answer"] = answer
+            if answer:
+                messages = root_context.setdefault("messages", [])
+                if not any(
+                    item.get("role") == "user" and item.get("content") == answer
+                    for item in messages
+                    if isinstance(item, dict)
+                ):
+                    messages.append({"role": "user", "content": answer})
+            return
         profile_updates = value.get("profile_updates")
         if isinstance(profile_updates, dict):
             profile = root_context.setdefault("user_profile", {})

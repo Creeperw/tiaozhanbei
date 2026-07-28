@@ -16,6 +16,10 @@ class ExecutionStep(ContractModel):
     step_id: str = Field(min_length=1)
     agent: str = Field(min_length=1)
     action: str | None = None
+    plan_scope: Literal["long_term", "short_term", "daily_task"] | None = None
+    audit_subject: Literal[
+        "long_term_plan", "short_term_plan", "resource"
+    ] | None = None
     depends_on: list[str] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list)
     timeout_seconds: float = Field(default=60.0, gt=0)

@@ -293,6 +293,10 @@ class TextbookSelectingDiagnosisModel:
 
     async def complete_json(self, role, payload, on_delta=None):
         self.payload = payload
+        if role == "plan_contract_compiler":
+            from competition_app.llm.stub import StubChatModel
+
+            return await StubChatModel().complete_json(role, payload, on_delta)
         return {
             "long_term_plan_content": (
                 "## 目标契约\n建立方剂辨析能力。\n"
@@ -311,18 +315,38 @@ class TextbookSelectingDiagnosisModel:
             "estimated_minutes": 15,
             "expected_output": "一份四君子汤回忆记录。",
             "completion_criteria": "组成完整且配伍说明正确。",
+            "total_duration_days": 60,
             "long_term_plan_stages": [
                 {
                     "stage": 1,
+                    "stage_name": "中药基础",
                     "book": ["《中药学》"],
                     "goal": "建立常用中药性能功效基础。",
+                    "duration_days": 30,
+                    "schedule_summary": (
+                        "使用《中药学》梳理常用中药性能功效，形成分类笔记，"
+                        "并以闭卷辨析记录验收。"
+                    ),
                 },
                 {
                     "stage": 2,
+                    "stage_name": "方证联系",
                     "book": ["《方剂学》", "《中医内科学》"],
                     "goal": "建立治法、方剂和证候联系。",
+                    "duration_days": 30,
+                    "schedule_summary": (
+                        "使用《方剂学》和《中医内科学》完成方证比较，形成对照表，"
+                        "并以综合案例说明验收。"
+                    ),
                 },
             ],
+            "short_term_duration_days": 7,
+            "short_term_progression_nodes": [
+                "周初完成《方剂学》四君子汤主动回忆与教材核对。",
+                "周末完成补气类方比较并提交综合验收记录。",
+            ],
+            "learning_chapter": "《方剂学》补益剂章",
+            "focus_knowledge_points": ["四君子汤组成", "四君子汤配伍作用"],
             "selected_textbook_route_id": "textbook_formula",
             "selected_stage_id": "stage-2",
             "selected_books": ["《方剂学》"],
@@ -644,7 +668,7 @@ async def test_standard_model_task_is_bounded_by_available_minutes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_structured_plan_duration_semantics_follow_bounded_task_minutes() -> None:
+async def test_structured_task_minutes_are_bounded_without_rewriting_plan_text() -> None:
     model = CapturingDiagnosisModel()
     diagnosis_context = build_context("diagnosis")
     diagnosis_context["available_minutes"] = 5
@@ -656,11 +680,11 @@ async def test_structured_plan_duration_semantics_follow_bounded_task_minutes() 
     proposal = (await DiagnosisAgent(model).run(diagnosis_context)).payload.learning_plan_proposal
 
     assert proposal.task_proposal.estimated_minutes == 5
-    assert "12分钟" not in proposal.short_term_plan_content
+    assert "12分钟" in proposal.short_term_plan_content
     assert "12分钟" not in proposal.task_proposal.task_content
     assert "12分钟" not in proposal.recommendation_trace.time_constraint
     assert "12分钟" not in proposal.recommendation_trace.current_task
-    assert "【时间分配】" not in proposal.short_term_plan_content
+    assert "【时间分配】" in proposal.short_term_plan_content
     assert proposal.recommendation_trace.time_constraint == "当前可用时间预算为5分钟。"
     assert "15分钟" not in proposal.recommendation_trace.time_constraint
     assert proposal.recommendation_trace.current_task == proposal.task_proposal.task_content
@@ -893,37 +917,6 @@ async def test_stub_diagnosis_supports_approved_and_provisional_routes(
     assert proposal.task_proposal.expected_output
 
 
-def test_system_replaces_generic_long_term_milestone_with_route_evidence() -> None:
-    content = (
-        "【最终目标】系统掌握方剂学。"
-        "【阶段里程碑】各阶段完成后提交相应笔记或测评结果；截止时间待用户确认。"
-        "【重规划条件】持续未达标时调整。"
-    )
-    route_context = {
-        "phases": [
-            {
-                "name": "方剂分类与代表方建构",
-                "objective": "形成治法到代表方的稳定映射",
-                "exit_evidence": ["闭卷完成治法—代表方对照表"],
-            },
-            {
-                "name": "类方辨析与病证连接",
-                "objective": "能够辨析相近方剂的适用证候",
-                "exit_evidence": ["提交类方辨析记录", "完成病例选择测评"],
-            },
-        ]
-    }
-
-    rendered = DiagnosisAgent._replace_route_milestone_section(content, route_context)
-
-    assert "各阶段完成后提交相应笔记" not in rendered
-    assert "截止时间待用户确认" not in rendered
-    assert "方剂分类与代表方建构" in rendered
-    assert "闭卷完成治法—代表方对照表" in rendered
-    assert "类方辨析与病证连接" in rendered
-    assert "完成病例选择测评" in rendered
-
-
 @pytest.mark.asyncio
 async def test_two_week_request_sets_two_week_short_term_package() -> None:
     diagnosis_context = build_context("diagnosis")
@@ -1053,6 +1046,34 @@ async def test_diagnosis_lets_model_select_inside_trusted_textbook_route() -> No
         "stage-1",
         "stage-2",
     ]
+
+
+@pytest.mark.asyncio
+async def test_scoped_plan_discards_stale_persisted_textbook_selection() -> None:
+    diagnosis_context = build_context("diagnosis")
+    diagnosis_context["dependency_outputs"] = {
+        "knowledge": await build_knowledge(build_context("knowledge")),
+        "route_resolution": textbook_route_output(),
+    }
+    diagnosis_context["plan_scope"] = "long_term"
+    diagnosis_context["current_long_term_plan"] = {
+        "content": "旧长期规划",
+        "textbook_selection": {
+            "route_id": "retired_textbook_route",
+            "stage_id": "retired-stage",
+            "books": ["《旧版占位教材》"],
+            "reason": "旧路线残留",
+        },
+    }
+
+    result = (
+        await DiagnosisAgent(TextbookSelectingDiagnosisModel()).run(diagnosis_context)
+    ).payload
+    selection = result.learning_plan_proposal.textbook_selection
+
+    assert selection.route_id == "textbook_formula"
+    assert selection.stage_id == "stage-1"
+    assert selection.books == ["《中药学》"]
 
 
 @pytest.mark.asyncio

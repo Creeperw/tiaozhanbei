@@ -91,7 +91,8 @@ async def test_paper_blueprint_prompt_exposes_candidates_without_answers() -> No
             self.payload = None
 
         async def complete_json(self, role, payload, on_delta=None):
-            self.payload = payload
+            if role == "expert_agent":
+                self.payload = payload
             return await super().complete_json(role, payload, on_delta)
 
     model = CapturingModel()
@@ -308,7 +309,8 @@ async def test_blueprint_prompt_receives_current_planning_context() -> None:
             self.payload = None
 
         async def complete_json(self, role, payload, on_delta=None):
-            self.payload = payload
+            if role == "expert_agent":
+                self.payload = payload
             return await super().complete_json(role, payload, on_delta)
 
     model = CapturingBlueprintModel()

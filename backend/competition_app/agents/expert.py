@@ -51,12 +51,14 @@ class ExpertAgent:
             "summary": getattr(diagnosis_payload, "summary", ""),
             "risk_flags": getattr(diagnosis_payload, "risk_flags", []),
         }
+        formal_short_term_plan = getattr(formal_plan, "short_term_plan", None)
         short_term_plan = (
-            formal_plan.short_term_plan.content if formal_plan else ""
+            formal_short_term_plan.content if formal_short_term_plan else ""
         )
+        formal_learning_task = getattr(formal_plan, "learning_task", None)
         learning_task = (
-            formal_plan.learning_task.model_dump(mode="json")
-            if formal_plan
+            formal_learning_task.model_dump(mode="json")
+            if formal_learning_task
             else {
                 "task_type": "review_resource",
                 "task_content": getattr(diagnosis_payload, "summary", "完成本次复习任务"),

@@ -141,11 +141,13 @@ async def test_stub_workflow_materializes_diagnosis_plan_and_learning_task(tmp_p
     assert plan_output.payload.generated_scope == "long_term"
     producers = [item.producer for item in plan.long_result.agent_outputs]
     assert set(producers) == {
-        "planner_agent", "default_route_resolver", "diagnosis_agent",
-        "learning_plan_service",
+        "planner_agent", "memory_agent", "default_route_resolver",
+        "diagnosis_agent", "audit_agent", "learning_plan_service",
     }
     assert producers.index("planner_agent") < producers.index("diagnosis_agent")
     assert producers.index("default_route_resolver") < producers.index("diagnosis_agent")
+    assert producers.index("diagnosis_agent") < producers.index("audit_agent")
+    assert producers.index("audit_agent") < producers.index("learning_plan_service")
     assert producers.index("diagnosis_agent") < producers.index("learning_plan_service")
     assert plan.long_term_plan.content
     assert plan.short_term_plan.long_term_plan_id == plan.long_term_plan.plan_id

@@ -32,6 +32,15 @@ class PlannerModelOutput(BaseModel):
         max_length=220,
         description="需要澄清规划层级时给用户的一条自然语言追问；否则为null。",
     )
+    casual_response: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=500,
+        description=(
+            "仅在task_type为casual_conversation时生成面向用户的自然回复；"
+            "应结合当前话语和最近对话，不得返回固定占位模板。"
+        ),
+    )
     selected_agents: list[
         Literal[
             "memory_agent",
@@ -63,6 +72,14 @@ class PlannerModelOutput(BaseModel):
         if len(value) != len(set(value)):
             raise ValueError("selected_agents must be unique")
         return value
+
+    @model_validator(mode="after")
+    def casual_response_matches_task(self) -> "PlannerModelOutput":
+        if self.task_type == "casual_conversation" and not self.casual_response:
+            raise ValueError("casual conversation requires an agent-generated response")
+        if self.task_type != "casual_conversation" and self.casual_response is not None:
+            raise ValueError("non-casual task must not include casual_response")
+        return self
 
 
 class PlannerStandardOutput(BaseModel):
@@ -159,8 +176,30 @@ class LearningTaskModelOutput(StrictModelOutput):
 
 class LongTermPlanStageModelOutput(StrictModelOutput):
     stage: int = Field(ge=1, description="从 1 开始且连续的长期学习阶段编号。")
+    stage_name: str = Field(
+        default="",
+        max_length=300,
+        description="可信路线中的阶段名称；不得改名或自行生成阶段。",
+    )
     book: list[str] = Field(min_length=1, description="该阶段逐本学习的具体书目。")
     goal: str = Field(min_length=1, max_length=1_000, description="该阶段需要达成的学习目标。")
+    duration_days: int = Field(
+        default=0,
+        ge=0,
+        le=3_650,
+        description=(
+            "该阶段连续覆盖的自然日数量。制定新的长期规划时必须大于0；"
+            "用于约束下级短期计划，不得仅把期限写在正文中。"
+        ),
+    )
+    schedule_summary: str = Field(
+        default="",
+        max_length=2_000,
+        description=(
+            "该阶段的详细自然语言安排，必须明确阶段名称、具体书名、学习重点、"
+            "阶段产出和验收条件。"
+        ),
+    )
 
 
 class LongTermPlanningModelOutput(StrictModelOutput):
@@ -174,6 +213,15 @@ class LongTermPlanningModelOutput(StrictModelOutput):
         description=(
             "长期规划自然语言正文；依次包含【最终目标】【能力路径与阶段】"
             "【阶段里程碑】【资源预算】【重规划条件】【保温底线】。"
+        ),
+    )
+    total_duration_days: int = Field(
+        default=0,
+        ge=0,
+        le=3_650,
+        description=(
+            "长期规划覆盖的总自然日数。用户给出期限时必须换算后填写；"
+            "各阶段 duration_days 之和必须等于该值。"
         ),
     )
     long_term_plan_stages: list[LongTermPlanStageModelOutput] = Field(
@@ -191,12 +239,32 @@ class ShortTermPlanningModelOutput(StrictModelOutput):
         description="从系统提供的路径候选中选择；不得生成候选ID。",
     )
     short_term_plan_content: str = Field(min_length=1, max_length=12_000)
+    duration_days: int = Field(
+        default=0,
+        ge=0,
+        le=365,
+        description=(
+            "短期计划覆盖的自然日数。制定新短期计划时必须大于0，"
+            "并且不得超过所属长期阶段的 duration_days。"
+        ),
+    )
+    progression_nodes: list[str] = Field(
+        default_factory=list,
+        min_length=0,
+        max_length=12,
+        description="至少两个覆盖完整周期的推进或验收节点，按发生顺序输出。",
+    )
     expected_output: str = Field(min_length=1, max_length=1_000)
     completion_criteria: str = Field(min_length=1, max_length=1_000)
     selected_textbook_route_id: str | None = None
     selected_stage_id: str | None = None
     selected_books: list[str] = Field(default_factory=list)
     selection_reason: str | None = Field(default=None, max_length=1_000)
+
+    @field_validator("progression_nodes", mode="before")
+    @classmethod
+    def normalize_progression_nodes(cls, value: Any) -> Any:
+        return _normalize_progression_nodes(value)
 
     @field_validator("selected_books", mode="before")
     @classmethod
@@ -237,8 +305,14 @@ class ThreeLayerPlanningModelOutput(StrictModelOutput):
         default=None,
         description="从系统提供的路径候选中选择；不得生成候选ID。",
     )
+    total_duration_days: int = Field(default=0, ge=0, le=3_650)
     long_term_plan_content: str = Field(min_length=1, max_length=12_000)
     short_term_plan_content: str = Field(min_length=1, max_length=12_000)
+    short_term_duration_days: int = Field(default=0, ge=0, le=365)
+    short_term_progression_nodes: list[str] = Field(
+        default_factory=list,
+        max_length=12,
+    )
     daily_task_content: str = Field(min_length=1, max_length=6_000)
     learning_chapter: str = Field(default="", max_length=500)
     focus_knowledge_points: list[str] = Field(default_factory=list, max_length=5)
@@ -253,6 +327,11 @@ class ThreeLayerPlanningModelOutput(StrictModelOutput):
     selected_stage_id: str | None = None
     selected_books: list[str] = Field(default_factory=list)
     selection_reason: str | None = Field(default=None, max_length=1_000)
+
+    @field_validator("short_term_progression_nodes", mode="before")
+    @classmethod
+    def normalize_progression_nodes(cls, value: Any) -> Any:
+        return _normalize_progression_nodes(value)
 
     @field_validator("selected_books", mode="before")
     @classmethod
@@ -539,12 +618,100 @@ class KnowledgeModelOutput(StrictModelOutput):
     )
 
 
+def _normalize_progression_nodes(value: Any) -> Any:
+    """Normalize a narrow set of semantically equivalent Live model shapes."""
+
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        return value
+    normalized: list[Any] = []
+    for item in value:
+        if isinstance(item, str):
+            normalized.append(item.strip())
+            continue
+        if not isinstance(item, dict):
+            normalized.append(item)
+            continue
+        title = str(item.get("title") or "").strip()
+        detail = next(
+            (
+                str(item.get(key) or "").strip()
+                for key in ("content", "text", "description", "node", "milestone")
+                if str(item.get(key) or "").strip()
+            ),
+            "",
+        )
+        if title and detail and title != detail:
+            normalized.append(f"{title}：{detail}")
+        elif detail or title:
+            normalized.append(detail or title)
+        else:
+            normalized.append(item)
+    return normalized
+
+
 class MemoryModelOutput(StrictModelOutput):
     summary: str = Field(min_length=1, max_length=2_000, description="只概括与当前任务相关的会话事实、约束和未决问题。")
-    preserved_facts: list[str] = Field(description="用户明确表达或已确认的稳定事实，不得推断。")
-    unresolved_questions: list[str] = Field(description="影响后续执行且需用户补充的具体问题。")
-    temporary_constraints: list[str] = Field(description="仅在本轮或明确时间窗口内生效的限制。")
-    memory_candidates: list[str] = Field(description="可能值得长期保存但仍待确认的候选，不是正式记忆。")
+    preserved_facts: list[str] = Field(
+        default_factory=list,
+        description="用户明确表达或已确认的稳定事实，不得推断。",
+    )
+    unresolved_questions: list[str] = Field(
+        default_factory=list,
+        description="影响后续执行且需用户补充的具体问题。",
+    )
+    temporary_constraints: list[str] = Field(
+        default_factory=list,
+        description="仅在本轮或明确时间窗口内生效的限制。",
+    )
+    memory_candidates: list[str] = Field(
+        default_factory=list,
+        description="可能值得长期保存但仍待确认的候选，不是正式记忆。",
+    )
+
+
+class MemoryConflictModelOutput(StrictModelOutput):
+    memory_id: int = Field(gt=0, description="只能引用系统提供的记忆ID。")
+    proposed_memory: str = Field(min_length=1, max_length=1_000)
+    reason: str = Field(min_length=1, max_length=1_000)
+
+
+class MemoryGovernanceModelOutput(StrictModelOutput):
+    governance_notes: str = Field(
+        min_length=1,
+        max_length=3_000,
+        description="详细说明本轮可持久化信息、相关旧记忆及是否存在真实语义冲突。",
+    )
+    memory_candidates: list[str] = Field(
+        default_factory=list,
+        description="仅提取用户明确表达、值得保存但尚未确认的信息。",
+    )
+    conflicts: list[MemoryConflictModelOutput] = Field(default_factory=list)
+    requires_clarification: bool = False
+    clarification_questions: list[str] = Field(default_factory=list, max_length=3)
+    resolution: Literal[
+        "none",
+        "keep_existing",
+        "use_current_once",
+        "replace_existing",
+        "needs_clarification",
+    ] = "none"
+
+    @model_validator(mode="after")
+    def clarification_matches_conflicts(self) -> "MemoryGovernanceModelOutput":
+        if self.requires_clarification:
+            if not self.conflicts or not self.clarification_questions:
+                raise ValueError("memory clarification requires conflicts and questions")
+            if self.resolution != "needs_clarification":
+                raise ValueError("unresolved memory conflict requires needs_clarification")
+        if self.resolution in {
+            "keep_existing",
+            "use_current_once",
+            "replace_existing",
+        } and not self.conflicts:
+            raise ValueError("memory resolution requires a referenced conflict")
+        return self
 
 
 class ExpertModelOutput(StrictModelOutput):
@@ -726,6 +893,12 @@ class AuditModelOutput(StrictModelOutput):
     findings: list[str] = Field(
         default_factory=list,
         description="逐项指出问题位置、证据或缺口、影响和修改要求；通过时概括已核验维度。",
+    )
+    audit_report: str = Field(
+        default="审核模型未提供额外说明，系统将以确定性门禁结果为准。",
+        min_length=1,
+        max_length=8_000,
+        description="面向业务人员的详细自然语言审核报告。",
     )
 
 

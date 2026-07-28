@@ -13,11 +13,21 @@ def _plan(*steps: ExecutionStep) -> ExecutionPlan:
 def paper_or_resource_plan() -> ExecutionPlan:
     return _plan(
         ExecutionStep(step_id="paper_blueprint", agent="paper_blueprint_agent"),
-        ExecutionStep(step_id="knowledge", agent="knowledge_base_agent"),
-        ExecutionStep(step_id="diagnosis", agent="diagnosis_agent"),
-        ExecutionStep(step_id="expert", agent="expert_agent"),
-        ExecutionStep(step_id="paper_assembly", agent="paper_assembly_agent"),
-        ExecutionStep(step_id="audit", agent="audit_agent"),
+        ExecutionStep(
+            step_id="question_pool",
+            agent="knowledge_base_agent",
+            depends_on=["paper_blueprint"],
+        ),
+        ExecutionStep(
+            step_id="paper_assembly",
+            agent="paper_assembly_agent",
+            depends_on=["paper_blueprint", "question_pool"],
+        ),
+        ExecutionStep(
+            step_id="audit",
+            agent="audit_agent",
+            depends_on=["paper_blueprint", "question_pool", "paper_assembly"],
+        ),
     )
 
 
@@ -39,13 +49,26 @@ def existing_outputs() -> dict[str, AgentEnvelope[dict[str, str]]]:
     }
 
 
+def paper_outputs() -> dict[str, AgentEnvelope[dict[str, str]]]:
+    return {
+        step_id: AgentEnvelope(
+            artifact_id=f"ART_{step_id}", artifact_type="test", case_id="CASE_1",
+            trace_id="TRACE_1", request_id="REQ_1", execution_id="EXE_1",
+            step_id=step_id, producer="test", task_type="paper_generation",
+            learner_id="LEARNER_1", payload={},
+        )
+        for step_id in ("paper_blueprint", "question_pool", "paper_assembly")
+    }
+
+
 @pytest.mark.parametrize(
     ("finding", "expected_steps"),
     [
-        ("事实缺少教材证据", ["knowledge", "expert", "audit"]),
-        ("资源未结合用户掌握状态", ["diagnosis", "expert", "audit"]),
         ("题目内容表达不清", ["paper_assembly", "audit"]),
-        ("蓝图要求25道填空题，成卷只有10道", ["paper_blueprint", "knowledge", "paper_assembly", "audit"]),
+        (
+            "蓝图要求25道填空题，成卷只有10道",
+            ["paper_blueprint", "question_pool", "paper_assembly", "audit"],
+        ),
     ],
 )
 def test_repair_controller_selects_smallest_whitelisted_chain(
@@ -55,7 +78,7 @@ def test_repair_controller_selects_smallest_whitelisted_chain(
         plan=paper_or_resource_plan(),
         audit_step_id="audit",
         audit_findings=[finding],
-        outputs=existing_outputs(),
+        outputs=paper_outputs(),
     )
 
     assert [item.step_id for item in repair.actions] == expected_steps
@@ -78,12 +101,35 @@ def test_mixed_findings_merge_without_duplicate_reruns() -> None:
     repair = controller.plan_repair(
         plan=paper_or_resource_plan(),
         audit_step_id="audit",
-        audit_findings=["事实缺少教材证据", "题目偏离蓝图", "事实缺少教材证据"],
-        outputs=existing_outputs(),
+        audit_findings=["题目内容表达不清", "题目偏离蓝图", "题目内容表达不清"],
+        outputs=paper_outputs(),
     )
 
-    assert [action.step_id for action in repair.actions].count("knowledge") == 1
+    assert [action.step_id for action in repair.actions].count("question_pool") == 1
     assert [action.step_id for action in repair.actions].count("audit") == 1
+
+
+def test_paper_missing_evidence_uses_real_question_pool_producer() -> None:
+    repair = LocalRepairController().plan_repair(
+        plan=paper_or_resource_plan(),
+        audit_step_id="audit",
+        audit_findings=[],
+        structured_findings=[
+            RepairIssue(
+                issue_id="ISSUE_EVIDENCE",
+                issue_type="missing_evidence",
+                message="入卷题目缺少候选池依据",
+                owner_step_id="paper_assembly",
+                affected_step_ids=["paper_assembly"],
+            )
+        ],
+        outputs=paper_outputs(),
+    )
+
+    assert repair.status == "planned"
+    assert [action.step_id for action in repair.actions] == [
+        "question_pool", "paper_assembly", "audit"
+    ]
 
 
 def test_structured_findings_take_priority_over_legacy_strings() -> None:
@@ -99,7 +145,7 @@ def test_structured_findings_take_priority_over_legacy_strings() -> None:
                 owner_step_id="paper_assembly",
             )
         ],
-        outputs=existing_outputs(),
+        outputs=paper_outputs(),
     )
 
     assert repair.status == "planned"
@@ -137,7 +183,7 @@ def test_controller_fails_closed_when_execution_plan_has_invalid_dag() -> None:
     assert repair.actions == []
 
 
-def test_repair_actions_follow_reordered_source_dag_dependencies() -> None:
+def test_repair_actions_reuse_completed_upstream_dependency() -> None:
     plan = _plan(
         ExecutionStep(
             step_id="diagnosis", agent="diagnosis_agent", depends_on=["knowledge"]
@@ -155,9 +201,9 @@ def test_repair_actions_follow_reordered_source_dag_dependencies() -> None:
     )
 
     assert [action.step_id for action in repair.actions] == [
-        "knowledge", "diagnosis", "expert", "audit"
+        "diagnosis", "expert", "audit"
     ]
-    assert repair.actions[1].depends_on == ["rerun:knowledge"]
+    assert repair.actions[0].depends_on == []
 
 
 def test_mixed_repair_closes_over_source_dag_without_duplicate_actions() -> None:

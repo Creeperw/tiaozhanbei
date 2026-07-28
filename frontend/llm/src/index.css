@@ -6140,6 +6140,9 @@ textarea:focus-visible {
 
 @media (max-width: 1180px) {
   .home-portal__learning-area { grid-template-columns: minmax(0, 1fr); }
+  .home-portal__plan-rail .home-plan { min-height: 0; }
+  .home-portal__plan-rail .home-plan__body { grid-template-columns: minmax(0, 1fr) 238px; overflow: visible; }
+  .home-portal__plan-rail .home-plan__task-list { max-height: none; }
   .home-portal__route .learning-stage--embedded .learning-stage__staircase { min-height: 370px; }
   .home-portal__activity { min-height: 330px; }
   .home-portal__route { min-height: 520px; }
@@ -8771,6 +8774,54 @@ textarea:focus-visible {
 
 .home-portal__learning-area {
   margin-top: 0;
+  grid-template-columns: minmax(0, 1.65fr) minmax(360px, .85fr);
+  gap: 14px;
+}
+
+.home-portal__plan-rail {
+  min-width: 0;
+}
+
+.home-portal__plan-rail .home-plan {
+  height: 100%;
+  min-height: calc(clamp(520px, 62vh, 720px) + 110px);
+}
+
+.home-portal__plan-rail .home-plan__summary {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.home-portal__plan-rail .home-plan__summary h3,
+.home-portal__plan-rail .home-plan__summary p {
+  white-space: normal;
+}
+
+.home-portal__plan-rail .home-plan__body {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.home-portal__plan-rail .home-plan__task-list {
+  min-height: 150px;
+  max-height: 230px;
+}
+
+.home-portal__plan-rail .home-plan__calendar {
+  width: 100%;
+}
+
+.home-portal__plan-rail .home-plan__tasks > footer {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.home-portal__plan-rail .home-plan__tasks > footer p {
+  max-width: 100%;
+  white-space: normal;
 }
 
 .home-portal__route {
@@ -10049,5 +10100,343 @@ textarea:focus-visible {
   .app-shell__main[data-page="qualification-route"] .home-portal__hero-desc,
   .app-shell__main[data-page="qualification-route"] .home-portal__hero-copy .home-portal__hero-desc {
     font-size: .7rem;
+  }
+}
+
+/* Keep the qualification route and current plan side by side only where both
+   panels have enough room; these final rules intentionally follow the later
+   homepage overrides above. */
+@media (max-width: 1180px) {
+  .app-shell__main[data-page="qualification-route"] .home-portal__learning-area {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan {
+    height: auto;
+    min-height: 0;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__body {
+    overflow: visible;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__task-list {
+    max-height: none;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__body {
+    grid-template-columns: minmax(0, 1fr) 286px;
+    align-items: start;
+    gap: clamp(18px, 3vw, 34px);
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__task-list {
+    min-height: 254px;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell__main[data-page="qualification-route"] .home-portal__learning-area,
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail,
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan,
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__body {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar {
+    min-width: 0;
+  }
+}
+
+/* Compact sidebar calendar inspired by coding-practice dashboards: dates stay
+   easy to scan without letting the month view dominate the learning plan. */
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar {
+  width: min(100%, 286px);
+  justify-self: center;
+  border-radius: 12px;
+  box-shadow: 0 7px 18px rgba(31, 78, 62, .045);
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar > header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 6px;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar > header > strong {
+  font-size: .7rem;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar > header > div {
+  grid-template-columns: 23px 72px 23px;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar > header button {
+  width: 23px;
+  height: 23px;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__weekdays,
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid {
+  grid-template-columns: repeat(7, 24px);
+  justify-content: center;
+  column-gap: 7px;
+  padding-inline: 8px;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__weekdays {
+  font-size: .48rem;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid {
+  row-gap: 3px;
+  padding-top: 4px;
+  padding-bottom: 7px;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button {
+  width: 24px;
+  height: 24px;
+  aspect-ratio: auto;
+  border-radius: 50%;
+  font-size: .52rem;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[data-state="completed"],
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[data-state="pending"] {
+  color: #52675f;
+  background: transparent;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[data-state="completed"]::after,
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[data-state="pending"]::after {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  content: '';
+  transform: translateX(-50%);
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[data-state="completed"]::after {
+  background: #1a9b6d;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[data-state="pending"]::after {
+  background: #d25e5e;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[data-today="true"] {
+  color: #fff;
+  background: #1a9b6d;
+  box-shadow: none;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[data-today="true"]::after {
+  background: #fff;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #f8fbf9, 0 0 0 3px #1e7357;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-legend {
+  gap: 7px 10px;
+  padding: 7px 10px 0;
+  font-size: .49rem;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-footer {
+  padding: 8px 10px 3px;
+}
+
+.app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar > .daily-task-countdown {
+  margin: 6px 9px 9px;
+}
+
+/* On full-width screens each column follows its own content height. Stretching
+   both panels to the taller plan created a false empty floor below the route.
+   The calendar card uses the whole rail, while the day controls stay compact. */
+@media (min-width: 1181px) {
+  .app-shell__main[data-page="qualification-route"] .home-portal__learning-area {
+    align-items: start;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__route,
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail {
+    align-self: start;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan {
+    height: auto;
+    min-height: 0;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__body {
+    overflow: visible;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__task-list {
+    min-height: 0;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__weekdays,
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid {
+    grid-template-columns: repeat(7, minmax(24px, 1fr));
+    column-gap: 0;
+  }
+
+  .app-shell__main[data-page="qualification-route"] .home-portal__plan-rail .home-plan__calendar-grid button {
+    justify-self: center;
+  }
+}
+
+/* The profile is an information dashboard, not a display poster. Keep its
+   hierarchy clear while using a consistent reading scale and denser rhythm. */
+.personalization-hub__task--profile .user-profile-panel {
+  border-radius: 24px;
+  padding: clamp(20px, 2vw, 28px);
+}
+
+.personalization-hub__task--profile .user-profile-panel__header {
+  gap: 18px;
+  padding-bottom: 18px;
+}
+
+.personalization-hub__task--profile .user-profile-panel__heading-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+}
+
+.personalization-hub__task--profile .user-profile-panel__heading {
+  font-size: clamp(1.45rem, 2vw, 1.8rem);
+  line-height: 1.2;
+  letter-spacing: -.025em;
+}
+
+.personalization-hub__task--profile .user-profile-panel__completion,
+.personalization-hub__task--profile .user-profile-panel__edit {
+  min-height: 50px;
+  border-radius: 14px;
+}
+
+.personalization-hub__task--profile .user-profile-panel__completion {
+  gap: 10px;
+  padding: 7px 13px;
+}
+
+.personalization-hub__task--profile .user-profile-panel__completion > div:first-child {
+  width: 36px;
+  height: 36px;
+}
+
+.personalization-hub__task--profile .user-profile-panel__completion > div:last-child p:first-child {
+  font-size: .75rem;
+  line-height: 1.25;
+}
+
+.personalization-hub__task--profile .user-profile-panel__completion > div:last-child p:last-child {
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.personalization-hub__task--profile .user-profile-panel__edit {
+  padding-inline: 18px;
+  font-size: .86rem;
+}
+
+.personalization-hub__task--profile .user-profile-panel__grid {
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.personalization-hub__task--profile .user-profile-panel__card {
+  border-radius: 20px;
+  padding: clamp(18px, 1.8vw, 23px);
+}
+
+.personalization-hub__task--profile .user-profile-panel__card-title {
+  gap: 9px;
+  margin-bottom: 10px;
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
+.personalization-hub__task--profile .user-profile-panel__field {
+  column-gap: 11px;
+  padding-block: 12px;
+}
+
+.personalization-hub__task--profile .user-profile-panel__field > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.personalization-hub__task--profile .user-profile-panel__field-label,
+.personalization-hub__task--profile .user-profile-panel__field-value {
+  font-size: .88rem;
+  line-height: 1.55;
+}
+
+.personalization-hub__task--profile .user-profile-panel__field-value > span:first-child {
+  line-height: 1.55;
+}
+
+.personalization-hub__task--profile .user-profile-panel__lock {
+  padding: 4px 8px;
+  font-size: .68rem;
+}
+
+@media (max-width: 760px) {
+  .personalization-hub__task--profile .user-profile-panel__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .personalization-hub__task--profile .user-profile-panel__completion,
+  .personalization-hub__task--profile .user-profile-panel__edit {
+    flex: 1 1 auto;
+  }
+}
+
+/* Library-style training tools need a calm page gutter instead of touching
+   the viewport edges on wide displays. */
+.practice-workspace--mistake_variation,
+.practice-workspace--question_favorites,
+.practice-workspace--study_notes {
+  box-sizing: border-box;
+  width: min(100%, 1440px);
+  margin-inline: auto;
+  padding: clamp(20px, 2.6vw, 40px) clamp(22px, 3.6vw, 56px) 48px;
+}
+
+@media (max-width: 640px) {
+  .practice-workspace--mistake_variation,
+  .practice-workspace--question_favorites,
+  .practice-workspace--study_notes {
+    padding: 14px 12px 28px;
+  }
+
+  .practice-workspace--mistake_variation .practice-task-panel,
+  .practice-workspace--question_favorites .practice-task-panel,
+  .practice-workspace--study_notes .practice-task-panel {
+    border-radius: 16px;
+    padding: 12px;
   }
 }

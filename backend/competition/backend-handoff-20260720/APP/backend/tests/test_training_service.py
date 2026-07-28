@@ -88,6 +88,39 @@ class TrainingServicePhase4Tests(unittest.TestCase):
         self.assertEqual(payload["grading"]["score"], 100)
         self.assertIsNone(payload["mistake_record"])
 
+    def test_choice_grading_accepts_ui_option_labels_with_text(self):
+        service = self._service()
+
+        single = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-single-labeled",
+                "question_type": "single_choice",
+                "stem": "阴阳双方在一定条件下相互转变称为什么？",
+                "student_answer": "C. 阴阳转化",
+                "standard_answer": "C",
+                "knowledge_points": ["KP_1"],
+            },
+        )
+        multiple = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-multiple-labeled",
+                "question_type": "multiple_choice",
+                "stem": "请选择正确项",
+                "student_answer": "A. 对立制约,C. 消长平衡",
+                "standard_answer": "A,C",
+                "knowledge_points": ["KP_1"],
+            },
+        )
+
+        self.assertTrue(single["grading"]["is_correct"])
+        self.assertEqual(single["grading"]["score"], 100)
+        self.assertTrue(multiple["grading"]["is_correct"])
+        self.assertEqual(multiple["grading"]["score"], 100)
+
     def test_true_false_accepts_equivalent_ui_and_textbook_tokens(self):
         service = self._service()
         for student_answer, standard_answer in (

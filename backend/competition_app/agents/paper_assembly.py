@@ -6,6 +6,7 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from competition_app.agents.common import envelope
+from competition_app.agents.paper_assembly_compiler import PaperAssemblyCompilerAgent
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.knowledge import (
@@ -26,8 +27,15 @@ from competition_app.llm.stub import StubChatModel
 class PaperAssemblyAgent:
     """Expert stage two: select only retrieved candidates and assemble a whole paper."""
 
-    def __init__(self, chat_model: ChatModel | None = None) -> None:
+    def __init__(
+        self,
+        chat_model: ChatModel | None = None,
+        assembly_compiler: PaperAssemblyCompilerAgent | None = None,
+    ) -> None:
         self.chat_model = chat_model or StubChatModel()
+        self.assembly_compiler = (
+            assembly_compiler or PaperAssemblyCompilerAgent(self.chat_model)
+        )
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[ExamPaperDraft]:
         dependencies = context["dependency_outputs"]
@@ -71,6 +79,7 @@ class PaperAssemblyAgent:
                 prompt_skill=skill,
                 payload={
                     "phase": "paper_assembly",
+                    "assembly_output_mode": "natural_language_document",
                     "paper_blueprint": blueprint.model_dump(mode="json"),
                     "candidate_pool": candidate_catalog,
                     "hard_question_count": blueprint.required_total_question_count,
@@ -93,7 +102,12 @@ class PaperAssemblyAgent:
                             [],
                         )
                     ),
-                    "output_schema": ExamAssemblyModelOutput.model_json_schema(),
+                    "output_contract": {
+                        "assembly_document": (
+                            "完整自然语言组卷原稿；明确试卷标题、按单元选中的候选题ID，"
+                            "以及每一道原创缺口题的题干、选项、答案、解析和依据。"
+                        )
+                    },
                 },
                 permission_note=(
                     "优先从当前候选池选择题目；不得修改正式题库题干或答案。"
@@ -105,9 +119,55 @@ class PaperAssemblyAgent:
             ),
         )
         try:
-            output = ExamAssemblyModelOutput.model_validate(
-                self._normalize_model_output(raw_output, blueprint.title)
-            )
+            if isinstance(raw_output, dict) and raw_output.get("assembly_document"):
+                compilation = await self.assembly_compiler.compile(
+                    context,
+                    assembly_document=str(raw_output["assembly_document"]),
+                    candidate_catalog=candidate_catalog,
+                )
+                if compilation.result.status != "compiled":
+                    details = ", ".join(
+                        f"{issue.code}@{issue.field_path}"
+                        for issue in compilation.result.issues
+                    )
+                    raise ValueError(
+                        "paper assembly draft could not be compiled: " + details
+                    )
+                contract = compilation.result.contract
+                compiler_output = {
+                    "title": contract.title,
+                    "instructions": "请按题目顺序作答。",
+                    "selected_items": [
+                        {
+                            "unit_id": item.unit_id,
+                            "question_id": item.question_id,
+                            "score": item.score,
+                            "selection_rationale": "业务 Agent 在自然语言组卷原稿中明确选用。",
+                        }
+                        for item in contract.selected_items
+                    ],
+                    "generated_items": [
+                        {
+                            "unit_id": item.unit_id,
+                            "question_type": item.question_type,
+                            "stem": item.stem,
+                            "options": item.options,
+                            "reference_answer": item.reference_answer,
+                            "analysis": item.explanation,
+                            "selection_rationale": "业务 Agent 在自然语言组卷原稿中明确用于补足缺口。",
+                            "source_tier": "model_knowledge",
+                        }
+                        for item in contract.generated_items
+                    ],
+                    "coverage_summary": {},
+                    "unresolved_constraints": [],
+                }
+                output = ExamAssemblyModelOutput.model_validate(compiler_output)
+            else:
+                # Explicit legacy adapter for older model snapshots and tests.
+                output = ExamAssemblyModelOutput.model_validate(
+                    self._normalize_model_output(raw_output, blueprint.title)
+                )
         except ValidationError as exc:
             first_error = exc.errors()[0]
             location = ".".join(str(part) for part in first_error["loc"])
@@ -651,10 +711,12 @@ class PaperAssemblyAgent:
                                 if pool_unit.unit_id == target_unit.unit_id
                                 for candidate in pool_unit.items[:3]
                             ],
+                            "assembly_output_mode": "natural_language_document",
                             "output_contract": {
-                                "generated_items": [
-                                    GeneratedPaperItemModelOutput.model_json_schema()
-                                ]
+                                "assembly_document": (
+                                    "自然语言缺口题原稿；须包含试卷标题，并逐题明确单元、"
+                                    "题型、题干、选项、参考答案、解析和依据。"
+                                )
                             },
                         },
                         permission_note=(
@@ -666,7 +728,42 @@ class PaperAssemblyAgent:
                         ),
                     ),
                 )
-                rows = raw.get("generated_items", []) if isinstance(raw, dict) else []
+                rows: list[dict[str, Any]] = []
+                if isinstance(raw, dict) and raw.get("assembly_document"):
+                    candidate_catalog = [
+                        {
+                            "unit_id": unit.unit_id,
+                            "items": [
+                                {"question_id": item.question_id}
+                                for item in unit.items
+                            ],
+                        }
+                        for unit in candidate_pool.units
+                    ]
+                    compilation = await self.assembly_compiler.compile(
+                        context,
+                        assembly_document=str(raw["assembly_document"]),
+                        candidate_catalog=candidate_catalog,
+                    )
+                    if compilation.result.status == "compiled":
+                        rows = [
+                            {
+                                "unit_id": item.unit_id,
+                                "question_type": item.question_type,
+                                "stem": item.stem,
+                                "options": item.options,
+                                "reference_answer": item.reference_answer,
+                                "analysis": item.explanation,
+                                "selection_rationale": (
+                                    "业务 Agent 在自然语言缺口题原稿中明确用于补足题量。"
+                                ),
+                                "source_tier": "model_knowledge",
+                            }
+                            for item in compilation.result.contract.generated_items
+                        ]
+                elif isinstance(raw, dict):
+                    # Explicit legacy adapter for older model snapshots and tests.
+                    rows = list(raw.get("generated_items", []))
                 for row in rows[:batch_size]:
                     try:
                         generated = GeneratedPaperItemModelOutput.model_validate(row)

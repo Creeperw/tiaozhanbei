@@ -4,6 +4,9 @@ from typing import Any
 from uuid import uuid4
 
 from competition_app.agents.common import envelope
+from competition_app.agents.paper_audit_findings_compiler import (
+    PaperAuditFindingsCompilerAgent,
+)
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.resource import AuditResult
@@ -11,17 +14,37 @@ from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
 from competition_app.llm.schemas import AuditModelOutput
+from competition_app.services.plan_contract_validator import PlanContractValidator
+from competition_app.services.plan_audit import plan_audit_subject_digest
+from competition_app.contracts.local_repair import RepairIssue
 from pydantic import ValidationError
 
 
 class AuditAgent:
-    def __init__(self, chat_model: ChatModel | None = None) -> None:
+    def __init__(
+        self,
+        chat_model: ChatModel | None = None,
+        paper_findings_compiler: PaperAuditFindingsCompilerAgent | None = None,
+    ) -> None:
         self.chat_model = chat_model or StubChatModel()
+        self.paper_findings_compiler = (
+            paper_findings_compiler
+            or PaperAuditFindingsCompilerAgent(self.chat_model)
+        )
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[AuditResult]:
         prompt_skill = prompt_skill_registry.load(
             "audit_agent", str(context.get("task_type", "personalized_review_card"))
         )
+        if (
+            context.get("audit_subject") in {"long_term_plan", "short_term_plan"}
+            or (
+                str(context.get("task_type")) == "learning_plan"
+                and str(context.get("plan_scope"))
+                in {"long_term", "short_term", "unspecified"}
+            )
+        ):
+            return await self._audit_learning_plan(context, prompt_skill)
         if str(context.get("task_type")) == "paper_generation":
             return await self._audit_exam_paper(context, prompt_skill)
         expert = context["dependency_outputs"]["expert"].payload
@@ -117,8 +140,170 @@ class AuditAgent:
                 *([] if missing or deterministic_findings else model_output.findings),
             ],
             verified_claim_ids=[claim.claim_id for claim in expert.claims if claim.claim_id not in missing],
+            subject_type="resource",
         )
         return envelope(context, "audit_agent", "audit_result", result)
+
+    async def _audit_learning_plan(self, context: dict[str, Any], prompt_skill):
+        diagnosis = context["dependency_outputs"]["diagnosis"].payload
+        plan_scope = str(getattr(diagnosis, "plan_scope", ""))
+        if plan_scope == "daily_task":
+            result = AuditResult(
+                audit_result_id=f"AUDIT_{uuid4().hex}",
+                decision="pass",
+                audit_report="当日任务不进入长期/短期规划发布审核，节点已安全跳过。",
+                findings=[],
+                plan_scope="daily_task",
+            )
+            return envelope(context, "audit_agent", "audit_result", result)
+        if getattr(diagnosis, "requires_clarification", False):
+            result_plan_scope = (
+                plan_scope
+                if plan_scope in {"long_term", "short_term", "daily_task"}
+                else None
+            )
+            result = AuditResult(
+                audit_result_id=f"AUDIT_{uuid4().hex}",
+                decision="pass",
+                audit_report=(
+                    "当前尚未形成可发布规划，审核节点仅确认应继续执行结构化追问；"
+                    "该结果不是规划发布许可，LearningPlanService 不得写入计划。"
+                ),
+                findings=["规划前置条件未满足，等待用户补充后重新生成并审核规划。"],
+                plan_scope=result_plan_scope,
+                subject_type=(
+                    "long_term_plan" if result_plan_scope == "long_term"
+                    else "short_term_plan" if result_plan_scope == "short_term"
+                    else None
+                ),
+            )
+            return envelope(context, "audit_agent", "audit_result", result)
+        proposal = getattr(diagnosis, "learning_plan_proposal", None)
+        compilation = getattr(diagnosis, "compiled_plan_contract", None)
+        trusted_route = dict(getattr(diagnosis, "trusted_plan_route", {}) or {})
+        parent_plan_constraints = dict(
+            getattr(diagnosis, "parent_plan_constraints", {}) or {}
+        )
+        deterministic_findings: list[str] = []
+        contract = None
+        if proposal is None:
+            deterministic_findings.append("规划提案缺失，不能进入发布流程。")
+        if compilation is None or compilation.result.status != "compiled":
+            deterministic_findings.append("内部规划合同未成功编译或缺少来源锚点。")
+        else:
+            contract = compilation.result.contract
+            validation = PlanContractValidator().validate(
+                contract,
+                trusted_route=trusted_route,
+                parent_plan_constraints=parent_plan_constraints,
+            )
+            deterministic_findings.extend(validation.issues)
+        subject_digest = plan_audit_subject_digest(
+            plan_scope=plan_scope,
+            proposal=proposal,
+            compiled_plan_contract=compilation,
+            parent_plan_constraints=parent_plan_constraints,
+        )
+        try:
+            model_output = AuditModelOutput.model_validate(
+                await self.chat_model.complete_json(
+                    "audit_agent",
+                    build_model_context(
+                        context,
+                        target_agent="audit_agent",
+                        prompt_skill=prompt_skill,
+                        payload={
+                            "plan_scope": plan_scope,
+                            "natural_language_plan": (
+                                proposal.model_dump(mode="json")
+                                if proposal is not None
+                                else None
+                            ),
+                            "compiled_contract": (
+                                contract.model_dump(mode="json")
+                                if contract is not None
+                                else None
+                            ),
+                            "deterministic_findings": deterministic_findings,
+                            "trusted_route": trusted_route,
+                            "parent_plan_constraints": parent_plan_constraints,
+                            "output_schema": AuditModelOutput.model_json_schema(),
+                        },
+                        permission_note=(
+                            "只输出详细自然语言审核报告、审核决定和问题；"
+                            "不得生成或重写规划，不得输出系统摘要或修改状态。"
+                        ),
+                    ),
+                )
+            )
+        except ValidationError:
+            model_output = AuditModelOutput(
+                decision="needs_human_review",
+                findings=["规划审核模型输出不符合协议。"],
+                audit_report="规划审核模型输出不符合协议，已关闭自动发布并转人工复核。",
+            )
+        decision = "revise" if deterministic_findings else model_output.decision
+        findings = [*deterministic_findings, *model_output.findings]
+        structured_findings = [
+            RepairIssue(
+                issue_id=f"PLAN_ISSUE_{index}",
+                issue_type="plan_quality",
+                message=finding,
+                owner_step_id="diagnosis",
+                affected_step_ids=["diagnosis"],
+            )
+            for index, finding in enumerate(findings, start=1)
+        ] if decision == "revise" else []
+        result = AuditResult(
+            audit_result_id=f"AUDIT_{uuid4().hex}",
+            decision=decision,
+            audit_report=model_output.audit_report,
+            findings=findings,
+            structured_findings=structured_findings,
+            subject_digest=subject_digest,
+            subject_type=(
+                "long_term_plan" if plan_scope == "long_term"
+                else "short_term_plan"
+            ),
+            parent_subject_digest=(
+                getattr(
+                    getattr(
+                        context.get("dependency_outputs", {}).get("audit_long"),
+                        "payload",
+                        None,
+                    ),
+                    "subject_digest",
+                    None,
+                )
+                if plan_scope == "short_term"
+                else None
+            ),
+            plan_scope=plan_scope,
+        )
+        return envelope(context, "audit_agent", "audit_result", result)
+
+    @staticmethod
+    def _trusted_plan_route(context: dict[str, Any]) -> dict[str, Any]:
+        route_output = context.get("dependency_outputs", {}).get("route_resolution")
+        route = getattr(route_output, "payload", None)
+        return route.model_dump(mode="json") if hasattr(route, "model_dump") else {}
+
+    @staticmethod
+    def _parent_plan_constraints(context: dict[str, Any]) -> dict[str, Any]:
+        if str(context.get("plan_scope")) != "short_term":
+            return {}
+        parent = context.get("current_long_term_plan") or {}
+        stages = parent.get("stages", []) if isinstance(parent, dict) else []
+        if not stages:
+            return {}
+        current = next(
+            (stage for stage in stages if stage.get("status") in {"active", "current"}),
+            stages[0],
+        )
+        return {
+            "current_stage_id": current.get("stage_id"),
+            "current_stage_duration_days": current.get("duration_days"),
+        }
 
     async def _audit_exam_paper(self, context: dict[str, Any], prompt_skill):
         dependencies = context["dependency_outputs"]
@@ -158,6 +343,10 @@ class AuditAgent:
             model_output = AuditModelOutput(
                 decision="needs_human_review",
                 findings=["组卷审核模型输出格式不符合约定，系统改用确定性硬门禁判定。"],
+                audit_report=(
+                    "组卷审核模型输出格式不符合约定。系统已关闭模型问题驱动的自动返修，"
+                    "仅执行确定性硬门禁。"
+                ),
             )
         candidate_ids = {item.question_id for unit in pool.units for item in unit.items}
         selected_ids = [item.question.question_id for item in paper.items]
@@ -265,9 +454,19 @@ class AuditAgent:
             )
         if set(paper.answer_key) != set(selected_ids):
             deterministic_findings.append("答案键与入卷题目不一致。")
-        model_blocking_findings = self._blocking_paper_findings(
-            model_output.findings
+        findings_compilation = await self.paper_findings_compiler.compile(
+            context,
+            audit_report=model_output.audit_report,
+            findings=model_output.findings,
         )
+        compiled_model_issues = (
+            findings_compilation.result.issues
+            if findings_compilation.result.status == "compiled"
+            else []
+        )
+        model_blocking_findings = [
+            issue.message for issue in compiled_model_issues if issue.blocking
+        ]
         decision = (
             "revise"
             if deterministic_findings or model_blocking_findings
@@ -323,30 +522,67 @@ class AuditAgent:
         result = AuditResult(
             audit_result_id=f"AUDIT_{uuid4().hex}",
             decision=decision,
+            audit_report=model_output.audit_report,
             findings=[*deterministic_findings, *model_output.findings],
+            structured_findings=(
+                self._paper_repair_issues(
+                    deterministic_findings=deterministic_findings,
+                    compiled_model_issues=compiled_model_issues,
+                )
+                if decision == "revise"
+                else []
+            ),
             verified_claim_ids=[],
         )
         return envelope(context, "audit_agent", "audit_result", result)
 
     @staticmethod
-    def _blocking_paper_findings(findings: list[str]) -> list[str]:
-        """Fail closed when a nominal pass explicitly describes a violation."""
-
-        blocking_markers = (
-            "违反约束",
-            "违反去重约束",
-            "违反“",
-            "硬约束未满足",
-            "必须补充",
-            "要求：补充",
-            "修改要求：",
-            "严重主题偏离",
-        )
-        return [
-            finding
-            for finding in findings
-            if any(marker in finding for marker in blocking_markers)
-        ]
+    def _paper_repair_issues(
+        *,
+        deterministic_findings: list[str],
+        compiled_model_issues: list[Any],
+    ) -> list[RepairIssue]:
+        issues: list[RepairIssue] = []
+        seen: set[tuple[str, str]] = set()
+        for message in deterministic_findings:
+            key = ("paper_blueprint_mismatch", message)
+            if key in seen:
+                continue
+            seen.add(key)
+            issues.append(
+                RepairIssue(
+                    issue_id=f"PAPER_SYSTEM_ISSUE_{len(issues) + 1}",
+                    issue_type="paper_blueprint_mismatch",
+                    message=message,
+                    owner_step_id="paper_assembly",
+                    affected_step_ids=["paper_blueprint", "question_pool", "paper_assembly"],
+                    severity="high",
+                )
+            )
+        for compiled in compiled_model_issues:
+            if not compiled.blocking:
+                continue
+            key = (compiled.issue_type, compiled.message)
+            if key in seen:
+                continue
+            seen.add(key)
+            issue_type = compiled.issue_type
+            owner = (
+                "paper_assembly"
+                if issue_type != "unresolved"
+                else None
+            )
+            issues.append(
+                RepairIssue(
+                    issue_id=f"PAPER_MODEL_ISSUE_{len(issues) + 1}",
+                    issue_type=issue_type,
+                    message=compiled.message,
+                    owner_step_id=owner,
+                    affected_step_ids=([owner] if owner else []),
+                    severity="medium",
+                )
+            )
+        return issues
 
     @staticmethod
     def _normalize_question_type(value: str) -> str:

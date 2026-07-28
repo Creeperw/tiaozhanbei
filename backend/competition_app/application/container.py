@@ -12,6 +12,7 @@ from competition_app.agents.expert import ExpertAgent
 from competition_app.agents.knowledge_base import KnowledgeBaseAgent
 from competition_app.agents.learning_plan_service import LearningPlanServiceAdapter
 from competition_app.agents.memory import MemoryAgent
+from competition_app.services.memory_retrieval import MemoryRetrievalService
 from competition_app.agents.planner import PlannerAgent
 from competition_app.agents.paper_blueprint import PaperBlueprintAgent
 from competition_app.agents.paper_assembly import PaperAssemblyAgent
@@ -21,6 +22,7 @@ from competition_app.application.personalized_review_card import PersonalizedRev
 from competition_app.config import Settings
 from competition_app.llm.stub import StubChatModel
 from competition_app.llm.openai_compatible import OpenAICompatibleChatModel
+from competition_app.llm.failover import FailoverChatModel
 from competition_app.embeddings.stub import StubEmbeddingModel
 from competition_app.embeddings.siliconflow import SiliconFlowEmbeddingModel
 from competition_app.db.bootstrap import DatabaseBootstrap
@@ -96,6 +98,7 @@ class ApplicationContainer:
     learning_plan_service: LearningPlanService
     daily_task_refresh_service: DailyTaskRefreshService
     daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
+    writeback_executor: WritebackExecutor | None = None
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
     knowledge_backend: KnowledgeDeliveryBackend | None = None
     mode: str = "stub"
@@ -167,11 +170,16 @@ class ApplicationContainer:
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
                 raise ValueError("live mode requires configured model API keys")
-            chat_model = OpenAICompatibleChatModel(
-                settings.chat_base_url,
-                settings.dashscope_api_key,
-                settings.chat_model,
-                timeout_seconds=settings.llm_timeout_seconds,
+            chat_model = FailoverChatModel(
+                [
+                    OpenAICompatibleChatModel(
+                        settings.chat_base_url,
+                        settings.dashscope_api_key,
+                        model_name,
+                        timeout_seconds=settings.llm_timeout_seconds,
+                    )
+                    for model_name in settings.chat_models
+                ]
             )
             embedding_model = SiliconFlowEmbeddingModel(
                 settings.embedding_base_url,
@@ -292,6 +300,14 @@ class ApplicationContainer:
         registry.register("review_scheduler", ReviewSchedulerAdapter())
         registry.register("expert_agent", ExpertAgent(chat_model))
         registry.register("audit_agent", AuditAgent(chat_model))
+        memory_retrieval_service = (
+            MemoryRetrievalService(
+                embedding_model,
+                backend_handoff_runtime.list_active_personalization_memories,
+            )
+            if backend_handoff_runtime is not None
+            else None
+        )
         tool_registry = ToolRegistry()
         tool_registry.register(
             "get_kp_with_content",
@@ -403,16 +419,18 @@ class ApplicationContainer:
                     if backend_handoff_runtime is not None
                     else None
                 ),
+                memory_retriever=memory_retrieval_service,
+                memory_governance_writer=(
+                    backend_handoff_runtime.persist_memory_governance
+                    if backend_handoff_runtime is not None
+                    else None
+                ),
                 profile_update_writer=(
                     backend_handoff_runtime.update_learning_profile
                     if backend_handoff_runtime is not None
                     else None
                 ),
-                profile_memory_extractor=(
-                    backend_handoff_runtime.extract_and_update_learning_profile
-                    if backend_handoff_runtime is not None
-                    else None
-                ),
+                profile_memory_extractor=None,
                 workshop_runtime=backend_handoff_runtime,
             ),
             review_service=review_service,
@@ -422,10 +440,15 @@ class ApplicationContainer:
             learning_plan_service=learning_plan_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,
+            writeback_executor=writeback_executor,
             question_retrieval_tool=knowledge_tool,
             knowledge_backend=knowledge_backend,
             mode=settings.mode,
-            chat_model_name=settings.chat_model if settings.mode == "live" else "StubChatModel",
+            chat_model_name=(
+                " → ".join(settings.chat_models)
+                if settings.mode == "live"
+                else "StubChatModel"
+            ),
             embedding_model_name=(
                 settings.embedding_model if settings.mode == "live" else "StubEmbeddingModel"
             ),
@@ -487,12 +510,15 @@ class StreamingChatModel:
         )
 
     async def complete_json(self, role, payload, on_delta=None):
-        trace_index = self.model_trace_recorder.begin(role, payload)
+        observable_payload = {
+            key: value for key, value in payload.items() if key != "_result_validator"
+        }
+        trace_index = self.model_trace_recorder.begin(role, observable_payload)
         call_id = f"MODEL_CALL_{trace_index + 1}"
         workflow_step_id = str(payload.get("workflow_step_id", role))
         emit_runtime_event(
             "model_input", agent=role, call_id=call_id,
-            step_id=workflow_step_id, raw_input=payload,
+            step_id=workflow_step_id, raw_input=observable_payload,
         )
         stream_callback = on_delta
         if has_event_sink():
@@ -507,7 +533,7 @@ class StreamingChatModel:
             try:
                 result = await self.inner.complete_json(role, payload, on_delta=stream_callback)
                 self._record_transport(
-                    trace_index, call_id, workflow_step_id, payload, result
+                    trace_index, call_id, workflow_step_id, observable_payload, result
                 )
                 self.model_trace_recorder.succeed(trace_index, result)
                 emit_runtime_event(
@@ -524,13 +550,13 @@ class StreamingChatModel:
             if printer is None and self.terminal_trace.level in {"model", "full"}:
                 printer = terminal_delta_printer(role)
             try:
-                self.terminal_trace.model_input(role, payload)
+                self.terminal_trace.model_input(role, observable_payload)
                 if has_event_sink():
                     printer = stream_callback
                 result = await self.inner.complete_json(role, payload, on_delta=printer)
                 self.terminal_trace.model_output(role, result)
                 self._record_transport(
-                    trace_index, call_id, workflow_step_id, payload, result
+                    trace_index, call_id, workflow_step_id, observable_payload, result
                 )
                 self.model_trace_recorder.succeed(trace_index, result)
                 emit_runtime_event(

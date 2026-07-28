@@ -15,30 +15,76 @@ from competition_app.contracts.paper import (
 
 class PassingAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
-        return {"decision": "pass", "findings": []}
+        if role == "paper_audit_findings_compiler":
+            return {"status": "compiled", "contract_version": "1.0", "issues": []}
+        return {
+            "decision": "pass",
+            "findings": [],
+            "audit_report": "试卷蓝图、题目、答案与解析均已核验通过。",
+        }
 
 
 class RevisingAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
+        if role == "paper_audit_findings_compiler":
+            return {
+                "status": "compiled",
+                "contract_version": "1.0",
+                "issues": [
+                    {
+                        "issue_type": "content_quality",
+                        "message": "存在可进一步优化的知识覆盖表达。",
+                        "blocking": False,
+                        "source_anchors": [
+                            {
+                                "source_field": "findings",
+                                "source_quote": "存在可进一步优化的知识覆盖表达。",
+                            }
+                        ],
+                    }
+                ],
+            }
         return {
             "decision": "revise",
             "findings": ["存在可进一步优化的知识覆盖表达。"],
+            "audit_report": "试卷可发布，但知识覆盖表达仍可优化。",
         }
 
 
 class InvalidAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
+        if role == "paper_audit_findings_compiler":
+            return {"status": "compiled", "contract_version": "1.0", "issues": []}
         return {"result": "试卷整体可用"}
 
 
 class ContradictoryPassingAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
+        if role == "paper_audit_findings_compiler":
+            return {
+                "status": "compiled",
+                "contract_version": "1.0",
+                "issues": [
+                    {
+                        "issue_type": "content_quality",
+                        "message": "题1与题2考查内容重复，违反去重约束。",
+                        "blocking": True,
+                        "source_anchors": [
+                            {
+                                "source_field": "findings",
+                                "source_quote": "题1与题2考查内容重复，违反去重约束。",
+                            }
+                        ],
+                    }
+                ],
+            }
         return {
             "decision": "pass",
             "findings": [
                 "题1与题2考查内容重复，违反去重约束。",
                 "修改要求：请替换题2后重新审核。",
             ],
+            "audit_report": "试卷存在重复题，必须修订后重新审核。",
         }
 
 
@@ -145,6 +191,9 @@ async def test_paper_audit_fails_closed_on_contradictory_pass_findings() -> None
 
     assert result.payload.decision == "revise"
     assert any("违反去重约束" in finding for finding in result.payload.findings)
+    assert result.payload.audit_report == "试卷存在重复题，必须修订后重新审核。"
+    assert result.payload.structured_findings[0].issue_type == "content_quality"
+    assert result.payload.structured_findings[0].owner_step_id == "paper_assembly"
 
 
 @pytest.mark.asyncio

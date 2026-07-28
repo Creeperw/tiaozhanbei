@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
 
 from APP.backend.auth import get_current_user
@@ -152,6 +153,7 @@ def learner_profile_response(profile):
 
 
 def _sync_personalization_conflicts(db: Session, user_id: int) -> None:
+    """Compatibility hook that now performs deterministic expiry only."""
     changed = resolve_personalization_conflicts(db, user_id)
     if changed:
         db.commit()
@@ -223,7 +225,6 @@ def update_learning_target(
 
 @router.get("/profile")
 def get_profile(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    _sync_personalization_conflicts(db, current_user.id)
     profile = get_or_create_profile(db, current_user.id)
     return {k: getattr(profile, k) for k in ["display_name", "constitution", "health_goals", "diet_restrictions", "exercise_preferences", "medical_history", "custom_needs"]}
 
@@ -237,7 +238,6 @@ def update_profile(body: ProfileUpdate, current_user: UserModel = Depends(get_cu
 
 @router.get("/learner-profile")
 def get_learner_profile(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    _sync_personalization_conflicts(db, current_user.id)
     profile = get_or_create_profile(db, current_user.id)
     return learner_profile_response(profile)
 
@@ -333,7 +333,6 @@ def learning_trends(
 
 @router.get("/overview")
 def overview(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    _sync_personalization_conflicts(db, current_user.id)
     profile = get_or_create_profile(db, current_user.id)
     active_rows = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id, PersonalizationMemory.is_active == True).all()
     inactive_count = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id, PersonalizationMemory.is_active == False).count()
@@ -394,7 +393,6 @@ def list_memories(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _sync_personalization_conflicts(db, current_user.id)
     query = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id)
     if not include_inactive:
         query = query.filter(PersonalizationMemory.is_active == True)
@@ -549,7 +547,6 @@ def list_candidates(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _sync_personalization_conflicts(db, current_user.id)
     query = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id)
     if status and status != "all":
         query = query.filter(MemoryCandidate.status == status)
@@ -592,6 +589,10 @@ def update_candidate(candidate_id: int, body: CandidateUpdate, current_user: Use
     if not item:
         raise HTTPException(status_code=404, detail="Candidate not found")
     data = body.model_dump(exclude_unset=True)
+    if item.status == "promoted" and any(
+        key in data for key in ("status", "content", "title")
+    ):
+        raise HTTPException(status_code=409, detail="Promoted candidate is immutable")
     if "status" in data and data["status"] not in {"pending", "promoted", "ignored"}:
         raise HTTPException(status_code=400, detail="Invalid candidate status")
     if "content" in data and data["content"] is not None and not data["content"].strip():
@@ -609,6 +610,8 @@ def ignore_candidate(candidate_id: int, current_user: UserModel = Depends(get_cu
     item = db.query(MemoryCandidate).filter(MemoryCandidate.id == candidate_id, MemoryCandidate.user_id == current_user.id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Candidate not found")
+    if item.status == "promoted":
+        raise HTTPException(status_code=409, detail="Promoted candidate cannot be ignored")
     item.status = "ignored"
     item.updated_at = utc_now()
     db.commit()
@@ -631,6 +634,21 @@ def promote_candidate(candidate_id: int, body: CandidatePromote, current_user: U
     item = db.query(MemoryCandidate).filter(MemoryCandidate.id == candidate_id, MemoryCandidate.user_id == current_user.id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Candidate not found")
+    if item.status == "promoted" and item.promoted_memory_id is not None:
+        memory = db.query(PersonalizationMemory).filter(
+            PersonalizationMemory.id == item.promoted_memory_id,
+            PersonalizationMemory.user_id == current_user.id,
+        ).first()
+        if memory is None:
+            raise HTTPException(status_code=409, detail="Promoted memory is unavailable")
+        return {
+            "success": True,
+            "candidate": serialize_candidate(item),
+            "memory": serialize_memory(memory),
+            "replayed": True,
+        }
+    if item.status != "pending":
+        raise HTTPException(status_code=409, detail="Candidate is not promotable")
     if body.category not in {"short_term", "long_term", "preference", "note"}:
         raise HTTPException(status_code=400, detail="Invalid target memory category")
     expires_at = body.expires_at
@@ -645,14 +663,39 @@ def promote_candidate(candidate_id: int, body: CandidatePromote, current_user: U
         title=item.title,
         content=item.content,
         source="candidate_promote",
+        source_candidate_id=item.id,
         expires_at=expires_at,
     )
-    db.add(memory)
-    db.flush()
-    item.status = "promoted"
-    item.promoted_memory_id = memory.id
-    item.updated_at = utc_now()
-    db.commit()
+    try:
+        db.add(memory)
+        db.flush()
+        item.status = "promoted"
+        item.promoted_memory_id = memory.id
+        item.updated_at = utc_now()
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        memory = db.query(PersonalizationMemory).filter(
+            PersonalizationMemory.source_candidate_id == candidate_id,
+            PersonalizationMemory.user_id == current_user.id,
+        ).first()
+        item = db.query(MemoryCandidate).filter(
+            MemoryCandidate.id == candidate_id,
+            MemoryCandidate.user_id == current_user.id,
+        ).first()
+        if (
+            memory is None
+            or item is None
+            or item.status != "promoted"
+            or item.promoted_memory_id != memory.id
+        ):
+            raise
+        return {
+            "success": True,
+            "candidate": serialize_candidate(item),
+            "memory": serialize_memory(memory),
+            "replayed": True,
+        }
     _sync_personalization_conflicts(db, current_user.id)
     db.refresh(item)
     db.refresh(memory)
@@ -660,7 +703,6 @@ def promote_candidate(candidate_id: int, body: CandidatePromote, current_user: U
 
 @router.get("/export")
 def export_personalization(current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    _sync_personalization_conflicts(db, current_user.id)
     profile = get_or_create_profile(db, current_user.id)
     memories = db.query(PersonalizationMemory).filter(PersonalizationMemory.user_id == current_user.id).order_by(PersonalizationMemory.updated_at.desc()).all()
     candidates = db.query(MemoryCandidate).filter(MemoryCandidate.user_id == current_user.id).order_by(MemoryCandidate.updated_at.desc()).all()

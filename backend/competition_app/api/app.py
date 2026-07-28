@@ -312,11 +312,31 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        workshop_dispatcher = None
         if backend_handoff is not None:
             await backend_handoff.startup()
+        if container.writeback_executor is not None and backend_handoff is not None:
+            async def dispatch_workshop_outbox() -> None:
+                while True:
+                    try:
+                        await asyncio.to_thread(
+                            container.writeback_executor.dispatch_pending_workshop_publications,
+                            backend_handoff,
+                        )
+                    except Exception:
+                        pass
+                    await asyncio.sleep(5)
+
+            workshop_dispatcher = asyncio.create_task(dispatch_workshop_outbox())
         try:
             yield
         finally:
+            if workshop_dispatcher is not None:
+                workshop_dispatcher.cancel()
+                try:
+                    await workshop_dispatcher
+                except asyncio.CancelledError:
+                    pass
             if backend_handoff is not None:
                 await backend_handoff.shutdown()
 
@@ -3307,7 +3327,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     {
                         "event": "run_failed",
                         "error_type": type(exc).__name__,
-                        "message": str(exc),
+                        "message": (
+                            "这次处理没有成功完成。系统已保留当前会话，"
+                            "请稍后重试；若问题持续出现，可换一种说法重新发起。"
+                        ),
                         "thread_id": thread_id,
                     }
                 )

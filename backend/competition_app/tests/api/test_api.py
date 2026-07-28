@@ -85,7 +85,16 @@ def test_learning_path_api_projects_only_the_signed_in_users_plan(tmp_path: Path
                 created_at=now,
                 updated_at=now,
                 stages=[
-                    LongTermPlanStage(stage=1, book=["《中医学基础》"], goal="建立基础。")
+                    LongTermPlanStage(
+                        stage=1,
+                        stage_name="基础阶段",
+                        book=["《中医学基础》"],
+                        goal="建立基础。",
+                        duration_days=30,
+                        schedule_summary=(
+                            "使用《中医学基础》建立理论框架，形成笔记并闭卷验收。"
+                        ),
+                    )
                 ],
             ),
         ),
@@ -171,8 +180,13 @@ def test_current_learning_plan_api_returns_prose_and_structured_stages(
                 stages=[
                     LongTermPlanStage(
                         stage=1,
+                        stage_name="基础阶段",
                         book=["《中医学基础》"],
                         goal="建立基础理论框架。",
+                        duration_days=30,
+                        schedule_summary=(
+                            "使用《中医学基础》建立理论框架，形成笔记并闭卷验收。"
+                        ),
                     )
                 ],
             ),
@@ -187,8 +201,13 @@ def test_current_learning_plan_api_returns_prose_and_structured_stages(
     assert body["long_term"]["structured"]["stages"] == [
         {
             "stage": 1,
+            "stage_name": "基础阶段",
             "book": ["《中医学基础》"],
             "goal": "建立基础理论框架。",
+            "duration_days": 30,
+            "schedule_summary": (
+                "使用《中医学基础》建立理论框架，形成笔记并闭卷验收。"
+            ),
         }
     ]
     assert body["long_term"]["stage_progress"][0]["pass_rule"] == (
@@ -577,6 +596,40 @@ def test_stream_api_emits_model_and_system_events_before_final_result(tmp_path: 
         "existing_plans",
         "plan_actions",
     }
+
+
+def test_stream_api_does_not_expose_internal_failure_detail(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    async def fail_execution(_request):
+        raise RuntimeError(
+            "personalized review card execution failed: "
+            "ValueError: 教材路线选择与系统已解析路线不一致"
+        )
+
+    container.review_card_use_case.execute = fail_execution
+    client = TestClient(create_app(container, auth_required=False))
+
+    with client.stream(
+        "POST",
+        "/api/v1/review-cards/stream",
+        json={
+            "learner_id": "FAILURE_VIEW_1",
+            "user_request": "制定长期学习计划",
+            "available_minutes": 15,
+        },
+    ) as response:
+        events = [
+            json.loads(line[6:])
+            for line in response.iter_lines()
+            if line.startswith("data: ")
+        ]
+
+    assert response.status_code == 200
+    assert events[-1]["event"] == "run_failed"
+    assert "请稍后重试" in events[-1]["message"]
+    assert "ValueError" not in events[-1]["message"]
+    assert "教材路线" not in events[-1]["message"]
 
 
 def test_stream_api_interrupts_and_resumes_same_langgraph_thread(tmp_path: Path) -> None:

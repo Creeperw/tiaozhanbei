@@ -12,6 +12,10 @@ from competition_app.runtime.tool_registry import ToolPermissionError
 @pytest.mark.asyncio
 async def test_stub_review_card_runs_mastery_review_agents_and_exports_snapshot(tmp_path: Path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    memory_writes = []
+    container.review_card_use_case.memory_governance_writer = (
+        lambda learner_id, **kwargs: memory_writes.append((learner_id, kwargs)) or {}
+    )
 
     tools = container.review_card_use_case.orchestrator.tool_registry
     evidence = await tools.invoke(
@@ -34,6 +38,7 @@ async def test_stub_review_card_runs_mastery_review_agents_and_exports_snapshot(
     producers = {output.producer for output in result.agent_outputs}
     assert producers == {
         "planner_agent",
+        "memory_agent",
         "knowledge_base_agent",
         "default_route_resolver",
         "diagnosis_agent",
@@ -58,6 +63,10 @@ async def test_stub_review_card_runs_mastery_review_agents_and_exports_snapshot(
     }
     assert result.review_task.primary_kp_id == "KP_FJ_001"
     assert result.snapshot_path.exists()
+    assert len(memory_writes) == 1
+    assert memory_writes[0][0] == "learner_001"
+    assert memory_writes[0][1]["execution_id"] == result.execution_id
+    assert memory_writes[0][1]["resolution"] == "none"
     snapshot_text = result.snapshot_path.read_text(encoding="utf-8")
     assert "DASHSCOPE_API_KEY" not in snapshot_text
     assert "MYSQL_PASSWORD" not in snapshot_text
@@ -70,6 +79,7 @@ async def test_stub_review_card_runs_mastery_review_agents_and_exports_snapshot(
         output for output in result.agent_outputs if output.producer == "review_scheduler"
     )
     assert {ref.purpose for ref in scheduler_output.input_refs} == {
+        "dependency:memory",
         "dependency:diagnosis",
         "dependency:knowledge",
         "agent_handoff",

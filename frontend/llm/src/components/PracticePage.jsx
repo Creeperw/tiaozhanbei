@@ -700,7 +700,7 @@ export default function PracticePage({
   }
 
   return (
-    <div className="space-y-5 text-slate-800">
+    <div className={`practice-workspace practice-workspace--${activeTaskType} space-y-5 text-slate-800`}>
       <div className="practice-workspace__toolbar">
         <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}>
           <ArrowLeft aria-hidden="true" size={18} />{returnLabel}

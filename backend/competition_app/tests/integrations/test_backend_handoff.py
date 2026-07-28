@@ -97,6 +97,123 @@ def test_daily_task_handoff_maps_user_and_rolls_back_failed_upsert():
     assert calls == ["rolled_back", "closed"]
 
 
+def test_memory_governance_persists_candidates_and_confirmed_replacement_atomically():
+    calls = []
+
+    class FakeDB:
+        def add(self, item):
+            calls.append(("add", item.event_type, item.user_id))
+
+        def commit(self):
+            calls.append("committed")
+
+        def rollback(self):
+            calls.append("rolled_back")
+
+        def close(self):
+            calls.append("closed")
+
+    class FakeAgentEvent:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
+    db = FakeDB()
+    modules = {
+        "APP.backend.database": SimpleNamespace(
+            SessionLocal=lambda: db,
+            AgentEvent=FakeAgentEvent,
+        ),
+        "APP.backend.health_memory": SimpleNamespace(
+            save_extracted_memories=lambda *args, **kwargs: (
+                calls.append(("candidates", args[1], args[2], kwargs))
+                or {"non_important_candidates": args[2]["candidates"]}
+            ),
+            apply_confirmed_memory_replacements=lambda *args, **kwargs: (
+                calls.append(("replace", args[1], args[2]))
+                or {"replaced": [{"memory_id": 7, "successor_id": 8}]}
+            ),
+        ),
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+    runtime._workshop_user = lambda current_db, external_id: (
+        calls.append(("user", current_db, external_id))
+        or SimpleNamespace(id=23)
+    )
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        result = runtime.persist_memory_governance(
+            "external-23",
+            execution_id="EXE_1",
+            candidates=[{"summary": "用户长期偏好对比表式资源。"}],
+            resolution="replace_existing",
+            conflicts=[{"memory_id": 7, "proposed_memory": "每天学习一小时。"}],
+        )
+
+    assert calls[0] == ("user", db, "external-23")
+    assert calls[1][0:2] == ("candidates", 23)
+    assert calls[1][3]["commit"] is False
+    assert calls[2] == (
+        "replace",
+        23,
+        [{"memory_id": 7, "proposed_memory": "每天学习一小时。"}],
+    )
+    assert calls[-2:] == ["committed", "closed"]
+    assert result["replaced"] == [{"memory_id": 7, "successor_id": 8}]
+
+
+def test_memory_governance_rolls_back_if_replacement_fails():
+    calls = []
+
+    class FakeDB:
+        def add(self, item):
+            calls.append("added")
+
+        def commit(self):
+            calls.append("committed")
+
+        def rollback(self):
+            calls.append("rolled_back")
+
+        def close(self):
+            calls.append("closed")
+
+    db = FakeDB()
+    modules = {
+        "APP.backend.database": SimpleNamespace(
+            SessionLocal=lambda: db,
+            AgentEvent=lambda **kwargs: kwargs,
+        ),
+        "APP.backend.health_memory": SimpleNamespace(
+            save_extracted_memories=lambda *args, **kwargs: {},
+            apply_confirmed_memory_replacements=lambda *args, **kwargs: (
+                (_ for _ in ()).throw(ValueError("foreign memory"))
+            ),
+        ),
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+    runtime._workshop_user = lambda current_db, external_id: SimpleNamespace(id=23)
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        with pytest.raises(ValueError, match="foreign memory"):
+            runtime.persist_memory_governance(
+                "external-23",
+                execution_id="EXE_1",
+                candidates=[],
+                resolution="replace_existing",
+                conflicts=[{"memory_id": 99, "proposed_memory": "新值"}],
+            )
+
+    assert calls == ["rolled_back", "closed"]
+
+
 def test_formal_knowledge_point_resolver_delegates_to_handoff_repository():
     calls = []
 
