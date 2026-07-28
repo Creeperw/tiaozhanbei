@@ -7,12 +7,15 @@ import {
   ChevronRight,
   ClipboardList,
   Clock3,
+  Download,
+  FileText,
   Grid3X3,
   Loader2,
   PanelRightClose,
   PanelRightOpen,
   Pause,
   Play,
+  Printer,
   X,
 } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
@@ -104,6 +107,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
   const [position, setPosition] = useState(1);
   const [markedPositions, setMarkedPositions] = useState([]);
   const [answerCardOpen, setAnswerCardOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
 
   const questionCount = useMemo(
     () => Object.values(distribution).reduce((total, count) => total + count, 0),
@@ -241,6 +245,81 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
     } finally {
       setLoading(false);
     }
+  };
+
+  const buildPaperMarkdown = () => {
+    if (!paper?.items?.length) return '';
+    const typeLabel = (type) => ({single_choice:'单选题',multiple_choice:'多选题',fill_blank:'填空题',short_answer:'简答题',case_quiz:'案例题',true_false:'判断题'}[type]||type||'题目');
+    const lines = [];
+    lines.push(`# ${paper.title || '智能组卷'}`);
+    if (paper.total_score) lines.push(`**满分**：${paper.total_score} 分  ·  **题量**：${paper.items.length} 题`);
+    lines.push('---');
+    paper.items.forEach((item) => {
+      lines.push(`## ${item.position || ''}. ${typeLabel(item.question_type)}`);
+      lines.push(String(item.stem || '').replace(/<[^>]+>/g, ''));
+      const options = Array.isArray(item.options) ? item.options : [];
+      options.forEach((opt, i) => {
+        const label = String.fromCharCode(65 + i);
+        let text = typeof opt === 'string' ? opt : (opt.content || opt.value || opt.text || '');
+        text = String(text || '').replace(/<[^>]+>/g, '').trim().replace(/^[A-Z][.．、)\s]\s*/, '');
+        lines.push(`- ${label}. ${text}`);
+      });
+      lines.push('---');
+    });
+    return lines.join('\n');
+  };
+
+  const buildPaperHtml = () => {
+    const md = buildPaperMarkdown();
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+(paper?.title||'试卷')+'</title>'
+    +'<style>body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:0 8px;color:#1a1a1a;font-size:13px;line-height:1.45}'
+    +'h1{font-size:1.15em;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin:0 0 10px 0}'
+    +'h2{font-size:.95em;margin:14px 0 4px 0;font-weight:700}p{margin:0 0 4px 0}'
+    +'hr{border:0;border-top:1px solid #e5e7eb;margin:8px 0}li{margin:1px 0;font-size:13px}'
+    +'@media print{body{margin:0;padding:0 4px}@page{margin:1cm}}</style></head><body>'
+    +md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('**'))return'<p><strong>'+l.replace(/\*\*/g,'')+'</strong></p>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')
+    +'</body></html>';
+  };
+
+  const downloadMarkdown = () => {
+    const md = buildPaperMarkdown();
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `${(paper?.title || '试卷').replace(/[\\/:*?"<>|]/g, '_')}.md`;
+    a.click(); URL.revokeObjectURL(url); setSaveMenuOpen(false);
+  };
+
+  const downloadDocx = () => {
+    const html = buildPaperHtml();
+    const docxHtml = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+(paper?.title||'试卷')+'</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page{margin:1.5cm}body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:10px;color:#1a1a1a;font-size:11pt;line-height:1.4}h1{font-size:13pt;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin:0 0 10px 0}h2{font-size:10.5pt;margin:12px 0 3px 0;font-weight:700}hr{border:0;border-top:1px solid #e5e7eb;margin:6px 0}li{margin:1px 0;font-size:11pt}p{margin:0 0 3px 0}</style></head><body>'+html.replace(/^[\s\S]*<body>/, '').replace(/<\/body>[\s\S]*$/, '')+'</body></html>';
+    const blob = new Blob([docxHtml], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = `${(paper?.title || '试卷').replace(/[\\/:*?"<>|]/g, '_')}.doc`;
+    a.click(); URL.revokeObjectURL(url); setSaveMenuOpen(false);
+  };
+
+  const downloadImage = async () => {
+    const html = buildPaperHtml();
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;background:#fff;padding:40px;font-family:"Microsoft YaHei",sans-serif;color:#1a1a1a;line-height:1.45;font-size:13px;z-index:-1';
+    container.innerHTML = html.replace(/^[\s\S]*<body>/, '').replace(/<\/body>[\s\S]*$/, '');
+    document.body.appendChild(container);
+    const { default: html2canvas } = await import('html2canvas');
+    try {
+      const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', logging: false });
+      canvas.toBlob((blob) => {
+        if (blob) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${(paper?.title || '试卷').replace(/[\\/:*?"<>|]/g, '_')}.png`; a.click(); URL.revokeObjectURL(url); }
+      }, 'image/png');
+    } finally { document.body.removeChild(container); }
+    setSaveMenuOpen(false);
+  };
+
+  const printPaper = () => {
+    const html = buildPaperHtml();
+    const w = window.open('', '_blank', 'width=800,height=600');
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+    setSaveMenuOpen(false);
   };
 
   const returnToPaperLibrary = async () => {
@@ -421,6 +500,20 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
             <button type="button" aria-label={answerCardOpen ? '收起答题卡' : '展开答题卡'} aria-expanded={answerCardOpen} aria-controls="smart-paper-answer-card" onClick={() => setAnswerCardOpen(!answerCardOpen)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
               {answerCardOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}<span className="hidden sm:inline">答题卡</span>
             </button>
+            <div className="relative">
+              <button type="button" onClick={() => setSaveMenuOpen(!saveMenuOpen)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
+                <Download size={16} /><span className="hidden sm:inline">保存试卷</span>
+              </button>
+              {saveMenuOpen && <>
+                <button type="button" aria-label="关闭保存菜单" onClick={() => setSaveMenuOpen(false)} className="fixed inset-0 z-10" />
+                <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <button type="button" onClick={downloadMarkdown} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><FileText size={15} />Markdown (.md)</button>
+                  <button type="button" onClick={downloadDocx} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><FileText size={15} />Word 文档 (.doc)</button>
+                  <button type="button" onClick={downloadImage} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><FileText size={15} />图片 (.png)</button>
+                  <button type="button" onClick={printPaper} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Printer size={15} />打印为 PDF</button>
+                </div>
+              </>}
+            </div>
           </div>
         </header>
 

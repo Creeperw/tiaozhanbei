@@ -146,7 +146,7 @@ describe('TextbookChapterLearning', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '学习笔记' }));
+    fireEvent.click(screen.getByRole('button', { name: '笔记本' }));
     expect(onNavigate).toHaveBeenLastCalledWith(expect.objectContaining({
       page: 'practice',
       params: expect.objectContaining({ view: 'workspace', taskType: 'study_notes' }),

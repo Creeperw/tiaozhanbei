@@ -1049,7 +1049,7 @@ export async function submitPracticeAnswer({ fetcher, question, answer, taskItem
   }
   try {
     const { data, source } = await fetcher({
-      paths: ['/v1/workshop/practice/grade', '/training/practice/grade'],
+      paths: ['/training/practice/grade', '/v1/workshop/practice/grade'],
       fallback: null,
       options: {
         method: 'POST',

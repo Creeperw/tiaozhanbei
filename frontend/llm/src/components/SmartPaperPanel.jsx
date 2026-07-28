@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
+  Download,
   FileCheck2,
   History,
   ListChecks,
@@ -57,6 +58,56 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   const historyPapers = useMemo(() => papers.filter((item) => item.status !== 'published'), [papers]);
   const total = Object.values(distribution).reduce((sum, value) => sum + value, 0);
   const selectedTypes = questionTypes.filter(([key]) => distribution[key] > 0);
+
+  const handleDownloadPaper = async (paperId, title, format) => {
+    try {
+      const result = await loadPaper({ fetcher: fetchJsonWithAuthFallback, paperId });
+      if (result.error || !result.paper?.items?.length) return;
+      const p = result.paper;
+      const safeName = (title || '试卷').replace(/[\\/:*?"<>|]/g, '_');
+      const lines = [];
+      lines.push('# ' + (title || p.title || '试卷'));
+      if (p.total_score) lines.push('**满分**：' + p.total_score + ' 分  ·  **题量**：' + p.items.length + ' 题');
+      lines.push('---');
+      p.items.forEach((item) => {
+        lines.push('## ' + (item.position || '') + '. ' + (item.question_type || '题目'));
+        lines.push(String(item.stem || '').replace(/<[^>]+>/g, ''));
+        (Array.isArray(item.options) ? item.options : []).forEach((opt, i) => {
+          const label = String.fromCharCode(65 + i);
+          let text = typeof opt === 'string' ? opt : (opt.content || opt.value || opt.text || '');
+          text = String(text || '').replace(/<[^>]+>/g, '').trim().replace(/^[A-Z][.．、)\s]\s*/, '');
+          lines.push('- ' + label + '. ' + text);
+        });
+        lines.push('---');
+      });
+      const md = lines.join('\n');
+      if (format === 'md') {
+        const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = safeName + '.md'; a.click(); URL.revokeObjectURL(url);
+      } else if (format === 'doc') {
+        const html = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+title+'</title><style>@page{margin:1.5cm}body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:10px;font-size:11pt;line-height:1.4}h1{font-size:13pt}h2{font-size:10.5pt;margin:12px 0 3px}hr{border:0;border-top:1px solid #e5e7eb;margin:6px 0}li{margin:1px 0;font-size:11pt}</style></head><body>'
+          + md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')+'</body></html>';
+        const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = safeName + '.doc'; a.click(); URL.revokeObjectURL(url);
+      } else if (format === 'png') {
+        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:20px;font-size:13px;line-height:1.45;color:#1a1a1a}h1{font-size:1.15em}h2{font-size:.95em}hr{border:0;border-top:1px solid #e5e7eb;margin:8px 0}li{margin:1px 0;font-size:13px}</style></head><body>'
+          + md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')+'</body></html>';
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;background:#fff;padding:40px;font-family:"Microsoft YaHei",sans-serif;font-size:13px;z-index:-1';
+        container.innerHTML = html;
+        document.body.appendChild(container);
+        const { default: h2c } = await import('html2canvas');
+        try { const canvas = await h2c(container, { scale: 2, backgroundColor: '#ffffff', logging: false });
+          canvas.toBlob((blob) => { if (blob) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = safeName + '.png'; a.click(); URL.revokeObjectURL(url); } }, 'image/png');
+        } finally { document.body.removeChild(container); }
+      } else if (format === 'pdf') {
+        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:20px;font-size:13px;line-height:1.45}h1{font-size:1.15em}h2{font-size:.95em}hr{border:0;border-top:1px solid #e5e7eb;margin:8px 0}li{margin:1px 0}@media print{@page{margin:1cm}}</style></head><body>'
+          + md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')+'</body></html>';
+        const w = window.open('', '_blank', 'width=800,height=600');
+        if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+      }
+    } catch {}
+  };
 
   if (activePaperId || activeTaskItemId) {
     return (
@@ -122,11 +173,11 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
       <section className="smart-paper__archive-grid grid gap-3 border-b border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 sm:p-5" role="region" aria-label="试卷存档">
         <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900"><ListChecks size={16} className="text-emerald-700" />待办试卷</h3><span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">{pendingPapers.length}</span></header>
-          <PaperList papers={pendingPapers} onOpen={setActivePaperId} empty="当前没有待作答试卷" mode="pending" compact />
+          <PaperList papers={pendingPapers} onOpen={setActivePaperId} onDownload={handleDownloadPaper} empty="当前没有待作答试卷" mode="pending" compact />
         </article>
         <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900"><History size={16} className="text-slate-600" />历史存档</h3><span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{historyPapers.length}</span></header>
-          <PaperList papers={historyPapers} onOpen={setActivePaperId} empty="完成的试卷会保存在这里" mode="history" compact />
+          <PaperList papers={historyPapers} onOpen={setActivePaperId} onDownload={handleDownloadPaper} empty="完成的试卷会保存在这里" mode="history" compact />
         </article>
       </section>
 
@@ -209,7 +260,8 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   );
 }
 
-function PaperList({ papers, onOpen, empty, mode, compact = false }) {
+function PaperList({ papers, onOpen, onDownload, empty, mode, compact = false }) {
+  const [downloadMenu, setDownloadMenu] = useState(null);
   if (!papers.length) {
     return <div className={`grid place-items-center px-5 text-center ${compact ? 'min-h-32 py-6' : 'min-h-64 py-12'}`}><div><FileCheck2 className="mx-auto text-slate-300" size={compact ? 26 : 34} /><h3 className="mt-3 text-sm font-semibold text-slate-800">{empty}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{mode === 'pending' ? '生成并审核通过的试卷将自动进入待办。' : '提交试卷后可随时回来查看结果与解析。'}</p></div></div>;
   }
@@ -219,9 +271,27 @@ function PaperList({ papers, onOpen, empty, mode, compact = false }) {
         <article key={paper.paper_id} className={`group flex flex-col rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md ${compact ? 'min-h-24 p-3' : 'min-h-32 p-4'}`}>
           <div className="flex items-start justify-between gap-3">
             <span className={`rounded-md px-2 py-1 text-xs font-semibold ${mode === 'pending' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{mode === 'pending' ? '待作答' : '已完成'}</span>
-            <span className="inline-flex items-center gap-1 text-xs text-slate-500"><Clock3 size={13} />{paper.duration_minutes} 分钟</span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-xs text-slate-500"><Clock3 size={13} />{paper.duration_minutes} 分钟</span>
+              {onDownload && (
+                <div className="relative">
+                  <button type="button" title="下载试卷" onClick={(e) => { e.stopPropagation(); setDownloadMenu(downloadMenu === paper.paper_id ? null : paper.paper_id); }} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-emerald-600">
+                    <Download size={28} />
+                  </button>
+                  {downloadMenu === paper.paper_id && <><button type="button" aria-label="关闭下载菜单" onClick={(e) => { e.stopPropagation(); setDownloadMenu(null); }} className="fixed inset-0 z-10" />
+                  <div className="absolute right-0 top-full z-20 mt-1 w-36 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                    {[{k:'md',l:'Markdown'},{k:'doc',l:'Word 文档'},{k:'png',l:'图片'},{k:'pdf',l:'打印 PDF'}].map(f => (
+                      <button key={f.k} type="button" onClick={(e) => { e.stopPropagation(); setDownloadMenu(null); onDownload(paper.paper_id, paper.title, f.k); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50">{f.l}</button>
+                    ))}
+                  </div></>}
+                </div>
+              )}
+            </div>
           </div>
           <h3 className="mt-3 text-sm font-semibold leading-6 text-slate-950">{paper.title}</h3>
+          {mode === 'history' && paper.score !== undefined && paper.score !== null && (
+            <p className="mt-1 text-xs text-slate-500">得分：<span className="font-semibold text-slate-700">{paper.score}</span> / {paper.max_score || 100} 分</p>
+          )}
           <button type="button" onClick={() => onOpen(paper.paper_id)} className="mt-auto inline-flex items-center gap-1 self-end pt-3 text-sm font-semibold text-emerald-700 transition group-hover:gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
             {mode === 'pending' ? '开始答题' : '查看试卷'}<ChevronRight size={16} />
           </button>

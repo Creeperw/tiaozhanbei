@@ -1943,6 +1943,21 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def release_practice_claim(self, external_user_id: str) -> None:
+        """Delete all active practice claims for this user."""
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            db.query(database.CorePracticeSubmissionClaim).filter_by(
+                user_id=user.id, daily_task_item_id=None,
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+
     def list_papers(
         self, external_user_id: str, *, offset: int = 0, limit: int = 50
     ) -> dict[str, Any]:
@@ -1953,18 +1968,49 @@ class BackendHandoffRuntime:
             query = db.query(database.PaperInstanceRecord).filter_by(learner_id=user.id)
             total = query.count()
             rows = query.order_by(database.PaperInstanceRecord.created_at.desc()).offset(offset).limit(limit).all()
+            paper_ids = [row.paper_id for row in rows]
+            submission_scores: dict[str, dict[str, Any]] = {}
+            if paper_ids:
+                submission_rows = (
+                    db.query(database.PaperSubmissionRecord)
+                    .filter(
+                        database.PaperSubmissionRecord.paper_id.in_(paper_ids),
+                        database.PaperSubmissionRecord.status == "submitted",
+                    )
+                    .all()
+                )
+                for sub in submission_rows:
+                    score = None
+                    max_score = None
+                    try:
+                        parsed = json.loads(sub.result_json or "{}")
+                        if isinstance(parsed, dict):
+                            raw_score = parsed.get("score")
+                            raw_max = parsed.get("max_score")
+                            if raw_score is not None:
+                                score = int(raw_score) if isinstance(raw_score, (int, float)) else None
+                            if raw_max is not None:
+                                max_score = int(raw_max) if isinstance(raw_max, (int, float)) else None
+                    except (json.JSONDecodeError, TypeError, ValueError):
+                        pass
+                    submission_scores[str(sub.paper_id)] = {"score": score, "max_score": max_score}
+            items = []
+            for row in rows:
+                item = {
+                    "paper_id": row.paper_id,
+                    "title": row.title,
+                    "status": row.status,
+                    "duration_minutes": int(row.duration_minutes or 60),
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                entry = submission_scores.get(row.paper_id)
+                if entry is not None:
+                    item["score"] = entry["score"]
+                    item["max_score"] = entry["max_score"]
+                items.append(item)
             return {
                 "schema_version": "1.0",
-                "items": [
-                    {
-                        "paper_id": row.paper_id,
-                        "title": row.title,
-                        "status": row.status,
-                        "duration_minutes": int(row.duration_minutes or 60),
-                        "created_at": row.created_at.isoformat() if row.created_at else None,
-                    }
-                    for row in rows
-                ],
+                "items": items,
                 "total": total,
                 "offset": offset,
                 "limit": limit,

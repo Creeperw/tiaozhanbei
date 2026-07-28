@@ -76,7 +76,7 @@ class DefaultDataProvider:
         records = sorted(records, key=lambda x: x.get('timestamp', ''), reverse=True)
         return records[offset:offset+limit]
 
-    def add_mistake_record(self, user_id: str, case_id: str, user_answers: Dict, report: Dict) -> bool:
+    def add_mistake_record(self, user_id: str, case_id: str, user_answers: Dict, report: Dict, history_id: str = "", session_id: str = "") -> bool:
         """添加错题"""
         data = self._mistakes_db
         if user_id not in data:
@@ -90,7 +90,10 @@ class DefaultDataProvider:
             "score": report.get('score', 0),
             "diagnosis_correct": report.get('diagnosis_correct', False),
             "timestamp": datetime.now().isoformat(),
-            "review_flag": True
+            "review_flag": True,
+            "history_id": history_id,
+            "session_id": session_id,
+            "report": report,
         })
         self._save("mistakes.json", data)
         return True

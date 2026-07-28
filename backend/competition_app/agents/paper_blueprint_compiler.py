@@ -20,6 +20,39 @@ from competition_app.llm.stub import StubChatModel
 _RESULT_ADAPTER = TypeAdapter(PaperBlueprintCompilerResult)
 
 
+def _coerce_blueprint(raw: dict) -> dict:
+    """Coerce common type mismatches from DeepSeek output."""
+    contract = raw.get("contract", {})
+    if isinstance(contract, dict):
+        for unit in contract.get("units", []):
+            if isinstance(unit, dict):
+                if "required_question_count" in unit:
+                    try: unit["required_question_count"] = int(unit["required_question_count"])
+                    except (ValueError, TypeError): unit["required_question_count"] = 1
+                if "score_total" in unit and unit["score_total"] is not None:
+                    try: unit["score_total"] = float(unit["score_total"])
+                    except (ValueError, TypeError): unit["score_total"] = None
+                for key in ("unit_key", "knowledge_module", "learning_objective", "retrieval_query"):
+                    if not unit.get(key): unit[key] = unit.get("unit_key") or unit.get("knowledge_module") or "学习单元"
+                for key in ("question_type_preferences", "selection_rules"):
+                    if key in unit and not isinstance(unit[key], list):
+                        unit[key] = [str(unit[key])] if unit[key] else []
+        for key in ("duration_minutes",):
+            if key in contract and contract[key] is not None:
+                try: contract[key] = int(contract[key])
+                except (ValueError, TypeError): contract[key] = None
+        if "total_score" in contract and contract["total_score"] is not None:
+            try: contract["total_score"] = float(contract["total_score"])
+            except (ValueError, TypeError): contract["total_score"] = None
+        for key in ("title", "scope_summary"):
+            if not contract.get(key): contract[key] = "试卷"
+        if not isinstance(contract.get("units"), list) or len(contract.get("units", [])) == 0:
+            contract["units"] = [{"unit_key": "默认单元", "knowledge_module": "综合练习", "learning_objective": "巩固知识点", "retrieval_query": "综合练习", "required_question_count": 5}]
+        if not isinstance(contract.get("field_anchors"), dict):
+            contract["field_anchors"] = {}
+    return raw
+
+
 class PaperBlueprintCompilerAgent:
     """Internal compiler that extracts a minimal blueprint from prose."""
 
@@ -68,6 +101,12 @@ class PaperBlueprintCompilerAgent:
     @staticmethod
     def _parse(raw: Any) -> PaperBlueprintCompilerResult:
         try:
+            return _RESULT_ADAPTER.validate_python(raw)
+        except ValidationError:
+            pass
+        try:
+            if isinstance(raw, dict):
+                raw = _coerce_blueprint(raw)
             return _RESULT_ADAPTER.validate_python(raw)
         except ValidationError as exc:
             return PaperBlueprintNeedsRevision(
