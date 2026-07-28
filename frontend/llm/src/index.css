@@ -5758,6 +5758,14 @@ textarea:focus-visible {
   background: linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(247, 251, 249, .92));
 }
 
+.app-shell__main[data-page="learning-path"] .home-portal__route[data-view="orbit"] {
+  background: #fff;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route .learning-path-orbit::before {
+  content: none;
+}
+
 .home-portal__route[data-view="details"] { height: clamp(520px, 62vh, 720px); }
 .home-portal__route-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 0; }
 .home-portal__route-header span { color: #278a69; font-size: .58rem; font-weight: 800; letter-spacing: .14em; }
