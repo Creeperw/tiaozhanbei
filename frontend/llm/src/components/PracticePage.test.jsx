@@ -152,7 +152,7 @@ describe('PracticePage training modules', () => {
   it('renders the local overview statistics contract without replacing main workshop modules', () => {
     render(<PracticePage overviewStats={{
       streakDays: 8,
-      lastAccuracy: 76,
+      todayAccuracy: 76,
       windowPracticeCount: 6,
       todayGoal: 20,
       averageAccuracy: 82,
@@ -161,7 +161,7 @@ describe('PracticePage training modules', () => {
     }} />);
 
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
-    expect(screen.queryByText('8 天')).not.toBeInTheDocument();
+    expect(screen.getByText('8 天')).toBeInTheDocument();
     expect(screen.getByText('76%')).toBeInTheDocument();
     expect(within(learningOverview).getByText('6 题')).toBeInTheDocument();
     expect(within(learningOverview).getByText('82%')).toBeInTheDocument();
@@ -217,7 +217,7 @@ describe('PracticePage training modules', () => {
 
     render(<PracticePage />);
 
-    expect(screen.queryByText('5 天')).not.toBeInTheDocument();
+    expect(await screen.findByText('5 天')).toBeInTheDocument();
     expect(await screen.findByText('75%')).toBeInTheDocument();
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
     expect(within(learningOverview).getByText('近 30 天练习')).toBeInTheDocument();

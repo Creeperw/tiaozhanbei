@@ -16,6 +16,7 @@ import TextbookChapterLearning from './components/workshop-textbook/TextbookChap
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
 import RegistrationJourney from './components/RegistrationJourney';
+import CompactAssistant from './components/CompactAssistant';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -52,6 +53,7 @@ export default function App() {
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const [stageTransition, setStageTransition] = useState(null);
+  const [floatingAssistantSessionId, setFloatingAssistantSessionId] = useState(null);
   const currentPage = getIntentPage(pageIntent);
   const shellPage = currentPage === 'practice' && pageIntent.params.view === 'workspace'
     ? 'training-workshop'
@@ -134,7 +136,13 @@ export default function App() {
         setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'user-profile' }));
         return;
       }
-      if (destination.page === 'training-workshop') setNavigationRevision((value) => value + 1);
+      if (
+        destination.page === 'training-workshop'
+        || (destination.page === 'practice' && params.view === 'workspace')
+        || (destination.page === 'assistant' && params.newConversation)
+      ) {
+        setNavigationRevision((value) => value + 1);
+      }
       setPageIntent(createPageIntent(destination));
       return;
     }
@@ -162,7 +170,13 @@ export default function App() {
       setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'user-profile' }));
       return;
     }
-    if (destination === 'training-workshop') setNavigationRevision((value) => value + 1);
+    if (
+      destination === 'training-workshop'
+      || (destination === 'practice' && params.view === 'workspace')
+      || (destination === 'assistant' && params.newConversation)
+    ) {
+      setNavigationRevision((value) => value + 1);
+    }
     setPageIntent(createPageIntent(destination, params));
   };
 
@@ -226,6 +240,7 @@ export default function App() {
       case 'assistant':
         return (
           <ChatInterface
+            key={`assistant-${navigationRevision}`}
             embedded
             currentUser={currentUser?.username || 'User'}
             currentUserRole={currentUser?.role || 'user'}
@@ -237,6 +252,7 @@ export default function App() {
             onNavigate={navigateToPage}
             preferredSessionId={selectedSessionId}
             initialContext={pageIntent.params.context || ''}
+            forceNewConversation={Boolean(pageIntent.params.newConversation)}
           />
         );
       case 'practice':
@@ -249,7 +265,14 @@ export default function App() {
           );
         }
         if (pageIntent.params.view === 'workspace') {
-          return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
+          return (
+            <PracticePage
+              key={`practice-workspace-${navigationRevision}`}
+              navigationContext={pageIntent.params}
+              onNavigate={navigateToPage}
+              onBackHome={() => navigateToPage('dashboard')}
+            />
+          );
         }
         if (pageIntent.params.view === 'stages') {
           return (
@@ -271,7 +294,14 @@ export default function App() {
           />
         );
       case 'training-workshop':
-        return <PracticePage key={`training-workshop-${navigationRevision}`} navigationContext={pageIntent.params} />;
+        return (
+          <PracticePage
+            key={`training-workshop-${navigationRevision}`}
+            navigationContext={pageIntent.params}
+            onNavigate={navigateToPage}
+            onBackHome={() => navigateToPage('dashboard')}
+          />
+        );
       case 'knowledge':
         return (
           <KnowledgePage
@@ -309,6 +339,23 @@ export default function App() {
         onMidpoint={openStagePathAtMidpoint}
         onComplete={finishStageTransition}
       />
+      {shellConfig.currentPage !== 'assistant' && (
+        <CompactAssistant
+          className="global-assistant-dock"
+          currentUser={currentUser?.display_name || currentUser?.username || '同学'}
+          preferredSessionId={floatingAssistantSessionId}
+          contextLabel={shellConfig.pageTitle}
+          initiallyCollapsed
+          characterHint="多智能体助教"
+          onOpenFull={(sessionId) => {
+            if (sessionId) setFloatingAssistantSessionId(sessionId);
+            navigateToPage({
+              page: 'assistant',
+              params: sessionId ? { sessionId } : {},
+            });
+          }}
+        />
+      )}
     </AppShell>
   );
 }

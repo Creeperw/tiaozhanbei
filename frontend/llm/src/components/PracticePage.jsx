@@ -248,8 +248,8 @@ const utilityCards = [
   },
   {
     key: 'study_notes',
-    title: '学习笔记',
-    description: '记录心得，沉淀思考。',
+    title: '笔记本',
+    description: '按笔记本整理心得，沉淀学习思考。',
     icon: NotebookPen,
     available: true,
   },
@@ -346,7 +346,7 @@ const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, check
   const focusMinutes = nonNegativeNumberOrNull(lifetime.focus_minutes);
 
   // Today accuracy — filter activities from today only
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = String(activitySummary?.calculated_at || new Date().toISOString()).slice(0, 10);
   const todayActivities = recentActivities.filter(
     (a) => isScoredTrainingActivity(a) && String(a.timestamp || a.created_at || '').slice(0, 10) === todayStr,
   );
