@@ -132,8 +132,13 @@ function Start-Frontend {
         }
         if (-not $npm) { throw "npm 未安装或不在 PATH；先装 Node.js LTS" }
 
-        $proc = Start-Process -FilePath $npm `
-            -ArgumentList @("run","dev","--","--host") `
+        $node = (Get-Command "node" -ErrorAction Stop).Source
+        $vite = Join-Path $Script:FrontendRoot "node_modules/vite/bin/vite.js"
+        if (-not (Test-Path $vite)) { throw "Vite entry not found: $vite" }
+
+        # Manage the actual listener PID and never drift to 5174+.
+        $proc = Start-Process -FilePath $node `
+            -ArgumentList @($vite,"--host","0.0.0.0","--port","5173","--strictPort") `
             -WorkingDirectory (Get-Location) `
             -RedirectStandardOutput (Join-Path $Script:LogDir "frontend.log") `
             -RedirectStandardError  (Join-Path $Script:LogDir "frontend.err") `
