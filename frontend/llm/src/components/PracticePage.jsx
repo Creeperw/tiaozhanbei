@@ -185,7 +185,7 @@ const trainingCards = [
   {
     key: 'paper_workspace',
     title: '智能组卷',
-    description: '按学习目标组卷，灵活安排练习节奏。',
+    description: '自选题型与题量，AI 审核生成试卷，支持练习或限时测试。',
     icon: Files,
     tone: 'green',
   },
@@ -193,7 +193,7 @@ const trainingCards = [
     key: 'topic_training',
     initialMode: 'objective',
     title: '专题训练',
-    description: '真实病例场景训练，提升临床思维。',
+    description: '按教材章节定位知识点，聚焦薄弱环节精准提升。',
     icon: Stethoscope,
     tone: 'teal',
   },
@@ -201,14 +201,14 @@ const trainingCards = [
     key: 'question_training',
     initialMode: 'objective',
     title: '综合套题',
-    description: '按知识点分类训练，逐个击破薄弱点。',
+    description: '从正式题库抽取客观题与案例，模拟综合考试场景。',
     icon: ClipboardCheck,
     tone: 'emerald',
   },
   {
     key: 'ai_patient_simulation',
     title: '模拟病患',
-    description: '模拟问诊与辨证，训练临床沟通与思路。',
+    description: 'AI 扮演患者，训练问诊、辨证与处方全流程能力。',
     icon: HeartPulse,
     tone: 'rose',
   },
@@ -241,8 +241,8 @@ const utilityCards = [
   },
   {
     key: 'question_favorites',
-    title: '题目收藏',
-    description: '集中复盘收藏题目与解析。',
+    title: '收藏夹',
+    description: '收藏重点题目与解析，构建个人知识库随时回顾。',
     icon: BookMarked,
     available: true,
   },
@@ -257,7 +257,7 @@ const utilityCards = [
 
 const DEFAULT_TRAINING_OVERVIEW_STATS = Object.freeze({
   streakDays: null,
-  lastAccuracy: null,
+  todayAccuracy: null,
   windowPracticeCount: null,
   todayGoal: 20,
   averageAccuracy: null,
@@ -302,7 +302,7 @@ function normalizeTrainingOverviewStats(stats = {}) {
 
   return {
     streakDays: nonNegativeNumberOrNull(safeStats.streakDays),
-    lastAccuracy: percentageOrNull(safeStats.lastAccuracy),
+    todayAccuracy: percentageOrNull(safeStats.todayAccuracy),
     windowPracticeCount: nonNegativeNumberOrNull(safeStats.windowPracticeCount),
     todayGoal: nonNegativeNumberOrNull(safeStats.todayGoal) ?? DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
     averageAccuracy: percentageOrNull(safeStats.averageAccuracy),
@@ -342,19 +342,22 @@ const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, check
   const recentActivities = Array.isArray(activitySummary?.recent_activities)
     ? activitySummary.recent_activities
     : [];
-  const latestScoredActivity = recentActivities.find(
-    (activity) => (
-      isScoredTrainingActivity(activity)
-      && finiteNumberOrNull(activity?.score) !== null
-    ),
-  );
   const latestResumableActivity = recentActivities.find(recentTaskKeyFromActivity);
   const focusMinutes = nonNegativeNumberOrNull(lifetime.focus_minutes);
 
+  // Today accuracy — filter activities from today only
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayActivities = recentActivities.filter(
+    (a) => isScoredTrainingActivity(a) && String(a.timestamp || a.created_at || '').slice(0, 10) === todayStr,
+  );
+  const todayScores = todayActivities.map((a) => finiteNumberOrNull(a?.score)).filter((s) => s !== null);
+  const todayAccuracy = todayScores.length > 0
+    ? todayScores.reduce((sum, s) => sum + (s <= 1 ? s * 100 : s), 0) / todayScores.length
+    : null;
+
   return {
     streakDays: nonNegativeNumberOrNull(checkin?.streak),
-    lastAccuracy: scoreAsPercentage(latestScoredActivity?.score)
-      ?? scoreAsPercentage(currentWindow.score_rate),
+    todayAccuracy: todayAccuracy !== null ? Math.round(todayAccuracy * 10) / 10 : null,
     windowPracticeCount: nonNegativeNumberOrNull(currentWindow.questions_completed),
     todayGoal: DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
     averageAccuracy: scoreAsPercentage(currentWindow.score_rate),
@@ -373,8 +376,8 @@ const workspaceTitles = {
   mistake_variation: '错题库',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
-  question_favorites: '题目收藏',
-  study_notes: '学习笔记',
+  question_favorites: '收藏夹',
+  study_notes: '笔记本',
 };
 
 const legacyTaskTypes = {
@@ -458,6 +461,7 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
   const recentCard = resumableTrainingCards
     .find((card) => card.key === stats.recentTaskKey) || trainingCards[2];
   const formatPercent = (value) => value === null ? '--' : `${value}%`;
+  const formatDays = (value) => value === null ? '--' : `${value} 天`;
   const formatHours = (value) => value === null ? '--' : `${value} 小时`;
   const formatQuestions = (value) => value === null ? '累计练习待接入' : `累计练习 ${value} 题`;
 
@@ -479,9 +483,15 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
         </div>
         <div className="practice-overview__hero-metrics">
           <OverviewMetricCard
+            icon={CalendarDays}
+            label="连续学习"
+            value={formatDays(stats.streakDays)}
+            hint="再接再厉，保持节奏"
+          />
+          <OverviewMetricCard
             icon={TrendingUp}
-            label="上次正确率"
-            value={formatPercent(stats.lastAccuracy)}
+            label="今日正确率"
+            value={formatPercent(stats.todayAccuracy)}
             hint="稳保持，稳步提升"
             tone="mint"
           />
@@ -501,7 +511,7 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
             <span className="practice-overview__featured-action">
               <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
               <small>上次练习：待接入</small>
-              <small>正确率：{formatPercent(stats.lastAccuracy)}</small>
+              <small>正确率：{formatPercent(stats.todayAccuracy)}</small>
             </span>
           </button>
           <div className="practice-overview__training-grid">
@@ -621,6 +631,9 @@ export default function PracticePage({
       fallback: {},
     }).then((result) => result.data).catch(() => ({}));
 
+    // Auto check-in when visiting training workshop
+    fetchJsonWithAuthFallback({ paths: ['/v1/checkin'], fallback: {}, options: { method: 'POST', body: '{}' } }).catch(() => {});
+
     Promise.all([
       requestOverview('/v1/learning-statistics/overview?days=30'),
       requestOverview('/v1/learning-activity/summary?days=7&recent_limit=100'),
@@ -701,15 +714,12 @@ export default function PracticePage({
 
   return (
     <div className={`practice-workspace practice-workspace--${activeTaskType} space-y-5 text-slate-800`}>
-      <div className="practice-workspace__toolbar">
-        <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}>
-          <ArrowLeft aria-hidden="true" size={18} />{returnLabel}
+      <div className="flex items-center gap-4 border-b border-slate-200 pb-4">
+        <button type="button" className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50" onClick={leaveWorkspace}>
+          <ArrowLeft aria-hidden="true" size={16} />{returnLabel}
         </button>
+        <h1 className="text-2xl font-bold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
       </div>
-      <header>
-        <span className="app-shell__section-label">训练工坊</span>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
-      </header>
 
       {selectedKnowledgePoint && (
         <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" aria-label="当前考纲知识点">

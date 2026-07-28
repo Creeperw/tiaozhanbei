@@ -451,6 +451,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         response = await call_next(request)
         completed_question_submission = (
             path == "/training/practice/grade"
+            or path == "/api/training/practice/grade"
             or path == "/api/v1/workshop/practice/grade"
             or (
                 path.startswith("/training/workspace/papers/")
@@ -468,6 +469,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             and backend_handoff is not None
         ):
             try:
+                # Release practice claim so next request gets a fresh question
+                backend_handoff.release_practice_claim(current_user.user_id)
+
                 behavior = await asyncio.to_thread(
                     backend_handoff.load_learning_context, current_user.user_id
                 )
@@ -550,6 +554,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             )
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/qualification-paper-attempts")
+    async def list_qualification_attempts(request: Request, offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=200)) -> dict:
+        user = current_user(request)
+        if user is None: raise HTTPException(status_code=401, detail="请先登录后继续")
+        return qualification_papers.list_attempts(user.user_id, offset=offset, limit=limit)
 
     @app.get("/api/v1/qualification-paper-attempts/{attempt_id}")
     async def get_qualification_attempt(attempt_id: str, request: Request) -> dict:
@@ -2107,7 +2117,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 if payload["standard_answer"] and payload["kp_ids"]:
                     candidates.append(payload)
 
-        if not candidates and not kp_id:
+        if not kp_id:
             # A broad credential goal may not resolve to one KP name. The source
             # is still the complete formal bank; choose a linked question of the
             # requested type instead of reporting that the bank is empty. An
@@ -2137,6 +2147,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         candidates.append(payload)
         if not candidates:
             return None
+        # Ensure variety by shuffling candidates
+        import random as _random
+        _random.shuffle(candidates)
         return next(
             (
                 question

@@ -73,6 +73,10 @@ class PaperAuditFindingsCompilerAgent:
     def _parse(raw: Any) -> PaperAuditCompilerResult:
         try:
             return _RESULT_ADAPTER.validate_python(raw)
+        except ValidationError:
+            pass
+        try:
+            return _RESULT_ADAPTER.validate_python(raw)
         except ValidationError as exc:
             return PaperAuditNeedsRevision(
                 status="needs_revision",

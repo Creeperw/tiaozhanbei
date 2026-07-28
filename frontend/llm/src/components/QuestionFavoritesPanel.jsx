@@ -14,14 +14,22 @@ function FavoriteContent({ item }) {
   const answer = Array.isArray(content.standard_answer)
     ? content.standard_answer.join('、')
     : String(content.standard_answer || '');
+  const myAnswer = String(content.my_answer || '');
   return <div className="workshop-library__detail">
     {content.question_content && <p className="workshop-library__question">{content.question_content}</p>}
-    {options.length > 0 && <ol>{options.map((option, index) => {
+    {options.length > 0 && <div style={{marginTop:8}}>{options.map((option, index) => {
       const key = option.option_id || option.key || option.id || String.fromCharCode(65 + index);
       const value = option.content || option.value || option.text || String(option);
-      return <li key={`${key}-${index}`}><strong>{key}.</strong> {value}</li>;
-    })}</ol>}
-    {content.my_answer && <p><strong>我的答案：</strong>{String(content.my_answer)}</p>}
+      const val = String(key || value);
+      const isMy = myAnswer.includes(val);
+      const isCorrect = answer.includes(val);
+      let bg = 'transparent';
+      if (isMy && isCorrect) bg = '#dcfce7';
+      else if (isMy && !isCorrect) bg = '#fee2e2';
+      else if (!isMy && isCorrect) bg = '#dcfce7';
+      return <div key={`${key}-${index}`} style={{background:bg,borderRadius:4,padding:'3px 8px',margin:'3px 0',fontSize:'.85rem'}}><strong>{key}.</strong> {String(value).replace(/^[A-Z][.．、)\s]\s*/, '')}{isMy&&<span style={{color:'#ef4444',fontSize:'.75rem',marginLeft:8}}>我的作答</span>}{isCorrect&&!isMy&&<span style={{color:'#16a34a',fontSize:'.75rem',marginLeft:8}}>正确答案</span>}</div>;
+    })}</div>}
+    {content.my_answer && <p style={{marginTop:8}}><strong>我的答案：</strong>{myAnswer}</p>}
     {answer && <p><strong>参考答案：</strong>{answer}</p>}
     {content.explanation && <p><strong>解析：</strong>{content.explanation}</p>}
   </div>;
@@ -114,7 +122,7 @@ export default function QuestionFavoritesPanel() {
 
   return <section className="question-collection" aria-labelledby="favorites-title">
     {error && <p role="alert" className="workshop-library__error">{error}</p>}
-    {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载题目收藏…</p> : (
+    {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载收藏夹…</p> : (
       <div className="question-collection__shell">
         <aside className="question-collection__sidebar" aria-label="收藏题单">
           <header><BookMarked size={20} /><strong>我的题单</strong><button type="button" aria-label="新建收藏题单" onClick={() => setFolderComposerOpen(true)}><Plus size={16} /></button></header>
@@ -138,7 +146,7 @@ export default function QuestionFavoritesPanel() {
         <main className="question-collection__main">
           <section className="question-collection__summary">
             <span className="question-collection__star"><Star size={34} fill="currentColor" aria-hidden="true" /></span>
-            <div><small>题目收藏</small><h2 id="favorites-title">{selectedFolder?.name || '我的收藏'}</h2><p>{folderFavorites.length} 道题 · 集中复盘题干、答案与解析</p></div>
+            <div><small>收藏夹</small><h2 id="favorites-title">{selectedFolder?.name || '我的收藏'}</h2><p>{folderFavorites.length} 道题 · 集中复盘题干、答案与解析</p></div>
             <button type="button" disabled={!visibleFavorites.length} onClick={() => setExpandedId(visibleFavorites[0]?.favorite_id || '')}><Play size={16} fill="currentColor" />开始复习</button>
             {selectedFolder && <button type="button" className="question-collection__delete-folder" onClick={removeFolder} aria-label="删除当前题单"><Trash2 size={15} /></button>}
           </section>

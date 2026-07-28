@@ -27,6 +27,31 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
   const current = attempt.items[position - 1];
   const submitted = attempt.status === 'submitted' || Boolean(report);
 
+  // Auto-build report for submitted historical attempts
+  useEffect(() => {
+    if (attempt.status === 'submitted' && !report) {
+      const resultItems = attempt.items.map((item, idx) => {
+        const userAnswer = String(item.answer || '');
+        const expected = (item.standard_answer || []).map((v) => String(v));
+        const actual = userAnswer ? userAnswer.split(',').map((v) => v.trim()).filter(Boolean).sort() : [];
+        const hasKey = expected.length > 0;
+        const isCorrect = hasKey ? String(actual) === String(expected.sort()) : null;
+        return {
+          position: idx + 1,
+          question_id: item.question_id,
+          submitted_answer: userAnswer,
+          standard_answer: expected,
+          explanation: item.explanation || '',
+          is_correct: isCorrect,
+          answer_status: hasKey ? 'graded' : 'pending',
+        };
+      });
+      const correctCount = resultItems.filter((i) => i.is_correct).length;
+      setReport({ score: correctCount, max_score: resultItems.length, items: resultItems });
+      setReportPosition(1);
+    }
+  }, [attempt.status, attempt.items, report]);
+
   useEffect(() => {
     if (submitted || attempt.answer_mode !== 'test' || seconds === null || seconds <= 0) return undefined;
     const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1000);
@@ -109,7 +134,34 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
       <section className="space-y-5">
         <button type="button" onClick={onExit} className={`${buttonBase} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-emerald-400 hover:text-emerald-800`}><ArrowLeft size={16} />返回套题列表</button>
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm"><h2 className="text-xl font-semibold text-emerald-950">作答分数</h2><p className="mt-2 text-3xl font-semibold text-emerald-800">{report.score} / {report.max_score}</p><div className="mt-4 flex flex-wrap gap-2">{report.items.map((item) => <button key={item.question_id} type="button" onClick={() => setReportPosition(item.position)} className={`h-8 w-8 rounded-full text-xs font-semibold ${item.position === reportPosition ? 'ring-2 ring-emerald-700 ring-offset-2' : ''} ${item.answer_status === 'pending' ? 'bg-slate-400 text-white' : item.is_correct ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`} title={item.answer_status === 'pending' ? '答案待补充' : item.is_correct ? '回答正确' : '回答错误'}>{item.position}</button>)}</div><p className="mt-3 text-xs text-emerald-900">灰色题目答案待补充，不计入分数。</p></div>
-        {reportItem && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="题目结果"><div className="flex items-center justify-between gap-3"><h3 className="text-base font-semibold text-slate-950">第 {reportItem.position} 题结果</h3><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${reportItem.answer_status === 'pending' ? 'bg-slate-100 text-slate-600' : reportItem.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{reportItem.answer_status === 'pending' ? '待补充答案' : reportItem.is_correct ? '回答正确' : '需要复盘'}</span></div><dl className="mt-4 space-y-3 text-sm leading-6 text-slate-700"><div><dt className="font-semibold text-slate-900">你的答案</dt><dd>{reportItem.submitted_answer || '未作答'}</dd></div><div><dt className="font-semibold text-slate-900">正确答案</dt><dd>{reportItem.standard_answer?.join('、') || '待补充'}</dd></div><div><dt className="font-semibold text-slate-900">解析</dt><dd>{reportItem.explanation || '暂无解析'}</dd></div></dl>{savedQuestion && <div className="mt-4 flex flex-wrap gap-2"><FavoriteQuestionButton question={savedQuestion} source="综合套题" /><NoteQuestionButton question={savedQuestion} source="综合套题" /></div>}</section>}
+        {reportItem && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="题目结果"><div className="flex items-center justify-between gap-3"><h3 className="text-base font-semibold text-slate-950">第 {reportItem.position} 题结果</h3><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${reportItem.answer_status === 'pending' ? 'bg-slate-100 text-slate-600' : reportItem.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{reportItem.answer_status === 'pending' ? '待补充答案' : reportItem.is_correct ? '回答正确' : '需要复盘'}</span></div>
+          {originalItem?.question_content && <p className="mt-3 text-sm text-slate-700">{originalItem.question_content}</p>}
+          {originalItem?.options?.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {originalItem.options.map((opt, i) => {
+                const label = String.fromCharCode(65 + i);
+                const value = opt.option_id || opt.id || '';
+                const text = opt.content || opt.value || opt.text || String(opt);
+                const myAnswer = String(reportItem.submitted_answer || '');
+                const correct = (reportItem.standard_answer || []).map((v) => String(v));
+                const isMyAnswer = myAnswer.split(',').map((v) => v.trim()).includes(value);
+                const isCorrectAnswer = correct.includes(value);
+                let bg = 'transparent';
+                if (isMyAnswer && isCorrectAnswer) bg = '#dcfce7';
+                else if (isMyAnswer && !isCorrectAnswer) bg = '#fee2e2';
+                else if (!isMyAnswer && isCorrectAnswer) bg = '#dcfce7';
+                return (
+                  <div key={i} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm" style={{background: bg}}>
+                    <strong className="text-slate-700">{label}.</strong>
+                    <span className="flex-1">{String(text).replace(/^[A-Z][.．、)\s]\s*/, '')}</span>
+                    {isMyAnswer && <span className="text-xs text-red-500 font-semibold">我的作答</span>}
+                    {isCorrectAnswer && !isMyAnswer && <span className="text-xs text-green-600 font-semibold">正确答案</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <dl className="mt-4 space-y-3 text-sm leading-6 text-slate-700"><div><dt className="font-semibold text-slate-900">你的答案</dt><dd>{reportItem.submitted_answer || '未作答'}</dd></div><div><dt className="font-semibold text-slate-900">正确答案</dt><dd>{reportItem.standard_answer?.join('、') || '待补充'}</dd></div><div><dt className="font-semibold text-slate-900">解析</dt><dd>{reportItem.explanation || '暂无解析'}</dd></div></dl>{savedQuestion && <div className="mt-4 flex flex-wrap gap-2"><FavoriteQuestionButton question={savedQuestion} source="综合套题" /><NoteQuestionButton question={savedQuestion} source="综合套题" /></div>}</section>}
       </section>
     );
   }

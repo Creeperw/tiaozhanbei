@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BookOpenCheck, ChevronDown, ChevronRight, Clock3, Loader2 } from 'lucide-react';
+import { ArrowLeft, BookOpenCheck, ChevronDown, ChevronRight, Clock3, Loader2, RotateCcw } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
 import QualificationAttemptWorkspace from './QualificationAttemptWorkspace';
 
@@ -10,10 +10,10 @@ const request = async (path, options = {}) => {
   return data;
 };
 
-function ModeSelector({ paper, duration, loading, onDurationChange, onOpen }) {
+function TabbedModeSelector({ paper, duration, loading, onDurationChange, onOpen, onOpenHistory, historyAttempts, historyLoading }) {
   return (
     <section role="region" aria-label="选择作答模式" className="border-t border-emerald-200 bg-emerald-50/70 px-4 py-4 sm:px-5">
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-3">
         <button type="button" aria-label="练习模式" disabled={loading} onClick={() => onOpen('practice')} className="group flex min-h-24 items-start justify-between gap-4 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md disabled:opacity-50">
           <span><strong className="block text-sm text-emerald-950">练习模式</strong><span className="mt-1.5 block text-xs leading-5 text-slate-600">随做随看单题解析，适合知识巩固和错因复盘。</span></span>
           {loading ? <Loader2 className="animate-spin text-emerald-700" size={17} /> : <ChevronRight className="text-emerald-700 transition group-hover:translate-x-0.5" size={17} />}
@@ -24,6 +24,35 @@ function ModeSelector({ paper, duration, loading, onDurationChange, onOpen }) {
             <label className="text-xs font-medium text-slate-700">时长<span className="ml-2 inline-flex items-center rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5"><input aria-label="测试时长" type="number" min="10" max="300" value={duration} onChange={(event) => onDurationChange(Math.max(10, Math.min(300, Number(event.target.value) || 60)))} className="w-12 bg-transparent text-right text-sm font-semibold text-slate-900 outline-none" /><span className="ml-1 text-slate-500">分钟</span></span></label>
           </div>
           <button type="button" disabled={loading} onClick={() => onOpen('test')} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"><Clock3 size={16} />开始测试</button>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <strong className="block text-sm text-slate-950">历史记录</strong>
+          <span className="mt-1.5 block text-xs leading-5 text-slate-600">查看该套题的历次作答成绩与详情。</span>
+          {historyLoading ? (
+            <div className="mt-3 flex items-center gap-2 text-xs text-slate-500"><Loader2 className="animate-spin" size={14} />加载中...</div>
+          ) : historyAttempts.length === 0 ? (
+            <p className="mt-3 text-xs text-slate-400">暂无记录</p>
+          ) : (
+            <div className="mt-3 space-y-1.5 max-h-44 overflow-y-auto">
+              {historyAttempts.slice(0, 8).map((item) => (
+                <div key={item.attempt_id} className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={'rounded px-1 py-0.5 text-[10px] font-semibold '+(item.answer_mode==='test'?'bg-slate-200 text-slate-600':'bg-emerald-100 text-emerald-700')}>{item.answer_mode==='test'?'测试':'练习'}</span>
+                      {item.status === 'submitted' && item.score != null && (
+                        <span className={'text-[11px] font-semibold '+(item.score>=(item.max_score||1)*0.6?'text-emerald-700':'text-rose-600')}>{item.score}/{item.max_score}</span>
+                      )}
+                      {item.status === 'in_progress' && <span className="text-[11px] text-amber-600">进行中</span>}
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-slate-400 truncate">{item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : ''}</p>
+                  </div>
+                  <button type="button" onClick={() => onOpenHistory(item.attempt_id)} className="shrink-0 rounded border border-slate-300 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-100">
+                    {item.status === 'in_progress' ? <><RotateCcw size={10} className="inline mr-0.5" />继续</> : '查看'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <p className="mt-3 text-xs text-emerald-900">已选择：{paper.title} · {paper.question_count} 题</p>
@@ -41,6 +70,8 @@ export default function QualificationPaperPanel({ enabled }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(null);
+  const [historyAttempts, setHistoryAttempts] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -55,16 +86,36 @@ export default function QualificationPaperPanel({ enabled }) {
   const years = [...new Set(catalog.papers.filter((item) => item.exam_id === examId).map((item) => item.year))];
   const types = [...new Set(catalog.papers.filter((item) => item.exam_id === examId).map((item) => item.paper_type))];
 
-  const openAttempt = async (answerMode) => {
+  const loadHistory = async (templateId) => {
+    setHistoryLoading(true);
+    try {
+      const data = await request('/qualification-paper-attempts?limit=100');
+      const items = data.items || [];
+      setHistoryAttempts(items.filter((item) => item.template_id === templateId));
+    } catch { setHistoryAttempts([]); }
+    setHistoryLoading(false);
+  };
+
+  useEffect(() => {
+    if (selectedPaper) loadHistory(selectedPaper.template_id);
+    else setHistoryAttempts([]);
+  }, [selectedPaper]);
+
+  const openAttempt = async (answerMode, existingAttemptId = '') => {
     if (!selectedPaper) return;
     setLoading(true);
     setError('');
     try {
-      const body = { answer_mode: answerMode };
-      if (answerMode === 'test') body.duration_minutes = duration;
-      const createdAttempt = await request(`/qualification-papers/${selectedPaper.template_id}/attempts`, { method: 'POST', body: JSON.stringify(body) });
-      sessionStorage.setItem('qualification-paper-attempt-id', createdAttempt.attempt_id);
-      setAttempt(createdAttempt);
+      let targetAttempt;
+      if (existingAttemptId) {
+        targetAttempt = await request(`/qualification-paper-attempts/${existingAttemptId}`);
+      } else {
+        const body = { answer_mode: answerMode };
+        if (answerMode === 'test') body.duration_minutes = duration;
+        targetAttempt = await request(`/qualification-papers/${selectedPaper.template_id}/attempts`, { method: 'POST', body: JSON.stringify(body) });
+      }
+      sessionStorage.setItem('qualification-paper-attempt-id', targetAttempt.attempt_id);
+      setAttempt(targetAttempt);
     } catch (reason) {
       setError(reason.message || '创建作答失败');
     } finally {
@@ -100,7 +151,7 @@ export default function QualificationPaperPanel({ enabled }) {
               return (
                 <article key={paper.template_id} aria-label={paper.title} className={`overflow-hidden rounded-xl border bg-white shadow-sm transition ${selected ? 'border-emerald-500 ring-1 ring-emerald-200' : 'border-slate-200 hover:border-emerald-300 hover:shadow-md'}`}>
                   <button type="button" onClick={() => setSelectedPaper(selected ? null : paper)} disabled={!paper.question_count} aria-expanded={selected} className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"><span><strong className="block text-sm text-slate-900">{paper.title}</strong><span className="mt-1.5 block text-xs text-slate-500">{paper.year} · {paper.paper_type} · {paper.question_count ? `${paper.question_count} 题` : '题目整理中'}</span></span>{selected ? <ChevronDown className="text-emerald-700" size={18} aria-hidden="true" /> : <ChevronRight size={18} aria-hidden="true" />}</button>
-                  {selected && <ModeSelector paper={paper} duration={duration} loading={loading} onDurationChange={setDuration} onOpen={openAttempt} />}
+                  {selected && <TabbedModeSelector paper={paper} duration={duration} loading={loading} onDurationChange={setDuration} onOpen={openAttempt} onOpenHistory={(id) => openAttempt('practice', id)} historyAttempts={historyAttempts} historyLoading={historyLoading} />}
                 </article>
               );
             })}

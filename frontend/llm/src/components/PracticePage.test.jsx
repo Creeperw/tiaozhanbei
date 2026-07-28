@@ -131,8 +131,8 @@ describe('PracticePage training modules', () => {
       '模拟病患',
     ]);
     expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /题目收藏/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /学习笔记/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /收藏夹/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /笔记本/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
   });
@@ -146,7 +146,7 @@ describe('PracticePage training modules', () => {
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['错题库', '题目收藏', '学习笔记', '上传题库']);
+    ).toEqual(['错题库', '收藏夹', '笔记本', '上传题库']);
   });
 
   it('renders the local overview statistics contract without replacing main workshop modules', () => {
@@ -269,8 +269,8 @@ describe('PracticePage training modules', () => {
   });
 
   it.each([
-    ['题目收藏', 'question-favorites-panel'],
-    ['学习笔记', 'study-notes-panel'],
+    ['收藏夹', 'question-favorites-panel'],
+    ['笔记本', 'study-notes-panel'],
   ])('opens the %s personal library', async (title, panelTestId) => {
     render(<PracticePage />);
 

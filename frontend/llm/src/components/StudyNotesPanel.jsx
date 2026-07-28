@@ -40,12 +40,30 @@ function QuestionContext({ context }) {
   const answer = Array.isArray(context.standard_answer)
     ? context.standard_answer.join('、')
     : String(context.standard_answer || '');
+  const myAnswer = String(context.my_answer || '');
+  const options = Array.isArray(context.options) ? context.options : [];
   return (
     <aside className="notion-note__question-context">
       <strong>关联题目</strong>
       <p>{context.question_content}</p>
-      {answer && <p><b>参考答案：</b>{answer}</p>}
-      {context.explanation && <p><b>解析：</b>{context.explanation}</p>}
+      {options.length > 0 && (
+        <div style={{marginTop:8}}>
+          {options.map((opt, i) => {
+            const label = String.fromCharCode(65 + i);
+            const text = typeof opt === 'string' ? opt : (opt.label || opt.content || opt.value || '');
+            const val = String(opt.value || opt.label || text);
+            const isMy = myAnswer.includes(val);
+            const isCorrect = answer.includes(val);
+            let bg = 'transparent';
+            if (isMy && isCorrect) bg = '#dcfce7';
+            else if (isMy && !isCorrect) bg = '#fee2e2';
+            else if (!isMy && isCorrect) bg = '#dcfce7';
+            return <div key={i} style={{background:bg,borderRadius:4,padding:'3px 8px',margin:'3px 0',fontSize:'.85rem'}}>{label}. {String(text).replace(/^[A-Z][.．、)\s]\s*/, '')}{isMy&&<span style={{color:'#ef4444',fontSize:'.75rem',marginLeft:8}}>我的作答</span>}{isCorrect&&!isMy&&<span style={{color:'#16a34a',fontSize:'.75rem',marginLeft:8}}>正确答案</span>}</div>;
+          })}
+        </div>
+      )}
+      {answer && <p style={{marginTop:8}}><b>参考答案：</b>{answer}</p>}
+      {context.explanation && <p style={{marginTop:4}}><b>解析：</b>{context.explanation}</p>}
     </aside>
   );
 }
@@ -163,7 +181,7 @@ export default function StudyNotesPanel() {
         const payload = await createNote({
           title: draft.title.trim(),
           content: draft.content,
-          note_type: '学习笔记',
+          note_type: '笔记本',
           source: '训练工坊',
           context: { notebook: selectedNotebook },
         });
@@ -245,7 +263,7 @@ export default function StudyNotesPanel() {
   return (
     <section className="notion-notes" aria-labelledby="notes-title">
       <aside className="notion-notes__sidebar">
-        <header><NotebookPen size={19} /><strong id="notes-title">学习笔记</strong><button type="button" aria-label="新建笔记本" onClick={() => setNewNotebookOpen(true)}><Plus size={16} /></button></header>
+        <header><NotebookPen size={19} /><strong id="notes-title">笔记本</strong><button type="button" aria-label="新建笔记本" onClick={() => setNewNotebookOpen(true)}><Plus size={16} /></button></header>
         <div className="notion-notes__notebooks">
           {notebooks.map((notebook) => (
             <button key={notebook.name} type="button" className={selectedNotebook === notebook.name ? 'is-active' : ''} onClick={() => selectNotebook(notebook.name)}>
@@ -269,7 +287,7 @@ export default function StudyNotesPanel() {
 
       <main className="notion-note">
         {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载笔记…</p> : (!activeNote && !isNew) ? (
-          <div className="notion-note__empty"><NotebookPen size={34} /><h2>{selectedNotebook || '学习笔记'}</h2><p>从左侧选择一篇笔记，或创建新页面。</p><button type="button" onClick={newNote} disabled={!selectedNotebook}><Plus size={16} />新建页面</button></div>
+          <div className="notion-note__empty"><NotebookPen size={34} /><h2>{selectedNotebook || '笔记本'}</h2><p>从左侧选择一篇笔记，或创建新页面。</p><button type="button" onClick={newNote} disabled={!selectedNotebook}><Plus size={16} />新建页面</button></div>
         ) : (
           <>
             <header className="notion-note__topbar">

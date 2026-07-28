@@ -82,6 +82,8 @@ class SimulatedPatientEngine:
             return self._handle_collections(request)
         if request.action == "history_detail":
             return self._handle_history_detail(request)
+        if request.action == "history_list":
+            return self._handle_history_list(request)
         if request.action == "reset":
             return self._handle_reset(request)
         if request.action == "dialog_history":
@@ -169,6 +171,15 @@ class SimulatedPatientEngine:
             action="history_detail",
             success=True,
             data=record
+        )
+
+    def _handle_history_list(self, request: SimulatedPatientRequest) -> SimulatedPatientResponse:
+        records = self.data_provider.get_all_history(request.user_id)
+        return SimulatedPatientResponse(
+            session_id=request.session_id,
+            action="history_list",
+            success=True,
+            data={"total": len(records), "list": records},
         )
 
     def _handle_dialog_history(self, request: SimulatedPatientRequest) -> SimulatedPatientResponse:
@@ -543,12 +554,17 @@ class SimulatedPatientEngine:
         history_record = {
             "history_id": history_id,
             "user_id": request.user_id,
+            "session_id": request.session_id,
             "case_id": case.get('id', ''),
             "case_name": case.get('name', case.get('syndrome', '')),
             "department": case.get('department', ''),
             "date": datetime.now().strftime("%Y-%m-%d"),
             "time": datetime.now().strftime("%H:%M:%S"),
             "timestamp": datetime.now().isoformat(),
+            "turn_count": session.get("turn_count", 0),
+            "gender": session.get("basic_info", {}).get("gender", ""),
+            "age_range": session.get("basic_info", {}).get("age_range", ""),
+            "body_type": session.get("basic_info", {}).get("body_type", ""),
             "score": grading_report.get('score', 0),
             "diagnosis_correct": grading_report.get('diagnosis_correct', False),
             "user_syndrome": diagnosis.get('syndrome', ''),
@@ -565,7 +581,8 @@ class SimulatedPatientEngine:
 
         if not grading_report.get('diagnosis_correct', False):
             self.data_provider.add_mistake_record(
-                request.user_id, case.get('id', ''), diagnosis, grading_report
+                request.user_id, case.get('id', ''), diagnosis, grading_report,
+                history_id=history_id, session_id=request.session_id,
             )
 
         self.data_provider.record_stats(

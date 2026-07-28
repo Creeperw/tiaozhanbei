@@ -512,7 +512,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
               page: 'knowledge',
               params: { view: 'atlas', route, lv1: book, source: 'textbook-chapters' },
             })}><Layers3 aria-hidden="true" size={18} />知识图谱</button>
-            <button type="button" onClick={() => openCourseTool('study_notes')}><BookOpen aria-hidden="true" size={18} />学习笔记</button>
+            <button type="button" onClick={() => openCourseTool('study_notes')}><BookOpen aria-hidden="true" size={18} />笔记本</button>
           </aside>
           <div className="textbook-learning-main">
             <div className="textbook-learning-main__toolbar">

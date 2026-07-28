@@ -76,6 +76,10 @@ class PlanContractCompilerAgent:
     def _parse(raw: Any) -> PlanContractCompilerResult:
         try:
             return _RESULT_ADAPTER.validate_python(raw)
+        except ValidationError:
+            pass
+        try:
+            return _RESULT_ADAPTER.validate_python(raw)
         except ValidationError as exc:
             return PlanContractNeedsRevision(
                 status="needs_revision",
