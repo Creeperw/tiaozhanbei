@@ -154,7 +154,7 @@ Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `
     "display_name": "林同学",
     "role": "user",
     "status": "active",
-    "onboarding_required": true,
+    "onboarding_required": false,
     "created_at": "2026-07-21T12:00:00Z"
   },
   "expires_at": "2026-08-20T12:00:00Z"
@@ -163,19 +163,8 @@ Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `
 
 用户名重复返回 `409`。
 
-新注册普通用户的 `onboarding_required=true`。前端必须先展示注册学情调查，不能渲染首页、
-学习工坊或对话页。调查顺序为：
-
-1. `GET /api/training/onboarding/group-templates` 和
-   `GET /api/v1/qualification-targets` 加载选项；
-2. `POST /api/training/onboarding/survey` 保存 L0 基线、学习画像和初始学习记忆；
-3. `POST /api/v1/auth/onboarding/complete` 由主后端核验调查状态并关闭门禁。
-
-第三步成功返回 `{"user": AuthUser, "onboarding_status": {...}}`，其中
-`user.onboarding_required=false`。页面刷新或重新登录时必须以
-`GET /api/v1/auth/me` 返回的该字段为准；不得只在前端内存中记录“已跳过”。必填基本信息包括
-用户群体、学习/考试方向、学历/专业、基础水平和每日可投入时长。长期目标由所选资格考试
-确定，不再要求用户重复填写；注册阶段也不采集短期目标或自由形式的“规划输入”。
+新注册普通用户的 `onboarding_required=false`。注册响应建立 Cookie 会话后，
+前端直接渲染系统首页，不再展示注册学情调查或首次登录门禁。
 
 已完成调查的用户再次打开“画像与记忆 → 学情调查”时，前端必须调用
 `GET /api/training/onboarding/status` 回填表单，不能显示一份空调查。核心回填字段包括

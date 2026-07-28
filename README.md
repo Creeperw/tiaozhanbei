@@ -123,8 +123,7 @@ powershell -ExecutionPolicy Bypass -File backend/competition/backend-handoff-202
 未登录时前端展示“承时珍医脉，启智慧学习”登录页，并在右侧直接提供账号表单；
 用户可在同一卡片内切换登录与注册，不再经过额外弹层。登录和注册仍分别调用
 `/api/v1/auth/login`、`/api/v1/auth/register`，
-不会在浏览器本地保存令牌。新账号返回 `onboarding_required=true`，前端随即完成学情调查，
-并在 `/api/v1/auth/onboarding/complete` 核验通过后进入首页；刷新不能绕过该门禁。
+不会在浏览器本地保存令牌。新账号注册成功后会立即建立会话并进入系统首页。
 
 ## Live 环境与大体积数据
 

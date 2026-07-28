@@ -15,7 +15,6 @@ import LearningStageLanding from './components/learning-stage/LearningStageLandi
 import TextbookChapterLearning from './components/workshop-textbook/TextbookChapterLearning';
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
-import RegistrationJourney from './components/RegistrationJourney';
 import CompactAssistant from './components/CompactAssistant';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
@@ -87,14 +86,6 @@ export default function App() {
 
   const handleLogin = (user) => {
     setCurrentUser(user);
-    if (!user?.onboarding_required) navigateToPage('dashboard');
-  };
-
-  const handleOnboardingSaved = (payload) => {
-    setCurrentUser(payload?.user || {
-      ...currentUser,
-      onboarding_required: false,
-    });
     navigateToPage('dashboard');
   };
 
@@ -204,16 +195,6 @@ export default function App() {
 
   if (!currentUser) {
     return <AuthPage onLogin={handleLogin} />;
-  }
-
-  if (currentUser.onboarding_required) {
-    return (
-      <RegistrationJourney
-        existingUser={currentUser}
-        onComplete={(user) => handleOnboardingSaved({ user })}
-        onExit={handleLogout}
-      />
-    );
   }
 
   const renderAuthenticatedPage = () => {

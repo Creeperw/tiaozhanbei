@@ -62,10 +62,8 @@ ORDER BY version;
 当前迁移执行器按分号拆分 MySQL 语句。迁移文件应保持简单 DDL/DML，不要加入包含内部分号的存储过程、触发器定义或依赖自定义 delimiter 的脚本。
 
 迁移 `009_registration_onboarding.sql` 为 `app_users` 增加
-`onboarding_required`。已有账号默认 `false`，避免升级后被意外锁在首次调查；新注册普通账号由
-认证服务显式写为 `true`。完成兼容业务库中的 onboarding survey 后，主接口
-`POST /api/v1/auth/onboarding/complete` 核验调查活动并将该字段改为 `false`。不要手工批量清零，
-否则会破坏“先建立画像再进入学习页”的业务门禁。
+`onboarding_required`。迁移 `014_disable_registration_onboarding.sql` 会将历史账号的该字段统一置为
+`false`；新注册账号也不再启用首次学情调查门禁。
 
 迁移 `012_workshop_note_folders.sql` 新增按用户隔离的学习笔记本表
 `workshop_note_folders`。升级后执行一次 `init-db` 即可；既有笔记无需搬迁，服务端会继续从

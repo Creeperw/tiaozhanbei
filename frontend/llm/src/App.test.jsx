@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
+import { readJsonResponse } from './utils/api';
 
 vi.mock('./utils/api', () => ({
   AUTH_API_BASE: 'http://api.test/api/v1/auth',
@@ -107,6 +108,17 @@ describe('authenticated application shell', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+  });
+
+  it('enters the system directly even when an existing session still carries the legacy onboarding flag', async () => {
+    vi.mocked(readJsonResponse).mockResolvedValueOnce({
+      user: { username: 'new-user', role: 'user', onboarding_required: true },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText('Home portal')).toBeInTheDocument();
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
   });
 
   it('consumes a one-time external navigation intent for an audited paper', async () => {

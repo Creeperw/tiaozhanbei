@@ -154,7 +154,7 @@ def test_register_login_me_and_logout(tmp_path: Path) -> None:
     client = build_client(tmp_path)
     user = register(client, "LinStudent")
     assert user["role"] == "user"
-    assert user["onboarding_required"] is True
+    assert user["onboarding_required"] is False
 
     current = client.get("/api/v1/auth/me")
     assert current.status_code == 200
@@ -354,12 +354,12 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     ).status_code == 204
 
 
-def test_registration_onboarding_gate_is_persistent_until_completed(
+def test_registration_enters_the_application_without_onboarding_gate(
     tmp_path: Path,
 ) -> None:
     client = build_client(tmp_path)
-    user = register(client, "survey-required")
-    assert user["onboarding_required"] is True
+    user = register(client, "direct-entry")
+    assert user["onboarding_required"] is False
 
     completed = client.post("/api/v1/auth/onboarding/complete")
 
