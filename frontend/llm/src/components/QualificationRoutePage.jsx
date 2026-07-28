@@ -2,15 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   BookOpenText,
+  CalendarDays,
   CalendarCheck2,
   Check,
   ChevronLeft,
   ChevronRight,
-  Circle,
   Clock3,
-  ListChecks,
-  PlayCircle,
-  Route,
+  Plus,
 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
@@ -144,74 +142,30 @@ function calendarDaysForMonth(monthDate) {
   });
 }
 
-function activityDate(item) {
-  const value = item?.dateKey
-    || item?.raw?.completed_at
-    || item?.raw?.ended_at
-    || item?.raw?.created_at
-    || item?.raw?.started_at;
-  return value ? localDateKey(value) : '';
-}
-
 function isCompletedPlanItem(item) {
   const status = String(item?.raw?.status || item?.raw?.completion_status || '').toLowerCase();
   return ['completed', 'complete', 'done', 'finished'].includes(status)
     || Number(item?.progress) >= 100;
 }
 
-function planItemPresentation(item) {
-  const kind = String(item?.raw?.item_type || item?.raw?.task_type || '').toLowerCase();
-  if (kind === 'video_section' || kind.includes('video')) {
-    return { label: '章节视频', icon: PlayCircle };
-  }
-  if (kind === 'knowledge_practice' || kind.includes('question') || kind.includes('training')) {
-    return { label: '知识点训练', icon: ListChecks };
-  }
-  return { label: item?.source === 'workshop_history' ? '学习记录' : '学习任务', icon: BookOpenText };
-}
-
 function CurrentLearningPlan({
   currentTask,
   items,
-  stageName,
+  studyDays,
   timer,
   onExpire,
   onOpenItem,
-  onShowPath,
+  onAddTask,
 }) {
   const today = localDateKey();
-  const [selectedDate, setSelectedDate] = useState(today);
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const calendarDays = useMemo(() => calendarDaysForMonth(visibleMonth), [visibleMonth]);
-  const entriesByDate = useMemo(() => {
-    const grouped = new Map();
-    items.forEach((item) => {
-      const key = activityDate(item);
-      if (!key) return;
-      if (!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key).push(item);
-    });
-    return grouped;
-  }, [items]);
-  const selectedItems = entriesByDate.get(selectedDate) || [];
-  const taskProgress = readProgress(currentTask?.progress, readProgress(currentTask, null));
-  const progress = taskProgress ?? (
-    selectedDate === today && selectedItems.length
-      ? (selectedItems.filter(isCompletedPlanItem).length / selectedItems.length) * 100
-      : 0
-  );
-  const chapter = currentTask?.learning_chapter || {};
-  const totalMinutes = selectedItems.reduce(
-    (sum, item) => sum + Math.max(0, Number(item?.raw?.estimated_minutes || 0)),
-    0,
-  );
-  const selectedDateLabel = selectedDate === today
-    ? '今日任务'
-    : new Date(`${selectedDate}T00:00:00`).toLocaleDateString('zh-CN', {
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short',
-    });
+  const todayItems = items.filter((item) => item.source === 'daily_task');
+  const completedFromItems = todayItems.filter(isCompletedPlanItem).length;
+  const total = Math.max(Number(currentTask?.progress?.total || 0), todayItems.length);
+  const completed = Math.min(total, Math.max(Number(currentTask?.progress?.completed || 0), completedFromItems));
+  const progress = total > 0 ? (completed / total) * 100 : 0;
+  const learnedDates = useMemo(() => new Set(studyDays), [studyDays]);
 
   const changeMonth = (offset) => {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
@@ -219,122 +173,87 @@ function CurrentLearningPlan({
 
   return (
     <div className="home-plan" aria-label="当前学习计划">
-      <header className="home-plan__summary">
-        <div>
-          <span>{stageName || '当前学习阶段'}</span>
-          <h3>{chapter.title || currentTask?.title || '等待生成今日任务'}</h3>
-          <p>
-            {chapter.book ? `《${String(chapter.book).replace(/[《》]/g, '')}》` : '教材待规划'}
-            {currentTask?.completion_criteria ? ` · 验收：${currentTask.completion_criteria}` : ''}
-          </p>
-        </div>
-        <div className="home-plan__progress" aria-label={`当前计划完成度 ${Math.round(progress)}%`}>
-          <strong>{Math.round(progress)}%</strong>
-          <span><i style={{ width: `${progress}%` }} /></span>
-          <small>{currentTask?.progress?.completed || 0} / {currentTask?.progress?.total || selectedItems.length || 0} 项</small>
-        </div>
-      </header>
+      <section className="home-today-card" aria-label="今日任务">
+        <header className="home-today-card__header">
+          <h3><CalendarCheck2 aria-hidden="true" size={22} />今日任务</h3>
+          <div className="home-today-card__progress" aria-label={`今日任务完成 ${completed}/${total}`}>
+            <strong>{completed}/{total}</strong>
+            <span><i style={{ width: `${progress}%` }} /></span>
+          </div>
+        </header>
 
-      <div className="home-plan__body">
-        <section className="home-plan__tasks" aria-label={selectedDateLabel}>
-          <header>
-            <div>
-              <span>{selectedDateLabel}</span>
-              <h4>{selectedDate === today ? (currentTask?.title || '今日学习安排') : '学习记录'}</h4>
+        <div className="home-today-card__list">
+          {todayItems.map((item) => {
+            const itemCompleted = isCompletedPlanItem(item);
+            const minutes = Number(item.raw?.estimated_minutes || 0);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className="home-today-card__task"
+                data-status={itemCompleted ? 'completed' : 'pending'}
+                onClick={() => onOpenItem?.(item)}
+              >
+                <span className="home-today-card__check" aria-label={itemCompleted ? '已完成' : '未完成'}>
+                  {itemCompleted ? <Check aria-hidden="true" size={15} /> : null}
+                </span>
+                <strong>{item.title}</strong>
+                <small><Clock3 aria-hidden="true" size={14} />{minutes > 0 ? `${minutes}分钟` : item.meta || '待安排'}</small>
+              </button>
+            );
+          })}
+          {todayItems.length === 0 && (
+            <div className="home-today-card__empty">
+              <BookOpenText aria-hidden="true" size={22} />
+              <strong>今天还没有学习任务</strong>
+              <p>可让智能助教结合当前阶段安排任务。</p>
             </div>
-            <small>{selectedItems.length} 项{totalMinutes > 0 ? ` · 约 ${totalMinutes} 分钟` : ''}</small>
-          </header>
+          )}
+        </div>
 
-          <div className="home-plan__task-list">
-            {selectedItems.map((item) => {
-              const completed = isCompletedPlanItem(item);
-              const presentation = planItemPresentation(item);
-              const Icon = presentation.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="home-plan__task"
-                  data-status={completed ? 'completed' : 'pending'}
-                  onClick={() => onOpenItem?.(item)}
-                >
-                  <span className="home-plan__task-check" aria-label={completed ? '已完成' : '未完成'}>
-                    {completed ? <Check aria-hidden="true" size={15} /> : <Circle aria-hidden="true" size={15} />}
-                  </span>
-                  <span className="home-plan__task-copy">
-                    <strong>{item.title}</strong>
-                    <small><Icon aria-hidden="true" size={13} />{presentation.label}{item.detail ? ` · ${item.detail}` : ''}</small>
-                  </span>
-                  <span className="home-plan__task-meta">
-                    {item.raw?.estimated_minutes ? <small><Clock3 aria-hidden="true" size={12} />{item.raw.estimated_minutes} 分钟</small> : null}
-                    <em>{completed ? '已完成' : '开始学习'} <ArrowRight aria-hidden="true" size={13} /></em>
-                  </span>
-                </button>
-              );
-            })}
-            {selectedItems.length === 0 && (
-              <div className="home-plan__empty">
-                <BookOpenText aria-hidden="true" size={24} />
-                <strong>{selectedDate === today ? '今天还没有学习任务' : '这一天没有任务记录'}</strong>
-                <p>{selectedDate === today ? '请先制定短期计划，再让智能助教安排今日任务。' : '只有实际产生的学习与完成记录才会显示在日历中。'}</p>
-              </div>
-            )}
-          </div>
+        <button type="button" className="home-today-card__add" onClick={onAddTask}>
+          <Plus aria-hidden="true" size={17} />添加新任务
+        </button>
+        <DailyTaskCountdown timer={timer} onExpire={onExpire} className="home-plan__refresh-timer" />
+      </section>
 
-          <footer>
-            <button type="button" onClick={onShowPath}><Route aria-hidden="true" size={15} />查看阶段路径</button>
-            {currentTask?.expected_output && <p>学习产出：{currentTask.expected_output}</p>}
-          </footer>
-        </section>
-
-        <aside className="home-plan__calendar" aria-label="学习计划日历">
-          <header>
-            <strong>我的计划</strong>
-            <div>
-              <button type="button" aria-label="上个月" onClick={() => changeMonth(-1)}><ChevronLeft aria-hidden="true" size={16} /></button>
-              <span>{visibleMonth.getFullYear()}年{visibleMonth.getMonth() + 1}月</span>
-              <button type="button" aria-label="下个月" onClick={() => changeMonth(1)}><ChevronRight aria-hidden="true" size={16} /></button>
-            </div>
-          </header>
-          <div className="home-plan__weekdays" aria-hidden="true">
-            {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+      <aside className="home-study-calendar" aria-label="学习日历">
+        <header>
+          <h3><CalendarDays aria-hidden="true" size={22} />学习日历</h3>
+          <div>
+            <button type="button" aria-label="上个月" onClick={() => changeMonth(-1)}><ChevronLeft aria-hidden="true" size={17} /></button>
+            <strong>{visibleMonth.getFullYear()}年{visibleMonth.getMonth() + 1}月</strong>
+            <button type="button" aria-label="下个月" onClick={() => changeMonth(1)}><ChevronRight aria-hidden="true" size={17} /></button>
           </div>
-          <div className="home-plan__calendar-grid">
-            {calendarDays.map((date) => {
-              const key = localDateKey(date);
-              const dateItems = entriesByDate.get(key) || [];
-              const hasTasks = dateItems.length > 0;
-              const completed = hasTasks && dateItems.every(isCompletedPlanItem);
-              const state = hasTasks ? (completed ? 'completed' : 'pending') : 'empty';
-              const outside = date.getMonth() !== visibleMonth.getMonth();
-              const label = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${hasTasks ? `，${completed ? '任务已完成' : '任务未完成'}` : '，无任务记录'}`;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  data-state={state}
-                  data-today={String(key === today)}
-                  data-outside={String(outside)}
-                  aria-label={label}
-                  aria-pressed={selectedDate === key}
-                  onClick={() => setSelectedDate(key)}
-                >
-                  {date.getDate()}
-                </button>
-              );
-            })}
-          </div>
-          <div className="home-plan__calendar-legend">
-            <span><i data-state="completed" />任务完成</span>
-            <span><i data-state="pending" />任务未完成</span>
-          </div>
-          <div className="home-plan__calendar-footer">
-            <strong>{selectedDateLabel}</strong>
-            <span>{selectedItems.filter(isCompletedPlanItem).length} / {selectedItems.length} 项完成</span>
-          </div>
-          <DailyTaskCountdown timer={timer} onExpire={onExpire} />
-        </aside>
-      </div>
+        </header>
+        <div className="home-study-calendar__weekdays" aria-hidden="true">
+          {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+        </div>
+        <div className="home-study-calendar__grid">
+          {calendarDays.map((date) => {
+            const key = localDateKey(date);
+            const learned = learnedDates.has(key);
+            const isToday = key === today;
+            const outside = date.getMonth() !== visibleMonth.getMonth();
+            const label = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${isToday ? '，今天' : learned ? '，已学习' : ''}`;
+            return (
+              <span
+                key={key}
+                data-learned={String(learned)}
+                data-today={String(isToday)}
+                data-outside={String(outside)}
+                aria-label={label}
+              >
+                {date.getDate()}
+              </span>
+            );
+          })}
+        </div>
+        <footer className="home-study-calendar__legend">
+          <span><i data-state="today" />今天</span>
+          <span><i data-state="learned" />已学习</span>
+        </footer>
+      </aside>
     </div>
   );
 }
@@ -497,11 +416,11 @@ function HomeLearningRoute({
   };
 
   return (
-      <section className="home-portal__route" data-view={routeView} aria-label="学习路径规划">
+      <section className="home-portal__route" data-view={routeView} aria-label={`${selectedTarget?.name || '当前考证'}学习路径规划`}>
       <header className="home-portal__route-header">
         <div>
           <div className="home-portal__route-kicker">
-            <h2>学习路径规划</h2>
+            <h2>{selectedTarget?.name || '当前考证'}学习路径规划</h2>
             {routeView !== 'details' && <button type="button" onClick={showPlanningDetails}>了解详情</button>}
           </div>
         </div>
@@ -523,7 +442,7 @@ function HomeLearningRoute({
               onDrill={openNode}
               onClearSelection={() => setSelectedNode(null)}
               directDrill
-              summaryLabel="短期学习路径"
+              summaryLabel="阶段学习路径"
               homeCompact
             />
           )}
@@ -731,6 +650,15 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     : [];
   const planItems = [...currentTaskItems, ...activityItems]
     .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
+  const studyDays = Array.isArray(payload.learning_activity?.trends?.series)
+    ? payload.learning_activity.trends.series
+      .filter((day) => Number(day?.login_days || 0) > 0
+        || Number(day?.focus_minutes || 0) > 0
+        || Number(day?.task_completion_rate || 0) > 0
+        || Number(day?.daily_atomic_task_completion_rate || 0) > 0)
+      .map((day) => String(day.date || ''))
+      .filter(Boolean)
+    : [];
 
   const openActivityItem = (item) => {
     if (!item?.intent) return;
@@ -745,18 +673,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     openActivityItem(item);
   };
 
-  const showLearningPath = () => {
-    document.querySelector('.home-portal__route')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-  };
   const countdown = examCountdown(learningTarget.examDate);
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
   const heroTitle = `早上好，${displayName}，今天继续学习${currentProgress || '当前学习阶段'}`;
-  const featureCards = [
-    { key: 'assistant', title: '智能问答', detail: '随时提问，获得针对性讲解', image: '/design-images/home/ai-qa.png', intent: { page: 'assistant', params: { newConversation: true } } },
-    { key: 'knowledge-graph', title: '知识图谱', detail: '从考点关系中建立整体理解', image: '/design-images/home/knowledge-graph.png', intent: { page: 'practice', params: { view: 'overview' } } },
-    { key: 'resource-search', title: '资料检索', detail: '查找教材、经典与权威资料', image: '/design-images/home/resource-search.png', intent: { page: 'practice', params: { view: 'overview', libraryOnly: true, expandAll: true, hidePlan: true } } },
-    { key: 'topic-training', title: '专题练习', detail: '针对薄弱点进行集中训练', image: '/design-images/home/focused-practice.png', intent: { page: 'practice', params: { view: 'workspace', taskType: 'topic_training' } } },
-  ];
 
   return (
     <div className="home-portal" aria-busy={loading}>
@@ -789,24 +708,20 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
           <CurrentLearningPlan
             currentTask={currentTask}
             items={planItems}
-            stageName={currentProgress}
+            studyDays={studyDays}
             timer={payload.daily_task_timer}
             onExpire={refreshDailyTask}
             onOpenItem={openLearningItem}
-            onShowPath={showLearningPath}
+            onAddTask={() => onNavigate?.({
+              page: 'assistant',
+              params: {
+                newConversation: true,
+                context: `请结合我的学习目标和当前阶段${currentProgress ? `“${currentProgress}”` : ''}，为今天添加一项可执行的学习任务。`,
+              },
+            })}
           />
         </aside>
       </section>
-
-      <section className="home-portal__feature-grid" aria-label="学习功能">
-        {featureCards.map((card) => (
-          <button key={card.key} type="button" className="home-portal__feature-card" onClick={() => onNavigate?.(card.intent)}>
-            <img src={card.image} alt="" />
-            <span><strong>{card.title}</strong><small>{card.detail}</small><em>进入功能 <ArrowRight aria-hidden="true" size={14} /></em></span>
-          </button>
-        ))}
-      </section>
-
     </div>
   );
 }
