@@ -215,6 +215,46 @@ def test_trusted_video_resolver_returns_only_published_canonical_segment(tmp_pat
     }) is None
     assert backend.map.resolve_trusted_video_resource({"kp_id": "KP_1"}) == resolved
     assert backend.map.resolve_trusted_video_resource({"kp_id": "KP_UNKNOWN"}) is None
+    assert backend.map.resolve_trusted_video_resource(
+        {"learning_chapter": "《方剂学》补益剂"}
+    ) == resolved
+
+
+def test_executable_bundle_uses_canonical_kp_and_requires_real_questions(
+    tmp_path: Path,
+) -> None:
+    backend = build_backend(tmp_path)
+    backend.map.ensure_questions()
+    backend.map.questions_by_kp["KP_1"].extend(
+        [
+            {
+                "question_id": "Q_PUBLIC_2",
+                "question_type": "单项选择题",
+                "question_content": "四君子汤功用是什么？",
+                "answer": ["A"],
+                "explanation": "益气健脾。",
+                "kp_ids": ["KP_1"],
+            },
+            {
+                "question_id": "Q_PUBLIC_3",
+                "question_type": "单项选择题",
+                "question_content": "四君子汤的君药是什么？",
+                "answer": ["A"],
+                "explanation": "人参。",
+                "kp_ids": ["KP_1"],
+            },
+        ]
+    )
+
+    bundle = backend.map.resolve_executable_bundle(
+        "四君子",
+        preferred_scope="《方剂学》补益剂",
+    )
+
+    assert bundle["kp_id"] == "KP_1"
+    assert bundle["knowledge_point_name"] == "四君子汤"
+    assert len(bundle["questions"]) == 3
+    assert bundle["video_count"] == 1
 
 
 def test_exam_adapter_reads_nested_customer_delivery(tmp_path: Path) -> None:

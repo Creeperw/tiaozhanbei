@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from APP.backend.database import (
     AuditResultRecord, EvidencePackRecord, GradingResultRecord,
+    DailyTaskItemRecord,
     KnowledgeMasteryState, LearnerKPReviewState, LearnerKnowledgeMastery,
     LearningAttemptItemRecord, LearningAttemptRecord, LearningWritebackReceipt,
     MasteryHistoryRecord, MistakeRecord, QuestionVersionRecord, ReviewTaskRecord,
@@ -122,11 +123,51 @@ def apply_grading_writeback(db: Session, learner_id: int, command: GradingWriteb
     now = utc_now()
     q_t = max(0.0, min(1.0, grading.score / grading.max_score)) if grading.score is not None and grading.max_score and grading.max_score > 0 else (1.0 if grading.is_correct else 0.0)
     is_correct = grading.is_correct if grading.is_correct is not None else q_t >= 0.6
+    admit_learning_state = True
+    if attempt.daily_task_item_id:
+        daily_item = db.query(DailyTaskItemRecord).filter_by(
+            task_item_id=attempt.daily_task_item_id,
+            user_id=learner_id,
+        ).one_or_none()
+        admit_learning_state = bool(
+            daily_item is not None and daily_item.status == "completed"
+        )
+        if admit_learning_state:
+            batch_gradings = (
+                db.query(GradingResultRecord)
+                .join(
+                    LearningAttemptItemRecord,
+                    LearningAttemptItemRecord.attempt_item_id
+                    == GradingResultRecord.attempt_item_id,
+                )
+                .join(
+                    LearningAttemptRecord,
+                    LearningAttemptRecord.attempt_id
+                    == LearningAttemptItemRecord.attempt_id,
+                )
+                .filter(
+                    LearningAttemptRecord.learner_id == learner_id,
+                    LearningAttemptRecord.daily_task_item_id
+                    == attempt.daily_task_item_id,
+                    GradingResultRecord.status == "reviewed",
+                )
+                .all()
+            )
+            ratios = [
+                max(0.0, min(1.0, row.score / row.max_score))
+                for row in batch_gradings
+                if row.score is not None
+                and row.max_score is not None
+                and row.max_score > 0
+            ]
+            if ratios:
+                q_t = sum(ratios) / len(ratios)
+                is_correct = all(bool(row.is_correct) for row in batch_gradings)
     mistake_ids = []
     mastery_updates = []
     task_ids = []
     recovery_review = None
-    for kp_id in grading_kps:
+    for kp_id in grading_kps if admit_learning_state else ():
         state = db.query(KnowledgeMasteryState).filter_by(learner_id=learner_id, kp_id=kp_id).one_or_none()
         legacy = db.query(LearnerKnowledgeMastery).filter_by(user_id=learner_id, kp_id=kp_id).one_or_none()
         previous = state.mastery_score if state is not None else (legacy.mastery * 100 if legacy is not None else None)
@@ -169,9 +210,38 @@ def apply_grading_writeback(db: Session, learner_id: int, command: GradingWriteb
         mastery_updates.append({"kp_id": kp_id, "mastery_score": score})
 
     if not is_correct:
-        task_id = str(uuid.uuid4())
-        db.add(ReviewTaskRecord(review_task_id=task_id, learner_id=learner_id, review_state_id=recovery_review.review_state_id, primary_kp_id=recovery_review.kp_id, source_type="practice", review_type="recovery_retry", reason_codes_json=json.dumps(["wrong_answer"]), status="pending", scheduled_at=now + timedelta(seconds=300), source_attempt_item_id=item.attempt_item_id))
-        task_ids.append(task_id)
+        if admit_learning_state and recovery_review is not None:
+            pending_task = (
+                db.query(ReviewTaskRecord)
+                .filter(
+                    ReviewTaskRecord.learner_id == learner_id,
+                    ReviewTaskRecord.primary_kp_id == recovery_review.kp_id,
+                    ReviewTaskRecord.status.in_(("pending", "awaiting_attempt", "bound")),
+                )
+                .order_by(ReviewTaskRecord.created_at.desc())
+                .first()
+            )
+            if pending_task is None:
+                pending_task = ReviewTaskRecord(
+                    review_task_id=str(uuid.uuid4()),
+                    learner_id=learner_id,
+                    review_state_id=recovery_review.review_state_id,
+                    primary_kp_id=recovery_review.kp_id,
+                    source_type="practice",
+                    review_type="recovery_retry",
+                    reason_codes_json=json.dumps(["wrong_answer"]),
+                    status="pending",
+                    scheduled_at=now + timedelta(seconds=300),
+                    source_attempt_item_id=item.attempt_item_id,
+                )
+                db.add(pending_task)
+            else:
+                pending_task.review_state_id = recovery_review.review_state_id
+                pending_task.review_type = "recovery_retry"
+                pending_task.reason_codes_json = json.dumps(["wrong_answer"])
+                pending_task.scheduled_at = now + timedelta(seconds=300)
+                pending_task.source_attempt_item_id = item.attempt_item_id
+            task_ids.append(pending_task.review_task_id)
         mistake = db.query(MistakeRecord).filter_by(
             user_id=learner_id,
             question_id=item.question_version_id,

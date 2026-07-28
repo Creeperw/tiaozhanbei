@@ -1,6 +1,7 @@
 import hashlib
 import json
 import math
+import re
 import unicodedata
 from datetime import datetime
 from typing import Any, Iterable
@@ -14,7 +15,9 @@ from APP.backend.database import (
     DailyTaskQuestionSnapshotRecord,
     DailyTaskVideoEvidenceRecord,
     KnowledgePoint,
+    LearningKnowledgePoint,
     LearningQuestion,
+    QuestionBankItem,
     QuestionKPLinkRecord,
     QuestionVersionRecord,
 )
@@ -22,6 +25,28 @@ from APP.backend.database import (
 TERMINAL_AUDIT_DECISIONS = {"pass", "revise", "reject"}
 NON_TERMINAL_AUDIT_DECISIONS = {"pending", "needs_human_review", "human_review"}
 FORMAL_QUESTION_SOURCE_PREFIX = "formal-content:"
+KNOWLEDGE_ATLAS_SOURCE = "formal-content:knowledge-atlas-2026-07-18"
+_QUESTION_TYPES = {
+    "单项选择题": "single_choice",
+    "单选题": "single_choice",
+    "多项选择题": "multiple_choice",
+    "多选题": "multiple_choice",
+    "判断题": "true_false",
+    "填空题": "fill_blank",
+    "名词解释": "term_explanation",
+    "简答题": "short_answer",
+    "案例分析/实验报告": "case_quiz",
+    "临床病例问答": "case_quiz",
+}
+
+
+def _trusted_formal_source(value: Any) -> bool:
+    source = str(value or "").strip()
+    return (
+        source.startswith(FORMAL_QUESTION_SOURCE_PREFIX)
+        or source == "formal_question_bank"
+        or source.startswith("formal-vector-question-bank:")
+    )
 
 
 class DailyTaskProgressError(RuntimeError):
@@ -204,6 +229,199 @@ def resolve_executable_knowledge_point(
     return kp_id
 
 
+def ensure_executable_knowledge_bundle(
+    db: Session,
+    bundle: dict[str, Any],
+    *,
+    required_question_count: int = 3,
+) -> str:
+    """Persist a small trusted-atlas bundle for one executable daily task.
+
+    This is intentionally on-demand: it avoids copying the full public atlas
+    into the personalized runtime while still freezing authoritative question
+    versions for completion tracking.
+    """
+
+    if not isinstance(bundle, dict) or bundle.get("source") != "knowledge_atlas":
+        raise DailyTaskProgressError("daily task bundle is not a trusted atlas bundle", 409)
+    kp_payload = bundle.get("kp")
+    questions = bundle.get("questions")
+    if not isinstance(kp_payload, dict) or not isinstance(questions, list):
+        raise DailyTaskProgressError("daily task bundle is incomplete", 409)
+    kp_id = str(kp_payload.get("kp_id") or bundle.get("kp_id") or "").strip()
+    kp_name = str(
+        kp_payload.get("kp_lv3")
+        or bundle.get("knowledge_point_name")
+        or ""
+    ).strip()
+    if not kp_id or not kp_name:
+        raise DailyTaskProgressError("daily task bundle has no canonical knowledge point", 409)
+    valid_questions = [
+        row
+        for row in questions
+        if isinstance(row, dict)
+        and str(row.get("question_id") or "").strip()
+        and str(row.get("question_content") or "").strip()
+        and kp_id in {str(value) for value in row.get("kp_ids") or []}
+    ]
+    if len(valid_questions) < required_question_count:
+        raise DailyTaskProgressError(
+            f"trusted atlas has insufficient questions for kp {kp_id}", 409
+        )
+
+    aliases = [
+        value.strip()
+        for value in re.split(r"[；;、]", str(kp_payload.get("other_name") or ""))
+        if value.strip()
+    ]
+    point = db.query(KnowledgePoint).filter_by(kp_id=kp_id).one_or_none()
+    if point is None:
+        point = KnowledgePoint(kp_id=kp_id)
+        db.add(point)
+    elif point.source and not _trusted_formal_source(point.source):
+        raise DailyTaskProgressError(
+            f"knowledge point {kp_id} belongs to another source", 409
+        )
+    point.name = kp_name
+    point.aliases_json = json.dumps(aliases, ensure_ascii=False)
+    point.description = " / ".join(
+        filter(
+            None,
+            (
+                str(kp_payload.get("kp_lv1") or ""),
+                str(kp_payload.get("kp_lv2") or ""),
+            ),
+        )
+    )
+    point.source = KNOWLEDGE_ATLAS_SOURCE
+    point.status = "active"
+
+    mirror_kp = db.query(LearningKnowledgePoint).filter_by(kp_id=kp_id).one_or_none()
+    if mirror_kp is None:
+        mirror_kp = LearningKnowledgePoint(kp_id=kp_id)
+        db.add(mirror_kp)
+    mirror_kp.kp_lv1 = str(kp_payload.get("kp_lv1") or "")
+    mirror_kp.kp_lv2 = str(kp_payload.get("kp_lv2") or "")
+    mirror_kp.kp_lv3 = kp_name
+    mirror_kp.raw_content = json.dumps(
+        kp_payload.get("raw_content") or [], ensure_ascii=False
+    )
+    mirror_kp.other_name_json = json.dumps(aliases, ensure_ascii=False)
+    mirror_kp.order_json = json.dumps(
+        {"order_code": kp_payload.get("order")}, ensure_ascii=False
+    )
+
+    for row in valid_questions[:required_question_count]:
+        question_id = str(row["question_id"]).strip()
+        question_type = _QUESTION_TYPES.get(
+            str(row.get("question_type") or "").strip(), "short_answer"
+        )
+        stem = str(row.get("question_content") or "").strip()
+        answer_value = row.get("answer")
+        answers = (
+            [str(value) for value in answer_value]
+            if isinstance(answer_value, list)
+            else [str(answer_value or "")]
+        )
+        answer = json.dumps(answers, ensure_ascii=False)
+        analysis = str(row.get("explanation") or "")
+        options = row.get("options") if isinstance(row.get("options"), list) else []
+
+        item = db.query(QuestionBankItem).filter_by(question_id=question_id).one_or_none()
+        if item is None:
+            item = QuestionBankItem(question_id=question_id)
+            db.add(item)
+        elif item.source and not _trusted_formal_source(item.source):
+            raise DailyTaskProgressError(
+                f"question {question_id} belongs to another source", 409
+            )
+        existing_kp_ids = set(json.loads(item.kp_ids_json or "[]"))
+        existing_kp_ids.add(kp_id)
+        item.stem = stem
+        item.answer = answer
+        item.analysis = analysis
+        item.kp_ids_json = json.dumps(sorted(existing_kp_ids), ensure_ascii=False)
+        item.question_type = question_type
+        item.difficulty = None
+        item.difficulty_source = None
+        item.quality_score = 0.7
+        item.source = KNOWLEDGE_ATLAS_SOURCE
+        item.status = "active"
+
+        mirror = db.query(LearningQuestion).filter_by(question_id=question_id).one_or_none()
+        if mirror is None:
+            mirror = LearningQuestion(question_id=question_id)
+            db.add(mirror)
+        mirror.question_type = question_type
+        mirror.question_content = stem
+        mirror.options_json = json.dumps(options, ensure_ascii=False)
+        mirror.answer_json = answer
+        mirror.explanation = analysis
+        mirror.difficulty = None
+        mirror.difficulty_source = None
+        mirror.kp_ids_json = item.kp_ids_json
+        mirror.scoring_rubric = str(row.get("scoring_rubric") or "")
+        mirror.key_points = str(row.get("key_points") or "")
+
+        version_id = (
+            f"{question_id}:atlas:"
+            f"{hashlib.sha1(question_id.encode('utf-8')).hexdigest()[:16]}"
+        )
+        version = (
+            db.query(QuestionVersionRecord)
+            .filter_by(question_version_id=version_id)
+            .one_or_none()
+        )
+        if version is None:
+            next_version = max(
+                (
+                    value
+                    for value, in db.query(QuestionVersionRecord.version)
+                    .filter_by(question_id=question_id)
+                    .all()
+                ),
+                default=0,
+            ) + 1
+            version = QuestionVersionRecord(
+                question_version_id=version_id,
+                question_id=question_id,
+                version=next_version,
+            )
+            db.add(version)
+        version.question_type = question_type
+        version.stem = stem
+        version.answer = answer
+        version.analysis = analysis
+        version.standard_difficulty = None
+        version.difficulty_source = None
+        version.source_kind = KNOWLEDGE_ATLAS_SOURCE
+        version.status = "active"
+        db.flush()
+        link = (
+            db.query(QuestionKPLinkRecord)
+            .filter_by(question_version_id=version_id, kp_id=kp_id)
+            .one_or_none()
+        )
+        if link is None:
+            db.add(
+                QuestionKPLinkRecord(
+                    question_version_id=version_id,
+                    kp_id=kp_id,
+                    is_primary=True,
+                    status="active",
+                )
+            )
+        else:
+            link.status = "active"
+
+    db.flush()
+    if len(_question_row_candidates(db, kp_id)) < required_question_count:
+        raise DailyTaskProgressError(
+            f"failed to freeze questions for kp {kp_id}", 409
+        )
+    return kp_id
+
+
 def _question_options(db: Session, question_id: str) -> list[Any]:
     question = db.query(LearningQuestion).filter_by(question_id=question_id).one_or_none()
     if question is None:
@@ -366,6 +584,15 @@ def upsert_daily_task_snapshot(db: Session, user_id: int, payload: dict[str, Any
         item = existing_items.get(item_key)
         if item is None:
             item = db.query(DailyTaskItemRecord).filter_by(task_item_id=item_key, user_id=user_id).one_or_none()
+        if (
+            item is not None
+            and item.host_task_id == host_task_id
+            and item.host_task_version != host_task_version
+        ):
+            # A plan metadata correction may increment the parent version while
+            # retaining the exact frozen atoms. Move those atoms to the new
+            # version so progress does not disappear behind an empty instance.
+            item.host_task_version = host_task_version
         if item is None:
             item = DailyTaskItemRecord(
                 task_item_id=item_key,
@@ -382,6 +609,10 @@ def upsert_daily_task_snapshot(db: Session, user_id: int, payload: dict[str, Any
             )
             db.add(item)
             db.flush()
+        elif item.host_task_id != host_task_id:
+            raise DailyTaskProgressError(
+                f"task item {item_key} is already bound to another task", 409
+            )
 
         if item.required_question_count != required_question_count:
             item.required_question_count = required_question_count

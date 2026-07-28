@@ -138,6 +138,8 @@ export default function LearningPathOverview({
   onDrill,
   onClearSelection,
   directDrill = false,
+  summaryLabel = '顺序学习路径',
+  homeCompact = false,
 }) {
   const stageRef = useRef(null);
   const [stageAspectRatio, setStageAspectRatio] = useState(2);
@@ -194,7 +196,7 @@ export default function LearningPathOverview({
     >
       <header className="learning-path-orbit__summary">
         <div>
-          <span><Compass aria-hidden="true" size={16} />顺序学习路径</span>
+          <span>{!homeCompact && <Compass aria-hidden="true" size={16} />}{summaryLabel}</span>
           <strong>中医药知识体系</strong>
           <p>{directDrill ? '按阶段依次进入教材与知识点' : '沿导引环逐步掌握中医核心知识'}</p>
         </div>

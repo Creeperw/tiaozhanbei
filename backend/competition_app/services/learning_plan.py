@@ -12,6 +12,7 @@ from competition_app.contracts.learning_plan import (
     LearningPlanResult,
     LearningTask,
     LongTermPlan,
+    StageEvidenceRecord,
     ShortTermPlan,
 )
 from competition_app.repositories.learning_plan import (
@@ -66,23 +67,14 @@ _LONG_TERM_CONTENT_SECTIONS = (
 
 _DAILY_TASK_REFRESH_INTERVAL = timedelta(hours=24)
 
-KnowledgePointResolver = Callable[[str], str | None]
+KnowledgePointResolver = Callable[..., str | None]
 VideoResourceResolver = Callable[[dict[str, Any]], dict[str, Any] | None]
-
-
-def _requests_video(task_content: str, task_blocks: list[Any]) -> bool:
-    texts = [task_content]
-    for block in task_blocks:
-        if isinstance(block, str):
-            texts.append(block)
-        else:
-            texts.append(str(LearningPlanService._field(block, "content") or ""))
-    return any(marker in " ".join(texts) for marker in ("视频", "观看", "课程片段"))
 
 
 def materialize_daily_task_items(
     *,
     task_content: str,
+    learning_chapter: str = "",
     estimated_minutes: int,
     focus_knowledge_points: list[str],
     task_blocks: list[Any] | None = None,
@@ -114,7 +106,9 @@ def materialize_daily_task_items(
             or ""
         ).strip()
         kp_id = _resolve_knowledge_point(
-            knowledge_point_name, knowledge_point_resolver
+            knowledge_point_name,
+            knowledge_point_resolver,
+            learning_chapter=learning_chapter,
         )
         if item_type == "knowledge_practice":
             if not kp_id:
@@ -153,13 +147,21 @@ def materialize_daily_task_items(
         if not knowledge_point_name:
             raise ValueError("focus knowledge points must contain non-empty names")
         kp_id = _resolve_knowledge_point(
-            knowledge_point_name, knowledge_point_resolver
+            knowledge_point_name,
+            knowledge_point_resolver,
+            learning_chapter=learning_chapter,
         )
+        if kp_id is None and knowledge_point_resolver is not None:
+            # A live daily task contains only resources with a verifiable
+            # completion path. The model label remains in the prose plan, but
+            # it must not become a fake executable recall item.
+            continue
+        if kp_id is not None and kp_id not in resolved_focus_kp_ids:
+            resolved_focus_kp_ids.append(kp_id)
         if kp_id is not None and kp_id in covered_kp_ids:
             continue
         if kp_id is not None:
             covered_kp_ids.add(kp_id)
-            resolved_focus_kp_ids.append(kp_id)
         semantics.append(
             {
                 "item_type": "knowledge_practice" if kp_id else "recall",
@@ -175,17 +177,29 @@ def materialize_daily_task_items(
     if (
         not has_video_atom
         and video_resource_resolver is not None
-        and _requests_video(task_content, list(task_blocks or []))
         and estimated_minutes >= len(semantics) + 1
     ):
-        for kp_id in resolved_focus_kp_ids:
-            resource_ref = video_resource_resolver({"kp_id": kp_id})
+        video_requests: list[dict[str, Any]] = []
+        if learning_chapter.strip():
+            video_requests.append(
+                {
+                    "learning_chapter": learning_chapter,
+                    "kp_ids": list(resolved_focus_kp_ids),
+                }
+            )
+        video_requests.extend({"kp_id": kp_id} for kp_id in resolved_focus_kp_ids)
+        for request in video_requests:
+            resource_ref = video_resource_resolver(request)
             if isinstance(resource_ref, dict) and resource_ref:
                 semantics.insert(
                     0,
                     {
                         "item_type": "video_section",
-                        "title": task_content,
+                        "title": (
+                            f"观看{learning_chapter}章节视频"
+                            if learning_chapter.strip()
+                            else "观看今日章节视频"
+                        ),
                         "knowledge_point_name": None,
                         "kp_id": None,
                         "required_question_count": None,
@@ -253,10 +267,15 @@ def materialize_daily_task_items(
 def _resolve_knowledge_point(
     knowledge_point_name: str,
     resolver: KnowledgePointResolver | None,
+    *,
+    learning_chapter: str = "",
 ) -> str | None:
     if not knowledge_point_name or resolver is None:
         return None
-    resolved = resolver(knowledge_point_name)
+    try:
+        resolved = resolver(knowledge_point_name, learning_chapter)
+    except TypeError:
+        resolved = resolver(knowledge_point_name)
     if resolved is None:
         return None
     kp_id = str(resolved).strip()
@@ -515,6 +534,106 @@ class LearningPlanService:
         self.knowledge_point_resolver = knowledge_point_resolver
         self.video_resource_resolver = video_resource_resolver
 
+    def ensure_executable_daily_resources(
+        self,
+        learner_id: str,
+        *,
+        now: datetime | None = None,
+    ) -> LearningTask | None:
+        """Upgrade a legacy prose/recall task to verified video/question atoms."""
+
+        current = self.plan_repository.get_current(learner_id)
+        if current is None or current.learning_task is None:
+            return None
+        task = current.learning_task
+        if task.status == "completed":
+            return task
+        has_executable_items = bool(task.items) and all(
+            item.item_type in {"video_section", "knowledge_practice"}
+            for item in task.items
+        )
+        items = (
+            list(task.items)
+            if has_executable_items
+            else materialize_daily_task_items(
+                task_content=task.task_content,
+                learning_chapter=task.learning_chapter,
+                estimated_minutes=task.estimated_minutes,
+                focus_knowledge_points=list(task.focus_knowledge_points),
+                task_blocks=[],
+                knowledge_point_resolver=self.knowledge_point_resolver,
+                video_resource_resolver=self.video_resource_resolver,
+            )
+        )
+        if not items or any(
+            item.item_type not in {"video_section", "knowledge_practice"}
+            for item in items
+        ):
+            return task
+        practice_items = [
+            item for item in items if item.item_type == "knowledge_practice"
+        ]
+        video_count = sum(item.item_type == "video_section" for item in items)
+        focus_points = [
+            str(item.knowledge_point_name or item.kp_id or "").strip()
+            for item in practice_items
+            if str(item.knowledge_point_name or item.kp_id or "").strip()
+        ]
+        question_count = sum(
+            int(item.required_question_count or 0) for item in practice_items
+        )
+        expected_parts = []
+        if video_count:
+            expected_parts.append(f"{video_count}条章节视频观看记录")
+        if question_count:
+            expected_parts.append(f"{question_count}道配套题提交记录")
+        expected_output = "与".join(expected_parts) or task.expected_output
+        completion_criteria = (
+            f"完成全部{len(items)}个原子任务"
+            f"（{video_count}个章节视频、{len(practice_items)}个知识点共"
+            f"{question_count}道题）；以服务端记录全部完成为通过标准。"
+        )
+        executable_steps = "；".join(
+            str(item.title or "").strip()
+            for item in items
+            if str(item.title or "").strip()
+        )
+        task_content = (
+            f"今日围绕{task.learning_chapter}学习：{executable_steps}。"
+            if str(task.learning_chapter or "").strip()
+            else f"今日执行：{executable_steps}。"
+        )
+        if (
+            list(task.items) == items
+            and list(task.focus_knowledge_points) == focus_points
+            and task.task_content == task_content
+            and task.expected_output == expected_output
+            and task.completion_criteria == completion_criteria
+        ):
+            return task
+        timestamp = now or datetime.now(timezone.utc)
+        updated = task.model_copy(
+            update={
+                "items": items,
+                "focus_knowledge_points": focus_points,
+                "task_content": task_content,
+                "expected_output": expected_output,
+                "completion_criteria": completion_criteria,
+                "version": task.version + 1,
+                "updated_at": timestamp,
+            }
+        )
+        saved = self.plan_repository.save_current(
+            learner_id,
+            current.model_copy(update={"learning_task": updated}),
+            expected_task_id=task.task_id,
+            expected_task_version=task.version,
+        )
+        if saved:
+            return updated
+        latest = self.plan_repository.get_current(learner_id)
+        return latest.learning_task if latest is not None else task
+
     def materialize(
         self,
         learner_id: str,
@@ -678,6 +797,9 @@ class LearningPlanService:
                     list(self._field(long_source, "stages") or [])
                     or proposal.long_term_plan_stages
                 ),
+                stage_evidence=list(
+                    self._field(long_source, "stage_evidence") or []
+                ),
                 planning_route=long_route,
                 goal_contract=long_goal,
                 milestones=long_milestones,
@@ -762,6 +884,7 @@ class LearningPlanService:
                             proposal.daily_task_content
                             or proposal.task_proposal.task_content
                         ),
+                        learning_chapter=proposal.task_proposal.learning_chapter,
                         estimated_minutes=proposal.task_proposal.estimated_minutes,
                         focus_knowledge_points=list(
                             proposal.task_proposal.focus_knowledge_points
@@ -1112,6 +1235,7 @@ class LearningPlanService:
             refresh_due_at=timestamp + _DAILY_TASK_REFRESH_INTERVAL,
             items=materialize_daily_task_items(
                 task_content=proposal.task_proposal.task_content,
+                learning_chapter=proposal.task_proposal.learning_chapter,
                 estimated_minutes=proposal.task_proposal.estimated_minutes,
                 focus_knowledge_points=list(
                     proposal.task_proposal.focus_knowledge_points
@@ -1140,8 +1264,130 @@ class LearningPlanService:
                 learning_task=task,
             )
         self.plan_repository.save_current(learner_id, stored)
+        normalized_task = self.ensure_executable_daily_resources(
+            learner_id,
+            now=timestamp,
+        )
         return LearningPlanResult(
-            learning_task=task,
+            learning_task=normalized_task or task,
             generated_scope="daily_task",
             invalidated_layers=[],
         )
+
+    def record_completed_task_stage_evidence(
+        self,
+        learner_id: str,
+        *,
+        stage: int,
+        requirement: str,
+        task_id: str,
+        now: datetime | None = None,
+    ) -> LearningPlanResult:
+        """Attach only a completed, server-owned task to an exact stage gate."""
+
+        current = self.plan_repository.get_current(learner_id)
+        if current is None or current.long_term_plan is None:
+            raise ValueError("stage evidence requires an active long-term plan")
+        task = current.learning_task
+        if (
+            task is None
+            or task.task_id != task_id
+            or task.learner_id != learner_id
+            or task.status != "completed"
+        ):
+            raise ValueError("stage evidence source must be the learner's completed task")
+        current_stage = self._current_stage_number(current.long_term_plan)
+        if stage != current_stage:
+            raise ValueError("stage evidence can only be recorded for the current stage")
+
+        requirements = self._stage_requirements(current.long_term_plan, stage)
+        normalized_requirement = str(requirement or "").strip()
+        if normalized_requirement not in requirements:
+            raise ValueError("stage evidence requirement is not part of the approved stage gate")
+        declared_outputs = "\n".join(
+            (
+                str(task.expected_output or ""),
+                str(task.completion_criteria or ""),
+                str(task.task_content or ""),
+            )
+        )
+        if self._normalize_evidence_text(normalized_requirement) not in (
+            self._normalize_evidence_text(declared_outputs)
+        ):
+            raise ValueError(
+                "completed task did not declare the requested stage evidence as an output"
+            )
+
+        records = list(current.long_term_plan.stage_evidence)
+        if not any(
+            item.stage == stage
+            and item.requirement == normalized_requirement
+            and item.source_id == task_id
+            for item in records
+        ):
+            records.append(
+                StageEvidenceRecord(
+                    evidence_id=f"STAGE_EVIDENCE_{uuid4().hex}",
+                    stage=stage,
+                    requirement=normalized_requirement,
+                    source_type="completed_daily_task",
+                    source_id=task_id,
+                    verified_by="daily_task_execution",
+                    verified_at=now or datetime.now(timezone.utc),
+                )
+            )
+        long_term_plan = current.long_term_plan.model_copy(
+            update={"stage_evidence": records, "updated_at": now or datetime.now(timezone.utc)}
+        )
+        updated = current.model_copy(update={"long_term_plan": long_term_plan})
+        self.plan_repository.save_current(learner_id, updated)
+        return updated
+
+    @classmethod
+    def _stage_requirements(cls, plan: LongTermPlan, stage: int) -> list[str]:
+        route = plan.planning_route
+        textbook_route = route.textbook_route if route is not None else None
+        if (
+            textbook_route is not None
+            and textbook_route.route is not None
+            and 1 <= stage <= len(textbook_route.route.stages)
+        ):
+            return [
+                str(value).strip()
+                for value in textbook_route.route.stages[stage - 1].exit_evidence
+                if str(value).strip()
+            ]
+        if route is not None and 1 <= stage <= len(route.phases):
+            return [
+                str(value).strip()
+                for value in route.phases[stage - 1].exit_evidence
+                if str(value).strip()
+            ]
+        if 1 <= stage <= len(plan.milestones):
+            return [
+                str(value).strip()
+                for value in plan.milestones[stage - 1].evidence_required
+                if str(value).strip()
+            ]
+        raise ValueError("unknown long-term plan stage")
+
+    @staticmethod
+    def _normalize_evidence_text(value: str) -> str:
+        return re.sub(r"[\s，。；：、,.!?！？;:（）()《》“”\"']", "", str(value)).casefold()
+
+    @staticmethod
+    def _current_stage_number(plan: LongTermPlan) -> int:
+        selection = plan.textbook_selection
+        route = plan.planning_route
+        if selection is None or route is None:
+            return 1
+        selected_stage_id = selection.stage_id
+        textbook_route = route.textbook_route
+        if textbook_route is not None and textbook_route.route is not None:
+            for item in textbook_route.route.stages:
+                if item.stage_id == selected_stage_id:
+                    return item.order
+        for index, phase in enumerate(route.phases, start=1):
+            if phase.phase_id == selected_stage_id:
+                return index
+        return 1

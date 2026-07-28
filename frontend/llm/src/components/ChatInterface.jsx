@@ -25,6 +25,7 @@ import { buildAgentPresentation } from '../agentPresentationModel';
 import { buildTraceFromEvents, useLangGraphStore } from '../stores/useLangGraphStore';
 import { createWorkflowRunId, getWorkflowRun, streamWorkflowTurn } from '../workflowChatClient';
 import { formatMessageTime } from '../chatTime';
+import { workshopActionIntent } from '../pageIntent';
 
 const CodeHighlighter = lazy(() => import('./CodeHighlighter'));
 
@@ -253,6 +254,13 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
   }
   const traceNodes = traceEvents.length > 0 ? buildTraceFromEvents(traceEvents, { historical: !isGenerating }) : [];
   const traceRoles = traceNodes.length > 0 ? buildAgentPresentation(traceNodes) : [];
+  const participatingTraceRoles = traceRoles.filter((role) => role.nodes?.length > 0);
+  const collaborationSignals = [
+    participatingTraceRoles.some((role) => role.key === 'memory') ? '记忆承接' : null,
+    participatingTraceRoles.some((role) => role.key === 'knowledge') ? '证据检索' : null,
+    participatingTraceRoles.some((role) => role.key === 'audit') ? '审核门禁' : null,
+    traceEvents.some((event) => String(event?.event || '').startsWith('repair_')) ? '局部修复' : null,
+  ].filter(Boolean);
   const hasRunningTraceNode = traceNodes.some(n => n.status === 'running' || n.status === 'rollingBack');
   const traceStatus = traceNodes.some(n => n.status === 'error' || n.status === 'rollingBack') ? 'failed' : (hasRunningTraceNode ? 'running' : (traceNodes.length ? 'success' : (isGenerating ? 'running' : 'idle')));
   const currentTraceStep = traceRoles.find(role => role.status === 'running' || role.status === 'rollingBack')?.label || '协作处理';
@@ -354,16 +362,31 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
         {!isUser && traceNodes.length > 0 && (
           <button
             onClick={() => onOpenTrace?.({ nodes: traceNodes, refs: references, title: '执行进度', live: isGenerating })}
-            className="group mb-2 inline-flex max-w-full items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-[color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-emerald-50/80 hover:text-emerald-900"
+            className="agent-collaboration-receipt group mb-3"
+            aria-label={`${traceButtonLabel}，查看多智能体协作过程`}
           >
-            <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-white/85 text-emerald-600 shadow-sm shadow-emerald-100 ring-1 ring-emerald-100/80 transition-transform group-hover:scale-105">
-              <span className={`absolute h-2 w-2 rounded-full ${traceStatus === 'failed' ? 'bg-rose-400' : traceStatus === 'running' ? 'bg-sky-400 animate-ping' : 'bg-emerald-400'} opacity-25`} />
-              <Lightbulb size={13} className={traceStatus === 'running' ? 'animate-pulse' : ''} />
+            <span className="agent-collaboration-receipt__head">
+              <span>
+                <BrainCircuit size={15} aria-hidden="true" />
+                多智能体协作
+              </span>
+              <strong data-status={traceStatus}>
+                <i aria-hidden="true" />
+                {traceButtonLabel}
+              </strong>
             </span>
-            <span className="truncate">
-              {traceButtonLabel}
+            <span className="agent-collaboration-receipt__roles" aria-label="本次参与角色">
+              {participatingTraceRoles.map((role) => (
+                <span key={role.key} data-status={role.status}>{role.label}</span>
+              ))}
             </span>
-            <ChevronRight size={13} className="text-emerald-400 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" />
+            <span className="agent-collaboration-receipt__foot">
+              <span>
+                按需参与 {participatingTraceRoles.length}/6
+                {collaborationSignals.length > 0 ? ` · ${collaborationSignals.join(' · ')}` : ''}
+              </span>
+              <span>查看过程<ChevronRight size={13} aria-hidden="true" /></span>
+            </span>
           </button>
         )}
 
@@ -677,7 +700,7 @@ const readPendingRuns = () => {
   }
 };
 
-const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBackHome, onOpenKnowledge, onOpenPersonalization, onOpenAdminFeedback, onNavigate, preferredSessionId = null, initialContext = '', embedded = false }) => {
+const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBackHome, onOpenKnowledge, onOpenPersonalization, onOpenAdminFeedback, onNavigate, preferredSessionId = null, initialContext = '', embedded = false, forceNewConversation = false }) => {
   const shellConfig = getAppShellConfig({
     currentUser: currentUser ? { username: currentUser, role: currentUserRole } : { role: currentUserRole },
     currentPage: 'assistant',
@@ -690,6 +713,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   const [input, setInput] = useState(() => localStorage.getItem(CHAT_STORAGE_KEYS.draftInput) || initialContext || '');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState(null);
+  const newConversationStartedRef = useRef(false);
   
   // --- Auto Scroll ---
   const [autoScroll, setAutoScroll] = useState(true);
@@ -764,7 +788,11 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   // 🔥 Initialize: Load sessions and restore last active session ID
   useEffect(() => { 
     const loadSessions = async () => {
-        await fetchSessions();
+        await fetchSessions({ skipRestore: forceNewConversation });
+        if (forceNewConversation && !newConversationStartedRef.current) {
+          newConversationStartedRef.current = true;
+          await createSession();
+        }
     };
     loadSessions();
   }, []);
@@ -857,12 +885,13 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     }
   };
 
-  const fetchSessions = async () => {
+  const fetchSessions = async ({ skipRestore = false } = {}) => {
     try {
       const res = await fetchWithAuth(`${MAIN_API_BASE}/conversations`);
       if (!res.ok) return [];
       const data = await res.json();
       setSessions(data);
+      if (skipRestore) return data;
       
       // 🔥 Restore last session if exists
       const preferredId = preferredSessionId;
@@ -1432,25 +1461,13 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   }
 
   const handleWorkflowAction = (action) => {
-    const params = action?.params || {};
-    const taskTypes = {
-      'workshop.paper': 'paper_workspace',
-      'workshop.knowledge_card': 'knowledge_cards',
-      'workshop.question_training': 'question_training',
-    };
-    const taskType = taskTypes[action?.destination];
-    if (!taskType) return;
-    onNavigate?.({
-      page: 'practice',
-      params: {
-        view: 'workspace',
-        taskType,
-        ...params,
-        paperId: params.paper_id || params.paperId,
-        cardId: params.card_id || params.cardId,
-        kpId: params.kp_id || params.kpId,
+    const intent = workshopActionIntent(action, {
+      returnTo: {
+        page: 'assistant',
+        params: currentSessionId ? { sessionId: currentSessionId } : {},
       },
     });
+    if (intent) onNavigate?.(intent);
   };
 
   const handleMainWorkflowSend = async (answerOverride = null) => {

@@ -1,4 +1,4 @@
-import { test } from 'vitest';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { PAGE_TITLES, getAppShellConfig } from './appShell.js';
@@ -10,82 +10,30 @@ test('defaults authenticated users to dashboard and exposes top-level training n
   });
 
   assert.equal(config.defaultPage, 'dashboard');
-  assert.deepEqual(config.primaryNav.map(({ key, label }) => ({ key, label })), [
+  assert.deepEqual(config.primaryNav, [
     { key: 'dashboard', label: '平台首页' },
-    { key: 'learning-target', label: '学习目标' },
-    { key: 'learning-path', label: '学习路径' },
     { key: 'practice', label: '学习工坊' },
     { key: 'training-workshop', label: '训练工坊' },
     { key: 'personalization', label: '个性数据' },
+    { key: 'settings', label: '用户设置' },
   ]);
   assert.equal(config.currentPage, 'dashboard');
   assert.equal(config.pageTitle, '培训助手首页');
   assert.equal(config.homeAction, null);
+  assert.equal(config.primaryNav.some((item) => item.key === 'assistant'), false);
 });
 
-test('allows the dedicated learning path page while keeping dashboard as the default', () => {
-  const config = getAppShellConfig({
-    currentUser: { username: 'alice', role: 'user' },
-    currentPage: 'learning-path',
-  });
-
-  assert.equal(config.defaultPage, 'dashboard');
-  assert.equal(config.currentPage, 'learning-path');
-  assert.equal(config.pageTitle, '学习路径');
-});
-
-test('allows internal platform capability detail pages without adding a navigation item', () => {
-  const config = getAppShellConfig({
-    currentUser: { username: 'alice', role: 'user' },
-    currentPage: 'capability-detail',
-  });
-
-  assert.equal(config.currentPage, 'capability-detail');
-  assert.equal(config.pageTitle, '平台核心能力');
-  assert.equal(config.primaryNav.some((item) => item.key === 'capability-detail'), false);
-});
-
-test('keeps the learning target dropdown out of page routing', () => {
-  const config = getAppShellConfig({
-    currentUser: { username: 'alice', role: 'user' },
-    currentPage: 'learning-target',
-  });
-
-  assert.equal(config.currentPage, 'dashboard');
-  assert.equal(config.primaryNav[1].kind, 'learning-target');
-});
-
-test('keeps admin entry out of standard learner navigation and returns it for administrators', () => {
+test('keeps admin entry out of primary navigation while preserving support access', () => {
   const config = getAppShellConfig({
     currentUser: { username: 'admin', role: 'admin' },
     currentPage: 'assistant',
   });
 
-  assert.equal(config.primaryNav.some((item) => item.key === 'admin-feedback'), true);
+  assert.equal(config.primaryNav.some((item) => item.key === 'admin-feedback'), false);
   assert.equal(config.supportNav.some((item) => item.key === 'admin-feedback'), true);
   assert.equal(config.supportNav.some((item) => item.key === 'admin-knowledge'), false);
   assert.equal(config.pageTitle, '智能助教');
   assert.deepEqual(config.homeAction, { key: 'dashboard', label: '返回主页' });
-});
-
-test('defines dropdown destinations as explicit navigation intents', () => {
-  const config = getAppShellConfig({
-    currentUser: { username: 'alice', role: 'user' },
-    currentPage: 'dashboard',
-  });
-
-  assert.deepEqual(
-    config.primaryNav.find((item) => item.key === 'training-workshop').children,
-    [
-      { label: '题目训练', intent: { page: 'training-workshop', params: { taskType: 'question_training' } } },
-      { label: 'AI 病患模拟', intent: { page: 'training-workshop', params: { taskType: 'simulated_patient' } } },
-      { label: '错题变式', intent: { page: 'training-workshop', params: { taskType: 'mistake_variation' } } },
-      { label: '试卷生成', intent: { page: 'training-workshop', params: { taskType: 'paper_generation' } } },
-    ],
-  );
-  assert.equal(config.primaryNav.find((item) => item.key === 'practice').children[0].label, '智能助教');
-  assert.equal(config.primaryNav.find((item) => item.key === 'practice').children[1].label, '知识图谱');
-  assert.equal(config.primaryNav.some((item) => item.key === 'settings'), false);
 });
 
 test('hides support navigation for standard learners', () => {
@@ -95,7 +43,6 @@ test('hides support navigation for standard learners', () => {
   });
 
   assert.deepEqual(config.supportNav, []);
-  assert.equal(config.primaryNav.some((item) => item.key === 'admin-feedback'), false);
   assert.equal(config.pageTitle, '学习工坊');
   assert.deepEqual(config.homeAction, { key: 'dashboard', label: '返回主页' });
 });

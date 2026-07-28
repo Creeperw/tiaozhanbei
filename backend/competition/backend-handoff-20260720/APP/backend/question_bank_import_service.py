@@ -30,6 +30,19 @@ _QUESTION_TYPES = {
 }
 
 
+def _optional_difficulty(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    text = str(value).strip().upper()
+    if text.startswith("D"):
+        text = text[1:]
+    try:
+        rating = float(text)
+    except (TypeError, ValueError):
+        return None
+    return rating if 1 <= rating <= 5 else None
+
+
 @dataclass(frozen=True)
 class QuestionBankImportSummary:
     content_sha256: str
@@ -82,6 +95,9 @@ def import_question_bank_metadata(
                 if question_id in known_ids:
                     skipped_count += 1
                     continue
+                source_difficulty = _optional_difficulty(
+                    item.get("difficulty", item.get("难度"))
+                )
                 db.add(QuestionBankItem(
                     question_id=question_id,
                     stem=stem,
@@ -89,7 +105,10 @@ def import_question_bank_metadata(
                     analysis=_text(item.get("题目答案解析")),
                     kp_ids_json="[]",
                     question_type=_question_type(item.get("题型")),
-                    difficulty=None,
+                    difficulty=source_difficulty,
+                    difficulty_source=(
+                        source_tag if source_difficulty is not None else None
+                    ),
                     quality_score=0.7,
                     source=_source_label(item),
                     status="pending_link",

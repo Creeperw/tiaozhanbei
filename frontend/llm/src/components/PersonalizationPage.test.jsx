@@ -99,41 +99,39 @@ describe('PersonalizationPage single-task views', () => {
     expect(screen.getByRole('button', { name: '每周一次' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('renders the two-column user profile form with lock controls', async () => {
+  it('renders the read-only learning profile with completion and an edit entry point', async () => {
     const user = userEvent.setup();
     render(<PersonalizationPage embedded view="user-profile" />);
 
-    const educationInput = await screen.findByRole('textbox', { name: '学历/专业' });
-    expect(screen.getByRole('heading', { name: '用户画像' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '学习基础画像' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '学习偏好画像' })).toBeInTheDocument();
-    expect(educationInput).toHaveValue('非医学专业');
-    expect(screen.getByRole('textbox', { name: '学习基础' })).toHaveValue('零基础；非医学专业');
-    expect(screen.queryByText('完善个人学习信息，系统会据此优化学习计划、资源推荐与干预建议。')).not.toBeInTheDocument();
-    expect(screen.queryByText('用于确认学习起点、目标和可持续投入的节奏。')).not.toBeInTheDocument();
+    expect(await screen.findByText('非医学专业')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '我的学习画像' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '基础信息' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '学习偏好' })).toBeInTheDocument();
+    expect(screen.getByLabelText('画像完整度 38%')).toBeInTheDocument();
+    expect(screen.getByText('非医学专业')).toBeInTheDocument();
+    expect(screen.getByText('零基础；非医学专业')).toBeInTheDocument();
+    expect(screen.queryByText('个性数据')).not.toBeInTheDocument();
+    expect(screen.queryByText('用户群体')).not.toBeInTheDocument();
+    expect(screen.queryByText('直接展示已填写的偏好内容；修改与锁定请通过“编辑画像”完成。')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('专业背景')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '刷新' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '导出' })).not.toBeInTheDocument();
-    ['学历/专业', '学习基础', '用户群体', '学习目标', '可投入时间', '资源偏好', '当前困难/薄弱点', '个性化学习需求', '学习习惯'].forEach((label) => {
-      expect(screen.getByRole('textbox', { name: label })).toBeEnabled();
-    });
-    expect(screen.getByRole('button', { name: '锁定学历/专业' })).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(screen.getByRole('button', { name: '编辑画像' }));
+    expect(screen.getByRole('dialog', { name: '编辑画像' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '编辑基础信息' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '编辑学习偏好' })).toBeInTheDocument();
+    expect(screen.getByLabelText('专业背景')).toHaveValue('非医学专业');
+    expect(screen.getByLabelText('当前基础')).toHaveValue('零基础；非医学专业');
+    expect(screen.queryByLabelText('用户群体')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '锁定资源偏好' })).toHaveAttribute('aria-pressed', 'false');
 
-    await user.clear(educationInput);
-    await user.type(educationInput, '中医学本科');
-    expect(educationInput).toHaveValue('中医学本科');
-
-    await user.click(screen.getByRole('button', { name: '锁定学历/专业' }));
     await user.click(screen.getByRole('button', { name: '锁定资源偏好' }));
-    expect(educationInput).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: '资源偏好' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '解锁学历/专业' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: '解锁资源偏好' })).toHaveAttribute('aria-pressed', 'true');
-    await user.click(screen.getByRole('button', { name: '解锁学历/专业' }));
-    expect(educationInput).toBeEnabled();
-    await user.click(screen.getByRole('button', { name: '锁定学历/专业' }));
+    expect(screen.getByRole('button', { name: '解除锁定资源偏好' })).toHaveAttribute('aria-pressed', 'true');
+    await user.clear(screen.getByLabelText('资源偏好'));
+    await user.type(screen.getByLabelText('资源偏好'), '知识卡片、分阶测试题');
 
-    await user.click(screen.getByRole('button', { name: '保存用户画像' }));
+    await user.click(screen.getByRole('button', { name: '保存画像' }));
     let learnerProfileSave;
     await waitFor(() => {
       learnerProfileSave = fetchWithAuth.mock.calls.find(([url, options]) => (
@@ -141,15 +139,12 @@ describe('PersonalizationPage single-task views', () => {
       ));
       expect(learnerProfileSave).toBeDefined();
     });
-    const savedProfile = JSON.parse(learnerProfileSave[1].body);
-    expect(savedProfile).toMatchObject({
-      education_major: '中医学本科',
+    expect(JSON.parse(learnerProfileSave[1].body)).toMatchObject({
+      education_major: '非医学专业',
       learning_background: '零基础；非医学专业',
-      lock_reason: {
-        education_major: '用户在用户画像页锁定',
-        resource_preferences: '用户在用户画像页锁定',
-      },
+      resource_preferences: '知识卡片、分阶测试题',
+      locked_fields: ['resource_preferences'],
+      lock_reason: { resource_preferences: '用户在学习画像中锁定' },
     });
-    expect(savedProfile.locked_fields).toEqual(expect.arrayContaining(['education_major', 'resource_preferences']));
   });
 });

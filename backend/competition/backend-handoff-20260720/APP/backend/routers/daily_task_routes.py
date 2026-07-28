@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -21,6 +22,7 @@ from APP.backend.daily_task_progress_service import (
     confirm_iframe_video,
     record_video_evidence,
 )
+from APP.backend.time_utils import utc_now
 
 
 router = APIRouter(prefix="/daily-task-items", tags=["Daily Tasks"])
@@ -110,13 +112,24 @@ def next_daily_task_practice_question(
             "progress": progress,
         }
 
-    existing_claim = db.query(CorePracticeSubmissionClaim).filter_by(
-        user_id=current_user.id,
-        daily_task_snapshot_id=snapshot.id,
-    ).one_or_none()
+    claim_cutoff = utc_now() - timedelta(minutes=30)
+    existing_claim = (
+        db.query(CorePracticeSubmissionClaim)
+        .filter(
+            CorePracticeSubmissionClaim.user_id == current_user.id,
+            CorePracticeSubmissionClaim.daily_task_snapshot_id == snapshot.id,
+            CorePracticeSubmissionClaim.created_at >= claim_cutoff,
+        )
+        .one_or_none()
+    )
     if existing_claim is not None:
         request_id = existing_claim.request_id
     else:
+        db.query(CorePracticeSubmissionClaim).filter(
+            CorePracticeSubmissionClaim.user_id == current_user.id,
+            CorePracticeSubmissionClaim.daily_task_snapshot_id == snapshot.id,
+            CorePracticeSubmissionClaim.created_at < claim_cutoff,
+        ).delete(synchronize_session=False)
         request_id = str(uuid.uuid4())
         db.add(CorePracticeSubmissionClaim(
             user_id=current_user.id,

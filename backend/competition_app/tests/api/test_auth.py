@@ -79,6 +79,14 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
         encoding="utf-8",
     )
     (frontend_root / "favicon.ico").write_bytes(b"icon")
+    (frontend_root / "favicon.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"/>',
+        encoding="utf-8",
+    )
+    (frontend_root / "hero_word.txt").write_text(
+        "今天，从这里开始\n循序渐进",
+        encoding="utf-8",
+    )
     (assets_root / "app.js").write_text("window.loaded = true", encoding="utf-8")
     (assets_root / "app.css").write_text("body { color: green; }", encoding="utf-8")
     (covers_root / "方剂学.jpg").write_bytes(b"textbook-cover")
@@ -95,6 +103,13 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
         assert cover.status_code == 200
         assert cover.content == b"textbook-cover"
         assert client.get("/favicon.ico").status_code == 200
+        assert client.get("/favicon.svg").status_code == 200
+        assert client.get("/favicon.svg").headers["content-type"].startswith(
+            "image/svg+xml"
+        )
+        hero_word = client.get("/hero_word.txt")
+        assert hero_word.status_code == 200
+        assert hero_word.text.splitlines() == ["今天，从这里开始", "循序渐进"]
         protected = client.post(
             "/api/v1/review-cards",
             json={"learner_id": "anonymous", "user_request": "生成复习卡"},

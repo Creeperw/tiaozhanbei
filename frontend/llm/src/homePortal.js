@@ -108,7 +108,8 @@ export function getHomeActionIntent(key, payload = EMPTY_HOME_PAYLOAD) {
   const intent = cloneIntent(action.intent);
   if (key !== 'continue-learning') return intent;
 
-  const sessionId = asArray(payload?.continue_learning)[0]?.session_id;
+  const sessionId = asArray(payload?.continue_learning)[0]?.session_id
+    || asArray(payload?.continue_learning)[0]?.id;
   return sessionId
     ? { ...intent, params: { ...intent.params, sessionId } }
     : intent;
@@ -122,7 +123,7 @@ export function buildHomePortalState(payload = EMPTY_HOME_PAYLOAD) {
   return {
     continueLearning: {
       title: String(continueLearning.title || EMPTY_CONTINUE_LEARNING.title),
-      sessionId: continueLearning.session_id || null,
+      sessionId: continueLearning.session_id || continueLearning.id || null,
       progress: findProgress(normalizedPayload.status_cards),
     },
     pendingTasks: {

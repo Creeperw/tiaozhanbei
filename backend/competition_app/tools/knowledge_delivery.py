@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -389,6 +390,120 @@ class DeliveryKnowledgeMapStore:
             self.questions_by_kp = index
             self._questions_ready = True
 
+    @staticmethod
+    def _normalized_learning_label(value: Any, *, simplified: bool = False) -> str:
+        text = unicodedata.normalize("NFKC", str(value or "")).casefold()
+        text = re.sub(r"[\s，。；、,:：;（）()《》“”\"'·—_-]+", "", text)
+        if simplified:
+            text = text.replace("相互", "").replace("的", "")
+        return text
+
+    def resolve_executable_bundle(
+        self,
+        knowledge_point_name: str,
+        *,
+        required_question_count: int = 3,
+        preferred_scope: str = "",
+    ) -> dict[str, Any] | None:
+        """Bind a natural model label to trusted atlas data for execution."""
+
+        query = self._normalized_learning_label(knowledge_point_name)
+        simplified_query = self._normalized_learning_label(
+            knowledge_point_name, simplified=True
+        )
+        if not query or required_question_count <= 0:
+            return None
+        self.ensure_hierarchy()
+        self.ensure_questions()
+        self.ensure_videos()
+        normalized_scope = self._normalized_learning_label(preferred_scope)
+        preferred_books = {
+            book
+            for book in self.tree
+            if self._normalized_learning_label(book)
+            and self._normalized_learning_label(book) in normalized_scope
+        }
+
+        ranked: list[tuple[int, int, int, str, dict[str, Any]]] = []
+        for kp_id, kp in self.kps.items():
+            if preferred_books and str(kp.get("kp_lv1") or "") not in preferred_books:
+                continue
+            questions = self.questions_by_kp.get(kp_id, [])
+            if len(questions) < required_question_count:
+                continue
+            aliases = [
+                str(kp.get("kp_lv3") or ""),
+                *re.split(r"[；;、]", str(kp.get("other_name") or "")),
+            ]
+            labels = [
+                (
+                    self._normalized_learning_label(label),
+                    self._normalized_learning_label(label, simplified=True),
+                )
+                for label in aliases
+                if str(label).strip()
+            ]
+            score = 0
+            for label, simplified_label in labels:
+                if query == label:
+                    score = max(score, 1000)
+                elif simplified_query and simplified_query == simplified_label:
+                    score = max(score, 900)
+                elif min(len(query), len(label)) >= 4 and (
+                    query in label or label in query
+                ):
+                    score = max(score, 700 + min(len(query), len(label)))
+                elif (
+                    min(len(simplified_query), len(simplified_label)) >= 4
+                    and (
+                        simplified_query in simplified_label
+                        or simplified_label in simplified_query
+                    )
+                ):
+                    score = max(
+                        score,
+                        600 + min(len(simplified_query), len(simplified_label)),
+                    )
+            if score <= 0:
+                continue
+            kp_scope = self._normalized_learning_label(
+                f"{kp.get('kp_lv1') or ''}{kp.get('kp_lv2') or ''}"
+            )
+            if normalized_scope and self._normalized_learning_label(
+                kp.get("kp_lv1") or ""
+            ) in normalized_scope:
+                score += 2000
+            elif normalized_scope and min(len(normalized_scope), len(kp_scope)) >= 4 and (
+                normalized_scope in kp_scope or kp_scope in normalized_scope
+            ):
+                score += 1000
+            ranked.append(
+                (
+                    score,
+                    min(len(questions), 99),
+                    min(len(self.videos_by_kp.get(kp_id, [])), 99),
+                    str(kp.get("order") or ""),
+                    kp,
+                )
+            )
+        if not ranked:
+            return None
+        ranked.sort(key=lambda item: (-item[0], -item[2], -item[1], item[3]))
+        kp = dict(ranked[0][4])
+        kp_id = str(kp["kp_id"])
+        return {
+            "source": "knowledge_atlas",
+            "kp": kp,
+            "kp_id": kp_id,
+            "knowledge_point_name": str(kp.get("kp_lv3") or kp_id),
+            "questions": [
+                dict(row)
+                for row in self.questions_by_kp[kp_id][:required_question_count]
+            ],
+            "question_count": len(self.questions_by_kp[kp_id]),
+            "video_count": len(self.videos_by_kp.get(kp_id, [])),
+        }
+
     def ensure_chunk_offsets(self) -> None:
         if self._chunks_ready:
             return
@@ -479,6 +594,56 @@ class DeliveryKnowledgeMapStore:
         if not isinstance(supplied_resource_ref, dict):
             return None
         requested_kp_id = str(supplied_resource_ref.get("kp_id") or "").strip()
+        requested_chapter = str(
+            supplied_resource_ref.get("learning_chapter")
+            or supplied_resource_ref.get("chapter")
+            or ""
+        ).strip()
+        if not requested_kp_id and requested_chapter:
+            self.ensure_hierarchy()
+            self.ensure_videos()
+            normalized_scope = self._normalized_learning_label(requested_chapter)
+            ranked: list[tuple[int, str, str, dict[str, Any]]] = []
+            for kp_id, rows in self.videos_by_kp.items():
+                kp = self.kps.get(kp_id) or {}
+                book = self._normalized_learning_label(kp.get("kp_lv1") or "")
+                chapter = self._normalized_learning_label(kp.get("kp_lv2") or "")
+                topic = self._normalized_learning_label(kp.get("kp_lv3") or "")
+                score = 0
+                if book and book in normalized_scope:
+                    score += 4
+                if chapter and (
+                    chapter in normalized_scope or normalized_scope in chapter
+                ):
+                    score += 8
+                if topic and topic in normalized_scope:
+                    score += 2
+                if score >= 8 and rows:
+                    ranked.append(
+                        (
+                            score,
+                            str(kp.get("order") or ""),
+                            kp_id,
+                            sorted(
+                                rows,
+                                key=lambda row: (
+                                    str(row.get("bvid") or ""),
+                                    int(row.get("page") or 0),
+                                    float(row.get("start_seconds") or 0),
+                                ),
+                            )[0],
+                        )
+                    )
+            if ranked:
+                ranked.sort(key=lambda item: (-item[0], item[1], item[2]))
+                row = ranked[0][3]
+                supplied_resource_ref = {
+                    "provider": "bilibili",
+                    "bvid": row.get("bvid"),
+                    "page": row.get("page"),
+                    "start_seconds": row.get("start_seconds"),
+                    "end_seconds": row.get("end_seconds"),
+                }
         if requested_kp_id:
             self.ensure_videos()
             rows = sorted(

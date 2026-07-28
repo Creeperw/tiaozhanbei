@@ -9,6 +9,7 @@ class PlannerModelOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     task_type: Literal[
+        "casual_conversation",
         "knowledge_explanation",
         "learning_plan",
         "personalized_review_card",
@@ -22,6 +23,15 @@ class PlannerModelOutput(BaseModel):
             "必须返四个枚举值之一；纯学情查询和非规划任务返回null。"
         ),
     )
+    requires_clarification: bool = Field(
+        default=False,
+        description="仅当用户要求规划、但结合上下文仍无法判断规划层级时为true。",
+    )
+    clarification_question: str | None = Field(
+        default=None,
+        max_length=220,
+        description="需要澄清规划层级时给用户的一条自然语言追问；否则为null。",
+    )
     selected_agents: list[
         Literal[
             "memory_agent",
@@ -33,7 +43,7 @@ class PlannerModelOutput(BaseModel):
             "audit_agent",
         ]
     ] = Field(
-        min_length=1,
+        default_factory=list,
         description="完成当前交付物所需的最小充分Agent集合，必须满足能力目录中的依赖关系。",
     )
     routing_reason: str = Field(

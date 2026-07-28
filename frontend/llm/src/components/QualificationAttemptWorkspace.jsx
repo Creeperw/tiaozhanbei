@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Bookmark, ChevronLeft, ChevronRight, ClipboardList, LogOut, PanelRightClose, PanelRightOpen, X } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
-import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
+import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from './WorkshopSaveActions';
 
 const request = async (path, options = {}) => {
   const response = await fetchWithAuth(`/api/v1${path}`, options);
@@ -79,6 +79,15 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
     } else setAnswers({ ...answers, [current.question_id]: value });
   };
   const formatTime = (value) => `${String(Math.floor((value || 0) / 60)).padStart(2, '0')}:${String((value || 0) % 60).padStart(2, '0')}`;
+  const activeFavorite = current ? {
+    resource_id: current.question_id,
+    title: `综合套题 · ${String(current.question_content || '').slice(0, 80)}`,
+    content: {
+      question_content: current.question_content,
+      question_type: current.question_type,
+      options: current.options,
+    },
+  } : null;
 
   if (report) {
     const reportItem = report.items.find((item) => item.position === reportPosition) || report.items[0];
@@ -114,7 +123,7 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
         <button ref={cardToggleRef} type="button" title={cardOpen ? '收起答题卡' : '展开答题卡'} aria-label={cardOpen ? '收起答题卡' : '展开答题卡'} aria-expanded={cardOpen} aria-controls="qualification-answer-card" onClick={() => setCardOpen(!cardOpen)} className={`${buttonBase} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-emerald-400 hover:text-emerald-800`}>{cardOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}<span className="hidden sm:inline">答题卡</span></button>
       </header>
       <article className="mx-auto max-w-3xl px-5 py-8 sm:py-10">
-        <div className="flex gap-3 text-lg font-medium leading-8 text-slate-950"><span className="mt-0.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-sm font-bold text-emerald-800">{position}</span><span>{current.question_content}</span></div>
+        <div className="flex items-start gap-3 text-lg font-medium leading-8 text-slate-950"><span className="mt-0.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-sm font-bold text-emerald-800">{position}</span><span className="min-w-0 flex-1">{current.question_content}</span>{activeFavorite && <FavoriteQuestionIconButton question={activeFavorite} source="综合套题" />}</div>
         <div className="mt-6 space-y-3">{current.options.map((option) => { const value = optionValue(option); const checked = String(answers[current.question_id] || '').split(',').includes(value); return <label key={value} className={`flex cursor-pointer gap-3 rounded-xl border p-3.5 text-sm transition ${checked ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}><input type={current.question_type === 'multiple_choice' ? 'checkbox' : 'radio'} checked={checked} onChange={() => selectAnswer(value)} name={current.question_id} disabled={submitted} /><span><strong className="mr-1.5 text-slate-900">{value}.</strong>{option.content}</span></label>; })}</div>
         {attempt.answer_mode === 'practice' && <PracticeExplanation key={current.question_id} attemptId={attempt.attempt_id} questionId={current.question_id} />}
       </article>

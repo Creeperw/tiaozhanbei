@@ -113,6 +113,41 @@ class DailyTaskSemanticPlannerModel:
 
 
 @pytest.mark.asyncio
+async def test_plain_greeting_never_enters_learning_plan_or_resource_chain() -> None:
+    model = CapturingPlannerModel()
+    result = await PlannerAgent(model).run(
+        {
+            "case_id": "C_GREETING",
+            "trace_id": "T_GREETING",
+            "request_id": "R_GREETING",
+            "execution_id": "E_GREETING",
+            "step_id": "planner",
+            "learner_id": "L_GREETING",
+            "user_request": "你好！",
+            "messages": [{"role": "user", "content": "你好！"}],
+        }
+    )
+
+    assert result.payload.task_type == "casual_conversation"
+    assert result.payload.plan_scope is None
+    assert result.payload.selected_agents == []
+    assert result.payload.requires_audit is False
+    assert model.payload is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["您好", "hi", "谢谢", "再见", "你能做什么？"],
+)
+def test_casual_conversation_boundary_examples(message: str) -> None:
+    assert PlannerAgent._is_casual_conversation(message) is True
+
+
+def test_greeting_with_a_real_learning_request_is_not_swallowed() -> None:
+    assert PlannerAgent._is_casual_conversation("你好，请给我制定短期计划") is False
+
+
+@pytest.mark.asyncio
 async def test_plan_scope_deterministically_forces_learning_plan_route() -> None:
     result = await PlannerAgent(ScopeIgnoringPlannerModel()).run(
         {

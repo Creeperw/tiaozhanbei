@@ -205,7 +205,7 @@ def _normalize(payload: Any, *, require_audit: bool = False) -> tuple[dict[str, 
         if require_audit:
             audit = {
                 "decision": "needs_human_review",
-                "reason": "case grading requires an explicit audit",
+                "reason": "当前题型缺少显式审核结果，暂不写回学习状态。",
                 "confidence": grading["confidence"],
             }
         else:

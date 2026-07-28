@@ -1988,7 +1988,11 @@ def build_path_candidates(
                     "retention": None,
                     "resource_type": "question",
                     "resource_id": str(row.question_id),
-                    "difficulty": row.difficulty,
+                    "difficulty": (
+                        row.difficulty
+                        if str(row.difficulty_source or "").strip()
+                        else None
+                    ),
                 }
             )
     else:

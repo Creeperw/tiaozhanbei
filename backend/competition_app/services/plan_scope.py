@@ -33,6 +33,9 @@ _PLAN_CLARIFICATION_ANSWER = re.compile(
     r"我(?:想|要|准备)考|零基础|学习基础|学过|专业|"
     r"每周|每天|一周|一天|小时|分钟|上午|下午|晚上|早晨)"
 )
+_PLAN_PREREQUISITE_CONSENT = re.compile(
+    r"^(?:可以|好|好的|是|需要|行|没问题|先制定|先建立|请先制定|请先建立)[。！!，,\s]*$"
+)
 
 
 def infer_plan_scope(user_request: str) -> PlanScope | None:
@@ -95,7 +98,8 @@ def infer_continued_plan_scope(
         return None
     if _NON_PLANNING_TASK.search(request):
         return None
-    if not _PLAN_CLARIFICATION_ANSWER.search(request):
+    consent = bool(_PLAN_PREREQUISITE_CONSENT.search(request))
+    if not _PLAN_CLARIFICATION_ANSWER.search(request) and not consent:
         return None
 
     prior_messages = list(messages)
@@ -105,6 +109,16 @@ def infer_continued_plan_scope(
         and str(prior_messages[-1].get("content", "")).strip() == request
     ):
         prior_messages = prior_messages[:-1]
+
+    if consent:
+        for item in reversed(prior_messages[-6:]):
+            if str(item.get("role", "")) != "assistant":
+                continue
+            content = str(item.get("content", "") or "")
+            if "是否先制定短期计划" in content:
+                return "short_term"
+            if "是否先建立长期规划" in content:
+                return "long_term"
 
     for item in reversed(prior_messages[-10:]):
         content = str(item.get("content", "") or "").strip()

@@ -1525,14 +1525,17 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
 
     def test_stable_practice_endpoint_filters_objective_and_case_questions_without_kp(self):
         with self.Session() as db:
-            db.add(database.KnowledgePoint(kp_id="KP_MODE", name="题型筛选", status="active"))
+            db.add_all([
+                database.KnowledgePoint(kp_id="KP_MODE", name="题型筛选", status="active"),
+                database.KnowledgePoint(kp_id="KP_MODE_ALIAS", name="题型筛选", status="active"),
+            ])
             db.add_all([
                 database.QuestionBankItem(
                     question_id="Q_OBJECTIVE",
                     stem="四君子汤由哪些药物组成？",
                     answer="A",
                     analysis="人参、白术、茯苓、炙甘草。",
-                    kp_ids_json='["KP_MODE"]',
+                    kp_ids_json='["KP_MODE", "KP_MODE_ALIAS"]',
                     question_type="single_choice",
                     difficulty=1,
                     quality_score=1.0,
@@ -1544,7 +1547,7 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
                     question_content="四君子汤由哪些药物组成？",
                     options_json='[{"option_id":"A","content":"人参、白术、茯苓、炙甘草"}]',
                     answer_json='["A"]',
-                    kp_ids_json='["KP_MODE"]',
+                    kp_ids_json='["KP_MODE", "KP_MODE_ALIAS"]',
                 ),
                 database.QuestionBankItem(
                     question_id="Q_CASE",
@@ -1840,7 +1843,8 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertTrue(payload["grading_artifact_id"])
         self.assertTrue(payload["audit_id"])
         self.assertEqual(payload["writeback"]["status"], "applied")
-        self.assertNotIn("standard_answer", payload["grading"])
+        self.assertEqual(payload["grading"]["standard_answer"], "脾胃气虚证")
+        self.assertTrue(payload["grading"]["question_explanation"])
         runner.assert_called_once()
         with self.Session() as db:
             attempt = db.query(database.LearningAttemptRecord).filter_by(attempt_id=payload["attempt_id"]).one()

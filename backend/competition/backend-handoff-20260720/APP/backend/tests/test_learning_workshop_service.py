@@ -65,6 +65,10 @@ class LearningWorkshopServiceTests(unittest.TestCase):
                             "stem": "君药是？",
                             "options": ["A. 人参", "B. 甘草"],
                             "reference_answer": "A. 人参",
+                            "tags": ["四君子汤"],
+                            "source_metadata": {
+                                "kp_names": {"KP_1": "四君子汤"}
+                            },
                             "bridges": [{"kp_id": "KP_1"}],
                         },
                     }],
@@ -78,6 +82,7 @@ class LearningWorkshopServiceTests(unittest.TestCase):
             self.assertIsNotNone(paper["timing"]["started_at"])
             self.assertGreater(paper["timing"]["remaining_seconds"], 0)
             self.assertEqual(paper["items"][0]["options"], ["A. 人参", "B. 甘草"])
+            self.assertEqual(paper["items"][0]["kp_names"], ["四君子汤"])
             self.assertEqual(paper["items"][0]["max_score"], 25)
             record = db.query(database.PaperInstanceRecord).filter_by(
                 paper_id=published["paper_id"]

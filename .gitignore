@@ -245,3 +245,5 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# User-scoped workshop note uploads are runtime data.
+backend/competition_app/data/workshop_note_images/

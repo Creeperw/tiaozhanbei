@@ -56,3 +56,9 @@ export const deleteNote = (noteId) => request(
   `/workshop/notes/${encodeURIComponent(noteId)}`,
   { method: 'DELETE' },
 );
+
+export const uploadNoteImage = async (file) => {
+  const form = new FormData();
+  form.append('file', file);
+  return request('/workshop/note-images', { method: 'POST', body: form });
+};

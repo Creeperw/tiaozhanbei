@@ -8,7 +8,11 @@ from pydantic import ValidationError
 from competition_app.agents.common import envelope
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.base import AgentEnvelope
-from competition_app.contracts.knowledge import QuestionDetail, QuestionRetrievalMetadata
+from competition_app.contracts.knowledge import (
+    QuestionBridge,
+    QuestionDetail,
+    QuestionRetrievalMetadata,
+)
 from competition_app.contracts.paper import ExamPaperDraft, ExamPaperItem, QuestionCandidatePool
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
@@ -51,6 +55,8 @@ class PaperAssemblyAgent:
                         "question_type": item.question_type,
                         "stem": item.stem,
                         "tags": item.tags,
+                        "has_reference_answer": bool(item.reference_answer.strip()),
+                        "has_analysis": bool((item.analysis or "").strip()),
                     }
                     for item in unit.items
                 ],
@@ -145,6 +151,12 @@ class PaperAssemblyAgent:
                 system_constraints.append(
                     f"模型选择的题目{selected.question_id}不在蓝图单元"
                     f"{selected.unit_id}候选池中，系统已丢弃该越界选择。"
+                )
+                continue
+            if not self._has_complete_solution(question):
+                system_constraints.append(
+                    f"候选题{selected.question_id}缺少标准答案或解析，"
+                    "系统已跳过并由完整候选或原创题补足。"
                 )
                 continue
             normalized_stem = self._normalize_stem(question.stem)
@@ -247,9 +259,17 @@ class PaperAssemblyAgent:
                 # references per generated question. Keep provenance honest by
                 # treating every generated gap item as model knowledge.
                 source_tier="model_knowledge",
-                tags=[],
-                source_metadata={"generated_by": "expert_agent"},
-                bridges=[],
+                tags=[unit.knowledge_module],
+                source_metadata={
+                    "generated_by": "expert_agent",
+                    "kp_names": self._unit_kp_name_hints(
+                        candidate_pool, generated.unit_id
+                    ),
+                },
+                bridges=self._generated_question_bridges(
+                    self._unit_kp_ids(candidate_pool, generated.unit_id),
+                    unit_id=generated.unit_id,
+                ),
                 retrieval=QuestionRetrievalMetadata(
                     channels=[], channel_scores={}, fusion_score=0.0
                 ),
@@ -276,6 +296,8 @@ class PaperAssemblyAgent:
                 blueprint_unit = blueprint_units[unit.unit_id]
                 for candidate in unit.items:
                     if len(items) >= required_total or candidate.question_id in selected_ids:
+                        continue
+                    if not self._has_complete_solution(candidate):
                         continue
                     if blueprint_unit.question_type_preferences and not self._matches_question_type(
                         candidate.question_type, blueprint_unit.question_type_preferences
@@ -323,6 +345,7 @@ class PaperAssemblyAgent:
                     (unit, candidate)
                     for unit in candidate_pool.units
                     for candidate in unit.items
+                    if self._has_complete_solution(candidate)
                 ),
                 None,
             )
@@ -383,6 +406,13 @@ class PaperAssemblyAgent:
             ],
         )
         return envelope(context, "expert_agent", "exam_paper_draft", draft)
+
+    @staticmethod
+    def _has_complete_solution(question: QuestionDetail) -> bool:
+        return bool(
+            question.reference_answer.strip()
+            and (question.analysis or "").strip()
+        )
 
     @classmethod
     def _normalize_model_output(
@@ -671,9 +701,19 @@ class PaperAssemblyAgent:
                         options=generated.options,
                         origin="generated",
                         source_tier="model_knowledge",
-                        tags=[],
-                        source_metadata={"generated_by": "expert_agent"},
-                        bridges=[],
+                        tags=[target_unit.knowledge_module],
+                        source_metadata={
+                            "generated_by": "expert_agent",
+                            "kp_names": self._unit_kp_name_hints(
+                                candidate_pool, generated.unit_id
+                            ),
+                        },
+                        bridges=self._generated_question_bridges(
+                            self._unit_kp_ids(
+                                candidate_pool, target_unit.unit_id
+                            ),
+                            unit_id=target_unit.unit_id,
+                        ),
                         retrieval=QuestionRetrievalMetadata(
                             channels=[], channel_scores={}, fusion_score=0.0
                         ),
@@ -701,6 +741,71 @@ class PaperAssemblyAgent:
             if added == 0:
                 break
         return generated_items
+
+    @staticmethod
+    def _unit_kp_ids(
+        candidate_pool: QuestionCandidatePool,
+        unit_id: str,
+    ) -> list[str]:
+        direct = next(
+            (
+                list(unit.resolved_kp_ids)
+                for unit in candidate_pool.units
+                if unit.unit_id == unit_id and unit.resolved_kp_ids
+            ),
+            [],
+        )
+        if direct:
+            return list(dict.fromkeys(direct))
+        return list(
+            dict.fromkeys(
+                kp_id
+                for unit in candidate_pool.units
+                for kp_id in unit.resolved_kp_ids
+            )
+        )
+
+    @staticmethod
+    def _generated_question_bridges(
+        kp_ids: list[str],
+        *,
+        unit_id: str,
+    ) -> list[QuestionBridge]:
+        return [
+            QuestionBridge(
+                kp_id=kp_id,
+                bridge_layer="llm",
+                relation="blueprint_unit_scope",
+                confidence=0.8,
+                rank=index,
+                evidence_chunk_uid=f"blueprint-unit:{unit_id}",
+                match_method="resolved_blueprint_unit",
+            )
+            for index, kp_id in enumerate(kp_ids, start=1)
+            if str(kp_id).strip()
+        ]
+
+    @staticmethod
+    def _unit_kp_name_hints(
+        candidate_pool: QuestionCandidatePool,
+        unit_id: str,
+    ) -> dict[str, str]:
+        """Carry learner-facing KP names alongside generated bridge IDs."""
+
+        unit = next(
+            (item for item in candidate_pool.units if item.unit_id == unit_id),
+            None,
+        )
+        if unit is None:
+            return {}
+        hints: dict[str, str] = {}
+        for question in unit.items:
+            tags = [str(value).strip() for value in question.tags if str(value).strip()]
+            for index, bridge in enumerate(question.bridges):
+                if bridge.kp_id in hints or not tags:
+                    continue
+                hints[bridge.kp_id] = tags[index] if index < len(tags) else tags[0]
+        return hints
 
     @staticmethod
     def _normalize_stem(value: str) -> str:

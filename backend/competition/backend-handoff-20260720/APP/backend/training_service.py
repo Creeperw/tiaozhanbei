@@ -50,8 +50,38 @@ def _score_answer(student_answer: str, standard_answer: str) -> tuple[bool, int]
     if normalized_student == normalized_standard or normalized_standard in normalized_student:
         return True, 100
     shared_chars = set(normalized_student) & set(normalized_standard)
-    partial_score = 60 if len(shared_chars) >= max(2, len(set(normalized_standard)) // 2) else 40
+    partial_score = (
+        60
+        if len(shared_chars) >= max(2, len(set(normalized_standard)) // 2)
+        else 0
+    )
     return False, partial_score
+
+
+def _fill_blank_score(student_answer: str, standard_answer: str) -> tuple[bool, int]:
+    """Grade fill blanks by answer-unit coverage without a guaranteed base score."""
+
+    def units(value: str) -> list[str]:
+        return [
+            item.replace(" ", "")
+            for item in re.split(r"[\n,，、;；/|]+", value or "")
+            if item.replace(" ", "")
+        ]
+
+    expected = units(standard_answer)
+    supplied = units(student_answer)
+    if not expected:
+        return False, 0
+    matched: set[int] = set()
+    for answer in supplied:
+        for index, target in enumerate(expected):
+            if index in matched:
+                continue
+            if answer == target or target in answer:
+                matched.add(index)
+                break
+    score = round(100 * len(matched) / len(expected))
+    return len(matched) == len(expected), score
 
 
 def _choice_tokens(value: str) -> set[str]:
@@ -62,16 +92,31 @@ def _choice_tokens(value: str) -> set[str]:
     return set(parts)
 
 
+def _true_false_token(value: str) -> bool | None:
+    """Normalize the common UI, import and textbook representations."""
+
+    compact = re.sub(r"[\s\[\]()（）{}'\"。.]", "", value or "").lower()
+    if compact in {"√", "✓", "✔", "对", "正确", "是", "true", "t", "1"}:
+        return True
+    if compact in {"×", "✕", "✖", "错", "错误", "否", "false", "f", "0"}:
+        return False
+    return None
+
+
 def _objective_grading_payload(submission: dict[str, Any]) -> dict[str, Any]:
     question_type = _text(submission.get("question_type"))
     student_answer = _text(submission.get("student_answer"))
     standard_answer = _text(submission.get("standard_answer"))
-    kp_names = [_text(item) for item in submission.get("knowledge_point_names", []) if _text(item)]
+    kp_names = list(dict.fromkeys(
+        _text(item)
+        for item in submission.get("knowledge_point_names", [])
+        if _text(item)
+    ))
     if not kp_names:
-        kp_names = [
+        kp_names = list(dict.fromkeys(
             _text(item) for item in submission.get("knowledge_points", [])
             if _text(item) and re.search(r"[\u4e00-\u9fff]", _text(item))
-        ]
+        ))
     point_text = "、".join(kp_names)
     if question_type in {"multiple_choice", "多选题", "多项选择题"}:
         selected = _choice_tokens(student_answer)
@@ -80,10 +125,23 @@ def _objective_grading_payload(submission: dict[str, Any]) -> dict[str, Any]:
         is_correct = bool(correct) and selected == correct
         score = 0 if wrong or not correct else (100 if is_correct else round(100 * len(selected & correct) / len(correct)))
         rule_note = "多选题含错误选项，按规则计 0 分。" if wrong else "多选题按正确选项覆盖情况计分。"
+    elif question_type in {"single_choice", "单选题", "单项选择题"}:
+        selected = _choice_tokens(student_answer)
+        correct = _choice_tokens(standard_answer)
+        is_correct = len(selected) == 1 and selected == correct
+        score = 100 if is_correct else 0
+        rule_note = "单选题由系统按标准选项精确判分。"
+    elif question_type in {"true_false", "判断题"}:
+        selected = _true_false_token(student_answer)
+        correct = _true_false_token(standard_answer)
+        is_correct = selected is not None and selected == correct
+        score = 100 if is_correct else 0
+        rule_note = "判断题由系统在统一正确/错误表述后精确判分。"
+    elif question_type in {"fill_blank", "填空题"}:
+        is_correct, score = _fill_blank_score(student_answer, standard_answer)
+        rule_note = "填空题按标准答案中的有效填空单元覆盖情况计分，不设置保底分。"
     else:
         is_correct, score = _score_answer(student_answer, standard_answer)
-        if question_type in {"single_choice", "true_false", "单选题", "单项选择题", "判断题"} and not is_correct:
-            score = 0
         rule_note = "客观题由系统依据标准答案自动判分。"
     topic_note = f"本题考查{point_text}。" if point_text else "本题的知识点名称暂未匹配，系统不会用内部编号代替。"
     analysis = f"{topic_note}{rule_note}"
@@ -104,6 +162,12 @@ def _objective_grading_payload(submission: dict[str, Any]) -> dict[str, Any]:
             "error_type": error_type,
             "content": analysis,
             "source": "objective_practice_grading",
+        },
+        "audit": {
+            "decision": "pass",
+            "reason": "客观题已由服务端标准答案和确定性计分规则复核。",
+            "confidence": 1.0,
+            "audit_source": "deterministic_objective_grading",
         },
         "agent_trace": [
             {"agent": "planner_agent", "action": "识别为客观题批改", "status": "success"},
@@ -141,7 +205,11 @@ def _grade_submission_payload(
     student_answer = _text(submission.get("student_answer"))
     standard_answer = _text(submission.get("standard_answer"))
     knowledge_points = [_text(item) for item in submission.get("knowledge_points", []) if _text(item)]
-    knowledge_point_names = [_text(item) for item in submission.get("knowledge_point_names", []) if _text(item)]
+    knowledge_point_names = list(dict.fromkeys(
+        _text(item)
+        for item in submission.get("knowledge_point_names", [])
+        if _text(item)
+    ))
     is_correct, score = _score_answer(student_answer, standard_answer)
     error_type = "已掌握" if is_correct else _classify_error(submission)
     focus = _first_focus(profile, memories)

@@ -15,6 +15,23 @@ def request(*, message: str, workflow: str = "auto") -> ReviewCardRequest:
 
 
 @pytest.mark.asyncio
+async def test_plain_greeting_is_a_lightweight_conversation_without_business_agents(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(request(message="你好"))
+
+    assert result.status == "success"
+    assert result.task_type == "casual_conversation"
+    assert result.direct_response.startswith("你好！")
+    assert [item.producer for item in result.agent_outputs] == ["planner_agent"]
+    assert result.learning_plan is None
+    assert result.resource is None
+    assert result.audit is None
+
+
+@pytest.mark.asyncio
 async def test_planner_routes_plan_request_without_expert_or_audit(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
 

@@ -104,7 +104,9 @@ def _normalize_paper_scores(paper: PaperInstanceRecord, items: list[PaperItemRec
 def _kp_names(db: Session, kp_ids: list[str]) -> list[str]:
     rows = db.query(KnowledgePoint).filter(KnowledgePoint.kp_id.in_(kp_ids)).all() if kp_ids else []
     names = {str(row.kp_id): str(row.name) for row in rows if str(row.name or "").strip()}
-    return [names[kp_id] for kp_id in kp_ids if kp_id in names]
+    return list(dict.fromkeys(
+        names[kp_id] for kp_id in kp_ids if kp_id in names
+    ))
 
 
 def _normalize_submission_result(

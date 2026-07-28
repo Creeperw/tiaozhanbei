@@ -54,10 +54,10 @@ async function loadCurrentDailyTask(signal) {
   return payload.current_learning_task || payload.today_tasks?.[0] || null;
 }
 
-function EmptyPanel({ icon: Icon, title, description }) {
+function EmptyPanel({ icon, title, description }) {
   return (
     <div className="kp-training-empty">
-      <Icon aria-hidden="true" size={28} />
+      {React.createElement(icon, { 'aria-hidden': true, size: 28 })}
       <strong>{title}</strong>
       <p>{description}</p>
     </div>
@@ -213,7 +213,7 @@ export default function KnowledgePointTrainingHub({
           <div>
             <span><Target aria-hidden="true" size={15} />当前训练知识点</span>
             <h2>{selected.kpName}</h2>
-            <p>{[selected.book, selected.chapter].filter(Boolean).join(' · ') || `知识点编号 ${selected.kpId}`}</p>
+            <p>{[selected.book, selected.chapter].filter(Boolean).join(' · ') || '围绕当前知识点进行训练'}</p>
           </div>
         </header>
         <QuestionTrainingPanel
@@ -233,7 +233,7 @@ export default function KnowledgePointTrainingHub({
         <EmptyPanel
           icon={CircleAlert}
           title="今日任务缺少知识点绑定"
-          description="该任务未携带正式知识点编号，已停止加载，避免把其他知识点题目计入今日任务。请刷新或重新制定今日任务。"
+          description="该任务未携带可解析的知识点，已停止加载，避免把其他知识点题目计入今日任务。请刷新或重新制定今日任务。"
         />
         <h2 id="kp-training-binding-error" className="sr-only">今日任务缺少知识点绑定</h2>
       </section>

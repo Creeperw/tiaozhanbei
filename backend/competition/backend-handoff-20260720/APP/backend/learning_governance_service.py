@@ -441,6 +441,11 @@ def build_resource_match_report(
     task = plan_context.get("learning_task") if isinstance(plan_context, dict) else {}
     if isinstance(task, dict):
         target_kps.extend(str(item) for item in task.get("kp_ids", []) if str(item).strip())
+        target_kps.extend(
+            str(item.get("kp_id"))
+            for item in task.get("items", [])
+            if isinstance(item, dict) and str(item.get("kp_id") or "").strip()
+        )
     target_kps = list(dict.fromkeys(target_kps))
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).one_or_none()
     preferences = " ".join(
@@ -589,7 +594,7 @@ def build_resource_match_report(
             if not target_set else "当前没有可验证的匹配资源。"
         ) if not selected else "",
         "data_sources": [
-            {"source_id": "recommendation_target", "sources": ["learning_insights.weak_points", "current_learning_task.kp_ids"]},
+            {"source_id": "recommendation_target", "sources": ["learning_insights.weak_points", "current_learning_task.items[].kp_id"]},
             {"source_id": "resource_candidates", "tables": ["knowledge_card_records", "teaching_resources", "question_bank_items"]},
             {"source_id": "learner_preferences", "table": "user_profiles", "fields": ["exercise_preferences", "custom_needs", "survey_json"]},
             {"source_id": "observed_question_time", "table": "question_attempt", "fields": ["question_id", "response_time_seconds", "answered_at"], "window_days": 30},

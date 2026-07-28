@@ -79,6 +79,17 @@ def test_daily_task_message_names_chapter_and_focus_knowledge_points() -> None:
     assert "预计用时：45 分钟" in message
 
 
+def test_casual_conversation_returns_direct_natural_language() -> None:
+    message = workflow_result_to_markdown({
+        "status": "success",
+        "task_type": "casual_conversation",
+        "direct_response": "你好！今天想学点什么？",
+    })
+
+    assert message == "你好！今天想学点什么？"
+    assert "流程已在当前节点暂停" not in message
+
+
 def test_paper_message_keeps_exam_body_in_workspace() -> None:
     message = workflow_result_to_markdown({
         "status": "success",

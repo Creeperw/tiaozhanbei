@@ -118,7 +118,10 @@ export default function DashboardPage({
   const [textbookError, setTextbookError] = useState('');
   const [textbooksLoading, setTextbooksLoading] = useState(true);
   const [currentLearningTask, setCurrentLearningTask] = useState(null);
-  const [showAllTextbooks, setShowAllTextbooks] = useState(false);
+  const [showAllTextbooks, setShowAllTextbooks] = useState(
+    () => Boolean(navigationContext.expandAll),
+  );
+  const hidePlan = Boolean(navigationContext.hidePlan || navigationContext.libraryOnly);
 
   useEffect(() => {
     let cancelled = false;
@@ -412,7 +415,7 @@ export default function DashboardPage({
                 <div className="dashboard-daily__path-empty">教材目录正在准备中</div>
               ) : allTextbooks.length > 0 ? (
                 <>
-                  <section className="workshop-plan" aria-label="当前学习计划">
+                  {!hidePlan && <section className="workshop-plan" aria-label="当前学习计划">
                     <div className="workshop-plan__summary">
                       <span><Route aria-hidden="true" size={15} />Learning plan</span>
                       <h1>学习计划</h1>
@@ -446,7 +449,7 @@ export default function DashboardPage({
                         </>
                       )}
                     </div>
-                  </section>
+                  </section>}
                   <TextbookLibrary
                     books={visibleTextbooks}
                     emptyText="当前计划暂未匹配到教材"

@@ -279,7 +279,9 @@ class PaperItemRecord(Base):
     kp_snapshot_json = Column(Text, default="[]")
     evidence_refs_json = Column(Text, default="[]")
     source_kind = Column(String(120), default="")
-    standard_difficulty = Column(Integer, default=2)
+    # Optional source metadata. Current formal banks do not provide a rating;
+    # keep NULL instead of manufacturing a default difficulty.
+    standard_difficulty = Column(Integer, nullable=True, default=None)
     max_score_snapshot = Column(Float, nullable=False, default=100.0)
     created_at = Column(DateTime, default=utc_now)
     __table_args__ = (UniqueConstraint("paper_id", "position", name="uq_paper_item_position"),)
@@ -770,7 +772,9 @@ class QuestionBankItem(Base):
     analysis = Column(Text, default="")
     kp_ids_json = Column(Text, default="[]")
     question_type = Column(String(50), default="single_choice", index=True)
-    difficulty = Column(Float, default=2.0)
+    # Optional source metadata; populated only when an imported source declares it.
+    difficulty = Column(Float, nullable=True, default=None)
+    difficulty_source = Column(String(160), nullable=True, default=None)
     quality_score = Column(Float, default=0.7)
     source = Column(String(120), default="manual")
     status = Column(String(50), default="active", index=True)
@@ -787,7 +791,8 @@ class QuestionVersionRecord(Base):
     stem = Column(Text, default="")
     answer = Column(Text, default="")
     analysis = Column(Text, default="")
-    standard_difficulty = Column(Integer, default=2, index=True)
+    standard_difficulty = Column(Integer, nullable=True, default=None, index=True)
+    difficulty_source = Column(String(160), nullable=True, default=None)
     source_kind = Column(String(120), default="manual", index=True)
     status = Column(String(50), default="active", index=True)
     created_at = Column(DateTime, default=utc_now)
@@ -1034,7 +1039,8 @@ class LearningQuestion(Base):
     # Keep the existing database column name during the compatibility window,
     # while exposing the correctly spelled Python attribute everywhere else.
     explanation = Column("explaination", Text, default="")
-    difficulty = Column(Float, default=0.0, index=True)
+    difficulty = Column(Float, nullable=True, default=None, index=True)
+    difficulty_source = Column(String(160), nullable=True, default=None)
     kp_ids_json = Column(Text, default="[]")
     tokenized_content_json = Column(Text, default="[]")
     scoring_rubric = Column(Text, default="")
@@ -1399,11 +1405,37 @@ def _ensure_daily_task_contract_tables(bind):
                     ))
 
 
+def _ensure_optional_difficulty_columns(bind):
+    """Add provenance columns before strict schema compatibility validation."""
+
+    inspector = inspect(bind)
+    difficulty_columns = {
+        "question_bank_items": "difficulty_source",
+        "question_version_records": "difficulty_source",
+        "question": "difficulty_source",
+    }
+    with bind.begin() as connection:
+        for table_name, column_name in difficulty_columns.items():
+            if table_name not in inspector.get_table_names():
+                continue
+            columns = {
+                column["name"] for column in inspector.get_columns(table_name)
+            }
+            if column_name not in columns:
+                _add_column_if_missing_after_race(
+                    connection,
+                    table_name,
+                    column_name,
+                    f"ALTER TABLE {table_name} ADD COLUMN {column_name} VARCHAR(160) NULL",
+                )
+
+
 def _ensure_core_learning_contract_tables(bind):
     Base.metadata.create_all(
         bind=bind,
         tables=[Base.metadata.tables[table_name] for table_name in _CORE_LEARNING_CONTRACT_TABLES],
     )
+    _ensure_optional_difficulty_columns(bind)
     # The bound-practice claim is part of the core contract, while its nullable
     # task binding is introduced by the daily-task contract. Repair it before
     # validating the core table shape on existing deployments.
@@ -1633,9 +1665,11 @@ def _ensure_formal_content_tables(bind):
         bind=bind,
         tables=[Base.metadata.tables[table_name] for table_name in _FORMAL_CONTENT_TABLES],
     )
+    _ensure_optional_difficulty_columns(bind)
+    inspector = inspect(bind)
     if bind.dialect.name != "sqlite":
         return
-    columns = {column["name"] for column in inspect(bind).get_columns("question_ingestion_task_records")}
+    columns = {column["name"] for column in inspector.get_columns("question_ingestion_task_records")}
     additions = (
         ("retry_count", "INTEGER NOT NULL DEFAULT 0"),
         ("started_at", "DATETIME NULL"),

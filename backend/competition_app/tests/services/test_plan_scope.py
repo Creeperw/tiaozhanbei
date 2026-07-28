@@ -53,3 +53,16 @@ def test_explicit_non_planning_request_can_switch_away_from_plan_context() -> No
     ]
 
     assert infer_continued_plan_scope("请解释阴阳是什么", messages) is None
+
+
+def test_prerequisite_consent_resumes_the_requested_short_term_layer() -> None:
+    messages = [
+        {"role": "user", "content": "再给我今天的任务"},
+        {
+            "role": "assistant",
+            "content": "当前还没有有效短期计划，是否先制定短期计划？",
+        },
+        {"role": "user", "content": "可以"},
+    ]
+
+    assert infer_continued_plan_scope("可以", messages) == "short_term"

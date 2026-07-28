@@ -301,6 +301,31 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def ensure_executable_knowledge_bundle(
+        self,
+        bundle: dict[str, Any],
+        *,
+        required_question_count: int = 3,
+    ) -> str:
+        """Register one trusted atlas bundle in the executable task store."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            kp_id = service.ensure_executable_knowledge_bundle(
+                db,
+                bundle,
+                required_question_count=required_question_count,
+            )
+            db.commit()
+            return kp_id
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
     def record_daily_checkin(self, external_user_id: str) -> dict[str, Any]:
         database = importlib.import_module("APP.backend.database")
         checkin = importlib.import_module("APP.backend.checkin_service")
@@ -992,6 +1017,23 @@ class BackendHandoffRuntime:
             task_statuses = Counter(str(row.status or "unknown") for row in tasks)
             focus_statuses = Counter(str(row.status or "unknown") for row in focus_sessions)
             activity_types = Counter(str(row.activity_type or "unknown") for row in activities)
+            training_task_ids = {
+                str(row.resource_id)
+                for row in activities
+                if str(row.activity_type or "") == "training_workspace_task"
+                and row.resource_id
+            }
+            training_tasks = {}
+            if training_task_ids:
+                training_tasks = {
+                    str(row.task_id): row
+                    for row in db.query(database.TrainingTaskRecord)
+                    .filter(
+                        database.TrainingTaskRecord.user_id == user.id,
+                        database.TrainingTaskRecord.task_id.in_(training_task_ids),
+                    )
+                    .all()
+                }
             db.commit()
             return {
                 "schema_version": "1.0",
@@ -1024,6 +1066,16 @@ class BackendHandoffRuntime:
                         "score": float(row.score) if row.score is not None else None,
                         "duration_minutes": int(row.duration_minutes or 0),
                         "created_at": row.created_at.isoformat() if row.created_at else None,
+                        "title": (
+                            training_tasks.get(str(row.resource_id)).title
+                            if training_tasks.get(str(row.resource_id))
+                            else ""
+                        ),
+                        "task_type": (
+                            training_tasks.get(str(row.resource_id)).task_type
+                            if training_tasks.get(str(row.resource_id))
+                            else ""
+                        ),
                     }
                     for row in activities[:recent_limit]
                 ],
@@ -1489,12 +1541,12 @@ class BackendHandoffRuntime:
                     "stem": stem,
                     "options": options,
                     "kp_ids": kp_ids,
-                    "kp_names": [
+                    "kp_names": list(dict.fromkeys(
                         kp_names[kp_id]
                         for kp_id in kp_ids
                         if str(kp_names.get(kp_id) or "").strip()
                         and kp_names[kp_id] != kp_id
-                    ],
+                    )),
                     "request_id": request_id,
                     "source_scope": "formal_question_bank",
                 },
@@ -1876,6 +1928,7 @@ class BackendHandoffRuntime:
                 database.LearningAttemptRecord,
                 database.LearningAttemptItemRecord,
                 database.GradingResultRecord,
+                database.AuditResultRecord,
             )
             .join(
                 database.LearningAttemptItemRecord,
@@ -1887,9 +1940,18 @@ class BackendHandoffRuntime:
                 database.GradingResultRecord.attempt_item_id
                 == database.LearningAttemptItemRecord.attempt_item_id,
             )
+            .join(
+                database.AuditResultRecord,
+                database.AuditResultRecord.source_artifact_id
+                == database.GradingResultRecord.artifact_id,
+            )
             .filter(
                 database.LearningAttemptRecord.learner_id == user_id,
                 database.GradingResultRecord.status == "reviewed",
+                database.AuditResultRecord.source_artifact_version
+                == database.GradingResultRecord.version,
+                database.AuditResultRecord.decision == "pass",
+                database.AuditResultRecord.status.in_(("completed", "reviewed")),
             )
             .order_by(
                 database.LearningAttemptItemRecord.created_at.desc(),
@@ -1898,13 +1960,26 @@ class BackendHandoffRuntime:
             .limit(200)
             .all()
         )
-        for attempt, item, grading in graded_rows:
+        daily_groups: dict[str, list[tuple[Any, Any, Any]]] = {}
+        for attempt, item, grading, _audit in graded_rows:
+            if attempt.request_id:
+                seen_request_ids.add(str(attempt.request_id))
+            daily_item_id = str(attempt.daily_task_item_id or "").strip()
+            if daily_item_id:
+                daily_item = db.query(database.DailyTaskItemRecord).filter_by(
+                    task_item_id=daily_item_id,
+                    user_id=user_id,
+                ).one_or_none()
+                if daily_item is None or daily_item.status != "completed":
+                    continue
+                daily_groups.setdefault(daily_item_id, []).append(
+                    (attempt, item, grading)
+                )
+                continue
             source_id = f"HANDOFF_ITEM_{item.attempt_item_id}"
             if source_id in seen_attempt_ids:
                 continue
             seen_attempt_ids.add(source_id)
-            if attempt.request_id:
-                seen_request_ids.add(str(attempt.request_id))
             kp_ids = cls._json_list(grading.kp_ids_json)
             if not kp_ids:
                 kp_ids = cls._kp_snapshot_ids(item.kp_snapshot_json)
@@ -1924,6 +1999,66 @@ class BackendHandoffRuntime:
                     "kp_ids": kp_ids,
                     "hint_used": bool(item.hint_used),
                     "feedback": grading.error_reason,
+                    "completion_status": "completed",
+                    "grading_status": "reviewed",
+                    "audit_decision": "pass",
+                }
+            )
+        for daily_item_id, rows in daily_groups.items():
+            source_id = f"HANDOFF_DAILY_ITEM_{daily_item_id}"
+            if source_id in seen_attempt_ids:
+                continue
+            kp_ids = list(
+                dict.fromkeys(
+                    kp_id
+                    for _attempt, item, grading in rows
+                    for kp_id in (
+                        cls._json_list(grading.kp_ids_json)
+                        or cls._kp_snapshot_ids(item.kp_snapshot_json)
+                    )
+                )
+            )
+            if not kp_ids:
+                continue
+            answered_at = max(
+                (
+                    attempt.submitted_at or item.created_at
+                    for attempt, item, _grading in rows
+                    if attempt.submitted_at is not None or item.created_at is not None
+                ),
+                default=None,
+            )
+            ratios = [
+                max(0.0, min(1.0, grading.score / grading.max_score))
+                for _attempt, _item, grading in rows
+                if grading.score is not None
+                and grading.max_score is not None
+                and grading.max_score > 0
+            ]
+            seen_attempt_ids.add(source_id)
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": f"daily-task-item:{daily_item_id}",
+                    "submitted_answer": [
+                        item.submitted_answer for _attempt, item, _grading in rows
+                    ],
+                    "is_correct": all(
+                        bool(grading.is_correct)
+                        for _attempt, _item, grading in rows
+                    ),
+                    "score": (
+                        round(100 * sum(ratios) / len(ratios), 2)
+                        if ratios
+                        else 0.0
+                    ),
+                    "max_score": 100.0,
+                    "answered_at": answered_at.isoformat()
+                    if answered_at is not None
+                    else None,
+                    "kp_ids": kp_ids,
+                    "feedback": "知识点题组已全部完成，按整组结果进入复习队列。",
                     "completion_status": "completed",
                     "grading_status": "reviewed",
                     "audit_decision": "pass",
@@ -2000,6 +2135,32 @@ class BackendHandoffRuntime:
                     "audit_decision": "pass",
                 }
             )
+
+        all_kp_ids = list(dict.fromkeys(
+            kp_id
+            for attempt in attempts
+            for kp_id in attempt.get("kp_ids", [])
+            if str(kp_id or "").strip()
+        ))
+        kp_names = {
+            str(row.kp_id): str(row.name).strip()
+            for row in (
+                db.query(database.KnowledgePoint)
+                .filter(database.KnowledgePoint.kp_id.in_(all_kp_ids))
+                .all()
+                if all_kp_ids
+                else []
+            )
+            if str(row.name or "").strip() and str(row.name).strip() != str(row.kp_id)
+        }
+        for attempt in attempts:
+            attempt["kp_names"] = {
+                kp_id: kp_names[kp_id]
+                for kp_id in attempt.get("kp_ids", [])
+                if kp_id in kp_names
+            }
+            if len(attempt["kp_ids"]) == 1 and attempt["kp_ids"][0] in kp_names:
+                attempt["knowledge_point_name"] = kp_names[attempt["kp_ids"][0]]
 
         attempts.sort(key=lambda item: str(item.get("answered_at") or ""), reverse=True)
         return attempts[:100]

@@ -1,8 +1,10 @@
-.textbook-library { height:100%; padding:22px 26px; overflow-y:auto; background:linear-gradient(180deg,#f8fcfa,#f2f8f5); scrollbar-color:#b8d6c5 transparent; scrollbar-width:thin; }
-.textbook-library__heading { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding:5px 4px 16px; }
+.textbook-library { height:100%; padding:10px 26px 22px; overflow-y:auto; background:linear-gradient(180deg,#f8fcfa,#f2f8f5); scrollbar-color:#b8d6c5 transparent; scrollbar-width:thin; }
+.textbook-library__heading { display:grid; grid-template-columns:minmax(160px,.7fr) minmax(300px,520px) minmax(220px,1fr); align-items:center; gap:24px; padding:2px 4px 12px; }
 .textbook-library__heading span { color:#16805b; font-size:10px; font-weight:900; letter-spacing:.16em; text-transform:uppercase; }
 .textbook-library__heading h2 { margin:3px 0 0; color:#173e30; font-size:25px; }
 .textbook-library__heading p { margin:0; color:#70877d; font-size:12px; }
+.textbook-library__search { display:flex; align-items:center; gap:9px; width:100%; margin:0; border:1px solid #cfe1d7; border-radius:999px; padding:9px 14px; color:#6e8a7d; background:#fff; box-shadow:0 4px 12px rgba(30,82,58,.05); }
+.textbook-library__search input { width:100%; border:0; outline:0; color:#29483b; background:transparent; font-size:13px; }
 .textbook-library__list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
 .textbook-library-card { display:grid; grid-template-columns:96px minmax(0,1fr); gap:18px; min-height:146px; padding:14px; border:1px solid #dceae2; border-radius:20px; color:#24483a; background:#fff; text-align:left; box-shadow:0 7px 22px rgba(30,82,58,.06); cursor:pointer; transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease; }
 .textbook-library-card:hover { border-color:#86bea0; box-shadow:0 12px 28px rgba(30,82,58,.12); transform:translateY(-2px); }
@@ -21,7 +23,7 @@
 .textbook-library__expand span { color:#789087; font-size:11px; }
 .workshop-library-page { height:100%; min-height:0; overflow-y:auto; background:linear-gradient(180deg,#eef8f3,#f7fbf9); scrollbar-color:#b8d6c5 transparent; scrollbar-width:thin; }
 .workshop-library-page .textbook-library { height:auto; overflow:visible; }
-.workshop-plan { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(360px,.8fr); gap:18px; margin:22px 26px 4px; padding:20px; border:1px solid #d6e8de; border-radius:24px; background:linear-gradient(120deg,#fff 0%,#f5fbf7 58%,#e4f5eb 100%); box-shadow:0 12px 30px rgba(34,95,67,.08); }
+.workshop-plan { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(360px,.8fr); gap:18px; margin:10px 26px 2px; padding:16px 20px; border:1px solid #d6e8de; border-radius:22px; background:linear-gradient(120deg,#fff 0%,#f5fbf7 58%,#e4f5eb 100%); box-shadow:0 10px 24px rgba(34,95,67,.08); }
 .workshop-plan__summary { min-width:0; padding:8px 10px; }
 .workshop-plan__summary>span,.workshop-plan__focus>span { display:flex; align-items:center; gap:6px; color:#188159; font-size:10px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
 .workshop-plan__summary h1 { margin:5px 0 8px; color:#153e2e; font-size:27px; }
@@ -40,4 +42,4 @@
 .workshop-plan__focus button { display:inline-flex; align-items:center; gap:7px; margin-top:16px; border:0; border-radius:999px; padding:9px 14px; color:#176443; background:#fff; font-size:12px; font-weight:900; cursor:pointer; }
 @media (max-width:980px) { .workshop-plan{grid-template-columns:1fr}.workshop-plan__focus{min-height:180px} }
 @media (max-width:1180px) { .textbook-library__list{grid-template-columns:1fr} }
-@media (max-width:680px) { .textbook-library{padding:12px}.textbook-library__heading{align-items:flex-start;flex-direction:column;gap:5px}.textbook-library-card{grid-template-columns:76px 1fr;gap:13px;min-height:124px;padding:11px}.textbook-library-card__cover{width:76px}.textbook-library-card__body>strong{font-size:17px}.textbook-library-card__body>span{-webkit-line-clamp:2} }
+@media (max-width:680px) { .textbook-library{padding:12px}.textbook-library__heading{display:flex;align-items:flex-start;flex-direction:column;gap:8px}.textbook-library__search{width:100%}.textbook-library-card{grid-template-columns:76px 1fr;gap:13px;min-height:124px;padding:11px}.textbook-library-card__cover{width:76px}.textbook-library-card__body>strong{font-size:17px}.textbook-library-card__body>span{-webkit-line-clamp:2} }

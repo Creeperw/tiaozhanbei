@@ -73,11 +73,13 @@ PERSONALIZED_REVIEW_CARD_AGENTS = (
 class PlannerDecision(BaseModel):
     task_type: str
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
-    selected_agents: list[str] = Field(min_length=1)
+    selected_agents: list[str] = Field(default_factory=list)
     routing_reason: str
     risk_level: str = "low"
     requires_audit: bool = True
     requires_learning_plan_output: bool = False
+    requires_clarification: bool = False
+    clarification_question: str | None = None
 
 
 class PlannerAgent:
@@ -85,6 +87,25 @@ class PlannerAgent:
         self.chat_model = chat_model or StubChatModel()
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[PlannerDecision]:
+        if self._is_casual_conversation(str(context.get("user_request") or "")):
+            if context.get("terminal_trace"):
+                context["terminal_trace"].validation(
+                    "planner_agent", valid=True, detail="deterministic casual boundary"
+                )
+            return envelope(
+                context,
+                "planner_agent",
+                "planner_decision",
+                PlannerDecision(
+                    task_type="casual_conversation",
+                    plan_scope=None,
+                    selected_agents=[],
+                    routing_reason="纯问候、致谢、告别或助教能力询问，无需调用业务智能体。",
+                    risk_level="low",
+                    requires_audit=False,
+                    requires_learning_plan_output=False,
+                ),
+            )
         routing_skill = prompt_skill_registry.load("planner_agent", "route_request")
         skills = prompt_skill_registry.load_many(
             [
@@ -139,11 +160,13 @@ class PlannerAgent:
                             "agent_capability_catalog": AGENT_CAPABILITIES,
                             "hard_routing_rules": [
                                 "只选择完成当前任务所必需的Agent，不要求所有Agent参与。",
+                                "纯问候、感谢、告别、询问助教能力等不包含学习任务的输入使用casual_conversation，不选择任何下游Agent。",
                                 "仅制定学习或复习计划、且用户没有要求学习卡片或教学资源时，不需要review_scheduler、expert_agent、audit_agent。",
                                 "plan_scope 是明确指定，有值时必须原样保留并路由为 learning_plan。",
                                 "plan_scope_hint 只是规则提示，必须结合用户本轮语义和最近对话独立判断，可以改写。",
                                 "continued_plan_scope 表示当前话语是上一轮规划调研的补充或纠正；有值时必须延续 learning_plan 和该层级。",
                                 "制定或修改计划时必须输出 long_term、short_term、daily_task 或 unspecified 之一；纯学情查询可返回 null。",
+                                "是否需要追问由Planner结合本轮语义和最近对话判断；只有无法判断规划层级时才使用unspecified，并给出一条自然、可直接回答的clarification_question。",
                                 "用户同时要求学习计划和学习卡片、复习卡或可直接学习资源时，交付物属于资源生成链路；该链路仍会先生成并落地学习计划。",
                                 "用户要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用paper_generation；该链路只需要Knowledge、Expert、Audit，不强制生成学习计划或复习调度任务。",
                                 "用户要求讲解、解释、介绍某个知识点或询问是什么、为什么、原理、区别时使用knowledge_explanation；只运行Knowledge、Expert、Audit，不生成学习计划、学习任务或复习调度。",
@@ -210,6 +233,8 @@ class PlannerAgent:
                 requires_learning_plan_output=bool(
                     context.get("requires_learning_plan_output")
                 ),
+                requires_clarification=model_output.requires_clarification,
+                clarification_question=model_output.clarification_question,
             ),
         )
 
@@ -242,6 +267,10 @@ class PlannerAgent:
         }
         task_type = str(raw.get("task_type", "")).strip()
         task_type = task_aliases.get(task_type, task_type)
+        casual_conversation = (
+            context.get("plan_scope") is None
+            and PlannerAgent._is_casual_conversation(request)
+        )
         status_only_request = any(
             phrase in request for phrase in ("学习状态", "状态如何", "学情", "掌握情况")
         ) and not any(
@@ -266,10 +295,13 @@ class PlannerAgent:
             if scoped_planning_request
             else model_plan_scope
         )
-        if scoped_planning_request:
+        if casual_conversation:
+            task_type = "casual_conversation"
+        elif scoped_planning_request:
             task_type = "learning_plan"
         if task_type not in {
-            "knowledge_explanation", "learning_plan", "personalized_review_card", "paper_generation"
+            "casual_conversation", "knowledge_explanation", "learning_plan",
+            "personalized_review_card", "paper_generation"
         }:
             task_type = (
                 "paper_generation" if any(word in request for word in ("组卷", "试卷", "模拟卷", "测试卷"))
@@ -277,7 +309,9 @@ class PlannerAgent:
                 else "learning_plan" if any(word in request for word in ("学习计划", "复习计划", "制定计划"))
                 else "personalized_review_card"
             )
-        if task_type == "learning_plan":
+        if task_type == "casual_conversation":
+            plan_scope = None
+        elif task_type == "learning_plan":
             # Priority: explicit caller choice > Planner semantics > deterministic
             # hint > clarification. This prevents a missing model field from
             # silently falling back to the legacy three-layer planning path.
@@ -293,12 +327,21 @@ class PlannerAgent:
                 plan_scope = "unspecified"
         else:
             plan_scope = None
+        requires_clarification = bool(raw.get("requires_clarification"))
+        clarification_question = str(raw.get("clarification_question") or "").strip() or None
+        if task_type == "learning_plan" and plan_scope == "unspecified":
+            requires_clarification = True
+        else:
+            requires_clarification = False
+            clarification_question = None
         known_agents = set(AGENT_DEPENDENCIES)
         selected = [
             item for item in (raw.get("selected_agents") or raw.get("agents") or [])
             if item in known_agents
         ]
-        if scoped_planning_request:
+        if task_type == "casual_conversation":
+            selected = []
+        elif scoped_planning_request:
             selected = ["diagnosis_agent", "learning_plan_service"]
         if task_type == "paper_generation":
             selected = ["knowledge_base_agent", "expert_agent", "audit_agent"]
@@ -321,8 +364,10 @@ class PlannerAgent:
             )
             if not asks_for_plan:
                 selected = [agent for agent in selected if agent != "learning_plan_service"]
-        routing_reason = str(
-            raw.get("routing_reason") or "根据用户请求选择最小可执行流程。"
+        routing_reason = (
+            "用户本轮仅进行普通对话，不启动学习规划、知识检索、资源生成或审核流程。"
+            if task_type == "casual_conversation"
+            else str(raw.get("routing_reason") or "根据用户请求选择最小可执行流程。")
         )
         if task_type == "learning_plan" and plan_scope in {
             "long_term", "short_term", "daily_task"
@@ -340,17 +385,50 @@ class PlannerAgent:
         return {
             "task_type": task_type,
             "plan_scope": plan_scope,
+            "requires_clarification": requires_clarification,
+            "clarification_question": clarification_question,
             "selected_agents": list(dict.fromkeys(selected)),
             "routing_reason": routing_reason,
-            "risk_level": raw.get("risk_level") if raw.get("risk_level") in {"low", "medium", "high"} else "medium",
-            "requires_audit": bool(raw.get("requires_audit", True)),
+            "risk_level": (
+                "low"
+                if task_type == "casual_conversation"
+                else raw.get("risk_level")
+                if raw.get("risk_level") in {"low", "medium", "high"}
+                else "medium"
+            ),
+            "requires_audit": (
+                False
+                if task_type == "casual_conversation"
+                else bool(raw.get("requires_audit", True))
+            ),
             "fallback_policy": raw.get("fallback_policy", "fail_closed"),
+        }
+
+    @staticmethod
+    def _is_casual_conversation(request: str) -> bool:
+        normalized = "".join(
+            character
+            for character in request.strip().lower()
+            if character not in "，。！？!?、,.；;：:~～ \t\r\n"
+        )
+        return normalized in {
+            "你好", "你好啊", "您好", "您好啊", "嗨", "hi", "hello",
+            "在吗", "早上好", "上午好", "下午好", "晚上好",
+            "谢谢", "谢谢你", "感谢", "感谢你", "多谢", "不客气",
+            "再见", "拜拜", "bye", "先这样", "下次再聊",
+            "你是谁", "你能做什么", "你可以做什么", "你会什么",
         }
 
     @staticmethod
     def validate_selection(output: PlannerModelOutput) -> None:
         dependencies = AGENT_DEPENDENCIES
         selected = set(output.selected_agents)
+        if output.task_type == "casual_conversation":
+            if selected:
+                raise ValueError("casual conversation must not select downstream agents")
+            return
+        if not selected:
+            raise ValueError("non-casual task requires at least one downstream agent")
         missing: dict[str, list[str]] = {}
         for agent in output.selected_agents:
             if output.task_type in {"paper_generation", "knowledge_explanation"}:
@@ -399,6 +477,13 @@ class PlannerAgent:
         delivery dependency. Knowledge is not a mandatory Diagnosis dependency;
         it is selected only when the task needs教材 evidence or resource generation.
         """
+        if output.task_type == "casual_conversation":
+            return output.model_copy(
+                update={
+                    "selected_agents": [],
+                    "requires_audit": False,
+                }
+            )
         if output.task_type == "paper_generation":
             required = {"knowledge_base_agent", "expert_agent", "audit_agent"}
             selected_set = set(output.selected_agents) | required
@@ -491,6 +576,8 @@ class PlannerAgent:
         # Dependency completion may add them, so validate the equivalent decision
         # shape directly instead of parsing it back through that model schema.
         PlannerAgent.validate_selection(decision)  # type: ignore[arg-type]
+        if decision.task_type == "casual_conversation":
+            raise ValueError("casual conversation does not require an execution plan")
         selected = set(decision.selected_agents)
         if decision.task_type == "paper_generation":
             steps = []

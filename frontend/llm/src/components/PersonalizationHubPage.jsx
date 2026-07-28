@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import PersonalizationPage from './PersonalizationPage';
-import ReportsPage from './ReportsPage';
+import LearningInsightsReportPage from './LearningInsightsReportPage';
 import ReviewDashboardPanel from './ReviewDashboardPanel';
 
 const tabs = [
@@ -15,9 +15,10 @@ const normalizeTask = (value) => (
 );
 
 export default function PersonalizationHubPage({ navigationContext = {}, onNavigate }) {
-  const routeTab = normalizeTask(navigationContext.view);
-  const [selectedTab, setSelectedTab] = useState(null);
-  const activeTab = selectedTab || routeTab;
+  const [selectedTab, setSelectedTab] = useState(() => normalizeTask(navigationContext.view));
+  const activeTab = navigationContext.view
+    ? normalizeTask(navigationContext.view)
+    : selectedTab;
 
   const selectTask = (task) => {
     setSelectedTab(task);
@@ -38,9 +39,9 @@ export default function PersonalizationHubPage({ navigationContext = {}, onNavig
           </button>
         ))}
       </nav>
-      <main className="personalization-hub__task" aria-live="polite">
+      <main className={`personalization-hub__task${activeTab === 'user-profile' ? ' personalization-hub__task--profile' : ''}`} aria-live="polite">
         {activeTab === 'user-profile' && <PersonalizationPage onBackHome={null} embedded view="user-profile" />}
-        {activeTab === 'reports' && <ReportsPage />}
+        {activeTab === 'reports' && <LearningInsightsReportPage onNavigate={onNavigate} />}
         {activeTab === 'review' && <ReviewDashboardPanel />}
       </main>
     </div>

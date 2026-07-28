@@ -1041,3 +1041,56 @@ def test_langgraph_resume_does_not_fabricate_unrelated_handoff_facts() -> None:
         "time_budget",
         "multi_scale_learning_state",
     }
+
+
+@pytest.mark.parametrize(
+    ("answer", "scope"),
+    [
+        ("长期规划", "long_term"),
+        ("短期计划", "short_term"),
+        ("当日任务", "daily_task"),
+    ],
+)
+def test_langgraph_resume_treats_scope_answer_as_control_data(
+    answer: str,
+    scope: str,
+) -> None:
+    context = {
+        "user_request": "请结合我的学习状态，为我制定一份学习计划。",
+        "plan_scope": "unspecified",
+        "learning_goal": "中医执业医师资格考试",
+        "messages": [],
+    }
+
+    LangGraphOrchestrator._apply_resume_value(
+        context,
+        {"answer": answer, "plan_scope": scope},
+        requested_scope="unspecified",
+    )
+
+    assert context["plan_scope"] == scope
+    assert context["learning_goal"] == "中医执业医师资格考试"
+    assert context["user_request"] == "请结合我的学习状态，为我制定一份学习计划。"
+    assert "plan_change_context" not in context
+    assert context["messages"][-1] == {"role": "user", "content": answer}
+
+
+def test_langgraph_resume_keeps_ambiguous_scope_answer_out_of_learning_goal() -> None:
+    context = {
+        "user_request": "请结合我的学习状态，为我制定一份学习计划。",
+        "plan_scope": "unspecified",
+        "learning_goal": "中医执业医师资格考试",
+        "messages": [],
+    }
+
+    LangGraphOrchestrator._apply_resume_value(
+        context,
+        {"answer": "都可以", "clarification_kind": "plan_scope"},
+        requested_scope="unspecified",
+    )
+
+    assert context["plan_scope"] == "unspecified"
+    assert context["learning_goal"] == "中医执业医师资格考试"
+    assert context["user_request"] == "请结合我的学习状态，为我制定一份学习计划。"
+    assert "plan_change_context" not in context
+    assert context["messages"][-1] == {"role": "user", "content": "都可以"}

@@ -12,12 +12,6 @@ vi.mock('./utils/api', () => ({
 
 vi.mock('./components/AuthPage', () => ({ default: () => <div>Auth</div> }));
 vi.mock('./components/HomePage', () => ({ default: () => <div>Home portal</div> }));
-vi.mock('./components/CapabilityDetailPage', () => ({
-  default: ({ capabilityKey }) => (
-    <div data-testid="capability-detail" data-capability={capabilityKey}>Capability detail</div>
-  ),
-}));
-vi.mock('./components/LearningPathPage', () => ({ default: () => <div>Learning path page</div> }));
 vi.mock('./components/DashboardPage', () => ({
   default: ({ navigationContext = {}, onKnowledgeContextChange }) => (
     <div data-testid="training-overview" data-view={navigationContext.view || ''} data-path-mode={navigationContext.pathMode || ''} data-stage-id={navigationContext.stageId || ''}>
@@ -50,6 +44,13 @@ vi.mock('./components/learning-stage/StagePageTransition', () => ({
   ) : null,
 }));
 vi.mock('./components/ChatInterface', () => ({ default: ({ embedded }) => <div>Assistant page {String(embedded)}</div> }));
+vi.mock('./components/CompactAssistant', () => ({
+  default: ({ onOpenFull }) => (
+    <button type="button" aria-label="全局悬浮智能助教" onClick={() => onOpenFull('session-floating')}>
+      Floating assistant
+    </button>
+  ),
+}));
 vi.mock('./components/KnowledgePage', () => ({
   default: ({ navigationContext = {} }) => (
     <div
@@ -89,8 +90,6 @@ vi.mock('./components/AppShell', () => ({
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: { view: 'atlas' } })}>Go knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'dashboard', params: {} })}>Go dashboard</button>
-      <button type="button" onClick={() => onNavigate({ page: 'capability-detail', params: { capability: 'multi-agent' } })}>Go capability detail</button>
-      <button type="button" onClick={() => onNavigate({ page: 'learning-path', params: {} })}>Go learning path</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: {} })}>Go learning workshop</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'stages' } })}>Go learning stages</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: { view: 'workspace' } })}>Go legacy training workspace</button>
@@ -158,26 +157,15 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'admin-feedback');
   });
 
-  it('renders the dedicated learning path page without changing the dashboard default', async () => {
+  it('opens the full assistant from the global floating assistant and hides the duplicate dock there', async () => {
     render(<App />);
 
-    expect(await screen.findByText('Home portal')).toBeInTheDocument();
-    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
+    expect(await screen.findByRole('button', { name: '全局悬浮智能助教' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '全局悬浮智能助教' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go learning path' }));
-
-    expect(screen.getByText('Learning path page')).toBeInTheDocument();
-    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'learning-path');
-  });
-
-  it('renders a platform capability detail page with its selected capability', async () => {
-    render(<App />);
-    expect(await screen.findByText('Home portal')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Go capability detail' }));
-
-    expect(screen.getByTestId('capability-detail')).toHaveAttribute('data-capability', 'multi-agent');
-    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'capability-detail');
+    expect(screen.getByText('Assistant page true')).toBeInTheDocument();
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'assistant');
+    expect(screen.queryByRole('button', { name: '全局悬浮智能助教' })).not.toBeInTheDocument();
   });
 
   it('resets the training workshop when its primary navigation entry is selected again', async () => {

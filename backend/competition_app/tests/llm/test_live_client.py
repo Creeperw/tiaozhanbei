@@ -59,6 +59,36 @@ async def test_deepseek_chat_client_uses_standard_structured_output_shape() -> N
 
 
 @pytest.mark.asyncio
+async def test_qwen_2026_05_17_enables_required_thinking_mode() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{
+                    "message": {
+                        "content": '{"decision":"pass"}',
+                        "reasoning_content": "internal reasoning",
+                    }
+                }]
+            },
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen3.7-max-2026-05-17",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert await client.complete_json("audit_agent", {}) == {"decision": "pass"}
+    assert json.loads(requests[0].content)["enable_thinking"] is True
+    assert client.last_reasoning_text == "internal reasoning"
+
+
+@pytest.mark.asyncio
 async def test_chat_client_preserves_audit_findings_without_knowledge_aliases() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
