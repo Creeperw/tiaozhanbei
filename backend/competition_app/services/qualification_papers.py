@@ -205,6 +205,31 @@ class QualificationPaperRepository:
             "explanation": question.get("explanation", ""),
         }
 
+    def submission_outcomes(self, user_id: str, attempt_id: str) -> list[dict]:
+        """Return server-owned attempt details for learning-state writeback."""
+        state = self._load_attempt(user_id, attempt_id)
+        if state.get("status") != "submitted":
+            raise ValueError("试卷尚未提交")
+        outcomes = []
+        for question in state["questions"]:
+            submitted_answer = state["answers"].get(question["question_id"], "")
+            expected = sorted(str(value) for value in question.get("answer", []))
+            actual = sorted(
+                value.strip() for value in submitted_answer.split(",") if value.strip()
+            )
+            outcomes.append({
+                "question_id": question["question_id"],
+                "question_type": question.get("question_type", "short_answer"),
+                "question_content": question.get("question_content", ""),
+                "options": question.get("options", []),
+                "standard_answer": question.get("answer", []),
+                "explanation": question.get("explanation", ""),
+                "kp_ids": question.get("kp_ids", []),
+                "submitted_answer": submitted_answer,
+                "is_correct": actual == expected if expected else None,
+            })
+        return outcomes
+
     def _template(self, template_id: str) -> dict:
         catalog = self._read_json(self.data_root / "catalog.json", {"papers": []})
         entry = next((item for item in catalog.get("papers", []) if item.get("template_id") == template_id and item.get("published")), None)

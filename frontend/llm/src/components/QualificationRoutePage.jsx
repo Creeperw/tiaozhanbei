@@ -734,8 +734,16 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
 
   const countdown = examCountdown(learningTarget.examDate);
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
+  const hour = new Date().getHours();
+  const greeting = hour >= 5 && hour < 11
+    ? '早上好'
+    : hour >= 11 && hour < 14
+      ? '中午好'
+      : hour >= 14 && hour < 18
+        ? '下午好'
+        : '晚上好';
   const heroTitle = currentProgress
-    ? `早上好，${displayName}\n今天继续学习${currentProgress}`
+    ? `${greeting}，${displayName}\n今天继续学习${currentProgress}`
     : '';
 
   return (

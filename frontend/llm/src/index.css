@@ -8169,24 +8169,29 @@ textarea:focus-visible {
 
 .sp-sidebar-back {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
-  gap: 4px;
-  font-size: 0.92rem;
-  color: #059669;
-  background: none;
-  border: none;
+  gap: 8px;
+  border: 2px solid #059669;
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: #047857;
+  font-size: .875rem;
+  font-weight: 600;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
   cursor: pointer;
-  padding: 4px 0;
-  transition: color 0.15s;
+  transition: color .15s, background-color .15s;
 }
 
 .sp-sidebar-back:hover {
   color: #047857;
+  background: #ecfdf5;
 }
 
 .sp-sidebar-back__icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .sp-sidebar-actions {
@@ -10754,6 +10759,123 @@ textarea:focus-visible {
   .practice-overview__training-card {
     height: 100%;
     min-height: 0;
+  }
+}
+
+/* Keep the workshop on the same spacious, rounded visual system as learning path. */
+.app-shell__main[data-page="training-workshop"] > .practice-overview {
+  width: min(calc(100% - clamp(32px, 5vw, 96px)), 1480px);
+}
+
+.practice-overview__banner {
+  border-radius: 24px;
+}
+
+.practice-overview__hero-metrics {
+  grid-template-columns: repeat(2, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.practice-overview__hero-metric {
+  grid-template-columns: 56px minmax(0, 1fr);
+  min-width: 190px;
+  min-height: 116px;
+  gap: 14px;
+  border-radius: 20px;
+  padding: 16px 18px;
+}
+
+.practice-overview__metric-copy small {
+  font-size: .79rem;
+}
+
+.practice-overview__metric-copy strong {
+  font-size: 1.45rem;
+}
+
+.practice-overview__metric-copy em {
+  font-size: .72rem;
+}
+
+.practice-overview__illustration {
+  justify-content: flex-end;
+  transform: translateX(16px);
+}
+
+.practice-overview__character-note {
+  top: 8px;
+  right: 122px;
+  max-width: 190px;
+  border-radius: 16px;
+  padding: 9px 14px;
+  font-size: .78rem;
+  line-height: 1.35;
+}
+
+.practice-overview__featured-card {
+  border-radius: 22px;
+  padding-right: 24px;
+}
+
+.practice-overview__featured-icon,
+.practice-overview__card-icon,
+.practice-overview__utility-icon {
+  border-radius: 18px;
+}
+
+.practice-overview__featured-action {
+  min-width: 154px;
+  transform: translateX(-8px);
+}
+
+.practice-overview__featured-action b {
+  border-radius: 13px;
+  padding: 12px 20px;
+  font-size: .9rem;
+}
+
+.practice-overview__featured-action small {
+  font-size: .72rem;
+  white-space: nowrap;
+}
+
+.practice-overview__training-card,
+.practice-overview__utility-card {
+  border-radius: 20px;
+}
+
+.practice-overview__card-copy small,
+.practice-overview__utility-card small {
+  font-size: .8rem;
+}
+
+.practice-overview__utility-card strong {
+  font-size: 1rem;
+}
+
+.practice-overview__summary {
+  border-radius: 20px;
+}
+
+@media (max-width: 1120px) {
+  .practice-overview__hero-metrics {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  .practice-overview__hero-metric {
+    grid-template-columns: 44px minmax(0, 1fr);
+    min-width: 150px;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  .app-shell__main[data-page="training-workshop"] > .practice-overview {
+    width: calc(100% - 24px);
+  }
+
+  .practice-overview__featured-action {
+    transform: none;
   }
 }
 

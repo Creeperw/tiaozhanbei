@@ -1958,6 +1958,97 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def record_qualification_paper_outcomes(
+        self,
+        external_user_id: str,
+        *,
+        attempt_id: str,
+        outcomes: list[dict[str, Any]],
+    ) -> dict[str, int]:
+        """Project comprehensive-paper answers into the canonical mistake store."""
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        recorded = 0
+        mistakes_saved = 0
+        try:
+            user = self._workshop_user(db, external_user_id)
+            for outcome in outcomes:
+                question_id = str(outcome.get("question_id") or "").strip()
+                if not question_id or outcome.get("is_correct") is None:
+                    continue
+                request_id = f"qualification:{attempt_id}:{question_id}"
+                existing = db.query(database.LearningQuestionAttempt).filter_by(
+                    user_id=user.id,
+                    request_id=request_id,
+                ).one_or_none()
+                if existing is not None:
+                    continue
+
+                question = db.query(database.LearningQuestion).filter_by(
+                    question_id=question_id,
+                ).one_or_none()
+                if question is None:
+                    question = database.LearningQuestion(question_id=question_id)
+                    db.add(question)
+                question.question_type = str(outcome.get("question_type") or "short_answer")
+                question.question_content = str(outcome.get("question_content") or "")
+                question.options_json = json.dumps(outcome.get("options") or [], ensure_ascii=False)
+                question.answer_json = json.dumps(outcome.get("standard_answer") or [], ensure_ascii=False)
+                question.explanation = str(outcome.get("explanation") or "")
+                question.kp_ids_json = json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False)
+                db.flush()
+
+                is_correct = bool(outcome["is_correct"])
+                submitted_answer = str(outcome.get("submitted_answer") or "")
+                feedback = str(outcome.get("explanation") or "")
+                db.add(database.LearningQuestionAttempt(
+                    attempt_id=str(uuid4()),
+                    user_id=user.id,
+                    question_id=question_id,
+                    request_id=request_id,
+                    submitted_answer_json=json.dumps(
+                        [value.strip() for value in submitted_answer.split(",") if value.strip()],
+                        ensure_ascii=False,
+                    ),
+                    is_correct=is_correct,
+                    score=100.0 if is_correct else 0.0,
+                    reason_for_mistake="" if is_correct else "综合套题答题错误",
+                ))
+                db.add(database.QuestionAttempt(
+                    user_id=user.id,
+                    question_id=question_id,
+                    answer=submitted_answer,
+                    is_correct=is_correct,
+                    score=100.0 if is_correct else 0.0,
+                    kp_ids_json=json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False),
+                    feedback=feedback,
+                ))
+                recorded += 1
+                if not is_correct:
+                    mistake = db.query(database.MistakeRecord).filter_by(
+                        user_id=user.id,
+                        question_id=question_id,
+                        status="active",
+                    ).one_or_none()
+                    if mistake is None:
+                        mistake = database.MistakeRecord(
+                            user_id=user.id,
+                            question_id=question_id,
+                            status="active",
+                        )
+                        db.add(mistake)
+                    mistake.kp_ids_json = json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False)
+                    mistake.error_type = "综合套题答题错误"
+                    mistake.summary = feedback or "本题答案需要复盘。"
+                    mistakes_saved += 1
+            db.commit()
+            return {"attempts_recorded": recorded, "mistakes_saved": mistakes_saved}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
     def list_papers(
         self, external_user_id: str, *, offset: int = 0, limit: int = 50
     ) -> dict[str, Any]:

@@ -11,6 +11,7 @@ vi.mock('./workshopLibraryApi', () => ({
   createFavoriteFolder: vi.fn(),
   createNoteFolder: vi.fn(),
   saveFavorite: vi.fn(),
+  deleteFavorite: vi.fn(),
   createNote: vi.fn(),
 }));
 
@@ -71,6 +72,10 @@ describe('WorkshopSaveActions', () => {
       resource_id: 'Q1',
       source: '题目训练',
     })));
-    expect(screen.getByRole('button', { name: '本题已收藏' })).toBeDisabled();
+    const removeButton = screen.getByRole('button', { name: '取消收藏本题' });
+    expect(removeButton).toBeEnabled();
+    fireEvent.click(removeButton);
+    await waitFor(() => expect(api.deleteFavorite).toHaveBeenCalledWith('V1'));
+    expect(screen.getByRole('button', { name: '收藏本题' })).toBeEnabled();
   });
 });

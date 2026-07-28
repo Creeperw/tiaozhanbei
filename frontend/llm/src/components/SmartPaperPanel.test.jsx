@@ -43,6 +43,8 @@ describe('SmartPaperPanel', () => {
     expect(await screen.findByText('待办一')).toBeInTheDocument();
     expect(screen.getByText('历史一')).toBeInTheDocument();
     expect(screen.getByLabelText('专项练主题')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /错题集重做/ })).toBeInTheDocument();
+    expect(screen.getByLabelText('单选题')).toHaveAttribute('type', 'text');
     expect(screen.getByRole('region', { name: '试卷存档' })).toHaveClass('smart-paper__archive-grid');
   });
   it('returns a task-bound paper to the current smart-paper archive', async () => {

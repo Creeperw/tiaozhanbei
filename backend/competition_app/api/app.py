@@ -265,6 +265,12 @@ class WorkshopPaperSubmitRequest(BaseModel):
     request_id: str = Field(min_length=1, max_length=120)
 
 
+class MistakeRedoPaperRequest(BaseModel):
+    distribution: dict[str, int] = Field(default_factory=dict)
+    answer_mode: str = Field(default="practice", pattern="^(practice|test)$")
+    duration_minutes: int | None = Field(default=None, ge=10, le=300)
+
+
 class QualificationAttemptCreateRequest(BaseModel):
     answer_mode: str = Field(pattern="^(practice|test)$")
     duration_minutes: int | None = Field(default=None, ge=10, le=300)
@@ -538,6 +544,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         current_user(request)
         return qualification_papers.list_catalog(exam_id=exam_id, year=year, paper_type=paper_type)
 
+    @app.post("/api/v1/workshop/papers/mistake-redo", status_code=501)
+    async def create_mistake_redo_paper(
+        payload: MistakeRedoPaperRequest, request: Request
+    ) -> dict:
+        current_user(request)
+        del payload
+        raise HTTPException(status_code=501, detail="错题集重做组卷接口已预留")
+
     @app.post("/api/v1/qualification-papers/{template_id}/attempts")
     async def create_qualification_attempt(
         template_id: str, payload: QualificationAttemptCreateRequest, request: Request
@@ -598,7 +612,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         try:
-            return qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
+            result = qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
+            if backend_handoff is not None and hasattr(
+                backend_handoff, "record_qualification_paper_outcomes"
+            ):
+                try:
+                    result["learning_writeback"] = await asyncio.to_thread(
+                        backend_handoff.record_qualification_paper_outcomes,
+                        user.user_id,
+                        attempt_id=attempt_id,
+                        outcomes=qualification_papers.submission_outcomes(user.user_id, attempt_id),
+                    )
+                except Exception:
+                    result["learning_writeback"] = {"status": "retry_pending"}
+            return result
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 

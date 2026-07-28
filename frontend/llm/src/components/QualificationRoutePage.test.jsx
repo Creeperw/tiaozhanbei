@@ -142,7 +142,7 @@ describe('QualificationRoutePage', () => {
 
     render(<QualificationRoutePage currentUser={{ display_name: '林同学' }} onNavigate={vi.fn()} />);
 
-    expect(await screen.findByRole('heading', { name: /早上好，林同学\s+今天继续学习/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /(早上好|中午好|下午好|晚上好)，林同学\s+今天继续学习/ })).toBeInTheDocument();
     expect(screen.getByText(/距离中医类别执业医师资格考试还有/)).toBeInTheDocument();
     expect(screen.queryByLabelText('多智能体协作角色')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();

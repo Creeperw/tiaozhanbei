@@ -530,7 +530,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
         <article className="mx-auto max-w-3xl px-5 py-8 sm:py-10">
           <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
             <span className="rounded-md bg-emerald-100 px-2.5 py-1 text-emerald-800">{questionTypeLabel(currentItem.question_type)}</span>
-            {markedPositions.includes(position) && <span className="rounded-md bg-slate-900 px-2.5 py-1 text-white">已标记</span>}
+            {markedPositions.includes(position) && <span className="rounded-md border border-emerald-200 bg-emerald-100 px-2.5 py-1 text-emerald-800">已标记</span>}
             {paperSubmitted && currentResult && <span className={`rounded-md px-2.5 py-1 ${currentResult.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{currentResult.is_correct ? '回答正确' : '需要复盘'}</span>}
           </div>
           <div className="flex items-start gap-3 text-lg font-medium leading-8 text-slate-950">
@@ -580,7 +580,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
 
         <footer className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 border-t border-slate-200 px-5 py-4">
           <button type="button" disabled={position === 1} onClick={() => goToPosition(position - 1)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}><ChevronLeft size={16} />上一题</button>
-          {!paperSubmitted && <button type="button" onClick={toggleMarked} className={`${paperButton} ${markedPositions.includes(position) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'}`}><Bookmark size={16} />{markedPositions.includes(position) ? '取消标记' : '标记本题'}</button>}
+          {!paperSubmitted && <button type="button" onClick={toggleMarked} className={`${paperButton} ${markedPositions.includes(position) ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'}`}><Bookmark size={16} />{markedPositions.includes(position) ? '取消标记' : '标记本题'}</button>}
           <button type="button" disabled={position === paper.items.length} onClick={() => goToPosition(position + 1)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>下一题<ChevronRight size={16} /></button>
           {!paperSubmitted && <button type="button" onClick={() => submit({ allowIncomplete: timeExpired })} disabled={loading || (!timeExpired && !allAnswered)} className={`${paperButton} ml-auto border-slate-900 bg-slate-900 text-white hover:bg-slate-800`}><ClipboardList size={16} />{timeExpired ? '按当前答案交卷' : '提交试卷'}</button>}
         </footer>
@@ -601,7 +601,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
                   : result
                     ? result.is_correct ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                     : markedPositions.includes(itemPosition)
-                      ? 'bg-slate-900 text-white'
+                      ? 'border border-emerald-300 bg-emerald-100 text-emerald-800'
                       : answeredIds.has(item.paper_item_id)
                         ? 'bg-emerald-600 text-white'
                         : 'border border-slate-300 bg-white text-slate-700';
@@ -609,7 +609,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
               })}</div>
             </section>)}
           </div>
-          <div className="border-t border-slate-200 px-4 py-3 text-xs leading-5 text-slate-500">绿色为已答，深色为标记；交卷后绿色与红色分别表示正确和错误。</div>
+          <div className="border-t border-slate-200 px-4 py-3 text-xs leading-5 text-slate-500">绿色为已答，浅绿色为标记；交卷后绿色与红色分别表示正确和错误。</div>
         </aside></>}
       </section>}
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm leading-6 text-rose-700">{error}</p>}

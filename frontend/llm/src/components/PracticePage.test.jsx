@@ -125,8 +125,8 @@ describe('PracticePage training modules', () => {
       .filter((button) => button.querySelector('strong'));
     expect(trainingButtons.map((button) => button.querySelector('strong')?.textContent)).toEqual([
       '专项训练',
-      '智能组卷',
       '专题训练',
+      '智能组卷',
       '综合套题',
       '模拟病患',
     ]);

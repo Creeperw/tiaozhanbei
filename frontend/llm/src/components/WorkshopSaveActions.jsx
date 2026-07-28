@@ -4,6 +4,7 @@ import {
   createFavoriteFolder,
   createNote,
   createNoteFolder,
+  deleteFavorite,
   loadFavoriteFolders,
   loadNoteFolders,
   saveFavorite,
@@ -85,15 +86,21 @@ export function FavoriteQuestionButton({ question, source = '训练工坊' }) {
 }
 
 export function FavoriteQuestionIconButton({ question, source = '训练工坊' }) {
-  const [saved, setSaved] = useState(false);
+  const [favoriteId, setFavoriteId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const saved = Boolean(favoriteId);
 
-  const saveImmediately = async () => {
-    if (loading || saved || !question?.resource_id) return;
+  const toggleFavorite = async () => {
+    if (loading || !question?.resource_id) return;
     setLoading(true);
     setError('');
     try {
+      if (favoriteId) {
+        await deleteFavorite(favoriteId);
+        setFavoriteId('');
+        return;
+      }
       const payload = await loadFavoriteFolders();
       let folder = (payload.items || []).find((item) => item.name === '默认收藏')
         || (payload.items || [])[0];
@@ -101,7 +108,7 @@ export function FavoriteQuestionIconButton({ question, source = '训练工坊' }
         const created = await createFavoriteFolder('默认收藏');
         folder = created.folder;
       }
-      await saveFavorite({
+      const savedPayload = await saveFavorite({
         folder_id: folder.folder_id,
         resource_type: 'question',
         resource_id: question.resource_id,
@@ -109,7 +116,9 @@ export function FavoriteQuestionIconButton({ question, source = '训练工坊' }
         source,
         content: question.content,
       });
-      setSaved(true);
+      const savedId = savedPayload?.favorite?.favorite_id;
+      if (!savedId) throw new Error('收藏记录缺少标识');
+      setFavoriteId(savedId);
     } catch (reason) {
       setError(reason.message || '收藏失败');
     } finally {
@@ -122,10 +131,10 @@ export function FavoriteQuestionIconButton({ question, source = '训练工坊' }
       <button
         type="button"
         className={saved ? 'is-saved' : ''}
-        aria-label={saved ? '本题已收藏' : '收藏本题'}
-        title={saved ? '本题已收藏' : '收藏本题'}
-        disabled={loading || saved}
-        onClick={saveImmediately}
+        aria-label={saved ? '取消收藏本题' : '收藏本题'}
+        title={saved ? '取消收藏本题' : '收藏本题'}
+        disabled={loading}
+        onClick={toggleFavorite}
       >
         {saved ? <Check size={17} aria-hidden="true" /> : <Bookmark size={17} aria-hidden="true" />}
       </button>

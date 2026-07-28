@@ -183,19 +183,19 @@ function ArtifactResult({ taskResult }) {
 
 const trainingCards = [
   {
-    key: 'paper_workspace',
-    title: '智能组卷',
-    description: '自选题型与题量，AI 审核生成试卷，支持练习或限时测试。',
-    icon: Files,
-    tone: 'green',
-  },
-  {
     key: 'topic_training',
     initialMode: 'objective',
     title: '专题训练',
     description: '按教材章节定位知识点，聚焦薄弱环节精准提升。',
     icon: Stethoscope,
     tone: 'teal',
+  },
+  {
+    key: 'paper_workspace',
+    title: '智能组卷',
+    description: '自选题型与题量，AI 审核生成试卷，支持练习或限时测试。',
+    icon: Files,
+    tone: 'green',
   },
   {
     key: 'question_training',

@@ -240,7 +240,7 @@ describe('AppShell', () => {
     await user.click(expandWorkshop);
     expect(expandWorkshop).toHaveAttribute('aria-expanded', 'true');
     await user.click(screen.getByRole('menuitem', { name: '题目训练' }));
-    expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: { taskType: 'question_training' } });
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: { taskType: 'topic_training' } });
     await waitFor(() => expect(menuButton).toHaveAttribute('aria-expanded', 'false'));
   });
 

@@ -98,7 +98,7 @@ test('defines dropdown destinations as explicit navigation intents', () => {
   assert.deepEqual(
     config.primaryNav.find((item) => item.key === 'training-workshop').children,
     [
-      { label: '题目训练', intent: { page: 'training-workshop', params: { taskType: 'question_training' } } },
+      { label: '题目训练', intent: { page: 'training-workshop', params: { taskType: 'topic_training' } } },
       { label: 'AI 病患模拟', intent: { page: 'training-workshop', params: { taskType: 'simulated_patient' } } },
       { label: '错题变式', intent: { page: 'training-workshop', params: { taskType: 'mistake_variation' } } },
       { label: '试卷生成', intent: { page: 'training-workshop', params: { taskType: 'paper_generation' } } },

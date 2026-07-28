@@ -11,6 +11,7 @@ import {
   Loader2,
   Minus,
   Plus,
+  RotateCcw,
   Sparkles,
   Sprout,
 } from 'lucide-react';
@@ -187,7 +188,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
             <div className="mb-4 flex items-start justify-between gap-4">
               <div><h3 id="paper-source-title" className="text-base font-semibold text-slate-950">1. 选择出题范围</h3><p className="mt-1 text-sm leading-6 text-slate-500">明确主题，或交给系统依据学习状态选择。</p></div>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-3">
               <button type="button" aria-pressed={kind === 'special'} onClick={() => setKind('special')} className={`rounded-xl border p-4 text-left transition duration-200 ${kind === 'special' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
                 <span className="flex items-center gap-2 text-sm font-semibold text-slate-950"><FileCheck2 size={18} className="text-emerald-700" />专项练</span>
                 <span className="mt-2 block text-xs leading-5 text-slate-600">围绕指定教材章节、知识点或能力目标出题。</span>
@@ -196,11 +197,16 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
                 <span className="flex items-center gap-2 text-sm font-semibold text-slate-950"><Sprout size={18} className="text-emerald-700" />随心练</span>
                 <span className="mt-2 block text-xs leading-5 text-slate-600">结合薄弱知识点、近期错题和复习队列智能选题。</span>
               </button>
+              <button type="button" data-paper-source="mistake_redo" aria-pressed={kind === 'mistakes'} onClick={() => setKind('mistakes')} className={`rounded-xl border p-4 text-left transition duration-200 ${kind === 'mistakes' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-950"><RotateCcw size={18} className="text-emerald-700" />错题集重做</span>
+                <span className="mt-2 block text-xs leading-5 text-slate-600">从个人错题集中抽取题目重新作答，集中巩固薄弱点。</span>
+              </button>
             </div>
             {kind === 'special' && <label className="mt-4 block text-sm font-semibold text-slate-800">练习主题
               <textarea aria-label="专项练主题" value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="例如：四君子汤的组成、功效主治与配伍意义" className="mt-2 min-h-24 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100" />
             </label>}
             {kind === 'free' && <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">系统会读取当前学习计划、掌握度、错题和待复习知识点，组合本次试卷范围。</div>}
+            {kind === 'mistakes' && <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">系统将依据个人错题集生成重做试卷，该功能即将开放。</div>}
           </section>
 
           <section aria-labelledby="paper-types-title">
@@ -211,7 +217,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
                   <label htmlFor={`paper-count-${key}`} className="block text-sm font-semibold text-slate-800">{label}</label>
                   <div className="mt-3 flex items-center rounded-lg border border-slate-200 bg-white">
                     <button type="button" aria-label={`减少${label}`} onClick={() => setCount(key, distribution[key] - 1)} disabled={distribution[key] === 0} className="inline-flex h-9 w-9 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30"><Minus size={14} /></button>
-                    <input id={`paper-count-${key}`} aria-label={label} type="number" min="0" max="50" value={distribution[key]} onChange={(event) => setCount(key, event.target.value)} className="h-9 min-w-0 flex-1 border-x border-slate-200 bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none" />
+                    <input id={`paper-count-${key}`} aria-label={label} type="text" inputMode="numeric" pattern="[0-9]*" value={distribution[key]} onChange={(event) => setCount(key, event.target.value)} className="h-9 min-w-0 flex-1 border-x border-slate-200 bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none" />
                     <button type="button" aria-label={`增加${label}`} onClick={() => setCount(key, distribution[key] + 1)} disabled={total >= 50} className="inline-flex h-9 w-9 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30"><Plus size={14} /></button>
                   </div>
                 </div>
@@ -242,14 +248,14 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
             <p className="text-xs font-semibold tracking-wide text-emerald-700">组卷预览</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-slate-950">{total}<span className="ml-1 text-sm font-medium text-slate-500">题</span></p>
             <dl className="mt-5 space-y-3 border-y border-slate-200 py-4 text-sm">
-              <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">范围</dt><dd className="max-w-40 text-right font-medium text-slate-800">{kind === 'free' ? '基于学情智能选择' : topic.trim() || '尚未填写主题'}</dd></div>
+              <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">范围</dt><dd className="max-w-40 text-right font-medium text-slate-800">{kind === 'free' ? '基于学情智能选择' : kind === 'mistakes' ? '错题集重做' : topic.trim() || '尚未填写主题'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">题型</dt><dd className="font-medium text-slate-800">{selectedTypes.length || 0} 种</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">模式</dt><dd className="font-medium text-slate-800">{answerMode === 'test' ? `测试 · ${duration} 分钟` : '练习'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">发布门禁</dt><dd className="font-medium text-emerald-700">智能体审核</dd></div>
             </dl>
-            <button type="button" onClick={generate} disabled={loading || !total || total > 50 || (kind === 'special' && !topic.trim())} className={`${sectionButton} mt-5 w-full border-emerald-700 bg-emerald-700 px-4 py-3 text-white shadow-[0_10px_24px_rgba(22,101,52,0.16)] hover:-translate-y-0.5 hover:bg-emerald-800`}>
+            <button type="button" onClick={generate} disabled={loading || kind === 'mistakes' || !total || total > 50 || (kind === 'special' && !topic.trim())} className={`${sectionButton} mt-5 w-full border-emerald-700 bg-emerald-700 px-4 py-3 text-white shadow-[0_10px_24px_rgba(22,101,52,0.16)] hover:-translate-y-0.5 hover:bg-emerald-800`}>
               {loading ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
-              {loading ? '正在组卷并审核' : '生成试卷'}
+              {loading ? '正在组卷并审核' : kind === 'mistakes' ? '错题集重做即将开放' : '生成试卷'}
             </button>
             <p className="mt-3 text-xs leading-5 text-slate-500">审核通过后进入单题作答界面；不在对话区展开试卷正文。</p>
           </div>
