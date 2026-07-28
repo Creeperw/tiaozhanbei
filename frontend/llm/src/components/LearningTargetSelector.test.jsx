@@ -76,7 +76,7 @@ describe('LearningTargetSelector', () => {
 
     render(<LearningTargetSelector />);
 
-    const select = await screen.findByRole('combobox', { name: '学习目标' });
+    const select = await screen.findByRole('combobox', { name: '考试类别' });
     expect(select).toHaveValue('target-b');
     expect(screen.getByRole('option', { name: '中医执业医师资格考试' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '中西医结合执业医师资格考试' })).toBeInTheDocument();
@@ -86,7 +86,7 @@ describe('LearningTargetSelector', () => {
     const save = deferred();
     const fetchMock = installTargetApi({ saveRequest: () => save.promise });
     render(<LearningTargetSelector />);
-    const select = await screen.findByRole('combobox', { name: '学习目标' });
+    const select = await screen.findByRole('combobox', { name: '考试类别' });
 
     fireEvent.change(select, { target: { value: 'target-b' } });
 
@@ -111,11 +111,11 @@ describe('LearningTargetSelector', () => {
     const originalLocation = window.location.href;
     installTargetApi();
     render(<LearningTargetSelector onSaved={onSaved} />);
-    const select = await screen.findByRole('combobox', { name: '学习目标' });
+    const select = await screen.findByRole('combobox', { name: '考试类别' });
 
     fireEvent.change(select, { target: { value: 'target-b' } });
 
-    expect(await screen.findByRole('status')).toHaveTextContent('学习目标已更新');
+    expect(await screen.findByRole('status')).toHaveTextContent('考试类别已更新');
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({
       target_id: 'target-b',
       exam_track_id: 'track-b',
@@ -124,17 +124,49 @@ describe('LearningTargetSelector', () => {
     expect(window.location.href).toBe(originalLocation);
   });
 
+  it('opens the selected path after saving a new target', async () => {
+    const onSelected = vi.fn();
+    installTargetApi();
+    render(<LearningTargetSelector variant="menu" onSelected={onSelected} />);
+
+    fireEvent.click(await screen.findByRole('menuitemradio', {
+      name: '中西医结合执业医师资格考试',
+    }));
+
+    await waitFor(() => expect(onSelected).toHaveBeenCalledWith(expect.objectContaining({
+      target_id: 'target-b',
+      exam_track_id: 'track-b',
+      target: { exam_track_id: 'track-b' },
+    })));
+  });
+
+  it('opens the current target path without saving it again', async () => {
+    const onSelected = vi.fn();
+    const fetchMock = installTargetApi();
+    render(<LearningTargetSelector variant="menu" onSelected={onSelected} />);
+
+    fireEvent.click(await screen.findByRole('menuitemradio', {
+      name: '中医执业医师资格考试',
+    }));
+
+    expect(onSelected).toHaveBeenCalledWith(expect.objectContaining({
+      target_id: 'target-a',
+      exam_track_id: 'track-a',
+    }));
+    expect(fetchMock.mock.calls.filter(([, options = {}]) => options.method === 'PUT')).toHaveLength(0);
+  });
+
   it('does not roll back a persisted selection when onSaved throws', async () => {
     const onSaved = vi.fn(() => {
       throw new Error('消费方回调失败');
     });
     installTargetApi();
     render(<LearningTargetSelector onSaved={onSaved} />);
-    const select = await screen.findByRole('combobox', { name: '学习目标' });
+    const select = await screen.findByRole('combobox', { name: '考试类别' });
 
     fireEvent.change(select, { target: { value: 'target-b' } });
 
-    expect(await screen.findByRole('status')).toHaveTextContent('学习目标已更新');
+    expect(await screen.findByRole('status')).toHaveTextContent('考试类别已更新');
     expect(select).toHaveValue('target-b');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -144,7 +176,7 @@ describe('LearningTargetSelector', () => {
       saveRequest: () => Promise.resolve(response({ detail: '目标保存失败' }, false, 500)),
     });
     render(<LearningTargetSelector />);
-    const select = await screen.findByRole('combobox', { name: '学习目标' });
+    const select = await screen.findByRole('combobox', { name: '考试类别' });
 
     fireEvent.change(select, { target: { value: 'target-b' } });
 
@@ -164,9 +196,9 @@ describe('LearningTargetSelector', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('资格考试目录加载失败');
     expect(screen.getByRole('heading', { name: '学习路径' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '重试加载学习目标' }));
+    fireEvent.click(screen.getByRole('button', { name: '重试加载考试类别' }));
 
-    const select = await screen.findByRole('combobox', { name: '学习目标' });
+    const select = await screen.findByRole('combobox', { name: '考试类别' });
     expect(select).toHaveValue('target-a');
   });
 
@@ -174,7 +206,7 @@ describe('LearningTargetSelector', () => {
     const save = deferred();
     const fetchMock = installTargetApi({ saveRequest: () => save.promise });
     render(<LearningTargetSelector />);
-    const select = await screen.findByRole('combobox', { name: '学习目标' });
+    const select = await screen.findByRole('combobox', { name: '考试类别' });
 
     fireEvent.change(select, { target: { value: 'target-b' } });
     fireEvent.change(select, { target: { value: 'target-c' } });

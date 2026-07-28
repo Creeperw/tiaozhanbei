@@ -1,23 +1,26 @@
+const intent = (page, params = {}) => ({ page, params });
 const PRIMARY_NAV = [
-  { key: 'dashboard', label: '平台首页' },
-  { key: 'practice', label: '学习工坊' },
-  { key: 'training-workshop', label: '训练工坊' },
-  { key: 'personalization', label: '个性数据' },
-  { key: 'settings', label: '用户设置' },
+  { key: 'learning-target', label: '考试类别', kind: 'learning-target' },
+  { key: 'learning-path', label: '学习路径', intent: intent('learning-path') },
+  { key: 'practice', label: '学习工坊', children: [{ label: '智能助教', intent: intent('assistant', { newConversation: true }) }, { label: '知识图谱', intent: intent('knowledge', { view: 'atlas' }) }, { label: '个人知识库', intent: intent('knowledge', { view: 'personal' }) }, { label: '资料上传', intent: intent('knowledge', { view: 'upload' }) }] },
+  { key: 'training-workshop', label: '训练工坊', children: [{ label: '题目训练', intent: intent('training-workshop', { taskType: 'question_training' }) }, { label: 'AI 病患模拟', intent: intent('training-workshop', { taskType: 'simulated_patient' }) }, { label: '错题变式', intent: intent('training-workshop', { taskType: 'mistake_variation' }) }, { label: '试卷生成', intent: intent('training-workshop', { taskType: 'paper_generation' }) }] },
+  { key: 'personalization', label: '个性数据', intent: intent('personalization', { view: 'user-profile' }) },
 ];
+const INTERNAL_ALLOWED_PAGES = ['assistant', 'knowledge', 'settings', 'capability-detail'];
 const SUPPORT_NAV = [
-  { key: 'admin-feedback', label: '管理入口', roles: ['admin'] },
+  { key: 'admin-feedback', label: '管理入口', roles: ['admin'], children: [{ label: '反馈管理', intent: intent('admin-feedback') }, { label: '知识治理', intent: intent('knowledge', { view: 'personal' }) }] },
 ];
 
 export const PAGE_TITLES = {
   dashboard: '培训助手首页',
-  'qualification-route': '资格考试学习路线',
+  'learning-path': '学习路径',
   assistant: '智能助教',
   practice: '学习工坊',
   'training-workshop': '训练工坊',
   knowledge: '知识库',
   personalization: '个性数据',
   settings: '用户设置',
+  'capability-detail': '平台核心能力',
   'admin-feedback': '管理入口',
 };
 const MODULE_ROUTES = {
@@ -37,15 +40,14 @@ export function getAppShellConfig({ currentUser, currentPage, selectedSessionId 
   const requestedPage = knowledgeView ? 'knowledge' : currentPage;
   const visibleSupportNav = SUPPORT_NAV.filter((item) => !item.roles || item.roles.includes(role));
   const allowedPages = new Set([
-    ...PRIMARY_NAV.map((item) => item.key),
-    'assistant',
-    'qualification-route',
-    'knowledge',
+    'dashboard',
+    ...PRIMARY_NAV.filter((item) => item.kind !== 'learning-target').map((item) => item.key),
+    ...INTERNAL_ALLOWED_PAGES,
     ...visibleSupportNav.map((item) => item.key),
   ]);
   const normalizedPage = allowedPages.has(requestedPage) ? requestedPage : 'dashboard';
   const homeAction = normalizedPage === 'dashboard' ? null : { key: 'dashboard', label: '返回主页' };
-  const shellMode = ['assistant', 'practice', 'training-workshop', 'knowledge', 'qualification-route'].includes(normalizedPage) ? 'workspace' : 'standard';
+  const shellMode = ['assistant', 'practice', 'training-workshop', 'knowledge'].includes(normalizedPage) ? 'workspace' : 'standard';
 
   return {
     defaultPage: 'dashboard',
@@ -54,7 +56,7 @@ export function getAppShellConfig({ currentUser, currentPage, selectedSessionId 
     selectedSessionId,
     knowledgeView,
     pageTitle: PAGE_TITLES[normalizedPage] || PAGE_TITLES.dashboard,
-    primaryNav: PRIMARY_NAV,
+    primaryNav: [...PRIMARY_NAV, ...visibleSupportNav],
     supportNav: visibleSupportNav,
     moduleRoutes: MODULE_ROUTES,
     homeAction,

@@ -3,8 +3,9 @@ import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import { loadLearningTarget, saveLearningTarget } from './exam-atlas/examAtlasApi';
 
 const FALLBACK_TARGET_NAME = '中医执业医师资格考试';
+const TARGET_SELECTED_EVENT = 'competition:learning-target-selected';
 
-export default function LearningTargetSelector({ className = '', onSaved, variant = 'select' }) {
+export default function LearningTargetSelector({ className = '', onSaved, onSelected, variant = 'select' }) {
   const [options, setOptions] = useState([]);
   const [selectedId, setSelectedId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -48,7 +49,7 @@ export default function LearningTargetSelector({ className = '', onSaved, varian
       if (!mountedRef.current || requestId !== loadRequestRef.current) return;
       setOptions([]);
       setSelectedId('');
-      setError(requestError.message || '学习目标加载失败');
+      setError(requestError.message || '考试类别加载失败');
     } finally {
       if (mountedRef.current && requestId === loadRequestRef.current) {
         setLoading(false);
@@ -68,7 +69,20 @@ export default function LearningTargetSelector({ className = '', onSaved, varian
   const selectTargetById = async (targetId) => {
     if (savingRef.current) return;
     const selected = options.find((item) => item.target_id === targetId);
-    if (!selected || selected.target_id === selectedId) return;
+    if (!selected) return;
+    if (selected.target_id === selectedId) {
+      try {
+        const selectedTarget = {
+          ...selected,
+          target: { exam_track_id: selected.exam_track_id },
+        };
+        if (onSelected) await onSelected(selectedTarget);
+        else window.dispatchEvent(new CustomEvent(TARGET_SELECTED_EVENT, { detail: selectedTarget }));
+      } catch {
+        // Navigation callback failures must not affect the persisted target.
+      }
+      return;
+    }
 
     const previousId = selectedId;
     savingRef.current = true;
@@ -82,21 +96,28 @@ export default function LearningTargetSelector({ className = '', onSaved, varian
       const savedPayload = await saveLearningTarget(selected.exam_track_id);
       if (!mountedRef.current) return;
       savedTarget = savedPayload?.target || savedPayload || {};
-      setMessage('学习目标已更新');
+      setMessage('考试类别已更新');
     } catch (requestError) {
       if (!mountedRef.current) return;
       setSelectedId(previousId);
-      setError(requestError.message || '学习目标保存失败');
+      setError(requestError.message || '考试类别保存失败');
       return;
     } finally {
       savingRef.current = false;
       if (mountedRef.current) setSaving(false);
     }
 
+    const selectedTarget = { ...selected, target: savedTarget };
     try {
-      await onSaved?.({ ...selected, target: savedTarget });
+      await onSaved?.(selectedTarget);
     } catch {
       // Consumer callback failures must not roll back a target already persisted by the server.
+    }
+    try {
+      if (onSelected) await onSelected(selectedTarget);
+      else window.dispatchEvent(new CustomEvent(TARGET_SELECTED_EVENT, { detail: selectedTarget }));
+    } catch {
+      // Navigation callback failures must not roll back a target already persisted by the server.
     }
   };
 
@@ -112,12 +133,12 @@ export default function LearningTargetSelector({ className = '', onSaved, varian
     <div className={rootClassName}>
       {loading ? (
         <span className="learning-target-selector__loading" role="status">
-          正在加载学习目标
+          正在加载考试类别
         </span>
       ) : error && !options.length ? (
         <div className="learning-target-selector__load-error">
           <span role="alert">{error}</span>
-          <button type="button" onClick={load}>重试加载学习目标</button>
+          <button type="button" onClick={load}>重试加载考试类别</button>
         </div>
       ) : variant === 'menu' ? (
         <div className="learning-target-selector__options" role="menu" aria-label="资格考试选项">
@@ -136,10 +157,10 @@ export default function LearningTargetSelector({ className = '', onSaved, varian
         </div>
       ) : (
         <label className="learning-target-selector__control">
-          <span>学习目标</span>
+          <span>考试类别</span>
           <select
             className="learning-target-selector__input"
-            aria-label="学习目标"
+            aria-label="考试类别"
             value={selectedId}
             disabled={saving}
             onChange={selectTarget}

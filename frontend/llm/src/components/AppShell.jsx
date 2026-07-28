@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { getAppShellConfig } from '../appShell';
 import HomeButton from './HomeButton';
+import LearningTargetSelector from './LearningTargetSelector';
 import UserProfileModal from './UserProfileModal';
 import { useModalFocus } from './ui/useModalFocus';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
@@ -70,16 +71,114 @@ function NavItems({ items, currentPage, onNavigate }) {
   );
 }
 
-function ShellIdentity() {
+function ShellIdentity({ onNavigate }) {
   const mark = <Sprout aria-hidden="true" size={21} />;
   return (
-    <div className="app-shell__identity">
+    <button type="button" className="app-shell__identity app-shell__identity-toggle" aria-label="返回主页" onClick={() => onNavigate?.({ page: 'dashboard', params: {} })}>
       <div className="app-shell__mark">{mark}</div>
-      <div>
+      <div className="app-shell__identity-copy">
         <strong>时珍智训</strong>
-        <span>中医药备考平台</span>
+        <span>中医备考平台</span>
       </div>
+    </button>
+  );
+}
+
+function MenuItems({ items, onNavigate, onClose }) {
+  return items.map((item) => (
+    <button key={item.label} type="button" role="menuitem" onClick={() => { onNavigate(item.intent); onClose?.(); }}>
+      {item.label}
+    </button>
+  ));
+}
+
+function NavigationMenu({ item, currentPage, onNavigate, openKey, setOpenKey }) {
+  const open = openKey === item.key;
+  const ref = useRef(null);
+  useEffect(() => {
+    const closeOutside = (event) => { if (open && !ref.current?.contains(event.target)) setOpenKey(null); };
+    document.addEventListener('mousedown', closeOutside);
+    return () => document.removeEventListener('mousedown', closeOutside);
+  }, [open, setOpenKey]);
+  const focusItem = (position) => {
+    const entries = ref.current?.querySelectorAll('[role="menuitem"]');
+    entries?.[position < 0 ? entries.length - 1 : position]?.focus();
+  };
+  if (!item.children) {
+    return <div className="app-shell__nav-group"><a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} onClick={(event) => { event.preventDefault(); onNavigate(item.intent); }}>{item.label}</a></div>;
+  }
+  return (
+    <div ref={ref} className="app-shell__nav-group" onMouseEnter={() => setOpenKey(item.key)} onFocus={() => setOpenKey(item.key)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpenKey(null); }}>
+      <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} aria-haspopup="menu" aria-expanded={open} onClick={(event) => { event.preventDefault(); onNavigate({ page: item.key, params: {} }); }} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpenKey(item.key); window.setTimeout(() => focusItem(0), 0); } }}>
+        {item.label}<ChevronDown aria-hidden="true" size={15} />
+      </a>
+      {open && <div className="app-shell__nav-menu" role="menu" aria-label={`${item.label}菜单`}><MenuItems items={item.children} onNavigate={onNavigate} onClose={() => setOpenKey(null)} /></div>}
     </div>
+  );
+}
+
+function LearningTargetNavigationMenu({ openKey, setOpenKey, onNavigate }) {
+  const open = openKey === 'learning-target';
+  const ref = useRef(null);
+  const openSelectedPath = (selection) => {
+    setOpenKey(null);
+    onNavigate({
+      page: 'learning-path',
+      params: {
+        targetId: selection.target_id || '',
+        examTrackId: selection.exam_track_id || '',
+        textbookRouteId: selection.textbook_route_id || '',
+      },
+    });
+  };
+  useEffect(() => {
+    const closeOutside = (event) => { if (open && !ref.current?.contains(event.target)) setOpenKey(null); };
+    document.addEventListener('mousedown', closeOutside);
+    return () => document.removeEventListener('mousedown', closeOutside);
+  }, [open, setOpenKey]);
+  return (
+    <div ref={ref} className="app-shell__nav-group app-shell__target-group" onMouseEnter={() => setOpenKey('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpenKey(null); }}>
+      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpenKey(open ? null : 'learning-target')}>考试类别<ChevronDown aria-hidden="true" size={15} /></button>
+      {open && <div className="app-shell__nav-menu app-shell__target-menu" aria-label="选择考试类别"><LearningTargetSelector className="app-shell__target-selector" variant="menu" onSelected={openSelectedPath} /></div>}
+    </div>
+  );
+}
+
+function MobileNavItems({ items, currentPage, onNavigate, onClose }) {
+  const [expanded, setExpanded] = useState(null);
+  const openSelectedPath = (selection) => {
+    onNavigate({
+      page: 'learning-path',
+      params: {
+        targetId: selection.target_id || '',
+        examTrackId: selection.exam_track_id || '',
+        textbookRouteId: selection.textbook_route_id || '',
+      },
+    });
+    onClose();
+  };
+  return (
+    <nav aria-label="移动平台导航" className="app-shell__drawer-nav">
+      {items.map((item) => {
+        if (item.kind === 'learning-target') {
+          return (
+            <div key={item.key} className="app-shell__drawer-module app-shell__drawer-target">
+              <button type="button" aria-expanded={expanded === item.key} onClick={() => setExpanded(expanded === item.key ? null : item.key)}>{item.label}<ChevronDown aria-hidden="true" size={17} /></button>
+              {expanded === item.key && <LearningTargetSelector className="app-shell__target-selector" onSelected={openSelectedPath} />}
+            </div>
+          );
+        }
+        return (
+          <div key={item.key} className="app-shell__drawer-module">
+            <div>
+              <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} onClick={(event) => { event.preventDefault(); onNavigate(item.intent || { page: item.key, params: {} }); onClose(); }}>{item.label}</a>
+              {item.children && <button type="button" aria-label={`展开${item.label}`} aria-expanded={expanded === item.key} onClick={() => setExpanded(expanded === item.key ? null : item.key)}><ChevronDown aria-hidden="true" size={17} /></button>}
+            </div>
+            {item.children && expanded === item.key && <div role="menu"><MenuItems items={item.children} onNavigate={onNavigate} onClose={onClose} /></div>}
+          </div>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -138,6 +237,7 @@ function DesktopTopbar({
   targetOptions, selectedTargetId, targetLoading, targetError,
   onNavigate, onLogout, onOpenProfile, onSelectTarget,
 }) {
+  const [openKey, setOpenKey] = useState(null);
   const [profileMenuMounted, setProfileMenuMounted] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const openTimerRef = useRef(null);
@@ -172,8 +272,15 @@ function DesktopTopbar({
     const closeOnOutsidePointer = (event) => {
       if (!profileMenuRef.current?.contains(event.target)) closeProfileMenu();
     };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') closeProfileMenu();
+    };
     document.addEventListener('pointerdown', closeOnOutsidePointer);
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
   }, [profileMenuOpen]);
 
   const navigateFromProfileMenu = (taskType) => {
@@ -184,18 +291,13 @@ function DesktopTopbar({
   return (
     <header className="app-shell__topbar">
       <div className="app-shell__topbar-inner">
-        <ShellIdentity />
-        <NavItems items={[...shell.primaryNav, ...shell.supportNav]} currentPage={shell.currentPage} onNavigate={onNavigate} />
+        <ShellIdentity onNavigate={onNavigate} />
+        <nav aria-label="平台导航" className="app-shell__desktop-nav">
+          {shell.primaryNav.map((item) => item.kind === 'learning-target'
+            ? <LearningTargetNavigationMenu key={item.key} openKey={openKey} setOpenKey={setOpenKey} onNavigate={onNavigate} />
+            : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} onNavigate={onNavigate} openKey={openKey} setOpenKey={setOpenKey} />)}
+        </nav>
         <div className="app-shell__topbar-actions">
-          <label className={'app-shell__topbar-target' + (targetError ? ' is-error' : '')} title={targetError || '选择后打开对应教材学习路线'}>
-            <GraduationCap aria-hidden="true" size={17} />
-            <span className="sr-only">资格考试路径</span>
-            <select aria-label="资格考试路径" value={selectedTargetId} disabled={targetLoading || !targetOptions.length} onChange={(event) => onSelectTarget(event.target.value)}>
-              {!targetOptions.length && <option value="">{targetLoading ? '正在读取考试目录…' : '暂无可用考试'}</option>}
-              {targetOptions.map((item) => <option key={item.target_id} value={item.target_id}>{item.official_name}</option>)}
-            </select>
-            <ChevronDown aria-hidden="true" size={15} />
-          </label>
           <button type="button" className="app-shell__assistant-entry" aria-label="AI 智能助教" onClick={() => onNavigate({ page: 'assistant', params: { newConversation: true } })}>
             <MessageSquareMore aria-hidden="true" size={18} /><span>AI 智能助教</span>
           </button>
@@ -204,7 +306,7 @@ function DesktopTopbar({
             {unreadNotifications > 0 && <span className="app-shell__notification-badge">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
           </button>
           <div ref={profileMenuRef} className="app-shell__profile-menu-wrap">
-            <button type="button" className="app-shell__topbar-account" aria-label="打开个人菜单" aria-expanded={profileMenuOpen} aria-haspopup="menu" onClick={toggleProfileMenu}>
+            <button type="button" className="app-shell__topbar-account" aria-label="打开用户菜单" aria-expanded={profileMenuOpen} aria-haspopup="menu" onClick={toggleProfileMenu}>
               <span className="app-shell__topbar-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : avatarInitial}</span>
               <span className="app-shell__topbar-user">{displayName}</span>
               <ChevronDown aria-hidden="true" size={15} />
@@ -230,8 +332,10 @@ function DesktopTopbar({
                 </div>
                 <div className="app-shell__profile-menu-divider" />
                 <div className="app-shell__profile-menu-actions">
-                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onOpenProfile(); }}><UserRound aria-hidden="true" size={18} /><span>账号设置</span></button>
-                  <button type="button" role="menuitem" className="app-shell__profile-menu-logout" onClick={onLogout}><LogOut aria-hidden="true" size={18} /><span>退出</span></button>
+                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onNavigate({ page: 'settings', params: { view: 'account' } }); }}><Settings aria-hidden="true" size={18} /><span>用户设置</span></button>
+                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onNavigate({ page: 'settings', params: { view: 'governance' } }); }}><Bell aria-hidden="true" size={18} /><span>系统通知{unreadNotifications ? `（${unreadNotifications}）` : ''}</span></button>
+                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onOpenProfile(); }}><UserRound aria-hidden="true" size={18} /><span>账号资料</span></button>
+                  <button type="button" role="menuitem" className="app-shell__profile-menu-logout" onClick={onLogout}><LogOut aria-hidden="true" size={18} /><span>退出登录</span></button>
                 </div>
               </div>
             )}
@@ -277,15 +381,16 @@ function MobileDrawer({
         }}
       >
         <div className="app-shell__drawer-head">
-          <ShellIdentity />
+          <ShellIdentity onNavigate={(intent) => { onNavigate(intent); onClose(); }} />
           <button type="button" data-autofocus className="icon-button" aria-label="关闭导航菜单" onClick={onClose}>
             <X aria-hidden="true" size={20} />
           </button>
         </div>
-        <NavItems
+        <MobileNavItems
           items={shell.primaryNav}
           currentPage={shell.currentPage}
-          onNavigate={(intent) => { onNavigate(intent); onClose(); }}
+          onNavigate={onNavigate}
+          onClose={onClose}
         />
         {shell.supportNav.length > 0 && (
           <div className="app-shell__support">
@@ -297,14 +402,6 @@ function MobileDrawer({
             />
           </div>
         )}
-        <QualificationTargetSection
-          options={targetOptions}
-          selectedTargetId={selectedTargetId}
-          loading={targetLoading}
-          error={targetError}
-          onSelect={onSelectTarget}
-          idSuffix="mobile"
-        />
         <div className="app-shell__drawer-account">
           <span>{displayName}</span>
           <button type="button" className="button button--secondary" onClick={onLogout}>
@@ -424,7 +521,14 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
     try {
       await saveLearningTarget(selected.exam_track_id);
       window.dispatchEvent(new CustomEvent(LEARNING_TARGET_CHANGED_EVENT, { detail: selected }));
-      onNavigate({ page: 'qualification-route', params: { qualificationTargetId: selected.target_id } });
+      onNavigate({
+        page: 'learning-path',
+        params: {
+          targetId: selected.target_id,
+          examTrackId: selected.exam_track_id,
+          textbookRouteId: selected.textbook_route_id || '',
+        },
+      });
       if (drawerOpen) closeDrawer();
     } catch (requestError) {
       setSelectedTargetId(previousTargetId);
@@ -463,7 +567,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
           >
             <Menu aria-hidden="true" size={21} />
           </button>
-          <ShellIdentity />
+          <ShellIdentity onNavigate={onNavigate} />
           <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}><Bell aria-hidden="true" size={18} />{unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}</button>
         </header>
 

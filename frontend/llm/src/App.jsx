@@ -6,14 +6,15 @@ import PersonalizationHubPage from './components/PersonalizationHubPage';
 import SettingsHubPage from './components/SettingsHubPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
-import QualificationRoutePage from './components/QualificationRoutePage';
+import CapabilityDetailPage from './components/CapabilityDetailPage';
+import LearningPathPage from './components/LearningPathPage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
 import LearningStageLanding from './components/learning-stage/LearningStageLanding';
 import TextbookChapterLearning from './components/workshop-textbook/TextbookChapterLearning';
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
-import CompactAssistant from './components/CompactAssistant';
+import RegistrationJourney from './components/RegistrationJourney';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -50,7 +51,6 @@ export default function App() {
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const [stageTransition, setStageTransition] = useState(null);
-  const [floatingAssistantSessionId, setFloatingAssistantSessionId] = useState(null);
   const currentPage = getIntentPage(pageIntent);
   const shellPage = currentPage === 'practice' && pageIntent.params.view === 'workspace'
     ? 'training-workshop'
@@ -83,8 +83,15 @@ export default function App() {
   }, []);
 
   const handleLogin = (user) => {
-    // 注册/登录完成后直接进入系统，不再强制走注册调查流程。
     setCurrentUser(user);
+    if (!user?.onboarding_required) navigateToPage('dashboard');
+  };
+
+  const handleOnboardingSaved = (payload) => {
+    setCurrentUser(payload?.user || {
+      ...currentUser,
+      onboarding_required: false,
+    });
     navigateToPage('dashboard');
   };
 
@@ -100,13 +107,38 @@ export default function App() {
   const shellConfig = getAppShellConfig({ currentUser, currentPage: shellPage, selectedSessionId });
 
   const navigateToPage = (destination, context = null) => {
-    const contextualParams = typeof context === 'string' ? { sessionId: context } : (context || {});
-    const nextIntent = typeof destination === 'object'
-      ? createPageIntent(destination, contextualParams)
-      : createPageIntent(destination, contextualParams);
-    const { page, params } = nextIntent;
-
-    if (page === 'knowledge') {
+    if (typeof destination === 'object') {
+      const params = destination.params || {};
+      if (destination.page === 'knowledge') {
+        const carriesAtlasContext = Boolean(
+          params.trackId || params.membershipId || params.route || params.lv1 || params.lv2 || params.kpId || params.kp_id,
+        );
+        const preferredContext = carriesAtlasContext
+          ? {}
+          : knowledgeNavigationContext?.trackId
+            ? knowledgeNavigationContext
+            : { route: 'textbook_14_5' };
+        setPageIntent(createPageIntent({
+          ...destination,
+          params: { view: 'atlas', source: 'navigation', ...preferredContext, ...params },
+        }));
+        return;
+      }
+      if (destination.page === 'personalization') {
+        const settingsView = legacyPersonalizationSettingsView(params.view);
+        if (settingsView) {
+          setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
+          return;
+        }
+        setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'user-profile' }));
+        return;
+      }
+      if (destination.page === 'training-workshop') setNavigationRevision((value) => value + 1);
+      setPageIntent(createPageIntent(destination));
+      return;
+    }
+    const params = typeof context === 'string' ? { sessionId: context } : (context || {});
+    if (destination === 'knowledge') {
       const carriesAtlasContext = Boolean(
         params.trackId || params.membershipId || params.route || params.lv1 || params.lv2 || params.kpId || params.kp_id,
       );
@@ -115,28 +147,22 @@ export default function App() {
         : knowledgeNavigationContext?.trackId
           ? knowledgeNavigationContext
           : { route: 'textbook_14_5' };
-      setPageIntent(createPageIntent(page, {
+      setPageIntent(createPageIntent(destination, {
         view: 'atlas', source: 'navigation', ...preferredContext, ...params,
       }));
       return;
     }
-    if (page === 'personalization') {
+    if (destination === 'personalization') {
       const settingsView = legacyPersonalizationSettingsView(params.view);
       if (settingsView) {
         setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
         return;
       }
-      setPageIntent(createPageIntent(page, { ...params, view: params.view || 'user-profile' }));
+      setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'user-profile' }));
       return;
     }
-    if (
-      page === 'training-workshop'
-      || (page === 'practice' && params.view === 'workspace')
-      || (page === 'assistant' && params.newConversation)
-    ) {
-      setNavigationRevision((value) => value + 1);
-    }
-    setPageIntent(nextIntent);
+    if (destination === 'training-workshop') setNavigationRevision((value) => value + 1);
+    setPageIntent(createPageIntent(destination, params));
   };
 
   const startStageTransition = useCallback((selection) => {
@@ -165,16 +191,38 @@ export default function App() {
     return <AuthPage onLogin={handleLogin} />;
   }
 
+  if (currentUser.onboarding_required) {
+    return (
+      <RegistrationJourney
+        existingUser={currentUser}
+        onComplete={(user) => handleOnboardingSaved({ user })}
+        onExit={handleLogout}
+      />
+    );
+  }
+
   const renderAuthenticatedPage = () => {
     switch (shellConfig.currentPage) {
       case 'dashboard':
         return <HomePage currentUser={currentUser} onNavigate={navigateToPage} />;
-      case 'qualification-route':
-        return <QualificationRoutePage currentUser={currentUser} onNavigate={navigateToPage} />;
+      case 'capability-detail':
+        return (
+          <CapabilityDetailPage
+            capabilityKey={pageIntent.params.capability}
+            onNavigate={navigateToPage}
+          />
+        );
+      case 'learning-path':
+        return (
+          <LearningPathPage
+            key={pageIntent.params.examTrackId || 'current-learning-path'}
+            currentUser={currentUser}
+            onNavigate={navigateToPage}
+          />
+        );
       case 'assistant':
         return (
           <ChatInterface
-            key={`assistant-${navigationRevision}`}
             embedded
             currentUser={currentUser?.username || 'User'}
             currentUserRole={currentUser?.role || 'user'}
@@ -186,7 +234,6 @@ export default function App() {
             onNavigate={navigateToPage}
             preferredSessionId={selectedSessionId}
             initialContext={pageIntent.params.context || ''}
-            forceNewConversation={Boolean(pageIntent.params.newConversation)}
           />
         );
       case 'practice':
@@ -199,14 +246,7 @@ export default function App() {
           );
         }
         if (pageIntent.params.view === 'workspace') {
-          return (
-            <PracticePage
-              key={`practice-workspace-${navigationRevision}`}
-              navigationContext={pageIntent.params}
-              onNavigate={navigateToPage}
-              onBackHome={() => navigateToPage('dashboard')}
-            />
-          );
+          return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
         }
         if (pageIntent.params.view === 'stages') {
           return (
@@ -228,18 +268,12 @@ export default function App() {
           />
         );
       case 'training-workshop':
-        return (
-          <PracticePage
-            key={`training-workshop-${navigationRevision}`}
-            navigationContext={pageIntent.params}
-            onNavigate={navigateToPage}
-            onBackHome={() => navigateToPage('dashboard')}
-          />
-        );
+        return <PracticePage key={`training-workshop-${navigationRevision}`} navigationContext={pageIntent.params} />;
       case 'knowledge':
         return (
           <KnowledgePage
             onBackHome={() => navigateToPage('dashboard')}
+            onNavigate={navigateToPage}
             currentUser={currentUser}
             navigationContext={{
               ...pageIntent.params,
@@ -272,23 +306,6 @@ export default function App() {
         onMidpoint={openStagePathAtMidpoint}
         onComplete={finishStageTransition}
       />
-      {shellConfig.currentPage !== 'assistant' && (
-        <CompactAssistant
-          className="global-assistant-dock"
-          currentUser={currentUser?.display_name || currentUser?.username || '同学'}
-          preferredSessionId={floatingAssistantSessionId}
-          contextLabel={shellConfig.pageTitle}
-          initiallyCollapsed
-          characterHint="多智能体助教"
-          onOpenFull={(sessionId) => {
-            if (sessionId) setFloatingAssistantSessionId(sessionId);
-            navigateToPage({
-              page: 'assistant',
-              params: sessionId ? { sessionId } : {},
-            });
-          }}
-        />
-      )}
     </AppShell>
   );
 }
