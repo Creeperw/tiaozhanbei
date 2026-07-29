@@ -6,6 +6,7 @@ import {
   deleteFavoriteFolder,
   loadFavoriteFolders,
   loadFavorites,
+  saveFavorite,
 } from './workshopLibraryApi';
 
 function FavoriteContent({ item }) {
@@ -47,6 +48,9 @@ export default function QuestionFavoritesPanel() {
   const [dateFilter, setDateFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(false);
+  const [confirmUnfavorite, setConfirmUnfavorite] = useState(null);
+  const [moveTarget, setMoveTarget] = useState(null);
 
   const refresh = useCallback(async (preferredFolderId = '') => {
     setLoading(true);
@@ -103,9 +107,30 @@ export default function QuestionFavoritesPanel() {
     try {
       await deleteFavorite(favoriteId);
       setExpandedId((current) => current === favoriteId ? '' : current);
+      setConfirmUnfavorite(null);
       await refresh(selectedFolderId);
     } catch (reason) {
       setError(reason.message || '取消收藏失败');
+    }
+  };
+
+  const moveFavorite = async (item, targetFolderId) => {
+    setError('');
+    try {
+      await saveFavorite({
+        folder_id: targetFolderId,
+        resource_type: item.resource_type || 'question',
+        resource_id: item.resource_id || item.favorite_id,
+        title: item.title,
+        source: item.source || '训练工坊',
+        content: item.content || {},
+      });
+      await deleteFavorite(item.favorite_id);
+      setMoveTarget(null);
+      setExpandedId('');
+      await refresh(selectedFolderId);
+    } catch (reason) {
+      setError(reason.message || '移动收藏失败');
     }
   };
 
@@ -148,7 +173,7 @@ export default function QuestionFavoritesPanel() {
             <span className="question-collection__star"><Star size={34} fill="currentColor" aria-hidden="true" /></span>
             <div><small>收藏夹</small><h2 id="favorites-title">{selectedFolder?.name || '我的收藏'}</h2><p>{folderFavorites.length} 道题 · 集中复盘题干、答案与解析</p></div>
             <button type="button" disabled={!visibleFavorites.length} onClick={() => setExpandedId(visibleFavorites[0]?.favorite_id || '')}><Play size={16} fill="currentColor" />开始复习</button>
-            {selectedFolder && <button type="button" className="question-collection__delete-folder" onClick={removeFolder} aria-label="删除当前题单"><Trash2 size={15} /></button>}
+            {selectedFolder && <button type="button" className="question-collection__delete-folder" onClick={() => setConfirmDeleteFolder(true)} aria-label="删除当前题单"><Trash2 size={15} /></button>}
           </section>
 
           <div className="question-collection__filters">
@@ -166,13 +191,44 @@ export default function QuestionFavoritesPanel() {
                   <span><strong>{item.title}</strong><small>{item.source} · {String(item.updated_at || '').slice(0, 10)}</small></span>
                   {open ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
                 </button>
-                {open && <div className="workshop-library__item-body"><FavoriteContent item={item} /><button type="button" className="workshop-library__delete" onClick={() => removeFavorite(item.favorite_id)}><Trash2 size={14} />取消收藏</button></div>}
+                {open && <div className="workshop-library__item-body"><FavoriteContent item={item} /><div className="flex items-center gap-2 mt-3"><button type="button" onClick={() => setConfirmUnfavorite(item.favorite_id)} style={{background:'#fee2e2',color:'#dc2626',border:'1px solid #fecaca',borderRadius:8,padding:'6px 12px',fontSize:13,fontWeight:600,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4}}><Trash2 size={14} />取消收藏</button><button type="button" onClick={() => setMoveTarget(item)} style={{background:'#fef3c7',color:'#d97706',border:'1px solid #fde68a',borderRadius:8,padding:'6px 12px',fontSize:13,fontWeight:600,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4}}>移动</button></div></div>}
               </article>;
             })}
           </div>
         </main>
       </div>
     )}
+    {/* Confirm delete folder */}
+    {confirmDeleteFolder && <div className="workshop-save-dialog" role="dialog" aria-modal="true">
+      <div>
+        <header><h3>确认删除</h3><button type="button" onClick={() => setConfirmDeleteFolder(false)}><X size={18} /></button></header>
+        <p className="py-3 text-base text-slate-900">确定要删除收藏簿「{selectedFolder?.name}」吗？</p>
+        <footer><button type="button" onClick={() => setConfirmDeleteFolder(false)} style={{background:'#d1fae5',color:'#059669',border:'none',borderRadius:8,padding:'8px 18px',fontWeight:600,cursor:'pointer'}}>取消</button><button type="button" onClick={removeFolder} style={{background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:8,padding:'8px 18px',fontWeight:600,cursor:'pointer'}}>确认删除</button></footer>
+      </div>
+    </div>}
+    {confirmUnfavorite && <div className="workshop-save-dialog" role="dialog" aria-modal="true">
+      <div>
+        <header><h3>确认取消收藏</h3><button type="button" onClick={() => setConfirmUnfavorite(null)}><X size={18} /></button></header>
+        <p className="py-3 text-[1.05rem] font-medium text-slate-900">确定要取消收藏该题目吗？</p>
+        <footer><button type="button" onClick={() => setConfirmUnfavorite(null)} style={{background:'#d1fae5',color:'#059669',border:'none',borderRadius:8,padding:'8px 18px',fontWeight:600,cursor:'pointer'}}>取消</button><button type="button" onClick={() => removeFavorite(confirmUnfavorite)} style={{background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:8,padding:'8px 18px',fontWeight:600,cursor:'pointer'}}>确认取消</button></footer>
+      </div>
+    </div>}
+    {/* Move favorite */}
+    {moveTarget && <div className="workshop-save-dialog" role="dialog" aria-modal="true">
+      <div>
+        <header><h3>移动到其他收藏簿</h3><button type="button" onClick={() => setMoveTarget(null)}><X size={18} /></button></header>
+        <p className="py-2 text-sm text-slate-600">选择目标收藏簿：</p>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {folders.filter(f => f.folder_id !== selectedFolderId).map(f => (
+            <button key={f.folder_id} type="button" onClick={() => moveFavorite(moveTarget, f.folder_id)} className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50">
+              <span>{f.name}</span><span className="text-xs text-slate-400">{f.favorite_count} 条</span>
+            </button>
+          ))}
+          {folders.filter(f => f.folder_id !== selectedFolderId).length === 0 && <p className="text-sm text-slate-400">暂无其他收藏簿</p>}
+        </div>
+        <footer><button type="button" onClick={() => setMoveTarget(null)}>取消</button></footer>
+      </div>
+    </div>}
     {folderComposerOpen && <div className="workshop-save-dialog" role="dialog" aria-modal="true" aria-labelledby="favorite-folder-dialog-title">
       <div>
         <form onSubmit={addFolder}>

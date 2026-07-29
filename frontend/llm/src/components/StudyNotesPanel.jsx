@@ -102,6 +102,7 @@ export default function StudyNotesPanel() {
   const [error, setError] = useState('');
   const [newNotebookOpen, setNewNotebookOpen] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState('');
+  const [confirmDeleteNote, setConfirmDeleteNote] = useState(false);
   const editorRef = useRef(null);
   const imageInputRef = useRef(null);
 
@@ -201,6 +202,7 @@ export default function StudyNotesPanel() {
   const remove = async () => {
     if (!activeNoteId) return;
     setError('');
+    setConfirmDeleteNote(false);
     try {
       await deleteNote(activeNoteId);
       setActiveNoteId('');
@@ -295,7 +297,7 @@ export default function StudyNotesPanel() {
                 <button type="button" className={mode === 'edit' ? 'is-active' : ''} onClick={() => setMode('edit')}><PencilLine size={15} />编辑</button>
                 <button type="button" className={mode === 'preview' ? 'is-active' : ''} onClick={() => setMode('preview')}><Eye size={15} />预览</button>
               </div>
-              <div><button type="button" onClick={remove} disabled={isNew || !activeNoteId} className="is-danger"><Trash2 size={15} />删除</button><button type="button" onClick={save} disabled={saving || !draft.title.trim() || !draft.content.trim()}><Save size={15} />{saving ? '保存中…' : '保存'}</button></div>
+              <div><button type="button" onClick={() => setConfirmDeleteNote(true)} disabled={isNew || !activeNoteId} className="is-danger"><Trash2 size={15} />删除</button><button type="button" onClick={save} disabled={saving || !draft.title.trim() || !draft.content.trim()}><Save size={15} />{saving ? '保存中…' : '保存'}</button></div>
             </header>
             <div className="notion-note__document">
               <input className="notion-note__title" aria-label="笔记标题" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={200} placeholder="无标题" />
@@ -328,6 +330,7 @@ export default function StudyNotesPanel() {
       </main>
 
       {newNotebookOpen && <div className="workshop-save-dialog" role="dialog" aria-modal="true" aria-labelledby="new-notebook-dialog-title"><div><form onSubmit={createNotebook}><header><h3 id="new-notebook-dialog-title">新建笔记本</h3><button type="button" aria-label="关闭新建笔记本窗口" onClick={() => setNewNotebookOpen(false)}><X size={18} /></button></header><label>笔记本名称<input value={newNotebookName} onChange={(event) => setNewNotebookName(event.target.value)} maxLength={80} placeholder="例如：伤寒论" /></label><footer><button type="button" onClick={() => setNewNotebookOpen(false)}>取消</button><button type="submit" disabled={!newNotebookName.trim()}>创建并进入</button></footer></form></div></div>}
+      {confirmDeleteNote && <div className="workshop-save-dialog" role="dialog" aria-modal="true"><div><header><h3>确认删除</h3><button type="button" onClick={() => setConfirmDeleteNote(false)}><X size={18} /></button></header><p className="py-3 text-base text-slate-900">确定要删除这篇笔记吗？删除后不可恢复。</p><footer><button type="button" onClick={() => setConfirmDeleteNote(false)} style={{background:'#d1fae5',color:'#059669',border:'none',borderRadius:8,padding:'8px 18px',fontWeight:600,cursor:'pointer'}}>取消</button><button type="button" onClick={remove} style={{background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:8,padding:'8px 18px',fontWeight:600,cursor:'pointer'}}>确认删除</button></footer></div></div>}
     </section>
   );
 }
