@@ -29,10 +29,10 @@ const questionTypes = [
 
 const sectionButton = 'inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40';
 
-export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
+export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDemo = false }) {
   const [papers, setPapers] = useState([]);
   const [kind, setKind] = useState('special');
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(guideDemo ? '脾胃气虚证的辨证要点与常用方剂' : '');
   const [distribution, setDistribution] = useState({
     single_choice: 5,
     multiple_choice: 0,
@@ -48,12 +48,13 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (guideDemo) return undefined;
     let active = true;
     loadPapers({ fetcher: fetchJsonWithAuthFallback }).then((result) => {
       if (active && !result.error) setPapers(result.papers.items);
     });
     return () => { active = false; };
-  }, []);
+  }, [guideDemo]);
 
   const pendingPapers = useMemo(() => papers.filter((item) => item.status === 'published'), [papers]);
   const historyPapers = useMemo(() => papers.filter((item) => item.status !== 'published'), [papers]);

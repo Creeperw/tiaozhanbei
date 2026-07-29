@@ -12,6 +12,9 @@ vi.mock('./utils/api', () => ({
 }));
 
 vi.mock('./components/AuthPage', () => ({ default: () => <div>Auth</div> }));
+vi.mock('./components/HomeOnboardingGuide', () => ({
+  default: ({ onClose }) => <button type="button" onClick={onClose}>Close onboarding guide</button>,
+}));
 vi.mock('./components/HomePage', () => ({ default: () => <div>Home portal</div> }));
 vi.mock('./components/DashboardPage', () => ({
   default: ({ navigationContext = {}, onKnowledgeContextChange }) => (
@@ -119,6 +122,15 @@ describe('authenticated application shell', () => {
 
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
+  });
+
+  it('opens the homepage guide after the login session is verified', async () => {
+    render(<App />);
+
+    const guide = await screen.findByRole('button', { name: 'Close onboarding guide' });
+    expect(guide).toBeInTheDocument();
+    fireEvent.click(guide);
+    expect(screen.queryByRole('button', { name: 'Close onboarding guide' })).not.toBeInTheDocument();
   });
 
   it('consumes a one-time external navigation intent for an audited paper', async () => {

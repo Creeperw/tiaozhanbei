@@ -109,7 +109,7 @@ function MultiscaleSummary({ state }) {
   );
 }
 
-function RadarChart({ dimensions }) {
+export function RadarChart({ dimensions }) {
   const size = 332;
   const center = size / 2;
   const radius = 98;

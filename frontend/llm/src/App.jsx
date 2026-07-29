@@ -16,6 +16,7 @@ import TextbookChapterLearning from './components/workshop-textbook/TextbookChap
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
 import CompactAssistant from './components/CompactAssistant';
+import HomeOnboardingGuide from './components/HomeOnboardingGuide';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -53,6 +54,7 @@ export default function App() {
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const [stageTransition, setStageTransition] = useState(null);
   const [floatingAssistantSessionId, setFloatingAssistantSessionId] = useState(null);
+  const [showHomeGuide, setShowHomeGuide] = useState(false);
   const currentPage = getIntentPage(pageIntent);
   const shellPage = currentPage === 'practice' && pageIntent.params.view === 'workspace'
     ? 'training-workshop'
@@ -66,7 +68,9 @@ export default function App() {
         const res = await fetchWithAuth(`${AUTH_API_BASE}/me`);
         const data = await readJsonResponse(res, {});
         if (active) {
-          setCurrentUser(res.ok ? data.user || null : null);
+          const verifiedUser = res.ok ? data.user || null : null;
+          setCurrentUser(verifiedUser);
+          setShowHomeGuide(Boolean(verifiedUser));
         }
       } catch {
         if (active) setCurrentUser(null);
@@ -86,6 +90,7 @@ export default function App() {
 
   const handleLogin = (user) => {
     setCurrentUser(user);
+    setShowHomeGuide(true);
     navigateToPage('dashboard');
   };
 
@@ -95,6 +100,7 @@ export default function App() {
     } finally {
       setCurrentUser(null);
       setKnowledgeNavigationContext(null);
+      setShowHomeGuide(false);
     }
   };
 
@@ -338,6 +344,7 @@ export default function App() {
           }}
         />
       )}
+      {showHomeGuide && <HomeOnboardingGuide onClose={() => setShowHomeGuide(false)} />}
     </AppShell>
   );
 }
