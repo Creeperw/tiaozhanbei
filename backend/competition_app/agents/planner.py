@@ -662,6 +662,9 @@ class PlannerAgent:
                         agent="paper_blueprint_agent",
                         action="create_blueprint",
                         depends_on=["memory"] if "memory_agent" in selected else [],
+                        # The business author and compiler each make a bounded
+                        # model request; the step budget must cover both.
+                        timeout_seconds=420.0,
                     ),
                     ExecutionStep(
                         step_id="question_pool",
@@ -673,21 +676,21 @@ class PlannerAgent:
                         # expansion pass.  The generic 60-second agent timeout
                         # cancels the whole pool before those sequential,
                         # independently bounded lookups can finish.
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="paper_assembly",
                         agent="paper_assembly_agent",
                         action="assemble_exam_paper",
                         depends_on=["paper_blueprint", "question_pool"],
-                        timeout_seconds=180.0,
+                        timeout_seconds=900.0,
                     ),
                     ExecutionStep(
                         step_id="audit",
                         agent="audit_agent",
                         action="review_exam_paper",
                         depends_on=["paper_blueprint", "question_pool", "paper_assembly"],
-                        timeout_seconds=120.0,
+                        timeout_seconds=420.0,
                     ),
                 ]
             )
@@ -706,6 +709,7 @@ class PlannerAgent:
                         step_id="knowledge",
                         agent="knowledge_base_agent",
                         depends_on=["memory"] if "memory_agent" in selected else [],
+                        timeout_seconds=300.0,
                     ),
                     ExecutionStep(
                         step_id="expert",
@@ -715,11 +719,13 @@ class PlannerAgent:
                             if "memory_agent" in selected
                             else ["knowledge"]
                         ),
+                        timeout_seconds=360.0,
                     ),
                     ExecutionStep(
                         step_id="audit",
                         agent="audit_agent",
                         depends_on=["knowledge", "expert"],
+                        timeout_seconds=300.0,
                     ),
                 ]
             )
@@ -747,23 +753,25 @@ class PlannerAgent:
                         step_id="diagnosis_long", agent="diagnosis_agent",
                         plan_scope="long_term",
                         depends_on=[*memory_dependencies, "knowledge", "route_resolution"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=720.0,
                     ),
                     ExecutionStep(
                         step_id="audit_long", agent="audit_agent",
                         action="review_learning_plan", plan_scope="long_term",
                         audit_subject="long_term_plan", depends_on=["diagnosis_long"],
+                        timeout_seconds=300.0,
                     ),
                     ExecutionStep(
                         step_id="diagnosis_short", agent="diagnosis_agent",
                         plan_scope="short_term",
                         depends_on=[*memory_dependencies, "knowledge", "route_resolution", "diagnosis_long", "audit_long"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=720.0,
                     ),
                     ExecutionStep(
                         step_id="audit_short", agent="audit_agent",
                         action="review_learning_plan", plan_scope="short_term",
                         audit_subject="short_term_plan", depends_on=["diagnosis_short", "audit_long"],
+                        timeout_seconds=300.0,
                     ),
                     ExecutionStep(
                         step_id="learning_plan", agent="learning_plan_service",
@@ -871,7 +879,7 @@ class PlannerAgent:
                 # validator-guided revision.  Each model request has its own
                 # bounded timeout, so the generic 60-second step deadline would
                 # otherwise cancel a valid failover/revision transaction early.
-                timeout_seconds=300.0 if agent == "diagnosis_agent" else 60.0,
+                timeout_seconds=720.0 if agent == "diagnosis_agent" else 300.0,
                 depends_on=(
                     (
                         ["memory"]

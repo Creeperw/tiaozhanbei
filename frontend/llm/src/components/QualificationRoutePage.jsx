@@ -460,8 +460,12 @@ function HomeLearningRoute({
     if (planningDetails.loaded || planningDetails.loading) return;
     setPlanningDetails((current) => ({ ...current, loading: true, error: '' }));
     try {
-      const response = await fetchWithAuth(`${MAIN_API_BASE}/learning-context`);
-      const payload = await readJsonResponse(response, {});
+      let response = await fetchWithAuth(`${MAIN_API_BASE}/learning-plans/current/context`);
+      let payload = await readJsonResponse(response, {});
+      if (!response.ok) {
+        response = await fetchWithAuth(`${MAIN_API_BASE}/learning-context`);
+        payload = await readJsonResponse(response, {});
+      }
       if (!response.ok) {
         const detail = payload?.detail;
         throw new Error(typeof detail === 'string' ? detail : detail?.message || '学习规划暂时无法读取');

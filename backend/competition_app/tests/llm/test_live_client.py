@@ -308,6 +308,134 @@ async def test_chat_client_includes_output_contract_in_system_prompt() -> None:
 
 
 @pytest.mark.asyncio
+async def test_chat_client_includes_root_union_output_contract() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": '{"status":"compiled"}'}}]},
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen-plus",
+        transport=httpx.MockTransport(handler),
+    )
+
+    await client.complete_json(
+        "paper_blueprint_compiler",
+        {
+            "payload": {
+                "output_schema": {
+                    "$defs": {
+                        "Compiled": {
+                            "type": "object",
+                            "required": ["status", "contract"],
+                            "properties": {
+                                "status": {"type": "string", "const": "compiled"},
+                                "contract": {
+                                    "type": "object",
+                                    "required": ["title"],
+                                    "properties": {
+                                        "title": {"type": "string"},
+                                    },
+                                },
+                            },
+                        },
+                        "NeedsRevision": {
+                            "type": "object",
+                            "required": ["status", "issues"],
+                            "properties": {
+                                "status": {
+                                    "type": "string",
+                                    "const": "needs_revision",
+                                },
+                                "issues": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            },
+                        },
+                    },
+                    "anyOf": [
+                        {"$ref": "#/$defs/Compiled"},
+                        {"$ref": "#/$defs/NeedsRevision"},
+                    ],
+                }
+            }
+        },
+    )
+
+    system_prompt = json.loads(requests[0].content)["messages"][0]["content"]
+    assert "# 输出契约" in system_prompt
+    assert "固定值：compiled" in system_prompt
+    assert "contract" in system_prompt
+    assert "title" in system_prompt
+    assert "固定值：needs_revision" in system_prompt
+    assert "issues" in system_prompt
+
+
+@pytest.mark.asyncio
+async def test_chat_client_describes_nullable_numbers_and_anchor_maps() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": '{"status":"ok"}'}}]},
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="qwen-plus",
+        transport=httpx.MockTransport(handler),
+    )
+    await client.complete_json(
+        "paper_blueprint_compiler",
+        {
+            "payload": {
+                "output_schema": {
+                    "$defs": {
+                        "Anchor": {
+                            "type": "object",
+                            "properties": {
+                                "source_field": {"type": "string"},
+                                "source_quote": {"type": "string"},
+                            },
+                            "required": ["source_field", "source_quote"],
+                        }
+                    },
+                    "type": "object",
+                    "properties": {
+                        "duration_minutes": {
+                            "anyOf": [{"type": "integer"}, {"type": "null"}]
+                        },
+                        "field_anchors": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {"$ref": "#/$defs/Anchor"},
+                            },
+                        },
+                    },
+                }
+            }
+        },
+    )
+
+    system_prompt = json.loads(requests[0].content)["messages"][0]["content"]
+    assert "duration_minutes（integer 或 null" in system_prompt
+    assert "任意字段路径（array，值）" in system_prompt
+    assert "source_field（string，必填）" in system_prompt
+    assert "source_quote（string，必填）" in system_prompt
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("role", "payload", "expected_sections", "expected_facts"),
     [

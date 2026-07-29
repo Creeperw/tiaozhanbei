@@ -1,6 +1,6 @@
 ---
 skill_id: audit.review_learning_plan
-version: 1.0.0
+version: 1.1.0
 agent: audit_agent
 task_type: learning_plan
 ---
@@ -21,7 +21,9 @@ task_type: learning_plan
 # 决策
 
 - 所有关键审核维度均通过才输出 `pass`。
-- 可由 Diagnosis 在一轮内修正的问题输出 `revise`，并写明位置、影响和修改要求。
+- 只有存在会导致规划不可执行、越出可信路线、违反父计划约束、关键验收标准缺失或与用户明确条件冲突的问题，才输出 `revise`，并写明位置、影响和修改要求。
+- 措辞、栏目顺序、详略、可选优化和个人风格偏好不是阻断问题；确定性校验通过且仅有这类建议时必须输出 `pass`。
+- 短期计划已明确周期、至少两个推进节点、当前阶段内 1—2 本教材、产出和可采集完成标准时，不得仅因还可写得更详细而输出 `revise`。
 - 核心目标、路线或父计划前提错误输出 `reject`。
 - 缺少足够证据无法可靠判断时输出 `needs_human_review`。
 - 系统提供的确定性问题不可被模型改判为 `pass`。
@@ -29,6 +31,6 @@ task_type: learning_plan
 # 输出
 
 - `audit_report`：详细自然语言审核报告，说明审核依据、逐项结论和最终理由。
-- `findings`：仅保留可执行的问题；通过时可概括已核验维度。
+- `findings`：`pass` 时保持空列表；`revise`、`reject` 或 `needs_human_review` 时仅保留可执行的问题。
 - `decision`：最小审核决定。
 - 不生成或重写规划，不输出系统摘要、ID、依赖关系或数据库字段。

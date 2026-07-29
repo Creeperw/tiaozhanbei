@@ -1,6 +1,6 @@
 ---
 skill_id: audit.review_exam_paper_blueprint
-version: 1.0.0
+version: 1.1.0
 agent: audit_agent
 task_type: paper_generation
 ---
@@ -35,7 +35,9 @@ task_type: paper_generation
 ## 决策门槛
 
 - 全部关键检查通过才 `pass`。
+- 使用 `pass` 时 `findings` 必须为空；已核验维度统一写入简短的 `audit_report`，不要把“均已通过”“建议后续丰富题库”等说明拆成 findings。
 - 存在上述阻断性且可明确修正的蓝图缺项时使用 `revise`。
 - 无证据核心内容、严重约束冲突或越权泄露使用 `reject`。
 - 来源、规则或证据无法可靠判定时使用 `needs_human_review`。
 - `findings` 必须指出问题位置、依据、影响和修改要求；通过时概括已核验维度。
+- 不复述候选池警告、检索过程或每道题的通过情况；只报告阻断性问题，避免冗长审核输出引发无意义返修。

@@ -28,6 +28,6 @@ def test_model_agent_context_has_uniform_metadata_and_business_payload() -> None
     assert "任务目标" in parsed.task_instructions
     assert parsed.permission_note == "只读最小数据切片"
     assert parsed.prompt_skill_id == "diagnosis.create_learning_plan"
-    assert parsed.prompt_skill_version == "1.4.0"
+    assert parsed.prompt_skill_version == "1.6.0"
     assert parsed.payload["user_profile"] == {}
     assert "prompt_skill" not in parsed.payload

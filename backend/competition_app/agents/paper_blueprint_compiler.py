@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
@@ -91,7 +92,13 @@ class PaperBlueprintCompilerAgent:
         issues: list[dict[str, Any]] = []
         required_paths = {"/title", "/scope_summary", "/units"}
         for field_path in required_paths:
-            if field_path not in result.contract.field_anchors:
+            has_anchor = field_path in result.contract.field_anchors
+            if field_path == "/units" and not has_anchor:
+                has_anchor = any(
+                    path.startswith("/units/")
+                    for path in result.contract.field_anchors
+                )
+            if not has_anchor:
                 issues.append(
                     {
                         "code": "source_anchor_missing",
@@ -108,7 +115,10 @@ class PaperBlueprintCompilerAgent:
                 )
                 continue
             for anchor in anchors:
-                if anchor.source_quote not in blueprint_document:
+                if not PaperBlueprintCompilerAgent._source_contains(
+                    blueprint_document,
+                    anchor.source_quote,
+                ):
                     issues.append(
                         {
                             "code": "source_anchor_invalid",
@@ -154,7 +164,10 @@ class PaperBlueprintCompilerAgent:
                     (f"{unit_path}/score_total", format(unit.score_total, "g"))
                 )
         for field_path, value in verbatim_values:
-            if value and value not in blueprint_document:
+            if value and not PaperBlueprintCompilerAgent._source_contains(
+                blueprint_document,
+                value,
+            ):
                 issues.append(
                     {
                         "code": "source_anchor_invalid",
@@ -163,3 +176,19 @@ class PaperBlueprintCompilerAgent:
                     }
                 )
         return issues
+
+    @staticmethod
+    def _source_contains(source: str, value: str) -> bool:
+        """Accept formatting-only Markdown differences without accepting new facts."""
+        if value in source:
+            return True
+
+        def canonical(text: str) -> str:
+            return re.sub(
+                r"[\s*_#>`~\-•:：;；,.，。、“”\"'()（）【】]+",
+                "",
+                text,
+            )
+
+        normalized_value = canonical(value)
+        return bool(normalized_value) and normalized_value in canonical(source)

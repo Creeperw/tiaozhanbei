@@ -42,8 +42,28 @@ def _compact_output_contract(schema: Any) -> str:
             return definitions.get(reference.removeprefix("#/$defs/"), {})
         return value
 
+    def type_label(value: Any) -> str:
+        value = resolve(value)
+        alternatives = value.get("anyOf") or value.get("oneOf")
+        if isinstance(alternatives, list) and alternatives:
+            labels = [type_label(alternative) for alternative in alternatives]
+            return " 或 ".join(dict.fromkeys(label for label in labels if label)) or "值"
+        return str(value.get("type") or ("object" if value.get("properties") else "值"))
+
     def describe(value: Any, depth: int = 0) -> list[str]:
         value = resolve(value)
+        alternatives = value.get("anyOf") or value.get("oneOf")
+        if isinstance(alternatives, list) and alternatives:
+            lines: list[str] = []
+            indent = "  " * depth
+            for index, alternative in enumerate(alternatives, start=1):
+                resolved = resolve(alternative)
+                if not resolved.get("properties") and not resolved.get("additionalProperties"):
+                    continue
+                title = str(resolved.get("title") or f"分支 {index}")
+                lines.append(f"{indent}- {title}：")
+                lines.extend(describe(resolved, depth + 1))
+            return lines
         properties = value.get("properties", {})
         required = set(value.get("required", []))
         if not isinstance(properties, dict):
@@ -51,30 +71,47 @@ def _compact_output_contract(schema: Any) -> str:
         lines: list[str] = []
         for name, raw_definition in properties.items():
             definition = resolve(raw_definition)
-            field_type = definition.get("type") or (
-                "字符串或空值" if "anyOf" in definition else "值"
-            )
+            field_type = type_label(definition)
             marker = "必填" if name in required else "可选"
             description = str(definition.get("description", "")).strip()
             enum_values = definition.get("enum")
+            const_value = definition.get("const")
             enum_note = (
                 f"；可选值：{'、'.join(str(item) for item in enum_values)}"
                 if isinstance(enum_values, list) and enum_values
+                else f"；固定值：{const_value}"
+                if const_value is not None
                 else ""
             )
             suffix = f"：{description}{enum_note}" if description else enum_note
             indent = "  " * depth
             lines.append(f"{indent}- {name}（{field_type}，{marker}）{suffix}")
-            nested = definition.get("items") if field_type == "array" else definition
-            nested_lines = describe(nested, depth + 1)
-            lines.extend(nested_lines)
+            resolved_definition = resolve(definition)
+            if resolved_definition.get("type") == "array":
+                lines.extend(describe(resolved_definition.get("items"), depth + 1))
+                continue
+            additional = resolved_definition.get("additionalProperties")
+            if isinstance(additional, dict):
+                lines.append(
+                    f"{'  ' * (depth + 1)}- 任意字段路径"
+                    f"（{type_label(additional)}，值）"
+                )
+                additional_definition = resolve(additional)
+                if additional_definition.get("type") == "array":
+                    lines.extend(
+                        describe(additional_definition.get("items"), depth + 2)
+                    )
+                else:
+                    lines.extend(describe(additional_definition, depth + 2))
+                continue
+            lines.extend(describe(resolved_definition, depth + 1))
         return lines
 
-    properties = schema.get("properties", {})
-    if not isinstance(properties, dict):
+    details = describe(schema)
+    if not details:
         return ""
     lines = ["请只返回一个 JSON 对象，字段如下："]
-    lines.extend(describe(schema))
+    lines.extend(details)
     return "\n".join(lines)
 
 

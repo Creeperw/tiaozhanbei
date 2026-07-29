@@ -775,6 +775,18 @@ class LearningSchemaTests(unittest.TestCase):
         create_all.assert_not_called()
         schema_inspect.assert_not_called()
 
+    def test_paper_evidence_pack_uses_mysql_longtext(self):
+        from sqlalchemy.dialects import mysql
+
+        column_type = (
+            database.PaperInstanceRecord.__table__.c.evidence_pack_json.type
+        )
+
+        self.assertEqual(
+            str(column_type.dialect_impl(mysql.dialect())).upper(),
+            "LONGTEXT",
+        )
+
     def test_mysql_upgrades_phase_two_inventory_to_phase_three_once(self):
         executed = []
         created = []

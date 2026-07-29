@@ -72,7 +72,7 @@ MANAGER_REVIEWER_BASE_URL = _MAIN_SETTINGS.chat_base_url
 # Manager/Reviewer/Compression 模型服务名。
 MANAGER_REVIEWER_MODEL = _MAIN_SETTINGS.chat_model
 # LLM HTTP 请求超时时间，单位秒。
-LLM_TIMEOUT_SECONDS = 120
+LLM_TIMEOUT_SECONDS = _MAIN_SETTINGS.llm_timeout_seconds
 # Planner 最多工具规划/调用轮数。
 PLANNER_MAX_STEPS = 3
 # 上下文管理器最大输出 token 数。

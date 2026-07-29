@@ -315,6 +315,30 @@ class LangGraphOrchestrator(Orchestrator):
         builder = StateGraph(LangGraphExecutionState)
         dependents: set[str] = set()
         steps_by_id = {step.step_id: step for step in plan.steps}
+        audit_step_ids = {
+            step.step_id for step in plan.steps if self._is_audit_step(step)
+        }
+        audit_gate_ids = {
+            audit_step_id: f"{audit_step_id}__approved"
+            for audit_step_id in audit_step_ids
+            if any(
+                audit_step_id in candidate.depends_on
+                for candidate in plan.steps
+            )
+        }
+
+        def is_ancestor(candidate_id: str, step_id: str) -> bool:
+            pending = list(steps_by_id[step_id].depends_on)
+            visited: set[str] = set()
+            while pending:
+                dependency_id = pending.pop()
+                if dependency_id == candidate_id:
+                    return True
+                if dependency_id in visited:
+                    continue
+                visited.add(dependency_id)
+                pending.extend(steps_by_id[dependency_id].depends_on)
+            return False
 
         for step in plan.steps:
             builder.add_node(
@@ -322,36 +346,66 @@ class LangGraphOrchestrator(Orchestrator):
                 self._node_for_step(step, context, recorder, steps_by_id, plan),
             )
             dependents.update(step.depends_on)
+        for gate_id in audit_gate_ids.values():
+            builder.add_node(
+                gate_id,
+                lambda state: {"outputs": dict(state.get("outputs", {}))},
+            )
 
         for step in plan.steps:
-            if not step.depends_on:
+            gated_audits = [
+                dependency
+                for dependency in step.depends_on
+                if dependency in audit_gate_ids
+            ]
+            effective_dependencies = [
+                audit_gate_ids.get(dependency, dependency)
+                for dependency in step.depends_on
+                if not any(
+                    dependency != audit_step_id
+                    and is_ancestor(dependency, audit_step_id)
+                    for audit_step_id in gated_audits
+                )
+            ]
+            if not effective_dependencies:
                 builder.add_edge(START, step.step_id)
-            elif len(step.depends_on) == 1:
-                builder.add_edge(step.depends_on[0], step.step_id)
+            elif len(effective_dependencies) == 1:
+                builder.add_edge(effective_dependencies[0], step.step_id)
             else:
-                builder.add_edge(step.depends_on, step.step_id)
+                builder.add_edge(effective_dependencies, step.step_id)
 
         builder.add_node(
             "repair_execute",
             self._repair_node(plan, context, recorder, steps_by_id),
         )
-        leaf_steps = [
-            step.step_id for step in plan.steps if step.step_id not in dependents
-        ]
-        for step_id in leaf_steps:
-            step = steps_by_id[step_id]
+        for step in plan.steps:
             if self._is_audit_step(step):
+                gate_id = audit_gate_ids.get(step.step_id)
+                path_map = {
+                    "repair_execute": "repair_execute",
+                    "end": END,
+                }
+                if gate_id is not None:
+                    path_map[f"approved:{step.step_id}"] = gate_id
                 builder.add_conditional_edges(
-                    step_id,
-                    self._route_after_audit,
-                    {"repair_execute": "repair_execute", "end": END},
+                    step.step_id,
+                    self._route_after_audit_step(step.step_id, gate_id),
+                    path_map,
                 )
-            else:
-                builder.add_edge(step_id, END)
+            elif step.step_id not in dependents:
+                builder.add_edge(step.step_id, END)
+        repair_path_map = {
+            "repair_execute": "repair_execute",
+            "end": END,
+            **{
+                f"approved:{audit_step_id}": gate_id
+                for audit_step_id, gate_id in audit_gate_ids.items()
+            },
+        }
         builder.add_conditional_edges(
             "repair_execute",
-            self._route_after_repair,
-            {"repair_execute": "repair_execute", "end": END},
+            self._route_after_repair(audit_gate_ids),
+            repair_path_map,
         )
 
         return builder.compile(
@@ -381,26 +435,41 @@ class LangGraphOrchestrator(Orchestrator):
         }
 
     @staticmethod
-    def _route_after_audit(state: LangGraphExecutionState) -> str:
-        if state.get("terminal_states"):
+    def _route_after_audit_step(audit_step_id: str, gate_id: str | None):
+        def route(state: LangGraphExecutionState) -> str:
+            if state.get("terminal_states"):
+                return "end"
+            progress = state.get("repair_progress", {}).get(audit_step_id, {})
+            if str(progress.get("status")) in {"planned", "running"}:
+                return "repair_execute"
+            if gate_id is not None:
+                return f"approved:{audit_step_id}"
             return "end"
-        if any(
-            str(progress.get("status")) in {"planned", "running"}
-            for progress in state.get("repair_progress", {}).values()
-        ):
-            return "repair_execute"
-        return "end"
+
+        return route
 
     @staticmethod
-    def _route_after_repair(state: LangGraphExecutionState) -> str:
-        if state.get("terminal_states"):
-            return "end"
-        if any(
-            str(progress.get("status")) in {"planned", "running"}
-            for progress in state.get("repair_progress", {}).values()
-        ):
-            return "repair_execute"
-        return "end"
+    def _route_after_repair(audit_gate_ids: dict[str, str]):
+        def route(state: LangGraphExecutionState) -> str | list[str]:
+            if state.get("terminal_states"):
+                return "end"
+            progress_items = state.get("repair_progress", {})
+            if any(
+                str(progress.get("status")) in {"planned", "running"}
+                for progress in progress_items.values()
+            ):
+                return "repair_execute"
+            approved_paths = [
+                f"approved:{audit_step_id}"
+                for audit_step_id, progress in progress_items.items()
+                if (
+                    audit_step_id in audit_gate_ids
+                    and str(progress.get("status")) == "completed"
+                )
+            ]
+            return approved_paths or "end"
+
+        return route
 
     @staticmethod
     def _communication_update(step_id: str, trace: TraceRecorder) -> dict[str, Any]:
@@ -626,6 +695,9 @@ class LangGraphOrchestrator(Orchestrator):
             if decision == "pass":
                 record.status = "completed"
                 progress["status"] = "completed"
+                root_context.setdefault(
+                    "_approved_dependency_outputs", {}
+                ).update({**outputs, audit_step_id: result})
                 emit_runtime_event(
                     "repair_completed",
                     repair_id=repair_plan.repair_id,
@@ -706,8 +778,12 @@ class LangGraphOrchestrator(Orchestrator):
             interrupted_dependencies = root_context.get(
                 "_interrupted_dependency_outputs", {}
             ).get(step.step_id, {})
+            approved_dependencies = root_context.get(
+                "_approved_dependency_outputs", {}
+            )
             checkpoint_outputs = {
                 **dict(interrupted_dependencies),
+                **dict(approved_dependencies),
                 **dict(state.get("outputs", {})),
             }
             outputs = {
@@ -811,6 +887,10 @@ class LangGraphOrchestrator(Orchestrator):
                     },
                 })
             if decision != "revise":
+                if self._is_audit_step(step) and decision == "pass":
+                    root_context.setdefault(
+                        "_approved_dependency_outputs", {}
+                    ).update(node_outputs)
                 return with_communication({"outputs": node_outputs})
 
             emit_runtime_event(

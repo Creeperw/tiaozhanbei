@@ -128,3 +128,9 @@ export async function getWorkflowRun(runId) {
   if (!response.ok) throw await responseError(response);
   return readJsonResponse(response, {});
 }
+
+export async function getResumableWorkflowRunId(runId) {
+  if (!runId) return null;
+  const run = await getWorkflowRun(runId);
+  return run?.status === 'interrupted' ? runId : null;
+}

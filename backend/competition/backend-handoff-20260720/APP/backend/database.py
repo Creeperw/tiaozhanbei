@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pymysql
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, ForeignKeyConstraint, Text, Boolean, Float, JSON, UniqueConstraint, MetaData, Table, Index, event, inspect, text
+from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker, relationship
@@ -47,6 +48,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+LARGE_JSON_TEXT = Text().with_variant(LONGTEXT(), "mysql")
 
 # Registers case-training record tables with the shared metadata after Base is available.
 from APP.backend import case_training_models
@@ -223,7 +225,7 @@ class TrainingTaskRecord(Base):
     artifact_type = Column(String(80), default="")
     artifact_json = Column(Text, default="{}")
     evidence_pack_id = Column(String(120), default="", index=True)
-    evidence_pack_json = Column(Text, default="{}")
+    evidence_pack_json = Column(LARGE_JSON_TEXT, default="{}")
     audit_json = Column(Text, default="{}")
     trace_json = Column(Text, default="[]")
     learning_updates_json = Column(Text, default="{}")
@@ -266,7 +268,7 @@ class PaperInstanceRecord(Base):
     paused_at = Column(DateTime, nullable=True)
     paused_remaining_seconds = Column(Integer, nullable=True)
     blueprint_json = Column(Text, default="{}")
-    evidence_pack_json = Column(Text, default="{}")
+    evidence_pack_json = Column(LARGE_JSON_TEXT, default="{}")
     created_at = Column(DateTime, default=utc_now)
 
 
@@ -3125,6 +3127,31 @@ def _ensure_learning_workshop_schema(bind):
                         column_name,
                         f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}",
                     )
+    if bind.dialect.name == "mysql":
+        # Audited paper candidate packs can exceed MySQL TEXT's 64 KiB
+        # ceiling. Existing deployments need explicit widening because
+        # create_all never changes an already-created column type.
+        inspector = inspect(bind)
+        for table_name in ("training_task_records", "paper_instances"):
+            if table_name not in inspector.get_table_names():
+                continue
+            column = next(
+                (
+                    item
+                    for item in inspector.get_columns(table_name)
+                    if item["name"] == "evidence_pack_json"
+                ),
+                None,
+            )
+            if column is None or "LONGTEXT" in str(column.get("type", "")).upper():
+                continue
+            with bind.begin() as connection:
+                connection.execute(
+                    text(
+                        f"ALTER TABLE {table_name} "
+                        "MODIFY COLUMN evidence_pack_json LONGTEXT NULL"
+                    )
+                )
 
 
 def _ensure_learning_governance_tables(bind):

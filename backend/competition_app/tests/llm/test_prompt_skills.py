@@ -5,8 +5,8 @@ def test_prompt_skill_registry_loads_approved_task_skill() -> None:
     skill = prompt_skill_registry.load("diagnosis_agent", "learning_plan")
 
     assert skill.skill_id == "diagnosis.create_learning_plan"
-    assert skill.version == "1.4.0"
-    assert "长期计划六栏" in skill.instructions
+    assert skill.version == "1.6.0"
+    assert "正文使用六栏" in skill.instructions
     assert "long_term_plan_stages" in skill.instructions
     assert skill.as_model_input()["task_type"] == "learning_plan"
 

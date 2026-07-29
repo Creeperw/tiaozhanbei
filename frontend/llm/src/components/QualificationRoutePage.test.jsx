@@ -59,6 +59,16 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
         navigation: { atlas_route_id: 'textbook_14_5' },
       }));
     }
+    if (path.includes('/learning-plans/current/context')) {
+      const legacy = options.learningContext || {
+        long_term_plan: { content: '【最终目标】通过中医执业医师资格考试。' },
+        short_term_plan: { content: '【本周安排】完成中医基础理论复习。' },
+      };
+      return Promise.resolve(response({
+        long_term_plan: legacy.long_term_plan || null,
+        short_term_plan: legacy.short_term_plan || null,
+      }));
+    }
     if (path.includes('/learning-context')) {
       return Promise.resolve(response(options.learningContext || {
         long_term_plan: { content: '【最终目标】通过中医执业医师资格考试。' },

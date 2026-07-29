@@ -129,7 +129,7 @@ class KnowledgeExplanationAgent:
             item
             for item in evidence_pack._question_details
             if self._is_safe_practice_question(item.question_type)
-        ][:3]
+        ][:1]
         if selected_questions:
             content["配套练习"] = [
                 {
@@ -146,11 +146,6 @@ class KnowledgeExplanationAgent:
                 {
                     "题型": "简答题",
                     "题目": f"请用自己的话概括“{evidence_pack.query}”的核心结论，并说明判断依据。",
-                    "选项": [],
-                },
-                {
-                    "题型": "辨析题",
-                    "题目": "请指出本次讲解中最容易混淆的两个概念，并说明它们的区别。",
                     "选项": [],
                 },
             ]

@@ -601,7 +601,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return HTTPException(status_code=500, detail=str(exc))
 
     def current_plan_context(learner_id: str) -> dict[str, dict]:
-        state = container.review_card_use_case.plan_repository.get_current(learner_id)
+        state = container.learning_plan_service.get_current(learner_id)
         if state is None:
             return {}
         context = {
@@ -755,6 +755,54 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is not None and state.get("learner_id") != user.user_id:
             raise HTTPException(status_code=404, detail="LangGraph 会话不存在或已过期")
         return state
+
+    def safe_failure_message(error_code: object) -> str:
+        messages = {
+            "knowledge_timeout": "知识检索超时，已保存当前会话，请稍后重试。",
+            "knowledge_step_failed": "知识检索未能完成，请稍后重试。",
+            "paper_blueprint_timeout": "试卷蓝图生成超时，请稍后重试。",
+            "model_timeout": "模型调用超时，请稍后重试。",
+            "workflow_timeout": "本次处理超时，已保存当前会话，请稍后重试。",
+            "plan_compilation_failed": "学习规划未能通过结构化校验，请稍后重试。",
+            "audit_step_failed": "内容审核未能完成，请稍后重试。",
+            "daily_task_publication_failed": "今日任务发布未能完成，请稍后重试。",
+            "paper_generation_failed": "试卷生成未能完成，请稍后重试。",
+            "persistence_failed": "结果保存失败，请稍后重试。",
+        }
+        return messages.get(
+            str(error_code or ""),
+            "这次处理没有成功完成，请稍后重试。",
+        )
+
+    def safe_run_status(state: dict[str, Any]) -> dict[str, Any]:
+        result = state.get("result")
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        if not isinstance(result, dict):
+            result = None
+        payload = {
+            "status": state.get("status"),
+            "thread_id": state.get("thread_id"),
+            "execution_id": state.get("execution_id"),
+            "task_type": state.get("task_type")
+            or (result or {}).get("task_type"),
+            "result": _sanitize(result) if result is not None else None,
+            "message": (
+                safe_failure_message(state.get("error_code"))
+                if state.get("status") == "failed"
+                else None
+            ),
+            "error_code": state.get("error_code"),
+            "error_type": state.get("error_type"),
+            "retryable": bool(state.get("retryable", False)),
+            "failed_step": state.get("failed_step"),
+            "interrupt": _sanitize(state.get("interrupt"))
+            if isinstance(state.get("interrupt"), dict)
+            else None,
+        }
+        if state.get("learner_id"):
+            payload["learner_id"] = state["learner_id"]
+        return payload
 
     def require_available_thread(request: Request, thread_id: str | None) -> None:
         if not thread_id:
@@ -1544,7 +1592,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         daily_task_timer = await asyncio.to_thread(
             container.daily_task_refresh_service.ensure_current, user.user_id
         )
-        plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
+        plans = container.learning_plan_service.get_current(user.user_id)
         queue = container.review_service.get_queue(user.user_id, limit=12)
         long_term_payload = (
             plans.long_term_plan.model_dump(mode="json")
@@ -1650,7 +1698,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             if backend_handoff is not None
             else {}
         )
-        plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
+        plans = container.learning_plan_service.get_current(user.user_id)
         long_plan = (
             plans.long_term_plan.model_dump(mode="json")
             if plans is not None and plans.long_term_plan is not None
@@ -1694,6 +1742,39 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 task_progress = {}
         plans = container.learning_plan_service.get_current(user.user_id)
         return build_plan_progress(plans, daily_task_progress=task_progress)
+
+    @app.get("/api/v1/learning-plans/current/context")
+    async def current_learning_plans_context(request: Request) -> dict:
+        """Return the canonical plan payload used by chat and planning pages."""
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        plans = container.learning_plan_service.get_current(user.user_id)
+        if plans is None:
+            return {
+                "learner_id": user.user_id,
+                "long_term_plan": None,
+                "short_term_plan": None,
+                "learning_task": None,
+                "source": "learning_plan_repository",
+            }
+        return {
+            "learner_id": user.user_id,
+            "long_term_plan": (
+                plans.long_term_plan.model_dump(mode="json")
+                if plans.long_term_plan is not None else None
+            ),
+            "short_term_plan": (
+                plans.short_term_plan.model_dump(mode="json")
+                if plans.short_term_plan is not None else None
+            ),
+            "learning_task": (
+                plans.learning_task.model_dump(mode="json")
+                if plans.learning_task is not None else None
+            ),
+            "source": "learning_plan_repository",
+        }
 
     @app.post("/api/v1/learning-plans/current/stages/{stage}/evidence")
     async def record_stage_evidence(
@@ -3142,7 +3223,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     @app.get("/api/v1/review-cards/runs/{thread_id}")
     async def get_review_card_run(thread_id: str, request: Request):
         state = require_run_owner(request, thread_id)
-        return _sanitize(state)
+        return safe_run_status(state)
 
     @app.get("/api/v1/learners/{learner_id}/review-queue")
     async def get_review_queue(learner_id: str, request: Request, limit: int = 50):
@@ -3295,6 +3376,89 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     ) -> StreamingResponse:
         queue: asyncio.Queue[dict[str, object] | None] = asyncio.Queue()
 
+        def failure_event(exc: Exception) -> dict[str, object]:
+            run_state = container.review_card_use_case.get_run_state(thread_id) or {}
+            execution_id = run_state.get("execution_id")
+            message = str(exc).strip()
+            error_type = type(exc).__name__
+            normalized = message.lower()
+            failed_step = run_state.get("failed_step")
+            step_match = re.search(r"步骤\s+([^（(\s]+)", message)
+            if step_match and failed_step in {
+                None,
+                "",
+                "orchestrator",
+                "finalization",
+            }:
+                failed_step = step_match.group(1)
+            persisted_code = str(run_state.get("error_code") or "").strip()
+            if persisted_code:
+                error_code = persisted_code
+                retryable = bool(run_state.get("retryable", False))
+            elif "timeout" in normalized or "timed out" in normalized:
+                if failed_step in {"knowledge", "knowledge_base_agent"} or "knowledge" in normalized:
+                    error_code = "knowledge_timeout"
+                elif failed_step in {"paper_blueprint", "paper_blueprint_agent"}:
+                    error_code = "paper_blueprint_timeout"
+                elif "model" in normalized or "transport" in normalized:
+                    error_code = "model_timeout"
+                else:
+                    error_code = "workflow_timeout"
+                retryable = True
+            elif "knowledge" in normalized:
+                error_code = "knowledge_step_failed"
+                retryable = True
+            elif (
+                failed_step in {"learning_plan", "learning_plan_service"}
+                and "dailytaskprogresserror" in normalized
+            ):
+                error_code = "daily_task_publication_failed"
+                retryable = True
+            elif (
+                failed_step in {
+                    "diagnosis",
+                    "diagnosis_agent",
+                    "diagnosis_long",
+                    "diagnosis_short",
+                }
+                and (
+                    "plan contract" in normalized
+                    or "规划合同" in message
+                    or "规划正文" in message
+                )
+            ):
+                error_code = "plan_compilation_failed"
+                retryable = False
+            elif failed_step in {"audit", "audit_agent"} or "audit decision" in normalized:
+                error_code = "audit_step_failed"
+                retryable = True
+            elif failed_step in {
+                "paper_blueprint",
+                "question_pool",
+                "paper_assembly",
+                "paper_audit",
+            }:
+                error_code = "paper_generation_failed"
+                retryable = True
+            elif "database" in normalized or "mysql" in normalized or "持久化" in message:
+                error_code = "persistence_failed"
+                retryable = True
+            else:
+                error_code = "workflow_failed"
+                retryable = False
+            user_message = safe_failure_message(error_code)
+            return {
+                "event": "run_failed",
+                "error_type": error_type,
+                "error_code": error_code,
+                "retryable": retryable,
+                "message": user_message,
+                "user_message": user_message,
+                "thread_id": thread_id,
+                "execution_id": execution_id,
+                "failed_step": failed_step,
+            }
+
         def publish(event: dict[str, object]) -> None:
             queue.put_nowait(event)
 
@@ -3322,18 +3486,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     }
                 )
             except Exception as exc:
-                container.review_card_use_case.mark_run_failed(thread_id, str(exc))
-                await queue.put(
-                    {
-                        "event": "run_failed",
-                        "error_type": type(exc).__name__,
-                        "message": (
-                            "这次处理没有成功完成。系统已保留当前会话，"
-                            "请稍后重试；若问题持续出现，可换一种说法重新发起。"
-                        ),
-                        "thread_id": thread_id,
-                    }
+                failure = failure_event(exc)
+                container.review_card_use_case.mark_run_failed(
+                    thread_id,
+                    str(exc),
+                    error_type=str(failure["error_type"]),
+                    error_code=str(failure["error_code"]),
+                    retryable=bool(failure["retryable"]),
+                    failed_step=(
+                        str(failure["failed_step"])
+                        if failure.get("failed_step")
+                        else None
+                    ),
                 )
+                await queue.put(failure)
             finally:
                 reset_event_sink(token)
                 await queue.put(None)
