@@ -718,8 +718,14 @@ function renderResourceResult(body) {
   const content = document.querySelector('#resource-content');
   if (!card || !content) return;
   const resource = body?.resource;
-  card.hidden = !resource;
+  const assistantMessage = String(body?.assistant_message || '').trim();
+  card.hidden = !resource && !assistantMessage;
   content.replaceChildren();
+  if (!resource && assistantMessage) {
+    document.querySelector('#resource-title').textContent = '智能助教';
+    appendResourceValue(content, '', assistantMessage);
+    return;
+  }
   if (!resource) return;
   document.querySelector('#resource-title').textContent = resource.title || '学习产物';
   const resourceContent = resource.content || {};
@@ -962,7 +968,9 @@ function renderResults(body) {
           : 'fail'
     );
   } else {
-    auditBadge.textContent = '✓ 学习计划已落地';
+    auditBadge.textContent = body?.task_type === 'casual_conversation'
+      ? '✓ 对话完成'
+      : '✓ 学习计划已落地';
     auditBadge.classList.add('pass');
   }
   resultSection.classList.remove('hidden');
@@ -1409,7 +1417,16 @@ async function consumeSse(response) {
       handleStreamEvent(event);
       if (event.event === 'run_failed') throw new Error(event.message);
       if (event.event === 'run_interrupted') return event.result;
-      if (event.event === 'run_completed') return event.result;
+      if (event.event === 'run_completed') {
+        return {
+          ...(event.result || {}),
+          assistant_message: (
+            event.assistant_message
+            || event.result?.assistant_message
+            || ''
+          ),
+        };
+      }
     }
   }
   throw new Error('流式连接结束但未收到最终结果');

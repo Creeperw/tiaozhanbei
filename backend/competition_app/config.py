@@ -13,7 +13,7 @@ REPOSITORY_ROOT = BACKEND_ROOT.parent
 # The main backend remains authoritative for every model dependency. Values from
 # config_new.py are deliberately not used as an alternative model stack.
 CHAT_BASE_URL = (
-    "https://llm-1nvjq1o5rj1bf5yi.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+    "https://llm-298mleun258tyc3o.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
 CHAT_MODELS = (
     "qwen3.7-flash",
@@ -179,7 +179,7 @@ class Settings:
     embedding_model: str = EMBEDDING_MODEL
     embedding_mode: Literal["enabled", "disabled"] = "enabled"
     embedding_model_path: Path | None = None
-    llm_timeout_seconds: float = 120.0
+    llm_timeout_seconds: float = 180.0
 
     def __post_init__(self) -> None:
         normalized_models = tuple(
@@ -339,7 +339,7 @@ class Settings:
                 else None
             ),
             llm_timeout_seconds=_parse_float(
-                values, "LLM_TIMEOUT_SECONDS", 120.0, minimum=1.0
+                values, "LLM_TIMEOUT_SECONDS", 180.0, minimum=1.0
             ),
             question_vector_store_root=_parse_path(
                 values,

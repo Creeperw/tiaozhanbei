@@ -496,10 +496,15 @@ export const isPaperSubmissionPayloadValid = (data) => (
 
 export async function loadPlanningData({ fetcher }) {
   try {
-    const [summaryResult, contextResult, multiscaleResult, candidatesResult] = await Promise.allSettled([
+    const [summaryResult, contextResult, planContextResult, multiscaleResult, candidatesResult] = await Promise.allSettled([
       fetcher({ paths: planningPaths, fallback: emptyPlan, validator: isPlanPayloadValid }),
       fetcher({
         paths: ['/v1/learning-context'],
+        fallback: {},
+        validator: (data) => data && typeof data === 'object',
+      }),
+      fetcher({
+        paths: ['/v1/learning-plans/current/context'],
         fallback: {},
         validator: (data) => data && typeof data === 'object',
       }),
@@ -514,11 +519,20 @@ export async function loadPlanningData({ fetcher }) {
         validator: isPathCandidatesValid,
       }),
     ]);
-    if (summaryResult.status !== 'fulfilled' && contextResult.status !== 'fulfilled') {
-      throw summaryResult.reason || contextResult.reason || new Error('学习规划加载失败');
+    if (summaryResult.status !== 'fulfilled'
+      && contextResult.status !== 'fulfilled'
+      && planContextResult.status !== 'fulfilled') {
+      throw summaryResult.reason
+        || contextResult.reason
+        || planContextResult.reason
+        || new Error('学习规划加载失败');
     }
     const summary = summaryResult.status === 'fulfilled' ? summaryResult.value : { data: emptyPlan, source: null };
     const learningContext = contextResult.status === 'fulfilled' ? contextResult.value.data : {};
+    const planContext = planContextResult.status === 'fulfilled' ? planContextResult.value.data : {};
+    const canonicalLongTermPlan = planContext.long_term_plan || learningContext.long_term_plan || null;
+    const canonicalShortTermPlan = planContext.short_term_plan || learningContext.short_term_plan || null;
+    const canonicalLearningTask = planContext.learning_task || learningContext.learning_task || null;
     const multiscale = multiscaleResult.status === 'fulfilled'
       ? multiscaleResult.value.data
       : null;
@@ -528,12 +542,12 @@ export async function loadPlanningData({ fetcher }) {
     const data = {
       ...emptyPlan,
       ...summary.data,
-      long_term_plan_content: String(learningContext.long_term_plan?.content || ''),
-      long_term_plan_stages: Array.isArray(learningContext.long_term_plan?.stages)
-        ? learningContext.long_term_plan.stages
+      long_term_plan_content: String(canonicalLongTermPlan?.content || ''),
+      long_term_plan_stages: Array.isArray(canonicalLongTermPlan?.stages)
+        ? canonicalLongTermPlan.stages
         : [],
-      short_term_plan_content: String(learningContext.short_term_plan?.content || ''),
-      daily_tasks: learningTaskToDailyTasks(learningContext.learning_task),
+      short_term_plan_content: String(canonicalShortTermPlan?.content || ''),
+      daily_tasks: learningTaskToDailyTasks(canonicalLearningTask),
       daily_task_timer: learningContext.daily_task_timer || null,
       multiscale,
       path_candidates: pathCandidates,

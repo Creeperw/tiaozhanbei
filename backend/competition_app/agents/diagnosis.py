@@ -330,6 +330,26 @@ class DiagnosisAgent:
         memory_output = context.get("dependency_outputs", {}).get("memory")
         memory_payload = getattr(memory_output, "payload", None)
         memory_context_summary = getattr(memory_payload, "context_summary", None)
+        audit_feedback = context.get("audit_feedback")
+        audit_payload = getattr(audit_feedback, "payload", audit_feedback)
+        audit_revision = None
+        if audit_payload is not None:
+            audit_revision = {
+                "instruction": (
+                    "这是上一轮审核的强制修订项。只修正这些问题，"
+                    "保留已经通过的内容，并确保自然语言正文与结构化合同一致。"
+                ),
+                "findings": [
+                    str(item)[:600]
+                    for item in list(
+                        getattr(audit_payload, "findings", []) or []
+                    )[:8]
+                    if str(item).strip()
+                ],
+                "audit_report": str(
+                    getattr(audit_payload, "audit_report", "") or ""
+                )[:2400],
+            }
         planning_payload = {
             "plan_scope": plan_scope,
             "user_request": str(context.get("user_request", "")),
@@ -370,11 +390,12 @@ class DiagnosisAgent:
                     unmet_prerequisite_courses
                 ),
             },
-            "learning_state": context.get("multi_scale_learning_state") or {},
-            "path_candidates": context.get("path_candidates") or {
-                "eligible": [],
-                "blocked": [],
-            },
+            "learning_state": self._model_learning_state(
+                context.get("multi_scale_learning_state")
+            ),
+            "path_candidates": self._model_path_candidates(
+                context.get("path_candidates")
+            ),
             "path_candidate_policy": (
                 "selected_path_candidate_id 只能从 eligible 中选择；"
                 "blocked 仅用于理解不可选原因。若 eligible 为空，"
@@ -404,6 +425,11 @@ class DiagnosisAgent:
             },
             "existing_plans": self._model_existing_plans(context, plan_scope),
             "plan_actions": change_decision.model_dump(),
+            **(
+                {"audit_revision": audit_revision}
+                if audit_revision is not None
+                else {}
+            ),
             "output_schema": self._planning_output_schema(plan_scope),
         }
         try:
@@ -1990,6 +2016,102 @@ class DiagnosisAgent:
                 context.get("current_learning_task"), layer="daily_task"
             )
         return {key: value for key, value in plans.items() if value}
+
+    @classmethod
+    def _model_learning_state(cls, value: Any) -> dict[str, Any]:
+        """Keep learning semantics while dropping persistence and trace bulk."""
+
+        if hasattr(value, "model_dump"):
+            value = value.model_dump(mode="json")
+        if not isinstance(value, dict):
+            return {}
+        return {
+            key: cls._bounded_model_value(value.get(key), depth=0)
+            for key in (
+                "macro",
+                "meso",
+                "micro",
+                "data_quality",
+                "hard_constraints",
+                "state_digest",
+            )
+            if value.get(key) not in (None, "", [], {})
+        }
+
+    @classmethod
+    def _model_path_candidates(cls, value: Any) -> dict[str, list[dict[str, Any]]]:
+        """Expose only fields needed for a model recommendation decision."""
+
+        source = value if isinstance(value, dict) else {}
+
+        def compact(item: Any) -> dict[str, Any]:
+            if hasattr(item, "model_dump"):
+                item = item.model_dump(mode="json")
+            if not isinstance(item, dict):
+                return {}
+            return {
+                key: cls._bounded_model_value(item.get(key), depth=0)
+                for key in (
+                    "candidate_id",
+                    "scope",
+                    "stage",
+                    "books",
+                    "knowledge_points",
+                    "estimated_minutes",
+                    "eligible",
+                    "blocked_reasons",
+                    "score",
+                    "recommended_action",
+                )
+                if item.get(key) not in (None, "", [], {})
+            }
+
+        return {
+            "eligible": [
+                candidate
+                for candidate in (
+                    compact(item) for item in list(source.get("eligible") or [])[:5]
+                )
+                if candidate
+            ],
+            "blocked": [
+                candidate
+                for candidate in (
+                    compact(item) for item in list(source.get("blocked") or [])[:3]
+                )
+                if candidate
+            ],
+        }
+
+    @classmethod
+    def _bounded_model_value(cls, value: Any, *, depth: int) -> Any:
+        if depth >= 3:
+            if isinstance(value, str):
+                return value[:500]
+            return value if isinstance(value, (int, float, bool)) else None
+        if hasattr(value, "model_dump"):
+            value = value.model_dump(mode="json")
+        if isinstance(value, dict):
+            ignored = {
+                "learner_id",
+                "generated_at",
+                "source_refs",
+                "evidence_refs",
+                "state_digest",
+            }
+            return {
+                str(key): cls._bounded_model_value(item, depth=depth + 1)
+                for key, item in list(value.items())[:30]
+                if str(key) not in ignored
+            }
+        if isinstance(value, list):
+            return [
+                cls._bounded_model_value(item, depth=depth + 1)
+                for item in value[:12]
+            ]
+        if isinstance(value, str):
+            return value[:500]
+        return value
 
     @classmethod
     def _textbook_selection(

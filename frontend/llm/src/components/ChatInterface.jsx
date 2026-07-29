@@ -23,7 +23,12 @@ import 'katex/dist/katex.min.css';
 import AgentTimeline from './AgentTimeline';
 import { buildAgentPresentation } from '../agentPresentationModel';
 import { buildTraceFromEvents, useLangGraphStore } from '../stores/useLangGraphStore';
-import { createWorkflowRunId, getWorkflowRun, streamWorkflowTurn } from '../workflowChatClient';
+import {
+  createWorkflowRunId,
+  getResumableWorkflowRunId,
+  getWorkflowRun,
+  streamWorkflowTurn,
+} from '../workflowChatClient';
 import { formatMessageTime } from '../chatTime';
 import { workshopActionIntent } from '../pageIntent';
 
@@ -1477,7 +1482,16 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     if (!sessionId) sessionId = await createSession();
     if (!sessionId) return;
 
-    const resumeRunId = readPendingRuns()[sessionId] || null;
+    const storedRunId = readPendingRuns()[sessionId] || null;
+    let resumeRunId = null;
+    if (storedRunId) {
+      try {
+        resumeRunId = await getResumableWorkflowRunId(storedRunId);
+      } catch (error) {
+        console.error('validate pending workflow run failed', error);
+      }
+      if (!resumeRunId) rememberPendingRun(sessionId, null);
+    }
     const runId = resumeRunId || createWorkflowRunId();
     rememberPendingRun(sessionId, runId);
     abortControllerRef.current = new AbortController();
@@ -1514,6 +1528,17 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     setUploadedFiles([]);
     setIsLoading(true);
     setAutoScroll(true);
+    setTraceSidebar(prev => (
+      prev.isOpen
+        ? {
+            isOpen: true,
+            nodes: [],
+            refs: [],
+            title: '执行进度',
+            live: true,
+          }
+        : prev
+    ));
     resetWorkflow();
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 

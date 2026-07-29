@@ -41,7 +41,7 @@ class AuditAgent:
             or (
                 str(context.get("task_type")) == "learning_plan"
                 and str(context.get("plan_scope"))
-                in {"long_term", "short_term", "unspecified"}
+                in {"long_term", "short_term", "daily_task", "unspecified"}
             )
         ):
             return await self._audit_learning_plan(context, prompt_skill)
@@ -114,6 +114,25 @@ class AuditAgent:
         model_decision = model_output.decision
         decision = "revise" if missing or deterministic_findings else model_decision
         if (
+            decision == "revise"
+            and not missing
+            and not deterministic_findings
+            and not model_output.findings
+        ):
+            # A repair workflow requires at least one actionable finding. When
+            # all deterministic gates pass and the model supplies none, there
+            # is nothing safe to rerun, so treat the result as a pass instead
+            # of creating an empty, terminal repair plan.
+            decision = "pass"
+            model_output = model_output.model_copy(
+                update={
+                    "audit_report": (
+                        model_output.audit_report
+                        + " 确定性门禁均已通过，且未发现可执行的修订项。"
+                    )[:8_000]
+                }
+            )
+        if (
             (knowledge_explanation or str(context.get("task_type")) == "personalized_review_card")
             and context.get("audit_feedback") is not None
             and decision == "revise"
@@ -134,15 +153,82 @@ class AuditAgent:
         result = AuditResult(
             audit_result_id=f"AUDIT_{uuid4().hex}",
             decision=decision,
+            audit_report=model_output.audit_report,
             findings=[
                 *([f"缺少证据的声明: {', '.join(missing)}"] if missing else []),
                 *deterministic_findings,
                 *([] if missing or deterministic_findings else model_output.findings),
             ],
+            structured_findings=(
+                self._resource_repair_issues(
+                    missing_claim_ids=missing,
+                    deterministic_findings=deterministic_findings,
+                    model_findings=model_output.findings,
+                )
+                if decision == "revise"
+                else []
+            ),
             verified_claim_ids=[claim.claim_id for claim in expert.claims if claim.claim_id not in missing],
             subject_type="resource",
         )
         return envelope(context, "audit_agent", "audit_result", result)
+
+    @staticmethod
+    def _resource_repair_issues(
+        *,
+        missing_claim_ids: list[str],
+        deterministic_findings: list[str],
+        model_findings: list[str],
+    ) -> list[RepairIssue]:
+        """Compile resource audit prose into a bounded Expert repair contract.
+
+        Knowledge explanations and personalized review cards both publish an
+        Expert-authored resource. Their audit prose may vary, but every
+        automatically repairable issue in this branch must be owned by the
+        existing ``expert`` step. Without this contract the generic repair
+        controller has to infer ownership from wording and can incorrectly
+        stop otherwise repairable runs.
+        """
+
+        issues: list[RepairIssue] = []
+        seen: set[tuple[str, str]] = set()
+
+        def append(issue_type: str, message: str) -> None:
+            normalized = str(message).strip()
+            key = (issue_type, normalized)
+            if not normalized or key in seen:
+                return
+            seen.add(key)
+            issues.append(
+                RepairIssue(
+                    issue_id=f"RESOURCE_ISSUE_{len(issues) + 1}",
+                    issue_type=issue_type,
+                    message=normalized,
+                    owner_step_id="expert",
+                    affected_step_ids=["expert"],
+                    severity="high" if issue_type == "missing_evidence" else "medium",
+                )
+            )
+
+        if missing_claim_ids:
+            append(
+                "missing_evidence",
+                f"缺少证据的声明: {', '.join(missing_claim_ids)}",
+            )
+        for finding in deterministic_findings:
+            append("content_quality", finding)
+        for finding in model_findings:
+            text = str(finding)
+            issue_type = (
+                "missing_evidence"
+                if "证据" in text
+                and any(word in text for word in ("缺少", "缺失", "不足", "无依据"))
+                else "conflicting_evidence"
+                if "证据" in text and any(word in text for word in ("冲突", "矛盾"))
+                else "content_quality"
+            )
+            append(issue_type, text)
+        return issues
 
     async def _audit_learning_plan(self, context: dict[str, Any], prompt_skill):
         diagnosis = context["dependency_outputs"]["diagnosis"].payload
@@ -243,6 +329,31 @@ class AuditAgent:
                 audit_report="规划审核模型输出不符合协议，已关闭自动发布并转人工复核。",
             )
         decision = "revise" if deterministic_findings else model_output.decision
+        if (
+            decision == "revise"
+            and not deterministic_findings
+            and not model_output.findings
+        ):
+            decision = "pass"
+        if (
+            context.get("audit_feedback") is not None
+            and decision == "revise"
+            and not deterministic_findings
+        ):
+            # One bounded Diagnosis repair has already completed and the
+            # executable contract now passes every deterministic route,
+            # hierarchy and source check.  A second model-only revision would
+            # create a non-converging loop over wording preferences, so retain
+            # those comments as advisory findings and allow publication.
+            decision = "pass"
+            model_output = model_output.model_copy(
+                update={
+                    "findings": [
+                        *model_output.findings,
+                        "规划已完成一次受控修订；剩余表达或节奏建议作为非阻断建议保留。",
+                    ]
+                }
+            )
         findings = [*deterministic_findings, *model_output.findings]
         structured_findings = [
             RepairIssue(
@@ -329,7 +440,7 @@ class AuditAgent:
                                 }
                                 for unit in pool.units
                             ],
-                            "exam_paper": paper.model_dump(mode="json"),
+                            "exam_paper": self._compact_exam_paper_for_audit(paper),
                             "output_schema": AuditModelOutput.model_json_schema(),
                         },
                         permission_note=(
@@ -454,16 +565,18 @@ class AuditAgent:
             )
         if set(paper.answer_key) != set(selected_ids):
             deterministic_findings.append("答案键与入卷题目不一致。")
-        findings_compilation = await self.paper_findings_compiler.compile(
-            context,
-            audit_report=model_output.audit_report,
-            findings=model_output.findings,
-        )
-        compiled_model_issues = (
-            findings_compilation.result.issues
-            if findings_compilation.result.status == "compiled"
-            else []
-        )
+        compiled_model_issues: list[Any] = []
+        if model_output.findings:
+            findings_compilation = await self.paper_findings_compiler.compile(
+                context,
+                audit_report=model_output.audit_report,
+                findings=model_output.findings,
+            )
+            compiled_model_issues = (
+                findings_compilation.result.issues
+                if findings_compilation.result.status == "compiled"
+                else []
+            )
         model_blocking_findings = [
             issue.message for issue in compiled_model_issues if issue.blocking
         ]
@@ -535,6 +648,53 @@ class AuditAgent:
             verified_claim_ids=[],
         )
         return envelope(context, "audit_agent", "audit_result", result)
+
+    @staticmethod
+    def _compact_exam_paper_for_audit(paper: Any) -> dict[str, Any]:
+        """Keep the semantic paper while excluding retrieval payload bloat.
+
+        Question ``source_metadata`` and channel-level retrieval diagnostics
+        are persisted for provenance, but they are not needed for the semantic
+        audit and can be hundreds of kilobytes.  Sending them to the judge
+        increases latency and makes schema drift more likely.
+        """
+
+        return {
+            "paper_draft_id": paper.paper_draft_id,
+            "blueprint_id": paper.blueprint_id,
+            "candidate_pool_id": paper.candidate_pool_id,
+            "title": paper.title,
+            "instructions": paper.instructions,
+            "duration_minutes": paper.duration_minutes,
+            "total_score": paper.total_score,
+            "items": [
+                {
+                    "sequence": item.sequence,
+                    "unit_id": item.unit_id,
+                    "score": item.score,
+                    "selection_rationale": item.selection_rationale,
+                    "question": {
+                        "question_id": item.question.question_id,
+                        "question_type": item.question.question_type,
+                        "stem": item.question.stem,
+                        "options": item.question.options,
+                        "reference_answer": item.question.reference_answer,
+                        "analysis": item.question.analysis,
+                        "origin": item.question.origin,
+                        "source_tier": item.question.source_tier,
+                        "tags": item.question.tags,
+                        "kp_ids": sorted(
+                            {bridge.kp_id for bridge in item.question.bridges}
+                        ),
+                    },
+                }
+                for item in paper.items
+            ],
+            "answer_key": paper.answer_key,
+            "explanations": paper.explanations,
+            "coverage_summary": paper.coverage_summary,
+            "unresolved_constraints": paper.unresolved_constraints,
+        }
 
     @staticmethod
     def _paper_repair_issues(

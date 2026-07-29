@@ -26,6 +26,7 @@ TERMINAL_AUDIT_DECISIONS = {"pass", "revise", "reject"}
 NON_TERMINAL_AUDIT_DECISIONS = {"pending", "needs_human_review", "human_review"}
 FORMAL_QUESTION_SOURCE_PREFIX = "formal-content:"
 KNOWLEDGE_ATLAS_SOURCE = "formal-content:knowledge-atlas-2026-07-18"
+SYSTEM_AUDITED_SOURCE_KINDS = {"agent_audited_paper"}
 _QUESTION_TYPES = {
     "单项选择题": "single_choice",
     "单选题": "single_choice",
@@ -46,6 +47,7 @@ def _trusted_formal_source(value: Any) -> bool:
         source.startswith(FORMAL_QUESTION_SOURCE_PREFIX)
         or source == "formal_question_bank"
         or source.startswith("formal-vector-question-bank:")
+        or source in SYSTEM_AUDITED_SOURCE_KINDS
     )
 
 

@@ -31,6 +31,14 @@ class PaperBlueprintAgent:
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[PaperBlueprint]:
         skill = prompt_skill_registry.load("expert_agent", "paper_blueprint")
+        conversation_scope = self._conversation_scope_context(context)
+        blueprint_request = str(context.get("user_request") or "")
+        if conversation_scope:
+            blueprint_request = (
+                f"{blueprint_request}\n"
+                "本轮指代所承接的上一轮学习主题："
+                f"{conversation_scope['previous_user_request']}"
+            )
         explicit_distribution = self._explicit_question_type_distribution(context)
         explicit_count = (
             sum(explicit_distribution.values())
@@ -47,7 +55,8 @@ class PaperBlueprintAgent:
                         payload={
                             "phase": "paper_blueprint",
                             "blueprint_output_mode": "natural_language_document",
-                            "user_request": context.get("user_request", ""),
+                            "user_request": blueprint_request,
+                            "conversation_scope": conversation_scope,
                             "exam_constraints": context.get("exam_constraints", {}),
                             "session_time_budget_minutes": context.get("available_minutes"),
                             "learning_scope": self._requested_learning_scope(context),
@@ -55,10 +64,11 @@ class PaperBlueprintAgent:
                             "user_profile": context.get("user_profile", {}),
                             "output_contract": {
                                 "blueprint_document": (
-                                    "一篇完整、详细、可读的自然语言试卷蓝图原稿；"
-                                    "正文必须明确标题、范围、每个单元的学习目标、检索表达、"
-                                    "题型偏好、目标题数、可选分值、假设和验收条件。"
-                                )
+                                "一篇完整、详细、可读的自然语言试卷蓝图原稿；"
+                                "正文必须用独立单行明确“试卷标题”和“范围摘要”，"
+                                "并用独立单行写每个单元的学习目标、检索表达、"
+                                "题型偏好、目标题数、可选分值、假设和验收条件。"
+                            )
                             },
                         },
                         permission_note=(
@@ -152,6 +162,60 @@ class PaperBlueprintAgent:
             acceptance_criteria=normalized.get("acceptance_criteria", []),
         )
         return envelope(context, "expert_agent", "paper_blueprint", blueprint)
+
+    @staticmethod
+    def _conversation_scope_context(context: dict[str, Any]) -> dict[str, Any]:
+        """Resolve anaphoric paper requests from the nearest prior user turn.
+
+        Planner owns task routing, while the blueprint agent owns the actual
+        exam scope.  A request such as “给我一套相关试卷” is therefore routed
+        correctly but still needs its antecedent supplied here; otherwise the
+        much larger persisted learning plan can incorrectly become the topic.
+        """
+
+        request = str(context.get("user_request") or "").strip()
+        reference_tokens = (
+            "相关",
+            "这个",
+            "上述",
+            "刚才",
+            "前面",
+            "同主题",
+            "对应",
+        )
+        if not request or not any(
+            token in request
+            for token in reference_tokens
+        ):
+            return {}
+        skipped_current = False
+        for message in reversed(list(context.get("messages") or [])):
+            if not isinstance(message, dict) or message.get("role") != "user":
+                continue
+            content = str(message.get("content") or "").strip()
+            if not content:
+                continue
+            if not skipped_current and content == request:
+                skipped_current = True
+                continue
+            if content == request:
+                continue
+            if (
+                any(token in content for token in ("试卷", "组卷", "套题"))
+                and any(token in content for token in reference_tokens)
+            ):
+                # A failed/retried “相关试卷” turn does not become its own
+                # topic. Continue walking back to the explicit learning turn.
+                continue
+            return {
+                "is_contextual_followup": True,
+                "previous_user_request": content[:800],
+                "resolution_rule": (
+                    "本轮未另行指定范围时，试卷只承接该上一轮学习主题；"
+                    "不得改用画像目标、长期阶段或短期计划作为试卷主题。"
+                ),
+            }
+        return {}
 
     @staticmethod
     def _candidate_limit(required_question_count: int) -> int:

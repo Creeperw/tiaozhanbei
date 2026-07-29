@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from competition_app.agents.diagnosis import DiagnosisAgent
@@ -1326,3 +1328,31 @@ async def test_diagnosis_falls_back_when_latest_goals_is_null() -> None:
     await DiagnosisAgent(model).run(diagnosis_context)
 
     assert model.payload["payload"]["goals"] == ["沿用既有方剂组成学习目标"]
+
+
+@pytest.mark.asyncio
+async def test_diagnosis_injects_bounded_audit_feedback_for_repair() -> None:
+    model = CapturingDiagnosisModel()
+    diagnosis_context = build_context("diagnosis")
+    diagnosis_context["audit_feedback"] = SimpleNamespace(
+        payload=SimpleNamespace(
+            findings=[
+                "第3阶段正文必须列出《人体解剖学》《生理学》。",
+                "阶段安排不得使用笼统学科简称。",
+            ],
+            audit_report="其余阶段已经通过，仅修正第三阶段教材全称。",
+        )
+    )
+    diagnosis_context["dependency_outputs"] = {
+        "knowledge": await build_knowledge(build_context("knowledge"))
+    }
+
+    await DiagnosisAgent(model).run(diagnosis_context)
+
+    revision = model.payload["payload"]["audit_revision"]
+    assert revision["findings"] == [
+        "第3阶段正文必须列出《人体解剖学》《生理学》。",
+        "阶段安排不得使用笼统学科简称。",
+    ]
+    assert "强制修订项" in revision["instruction"]
+    assert "仅修正第三阶段" in revision["audit_report"]

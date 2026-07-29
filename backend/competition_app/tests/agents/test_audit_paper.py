@@ -88,6 +88,16 @@ class ContradictoryPassingAuditModel:
         }
 
 
+class CapturingAuditModel(PassingAuditModel):
+    def __init__(self):
+        self.audit_payload = None
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if role == "audit_agent":
+            self.audit_payload = payload
+        return await super().complete_json(role, payload, on_delta=on_delta)
+
+
 def test_paper_audit_uses_the_same_subjective_question_aliases_as_assembly() -> None:
     assert AuditAgent._matches_question_type("临床案例问答", ["简答题"])
     assert AuditAgent._matches_question_type("病例分析_实践技能", ["病例分析题"])
@@ -181,6 +191,24 @@ async def test_paper_audit_passes_when_hard_question_count_is_met() -> None:
     result = await AuditAgent(PassingAuditModel()).run(_audit_context(20))
 
     assert result.payload.decision == "pass"
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_excludes_large_retrieval_metadata_from_model_context() -> None:
+    context = _audit_context(1, required_count=1)
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.items[0].question.source_metadata = {
+        "raw_retrieval_payload": "x" * 200_000,
+    }
+    model = CapturingAuditModel()
+
+    result = await AuditAgent(model).run(context)
+
+    assert result.payload.decision == "pass"
+    serialized = str(model.audit_payload)
+    assert "raw_retrieval_payload" not in serialized
+    assert "题干Q1" in serialized
+    assert len(serialized) < 25_000
 
 
 @pytest.mark.asyncio

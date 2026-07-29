@@ -142,3 +142,50 @@ async def test_assembly_compiler_rejects_generated_choice_without_options() -> N
 
     assert envelope.result.status == "needs_revision"
     assert envelope.result.issues[0].code == "schema_invalid"
+
+
+class FormattingTolerantAssemblyCompilerModel(AssemblyCompilerModel):
+    async def complete_json(self, role, payload, on_delta=None):
+        value = await super().complete_json(role, payload, on_delta)
+        value["contract"]["field_anchors"]["title"] = (
+            value["contract"]["field_anchors"].pop("/title")
+        )
+        value["contract"]["field_anchors"]["title"][0]["source_quote"] = (
+            "试卷标题：测试卷"
+        )
+        return value
+
+
+@pytest.mark.asyncio
+async def test_assembly_compiler_accepts_title_alias_and_markdown_formatting() -> None:
+    envelope = await PaperAssemblyCompilerAgent(
+        FormattingTolerantAssemblyCompilerModel()
+    ).compile(
+        _CONTEXT,
+        assembly_document="**试卷标题**：测试卷\n单元U1选用候选题Q1。",
+        candidate_catalog=_CATALOG,
+    )
+
+    assert envelope.result.status == "compiled"
+
+
+class NarrowCandidateAnchorCompilerModel(AssemblyCompilerModel):
+    async def complete_json(self, role, payload, on_delta=None):
+        value = await super().complete_json(role, payload, on_delta)
+        value["contract"]["selected_items"][0]["source_anchors"][0][
+            "source_quote"
+        ] = "选用候选题Q1"
+        return value
+
+
+@pytest.mark.asyncio
+async def test_assembly_compiler_accepts_unit_from_surrounding_source_block() -> None:
+    envelope = await PaperAssemblyCompilerAgent(
+        NarrowCandidateAnchorCompilerModel()
+    ).compile(
+        _CONTEXT,
+        assembly_document="【试卷标题】测试卷\n单元U1：选用候选题Q1。",
+        candidate_catalog=_CATALOG,
+    )
+
+    assert envelope.result.status == "compiled"

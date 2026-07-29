@@ -91,4 +91,28 @@ describe('PlanningPage structured long-term route', () => {
     expect(screen.getByText('未纳入')).toBeInTheDocument();
     expect(screen.queryByText('KP_1')).not.toBeInTheDocument();
   });
+
+  it('keeps the planning page driven by the canonical persisted plan payload', async () => {
+    const { loadPlanningData } = await import('../pageDataLoaders.js');
+    loadPlanningData.mockResolvedValueOnce({
+      error: '',
+      source: '/api/v1/learning-plans/current/context',
+      plan: {
+        plan_summary: { goal: '正式目标' },
+        weekly_plan: { evidence: [] },
+        daily_tasks: [{ key: 'TASK_CANONICAL', title: '正式今日任务', duration_min: 25 }],
+        long_term_plan_content: '正式长期规划',
+        long_term_plan_stages: [{ stage: 1, book: ['正式教材'], goal: '正式阶段目标' }],
+        short_term_plan_content: '正式短期计划',
+        daily_task_timer: null,
+        path_candidates: { schema_version: '1.0', scope: 'daily_task', items: [] },
+      },
+    });
+
+    render(<PlanningPage />);
+
+    expect(await screen.findByText('正式长期规划')).toBeInTheDocument();
+    expect(screen.getByText('正式短期计划')).toBeInTheDocument();
+    expect(screen.getByText('正式今日任务')).toBeInTheDocument();
+  });
 });

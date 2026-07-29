@@ -32,7 +32,7 @@ def test_dynamic_plan_contains_only_planner_selected_agents() -> None:
     assert plan.steps.index(route) < plan.steps.index(diagnosis)
     assert route.agent == "default_route_resolver"
     assert set(diagnosis.depends_on) == {"knowledge", "route_resolution"}
-    assert diagnosis.timeout_seconds == 300.0
+    assert diagnosis.timeout_seconds == 720.0
     assert "expert_agent" not in {step.agent for step in plan.steps}
     audit = next(step for step in plan.steps if step.step_id == "audit")
     publication = next(step for step in plan.steps if step.step_id == "learning_plan")
@@ -528,11 +528,13 @@ def test_paper_generation_uses_minimal_evidence_expert_audit_chain() -> None:
         ("audit_agent", ["paper_blueprint", "question_pool", "paper_assembly"]),
     ]
     question_pool_step = next(step for step in plan.steps if step.step_id == "question_pool")
-    assert question_pool_step.timeout_seconds == 300.0
+    blueprint_step = next(step for step in plan.steps if step.step_id == "paper_blueprint")
+    assert blueprint_step.timeout_seconds == 420.0
+    assert question_pool_step.timeout_seconds == 600.0
     paper_assembly_step = next(step for step in plan.steps if step.step_id == "paper_assembly")
-    assert paper_assembly_step.timeout_seconds == 180.0
+    assert paper_assembly_step.timeout_seconds == 900.0
     audit_step = next(step for step in plan.steps if step.step_id == "audit")
-    assert audit_step.timeout_seconds == 120.0
+    assert audit_step.timeout_seconds == 420.0
 
 
 def test_knowledge_explanation_does_not_include_planning_or_review_services() -> None:
