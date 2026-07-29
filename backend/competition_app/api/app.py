@@ -104,6 +104,15 @@ class WorkshopNoteUpdateRequest(BaseModel):
     content: str = Field(min_length=1, max_length=20_000)
 
 
+class TextbookPdfAnnotationsUpdateRequest(BaseModel):
+    annotations: list[dict[str, Any]] = Field(default_factory=list, max_length=2000)
+
+
+class TextbookPdfReadingStateUpdateRequest(BaseModel):
+    page_number: int = Field(default=1, ge=1)
+    zoom: float = Field(default=1.0, ge=0.5, le=4.0)
+
+
 class StageEvidenceRequest(BaseModel):
     requirement: str = Field(min_length=1, max_length=1000)
     task_id: str = Field(min_length=1, max_length=160)
@@ -1122,6 +1131,80 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if not container.workshop_library_service.delete_note(user.user_id, note_id):
             raise HTTPException(status_code=404, detail="笔记不存在")
         return Response(status_code=204)
+
+    @app.get("/api/v1/textbooks/pdfs/catalog")
+    async def textbook_pdf_catalog(request: Request) -> dict:
+        current_user(request)
+        items = container.textbook_pdf_service.books()
+        return {"items": items, "total": len(items)}
+
+    @app.get("/api/v1/textbooks/pdfs/resolve")
+    async def resolve_textbook_pdf(book: str, request: Request) -> dict:
+        current_user(request)
+        item = container.textbook_pdf_service.resolve(book)
+        return {"available": bool(item and item.get("available")), "book": item}
+
+    @app.get("/api/v1/textbooks/pdfs/{book_id}/file")
+    async def textbook_pdf_file(book_id: str, request: Request):
+        current_user(request)
+        item = container.textbook_pdf_service.by_id(book_id)
+        path = container.textbook_pdf_service.file_path(book_id)
+        if item is None or path is None:
+            raise HTTPException(status_code=404, detail="该教材暂无电子版")
+        return FileResponse(
+            path,
+            media_type="application/pdf",
+            filename=path.name,
+            content_disposition_type="inline",
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
+
+    @app.get("/api/v1/textbooks/pdfs/{book_id}/pages/{page_number}/annotations")
+    async def textbook_pdf_annotations(
+        book_id: str, page_number: int, request: Request
+    ) -> dict:
+        user = current_user(request)
+        if page_number < 1 or container.textbook_pdf_service.by_id(book_id) is None:
+            raise HTTPException(status_code=404, detail="教材页面不存在")
+        return container.textbook_pdf_service.annotations.get_page(
+            user.user_id, book_id, page_number
+        )
+
+    @app.put("/api/v1/textbooks/pdfs/{book_id}/pages/{page_number}/annotations")
+    async def save_textbook_pdf_annotations(
+        book_id: str,
+        page_number: int,
+        payload: TextbookPdfAnnotationsUpdateRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if page_number < 1 or container.textbook_pdf_service.by_id(book_id) is None:
+            raise HTTPException(status_code=404, detail="教材页面不存在")
+        return container.textbook_pdf_service.annotations.save_page(
+            user.user_id, book_id, page_number, payload.annotations
+        )
+
+    @app.get("/api/v1/textbooks/pdfs/{book_id}/reading-state")
+    async def textbook_pdf_reading_state(book_id: str, request: Request) -> dict:
+        user = current_user(request)
+        if container.textbook_pdf_service.by_id(book_id) is None:
+            raise HTTPException(status_code=404, detail="教材不存在")
+        return container.textbook_pdf_service.annotations.get_reading_state(
+            user.user_id, book_id
+        )
+
+    @app.put("/api/v1/textbooks/pdfs/{book_id}/reading-state")
+    async def save_textbook_pdf_reading_state(
+        book_id: str,
+        payload: TextbookPdfReadingStateUpdateRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if container.textbook_pdf_service.by_id(book_id) is None:
+            raise HTTPException(status_code=404, detail="教材不存在")
+        return container.textbook_pdf_service.annotations.save_reading_state(
+            user.user_id, book_id, payload.page_number, payload.zoom
+        )
 
     @app.post("/api/v1/workshop/note-images", status_code=201)
     async def upload_workshop_note_image(

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookMarked, ChevronDown, ChevronUp, FolderPlus, Loader2, Play, Plus, Search, Star, Trash2, X } from 'lucide-react';
+import { BookMarked, FolderPlus, Loader2, Play, Plus, Search, Star, Trash2, X } from 'lucide-react';
 import {
   createFavoriteFolder,
   deleteFavorite,
@@ -8,38 +8,11 @@ import {
   loadFavorites,
 } from './workshopLibraryApi';
 
-function FavoriteContent({ item }) {
-  const content = item.content || {};
-  const options = Array.isArray(content.options) ? content.options : [];
-  const answer = Array.isArray(content.standard_answer)
-    ? content.standard_answer.join('、')
-    : String(content.standard_answer || '');
-  const myAnswer = String(content.my_answer || '');
-  return <div className="workshop-library__detail">
-    {content.question_content && <p className="workshop-library__question">{content.question_content}</p>}
-    {options.length > 0 && <div style={{marginTop:8}}>{options.map((option, index) => {
-      const key = option.option_id || option.key || option.id || String.fromCharCode(65 + index);
-      const value = option.content || option.value || option.text || String(option);
-      const val = String(key || value);
-      const isMy = myAnswer.includes(val);
-      const isCorrect = answer.includes(val);
-      let bg = 'transparent';
-      if (isMy && isCorrect) bg = '#dcfce7';
-      else if (isMy && !isCorrect) bg = '#fee2e2';
-      else if (!isMy && isCorrect) bg = '#dcfce7';
-      return <div key={`${key}-${index}`} style={{background:bg,borderRadius:4,padding:'3px 8px',margin:'3px 0',fontSize:'.85rem'}}><strong>{key}.</strong> {String(value).replace(/^[A-Z][.．、)\s]\s*/, '')}{isMy&&<span style={{color:'#ef4444',fontSize:'.75rem',marginLeft:8}}>我的作答</span>}{isCorrect&&!isMy&&<span style={{color:'#16a34a',fontSize:'.75rem',marginLeft:8}}>正确答案</span>}</div>;
-    })}</div>}
-    {content.my_answer && <p style={{marginTop:8}}><strong>我的答案：</strong>{myAnswer}</p>}
-    {answer && <p><strong>参考答案：</strong>{answer}</p>}
-    {content.explanation && <p><strong>解析：</strong>{content.explanation}</p>}
-  </div>;
-}
-
-export default function QuestionFavoritesPanel() {
+export default function QuestionFavoritesPanel({ onNavigate }) {
   const [folders, setFolders] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState('');
-  const [expandedId, setExpandedId] = useState('');
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [folderName, setFolderName] = useState('');
   const [folderComposerOpen, setFolderComposerOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -102,8 +75,8 @@ export default function QuestionFavoritesPanel() {
     setError('');
     try {
       await deleteFavorite(favoriteId);
-      setExpandedId((current) => current === favoriteId ? '' : current);
       await refresh(selectedFolderId);
+      setPendingDelete(null);
     } catch (reason) {
       setError(reason.message || '取消收藏失败');
     }
@@ -120,6 +93,34 @@ export default function QuestionFavoritesPanel() {
       && (!keyword || `${item.title} ${item.content?.question_content || ''}`.toLocaleLowerCase().includes(keyword));
   });
 
+  const openFavorite = (item) => {
+    const content = item.content || {};
+    const titleBook = String(item.title || '').match(/《([^》]+)》/)?.[1] || '';
+    if (item.resource_type === 'textbook_pdf_page' || (content.book_title && content.pdf_page)) {
+      onNavigate?.({
+        page: 'practice',
+        params: {
+          view: 'textbook-chapters',
+          route: content.route || (content.edition === '十三五' ? 'textbook_13_5' : 'textbook_14_5'),
+          lv1: content.book_title || titleBook,
+          openPdf: true,
+          pdfPage: Number(content.pdf_page) || 1,
+          source: 'favorite',
+        },
+      });
+      return;
+    }
+    onNavigate?.({
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType: 'question_training',
+        favoriteId: item.favorite_id,
+        questionId: content.question_id || item.resource_id || '',
+      },
+    });
+  };
+
   return <section className="question-collection" aria-labelledby="favorites-title">
     {error && <p role="alert" className="workshop-library__error">{error}</p>}
     {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载收藏夹…</p> : (
@@ -132,7 +133,7 @@ export default function QuestionFavoritesPanel() {
                 key={folder.folder_id}
                 type="button"
                 className={selectedFolderId === folder.folder_id ? 'is-active' : ''}
-                onClick={() => { setSelectedFolderId(folder.folder_id); setExpandedId(''); }}
+                onClick={() => setSelectedFolderId(folder.folder_id)}
               >
                 <Star size={15} aria-hidden="true" />
                 <span>{folder.name}</span>
@@ -146,8 +147,8 @@ export default function QuestionFavoritesPanel() {
         <main className="question-collection__main">
           <section className="question-collection__summary">
             <span className="question-collection__star"><Star size={34} fill="currentColor" aria-hidden="true" /></span>
-            <div><small>收藏夹</small><h2 id="favorites-title">{selectedFolder?.name || '我的收藏'}</h2><p>{folderFavorites.length} 道题 · 集中复盘题干、答案与解析</p></div>
-            <button type="button" disabled={!visibleFavorites.length} onClick={() => setExpandedId(visibleFavorites[0]?.favorite_id || '')}><Play size={16} fill="currentColor" />开始复习</button>
+            <div><small>收藏夹</small><h2 id="favorites-title">{selectedFolder?.name || '我的收藏'}</h2><p>{folderFavorites.length} 项收藏 · 点击直接返回对应内容</p></div>
+            <button type="button" disabled={!visibleFavorites.length} onClick={() => openFavorite(visibleFavorites[0])}><Play size={16} fill="currentColor" />开始学习</button>
             {selectedFolder && <button type="button" className="question-collection__delete-folder" onClick={removeFolder} aria-label="删除当前题单"><Trash2 size={15} /></button>}
           </section>
 
@@ -158,17 +159,15 @@ export default function QuestionFavoritesPanel() {
           </div>
 
           <div className="question-collection__items">
-            {visibleFavorites.length === 0 ? <div className="workshop-library__empty workshop-library__empty--compact"><BookMarked size={24} /><p>{query || sourceFilter || dateFilter ? '暂无符合条件的收藏' : '这个题单还没有题目。'}</p><small>在任何解题界面点击书签图标即可收藏。</small></div> : visibleFavorites.map((item, index) => {
-              const open = expandedId === item.favorite_id;
-              return <article key={item.favorite_id} className={open ? 'is-open' : ''}>
-                <button type="button" className="question-collection__item-toggle" aria-expanded={open} onClick={() => setExpandedId(open ? '' : item.favorite_id)}>
+            {visibleFavorites.length === 0 ? <div className="workshop-library__empty workshop-library__empty--compact"><BookMarked size={24} /><p>{query || sourceFilter || dateFilter ? '暂无符合条件的收藏' : '这个收藏夹还没有内容。'}</p><small>在教材或解题界面点击书签图标即可收藏。</small></div> : visibleFavorites.map((item, index) => (
+              <article key={item.favorite_id}>
+                <button type="button" className="question-collection__item-open" onClick={() => openFavorite(item)}>
                   <span className="question-collection__position">{index + 1}</span>
                   <span><strong>{item.title}</strong><small>{item.source} · {String(item.updated_at || '').slice(0, 10)}</small></span>
-                  {open ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
                 </button>
-                {open && <div className="workshop-library__item-body"><FavoriteContent item={item} /><button type="button" className="workshop-library__delete" onClick={() => removeFavorite(item.favorite_id)}><Trash2 size={14} />取消收藏</button></div>}
-              </article>;
-            })}
+                <button type="button" className="question-collection__item-delete" aria-label={`删除收藏：${item.title}`} onClick={() => setPendingDelete(item)}><Trash2 size={15} /></button>
+              </article>
+            ))}
           </div>
         </main>
       </div>
@@ -181,6 +180,14 @@ export default function QuestionFavoritesPanel() {
           <input id="favorite-folder-name" value={folderName} onChange={(event) => setFolderName(event.target.value)} maxLength={80} placeholder="例如：方剂重点" />
           <footer><button type="button" onClick={() => setFolderComposerOpen(false)}>取消</button><button type="submit" disabled={!folderName.trim()}><FolderPlus size={16} />新建</button></footer>
         </form>
+      </div>
+    </div>}
+    {pendingDelete && <div className="question-collection__confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="favorite-delete-title" onMouseDown={(event) => event.target === event.currentTarget && setPendingDelete(null)}>
+      <div className="question-collection__confirm">
+        <span><Trash2 size={19} /></span>
+        <h3 id="favorite-delete-title">删除这条收藏？</h3>
+        <p>“{pendingDelete.title}”将从收藏夹中移除。</p>
+        <footer><button type="button" onClick={() => setPendingDelete(null)}>取消</button><button type="button" onClick={() => removeFavorite(pendingDelete.favorite_id)}>确认删除</button></footer>
       </div>
     </div>}
   </section>;

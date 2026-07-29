@@ -748,9 +748,9 @@ export default function PracticePage({
                 directTitle={navigationContext.directTitle || navigationContext.kpName || navigationContext.kp_name || ''}
               />
             ) : activeTaskType === 'question_favorites' ? (
-              <QuestionFavoritesPanel />
+              <QuestionFavoritesPanel onNavigate={onNavigate} />
             ) : activeTaskType === 'study_notes' ? (
-              <StudyNotesPanel />
+              <StudyNotesPanel onNavigate={onNavigate} />
             ) : activeTaskType === 'topic_training' ? (
               <KnowledgePointTrainingHub
                 initialKnowledgePoint={selectedKnowledgePoint}

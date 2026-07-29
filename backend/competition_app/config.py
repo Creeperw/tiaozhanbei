@@ -30,6 +30,10 @@ DEFAULT_RUNTIME_ROOT = PACKAGE_ROOT / "runtime"
 DEFAULT_FRONTEND_DIST_ROOT = REPOSITORY_ROOT / "frontend" / "llm" / "dist"
 DEFAULT_QUESTION_VECTOR_STORE_ROOT = BACKEND_ROOT / "competition" / "vdb_store"
 DEFAULT_KNOWLEDGE_VECTOR_STORE_ROOT = DEFAULT_QUESTION_VECTOR_STORE_ROOT
+DEFAULT_TEXTBOOK_PDF_ROOT = BACKEND_ROOT / "competition" / "textbook_pdfs"
+DEFAULT_TEXTBOOK_PDF_CATALOG_PATH = (
+    PACKAGE_ROOT / "data" / "textbook_pdfs" / "catalog.v1.json"
+)
 DEFAULT_KNOWLEDGE_HANDOFF_ROOT = (
     BACKEND_ROOT / "competition" / "知识星球视频知识库_前端交接包_2026-07-18"
 )
@@ -209,6 +213,8 @@ class Settings:
     knowledge_atlas_video_root: Path = DEFAULT_KNOWLEDGE_HANDOFF_ROOT
     knowledge_atlas_contract_path: Path | None = None
     official_exam_data_dir: Path = DEFAULT_KNOWLEDGE_HANDOFF_ROOT
+    textbook_pdf_root: Path = DEFAULT_TEXTBOOK_PDF_ROOT
+    textbook_pdf_catalog_path: Path = DEFAULT_TEXTBOOK_PDF_CATALOG_PATH
 
     # Transitional delivered-backend integration.
     backend_handoff_enabled: bool = False
@@ -389,6 +395,15 @@ class Settings:
                 / "data"
                 / "backend_delivery"
                 / "08_exam_learning_path_2025",
+            ),
+            textbook_pdf_root=_parse_path(
+                values, "TEXTBOOK_PDF_ROOT", DEFAULT_TEXTBOOK_PDF_ROOT
+            ),
+            textbook_pdf_catalog_path=_parse_path(
+                values,
+                "TEXTBOOK_PDF_CATALOG_PATH",
+                DEFAULT_TEXTBOOK_PDF_CATALOG_PATH,
+                base=REPOSITORY_ROOT,
             ),
             backend_handoff_enabled=_parse_bool(
                 values, "BACKEND_HANDOFF_ENABLED", False
