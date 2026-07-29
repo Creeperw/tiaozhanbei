@@ -77,7 +77,7 @@ vi.mock('./components/PracticePage', () => ({
 }));
 vi.mock('./components/PersonalizationHubPage', () => ({
   default: ({ navigationContext = {} }) => (
-    <div data-testid="personalization-page" data-view={navigationContext.view || ''}>Personalization page</div>
+    <div data-testid="personalization-page" data-view={navigationContext.view || 'reports'}>Personalization page</div>
   ),
 }));
 vi.mock('./components/SettingsHubPage', () => ({
@@ -203,15 +203,15 @@ describe('authenticated application shell', () => {
 
   });
 
-  it('routes moved learning memory and governance links into user settings', async () => {
+  it('routes learning memory into personal data and governance into system notifications', async () => {
     render(<App />);
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Go personalization' }));
-    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'user-profile');
+    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'reports');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go memory' }));
-    expect(screen.getByTestId('settings-page')).toHaveAttribute('data-view', 'memory');
+    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'memory');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go governance' }));
     expect(screen.getByTestId('settings-page')).toHaveAttribute('data-view', 'governance');

@@ -5229,6 +5229,43 @@ textarea:focus-visible {
   gap: var(--space-4);
 }
 
+.personalization-hub__section-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(24px, 2.6vw, 40px);
+  overflow-x: auto;
+  padding: 2px 0 4px clamp(18px, 2.4vw, 38px);
+}
+
+.personalization-hub__section-nav button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  padding: 3px 0;
+  color: #172d26;
+  font: inherit;
+  font-size: clamp(1.2rem, 1.45vw, 1.42rem);
+  font-weight: 750;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: color 140ms ease, opacity 140ms ease;
+}
+
+.personalization-hub__section-nav button:hover,
+.personalization-hub__section-nav button[aria-current="page"] {
+  color: var(--color-primary-hover);
+}
+
+.personalization-hub__section-nav button:hover {
+  opacity: .78;
+}
+
+.personalization-hub__section-nav button:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+
 .personalization-hub__tabs {
   display: flex;
   gap: var(--space-3);
@@ -5263,6 +5300,37 @@ textarea:focus-visible {
 
 .personalization-hub__task {
   min-width: 0;
+  opacity: 1;
+  transition: opacity 110ms ease;
+}
+
+.personalization-hub__task[data-phase="exiting"],
+.personalization-hub__task[data-phase="entering"] {
+  opacity: 0;
+}
+
+@media (min-width: 769px) {
+  .personalization-hub:has(.reports-page) {
+    position: relative;
+  }
+
+  .personalization-hub:has(.reports-page) .reports-page > header:first-child {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .personalization-hub__section-nav {
+    gap: 20px;
+    padding-left: 10px;
+  }
+
+  .personalization-hub__section-nav button {
+    font-size: 1.08rem;
+  }
 }
 
 /* Let the focused learner-profile task use the whole personalization
@@ -7458,6 +7526,12 @@ textarea:focus-visible {
   .app-shell__nav-menu button:hover {
     background: #eef8f3;
     color: #087454;
+  }
+
+  .app-shell__nav-menu button[aria-current="page"] {
+    background: #dcf6e9;
+    color: #087454;
+    font-weight: 700;
   }
 
   .app-shell__target-menu {
@@ -10452,6 +10526,88 @@ textarea:focus-visible {
     line-height: 13px;
   }
 
+  .app-shell__notification-popover {
+    position: fixed;
+    z-index: 80;
+    top: 72px;
+    right: clamp(14px, 5vw, 72px);
+    width: min(360px, calc(100vw - 28px));
+    overflow: hidden;
+    border: 1px solid #dce9e3;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .99);
+    box-shadow: 0 22px 55px rgba(31, 72, 58, .2);
+    animation: app-shell-profile-menu-in 180ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  .app-shell__notification-popover > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #edf2ef;
+    padding: 14px 16px;
+  }
+
+  .app-shell__notification-popover > header > div {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+  }
+
+  .app-shell__notification-popover > header strong { color: #18372d; font-size: .94rem; }
+  .app-shell__notification-popover > header span { color: #82948d; font-size: .68rem; }
+  .app-shell__notification-popover > header button {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #60736b;
+    cursor: pointer;
+  }
+
+  .app-shell__notification-list {
+    max-height: min(430px, calc(100dvh - 190px));
+    overflow-y: auto;
+    padding: 7px;
+  }
+
+  .app-shell__notification-item {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 8px minmax(0, 1fr);
+    gap: 10px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    padding: 11px 10px;
+    color: #253d35;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .app-shell__notification-item:hover,
+  .app-shell__notification-item:focus-visible { background: #f0f8f4; outline: none; }
+  .app-shell__notification-dot { width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: #10a26d; }
+  .app-shell__notification-item > span:last-child { display: grid; min-width: 0; gap: 3px; }
+  .app-shell__notification-item strong { overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+  .app-shell__notification-item small { display: -webkit-box; overflow: hidden; color: #667b73; font-size: .7rem; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .app-shell__notification-item time { color: #9aa8a3; font-size: .61rem; }
+  .app-shell__notification-empty { display: grid; min-height: 118px; place-items: center; align-content: center; gap: 9px; color: #82948d; font-size: .72rem; }
+  .app-shell__notification-all {
+    width: 100%;
+    min-height: 42px;
+    border: 0;
+    border-top: 1px solid #edf2ef;
+    background: #fbfdfc;
+    color: #087454;
+    font-size: .72rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
   .app-shell__topbar-account {
     max-width: 150px;
     gap: 8px;
@@ -10747,6 +10903,41 @@ textarea:focus-visible {
   .app-shell__workspace {
     height: 100dvh;
   }
+
+  .app-shell__notification-popover {
+    position: fixed;
+    z-index: 80;
+    top: 64px;
+    right: 12px;
+    width: min(360px, calc(100vw - 24px));
+    overflow: hidden;
+    border: 1px solid #dce9e3;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 22px 55px rgba(31, 72, 58, .2);
+  }
+
+  .app-shell__notification-popover > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #edf2ef;
+    padding: 14px 16px;
+  }
+
+  .app-shell__notification-popover > header > div { display: flex; align-items: baseline; gap: 9px; }
+  .app-shell__notification-popover > header strong { color: #18372d; font-size: .94rem; }
+  .app-shell__notification-popover > header span { color: #82948d; font-size: .68rem; }
+  .app-shell__notification-popover > header button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; background: transparent; color: #60736b; }
+  .app-shell__notification-list { max-height: calc(100dvh - 175px); overflow-y: auto; padding: 7px; }
+  .app-shell__notification-item { display: grid; width: 100%; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; border: 0; border-radius: 12px; background: transparent; padding: 11px 10px; color: #253d35; text-align: left; }
+  .app-shell__notification-dot { width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: #10a26d; }
+  .app-shell__notification-item > span:last-child { display: grid; min-width: 0; gap: 3px; }
+  .app-shell__notification-item strong { overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+  .app-shell__notification-item small { display: -webkit-box; overflow: hidden; color: #667b73; font-size: .7rem; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .app-shell__notification-item time { color: #9aa8a3; font-size: .61rem; }
+  .app-shell__notification-empty { display: grid; min-height: 118px; place-items: center; align-content: center; gap: 9px; color: #82948d; font-size: .72rem; }
+  .app-shell__notification-all { width: 100%; min-height: 42px; border: 0; border-top: 1px solid #edf2ef; background: #fbfdfc; color: #087454; font-size: .72rem; font-weight: 700; }
 }
 
 /* Fill both workshop columns instead of leaving a fixed-height island below

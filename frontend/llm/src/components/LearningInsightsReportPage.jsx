@@ -251,7 +251,7 @@ function WeakPointsCard({ weakPoints, onNavigate }) {
   );
 }
 
-export default function LearningInsightsReportPage({ onNavigate }) {
+export default function LearningInsightsReportPage({ onNavigate, currentUser }) {
   const [report, setReport] = useState(emptyReport);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -277,13 +277,9 @@ export default function LearningInsightsReportPage({ onNavigate }) {
   const summary = useMemo(() => calculateSummary(report, trendSeries), [report, trendSeries]);
   const dateRange = useMemo(() => reportDateRange(report, trendSeries), [report, trendSeries]);
   const weakPoints = useMemo(() => report.weak_points || [], [report.weak_points]);
-
   return (
     <div className="reports-page space-y-6 text-slate-800" aria-busy={loading}>
-      <header className="flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-[2.15rem]">我的学情报告</h1>
-        </div>
+      <header className="flex flex-wrap items-end justify-end gap-5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm" aria-label={`报告统计周期：${dateRange}`}>
             <CalendarDays aria-hidden="true" size={17} className="text-slate-500" />

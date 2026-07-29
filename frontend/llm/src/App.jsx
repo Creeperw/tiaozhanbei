@@ -124,7 +124,7 @@ export default function App() {
           setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
           return;
         }
-        setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'user-profile' }));
+        setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'reports' }));
         return;
       }
       if (
@@ -158,7 +158,7 @@ export default function App() {
         setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
         return;
       }
-      setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'user-profile' }));
+      setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'reports' }));
       return;
     }
     if (
@@ -296,7 +296,7 @@ export default function App() {
           />
         );
       case 'personalization':
-        return <PersonalizationHubPage navigationContext={pageIntent.params} onNavigate={navigateToPage} />;
+        return <PersonalizationHubPage navigationContext={pageIntent.params} onNavigate={navigateToPage} currentUser={currentUser} />;
       case 'settings':
         return <SettingsHubPage navigationContext={pageIntent.params} onNavigate={navigateToPage} />;
       case 'admin-feedback':
@@ -310,6 +310,7 @@ export default function App() {
     <AppShell
       currentUser={currentUser}
       currentPage={shellConfig.currentPage}
+      navigationContext={pageIntent.params}
       onNavigate={navigateToPage}
       onLogout={handleLogout}
       onUserUpdated={(updatedUser) => setCurrentUser((current) => ({ ...current, ...updatedUser }))}

@@ -563,7 +563,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                   <Database size={24} />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">学习记忆</h1>
+                  <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">学习记忆</h1>
                   <p className="mt-1 text-sm leading-6 text-slate-600">集中沉淀、管理并调用影响后续学习推荐的关键信息。</p>
                 </div>
               </div>

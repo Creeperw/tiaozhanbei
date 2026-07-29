@@ -15,7 +15,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
     { key: 'learning-path', label: '学习路径' },
     { key: 'practice', label: '教学资源' },
     { key: 'training-workshop', label: '训练工坊' },
-    { key: 'personalization', label: '个性数据' },
+    { key: 'personalization', label: '个人数据' },
   ]);
   assert.equal(config.currentPage, 'dashboard');
   assert.equal(config.pageTitle, '培训助手首页');
@@ -109,7 +109,7 @@ test('defines dropdown destinations as explicit navigation intents', () => {
   assert.equal(config.primaryNav.some((item) => item.key === 'settings'), false);
 });
 
-test('uses personalization as a direct user-profile link without dropdown options', () => {
+test('uses learning reports as the personalization default and exposes its views in a dropdown', () => {
   const config = getAppShellConfig({
     currentUser: { username: 'alice', role: 'user' },
     currentPage: 'dashboard',
@@ -118,9 +118,14 @@ test('uses personalization as a direct user-profile link without dropdown option
 
   assert.deepEqual(personalization.intent, {
     page: 'personalization',
-    params: { view: 'user-profile' },
+    params: { view: 'reports' },
   });
-  assert.equal('children' in personalization, false);
+  assert.deepEqual(personalization.children, [
+    { label: '学情报告', intent: { page: 'personalization', params: { view: 'reports' } } },
+    { label: '学习画像', intent: { page: 'personalization', params: { view: 'user-profile' } } },
+    { label: '复习与掌握', intent: { page: 'personalization', params: { view: 'review' } } },
+    { label: '学习记忆', intent: { page: 'personalization', params: { view: 'memory' } } },
+  ]);
 });
 
 test('hides support navigation for standard learners', () => {
@@ -192,7 +197,7 @@ test('exposes Phase 4 training module route bindings for real pages', () => {
 test('uses updated page titles for knowledge, personalization, and settings modules', () => {
   assert.equal(
     getAppShellConfig({ currentUser: { username: 'alice', role: 'user' }, currentPage: 'personalization' }).pageTitle,
-    '个性数据',
+    '学情报告',
   );
   assert.equal(
     getAppShellConfig({ currentUser: { username: 'alice', role: 'user' }, currentPage: 'knowledge' }).pageTitle,

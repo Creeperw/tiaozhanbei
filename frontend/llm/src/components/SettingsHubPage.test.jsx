@@ -10,19 +10,16 @@ vi.mock('../utils/api', () => ({
   fetchWithAuth: vi.fn(() => Promise.resolve({ ok: true, payload: [] })),
   readJsonResponse: vi.fn((response, fallback) => Promise.resolve(response?.payload ?? fallback)),
 }));
-vi.mock('./PersonalizationPage', () => ({
-  default: ({ view }) => <div data-testid="settings-memory-task">{view}</div>,
-}));
 vi.mock('./LearningGovernancePanel', () => ({ default: () => <div>governance-task</div> }));
 vi.mock('./ProfileConflictList', () => ({ default: () => <div>conflicts-task</div> }));
 
 describe('SettingsHubPage task routing', () => {
-  it('opens the learning memory workspace by default', () => {
+  it('opens intervention and notifications by default', () => {
     render(<SettingsHubPage navigationContext={{}} onNavigate={vi.fn()} />);
 
-    expect(screen.getByRole('navigation', { name: '用户设置二级菜单' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '学习记忆' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByTestId('settings-memory-task')).toHaveTextContent('unified');
+    expect(screen.getByRole('navigation', { name: '系统通知页面切换' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '干预与通知' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByText('governance-task')).toBeInTheDocument();
   });
 
   it('opens moved notification and conflict sections under user settings', async () => {
@@ -39,9 +36,9 @@ describe('SettingsHubPage task routing', () => {
     expect(onNavigate).toHaveBeenCalledWith({ page: 'settings', params: { view: 'conflicts' } });
   });
 
-  it('keeps legacy profile links on the learning memory section', () => {
+  it('returns retired settings views to intervention and notifications', () => {
     render(<SettingsHubPage navigationContext={{ view: 'profile' }} onNavigate={vi.fn()} />);
 
-    expect(screen.getByRole('button', { name: '学习记忆' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: '干预与通知' })).toHaveAttribute('aria-current', 'page');
   });
 });
