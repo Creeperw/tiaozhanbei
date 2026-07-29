@@ -168,7 +168,7 @@ export default function QualificationAttemptWorkspace({ attempt: initialAttempt,
   if (!current) return <section role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">该套题暂时没有可作答题目。</section>;
 
   return (
-    <section className="relative mx-auto max-w-[87.5%] min-h-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">">
+    <section className="relative mx-auto max-w-[87.5%] min-h-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 sm:px-5">
         <button type="button" onClick={async () => { try { await save(true); onExit(); } catch (reason) { setError(reason.message); } }} className={`${buttonBase} border-slate-300 bg-white text-slate-700 shadow-sm hover:border-rose-300 hover:text-rose-700`}><LogOut size={16} />退出并保存</button>
         <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">第 {position} / {attempt.items.length} 题{seconds !== null ? ` · ${formatTime(seconds)}` : ''}</div>
