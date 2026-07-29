@@ -748,36 +748,38 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
 
   return (
     <div className="home-portal" aria-busy={loading}>
-      <section className="home-portal__hero" aria-labelledby="home-portal-title">
-        <div className="home-portal__hero-actions">
-          <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
-            <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
-          </button>
-        </div>
-        <HeroTypewriter
-          title={heroTitle}
-          subtitle={`距离${learningTarget.name}还有 ${countdown ?? 126} 天，保持稳定节奏。`}
-        />
-      </section>
-
-      {error && <div className="home-portal__notice" role="alert">{error}</div>}
-      {checkinMessage && <div className="home-portal__notice" role="status">{checkinMessage}</div>}
-      {!error && homeState.announcements[0] && (
-        <div className="home-portal__notice" role="status">{homeState.announcements[0]}</div>
-      )}
-
       <section className="home-portal__learning-area" aria-label="学习路线与学习进度">
-        {learningTargetReady ? (
-          <HomeLearningRoute
-            onNavigate={onNavigate}
-            onCurrentProgress={setCurrentProgress}
-            selectedTarget={learningTarget}
-          />
-        ) : (
-          <section className="home-portal__route" aria-label="正在读取学习路径">
-            <div className="home-portal__route-state">正在读取学习路径…</div>
+        <div className="home-portal__main-column">
+          <section className="home-portal__hero" aria-labelledby="home-portal-title">
+            <div className="home-portal__hero-actions">
+              <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
+                <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
+              </button>
+            </div>
+            <HeroTypewriter
+              title={heroTitle}
+              subtitle={`距离${learningTarget.name}还有 ${countdown ?? 126} 天，保持稳定节奏。`}
+            />
           </section>
-        )}
+
+          {error && <div className="home-portal__notice" role="alert">{error}</div>}
+          {checkinMessage && <div className="home-portal__notice" role="status">{checkinMessage}</div>}
+          {!error && homeState.announcements[0] && (
+            <div className="home-portal__notice" role="status">{homeState.announcements[0]}</div>
+          )}
+
+          {learningTargetReady ? (
+            <HomeLearningRoute
+              onNavigate={onNavigate}
+              onCurrentProgress={setCurrentProgress}
+              selectedTarget={learningTarget}
+            />
+          ) : (
+            <section className="home-portal__route" aria-label="正在读取学习路径">
+              <div className="home-portal__route-state">正在读取学习路径…</div>
+            </section>
+          )}
+        </div>
         <aside className="home-portal__plan-rail" aria-label="今日学习计划">
           <CurrentLearningPlan
             currentTask={currentTask}

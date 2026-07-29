@@ -7147,7 +7147,13 @@ textarea:focus-visible {
 
 .app-shell__main[data-page="learning-path"] .home-portal__learning-area {
   align-items: start;
-  margin-top: 16px;
+  margin-top: 0;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__main-column {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route,
@@ -7309,6 +7315,10 @@ textarea:focus-visible {
 
   .app-shell__main[data-page="learning-path"] .home-portal__learning-area {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__main-column {
+    gap: 16px;
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__plan-rail {
