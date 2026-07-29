@@ -556,6 +556,12 @@
     top: 20px;
 }
 
+.acupuncture-card--fullscreen .acupuncture-model__count {
+    top: 58px;
+    right: 12px;
+    bottom: auto;
+}
+
 .acupuncture-card--fullscreen>h2 {
     top: 48px;
 }
