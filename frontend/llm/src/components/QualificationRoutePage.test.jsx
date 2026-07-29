@@ -32,6 +32,7 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
           exam_track_id: 'track-tcm',
           official_name: '中医类别执业医师资格考试',
           exam_date: '2026-11-29T23:59:59+08:00',
+          textbook_route_id: 'textbook-tcm',
         }],
       }));
     }
@@ -42,6 +43,22 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
     }
     if (path.includes('/learning-path')) {
       return Promise.resolve(response(routePayload));
+    }
+    if (path.includes('/learning-routes/textbook-tcm')) {
+      return Promise.resolve(response({
+        schema_version: '1.0',
+        route: {
+          route_id: 'textbook-tcm',
+          stages: [{
+            stage_id: 'stage-1',
+            order: 1,
+            name: '中医基础与文化语言',
+            objective: '建立中医基础概念。',
+            books: ['《中医学基础》'],
+          }],
+        },
+        navigation: { atlas_route_id: 'textbook_14_5' },
+      }));
     }
     if (path.includes('/learning-routes/textbook-integrated')) {
       return Promise.resolve(response({
@@ -169,15 +186,42 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByRole('button', { name: /添加新任务/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
 
-    const pathViewButton = screen.getByRole('button', { name: '学习路径' });
-    const cardViewButton = screen.getByRole('button', { name: '学习阶段' });
-    expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
-    expect(cardViewButton).toHaveAttribute('aria-pressed', 'false');
-    fireEvent.click(cardViewButton);
-    expect(cardViewButton).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: '学习路径' }));
-    expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
+    const routeSource = screen.getByRole('group', { name: '学习路径类型' });
+    expect(within(routeSource).getByRole('button', { name: '经典路径' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(routeSource).getByRole('button', { name: '个性化路径' })).toHaveAttribute('aria-pressed', 'false');
+
+    const routeView = screen.getByRole('group', { name: '学习路径视图' });
+    const viewButtons = within(routeView).getAllByRole('button');
+    expect(viewButtons.map((button) => button.textContent)).toEqual(['学习阶段', '学习路径']);
+    expect(viewButtons[0]).toHaveAttribute('aria-pressed', 'true');
+    expect(viewButtons[1]).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: '进入中医基础与文化语言阶段' }));
+    expect(viewButtons[1]).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByText('《中医学基础》')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
+  });
+
+  it('switches from the classic route to the personalized route on demand', async () => {
+    const fetchMock = installHomeFetch({});
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    const personalizedButton = await screen.findByRole('button', { name: '个性化路径' });
+    fireEvent.click(personalizedButton);
+
+    expect(personalizedButton).toHaveAttribute('aria-pressed', 'true');
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/learning-path'))).toBe(true);
+  });
+
+  it('opens the editable learner survey from the route header', async () => {
+    installHomeFetch({});
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '学情调研' }));
+
+    expect(screen.getByRole('dialog', { name: '学情调研' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '关闭学情调研' }));
+    expect(screen.queryByRole('dialog', { name: '学情调研' })).not.toBeInTheDocument();
   });
 
   it('opens the assistant with the current learning context when adding a task', async () => {

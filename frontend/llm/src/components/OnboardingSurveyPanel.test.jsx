@@ -180,4 +180,17 @@ describe('OnboardingSurveyPanel', () => {
     continueStep();
     expect(screen.getByRole('radio', { name: /非医学专业/ })).toHaveAttribute('aria-checked', 'true');
   });
+
+  it('uses a page-specific exit label when embedded as an editable survey', async () => {
+    installRequests();
+    render(
+      <OnboardingSurveyPanel
+        exitLabel="退出调研"
+        onExit={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: '退出调研' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '退出注册' })).not.toBeInTheDocument();
+  });
 });

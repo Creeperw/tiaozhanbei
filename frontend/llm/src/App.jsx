@@ -16,6 +16,7 @@ import TextbookChapterLearning from './components/workshop-textbook/TextbookChap
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
 import CompactAssistant from './components/CompactAssistant';
+import { useModalFocus } from './components/ui/useModalFocus';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -45,9 +46,40 @@ const initialPageIntent = () => {
   }
 };
 
+function AuthOverlay({ open, onClose, onLogin }) {
+  const dialogRef = useModalFocus(open);
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [open]);
+  if (!open) return null;
+  return (
+    <div className="auth-overlay" onMouseDown={onClose}>
+      <section
+        ref={dialogRef}
+        className="auth-overlay__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="账号登录"
+        tabIndex={-1}
+        onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onClose();
+        }}
+      >
+        <button type="button" className="auth-overlay__close" aria-label="关闭登录页面" onClick={onClose}>×</button>
+        <AuthPage onLogin={onLogin} />
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [authOpen, setAuthOpen] = useState(false);
   const [pageIntent, setPageIntent] = useState(initialPageIntent);
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
@@ -75,7 +107,10 @@ export default function App() {
       }
     };
 
-    const clearSession = () => setCurrentUser(null);
+    const clearSession = () => {
+      setCurrentUser(null);
+      setPageIntent(createPageIntent('dashboard'));
+    };
     window.addEventListener('competition:unauthorized', clearSession);
     verifySession();
     return () => {
@@ -86,6 +121,7 @@ export default function App() {
 
   const handleLogin = (user) => {
     setCurrentUser(user);
+    setAuthOpen(false);
     navigateToPage('dashboard');
   };
 
@@ -95,6 +131,7 @@ export default function App() {
     } finally {
       setCurrentUser(null);
       setKnowledgeNavigationContext(null);
+      setPageIntent(createPageIntent('dashboard'));
     }
   };
 
@@ -191,10 +228,6 @@ export default function App() {
 
   if (checkingAuth) {
     return <div className="flex h-screen items-center justify-center bg-[#f8fafc] text-gray-400">Loading...</div>;
-  }
-
-  if (!currentUser) {
-    return <AuthPage onLogin={handleLogin} />;
   }
 
   const renderAuthenticatedPage = () => {
@@ -310,9 +343,11 @@ export default function App() {
     <AppShell
       currentUser={currentUser}
       currentPage={shellConfig.currentPage}
+      currentIntent={pageIntent}
       navigationContext={pageIntent.params}
       onNavigate={navigateToPage}
       onLogout={handleLogout}
+      onLoginRequested={() => setAuthOpen(true)}
       onUserUpdated={(updatedUser) => setCurrentUser((current) => ({ ...current, ...updatedUser }))}
     >
       {renderAuthenticatedPage()}
@@ -338,6 +373,7 @@ export default function App() {
           }}
         />
       )}
+      <AuthOverlay open={authOpen} onClose={() => setAuthOpen(false)} onLogin={handleLogin} />
     </AppShell>
   );
 }

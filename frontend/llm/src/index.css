@@ -7277,7 +7277,7 @@ textarea:focus-visible {
   transition: transform 190ms cubic-bezier(.22, .75, .28, 1);
 }
 
-.home-portal__route-switch[data-view="cards"] .home-portal__route-switch-indicator {
+.home-portal__route-switch[data-view="orbit"] .home-portal__route-switch-indicator {
   transform: translateX(100%);
 }
 
@@ -7394,6 +7394,148 @@ textarea:focus-visible {
   }
 }
 
+.home-portal__route-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.home-portal__route-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid #d6e6df;
+  border-radius: 999px;
+  background: #fff;
+  padding: 3px;
+}
+
+.home-portal__route-header .home-portal__route-mode button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 12px;
+  color: #6d817a;
+  font-size: .74rem;
+  white-space: nowrap;
+}
+
+.home-portal__route-header .home-portal__route-mode button.is-active {
+  background: #e8f6ef;
+  color: #146f53;
+  font-weight: 800;
+}
+
+.home-portal__route-header .home-portal__survey-trigger {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 7px;
+  color: #5d766d;
+  font-size: .74rem;
+}
+
+.home-portal__route-header .home-portal__survey-trigger:hover,
+.home-portal__route-header .home-portal__survey-trigger:focus-visible {
+  background: #eef8f3;
+  color: #167e5e;
+}
+
+.home-portal__survey-backdrop {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(20, 48, 39, .48);
+  backdrop-filter: blur(8px);
+}
+
+.home-portal__survey-dialog {
+  position: relative;
+  width: min(1080px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border-radius: 28px;
+  background: #f7fbf8;
+  box-shadow: 0 30px 90px rgba(17, 61, 47, .28);
+}
+
+.home-portal__survey-close {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #d4e5dd;
+  border-radius: 50%;
+  background: #fff;
+  color: #45635a;
+  cursor: pointer;
+}
+
+.home-portal__survey-dialog .registration-journey {
+  min-height: auto;
+  border-radius: inherit;
+}
+
+.home-portal__survey-dialog .registration-journey__header {
+  padding-right: 68px;
+}
+
+@media (max-width: 1120px) {
+  .home-portal__route-header {
+    flex-wrap: wrap;
+  }
+
+  .home-portal__route-controls {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .home-portal__route-mode,
+  .home-portal__route-switch {
+    flex: 1 1 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-portal__route-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .home-portal__route-mode,
+  .home-portal__route-switch {
+    width: 100%;
+  }
+
+  .home-portal__route-mode button {
+    flex: 1 1 0;
+  }
+
+  .home-portal__survey-backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .home-portal__survey-dialog {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}
+
 /* Navigation dropdowns stay mounted for their 250ms exit animation. */
 @media (min-width: 900px) {
   .app-shell__nav-menu[data-state="open"] {
@@ -7446,6 +7588,49 @@ textarea:focus-visible {
     transition: none;
     animation: none;
   }
+}
+
+.auth-overlay {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  height: 100dvh;
+  overflow: hidden;
+  background: rgba(13, 34, 27, .34);
+  overscroll-behavior: contain;
+}
+
+.auth-overlay__dialog {
+  position: relative;
+  height: 100dvh;
+  min-height: 100%;
+  overflow: hidden;
+  outline: none;
+}
+
+.auth-overlay__close {
+  position: fixed;
+  z-index: 210;
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(7, 98, 71, .18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 10px 30px rgba(13, 58, 43, .16);
+  color: #19634e;
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.auth-overlay__close:hover {
+  background: #fff;
+  color: #075f46;
 }
 
 /* Canonical desktop navigation for the branch-based topbar.  The previous
@@ -7536,6 +7721,38 @@ textarea:focus-visible {
 
   .app-shell__target-menu {
     width: min(390px, calc(100vw - 32px));
+  }
+
+  .app-shell__target-group > button {
+    position: relative;
+  }
+
+  .app-shell__target-trigger-copy {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+  }
+
+  .app-shell__target-current {
+    position: absolute;
+    top: calc(100% - 5px);
+    left: 50%;
+    width: max-content;
+    max-width: none;
+    overflow: hidden;
+    pointer-events: none;
+    color: #71867e;
+    font-size: clamp(.54rem, .6vw, .66rem);
+    font-weight: 500;
+    line-height: 1.25;
+    text-overflow: clip;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .app-shell__nav-group > button:hover .app-shell__target-current,
+  .app-shell__nav-group > button[aria-expanded="true"] .app-shell__target-current {
+    color: #478471;
   }
 }
 
@@ -10501,6 +10718,26 @@ textarea:focus-visible {
     font-size: .72rem;
     font-weight: 700;
     white-space: nowrap;
+  }
+
+  .app-shell__assistant-entry--featured {
+    border-color: rgba(204, 255, 229, .45);
+    background: linear-gradient(135deg, #0d8b62 0%, #139a6c 52%, #087657 100%);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(7, 108, 75, .2), inset 0 1px 0 rgba(255, 255, 255, .2);
+    transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .app-shell__assistant-entry--featured:hover {
+    border-color: rgba(224, 255, 238, .68);
+    background: linear-gradient(135deg, #119a6e 0%, #16a878 52%, #0b8762 100%);
+    color: #fff;
+    box-shadow: 0 11px 22px rgba(7, 108, 75, .26), inset 0 1px 0 rgba(255, 255, 255, .24);
+  }
+
+  .app-shell__assistant-entry--featured:focus-visible {
+    outline: 3px solid rgba(31, 164, 116, .3);
+    outline-offset: 3px;
   }
 
   .app-shell__topbar-icon {

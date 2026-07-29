@@ -6,11 +6,14 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Clock3,
   Plus,
+  X,
 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
+import OnboardingSurveyPanel from './OnboardingSurveyPanel';
 import LearningStageLanding from './learning-stage/LearningStageLanding';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import {
@@ -269,10 +272,13 @@ function HomeLearningRoute({
   onCurrentProgress,
   selectedTarget,
 }) {
-  const [routeView, setRouteView] = useState('orbit');
-  const [renderedRouteView, setRenderedRouteView] = useState('orbit');
+  const [routeMode, setRouteMode] = useState('classic');
+  const [routeView, setRouteView] = useState('cards');
+  const [renderedRouteView, setRenderedRouteView] = useState('cards');
   const [routeTransitionPhase, setRouteTransitionPhase] = useState('idle');
   const routeTransitionTimerRef = useRef(null);
+  const [surveyOpen, setSurveyOpen] = useState(false);
+  const [routeRevision, setRouteRevision] = useState(0);
   const [routeState, setRouteState] = useState({
     loading: true,
     error: '',
@@ -300,11 +306,13 @@ function HomeLearningRoute({
 
   useEffect(() => {
     let cancelled = false;
-    const routeLoader = selectedTarget?.textbook_route_id
-      ? loadClassicLearningRoute(selectedTarget.textbook_route_id)
+    const routeLoader = routeMode === 'classic'
+      ? selectedTarget?.textbook_route_id
+        ? loadClassicLearningRoute(selectedTarget.textbook_route_id)
+        : Promise.reject(new Error('当前考试类别暂无经典路径'))
       : loadPlannedLearningPath();
-    setRouteView('orbit');
-    setRenderedRouteView('orbit');
+    setRouteView('cards');
+    setRenderedRouteView('cards');
     setRouteTransitionPhase('idle');
     setSelectedNode(null);
     setRouteState((current) => ({ ...current, loading: true, error: '' }));
@@ -347,7 +355,7 @@ function HomeLearningRoute({
         });
       });
     return () => { cancelled = true; };
-  }, [selectedTarget?.textbook_route_id]);
+  }, [routeMode, routeRevision, selectedTarget?.textbook_route_id]);
 
   useEffect(() => () => window.clearTimeout(routeTransitionTimerRef.current), []);
 
@@ -450,7 +458,18 @@ function HomeLearningRoute({
     setSelectedNode(null);
   };
 
+  const selectRouteMode = (nextMode) => {
+    if (nextMode === routeMode) return;
+    setRouteMode(nextMode);
+  };
+
+  const openStagePath = ({ stage }) => {
+    changeRouteView('orbit');
+    openNode(stage);
+  };
+
   return (
+    <>
       <section className="home-portal__route" data-view={routeView} aria-label={`${selectedTarget?.name || '当前考证'}学习路径`}>
       <header className="home-portal__route-header">
         <div>
@@ -459,31 +478,55 @@ function HomeLearningRoute({
             <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
               {routeView === 'details' ? '返回' : '了解详情'}
             </button>
+            <button type="button" className="home-portal__survey-trigger" onClick={() => setSurveyOpen(true)}>
+              <ClipboardList aria-hidden="true" size={15} />
+              学情调研
+            </button>
           </div>
         </div>
-        <div
-          className="home-portal__route-switch"
-          data-view={routeView === 'cards' ? 'cards' : 'orbit'}
-          role="group"
-          aria-label="学习路径视图"
-        >
-          <span className="home-portal__route-switch-indicator" aria-hidden="true" />
-          <button
-            type="button"
-            className={routeView !== 'cards' ? 'is-active' : ''}
-            aria-pressed={routeView !== 'cards'}
-            onClick={returnToPath}
+        <div className="home-portal__route-controls">
+          <div className="home-portal__route-mode" role="group" aria-label="学习路径类型">
+            <button
+              type="button"
+              className={routeMode === 'classic' ? 'is-active' : ''}
+              aria-pressed={routeMode === 'classic'}
+              onClick={() => selectRouteMode('classic')}
+            >
+              经典路径
+            </button>
+            <button
+              type="button"
+              className={routeMode === 'personalized' ? 'is-active' : ''}
+              aria-pressed={routeMode === 'personalized'}
+              onClick={() => selectRouteMode('personalized')}
+            >
+              个性化路径
+            </button>
+          </div>
+          <div
+            className="home-portal__route-switch"
+            data-view={routeView === 'cards' ? 'cards' : 'orbit'}
+            role="group"
+            aria-label="学习路径视图"
           >
-            学习路径
-          </button>
-          <button
-            type="button"
-            className={routeView === 'cards' ? 'is-active' : ''}
-            aria-pressed={routeView === 'cards'}
-            onClick={() => changeRouteView('cards')}
-          >
-            学习阶段
-          </button>
+            <span className="home-portal__route-switch-indicator" aria-hidden="true" />
+            <button
+              type="button"
+              className={routeView === 'cards' ? 'is-active' : ''}
+              aria-pressed={routeView === 'cards'}
+              onClick={() => changeRouteView('cards')}
+            >
+              学习阶段
+            </button>
+            <button
+              type="button"
+              className={routeView !== 'cards' ? 'is-active' : ''}
+              aria-pressed={routeView !== 'cards'}
+              onClick={returnToPath}
+            >
+              学习路径
+            </button>
+          </div>
         </div>
       </header>
       <div className="home-portal__route-view-content" data-view={renderedRouteView} data-phase={routeTransitionPhase}>
@@ -511,7 +554,7 @@ function HomeLearningRoute({
         <LearningStageLanding
           compact
           stages={routeState.stages}
-          onStageSelect={() => changeRouteView('orbit')}
+          onStageSelect={openStagePath}
           onCreatePlan={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}
         />
       )}
@@ -535,6 +578,34 @@ function HomeLearningRoute({
       )}
       </div>
     </section>
+      {surveyOpen && (
+        <div className="home-portal__survey-backdrop">
+          <section
+            className="home-portal__survey-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="学情调研"
+          >
+            <button
+              type="button"
+              className="home-portal__survey-close"
+              aria-label="关闭学情调研"
+              onClick={() => setSurveyOpen(false)}
+            >
+              <X aria-hidden="true" size={19} />
+            </button>
+            <OnboardingSurveyPanel
+              exitLabel="退出调研"
+              onExit={() => setSurveyOpen(false)}
+              onSaved={() => {
+                setSurveyOpen(false);
+                setRouteRevision((value) => value + 1);
+              }}
+            />
+          </section>
+        </div>
+      )}
+    </>
   );
 }
 

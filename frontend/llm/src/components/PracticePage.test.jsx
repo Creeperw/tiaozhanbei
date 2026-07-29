@@ -306,6 +306,27 @@ describe('PracticePage training modules', () => {
     expect(onNavigate).toHaveBeenCalledWith({ page: 'qualification-route', params: {} });
   });
 
+  it('returns avatar libraries to the exact learning path that opened them', () => {
+    const onNavigate = vi.fn();
+    const returnTo = {
+      page: 'learning-path',
+      params: { targetId: 'target-a', examTrackId: 'track-a' },
+    };
+    render(
+      <PracticePage
+        navigationContext={{
+          view: 'workspace',
+          taskType: 'question_favorites',
+          returnTo,
+        }}
+        onNavigate={onNavigate}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
+    expect(onNavigate).toHaveBeenCalledWith(returnTo);
+  });
+
   it('passes a direct daily video into the knowledge-card player', () => {
     render(
       <PracticePage

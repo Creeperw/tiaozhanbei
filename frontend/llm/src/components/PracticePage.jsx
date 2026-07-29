@@ -606,6 +606,8 @@ export default function PracticePage({
   const returnIntent = navigationContext.returnTo;
   const returnLabel = returnIntent?.page === 'assistant'
     ? '返回智能助教'
+    : returnIntent?.page === 'learning-path'
+      ? '返回学习路径'
     : returnIntent?.page === 'qualification-route'
       ? '返回今日学习'
       : returnIntent?.page === 'personalization' && returnIntent?.params?.view === 'reports'
