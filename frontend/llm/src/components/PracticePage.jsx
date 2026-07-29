@@ -23,6 +23,7 @@ import { fetchJsonWithAuthFallback } from '../utils/api';
 import QuestionTrainingPanel from './QuestionTrainingPanel';
 import QualificationPaperPanel from './QualificationPaperPanel';
 import SimulatedPatientChat from './SimulatedPatientChat';
+import MistakeRedoPanel from './MistakeRedoPanel';
 import MistakeVariationPanel from './MistakeVariationPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
@@ -181,15 +182,24 @@ function ArtifactResult({ taskResult }) {
   );
 }
 
-const trainingCards = [
+const featuredCards = [
+  {
+    key: 'special_training',
+    initialMode: 'case_training',
+    title: '专项特训',
+    description: '覆盖核心知识点，系统巩固基础能力。',
+    icon: Target,
+  },
   {
     key: 'topic_training',
     initialMode: 'objective',
-    title: '专题训练',
+    title: '知识点特训',
     description: '按教材章节定位知识点，聚焦薄弱环节精准提升。',
     icon: Stethoscope,
-    tone: 'teal',
   },
+];
+
+const trainingCards = [
   {
     key: 'paper_workspace',
     title: '智能组卷',
@@ -200,7 +210,7 @@ const trainingCards = [
   {
     key: 'question_training',
     initialMode: 'objective',
-    title: '综合套题',
+    title: '真题模拟',
     description: '从正式题库抽取客观题与案例，模拟综合考试场景。',
     icon: ClipboardCheck,
     tone: 'emerald',
@@ -212,16 +222,14 @@ const trainingCards = [
     icon: HeartPulse,
     tone: 'rose',
   },
+  {
+    key: 'mistake_redo',
+    title: '错题重做',
+    description: '自动收录错题，AI 生成变式，反复巩固直至掌握。',
+    icon: FolderHeart,
+    tone: 'red',
+  },
 ];
-
-const featuredTrainingCard = {
-  key: 'special_training',
-  initialMode: 'case_training',
-  title: '专项训练',
-  description: '覆盖核心知识点，系统巩固基础能力。',
-  icon: Target,
-  tone: 'cyan',
-};
 
 const uploadQuestionBankCard = {
   key: 'question_workspace',
@@ -283,7 +291,7 @@ const percentageOrNull = (value) => {
 };
 
 const resumableTrainingCards = [
-  featuredTrainingCard,
+  ...featuredCards,
   ...trainingCards,
   ...utilityCards,
   uploadQuestionBankCard,
@@ -369,11 +377,12 @@ const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, check
 };
 
 const workspaceTitles = {
-  question_training: '综合套题',
-  special_training: '专项训练',
-  topic_training: '专题训练',
+  question_training: '真题模拟',
+  special_training: '专项特训',
+  topic_training: '知识点特训',
   ai_patient_simulation: '模拟病患',
   mistake_variation: '错题库',
+  mistake_redo: '错题重做',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
   question_favorites: '收藏夹',
@@ -473,7 +482,7 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
           <h1 id="practice-overview-title">训练工坊</h1>
           <p>今日建议完成 <strong>{stats.todayGoal}</strong> 道综合题，预计 <strong>15</strong> 分钟</p>
           <div className="practice-overview__hero-actions">
-            <button type="button" className="practice-overview__primary-action" onClick={() => onOpenModule(featuredTrainingCard)}>
+            <button type="button" className="practice-overview__primary-action" onClick={() => onOpenModule(featuredCards[0])}>
               <CirclePlay aria-hidden="true" size={18} />开始今日训练
             </button>
             <button type="button" className="practice-overview__secondary-action" onClick={() => onOpenModule(recentCard)}>
@@ -501,19 +510,23 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
 
       <div className="practice-overview__layout">
         <section className="practice-overview__main" aria-label="训练模块">
-          <button type="button" className="practice-overview__featured-card" onClick={() => onOpenModule(featuredTrainingCard)}>
-            <span className="practice-overview__featured-icon"><Target aria-hidden="true" size={30} /></span>
-            <span className="practice-overview__featured-copy">
-              <span className="practice-overview__featured-title"><strong>{featuredTrainingCard.title}</strong><em>推荐</em></span>
-              <small>覆盖核心知识点，系统巩固基础能力。</small>
-              <span>20 题 <i /> 15 分钟 <i /> 覆盖核心知识点</span>
-            </span>
-            <span className="practice-overview__featured-action">
-              <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
-              <small>上次练习：待接入</small>
-              <small>正确率：{formatPercent(stats.todayAccuracy)}</small>
-            </span>
-          </button>
+          <div className="grid gap-3 md:grid-cols-2">
+            {featuredCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <button key={card.key} type="button" className="practice-overview__featured-card" onClick={() => onOpenModule(card)}>
+                  <span className="practice-overview__featured-icon"><Icon aria-hidden="true" size={30} /></span>
+                  <span className="practice-overview__featured-copy">
+                    <span className="practice-overview__featured-title"><strong>{card.title}</strong>{card.key === 'special_training' && <em>推荐</em>}</span>
+                    <small>{card.description}</small>
+                  </span>
+                  <span className="practice-overview__featured-action">
+                    <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <div className="practice-overview__training-grid">
             {trainingCards.map((card) => {
               const Icon = card.icon;
@@ -734,6 +747,8 @@ export default function PracticePage({
           <section className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
             {activeTaskType === 'question_training' && !taskItemId ? (
               <QualificationPaperPanel enabled />
+            ) : activeTaskType === 'mistake_redo' ? (
+              <MistakeRedoPanel />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
