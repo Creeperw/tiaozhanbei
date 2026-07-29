@@ -472,7 +472,7 @@
 .acupuncture-model__count,
 .acupuncture-model__hint {
     position: absolute;
-    z-index: 1;
+    z-index: 10;
     border: 1px solid rgba(157, 236, 210, .3);
     border-radius: 9px;
     color: #d9fff2;
@@ -519,7 +519,7 @@
 
 .acupuncture-card--fullscreen {
     position: fixed;
-    z-index: 20;
+    z-index: 1000;
     inset: 0;
     display: block;
     width: 100vw;
@@ -546,6 +546,14 @@
 
 .acupuncture-card--fullscreen>.acupuncture-card__eyebrow {
     top: 20px;
+}
+
+.acupuncture-card--fullscreen .acupuncture-model__markers-button {
+    top: 82px;
+}
+
+.acupuncture-card--fullscreen .acupuncture-model__status {
+    top: 82px;
 }
 
 .acupuncture-card--fullscreen>h2 {
