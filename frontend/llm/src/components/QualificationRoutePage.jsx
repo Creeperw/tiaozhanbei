@@ -1,16 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight,
   BookOpenText,
+  CalendarDays,
   CalendarCheck2,
   Check,
   ChevronLeft,
   ChevronRight,
-  Circle,
   Clock3,
-  ListChecks,
-  PlayCircle,
-  Route,
+  Plus,
 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
@@ -53,28 +50,35 @@ function splitHeroTitle(value) {
 
 function HeroTypewriter({ title, subtitle }) {
   const [typedText, setTypedText] = useState('');
+  const typedTextRef = useRef('');
+  const fullWord = String(title || '').trim();
 
   useEffect(() => {
     let cancelled = false;
     let timer;
     let cursor = 0;
-    const word = String(title || '').trim();
-
+    const previousText = typedTextRef.current;
+    const limit = Math.min(previousText.length, fullWord.length);
+    while (cursor < limit && previousText[cursor] === fullWord[cursor]) cursor += 1;
+    if (!fullWord) return undefined;
+    const remainingLength = fullWord.length - cursor;
+    const stepDelay = Math.max(12, Math.floor(850 / Math.max(remainingLength - 1, 1)));
     const tick = () => {
       if (cancelled) return;
       cursor += 1;
-      setTypedText(word.slice(0, cursor));
-      if (cursor < word.length) timer = window.setTimeout(tick, 180);
+      const nextText = fullWord.slice(0, cursor);
+      typedTextRef.current = nextText;
+      setTypedText(nextText);
+      if (cursor < fullWord.length) timer = window.setTimeout(tick, stepDelay);
     };
 
-    timer = window.setTimeout(tick, 180);
+    timer = window.setTimeout(tick, 0);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [title]);
+  }, [fullWord]);
 
-  const fullWord = String(title || '').trim();
   const isTyping = typedText.length < fullWord.length;
   const typedSegments = splitHeroTitle(typedText);
   return (
@@ -144,74 +148,30 @@ function calendarDaysForMonth(monthDate) {
   });
 }
 
-function activityDate(item) {
-  const value = item?.dateKey
-    || item?.raw?.completed_at
-    || item?.raw?.ended_at
-    || item?.raw?.created_at
-    || item?.raw?.started_at;
-  return value ? localDateKey(value) : '';
-}
-
 function isCompletedPlanItem(item) {
   const status = String(item?.raw?.status || item?.raw?.completion_status || '').toLowerCase();
   return ['completed', 'complete', 'done', 'finished'].includes(status)
     || Number(item?.progress) >= 100;
 }
 
-function planItemPresentation(item) {
-  const kind = String(item?.raw?.item_type || item?.raw?.task_type || '').toLowerCase();
-  if (kind === 'video_section' || kind.includes('video')) {
-    return { label: '章节视频', icon: PlayCircle };
-  }
-  if (kind === 'knowledge_practice' || kind.includes('question') || kind.includes('training')) {
-    return { label: '知识点训练', icon: ListChecks };
-  }
-  return { label: item?.source === 'workshop_history' ? '学习记录' : '学习任务', icon: BookOpenText };
-}
-
 function CurrentLearningPlan({
   currentTask,
   items,
-  stageName,
+  studyDays,
   timer,
   onExpire,
   onOpenItem,
-  onShowPath,
+  onAddTask,
 }) {
   const today = localDateKey();
-  const [selectedDate, setSelectedDate] = useState(today);
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const calendarDays = useMemo(() => calendarDaysForMonth(visibleMonth), [visibleMonth]);
-  const entriesByDate = useMemo(() => {
-    const grouped = new Map();
-    items.forEach((item) => {
-      const key = activityDate(item);
-      if (!key) return;
-      if (!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key).push(item);
-    });
-    return grouped;
-  }, [items]);
-  const selectedItems = entriesByDate.get(selectedDate) || [];
-  const taskProgress = readProgress(currentTask?.progress, readProgress(currentTask, null));
-  const progress = taskProgress ?? (
-    selectedDate === today && selectedItems.length
-      ? (selectedItems.filter(isCompletedPlanItem).length / selectedItems.length) * 100
-      : 0
-  );
-  const chapter = currentTask?.learning_chapter || {};
-  const totalMinutes = selectedItems.reduce(
-    (sum, item) => sum + Math.max(0, Number(item?.raw?.estimated_minutes || 0)),
-    0,
-  );
-  const selectedDateLabel = selectedDate === today
-    ? '今日任务'
-    : new Date(`${selectedDate}T00:00:00`).toLocaleDateString('zh-CN', {
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short',
-    });
+  const todayItems = items.filter((item) => item.source === 'daily_task');
+  const completedFromItems = todayItems.filter(isCompletedPlanItem).length;
+  const total = Math.max(Number(currentTask?.progress?.total || 0), todayItems.length);
+  const completed = Math.min(total, Math.max(Number(currentTask?.progress?.completed || 0), completedFromItems));
+  const progress = total > 0 ? (completed / total) * 100 : 0;
+  const learnedDates = useMemo(() => new Set(studyDays), [studyDays]);
 
   const changeMonth = (offset) => {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
@@ -219,122 +179,87 @@ function CurrentLearningPlan({
 
   return (
     <div className="home-plan" aria-label="当前学习计划">
-      <header className="home-plan__summary">
-        <div>
-          <span>{stageName || '当前学习阶段'}</span>
-          <h3>{chapter.title || currentTask?.title || '等待生成今日任务'}</h3>
-          <p>
-            {chapter.book ? `《${String(chapter.book).replace(/[《》]/g, '')}》` : '教材待规划'}
-            {currentTask?.completion_criteria ? ` · 验收：${currentTask.completion_criteria}` : ''}
-          </p>
-        </div>
-        <div className="home-plan__progress" aria-label={`当前计划完成度 ${Math.round(progress)}%`}>
-          <strong>{Math.round(progress)}%</strong>
-          <span><i style={{ width: `${progress}%` }} /></span>
-          <small>{currentTask?.progress?.completed || 0} / {currentTask?.progress?.total || selectedItems.length || 0} 项</small>
-        </div>
-      </header>
+      <section className="home-today-card" aria-label="今日任务">
+        <header className="home-today-card__header">
+          <h3><CalendarCheck2 aria-hidden="true" size={22} />今日任务</h3>
+          <div className="home-today-card__progress" aria-label={`今日任务完成 ${completed}/${total}`}>
+            <strong>{completed}/{total}</strong>
+            <span><i style={{ width: `${progress}%` }} /></span>
+          </div>
+        </header>
 
-      <div className="home-plan__body">
-        <section className="home-plan__tasks" aria-label={selectedDateLabel}>
-          <header>
-            <div>
-              <span>{selectedDateLabel}</span>
-              <h4>{selectedDate === today ? (currentTask?.title || '今日学习安排') : '学习记录'}</h4>
+        <div className="home-today-card__list">
+          {todayItems.map((item) => {
+            const itemCompleted = isCompletedPlanItem(item);
+            const minutes = Number(item.raw?.estimated_minutes || 0);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className="home-today-card__task"
+                data-status={itemCompleted ? 'completed' : 'pending'}
+                onClick={() => onOpenItem?.(item)}
+              >
+                <span className="home-today-card__check" aria-label={itemCompleted ? '已完成' : '未完成'}>
+                  {itemCompleted ? <Check aria-hidden="true" size={15} /> : null}
+                </span>
+                <strong>{item.title}</strong>
+                <small><Clock3 aria-hidden="true" size={14} />{minutes > 0 ? `${minutes}分钟` : item.meta || '待安排'}</small>
+              </button>
+            );
+          })}
+          {todayItems.length === 0 && (
+            <div className="home-today-card__empty">
+              <BookOpenText aria-hidden="true" size={22} />
+              <strong>今天还没有学习任务</strong>
+              <p>可让智能助教结合当前阶段安排任务。</p>
             </div>
-            <small>{selectedItems.length} 项{totalMinutes > 0 ? ` · 约 ${totalMinutes} 分钟` : ''}</small>
-          </header>
+          )}
+        </div>
 
-          <div className="home-plan__task-list">
-            {selectedItems.map((item) => {
-              const completed = isCompletedPlanItem(item);
-              const presentation = planItemPresentation(item);
-              const Icon = presentation.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="home-plan__task"
-                  data-status={completed ? 'completed' : 'pending'}
-                  onClick={() => onOpenItem?.(item)}
-                >
-                  <span className="home-plan__task-check" aria-label={completed ? '已完成' : '未完成'}>
-                    {completed ? <Check aria-hidden="true" size={15} /> : <Circle aria-hidden="true" size={15} />}
-                  </span>
-                  <span className="home-plan__task-copy">
-                    <strong>{item.title}</strong>
-                    <small><Icon aria-hidden="true" size={13} />{presentation.label}{item.detail ? ` · ${item.detail}` : ''}</small>
-                  </span>
-                  <span className="home-plan__task-meta">
-                    {item.raw?.estimated_minutes ? <small><Clock3 aria-hidden="true" size={12} />{item.raw.estimated_minutes} 分钟</small> : null}
-                    <em>{completed ? '已完成' : '开始学习'} <ArrowRight aria-hidden="true" size={13} /></em>
-                  </span>
-                </button>
-              );
-            })}
-            {selectedItems.length === 0 && (
-              <div className="home-plan__empty">
-                <BookOpenText aria-hidden="true" size={24} />
-                <strong>{selectedDate === today ? '今天还没有学习任务' : '这一天没有任务记录'}</strong>
-                <p>{selectedDate === today ? '请先制定短期计划，再让智能助教安排今日任务。' : '只有实际产生的学习与完成记录才会显示在日历中。'}</p>
-              </div>
-            )}
-          </div>
+        <button type="button" className="home-today-card__add" onClick={onAddTask}>
+          <Plus aria-hidden="true" size={17} />添加新任务
+        </button>
+        <DailyTaskCountdown timer={timer} onExpire={onExpire} className="home-plan__refresh-timer" />
+      </section>
 
-          <footer>
-            <button type="button" onClick={onShowPath}><Route aria-hidden="true" size={15} />查看阶段路径</button>
-            {currentTask?.expected_output && <p>学习产出：{currentTask.expected_output}</p>}
-          </footer>
-        </section>
-
-        <aside className="home-plan__calendar" aria-label="学习计划日历">
-          <header>
-            <strong>我的计划</strong>
-            <div>
-              <button type="button" aria-label="上个月" onClick={() => changeMonth(-1)}><ChevronLeft aria-hidden="true" size={16} /></button>
-              <span>{visibleMonth.getFullYear()}年{visibleMonth.getMonth() + 1}月</span>
-              <button type="button" aria-label="下个月" onClick={() => changeMonth(1)}><ChevronRight aria-hidden="true" size={16} /></button>
-            </div>
-          </header>
-          <div className="home-plan__weekdays" aria-hidden="true">
-            {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+      <aside className="home-study-calendar" aria-label="学习日历">
+        <header>
+          <h3><CalendarDays aria-hidden="true" size={22} />学习日历</h3>
+          <div>
+            <button type="button" aria-label="上个月" onClick={() => changeMonth(-1)}><ChevronLeft aria-hidden="true" size={17} /></button>
+            <strong>{visibleMonth.getFullYear()}年{visibleMonth.getMonth() + 1}月</strong>
+            <button type="button" aria-label="下个月" onClick={() => changeMonth(1)}><ChevronRight aria-hidden="true" size={17} /></button>
           </div>
-          <div className="home-plan__calendar-grid">
-            {calendarDays.map((date) => {
-              const key = localDateKey(date);
-              const dateItems = entriesByDate.get(key) || [];
-              const hasTasks = dateItems.length > 0;
-              const completed = hasTasks && dateItems.every(isCompletedPlanItem);
-              const state = hasTasks ? (completed ? 'completed' : 'pending') : 'empty';
-              const outside = date.getMonth() !== visibleMonth.getMonth();
-              const label = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${hasTasks ? `，${completed ? '任务已完成' : '任务未完成'}` : '，无任务记录'}`;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  data-state={state}
-                  data-today={String(key === today)}
-                  data-outside={String(outside)}
-                  aria-label={label}
-                  aria-pressed={selectedDate === key}
-                  onClick={() => setSelectedDate(key)}
-                >
-                  {date.getDate()}
-                </button>
-              );
-            })}
-          </div>
-          <div className="home-plan__calendar-legend">
-            <span><i data-state="completed" />任务完成</span>
-            <span><i data-state="pending" />任务未完成</span>
-          </div>
-          <div className="home-plan__calendar-footer">
-            <strong>{selectedDateLabel}</strong>
-            <span>{selectedItems.filter(isCompletedPlanItem).length} / {selectedItems.length} 项完成</span>
-          </div>
-          <DailyTaskCountdown timer={timer} onExpire={onExpire} />
-        </aside>
-      </div>
+        </header>
+        <div className="home-study-calendar__weekdays" aria-hidden="true">
+          {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+        </div>
+        <div className="home-study-calendar__grid">
+          {calendarDays.map((date) => {
+            const key = localDateKey(date);
+            const learned = learnedDates.has(key);
+            const isToday = key === today;
+            const outside = date.getMonth() !== visibleMonth.getMonth();
+            const label = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${isToday ? '，今天' : learned ? '，已学习' : ''}`;
+            return (
+              <span
+                key={key}
+                data-learned={String(learned)}
+                data-today={String(isToday)}
+                data-outside={String(outside)}
+                aria-label={label}
+              >
+                {date.getDate()}
+              </span>
+            );
+          })}
+        </div>
+        <footer className="home-study-calendar__legend">
+          <span><i data-state="today" />今天</span>
+          <span><i data-state="learned" />已学习</span>
+        </footer>
+      </aside>
     </div>
   );
 }
@@ -345,6 +270,9 @@ function HomeLearningRoute({
   selectedTarget,
 }) {
   const [routeView, setRouteView] = useState('orbit');
+  const [renderedRouteView, setRenderedRouteView] = useState('orbit');
+  const [routeTransitionPhase, setRouteTransitionPhase] = useState('idle');
+  const routeTransitionTimerRef = useRef(null);
   const [routeState, setRouteState] = useState({
     loading: true,
     error: '',
@@ -363,11 +291,12 @@ function HomeLearningRoute({
   });
 
   useEffect(() => {
+    if (routeState.loading) return;
     const activeNode = routeState.nodes.find((node) => node.status === 'in_progress')
       || routeState.nodes.find((node) => node.status === 'next')
       || routeState.nodes[0];
-    onCurrentProgress?.(String(activeNode?.title || ''));
-  }, [onCurrentProgress, routeState.nodes]);
+    onCurrentProgress?.(String(activeNode?.title || '当前学习阶段'));
+  }, [onCurrentProgress, routeState.loading, routeState.nodes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -375,6 +304,8 @@ function HomeLearningRoute({
       ? loadClassicLearningRoute(selectedTarget.textbook_route_id)
       : loadPlannedLearningPath();
     setRouteView('orbit');
+    setRenderedRouteView('orbit');
+    setRouteTransitionPhase('idle');
     setSelectedNode(null);
     setRouteState((current) => ({ ...current, loading: true, error: '' }));
     routeLoader
@@ -418,11 +349,38 @@ function HomeLearningRoute({
     return () => { cancelled = true; };
   }, [selectedTarget?.textbook_route_id]);
 
+  useEffect(() => () => window.clearTimeout(routeTransitionTimerRef.current), []);
+
   const edges = routeState.nodes.slice(1).map((node, index) => ({
     from: routeState.nodes[index].membership_id,
     to: node.membership_id,
     kind: 'spine',
   }));
+
+  const changeRouteView = (nextView) => {
+    if (nextView === routeView) return;
+    window.clearTimeout(routeTransitionTimerRef.current);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion && typeof document.startViewTransition === 'function') {
+      document.startViewTransition(() => {
+        setRouteView(nextView);
+        setRenderedRouteView(nextView);
+      });
+      return;
+    }
+    setRouteView(nextView);
+    if (reduceMotion) {
+      setRenderedRouteView(nextView);
+      setRouteTransitionPhase('idle');
+      return;
+    }
+    setRouteTransitionPhase('exiting');
+    routeTransitionTimerRef.current = window.setTimeout(() => {
+      setRenderedRouteView(nextView);
+      setRouteTransitionPhase('entering');
+      window.requestAnimationFrame(() => setRouteTransitionPhase('idle'));
+    }, 85);
+  };
 
   const openNode = async (node) => {
     if (node?.node_type === 'stage') {
@@ -456,7 +414,7 @@ function HomeLearningRoute({
   };
 
   const showPlanningDetails = async () => {
-    setRouteView('details');
+    changeRouteView('details');
     if (planningDetails.loaded || planningDetails.loading) return;
     setPlanningDetails((current) => ({ ...current, loading: true, error: '' }));
     try {
@@ -484,33 +442,49 @@ function HomeLearningRoute({
   };
 
   const returnToPath = () => {
-    setRouteView('orbit');
+    changeRouteView('orbit');
     setSelectedNode(null);
   };
 
-  const handleOrbitWheel = (event) => {
-    if (!event.target.closest?.('.learning-path-orbit')) return;
-    const pageScroller = event.currentTarget.closest('.app-shell__main');
-    if (!pageScroller || pageScroller.scrollHeight <= pageScroller.clientHeight) return;
-    pageScroller.scrollTop += event.deltaY;
-    event.preventDefault();
-  };
-
   return (
-      <section className="home-portal__route" data-view={routeView} aria-label="学习路径规划">
+      <section className="home-portal__route" data-view={routeView} aria-label={`${selectedTarget?.name || '当前考证'}学习路径`}>
       <header className="home-portal__route-header">
         <div>
           <div className="home-portal__route-kicker">
-            <h2>学习路径规划</h2>
-            {routeView !== 'details' && <button type="button" onClick={showPlanningDetails}>了解详情</button>}
+            <h2>{selectedTarget?.name || '当前考证'}</h2>
+            <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
+              {routeView === 'details' ? '返回' : '了解详情'}
+            </button>
           </div>
         </div>
-        {routeView === 'orbit' && <button type="button" className="home-portal__route-full-link" onClick={() => setRouteView('cards')}>查看阶段卡片 <ArrowRight aria-hidden="true" size={14} /></button>}
-        {routeView === 'cards' && <button type="button" onClick={returnToPath}>返回学习路径</button>}
-        {routeView === 'details' && <button type="button" onClick={returnToPath}>返回学习路径</button>}
+        <div
+          className="home-portal__route-switch"
+          data-view={routeView === 'cards' ? 'cards' : 'orbit'}
+          role="group"
+          aria-label="学习路径视图"
+        >
+          <span className="home-portal__route-switch-indicator" aria-hidden="true" />
+          <button
+            type="button"
+            className={routeView !== 'cards' ? 'is-active' : ''}
+            aria-pressed={routeView !== 'cards'}
+            onClick={returnToPath}
+          >
+            学习路径
+          </button>
+          <button
+            type="button"
+            className={routeView === 'cards' ? 'is-active' : ''}
+            aria-pressed={routeView === 'cards'}
+            onClick={() => changeRouteView('cards')}
+          >
+            学习阶段
+          </button>
+        </div>
       </header>
-      {routeView === 'orbit' && (
-        <div className="home-portal__route-orbit-layout" onWheelCapture={handleOrbitWheel}>
+      <div className="home-portal__route-view-content" data-view={renderedRouteView} data-phase={routeTransitionPhase}>
+      {renderedRouteView === 'orbit' && (
+        <div className="home-portal__route-orbit-layout">
           {routeState.loading && <div className="home-portal__route-state">正在读取学习路径…</div>}
           {!routeState.loading && routeState.error && <div className="home-portal__route-state">{routeState.error}</div>}
           {!routeState.loading && !routeState.error && routeState.stages.length === 0 && <div className="home-portal__route-state">尚未生成学习路径</div>}
@@ -523,21 +497,21 @@ function HomeLearningRoute({
               onDrill={openNode}
               onClearSelection={() => setSelectedNode(null)}
               directDrill
-              summaryLabel="短期学习路径"
+              summaryLabel=""
               homeCompact
             />
           )}
         </div>
       )}
-      {!routeState.loading && !routeState.error && routeState.stages.length > 0 && routeView === 'cards' && (
+      {!routeState.loading && !routeState.error && routeState.stages.length > 0 && renderedRouteView === 'cards' && (
         <LearningStageLanding
           compact
           stages={routeState.stages}
-          onStageSelect={() => setRouteView('orbit')}
+          onStageSelect={() => changeRouteView('orbit')}
           onCreatePlan={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}
         />
       )}
-      {routeView === 'details' && (
+      {renderedRouteView === 'details' && (
         <div className="home-portal__route-details" role="region" aria-label="长期规划和短期规划说明" tabIndex="0">
           {planningDetails.loading && <div className="home-portal__route-details-state" role="status">正在读取规划说明…</div>}
           {!planningDetails.loading && planningDetails.error && <div className="home-portal__route-details-state" role="alert">{planningDetails.error}</div>}
@@ -555,6 +529,7 @@ function HomeLearningRoute({
           )}
         </div>
       )}
+      </div>
     </section>
   );
 }
@@ -567,6 +542,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const [checkinMessage, setCheckinMessage] = useState('');
   const [currentProgress, setCurrentProgress] = useState('');
   const [learningTarget, setLearningTarget] = useState({ name: '中医执业医师资格考试', examDate: '' });
+  const [learningTargetReady, setLearningTargetReady] = useState(false);
   const [summaryRevision, setSummaryRevision] = useState(0);
   const [, setCountdownTick] = useState(0);
   const homeState = useMemo(() => buildHomePortalState(payload), [payload]);
@@ -590,7 +566,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         examDate: examDateForTarget(selected),
         targetId: selected.target_id,
       });
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      if (!cancelled) setLearningTargetReady(true);
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -731,6 +709,15 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     : [];
   const planItems = [...currentTaskItems, ...activityItems]
     .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
+  const studyDays = Array.isArray(payload.learning_activity?.trends?.series)
+    ? payload.learning_activity.trends.series
+      .filter((day) => Number(day?.login_days || 0) > 0
+        || Number(day?.focus_minutes || 0) > 0
+        || Number(day?.task_completion_rate || 0) > 0
+        || Number(day?.daily_atomic_task_completion_rate || 0) > 0)
+      .map((day) => String(day.date || ''))
+      .filter(Boolean)
+    : [];
 
   const openActivityItem = (item) => {
     if (!item?.intent) return;
@@ -745,68 +732,72 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     openActivityItem(item);
   };
 
-  const showLearningPath = () => {
-    document.querySelector('.home-portal__route')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-  };
   const countdown = examCountdown(learningTarget.examDate);
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
-  const heroTitle = `早上好，${displayName}，今天继续学习${currentProgress || '当前学习阶段'}`;
-  const featureCards = [
-    { key: 'assistant', title: '智能问答', detail: '随时提问，获得针对性讲解', image: '/design-images/home/ai-qa.png', intent: { page: 'assistant', params: { newConversation: true } } },
-    { key: 'knowledge-graph', title: '知识图谱', detail: '从考点关系中建立整体理解', image: '/design-images/home/knowledge-graph.png', intent: { page: 'practice', params: { view: 'overview' } } },
-    { key: 'resource-search', title: '资料检索', detail: '查找教材、经典与权威资料', image: '/design-images/home/resource-search.png', intent: { page: 'practice', params: { view: 'overview', libraryOnly: true, expandAll: true, hidePlan: true } } },
-    { key: 'topic-training', title: '专题练习', detail: '针对薄弱点进行集中训练', image: '/design-images/home/focused-practice.png', intent: { page: 'practice', params: { view: 'workspace', taskType: 'topic_training' } } },
-  ];
+  const hour = new Date().getHours();
+  const greeting = hour >= 5 && hour < 11
+    ? '早上好'
+    : hour >= 11 && hour < 14
+      ? '中午好'
+      : hour >= 14 && hour < 18
+        ? '下午好'
+        : '晚上好';
+  const heroTitle = currentProgress
+    ? `${greeting}，${displayName}\n今天继续学习${currentProgress}`
+    : '';
 
   return (
     <div className="home-portal" aria-busy={loading}>
-      <section className="home-portal__hero" aria-labelledby="home-portal-title">
-        <div className="home-portal__hero-actions">
-          <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
-            <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
-          </button>
-        </div>
-        <HeroTypewriter
-          key={heroTitle}
-          title={heroTitle}
-          subtitle={`距离${learningTarget.name}还有 ${countdown ?? 126} 天，保持稳定节奏。`}
-        />
-      </section>
-
-      {error && <div className="home-portal__notice" role="alert">{error}</div>}
-      {checkinMessage && <div className="home-portal__notice" role="status">{checkinMessage}</div>}
-      {!error && homeState.announcements[0] && (
-        <div className="home-portal__notice" role="status">{homeState.announcements[0]}</div>
-      )}
-
       <section className="home-portal__learning-area" aria-label="学习路线与学习进度">
-        <HomeLearningRoute
-          onNavigate={onNavigate}
-          onCurrentProgress={setCurrentProgress}
-          selectedTarget={learningTarget}
-        />
+        <div className="home-portal__main-column">
+          <section className="home-portal__hero" aria-labelledby="home-portal-title">
+            <div className="home-portal__hero-actions">
+              <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
+                <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
+              </button>
+            </div>
+            <HeroTypewriter
+              title={heroTitle}
+              subtitle={`距离${learningTarget.name}还有 ${countdown ?? 126} 天，保持稳定节奏。`}
+            />
+          </section>
+
+          {error && <div className="home-portal__notice" role="alert">{error}</div>}
+          {checkinMessage && <div className="home-portal__notice" role="status">{checkinMessage}</div>}
+          {!error && homeState.announcements[0] && (
+            <div className="home-portal__notice" role="status">{homeState.announcements[0]}</div>
+          )}
+
+          {learningTargetReady ? (
+            <HomeLearningRoute
+              onNavigate={onNavigate}
+              onCurrentProgress={setCurrentProgress}
+              selectedTarget={learningTarget}
+            />
+          ) : (
+            <section className="home-portal__route" aria-label="正在读取学习路径">
+              <div className="home-portal__route-state">正在读取学习路径…</div>
+            </section>
+          )}
+        </div>
         <aside className="home-portal__plan-rail" aria-label="今日学习计划">
           <CurrentLearningPlan
             currentTask={currentTask}
             items={planItems}
-            stageName={currentProgress}
+            studyDays={studyDays}
             timer={payload.daily_task_timer}
             onExpire={refreshDailyTask}
             onOpenItem={openLearningItem}
-            onShowPath={showLearningPath}
+            onAddTask={() => onNavigate?.({
+              page: 'assistant',
+              params: {
+                newConversation: true,
+                context: `请结合我的学习目标和当前阶段${currentProgress ? `“${currentProgress}”` : ''}，为今天添加一项可执行的学习任务。`,
+              },
+            })}
           />
         </aside>
       </section>
-
-      <section className="home-portal__feature-grid" aria-label="学习功能">
-        {featureCards.map((card) => (
-          <button key={card.key} type="button" className="home-portal__feature-card" onClick={() => onNavigate?.(card.intent)}>
-            <img src={card.image} alt="" />
-            <span><strong>{card.title}</strong><small>{card.detail}</small><em>进入功能 <ArrowRight aria-hidden="true" size={14} /></em></span>
-          </button>
-        ))}
-      </section>
-
     </div>
   );
 }

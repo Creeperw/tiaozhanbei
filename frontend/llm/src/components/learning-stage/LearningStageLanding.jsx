@@ -31,6 +31,7 @@ export default function LearningStageLanding({
   onStageSelect,
   onCreatePlan,
   compact = false,
+  compactTitle = '',
   currentStageId = '',
 }) {
   const frameRef = useRef(0);
@@ -153,6 +154,8 @@ export default function LearningStageLanding({
         <p>依据已保存的长期规划，按阶段进入教材与知识点</p>
       </header>}
 
+      {compact && compactTitle && <h2 className="learning-stage__compact-title">{compactTitle}</h2>}
+
       {!suppliedStages && remoteState.loading && (
         <section className="learning-stage__empty" role={compact ? undefined : 'status'} aria-live={compact ? undefined : 'polite'}>
           <strong>正在读取长期规划…</strong>
@@ -207,14 +210,6 @@ export default function LearningStageLanding({
           onPointerMove={updateMagnetism}
           onPointerLeave={resetMagnetism}
           onScroll={updateScrollState}
-          onWheel={(event) => {
-            const container = event.currentTarget;
-            if (!container || container.scrollWidth <= container.clientWidth) return;
-            if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
-              event.preventDefault();
-              container.scrollLeft += event.deltaY;
-            }
-          }}
         >
           {presentedStages.map((stage, index) => (
             <button

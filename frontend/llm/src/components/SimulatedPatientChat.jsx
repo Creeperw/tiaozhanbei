@@ -55,6 +55,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
   // Sidebar data
   const [favoritesList, setFavoritesList] = useState(getCollections);
   const [mistakesList, setMistakesList] = useState([]);
+  const [backendHistory, setBackendHistory] = useState([]);
   const [completedSessions, setCompletedSessions] = useState(getSessions);
 
   // Practice mode
@@ -174,12 +175,14 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
   const loadSidebarData = async () => {
     setSidebarLoading(true);
     try {
-      const [favRes, mistRes] = await Promise.all([
+      const [favRes, mistRes, histRes] = await Promise.all([
         fetchWithAuth('/api/v1/simulated-patient', { method: 'POST', body: JSON.stringify({ session_id: 'fav', action: 'collections' }) }).then(r => readJsonResponse(r, {})),
         fetchWithAuth('/api/v1/simulated-patient', { method: 'POST', body: JSON.stringify({ session_id: 'mist', action: 'mistakes' }) }).then(r => readJsonResponse(r, {})),
+        fetchWithAuth('/api/v1/simulated-patient', { method: 'POST', body: JSON.stringify({ session_id: 'hist', action: 'history_list' }) }).then(r => readJsonResponse(r, {})),
       ]);
       if (favRes.success) setFavoritesList(favRes.data?.list || []);
       if (mistRes.success) setMistakesList(mistRes.data?.list || []);
+      if (histRes.success) setBackendHistory(histRes.data?.list || []);
     } catch { /* silent */ }
     setSidebarLoading(false);
   };
@@ -411,7 +414,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       return <div className="sp-loading"><div className="sp-loading__spinner" /></div>;
     }
 
-    const findAndViewSession = (item) => {
+    const findAndViewSession = async (item) => {
       // Try to find matching session in localStorage
       const sessions = getSessions();
       const match = sessions.find(s =>
@@ -421,7 +424,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       );
       if (match) {
         if (match.status === 'active') {
-          // Restore active session
           setSessionId(match.session_id);
           sessionStorage.setItem(STORAGE_SESSION, match.session_id);
           setPatient({ gender: match.gender, age_range: match.age_range, body_type: match.body_type });
@@ -433,14 +435,38 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
         } else {
           handleViewHistory(match);
         }
-      } else {
-        // Show basic info as viewing history
-        const fallbackReport = item.grading_report || (item.score !== undefined ? { score: item.score, diagnosis_correct: item.diagnosis_correct } : null);
-        setReport(fallbackReport);
-        setViewingHistory(item);
-        setViewingReportExpanded(false);
-        setView('consultation');
+        return;
       }
+      // Try backend history_detail API if item has history_id
+      if (item.history_id) {
+        try {
+          setLoading(true);
+          const res = await fetchWithAuth('/api/v1/simulated-patient', { method: 'POST', body: JSON.stringify({ session_id: 'hist', action: 'history_detail', history_id: item.history_id }) });
+          const data = await readJsonResponse(res, {});
+          setLoading(false);
+          if (data.success && data.data) {
+            const record = data.data;
+            const dialogue = record.full_dialogue || [];
+            setMessages(dialogue.map(d => ({ role: d.role === 'doctor' ? 'doctor' : 'patient', content: d.content })));
+            setReport(record.grading_report || (item.score !== undefined ? { score: item.score, diagnosis_correct: item.diagnosis_correct } : null));
+            setPatient({ gender: item.gender || '', age_range: item.age_range || '', body_type: item.body_type || '' });
+            setTurnCount(record.turn_count || item.turn_count || 0);
+            setViewingHistory({...item, ...record});
+            setViewingReportExpanded(false);
+            setView('consultation');
+            if (record.session_id) { setSessionId(record.session_id); sessionStorage.setItem(STORAGE_SESSION, record.session_id); }
+            return;
+          }
+        } catch {}
+        setLoading(false);
+      }
+      // Fallback: show basic info
+      const fallbackReport = item.grading_report || (item.score !== undefined ? { score: item.score, diagnosis_correct: item.diagnosis_correct } : null);
+      setReport(fallbackReport);
+      setViewingHistory(item);
+      setViewingReportExpanded(false);
+      setMessages([]);
+      setView('consultation');
     };
 
     if (sidebarMode === 'favorites') {
@@ -465,10 +491,18 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       ));
     }
 
-    // History mode — unanswered first, then answered by time desc
+    // History mode — merge localStorage with backend history
     const activeSessions = completedSessions.filter(s => s.status === 'active');
-    const completed = completedSessions.filter(s => s.status === 'completed').sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
-    const allSessions = [...activeSessions, ...completed];
+    const localCompleted = completedSessions.filter(s => s.status === 'completed');
+    const localIds = new Set([...localCompleted.map(s => s.session_id), ...localCompleted.map(s => s.history_id)].filter(Boolean));
+    const backendOnly = backendHistory.filter(r => !localIds.has(r.session_id) && !localIds.has(r.history_id));
+    const mergedCompleted = [...localCompleted, ...backendOnly.map(r => ({
+      session_id: r.session_id || '', history_id: r.history_id || '', case_name: r.case_name || '',
+      score: r.score, diagnosis_correct: r.diagnosis_correct, completed_at: r.timestamp || '',
+      status: 'completed', gender: r.gender || '', age_range: r.age_range || '', body_type: r.body_type || '',
+      turn_count: r.turn_count || 0, messages: [], grading_report: null,
+    }))].sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
+    const allSessions = [...activeSessions, ...mergedCompleted];
     if (allSessions.length === 0) return <div className="sp-sidebar-empty">暂无接诊记录</div>;
     return allSessions.map((item, i) => {
       const isActive = item.status === 'active';
@@ -607,6 +641,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
     if (!report || typeof report !== 'object') return null;
     try {
       const breakdown = report.score_breakdown || {};
+      const hasBreakdown = Object.keys(breakdown).length > 0;
       const correct = report.correct_answer || {};
       const knowledge = report.knowledge_points || report.knowledge_analysis?.details || [];
       const comparison = report.syndrome_comparison || {};
@@ -634,22 +669,26 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
 
             <div className="sp-report__section">
               <div className="sp-report__section-title"><Star size={15} /> 得分明细</div>
-              <div className="sp-report__breakdown">
-                {dims.map(d => {
-                  const score = breakdown[d.key] ?? 0;
-                  const max = breakdown[d.maxKey] ?? (d.key.includes('syndrome') ? 40 : d.key.includes('prescription') ? 15 : d.key.includes('inquiry') ? 15 : d.key.includes('time') ? 8 : 7);
-                  const pct = max > 0 ? (score / max) * 100 : 0;
-                  return (
-                    <div key={d.key} className="sp-report__breakdown-item">
-                      <div className="sp-report__breakdown-label">{d.label}</div>
-                      <div className="sp-report__breakdown-bar-track">
-                        <div className={`sp-report__breakdown-bar-fill ${barClass(score, max)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+              {hasBreakdown ? (
+                <div className="sp-report__breakdown">
+                  {dims.map(d => {
+                    const score = breakdown[d.key] ?? 0;
+                    const max = breakdown[d.maxKey] ?? (d.key.includes('syndrome') ? 40 : d.key.includes('prescription') ? 15 : d.key.includes('inquiry') ? 15 : d.key.includes('time') ? 8 : 7);
+                    const pct = max > 0 ? (score / max) * 100 : 0;
+                    return (
+                      <div key={d.key} className="sp-report__breakdown-item">
+                        <div className="sp-report__breakdown-label">{d.label}</div>
+                        <div className="sp-report__breakdown-bar-track">
+                          <div className={`sp-report__breakdown-bar-fill ${barClass(score, max)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                        </div>
+                        <div className="sp-report__breakdown-score">{score}/{max} ({levelLabel(score, max)})</div>
                       </div>
-                      <div className="sp-report__breakdown-score">{score}/{max} ({levelLabel(score, max)})</div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{color:'#94a3b8',fontSize:'.85rem',padding:'4px 0'}}>详细评分暂不可用</div>
+              )}
             </div>
 
             {correct.syndrome && (

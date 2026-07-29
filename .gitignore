@@ -206,6 +206,7 @@ cython_debug/
 backend/competition_app/snapshots/
 backend/competition_app/runtime/frontend_backend/
 backend/competition/backend-handoff-20260720/APP/backend/runtime/
+backend/competition/backend-handoff-20260720/.run/
 *.db
 *.db-journal
 *.sqlite

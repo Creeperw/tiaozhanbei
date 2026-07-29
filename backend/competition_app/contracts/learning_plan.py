@@ -203,7 +203,7 @@ class LongTermPlan(ContractModel):
     created_at: datetime
     updated_at: datetime
     stages: list[LongTermPlanStage] = Field(default_factory=list)
-    stage_evidence: list[StageEvidenceRecord] = Field(default_factory=list)
+    stage_evidence: list = Field(default_factory=list)
     planning_route: ResolvedPlanningRoute | None = None
     goal_contract: GoalContract | None = None
     milestones: list[PlanMilestone] = Field(default_factory=list)

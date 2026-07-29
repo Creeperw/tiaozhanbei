@@ -41,7 +41,7 @@ const plannedBooks = [
   {
     node_id: 'book-2', node_type: 'book', parent_id: 'stage-1', title: '《方剂学》',
     order: 2, status: 'in_progress', progress: 0.35, child_count: 12,
-    description: '掌握常用方剂。', navigation: { route_id: 'textbook_14_5', book: '方剂学' },
+    description: '掌握常用方剂。', navigation: { route_id: 'tcm_assistant', book: '方剂学' },
   },
 ];
 

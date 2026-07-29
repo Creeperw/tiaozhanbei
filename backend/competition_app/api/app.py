@@ -265,6 +265,12 @@ class WorkshopPaperSubmitRequest(BaseModel):
     request_id: str = Field(min_length=1, max_length=120)
 
 
+class MistakeRedoPaperRequest(BaseModel):
+    distribution: dict[str, int] = Field(default_factory=dict)
+    answer_mode: str = Field(default="practice", pattern="^(practice|test)$")
+    duration_minutes: int | None = Field(default=None, ge=10, le=300)
+
+
 class QualificationAttemptCreateRequest(BaseModel):
     answer_mode: str = Field(pattern="^(practice|test)$")
     duration_minutes: int | None = Field(default=None, ge=10, le=300)
@@ -342,6 +348,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
     app = FastAPI(title="Competition App", version="0.1.0", lifespan=lifespan)
     static_root = Path(__file__).parents[1] / "static"
+    platform_assets_root = static_root / "platform-assets"
     chat_root = Path(__file__).parents[1] / "chat_static"
     auth_root = Path(__file__).parents[1] / "auth_static"
     frontend_root = container.frontend_dist_root
@@ -376,6 +383,23 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "textbook-covers"),
             name="frontend_textbook_covers",
         )
+    if frontend_root and (frontend_root / "textbook-status-icons").is_dir():
+        app.mount(
+            "/textbook-status-icons",
+            StaticFiles(directory=frontend_root / "textbook-status-icons"),
+            name="frontend_textbook_status_icons",
+        )
+    if frontend_root and (frontend_root / "acupuncture").is_dir():
+        app.mount(
+            "/acupuncture",
+            StaticFiles(directory=frontend_root / "acupuncture"),
+            name="frontend_acupuncture",
+        )
+    app.mount(
+        "/platform-assets",
+        StaticFiles(directory=platform_assets_root),
+        name="platform_assets",
+    )
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
@@ -411,6 +435,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "/assistant-character/",
                     "/learning-stage/",
                     "/textbook-covers/",
+                    "/textbook-status-icons/",
+                    "/acupuncture/",
+                    "/platform-assets/",
                 )
             )
             or path.startswith(("/auth", "/docs", "/redoc"))
@@ -430,6 +457,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         response = await call_next(request)
         completed_question_submission = (
             path == "/training/practice/grade"
+            or path == "/api/training/practice/grade"
             or path == "/api/v1/workshop/practice/grade"
             or (
                 path.startswith("/training/workspace/papers/")
@@ -447,6 +475,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             and backend_handoff is not None
         ):
             try:
+                # Release practice claim so next request gets a fresh question
+                backend_handoff.release_practice_claim(current_user.user_id)
+
                 behavior = await asyncio.to_thread(
                     backend_handoff.load_learning_context, current_user.user_id
                 )
@@ -513,6 +544,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         current_user(request)
         return qualification_papers.list_catalog(exam_id=exam_id, year=year, paper_type=paper_type)
 
+    @app.post("/api/v1/workshop/papers/mistake-redo", status_code=501)
+    async def create_mistake_redo_paper(
+        payload: MistakeRedoPaperRequest, request: Request
+    ) -> dict:
+        current_user(request)
+        del payload
+        raise HTTPException(status_code=501, detail="错题集重做组卷接口已预留")
+
     @app.post("/api/v1/qualification-papers/{template_id}/attempts")
     async def create_qualification_attempt(
         template_id: str, payload: QualificationAttemptCreateRequest, request: Request
@@ -529,6 +568,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             )
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/qualification-paper-attempts")
+    async def list_qualification_attempts(request: Request, offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=200)) -> dict:
+        user = current_user(request)
+        if user is None: raise HTTPException(status_code=401, detail="请先登录后继续")
+        return qualification_papers.list_attempts(user.user_id, offset=offset, limit=limit)
 
     @app.get("/api/v1/qualification-paper-attempts/{attempt_id}")
     async def get_qualification_attempt(attempt_id: str, request: Request) -> dict:
@@ -567,7 +612,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         try:
-            return qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
+            result = qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
+            if backend_handoff is not None and hasattr(
+                backend_handoff, "record_qualification_paper_outcomes"
+            ):
+                try:
+                    result["learning_writeback"] = await asyncio.to_thread(
+                        backend_handoff.record_qualification_paper_outcomes,
+                        user.user_id,
+                        attempt_id=attempt_id,
+                        outcomes=qualification_papers.submission_outcomes(user.user_id, attempt_id),
+                    )
+                except Exception:
+                    result["learning_writeback"] = {"status": "retry_pending"}
+            return result
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -2086,7 +2144,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 if payload["standard_answer"] and payload["kp_ids"]:
                     candidates.append(payload)
 
-        if not candidates and not kp_id:
+        if not kp_id:
             # A broad credential goal may not resolve to one KP name. The source
             # is still the complete formal bank; choose a linked question of the
             # requested type instead of reporting that the bank is empty. An
@@ -2116,6 +2174,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         candidates.append(payload)
         if not candidates:
             return None
+        # Ensure variety by shuffling candidates
+        import random as _random
+        _random.shuffle(candidates)
         return next(
             (
                 question

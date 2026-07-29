@@ -11,6 +11,7 @@ describe('QualificationPaperPanel', () => {
         exams: [{ exam_id: 'tcm', name: '中医执业医师资格考试' }],
         papers: [{ template_id: 'p1', exam_id: 'tcm', year: '2024', paper_type: '真题', title: '2024 年真题', question_count: 2 }],
       }) })
+      .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ items: [] }) })
       .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({
         attempt_id: 'attempt-1', answer_mode: 'practice', status: 'not_started', current_position: 1, marked_positions: [], items: [{
           question_id: 'q1', question_type: 'single_choice', question_content: '题目', options: [{ option_id: 'A', content: '甲' }], answer: '',

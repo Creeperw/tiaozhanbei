@@ -58,6 +58,7 @@ describe('AuthPage main-backend cookie contract', () => {
     render(<AuthPage onLogin={onLogin} />);
 
     fireEvent.click(screen.getByRole('button', { name: '创建学习账号' }));
+    expect(screen.getByText('创建账号后将直接登录并进入时珍智训首页。')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('用户名'), { target: { value: 'newlearner' } });
     fireEvent.change(screen.getByLabelText('显示名（可选）'), { target: { value: '新同学' } });
     fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'strong-password' } });

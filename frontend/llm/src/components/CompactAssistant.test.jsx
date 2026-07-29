@@ -54,7 +54,7 @@ describe('CompactAssistant', () => {
     expect(screen.getByRole('button', { name: '新建对话' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '折叠智能助教' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '打开完整智能助教' })).toBeInTheDocument();
-    expect(screen.getByText('六智能体按需协作')).toBeInTheDocument();
+    expect(screen.getByText('多智能体按需协作')).toBeInTheDocument();
     expect(screen.getByLabelText('多智能体协作能力')).toHaveTextContent('按任务自动组队');
     expect(screen.getByLabelText('多智能体协作能力')).toHaveTextContent('需要时检索与审核');
     fireEvent.click(screen.getByRole('button', { name: '打开完整智能助教' }));
@@ -109,11 +109,12 @@ describe('CompactAssistant', () => {
     const restoreRule = stylesheet.match(/\.compact-assistant\.is-collapsed\[data-floating="true"\] \.compact-assistant__restore\s*\{([^}]+)\}/)?.[1] || '';
     const figureRule = stylesheet.match(/\.compact-assistant__character-figure\s*\{([^}]+)\}/)?.[1] || '';
 
-    expect(restoreRule).toContain('width: 40px;');
+    expect(restoreRule).toContain('width: var(--character-visual-width');
+    expect(restoreRule).toContain('height: var(--character-visual-height');
     expect(restoreRule).toContain('background: transparent;');
     expect(restoreRule).toContain('box-shadow: none;');
-    expect(figureRule).toContain('width: 40px;');
-    expect(figureRule).toContain('height: 52px;');
+    expect(figureRule).toContain('position: absolute;');
+    expect(figureRule).toContain('inset: 0;');
     expect(stylesheet).not.toContain('compact-assistant__restore::before');
     expect(stylesheet).toContain('.compact-assistant__character-shadow { display: none; }');
   });

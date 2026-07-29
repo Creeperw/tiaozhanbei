@@ -3,10 +3,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TextbookChapterLearning from './TextbookChapterLearning';
 import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
-import { loadSectionLearningDetail } from './textbookChapterApi';
+import { completeTextbookSection, loadSectionLearningDetail, loadTextbookProgress } from './textbookChapterApi';
 
 vi.mock('../knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn() }));
-vi.mock('./textbookChapterApi', () => ({ loadSectionLearningDetail: vi.fn() }));
+vi.mock('./textbookChapterApi', () => ({
+  completeTextbookSection: vi.fn().mockResolvedValue({ ok: true }),
+  loadSectionLearningDetail: vi.fn(),
+  loadTextbookProgress: vi.fn().mockResolvedValue({ completed_section_ids: [], last_section_id: '' }),
+}));
 
 const chapter = { id: 'CH_1', name: '第一章 绪论', children_count: 2 };
 const section = { id: 'SEC_1', name: '第一节 基础概念', count: 2 };
@@ -27,7 +31,11 @@ function prepare({ withSectionVideo = true } = {}) {
 }
 
 describe('TextbookChapterLearning', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    loadTextbookProgress.mockResolvedValue({ completed_section_ids: [], last_section_id: '' });
+    completeTextbookSection.mockResolvedValue({ ok: true });
+  });
 
   it('shows the textbook introduction and equal chapter/section catalogues', async () => {
     prepare();
@@ -63,7 +71,7 @@ describe('TextbookChapterLearning', () => {
 
     await screen.findByRole('button', { name: /第一章 一/ });
     expect(
-      [...document.querySelectorAll('.textbook-directory--chapters > .textbook-directory__items > button strong')]
+      [...document.querySelectorAll('.textbook-directory--chapters > .textbook-directory__items > button > span > strong')]
         .map((node) => node.textContent),
     ).toEqual(['第一章 一', '第二章 二', '第三章 三']);
 
@@ -146,13 +154,35 @@ describe('TextbookChapterLearning', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '学习笔记' }));
+    fireEvent.click(screen.getByRole('button', { name: '笔记本' }));
     expect(onNavigate).toHaveBeenLastCalledWith(expect.objectContaining({
       page: 'practice',
       params: expect.objectContaining({ view: 'workspace', taskType: 'study_notes' }),
     }));
   });
 
+  it('filters partially completed chapters by section progress', async () => {
+    const testSections = [
+      { id: 'SEC_1', name: '第一节 一', count: 1 },
+      { id: 'SEC_2', name: '第二节 二', count: 1 },
+      { id: 'SEC_3', name: '第三节 三', count: 1 },
+      { id: 'SEC_4', name: '第四节 四', count: 1 },
+    ];
+    loadAtlasNodes.mockImplementation(({ level }) => Promise.resolve({
+      nodes: level === 2 ? [{ ...chapter, status: 'pending' }] : testSections,
+    }));
+    loadTextbookProgress.mockResolvedValue({ completed_section_ids: ['SEC_1', 'SEC_2'], last_section_id: 'SEC_2' });
+
+    render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
+    await screen.findByRole('button', { name: /第一章 绪论/ });
+    fireEvent.click(screen.getByRole('button', { name: '已完成' }));
+
+    expect(screen.getByRole('button', { name: /第一章 绪论/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /第一节 一/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /第二节 二/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /第三节 三/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /第四节 四/ })).not.toBeInTheDocument();
+  });
   it('filters the chapter catalogue by real learning status', async () => {
     loadAtlasNodes.mockImplementation(({ level }) => Promise.resolve({
       nodes: level === 2 ? [
@@ -168,7 +198,7 @@ describe('TextbookChapterLearning', () => {
     expect(screen.getByRole('button', { name: /第三章 已完成/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /第一章 未完成/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '学习中' }));
+    fireEvent.click(screen.getByRole('button', { name: '未完成' }));
     expect(screen.getByRole('button', { name: /第二章 学习中/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /第三章 已完成/ })).not.toBeInTheDocument();
 

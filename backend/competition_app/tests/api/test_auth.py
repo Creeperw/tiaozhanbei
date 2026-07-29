@@ -72,8 +72,12 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
     frontend_root = tmp_path / "frontend"
     assets_root = frontend_root / "assets"
     covers_root = frontend_root / "textbook-covers"
+    status_icons_root = frontend_root / "textbook-status-icons"
+    acupuncture_root = frontend_root / "acupuncture"
     assets_root.mkdir(parents=True)
     covers_root.mkdir(parents=True)
+    status_icons_root.mkdir(parents=True)
+    acupuncture_root.mkdir(parents=True)
     (frontend_root / "index.html").write_text(
         '<div id="root"></div><script src="/assets/app.js"></script>',
         encoding="utf-8",
@@ -90,6 +94,8 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
     (assets_root / "app.js").write_text("window.loaded = true", encoding="utf-8")
     (assets_root / "app.css").write_text("body { color: green; }", encoding="utf-8")
     (covers_root / "方剂学.jpg").write_bytes(b"textbook-cover")
+    (status_icons_root / "completed.svg").write_bytes(b"status-icon")
+    (acupuncture_root / "body-front.jpg").write_bytes(b"acupuncture-image")
     container = ApplicationContainer.build(
         Settings(mode="stub", frontend_dist_root=frontend_root),
         snapshot_root=tmp_path / "snapshots",
@@ -102,6 +108,12 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
         cover = client.get("/textbook-covers/%E6%96%B9%E5%89%82%E5%AD%A6.jpg")
         assert cover.status_code == 200
         assert cover.content == b"textbook-cover"
+        status_icon = client.get("/textbook-status-icons/completed.svg")
+        assert status_icon.status_code == 200
+        assert status_icon.content == b"status-icon"
+        acupuncture = client.get("/acupuncture/body-front.jpg")
+        assert acupuncture.status_code == 200
+        assert acupuncture.content == b"acupuncture-image"
         assert client.get("/favicon.ico").status_code == 200
         assert client.get("/favicon.svg").status_code == 200
         assert client.get("/favicon.svg").headers["content-type"].startswith(
@@ -118,11 +130,31 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
     assert protected.status_code == 401
 
 
+def test_platform_video_asset_is_public_and_uses_h264() -> None:
+    app = create_app(ApplicationContainer.build(Settings(mode="stub")))
+    video_path = (
+        Path(__file__).resolve().parents[2]
+        / "static"
+        / "platform-assets"
+        / "home"
+        / "platform-agents.mp4"
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/platform-assets/home/platform-agents.mp4")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("video/mp4")
+    assert response.content == video_path.read_bytes()
+    assert b"avc1" in response.content
+    assert b"hvc1" not in response.content
+
+
 def test_register_login_me_and_logout(tmp_path: Path) -> None:
     client = build_client(tmp_path)
     user = register(client, "LinStudent")
     assert user["role"] == "user"
-    assert user["onboarding_required"] is True
+    assert user["onboarding_required"] is False
 
     current = client.get("/api/v1/auth/me")
     assert current.status_code == 200
@@ -322,12 +354,12 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     ).status_code == 204
 
 
-def test_registration_onboarding_gate_is_persistent_until_completed(
+def test_registration_enters_the_application_without_onboarding_gate(
     tmp_path: Path,
 ) -> None:
     client = build_client(tmp_path)
-    user = register(client, "survey-required")
-    assert user["onboarding_required"] is True
+    user = register(client, "direct-entry")
+    assert user["onboarding_required"] is False
 
     completed = client.post("/api/v1/auth/onboarding/complete")
 

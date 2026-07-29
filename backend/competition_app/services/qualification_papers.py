@@ -90,6 +90,27 @@ class QualificationPaperRepository:
         self._save_attempt(user_id, state)
         return self._serialize_attempt(state)
 
+    def list_attempts(self, user_id: str, *, offset: int = 0, limit: int = 50) -> dict:
+        user_dir = self.runtime_root / user_id
+        if not user_dir.is_dir():
+            return {"items": [], "total": 0, "offset": offset, "limit": limit}
+        attempts = []
+        for path in sorted(user_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+            if not path.suffix == ".json":
+                continue
+            try:
+                state = json.loads(path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            attempts.append(self._serialize_attempt(state))
+        total = len(attempts)
+        return {
+            "items": attempts[offset:offset + limit],
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+        }
+
     def get_attempt(self, user_id: str, attempt_id: str) -> dict:
         state = self._load_attempt(user_id, attempt_id)
         if state["status"] == "not_started":
@@ -165,6 +186,8 @@ class QualificationPaperRepository:
         }
         state["status"] = "submitted"
         state["submitted_at"] = self._now()
+        state["score"] = score
+        state["max_score"] = sum(bool(question.get("answer")) for question in state["questions"])
         state["submission_requests"][request_id] = result
         self._save_attempt(user_id, state)
         return result
@@ -181,6 +204,31 @@ class QualificationPaperRepository:
             "answer": question.get("answer", []),
             "explanation": question.get("explanation", ""),
         }
+
+    def submission_outcomes(self, user_id: str, attempt_id: str) -> list[dict]:
+        """Return server-owned attempt details for learning-state writeback."""
+        state = self._load_attempt(user_id, attempt_id)
+        if state.get("status") != "submitted":
+            raise ValueError("试卷尚未提交")
+        outcomes = []
+        for question in state["questions"]:
+            submitted_answer = state["answers"].get(question["question_id"], "")
+            expected = sorted(str(value) for value in question.get("answer", []))
+            actual = sorted(
+                value.strip() for value in submitted_answer.split(",") if value.strip()
+            )
+            outcomes.append({
+                "question_id": question["question_id"],
+                "question_type": question.get("question_type", "short_answer"),
+                "question_content": question.get("question_content", ""),
+                "options": question.get("options", []),
+                "standard_answer": question.get("answer", []),
+                "explanation": question.get("explanation", ""),
+                "kp_ids": question.get("kp_ids", []),
+                "submitted_answer": submitted_answer,
+                "is_correct": actual == expected if expected else None,
+            })
+        return outcomes
 
     def _template(self, template_id: str) -> dict:
         catalog = self._read_json(self.data_root / "catalog.json", {"papers": []})

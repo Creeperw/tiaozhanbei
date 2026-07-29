@@ -11,7 +11,7 @@ import {
 import { loadDailyTaskPracticeQuestion, loadPracticeQuestion, submitPracticeAnswer } from '../../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../../utils/api';
 import { Button, EmptyState, InlineError, Skeleton } from '../ui';
-import { FavoriteQuestionIconButton } from '../WorkshopSaveActions';
+import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from '../WorkshopSaveActions';
 
 const multipleTypes = new Set(['multiple_choice', '多选题', '多项选择题']);
 const singleTypes = new Set(['single_choice', 'true_false', '单选题', '单项选择题', '判断题']);
@@ -287,7 +287,11 @@ export default function AtlasPracticePanel({
                 </div>
               )}
               <small>学习写回：{result.writeback?.status || '未返回'}</small>
-              <Button variant="secondary" onClick={nextQuestion}>下一题</Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <FavoriteQuestionButton question={favoriteQuestion} source="题目训练" />
+                <NoteQuestionButton question={favoriteQuestion} source="题目训练" />
+                <Button variant="secondary" onClick={nextQuestion}>下一题</Button>
+              </div>
             </div>
           )}
         </div>

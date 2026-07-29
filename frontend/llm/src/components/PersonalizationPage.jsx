@@ -147,7 +147,7 @@ function MemoryForm({ value, onChange, onSubmit, submitText, onCancel }) {
       </div>
       <textarea placeholder="填写学习目标、资源偏好、近期薄弱点、时间约束、阶段反馈或个性化学习需求。记忆管理智能体自动抽取的内容也会进入这里。" value={value.content} onChange={e => onChange({ ...value, content: e.target.value })} className={`${softTextareaClass} min-h-[110px]`} />
       <div className="mt-3 flex gap-2">
-        <button onClick={onSubmit} className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-white shadow-lg shadow-emerald-100 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-emerald-200 active:translate-y-px"><Save size={16}/>{submitText}</button>
+        <button onClick={onSubmit} className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#C8E6C9] to-[#A8E6CF] border border-[#B2DFDB] px-4 py-2 text-emerald-900 shadow-sm transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-md active:translate-y-px"><Save size={16}/>{submitText}</button>
         {onCancel && <button onClick={onCancel} className="flex items-center gap-2 rounded-2xl border border-emerald-100 bg-white/80 px-4 py-2 text-slate-600 shadow-sm transition-[color,background-color,transform] duration-150 hover:bg-emerald-50 hover:text-emerald-800 active:translate-y-px"><X size={16}/>取消</button>}
       </div>
     </div>
@@ -201,8 +201,8 @@ function LearningProfileEditor({ profile, learnerProfile, saving, onClose, onSav
     const isLocked = isPreference && (draftLearnerProfile.locked_fields || []).includes(field.lockKey);
     const Icon = field.icon;
     return (
-      <div key={field.key} className="rounded-2xl border border-emerald-100/90 bg-white p-4 shadow-sm shadow-emerald-100/45">
-        <div className="mb-2 flex items-center justify-between gap-3">
+      <div key={field.key} className="flex flex-col rounded-2xl border border-emerald-100/90 bg-white p-4 shadow-sm shadow-emerald-100/45 h-full">
+        <div className="mb-2 flex items-center justify-between gap-3 shrink-0">
           <label htmlFor={`learning-profile-editor-${field.key}`} className="flex items-center gap-2 text-base font-semibold text-slate-800">
             {Icon && <Icon aria-hidden="true" size={18} className="text-emerald-600" />}
             {field.label}
@@ -222,11 +222,10 @@ function LearningProfileEditor({ profile, learnerProfile, saving, onClose, onSav
         <textarea
           id={`learning-profile-editor-${field.key}`}
           aria-label={field.label}
-          rows={2}
           value={value || ''}
           onChange={(event) => updateValue(field, event.target.value)}
           placeholder={`请填写${field.label}`}
-          className={`${softTextareaClass} min-h-[88px] text-base leading-6`}
+          className={`${softTextareaClass} flex-1 min-h-[88px] text-base leading-6`}
         />
       </div>
     );
@@ -252,15 +251,18 @@ function LearningProfileEditor({ profile, learnerProfile, saving, onClose, onSav
           <button type="button" data-autofocus aria-label="关闭编辑画像" disabled={saving} onClick={onClose} className="icon-button"><X aria-hidden="true" size={20} /></button>
         </header>
         <div className="min-h-0 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-y-3 gap-x-5 lg:grid-cols-2">
             <section aria-label="编辑基础信息">
-              <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900"><UserRound aria-hidden="true" size={19} className="text-emerald-600" />基础信息</h3>
-              <div className="space-y-3">{userProfileColumns.background.map(renderField)}</div>
+              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900"><UserRound aria-hidden="true" size={19} className="text-emerald-600" />基础信息</h3>
             </section>
             <section aria-label="编辑学习偏好">
-              <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900"><Sparkles aria-hidden="true" size={19} className="text-emerald-600" />学习偏好</h3>
-              <div className="space-y-3">{userProfileColumns.preferences.map(renderField)}</div>
+              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Sparkles aria-hidden="true" size={19} className="text-emerald-600" />学习偏好</h3>
             </section>
+            {userProfileColumns.background.reduce((acc, bgField, index) => {
+              acc.push(renderField(bgField));
+              acc.push(renderField(userProfileColumns.preferences[index]));
+              return acc;
+            }, [])}
           </div>
         </div>
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-emerald-100 bg-white px-5 py-4 sm:px-7">
@@ -557,7 +559,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                 <button onClick={onBackHome || onBack} className="mb-5 inline-flex items-center gap-2 text-gray-500 hover:text-emerald-600 transition-colors"><ArrowLeft size={18}/> 返回主页</button>
               )}
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#C8E6C9] to-[#A8E6CF] text-emerald-900 flex items-center justify-center shadow-sm">
                   <Database size={24} />
                 </div>
                 <div>
@@ -583,7 +585,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                     aria-pressed={active}
                     disabled={isSavingAnalysisFrequency}
                     onClick={() => changeAnalysisFrequency(option.value)}
-                    className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition-[color,background-color,border-color,box-shadow,transform] duration-150 ${active ? 'border-emerald-300 bg-emerald-500 text-white shadow-md shadow-emerald-100' : 'border-emerald-100 bg-white/90 text-slate-600 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800'}`}
+                    className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition-[color,background-color,border-color,box-shadow,transform] duration-150 ${active ? 'border-[#B2DFDB] bg-gradient-to-r from-[#C8E6C9] to-[#A8E6CF] text-emerald-900 shadow-sm' : 'border-[#E0F2F1] bg-white/90 text-slate-600 hover:-translate-y-0.5 hover:border-[#B2DFDB] hover:bg-emerald-50 hover:text-emerald-800'}`}
                   >
                     {option.label}
                   </button>
@@ -615,7 +617,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                 <div key={key} className="grid grid-cols-[88px_1fr_36px] items-center gap-3">
                   <span className="text-sm text-gray-600">{categoryLabels[key] || key}</span>
                   <div className="h-3 bg-emerald-50 rounded-full overflow-hidden shadow-inner shadow-emerald-100/60">
-                    <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 transition-[width] duration-200" style={{ width: `${Math.max(8, (count / maxCategoryCount) * 100)}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#C8E6C9] to-[#A8E6CF] transition-[width] duration-200" style={{ width: `${Math.max(8, (count / maxCategoryCount) * 100)}%` }} />
                   </div>
                   <span className="text-sm font-bold text-slate-700 text-right">{count}</span>
                 </div>
@@ -668,12 +670,12 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                   </div>
                   <div className="user-profile-panel__actions flex flex-wrap items-center justify-end gap-3">
                     <div aria-label={`画像完整度 ${completion}%`} className="user-profile-panel__completion flex min-h-15 items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/75 px-4 py-2.5 shadow-sm shadow-emerald-100/50 lg:px-5 lg:py-3">
-                      <div className="relative grid h-10 w-10 place-items-center rounded-full" style={{ background: `conic-gradient(#10b981 ${completion}%, #d1fae5 0)` }}>
+                      <div className="relative grid h-10 w-10 place-items-center rounded-full" style={{ background: `conic-gradient(#C8E6C9 0%, #A5D6A7 50%, #7CB342 ${completion}%, #E8F5E9 ${completion}%, #E8F5E9 100%)` }}>
                         <span className="grid h-7 w-7 place-items-center rounded-full bg-white"><PieChart aria-hidden="true" size={15} className="text-emerald-700" /></span>
                       </div>
                       <div><p className="text-sm font-semibold text-slate-700 lg:text-base">画像完整度</p><p className="text-xl font-black tabular-nums text-emerald-600 lg:text-2xl">{completion}%</p></div>
                     </div>
-                    <button type="button" onClick={() => setProfileEditorOpen(true)} className="user-profile-panel__edit inline-flex min-h-15 items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-base font-bold text-white shadow-lg shadow-emerald-200 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-emerald-300 active:translate-y-px lg:px-6 lg:text-lg"><Pencil aria-hidden="true" size={18} />编辑画像</button>
+                    <button type="button" onClick={() => setProfileEditorOpen(true)} className="user-profile-panel__edit inline-flex min-h-15 items-center gap-2 rounded-2xl bg-gradient-to-r from-[#C8E6C9] to-[#A8E6CF] border border-[#B2DFDB] px-5 text-base font-semibold text-emerald-900 shadow-sm transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-md active:translate-y-px lg:px-6 lg:text-lg"><Pencil aria-hidden="true" size={20} />编辑画像</button>
                   </div>
                 </header>
                 {message && <p role="status" className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-base text-emerald-700">{message}</p>}

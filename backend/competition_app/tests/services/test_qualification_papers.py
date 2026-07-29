@@ -144,6 +144,10 @@ def test_test_attempt_hides_answers_until_submitted_and_scores_idempotently(tmp_
     assert repeated == submitted
     assert submitted["items"][0]["standard_answer"] == ["A"]
     assert submitted["items"][0]["is_correct"] is True
+    outcomes = repository.submission_outcomes("learner-1", attempt["attempt_id"])
+    assert outcomes[0]["question_content"] == "题目一"
+    assert outcomes[0]["submitted_answer"] == "A"
+    assert outcomes[0]["is_correct"] is True
 
 
 def test_practice_attempt_exposes_requested_explanation_only(tmp_path: Path) -> None:

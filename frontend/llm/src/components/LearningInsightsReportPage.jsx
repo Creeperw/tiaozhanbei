@@ -156,17 +156,17 @@ function CapabilityRadar({ dimensions }) {
           </g>
         );
       })}
-      <polygon points={dataPolygon} fill="rgba(16, 185, 129, .18)" stroke="#10b981" strokeWidth="2.5" />
+      <polygon points={dataPolygon} fill="rgba(165, 214, 167, .25)" stroke="#A5D6A7" strokeWidth="2.5" />
       {values.map((item, index) => {
         const [x, y] = point(index, Math.max(0.04, item.value));
-        return <circle key={item.key} cx={x} cy={y} r="4" fill="#10b981" />;
+        return <circle key={item.key} cx={x} cy={y} r="4" fill="#A5D6A7" />;
       })}
     </svg>
   );
 }
 
 function CapabilityLegend({ dimensions }) {
-  const dotColors = ['bg-emerald-600', 'bg-sky-500', 'bg-violet-500', 'bg-orange-400', 'bg-rose-400', 'bg-teal-400'];
+  const dotColors = ['bg-[#A5D6A7]', 'bg-[#B5D8F0]', 'bg-[#D1C4E9]', 'bg-[#FFCCBC]', 'bg-[#F8BBD0]', 'bg-[#B2DFDB]'];
   return (
     <div className="grid gap-3 rounded-2xl border border-slate-100 bg-white/80 p-4 sm:grid-cols-2 xl:grid-cols-1">
       {dimensions.map((item, index) => (
@@ -219,7 +219,7 @@ function WeakPointsCard({ weakPoints, onNavigate }) {
               },
             });
           }}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-base font-semibold text-white shadow-md shadow-emerald-200 transition hover:-translate-y-0.5 hover:shadow-lg"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-[#C8E6C9] to-[#A8E6CF] px-5 text-base font-semibold text-emerald-900 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
         >
           去专项巩固 <span aria-hidden="true" className="text-xl leading-none">›</span>
         </button>

@@ -105,7 +105,7 @@ const AuthPage = ({ onLogin }) => {
   const description =
     mode === 'login'
       ? '登录后进入时珍智训首页，继续使用培训助手、知识库溯源、练习批改与学情规划。'
-      : '创建账号后需先完成基础学情调查，系统会据此建立学习画像与初始学习记忆。';
+      : '创建账号后将直接登录并进入时珍智训首页。';
 
   return (
     <div className="auth-page relative min-h-screen overflow-hidden text-slate-900" style={{backgroundImage: 'url(/design-images/home/login-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}}>

@@ -125,14 +125,14 @@ describe('PracticePage training modules', () => {
       .filter((button) => button.querySelector('strong'));
     expect(trainingButtons.map((button) => button.querySelector('strong')?.textContent)).toEqual([
       '专项训练',
-      '智能组卷',
       '专题训练',
+      '智能组卷',
       '综合套题',
       '模拟病患',
     ]);
     expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /题目收藏/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /学习笔记/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /收藏夹/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /笔记本/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
   });
@@ -146,13 +146,13 @@ describe('PracticePage training modules', () => {
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['错题库', '题目收藏', '学习笔记', '上传题库']);
+    ).toEqual(['错题库', '收藏夹', '笔记本', '上传题库']);
   });
 
   it('renders the local overview statistics contract without replacing main workshop modules', () => {
     render(<PracticePage overviewStats={{
       streakDays: 8,
-      lastAccuracy: 76,
+      todayAccuracy: 76,
       windowPracticeCount: 6,
       todayGoal: 20,
       averageAccuracy: 82,
@@ -161,7 +161,7 @@ describe('PracticePage training modules', () => {
     }} />);
 
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
-    expect(screen.queryByText('8 天')).not.toBeInTheDocument();
+    expect(screen.getByText('8 天')).toBeInTheDocument();
     expect(screen.getByText('76%')).toBeInTheDocument();
     expect(within(learningOverview).getByText('6 题')).toBeInTheDocument();
     expect(within(learningOverview).getByText('82%')).toBeInTheDocument();
@@ -217,7 +217,7 @@ describe('PracticePage training modules', () => {
 
     render(<PracticePage />);
 
-    expect(screen.queryByText('5 天')).not.toBeInTheDocument();
+    expect(await screen.findByText('5 天')).toBeInTheDocument();
     expect(await screen.findByText('75%')).toBeInTheDocument();
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
     expect(within(learningOverview).getByText('近 30 天练习')).toBeInTheDocument();
@@ -269,8 +269,8 @@ describe('PracticePage training modules', () => {
   });
 
   it.each([
-    ['题目收藏', 'question-favorites-panel'],
-    ['学习笔记', 'study-notes-panel'],
+    ['收藏夹', 'question-favorites-panel'],
+    ['笔记本', 'study-notes-panel'],
   ])('opens the %s personal library', async (title, panelTestId) => {
     render(<PracticePage />);
 

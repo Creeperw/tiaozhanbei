@@ -79,9 +79,8 @@ COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve
 
 `/chat/` 与 `/demo/` 只作为迁移期回归入口保留，不再是产品入口。
 
-Stub 模式不需要外部模型、向量库或数据库，适合前端先完成接口联调。
-需联调前端交接业务域时，再设置 `BACKEND_HANDOFF_ENABLED=true`；其余时间保持
-默认的 `false`。
+Stub 模式不需要外部模型、向量库或数据库，适合前端先完成接口联调。完整应用固定启用
+`BACKEND_HANDOFF_ENABLED=true`，由同一个 FastAPI 进程挂载交接业务域。
 
 完整本地模式示例：
 
@@ -110,30 +109,21 @@ python -m competition_app.cli.app serve
 9. 执行协调展示读取 `/api/v1/executions/{execution_id}/coordination`，只显示通信、修复的安全摘要，
    不展示或缓存原始交接正文。
 
-正式前端已使用主后端 HttpOnly Cookie，不在 localStorage 保存认证令牌。体验完整业务域时
-设置 `BACKEND_HANDOFF_ENABLED=true`。Vite 保留两类代理：`/api/v1/*` 原样转发给主 API，
-迁移期 `/api/*` 去掉 `/api` 前缀后交给兼容业务路由；`/health` 原样转发给主后端，供登录页
-判断认证服务是否可用：
+正式前端已使用主后端 HttpOnly Cookie，不在 localStorage 保存认证令牌。前端构建产物与
+`/api/v1/*`、迁移期 `/api/*` 和 `/health` 全部由同一个 `7860` 集成后端提供；其中
+`/api/*` 交给主进程内挂载的兼容业务路由：
 
 ```powershell
-$env:BACKEND_HANDOFF_ENABLED = "true"
-cd backend
-python -m competition_app.cli.app serve
-
-# 另开一个 PowerShell
-cd frontend/llm
-npm install
-npm run dev
+$env:BACKEND_PYTHON = "D:\anaconda3\python.exe" # 按本机环境调整
+powershell -ExecutionPolicy Bypass -File backend/competition/backend-handoff-20260720/run.ps1 start
 ```
 
-打开 `http://127.0.0.1:5173`。登录、会话、首页和 LangGraph 对话已经使用主 `/api/v1`；
-只验证这些主功能时可保持 `BACKEND_HANDOFF_ENABLED=false`。
+打开 `http://127.0.0.1:7860`。登录、会话、首页、LangGraph 对话和交接业务均由该端口提供。
 
 未登录时前端展示“承时珍医脉，启智慧学习”登录页，并在右侧直接提供账号表单；
 用户可在同一卡片内切换登录与注册，不再经过额外弹层。登录和注册仍分别调用
 `/api/v1/auth/login`、`/api/v1/auth/register`，
-不会在浏览器本地保存令牌。新账号返回 `onboarding_required=true`，前端随即完成学情调查，
-并在 `/api/v1/auth/onboarding/complete` 核验通过后进入首页；刷新不能绕过该门禁。
+不会在浏览器本地保存令牌。新账号注册成功后会立即建立会话并进入系统首页。
 
 ## Live 环境与大体积数据
 
