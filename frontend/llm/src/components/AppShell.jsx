@@ -165,7 +165,7 @@ function LearningTargetNavigationMenu({ menuState, onOpen, onRequestClose, onClo
     return () => document.removeEventListener('mousedown', closeOutside);
   }, [mounted, onRequestClose]);
   return (
-    <div ref={ref} className="app-shell__nav-group app-shell__target-group" onMouseEnter={() => onOpen('learning-target')} onMouseLeave={() => onRequestClose('learning-target', NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose('learning-target', 0); }}>
+    <div ref={ref} className="app-shell__nav-group app-shell__target-group" data-has-current-target={enabled && Boolean(currentTargetName)} onMouseEnter={() => onOpen('learning-target')} onMouseLeave={() => onRequestClose('learning-target', NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose('learning-target', 0); }}>
       <button type="button" aria-label="考试类别" aria-haspopup="menu" aria-expanded={open} onClick={() => { if (!enabled) { onLoginRequested?.(); return; } open ? onRequestClose('learning-target', 0) : onOpen('learning-target'); }}>
         <span className="app-shell__target-trigger-copy">
           <span>考试类别</span>

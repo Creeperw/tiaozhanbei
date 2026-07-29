@@ -233,7 +233,7 @@ export default function App() {
   const renderAuthenticatedPage = () => {
     switch (shellConfig.currentPage) {
       case 'dashboard':
-        return <HomePage currentUser={currentUser} onNavigate={navigateToPage} />;
+        return <HomePage currentUser={currentUser} onNavigate={navigateToPage} onLoginRequested={() => setAuthOpen(true)} />;
       case 'capability-detail':
         return (
           <CapabilityDetailPage
@@ -335,7 +335,7 @@ export default function App() {
       case 'admin-feedback':
         return <AdminFeedbackPage onBackHome={() => navigateToPage('dashboard')} />;
       default:
-        return <HomePage currentUser={currentUser} onNavigate={navigateToPage} />;
+        return <HomePage currentUser={currentUser} onNavigate={navigateToPage} onLoginRequested={() => setAuthOpen(true)} />;
     }
   };
 

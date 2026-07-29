@@ -29,7 +29,7 @@ function useReducedMotion() {
   return reducedMotion;
 }
 
-export default function HomePage({ onNavigate }) {
+export default function HomePage({ currentUser, onNavigate, onLoginRequested }) {
   const [videoFailed, setVideoFailed] = useState(false);
   const [targetDialogOpen, setTargetDialogOpen] = useState(false);
   const [targetChecking, setTargetChecking] = useState(false);
@@ -43,6 +43,10 @@ export default function HomePage({ onNavigate }) {
 
   const navigate = (intent) => onNavigate?.(intent);
   const startLearning = async () => {
+    if (currentUser === null) {
+      onLoginRequested?.();
+      return;
+    }
     if (targetChecking) return;
     setTargetChecking(true);
     setStartError('');

@@ -196,6 +196,13 @@ describe('QualificationRoutePage', () => {
     expect(viewButtons[0]).toHaveAttribute('aria-pressed', 'true');
     expect(viewButtons[1]).toHaveAttribute('aria-pressed', 'false');
 
+    const routeHeader = screen.getByRole('heading', { name: '中医类别执业医师资格考试' }).closest('.home-portal__route-header');
+    expect([...routeHeader.children].map((child) => child.className)).toEqual([
+      'home-portal__route-title-block',
+      'home-portal__route-switch',
+      'home-portal__route-controls',
+    ]);
+
     fireEvent.click(screen.getByRole('button', { name: '进入中医基础与文化语言阶段' }));
     expect(viewButtons[1]).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByText('《中医学基础》')).toBeInTheDocument();
@@ -336,13 +343,24 @@ describe('QualificationRoutePage', () => {
   });
 
   it('shows persisted long and short planning narratives from the route header', async () => {
-    installHomeFetch({});
+    installHomeFetch({}, {
+      learningContext: {
+        long_term_plan: {
+          content: '【最终目标】## 目标契约\n最终目标是系统掌握中医执业医师。\n\n## 长期阶段路径\n| 阶段 | 阶段目标 |\n|---|---|\n| 1. 中医基础 | 建立基础概念 |',
+        },
+        short_term_plan: {
+          content: '## 本周安排\n- 完成中医基础理论复习。',
+        },
+      },
+    });
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole('button', { name: '了解详情' }));
 
-    expect(await screen.findByText('【最终目标】通过中医执业医师资格考试。')).toBeInTheDocument();
-    expect(screen.getByText('【本周安排】完成中医基础理论复习。')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '目标契约', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '阶段' })).toBeInTheDocument();
+    expect(screen.getByRole('listitem')).toHaveTextContent('完成中医基础理论复习。');
     expect(screen.getByRole('region', { name: '长期规划和短期规划说明' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '返回' }));
     expect(await screen.findByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();

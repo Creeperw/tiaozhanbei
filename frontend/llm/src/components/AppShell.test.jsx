@@ -163,6 +163,7 @@ describe('AppShell', () => {
     const targetButton = screen.getByRole('button', { name: '考试类别' });
     await user.hover(targetButton);
     expect(targetButton).toHaveAttribute('aria-expanded', 'true');
+    expect(targetButton.closest('.app-shell__target-group')).toHaveAttribute('data-has-current-target', 'true');
     const currentTarget = await screen.findByRole('menuitemradio', { name: '中医执业医师资格考试' });
     const nextTarget = screen.getByRole('menuitemradio', { name: '中医执业助理医师资格考试' });
     const currentTargetLabel = screen.getByText('当前 · 中医执业医师资格考试');

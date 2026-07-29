@@ -5897,6 +5897,30 @@ textarea:focus-visible {
 .home-portal__route-details-grid article + article { border-left: 1px solid rgba(190, 214, 204, .48); }
 .home-portal__route-details-grid h3 { margin: 0 0 18px; color: #17372e; font-size: 1rem; font-weight: 850; }
 .home-portal__route-details-grid article > div { color: #48635b; font-size: .86rem; line-height: 1.95; white-space: pre-wrap; }
+.home-portal__planning-markdown { overflow-x: auto; color: #48635b; font-size: .86rem; line-height: 1.8; white-space: normal; }
+.home-portal__planning-markdown > :first-child { margin-top: 0; }
+.home-portal__planning-markdown > :last-child { margin-bottom: 0; }
+.home-portal__planning-markdown p { margin: 0 0 13px; }
+.home-portal__planning-markdown h1,
+.home-portal__planning-markdown h2,
+.home-portal__planning-markdown h3,
+.home-portal__planning-markdown h4 { margin: 24px 0 10px; color: #1f5745; font-weight: 850; letter-spacing: -.015em; line-height: 1.35; }
+.home-portal__planning-markdown h1 { font-size: 1.18rem; }
+.home-portal__planning-markdown h2 { padding-left: 10px; border-left: 3px solid #39a27b; font-size: 1rem; }
+.home-portal__planning-markdown h3 { font-size: .92rem; }
+.home-portal__planning-markdown p.is-section-label { display: inline-flex; margin: 3px 0 10px; border-radius: 999px; background: #eaf7f0; padding: 3px 9px; color: #207457; font-size: .74rem; font-weight: 800; line-height: 1.4; }
+.home-portal__planning-markdown ul,
+.home-portal__planning-markdown ol { margin: 0 0 14px; padding-left: 1.3rem; }
+.home-portal__planning-markdown li + li { margin-top: 5px; }
+.home-portal__planning-markdown li::marker { color: #2f946d; }
+.home-portal__planning-markdown strong { color: #204f3e; font-weight: 800; }
+.home-portal__planning-markdown table { width: 100%; min-width: 520px; margin: 14px 0 18px; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 1px solid #d8e9e1; border-radius: 12px; background: rgba(255, 255, 255, .78); font-size: .78rem; line-height: 1.58; }
+.home-portal__planning-markdown th,
+.home-portal__planning-markdown td { border-right: 1px solid #e2eee8; border-bottom: 1px solid #e2eee8; padding: 10px 11px; text-align: left; vertical-align: top; }
+.home-portal__planning-markdown th { background: #eff8f3; color: #28634f; font-weight: 800; white-space: nowrap; }
+.home-portal__planning-markdown tr:last-child td { border-bottom: 0; }
+.home-portal__planning-markdown th:last-child,
+.home-portal__planning-markdown td:last-child { border-right: 0; }
 .home-portal__route-details-state { display: grid; min-height: 310px; place-items: center; color: #7a9189; font-size: .8rem; text-align: center; }
 .home-portal__route-details-state[role="alert"] { color: #a24d34; }
 
@@ -7727,6 +7751,10 @@ textarea:focus-visible {
     position: relative;
   }
 
+  .app-shell__target-group[data-has-current-target="true"] {
+    z-index: 2;
+  }
+
   .app-shell__target-trigger-copy {
     display: inline-flex;
     align-items: center;
@@ -7748,6 +7776,7 @@ textarea:focus-visible {
     text-overflow: clip;
     transform: translateX(-50%);
     white-space: nowrap;
+    z-index: 1;
   }
 
   .app-shell__nav-group > button:hover .app-shell__target-current,
@@ -12288,11 +12317,14 @@ textarea:focus-visible {
 .app-shell__main[data-page="learning-path"] .home-portal__route-header {
   align-items: center;
   justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
   padding-top: 20px;
 }
 
-.app-shell__main[data-page="learning-path"] .home-portal__route-header > div:first-child {
-  min-width: 0;
+.app-shell__main[data-page="learning-path"] .home-portal__route-title-block {
+  flex: 0 0 auto;
+  min-width: max-content;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-kicker {
@@ -12300,18 +12332,79 @@ textarea:focus-visible {
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-kicker h2 {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.app-shell__main[data-page="learning-path"] .home-portal__route-kicker .home-portal__route-detail-toggle {
-  width: 58px;
-  flex: 0 0 58px;
-  text-align: center;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-switch {
-  margin-left: 10px;
+  flex: 0 0 270px;
+  width: 270px;
+  margin-left: 0;
+  border-color: #bfe4d4;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-controls {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: 0;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-controls > .home-portal__route-detail-toggle,
+.app-shell__main[data-page="learning-path"] .home-portal__route-controls > .home-portal__survey-trigger {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d6e6df;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0 12px;
+  color: #5d766d;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-controls > .home-portal__survey-trigger {
+  gap: 5px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-mode button {
+  min-height: 38px;
+  padding: 0 12px;
+  font-size: .78rem;
+}
+
+@media (max-width: 1280px) {
+  .app-shell__main[data-page="learning-path"] .home-portal__route-controls {
+    flex: 1 1 100%;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header {
+    align-items: stretch;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-title-block,
+  .app-shell__main[data-page="learning-path"] .home-portal__route-switch,
+  .app-shell__main[data-page="learning-path"] .home-portal__route-controls {
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-switch,
+  .app-shell__main[data-page="learning-path"] .home-portal__route-controls {
+    flex: 1 1 100%;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-controls {
+    flex-wrap: wrap;
+  }
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route,

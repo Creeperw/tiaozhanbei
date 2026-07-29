@@ -104,6 +104,16 @@ describe('HomePage', () => {
     );
   });
 
+  it('opens the login page instead of loading a learning target for an unauthenticated visitor', () => {
+    const onLoginRequested = vi.fn();
+    render(<HomePage currentUser={null} onNavigate={vi.fn()} onLoginRequested={onLoginRequested} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
+
+    expect(onLoginRequested).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('routes users with a saved qualification target directly to the learning path', async () => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);

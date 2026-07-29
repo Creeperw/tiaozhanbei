@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   BookOpenText,
   CalendarDays,
@@ -29,6 +31,29 @@ import {
   buildHomePortalState,
 } from '../homePortal';
 import { workshopActionIntent } from '../pageIntent';
+
+function normalizePlanningMarkdown(content) {
+  return String(content || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/(【[^】\n]+】)/g, '\n\n$1\n\n')
+    .replace(/([^\n#])(?=#{1,6}\s)/g, '$1\n\n')
+    .trim();
+}
+
+function PlanningParagraph({ children }) {
+  const text = React.Children.toArray(children).filter((child) => typeof child === 'string').join('').trim();
+  return <p className={/^【[^】]+】$/.test(text) ? 'is-section-label' : undefined}>{children}</p>;
+}
+
+function PlanningMarkdown({ content, fallback }) {
+  return (
+    <div className="home-portal__planning-markdown">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: PlanningParagraph }}>
+        {normalizePlanningMarkdown(content || fallback)}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 function formatReviewDate(value) {
   if (!value) return '最近';
@@ -472,19 +497,43 @@ function HomeLearningRoute({
     <>
       <section className="home-portal__route" data-view={routeView} aria-label={`${selectedTarget?.name || '当前考证'}学习路径`}>
       <header className="home-portal__route-header">
-        <div>
+        <div className="home-portal__route-title-block">
           <div className="home-portal__route-kicker">
             <h2>{selectedTarget?.name || '当前考证'}</h2>
-            <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
-              {routeView === 'details' ? '返回' : '了解详情'}
-            </button>
-            <button type="button" className="home-portal__survey-trigger" onClick={() => setSurveyOpen(true)}>
-              <ClipboardList aria-hidden="true" size={15} />
-              学情调研
-            </button>
           </div>
         </div>
+        <div
+          className="home-portal__route-switch"
+          data-view={routeView === 'cards' ? 'cards' : 'orbit'}
+          role="group"
+          aria-label="学习路径视图"
+        >
+          <span className="home-portal__route-switch-indicator" aria-hidden="true" />
+          <button
+            type="button"
+            className={routeView === 'cards' ? 'is-active' : ''}
+            aria-pressed={routeView === 'cards'}
+            onClick={() => changeRouteView('cards')}
+          >
+            学习阶段
+          </button>
+          <button
+            type="button"
+            className={routeView !== 'cards' ? 'is-active' : ''}
+            aria-pressed={routeView !== 'cards'}
+            onClick={returnToPath}
+          >
+            学习路径
+          </button>
+        </div>
         <div className="home-portal__route-controls">
+          <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
+            {routeView === 'details' ? '返回' : '了解详情'}
+          </button>
+          <button type="button" className="home-portal__survey-trigger" onClick={() => setSurveyOpen(true)}>
+            <ClipboardList aria-hidden="true" size={15} />
+            学情调研
+          </button>
           <div className="home-portal__route-mode" role="group" aria-label="学习路径类型">
             <button
               type="button"
@@ -501,30 +550,6 @@ function HomeLearningRoute({
               onClick={() => selectRouteMode('personalized')}
             >
               个性化路径
-            </button>
-          </div>
-          <div
-            className="home-portal__route-switch"
-            data-view={routeView === 'cards' ? 'cards' : 'orbit'}
-            role="group"
-            aria-label="学习路径视图"
-          >
-            <span className="home-portal__route-switch-indicator" aria-hidden="true" />
-            <button
-              type="button"
-              className={routeView === 'cards' ? 'is-active' : ''}
-              aria-pressed={routeView === 'cards'}
-              onClick={() => changeRouteView('cards')}
-            >
-              学习阶段
-            </button>
-            <button
-              type="button"
-              className={routeView !== 'cards' ? 'is-active' : ''}
-              aria-pressed={routeView !== 'cards'}
-              onClick={returnToPath}
-            >
-              学习路径
             </button>
           </div>
         </div>
@@ -566,11 +591,11 @@ function HomeLearningRoute({
             <div className="home-portal__route-details-grid">
               <article>
                 <h3>长期规划说明</h3>
-                <div>{planningDetails.longTerm || '尚未制定长期规划。'}</div>
+                <PlanningMarkdown content={planningDetails.longTerm} fallback="尚未制定长期规划。" />
               </article>
               <article>
                 <h3>短期规划说明</h3>
-                <div>{planningDetails.shortTerm || '尚未制定短期规划。'}</div>
+                <PlanningMarkdown content={planningDetails.shortTerm} fallback="尚未制定短期规划。" />
               </article>
             </div>
           )}
