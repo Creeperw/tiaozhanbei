@@ -20,7 +20,7 @@
 .textbook-chapter-learning__body { display:grid; grid-template-columns:178px minmax(0,1fr); gap:16px; max-width:1580px; margin:0 auto; }
 .textbook-learning-nav { display:flex; min-height:360px; flex-direction:column; gap:3px; padding:11px 9px; border:1px solid #dce9e2; border-radius:15px; background:#fff; box-shadow:0 8px 22px rgba(39,83,62,.06); }
 .textbook-learning-nav button,
-.textbook-learning-nav > span { display:flex; align-items:center; gap:10px; border:0; border-left:3px solid transparent; border-radius:9px; padding:11px 10px; color:#53635e; background:transparent; font-size:12px; text-align:left; }
+.textbook-learning-nav > span { display:flex; align-items:center; gap:10px; border:0; border-left:3px solid transparent; border-radius:9px; padding:11px 10px; color:#53635e; background:transparent; font-size:14px; text-align:left; }
 .textbook-learning-nav button { cursor:pointer; }
 .textbook-learning-nav button.is-active,
 .textbook-learning-nav > span.is-active { border-left-color:#399674; color:#28684f; background:#e6f4eb; font-weight:800; }

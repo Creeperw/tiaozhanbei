@@ -246,7 +246,7 @@ function LearningProfileEditor({ profile, learnerProfile, saving, onClose, onSav
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800"><Pencil aria-hidden="true" size={16} />学习画像</div>
             <h2 id={titleId} className="mt-2 text-2xl font-bold tracking-tight text-slate-950">编辑画像</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">修改基础信息与学习偏好；锁定的偏好不会被智能分析自动覆盖。</p>
+            <p className="mt-2 text-[15px] leading-6 text-slate-600">修改基础信息与学习偏好；锁定的偏好不会被智能分析自动覆盖。</p>
           </div>
           <button type="button" data-autofocus aria-label="关闭编辑画像" disabled={saving} onClick={onClose} className="icon-button"><X aria-hidden="true" size={20} /></button>
         </header>
@@ -564,7 +564,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                 </div>
                 <div>
                   <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">学习记忆</h1>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">集中沉淀、管理并调用影响后续学习推荐的关键信息。</p>
+                  <p className="mt-1 text-[15px] leading-6 text-slate-600">集中沉淀、管理并调用影响后续学习推荐的关键信息。</p>
                 </div>
               </div>
             </div>}
@@ -573,7 +573,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
           {isMemoryView && <section aria-label="学情分析智能体更新频率" className="relative mt-5 border-t border-emerald-100/90 pt-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900">学情分析智能体更新频率</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">设置智能体自动汇总学习状态与更新学习记忆的节奏。</p>
+              <p className="mt-1 text-[15px] leading-6 text-slate-600">设置智能体自动汇总学习状态与更新学习记忆的节奏。</p>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {analysisFrequencyOptions.map((option) => {
@@ -600,7 +600,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-emerald-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-100 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Database size={20}/></div><p className="text-sm text-slate-600">启用记忆</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.active_count || 0}</p></div>
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-amber-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-100 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Sparkles size={20}/></div><p className="text-sm text-slate-600">重要记忆</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.important_count || 0}</p></div>
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-emerald-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-100 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><ArrowUpCircle size={20}/></div><p className="text-sm text-slate-600">待确认候选</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.candidate_pending_count || 0}</p></div>
-          {hasConflicts && <div className="group bg-white/82 rounded-[28px] border border-amber-100/80 shadow-sm shadow-amber-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-100 transition-[transform,box-shadow] duration-200 md:col-span-5"><p className="text-sm text-amber-600 font-semibold">检测到重复语义记忆</p><p className="text-xs text-amber-500 mt-1">系统会自动保留最新有效值，并将旧版本停用。</p></div>}
+          {hasConflicts && <div className="group bg-white/82 rounded-[28px] border border-amber-100/80 shadow-sm shadow-amber-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-100 transition-[transform,box-shadow] duration-200 md:col-span-5"><p className="text-sm text-amber-600 font-semibold">检测到重复语义记忆</p><p className="text-[15px] text-amber-500 mt-1">系统会自动保留最新有效值，并将旧版本停用。</p></div>}
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-slate-100/60 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-gray-200 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Trash2 size={20}/></div><p className="text-sm text-gray-500">停用记忆</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.inactive_count || 0}</p></div>
           <div className="group bg-white/82 rounded-[28px] border border-white/80 shadow-sm shadow-rose-100/40 p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-100 transition-[transform,box-shadow] duration-200"><div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Clock size={20}/></div><p className="text-sm text-gray-500">已过期</p><p className="text-3xl font-black text-slate-900">{overview?.stats?.expired_count || 0}</p></div>
         </div>}
@@ -665,7 +665,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                   <div className="flex items-center gap-4 text-slate-900">
                     <div className="user-profile-panel__heading-icon flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 lg:h-16 lg:w-16"><Database aria-hidden="true" size={25} /></div>
                     <div>
-                      <h2 className="user-profile-panel__heading text-2xl font-black tracking-tight text-slate-950 sm:text-3xl lg:text-[2.35rem]">我的学习画像</h2>
+                      <h2 className="user-profile-panel__heading text-3xl font-bold tracking-tight text-slate-950">我的学习画像</h2>
                     </div>
                   </div>
                   <div className="user-profile-panel__actions flex flex-wrap items-center justify-end gap-3">
@@ -707,7 +707,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
             <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
               <div>
               <h2 className="text-xl font-bold">学习记忆数据库</h2>
-              <p className="text-sm text-gray-500 mt-1">手动维护和记忆管理智能体自动抽取的学习目标、偏好、薄弱点、阶段反馈都会在这里统一管理。</p>
+              <p className="text-[15px] text-gray-500 mt-1">手动维护和记忆管理智能体自动抽取的学习目标、偏好、薄弱点、阶段反馈都会在这里统一管理。</p>
               </div>
               <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">自动沉淀 · 人工可控</span>
             </div>
@@ -718,7 +718,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
                   <h3 className="font-black text-slate-900 flex items-center gap-2"><Sparkles size={18} className="text-emerald-600"/> 候选记忆池</h3>
-                  <p className="text-xs text-gray-500 mt-1">记忆管理智能体认为“可能影响后续推荐但暂不重要”的学习信息会先进入这里，最多保留 30 条待确认候选。</p>
+                  <p className="text-[15px] text-gray-500 mt-1">记忆管理智能体认为“可能影响后续推荐但暂不重要”的学习信息会先进入这里，最多保留 30 条待确认候选。</p>
                 </div>
                 <SoftSelect value={candidateStatus} options={candidateStatusOptions} onChange={setCandidateStatus} className="w-[150px] text-sm" />
               </div>

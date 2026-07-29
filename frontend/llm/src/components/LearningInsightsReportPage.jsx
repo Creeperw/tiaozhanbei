@@ -231,13 +231,13 @@ function WeakPointsCard({ weakPoints, onNavigate }) {
             return (
               <article key={item.kp_id || item.kp_name || index} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
                 <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-xl font-bold text-emerald-600">{index + 1}</div>
-                <h3 className="mt-4 min-h-12 text-lg font-bold leading-6 text-slate-950">{item.kp_name || item.name || '未命名知识点'}</h3>
-                <p className="mt-3 flex items-start gap-2 text-sm leading-6 text-slate-600">
+                <h3 className="mt-4 min-h-14 text-lg font-medium leading-6 text-slate-950">{item.kp_name || item.name || '未命名知识点'}</h3>
+                <p className="mt-3 flex items-start gap-2 text-base leading-7 text-slate-600">
                   <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
                   <span>{item.reason || '当前掌握度较低，建议优先巩固。'}</span>
                 </p>
                 <div className="mt-5 border-t border-dashed border-slate-200 pt-4 text-center">
-                  <p className="text-sm text-slate-500">掌握度</p>
+                  <p className="text-base text-slate-500">掌握度</p>
                   <p className="mt-1 text-3xl font-bold tabular-nums text-emerald-600">{score === null || score === undefined ? '—' : percent(score)}</p>
                 </div>
               </article>
