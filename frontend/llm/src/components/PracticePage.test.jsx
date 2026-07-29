@@ -63,8 +63,16 @@ vi.mock('./SimulatedPatientChat', () => ({
   default: () => <div data-testid="simulated-patient-chat" />,
 }));
 
+vi.mock('./MistakeRedoPanel', () => ({
+  default: () => <div data-testid="mistake-redo-panel" />,
+}));
+
 vi.mock('./MistakeVariationPanel', () => ({
   default: () => <div data-testid="mistake-variation-panel" />,
+}));
+
+vi.mock('./TrainingHistoryPanel', () => ({
+  default: () => <div data-testid="training-history-panel" />,
 }));
 
 vi.mock('./PaperGenerationPanel', () => ({
@@ -125,12 +133,13 @@ describe('PracticePage training modules', () => {
       .filter((button) => button.querySelector('strong'));
     expect(trainingButtons.map((button) => button.querySelector('strong')?.textContent)).toEqual([
       '专项训练',
-      '知识点特训',
+      '专题训练',
       '智能组卷',
-      '真题模拟',
+      '综合套题',
       '模拟病患',
+      '错题重做',
     ]);
-    expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /历史记录/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /收藏夹/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /笔记本/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
@@ -146,7 +155,7 @@ describe('PracticePage training modules', () => {
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['错题库', '收藏夹', '笔记本', '上传题库']);
+    ).toEqual(['历史记录', '收藏夹', '笔记本', '上传题库']);
   });
 
   it('renders the local overview statistics contract without replacing main workshop modules', () => {
@@ -238,13 +247,13 @@ describe('PracticePage training modules', () => {
     expect(await screen.findByTestId('question-favorites-panel')).toBeInTheDocument();
   });
 
-  it('opens mistake variations from the mistake library and returns to the workshop overview', async () => {
+  it('opens training history from the workshop tools and returns to the workshop overview', async () => {
     render(<PracticePage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /错题库/ }));
+    fireEvent.click(screen.getByRole('button', { name: /历史记录/ }));
 
-    expect(await screen.findByRole('heading', { name: '错题库' })).toBeInTheDocument();
-    expect(screen.getByTestId('mistake-variation-panel')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '历史记录' })).toBeInTheDocument();
+    expect(screen.getByTestId('training-history-panel')).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '返回训练工坊' }));
@@ -399,10 +408,10 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByText('此模块正在准备中，暂不支持提交任务。')).not.toBeInTheDocument();
   });
 
-  it('opens the mistake variation module directly from its page intent', async () => {
-    render(<PracticePage navigationContext={{ taskType: 'mistake_variation' }} />);
+  it('opens the training history module directly from its page intent', async () => {
+    render(<PracticePage navigationContext={{ taskType: 'training_history' }} />);
 
-    expect(await screen.findByTestId('mistake-variation-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('training-history-panel')).toBeInTheDocument();
   });
 
   it('opens the AI patient simulation directly from its page intent', async () => {

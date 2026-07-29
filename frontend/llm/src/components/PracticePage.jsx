@@ -25,6 +25,7 @@ import QualificationPaperPanel from './QualificationPaperPanel';
 import SimulatedPatientChat from './SimulatedPatientChat';
 import MistakeRedoPanel from './MistakeRedoPanel';
 import MistakeVariationPanel from './MistakeVariationPanel';
+import TrainingHistoryPanel from './TrainingHistoryPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
@@ -241,9 +242,9 @@ const uploadQuestionBankCard = {
 
 const utilityCards = [
   {
-    key: 'mistake_variation',
-    title: '错题库',
-    description: '整理错题记录，生成变式并针对性复盘。',
+    key: 'training_history',
+    title: '历史记录',
+    description: '按训练类型查看做过的题目和学习记录。',
     icon: FolderHeart,
     available: true,
   },
@@ -383,6 +384,7 @@ const workspaceTitles = {
   ai_patient_simulation: '模拟病患',
   mistake_variation: '错题库',
   mistake_redo: '错题重做',
+  training_history: '历史记录',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
   question_favorites: '收藏夹',
@@ -723,7 +725,7 @@ export default function PracticePage({
 
   return (
     <div className={`practice-workspace practice-workspace--${activeTaskType} space-y-5 text-slate-800`}>
-      <div className="flex items-center gap-4 border-b border-slate-200 pb-4">
+      <div className={`practice-workspace__heading flex items-center gap-4 border-b border-slate-200 pb-4${activeTaskType === 'training_history' ? ' practice-workspace__heading--history' : ''}`}>
         <button type="button" className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50" onClick={leaveWorkspace}>
           <ArrowLeft aria-hidden="true" size={16} />{returnLabel}
         </button>
@@ -740,13 +742,15 @@ export default function PracticePage({
       )}
 
       <div className="min-w-0 space-y-5">
-          <section className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
+          <section className={`practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50${activeTaskType === 'paper_workspace' ? ' practice-task-panel--paper' : ''}`}>
             {activeTaskType === 'question_training' && !taskItemId ? (
               <QualificationPaperPanel enabled />
             ) : activeTaskType === 'mistake_redo' ? (
               <MistakeRedoPanel />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
+            ) : activeTaskType === 'training_history' ? (
+              <TrainingHistoryPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
               <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} taskItemId={taskItemId} />
             ) : activeTaskType === 'knowledge_cards' ? (

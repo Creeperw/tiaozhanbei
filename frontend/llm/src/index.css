@@ -3918,6 +3918,63 @@ textarea:focus-visible {
 .practice-workspace__back { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; border: 0; border-radius: 6px; background: transparent; padding: 0 8px; color: #266e45; font-size: .9rem; font-weight: 750; cursor: pointer; }
 .practice-workspace__back:hover { background: #eaf7ee; }
 .practice-workspace__back:focus-visible { outline: 3px solid #217b48; outline-offset: 2px; }
+.practice-workspace__heading--history { transform: translateY(8px); }
+.practice-workspace--training_history .training-history-panel { margin-top: 13px; }
+.practice-workspace--training_history .training-history__grid { align-items: stretch; }
+.practice-workspace--training_history .training-history__summary > div { min-height: 102px; }
+.practice-workspace--training_history .training-history__group { min-height: 216px; }
+.practice-workspace--training_history .training-history__group:last-child { grid-column: 1 / -1; }
+.practice-workspace--training_history .training-history__group--patient { min-height: 240px; }
+.practice-workspace--training_history .training-history__patient-mode { min-height: 105px; }
+.practice-workspace--training_history .training-history__group-action { white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .practice-workspace--training_history .training-history__patient-modes { grid-template-columns: 1fr; }
+  .practice-workspace--training_history .training-history__patient-mode { min-height: 0; }
+}
+
+.practice-workspace--paper_workspace {
+  padding-top: clamp(8px, 1.2vw, 16px);
+}
+
+.practice-workspace--paper_workspace .practice-task-panel--paper {
+  border-color: #d4e8dc;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(167, 243, 208, 0.3), transparent 27%),
+    radial-gradient(circle at 100% 100%, rgba(186, 230, 253, 0.2), transparent 34%),
+    linear-gradient(135deg, #edf8f1 0%, #f7fbf8 48%, #eef7f5 100%);
+}
+
+.practice-workspace--paper_workspace .smart-paper-panel {
+  border-color: #d4e8dc;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(167, 243, 208, 0.22), transparent 24%),
+    radial-gradient(circle at 92% 78%, rgba(186, 230, 253, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(245, 252, 247, 0.98) 0%, rgba(235, 247, 239, 0.96) 50%, rgba(239, 248, 246, 0.98) 100%);
+}
+
+.practice-workspace--paper_workspace .smart-paper-panel > .smart-paper__archive-grid,
+.practice-workspace--paper_workspace .smart-paper-panel > .grid {
+  background-color: rgba(241, 248, 244, 0.72);
+}
+
+.practice-workspace--paper_workspace .smart-paper__archive-grid {
+  background: linear-gradient(135deg, rgba(236, 249, 241, 0.9), rgba(240, 248, 246, 0.72));
+}
+
+.practice-workspace--paper_workspace .smart-paper-panel > .grid > main {
+  background: rgba(248, 252, 249, 0.38);
+}
+
+.practice-workspace--paper_workspace .smart-paper-panel > .grid > aside {
+  background: rgba(230, 243, 235, 0.58);
+}
+
+@media (max-width: 899px) {
+  .practice-workspace--paper_workspace {
+    padding-top: 8px;
+  }
+}
 
 @media (max-width: 900px) {
   .practice-overview__layout { grid-template-columns: 1fr; }
