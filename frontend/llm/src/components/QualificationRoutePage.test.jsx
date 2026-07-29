@@ -150,7 +150,7 @@ describe('QualificationRoutePage', () => {
     expect(screen.queryByText('阶段学习路径')).not.toBeInTheDocument();
     expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '今日学习计划' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '今日任务' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '今日任务' })).toHaveAttribute('data-task-count', '2');
     expect(screen.getByRole('complementary', { name: '学习日历' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '学习与复习任务' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('今日任务完成 1/2')).toBeInTheDocument();

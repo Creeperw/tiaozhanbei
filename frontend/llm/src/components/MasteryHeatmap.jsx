@@ -32,9 +32,9 @@ export default function MasteryHeatmap({ items = [] }) {
   ];
 
   return (
-    <section className="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-200/45 sm:p-6" aria-label="知识点掌握热力图">
+    <section className="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-200/45 sm:p-6" aria-label="知识点掌握情况">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-950">知识点掌握热力图 <span aria-hidden="true" className="text-base font-normal text-slate-400">ⓘ</span></h2>
+        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-950">知识点掌握情况 <span aria-hidden="true" className="text-base font-normal text-slate-400">ⓘ</span></h2>
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>弱</span>
           {['bg-[#F0F9F4]', 'bg-[#E8F5E9]', 'bg-[#D0F0E0]', 'bg-[#C8E6C9]', 'bg-[#A5D6A7]'].map((tone) => <i key={tone} aria-hidden="true" className={`h-4 w-4 rounded-sm ${tone}`} />)}
@@ -68,7 +68,7 @@ export default function MasteryHeatmap({ items = [] }) {
           </div>
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">完成练习后生成知识点掌握热力图。</div>
+        <div className="mt-5 rounded-2xl bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">完成练习后生成知识点掌握情况。</div>
       )}
     </section>
   );

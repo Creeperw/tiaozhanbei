@@ -179,7 +179,7 @@ function CurrentLearningPlan({
 
   return (
     <div className="home-plan" aria-label="当前学习计划">
-      <section className="home-today-card" aria-label="今日任务">
+      <section className="home-today-card" aria-label="今日任务" data-task-count={todayItems.length}>
         <header className="home-today-card__header">
           <h3><CalendarCheck2 aria-hidden="true" size={22} />今日任务</h3>
           <div className="home-today-card__progress" aria-label={`今日任务完成 ${completed}/${total}`}>

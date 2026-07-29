@@ -86,7 +86,7 @@ describe('LearningInsightsReportPage', () => {
         returnTo: { page: 'personalization', params: { view: 'reports' } },
       },
     });
-    expect(screen.queryByText('知识点掌握热力图')).not.toBeInTheDocument();
+    expect(screen.queryByText('知识点掌握情况')).not.toBeInTheDocument();
     expect(screen.queryByText('复习队列')).not.toBeInTheDocument();
     expect(screen.queryByText('多尺度学习状态')).not.toBeInTheDocument();
     expect(screen.queryByText('资源匹配报告')).not.toBeInTheDocument();

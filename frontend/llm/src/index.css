@@ -1929,7 +1929,7 @@ textarea:focus-visible {
   position: relative;
   display: flex;
   height: 100%;
-  min-height: 520px;
+  min-height: 460px;
   flex-direction: column;
   overflow: hidden;
   color: var(--orbit-ink);
@@ -2067,8 +2067,8 @@ textarea:focus-visible {
   top: 50%;
   left: 50%;
   display: grid;
-  width: 112px;
-  height: 112px;
+  width: 100px;
+  height: 100px;
   place-content: center;
   border: 1px solid rgba(187, 156, 62, .14);
   border-radius: 50%;
@@ -2093,9 +2093,9 @@ textarea:focus-visible {
 .learning-path-orbit__core span,
 .learning-path-orbit__core small,
 .learning-path-orbit__core em { position: relative; z-index: 1; }
-.learning-path-orbit__core span { color: #0e7758; font-size: 1.52rem; font-weight: 800; letter-spacing: -.065em; font-variant-numeric: tabular-nums; }
-.learning-path-orbit__core small { margin-top: 1px; color: #5f7c72; font-size: .65rem; font-weight: 700; }
-.learning-path-orbit__core em { margin-top: 5px; color: #a17d2f; font-size: .56rem; font-style: normal; }
+.learning-path-orbit__core span { color: #0e7758; font-size: 1.45rem; font-weight: 800; letter-spacing: -.065em; font-variant-numeric: tabular-nums; }
+.learning-path-orbit__core small { margin-top: 1px; color: #5f7c72; font-size: .72rem; font-weight: 700; }
+.learning-path-orbit__core em { margin-top: 5px; color: #a17d2f; font-size: .64rem; font-style: normal; }
 .learning-path-orbit__node {
   position: absolute;
   z-index: 4;
@@ -2105,9 +2105,9 @@ textarea:focus-visible {
   flex-direction: column;
   justify-content: center;
   border: 1px solid rgba(132, 182, 162, .48);
-  border-radius: 15px;
+  border-radius: 14px;
   background: rgba(255,255,255,.88);
-  padding: 10px 12px 9px 47px;
+  padding: 9px 12px 8px 44px;
   color: #31594c;
   text-align: left;
   box-shadow: 0 10px 22px rgba(22, 83, 64, .07);
@@ -2118,9 +2118,9 @@ textarea:focus-visible {
 .learning-path-orbit__node::before {
   position: absolute;
   top: 50%;
-  left: 10px;
-  width: 27px;
-  height: 27px;
+  left: 9px;
+  width: 25px;
+  height: 25px;
   border: 1px solid rgba(19, 125, 91, .36);
   border-radius: 50%;
   background: #f4fbf7;
@@ -2151,14 +2151,14 @@ textarea:focus-visible {
 .learning-path-orbit__order {
   position: absolute;
   top: 50%;
-  left: 9px;
+  left: 8px;
   z-index: 1;
   display: grid;
-  width: 27px;
-  height: 27px;
+  width: 25px;
+  height: 25px;
   place-items: center;
   color: #5f8779;
-  font-size: .65rem;
+  font-size: .76rem;
   font-weight: 900;
   letter-spacing: -.04em;
   line-height: 1;
@@ -2168,12 +2168,12 @@ textarea:focus-visible {
 }
 .learning-path-orbit__node.is-completed .learning-path-orbit__order { color: #fff; }
 .learning-path-orbit__node.is-in-progress .learning-path-orbit__order { color: #755614; }
-.learning-path-orbit__title { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px; min-width: 0; color: inherit; font-size: .78rem; font-weight: 800; line-height: 1.24; }
+.learning-path-orbit__title { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 5px; min-width: 0; color: inherit; font-size: .96rem; font-weight: 800; line-height: 1.22; }
 .learning-path-orbit__title svg { flex: none; color: #17835f; }
 .learning-path-orbit__node.is-in-progress .learning-path-orbit__title svg { color: #b28725; }
 .learning-path-orbit__node.is-locked .learning-path-orbit__title svg { color: #9aada6; }
 .learning-path-orbit__title b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font: inherit; }
-.learning-path-orbit__node small { margin-top: 4px; overflow: hidden; color: #8aa198; font-size: .62rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.learning-path-orbit__node small { margin-top: 3px; overflow: hidden; color: #5e7b71; font-size: .82rem; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
 .learning-path-orbit__node.is-in-progress small { color: #9d7b2f; }
 .learning-path-orbit__progress { height: 3px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: rgba(190, 162, 85, .18); }
 .learning-path-orbit__progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c49a31, #e6c963); }
@@ -2183,24 +2183,26 @@ textarea:focus-visible {
   display: flex;
   flex: none;
   flex-wrap: wrap;
+  align-self: flex-start;
   align-items: center;
-  gap: 8px 15px;
-  margin: 0 26px 16px;
+  justify-content: flex-start;
+  gap: 10px 22px;
+  margin: 8px 26px 14px 26px;
   border: 1px solid rgba(133, 184, 163, .32);
   border-radius: 15px;
-  background: rgba(255,255,255,.76);
-  padding: 8px 12px;
-  color: #6d887e;
-  font-size: .63rem;
+  background: rgba(255,255,255,.82);
+  padding: 12px 18px;
+  color: #4a6660;
+  font-size: .8125rem;
+  font-weight: 600;
   backdrop-filter: blur(10px);
 }
-.learning-path-orbit__legend span { display: inline-flex; align-items: center; gap: 5px; }
-.learning-path-orbit__legend i { width: 8px; height: 8px; border: 1px solid #91aba1; border-radius: 50%; background: #fff; }
+.learning-path-orbit__legend span { display: inline-flex; align-items: center; gap: 7px; }
+.learning-path-orbit__legend i { width: 13px; height: 13px; border: 1.5px solid #91aba1; border-radius: 50%; background: #fff; }
 .learning-path-orbit__legend i.is-completed { border-color: #118d68; background: #118d68; }
 .learning-path-orbit__legend i.is-progress { border-color: #c89e36; background: #f6dc86; box-shadow: 0 0 0 2px rgba(244, 220, 134, .35); }
 .learning-path-orbit__legend i.is-next { border-color: #51ad87; background: #d9f2e5; }
 .learning-path-orbit__legend i.is-locked { border-style: dashed; background: #f7faf8; }
-.learning-path-orbit__legend em { margin-left: auto; border-left: 1px solid rgba(128, 168, 151, .3); padding-left: 10px; color: #6c867c; font-style: normal; }
 @keyframes learning-path-orbit-flow { to { stroke-dashoffset: -30; } }
 @keyframes learning-path-orbit-current { 50% { transform: translate(-50%, -50%) translateY(-3px); } }
 @keyframes learning-path-orbit-ring { 0% { opacity: .75; transform: scale(.96); } 82%, 100% { opacity: 0; transform: scale(1.12); } }
@@ -2209,16 +2211,15 @@ textarea:focus-visible {
   .learning-path-orbit__node:hover { z-index: 7; border-color: #24a479; box-shadow: 0 14px 28px rgba(20, 104, 76, .16); opacity: 1; transform: translate(-50%, -50%) translateY(-3px); }
 }
 @media (max-width: 760px) {
-  .learning-path-orbit { min-height: 540px; }
+  .learning-path-orbit { min-height: 480px; }
   .learning-path-orbit__stage { margin: 0; }
   .learning-path-orbit__summary { padding: 14px 14px 5px; }
   .learning-path-orbit__summary strong { font-size: .95rem; }
   .learning-path-orbit__summary p { display: none; }
   .learning-path-orbit__current { min-width: 82px; padding: 7px 8px; }
-  .learning-path-orbit__core { width: 110px; height: 110px; }
+  .learning-path-orbit__core { width: 100px; height: 100px; }
   .learning-path-orbit__core span { font-size: 1.15rem; }
-  .learning-path-orbit__legend { gap: 5px 8px; margin: 0 10px 10px; font-size: .5rem; }
-  .learning-path-orbit__legend em { width: 100%; margin: 0; border: 0; padding: 2px 0 0; }
+  .learning-path-orbit__legend { gap: 6px 12px; margin: 6px 10px 10px; padding: 8px 12px; font-size: .8125rem; }
 }
 
 .knowledge-tree-drilldown__viewport { overflow: hidden; }
@@ -7326,6 +7327,172 @@ textarea:focus-visible {
   }
 }
 
+/* Learning path is a viewport workspace: the page itself never scrolls.
+   Its cards use the available height and keep secondary copy at a readable size. */
+.app-shell__main[data-page="learning-path"] {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: hidden;
+  padding: 10px 16px 14px;
+}
+
+.app-shell__main[data-page="learning-path"] > .home-portal,
+.app-shell__main[data-page="learning-path"] .home-portal__learning-area,
+.app-shell__main[data-page="learning-path"] .home-portal__main-column,
+.app-shell__main[data-page="learning-path"] .home-portal__plan-rail {
+  height: 100%;
+  min-height: 0;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__learning-area {
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__main-column {
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero {
+  max-height: 104px;
+  flex: none;
+  padding: 16px 18px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-copy {
+  min-height: 0;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-desc,
+.app-shell__main[data-page="learning-path"] .home-portal__hero-copy .home-portal__hero-desc {
+  font-size: .875rem;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route {
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+  overflow: hidden;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header {
+  flex: none;
+  padding: 12px 16px 0;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-orbit-layout,
+.app-shell__main[data-page="learning-path"] .learning-path-orbit,
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__stage {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-orbit-layout .learning-path-orbit__stage {
+  flex: 1 1 auto;
+}
+
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__node {
+  width: min(var(--orbit-node-width), 158px);
+  min-height: min(var(--orbit-node-height), 66px);
+  padding: 8px 10px 7px 40px;
+}
+
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__title {
+  font-size: .9rem;
+}
+
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__node small,
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__order,
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__core small,
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__core em,
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__legend {
+  font-size: .8125rem;
+}
+
+.app-shell__main[data-page="learning-path"] .learning-path-orbit__legend {
+  margin: 5px 18px 10px;
+  padding: 8px 14px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__plan-rail {
+  align-self: stretch;
+  overflow: hidden;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__plan-rail .home-plan {
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  overflow: hidden;
+}
+
+.app-shell__main[data-page="learning-path"] .home-today-card,
+.app-shell__main[data-page="learning-path"] .home-study-calendar {
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-today-card__list {
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-today-card__task {
+  min-height: 46px;
+  padding: 7px 9px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-today-card__task > strong,
+.app-shell__main[data-page="learning-path"] .home-today-card__task > small,
+.app-shell__main[data-page="learning-path"] .home-study-calendar > header strong,
+.app-shell__main[data-page="learning-path"] .home-study-calendar__weekdays,
+.app-shell__main[data-page="learning-path"] .home-study-calendar__grid > span,
+.app-shell__main[data-page="learning-path"] .home-study-calendar__legend {
+  font-size: .8125rem;
+}
+
+.app-shell__main[data-page="learning-path"] .home-study-calendar__weekdays {
+  margin-top: 10px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-study-calendar__grid {
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-study-calendar__grid > span {
+  width: 28px;
+  height: 28px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-study-calendar__legend {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+@media (max-width: 980px) {
+  .app-shell__main[data-page="learning-path"] {
+    overflow-y: auto;
+  }
+
+  .app-shell__main[data-page="learning-path"] > .home-portal,
+  .app-shell__main[data-page="learning-path"] .home-portal__learning-area,
+  .app-shell__main[data-page="learning-path"] .home-portal__main-column,
+  .app-shell__main[data-page="learning-path"] .home-portal__plan-rail {
+    height: auto;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route {
+    height: min(590px, calc(100dvh - 180px));
+    min-height: 430px;
+  }
+}
+
 /* Navigation dropdowns stay mounted for their 250ms exit animation. */
 @media (min-width: 900px) {
   .app-shell__nav-menu[data-state="open"] {
@@ -11927,5 +12094,126 @@ textarea:focus-visible {
     top: 18px;
     right: 18px;
     width: auto;
+  }
+}
+
+/* Desktop learning path: final single-viewport override. */
+@media (min-width: 981px) {
+  .app-shell__main[data-page="learning-path"] {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 10px 16px 14px;
+    scroll-behavior: smooth;
+    overscroll-behavior-y: contain;
+  }
+
+  .app-shell__main[data-page="learning-path"] > .home-portal,
+  .app-shell__main[data-page="learning-path"] .home-portal__learning-area,
+  .app-shell__main[data-page="learning-path"] .home-portal__main-column,
+  .app-shell__main[data-page="learning-path"] .home-portal__plan-rail {
+    height: auto;
+    min-height: 0;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__learning-area {
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__main-column {
+    grid-template-rows: auto auto;
+    gap: 10px;
+    overflow: visible;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__hero {
+    height: auto;
+    min-height: 142px;
+    max-height: none;
+    padding: 18px 20px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__hero-copy {
+    min-height: 106px;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__hero-title,
+  .app-shell__main[data-page="learning-path"] .home-portal__hero-copy .home-portal__hero-title {
+    padding-block: 2px 4px;
+    line-height: 1.12;
+    overflow: visible;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route {
+    height: clamp(570px, 66dvh, 650px);
+    min-height: 570px;
+    align-self: stretch;
+    overflow: hidden;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header {
+    flex: none;
+    padding: 12px 16px 0;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-orbit-layout,
+  .app-shell__main[data-page="learning-path"] .learning-path-orbit,
+  .app-shell__main[data-page="learning-path"] .learning-path-orbit__stage {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-orbit-layout .learning-path-orbit__stage {
+    flex: 1 1 auto;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__plan-rail,
+  .app-shell__main[data-page="learning-path"] .home-portal__plan-rail .home-plan {
+    height: 100%;
+    min-height: 0;
+    align-self: stretch;
+    overflow: hidden;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__plan-rail .home-plan {
+    grid-template-rows: minmax(280px, 1fr) auto;
+    gap: 10px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-today-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-today-card__header,
+  .app-shell__main[data-page="learning-path"] .home-today-card__add {
+    flex: none;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-today-card__list {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 2px 4px 4px 0;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    scrollbar-color: rgba(79, 137, 87, .32) transparent;
+    scrollbar-width: thin;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-today-card__list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-today-card__list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(79, 137, 87, .3);
   }
 }

@@ -26,6 +26,7 @@ describe('AppShell', () => {
     const { rerender } = renderShell({ currentPage: 'learning-path', onNavigate });
 
     expect(document.querySelector('.app-shell__page-header')).not.toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'page');
 
     rerender(
       <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="learning-path-tasks" onNavigate={onNavigate} onLogout={vi.fn()}>
