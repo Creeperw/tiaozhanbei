@@ -31,7 +31,7 @@ test('renders the training overview and opens an existing workflow', async ({ pa
   await expect(page.getByRole('button', { name: /模拟病患/ })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
-  await page.getByRole('button', { name: /错题库/ }).click();
+  await page.getByRole('button', { name: /历史记录/ }).click();
   await expect(page.getByRole('button', { name: '返回训练工坊' })).toBeVisible();
   await page.getByRole('button', { name: '返回训练工坊' }).click();
   await expect(page.getByRole('heading', { name: '训练工坊，实战精进' })).toBeVisible();

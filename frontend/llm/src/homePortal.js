@@ -55,7 +55,7 @@ export const HOME_ACTIONS = [
     key: 'mistake-reinforcement',
     title: '错题巩固',
     image: `${HOME_IMAGE_BASE}/mistake-reinforcement.png`,
-    intent: { page: 'practice', params: { view: 'workspace', taskType: 'mistake_variation' } },
+    intent: { page: 'practice', params: { view: 'workspace', taskType: 'training_history' } },
   },
   {
     key: 'case-training',

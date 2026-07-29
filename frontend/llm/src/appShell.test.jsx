@@ -100,7 +100,7 @@ test('defines dropdown destinations as explicit navigation intents', () => {
     [
       { label: '题目训练', intent: { page: 'training-workshop', params: { taskType: 'topic_training' } } },
       { label: 'AI 病患模拟', intent: { page: 'training-workshop', params: { taskType: 'simulated_patient' } } },
-      { label: '错题变式', intent: { page: 'training-workshop', params: { taskType: 'mistake_variation' } } },
+      { label: '历史记录', intent: { page: 'training-workshop', params: { taskType: 'training_history' } } },
       { label: '试卷生成', intent: { page: 'training-workshop', params: { taskType: 'paper_generation' } } },
     ],
   );

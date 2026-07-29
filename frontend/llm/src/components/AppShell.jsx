@@ -216,7 +216,7 @@ function QualificationTargetSection({
 }
 
 const profileMenuItems = [
-  { key: 'mistake_variation', label: '收藏夹', description: '错题库', icon: FolderHeart },
+  { key: 'training_history', label: '历史记录', description: '训练历史', icon: FolderHeart },
   { key: 'question_favorites', label: '笔记本', description: '题目收藏', icon: BookMarked },
   { key: 'study_notes', label: '学情分析', description: '学习笔记', icon: NotebookPen },
 ];

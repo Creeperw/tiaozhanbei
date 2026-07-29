@@ -31,7 +31,7 @@ test('maps home feature actions to existing first- and second-level pages', () =
   });
   assert.deepEqual(getHomeActionIntent('mistake-reinforcement'), {
     page: 'practice',
-    params: { view: 'workspace', taskType: 'mistake_variation' },
+    params: { view: 'workspace', taskType: 'training_history' },
   });
   assert.deepEqual(getHomeActionIntent('knowledge-graph'), {
     page: 'knowledge',
