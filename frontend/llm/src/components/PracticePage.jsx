@@ -23,6 +23,7 @@ import { fetchJsonWithAuthFallback } from '../utils/api';
 import QuestionTrainingPanel from './QuestionTrainingPanel';
 import QualificationPaperPanel from './QualificationPaperPanel';
 import SimulatedPatientChat from './SimulatedPatientChat';
+import MistakeRedoPanel from './MistakeRedoPanel';
 import MistakeVariationPanel from './MistakeVariationPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
@@ -212,6 +213,13 @@ const trainingCards = [
     icon: HeartPulse,
     tone: 'rose',
   },
+  {
+    key: 'mistake_redo',
+    title: '错题重做',
+    description: '自动收录错题，AI 生成变式，反复巩固直至掌握。',
+    icon: FolderHeart,
+    tone: 'red',
+  },
 ];
 
 const featuredTrainingCard = {
@@ -374,6 +382,7 @@ const workspaceTitles = {
   topic_training: '专题训练',
   ai_patient_simulation: '模拟病患',
   mistake_variation: '错题库',
+  mistake_redo: '错题重做',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
   question_favorites: '收藏夹',
@@ -734,6 +743,8 @@ export default function PracticePage({
           <section className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
             {activeTaskType === 'question_training' && !taskItemId ? (
               <QualificationPaperPanel enabled />
+            ) : activeTaskType === 'mistake_redo' ? (
+              <MistakeRedoPanel />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (

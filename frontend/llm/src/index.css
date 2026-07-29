@@ -4456,15 +4456,15 @@ textarea:focus-visible {
   height: 38px;
   place-items: center;
   flex: none;
-  border: 1px solid #d4e2da;
+  border: 1px solid #fde047;
   border-radius: 10px;
   background: #fff;
-  color: #60736a;
+  color: #ca8a04;
   cursor: pointer;
   transition: border-color .18s ease, color .18s ease, background .18s ease;
 }
-.question-favorite-control > button:hover { border-color: #6fb78e; color: #08774d; background: #f1faf5; }
-.question-favorite-control > button.is-saved { border-color: #8ac9a5; background: #eaf8f0; color: #08774d; }
+.question-favorite-control > button:hover { border-color: #eab308; color: #a16207; background: #fefce8; }
+.question-favorite-control > button.is-saved { border-color: #eab308; background: #fef9c3; color: #a16207; }
 .question-favorite-control > small { max-width: 140px; color: #b4233c; font-size: .68rem; line-height: 1.4; }
 
 .practice-question-meta {

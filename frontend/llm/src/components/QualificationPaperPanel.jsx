@@ -128,7 +128,7 @@ export default function QualificationPaperPanel({ enabled }) {
   if (!enabled) return null;
   if (attempt) return <QualificationAttemptWorkspace attempt={attempt} onExit={() => setAttempt(null)} />;
   return (
-    <div className="mt-5 space-y-5">
+    <div className="mx-auto max-w-[87.5%] mt-5 space-y-5">
       <header className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
         <div><h2 className="text-lg font-semibold text-slate-950">五类资格考试套题</h2><p className="mt-1 text-sm text-slate-600">按考试类别、年份和套题类型选择真题或模拟题。</p></div>
         <BookOpenCheck className="shrink-0 text-emerald-700" size={24} aria-hidden="true" />
