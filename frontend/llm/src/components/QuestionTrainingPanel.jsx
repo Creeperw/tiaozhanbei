@@ -28,7 +28,7 @@ export default function QuestionTrainingPanel({
     setMode(normalizeInitialMode(initialMode));
   }, [initialMode]);
 
-  if (!enabled) return <p className="mt-5 text-sm text-slate-600">题目训练暂未开放。</p>;
+  if (!enabled) return <p className="mt-5 text-[15px] text-slate-600">题目训练暂未开放。</p>;
 
   return (
     <div className="question-training-panel">

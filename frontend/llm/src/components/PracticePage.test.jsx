@@ -261,9 +261,9 @@ describe('PracticePage training modules', () => {
   });
 
   it.each([
-    ['真题模拟', 'atlas-practice-scope'],
+    ['综合套题', 'atlas-practice-scope'],
     ['智能组卷', 'paper-generation-panel'],
-    ['知识点特训', 'knowledge-point-training-hub'],
+    ['专题训练', 'knowledge-point-training-hub'],
     ['模拟病患', 'simulated-patient-chat'],
   ])('opens %s from the overview as a single page', async (title, panelTestId) => {
     render(<PracticePage />);
@@ -359,7 +359,7 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('tab', { name: 'AI 病患模拟' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '试卷生成' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '真题模拟' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '综合套题' })).toBeInTheDocument();
     expect(screen.queryByText('循证训练台')).not.toBeInTheDocument();
     expect(screen.queryByText('当前目标：')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Knowledge cards/ })).not.toBeInTheDocument();

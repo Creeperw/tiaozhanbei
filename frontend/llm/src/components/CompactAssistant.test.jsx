@@ -87,6 +87,52 @@ describe('CompactAssistant', () => {
     expect(restore.querySelectorAll('svg')).toHaveLength(0);
   });
 
+  it('zooms the collapsed character with the wheel and keeps the popup usable', async () => {
+    render(<CompactAssistant initiallyCollapsed onOpenFull={vi.fn()} />);
+
+    const assistant = screen.getByLabelText('常驻智能助教');
+    const hitArea = assistant.querySelector('.compact-assistant__hit-area');
+    const restore = screen.getByRole('button', { name: '展开智能助教' });
+    const zoomIn = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaY: -100,
+      deltaMode: 0,
+    });
+
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    expect(fireEvent(hitArea, zoomIn)).toBe(false);
+    expect(zoomIn.defaultPrevented).toBe(true);
+    expect(Number.parseFloat(assistant.style.getPropertyValue('--character-scale'))).toBeCloseTo(1.12);
+    await waitFor(() => expect(localStorage.getItem('compactAssistantCharacterScale')).toBe('1.12'));
+
+    fireEvent.click(restore);
+    expect(assistant).toHaveAttribute('data-state', 'workspace');
+    expect(screen.getByRole('button', { name: '查看历史对话' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '新建对话' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '折叠智能助教' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '打开完整智能助教' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /缩小角色|放大角色|重置角色大小/ })).not.toBeInTheDocument();
+  });
+
+  it('clamps wheel scaling to the supported range', () => {
+    localStorage.setItem('compactAssistantCharacterScale', '2.98');
+    const { unmount } = render(<CompactAssistant initiallyCollapsed onOpenFull={vi.fn()} />);
+    let assistant = screen.getByLabelText('常驻智能助教');
+    let hitArea = assistant.querySelector('.compact-assistant__hit-area');
+
+    fireEvent.wheel(hitArea, { deltaY: -1000 });
+    expect(Number.parseFloat(assistant.style.getPropertyValue('--character-scale'))).toBe(3);
+
+    unmount();
+    localStorage.setItem('compactAssistantCharacterScale', '0.52');
+    render(<CompactAssistant initiallyCollapsed onOpenFull={vi.fn()} />);
+    assistant = screen.getByLabelText('常驻智能助教');
+    hitArea = assistant.querySelector('.compact-assistant__hit-area');
+    fireEvent.wheel(hitArea, { deltaY: 1000 });
+    expect(Number.parseFloat(assistant.style.getPropertyValue('--character-scale'))).toBe(0.5);
+  });
+
   it('loads tightly cropped alpha cutouts instead of the old loose-canvas images', () => {
     render(<CompactAssistant initiallyCollapsed onOpenFull={vi.fn()} />);
 

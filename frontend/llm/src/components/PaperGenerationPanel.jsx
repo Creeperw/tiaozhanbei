@@ -451,23 +451,23 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
     },
   } : null;
 
-  if (!enabled) return <p className="mt-5 text-sm leading-6 text-slate-600">试卷生成暂未开放。</p>;
+  if (!enabled) return <p className="mt-5 text-[15px] leading-6 text-slate-600">试卷生成暂未开放。</p>;
 
   return (
     <div className="mt-5 space-y-5">
       {!paper && <>
         {!boundPaper && paperLibrary.length > 0 && <section className="space-y-3" aria-labelledby="paper-library-title">
-          <div><h3 id="paper-library-title" className="text-sm font-semibold text-slate-900">待作答与历史试卷</h3><p className="mt-1 text-sm leading-6 text-slate-500">智能体审核通过的试卷会出现在这里。</p></div>
+          <div><h3 id="paper-library-title" className="text-sm font-semibold text-slate-900">待作答与历史试卷</h3><p className="mt-1 text-[15px] leading-6 text-slate-500">智能体审核通过的试卷会出现在这里。</p></div>
           <div className="grid gap-2">{paperLibrary.map((item) => <button key={item.paper_id} type="button" onClick={() => openPaper(item.paper_id)} disabled={loading} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-50"><span><strong className="block text-slate-900">{item.title}</strong><span className="mt-1 block text-xs text-slate-500">{item.status === 'published' ? '待作答' : '已提交'} · {item.duration_minutes} 分钟</span></span><span className="text-emerald-700">打开试卷</span></button>)}</div>
         </section>}
-        {!boundPaper && <div className="border-t border-slate-200 pt-5"><h3 className="text-sm font-semibold text-slate-900">直接组卷</h3><p className="mt-1 text-sm leading-6 text-slate-500">也可以在智能问答中描述完整要求，审核通过后会提供“开始答题”按钮。</p></div>}
+        {!boundPaper && <div className="border-t border-slate-200 pt-5"><h3 className="text-sm font-semibold text-slate-900">直接组卷</h3><p className="mt-1 text-[15px] leading-6 text-slate-500">也可以在智能问答中描述完整要求，审核通过后会提供“开始答题”按钮。</p></div>}
         {!boundPaper && <label className="block text-sm font-medium text-slate-700">训练主题
           <textarea value={topic} onChange={(event) => setTopic(event.target.value)} disabled={loading} className="mt-2 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />
         </label>}
-        {!boundPaper && <p className="text-sm text-slate-600">题量：{questionCount} 题；系统按主题、题型和知识点覆盖情况组卷。</p>}
+        {!boundPaper && <p className="text-[15px] text-slate-600">题量：{questionCount} 题；系统按主题、题型和知识点覆盖情况组卷。</p>}
         {!boundPaper && <fieldset>
           <legend className="text-sm font-medium text-slate-700">题型分布</legend>
-          <p className="mt-1 text-xs leading-5 text-slate-500">可只保留一种题型，也可组合组卷；总题量不超过 50 题。</p>
+          <p className="mt-1 text-[15px] leading-5 text-slate-500">可只保留一种题型，也可组合组卷；总题量不超过 50 题。</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {questionTypes.map(([key, label]) => <label key={key} className="text-sm font-medium text-slate-700">{label}
             <input type="number" min="0" max="50" value={distribution[key]} onChange={(event) => setCount(key, event.target.value)} disabled={loading} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
@@ -477,7 +477,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
         {!boundPaper && <button type="button" onClick={generate} disabled={loading || !canGenerate} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
           {loading && <Loader2 size={16} className="animate-spin" />}{loading ? '正在组卷并审核…' : '生成试卷'}
         </button>}
-        {boundPaper && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">正在打开今日任务绑定试卷，题目范围和组卷约束由服务端冻结。</p>}
+        {boundPaper && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[15px] text-emerald-900">正在打开今日任务绑定试卷，题目范围和组卷约束由服务端冻结。</p>}
       </>}
       {paper && currentItem && <section className="relative min-h-[620px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 sm:px-5">
