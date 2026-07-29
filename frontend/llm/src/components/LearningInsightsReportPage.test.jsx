@@ -59,10 +59,10 @@ describe('LearningInsightsReportPage', () => {
         },
       },
     });
-    render(<LearningInsightsReportPage onNavigate={onNavigate} />);
+    render(<LearningInsightsReportPage onNavigate={onNavigate} currentUser={{ username: 'alice' }} />);
 
-    expect(await screen.findByRole('heading', { name: '我的学情报告' })).toBeInTheDocument();
-    expect(screen.getByText('累计学习时长')).toBeInTheDocument();
+    expect(await screen.findByText('累计学习时长')).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: '学情报告快捷入口' })).not.toBeInTheDocument();
     expect(screen.getByText('完成练习')).toBeInTheDocument();
     expect(screen.getByText('平均正确率')).toBeInTheDocument();
     expect(screen.getByText('活跃天数')).toBeInTheDocument();

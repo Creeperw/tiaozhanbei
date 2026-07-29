@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import PersonalizationPage from './PersonalizationPage';
 import ProfileConflictList from './ProfileConflictList';
 import LearningGovernancePanel from './LearningGovernancePanel';
 import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import { normalizeSettingsView } from '../settingsNavigation';
 
 const tabs = [
-  { key: 'memory', label: '学习记忆' },
   { key: 'governance', label: '干预与通知' },
   { key: 'conflicts', label: '冲突清单' },
 ];
@@ -52,7 +50,7 @@ export default function SettingsHubPage({ navigationContext = {}, onNavigate }) 
 
   return (
     <div className="settings-hub">
-      <nav className="settings-hub__tabs" aria-label="用户设置二级菜单">
+      <nav className="personalization-hub__section-nav" aria-label="系统通知页面切换">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -65,8 +63,7 @@ export default function SettingsHubPage({ navigationContext = {}, onNavigate }) 
         ))}
       </nav>
       <main className="settings-hub__task" aria-live="polite">
-        {activeTab === 'memory' && <PersonalizationPage onBackHome={null} embedded view="unified" />}
-        {activeTab === 'governance' && <LearningGovernancePanel />}
+        {activeTab === 'governance' && <LearningGovernancePanel focusNotificationId={navigationContext.notificationId} />}
         {activeTab === 'conflicts' && (
           <>
             {conflictError && <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{conflictError}</div>}

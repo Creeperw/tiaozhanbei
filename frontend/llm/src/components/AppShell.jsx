@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
   Bell,
-  BookMarked,
   ChartNoAxesColumnIncreasing,
   ChevronDown,
   ClipboardList,
@@ -30,7 +29,7 @@ import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 
 const LEARNING_TARGET_CHANGED_EVENT = 'shizhen:learning-target-changed';
 const NAV_MENU_EXIT_MS = 250;
-const NAV_MENU_LEAVE_DELAY_MS = 500;
+const NAV_MENU_LEAVE_DELAY_MS = 200;
 
 const navIconMap = {
   dashboard: Home,
@@ -85,15 +84,19 @@ function ShellIdentity({ onNavigate }) {
   );
 }
 
-function MenuItems({ items, onNavigate, onClose }) {
-  return items.map((item) => (
-    <button key={item.label} type="button" role="menuitem" onClick={() => { onNavigate(item.intent); onClose?.(); }}>
-      {item.label}
-    </button>
-  ));
+function MenuItems({ items, onNavigate, onClose, currentIntent }) {
+  return items.map((item) => {
+    const active = item.intent?.page === currentIntent?.page
+      && Object.entries(item.intent?.params || {}).every(([key, value]) => currentIntent?.params?.[key] === value);
+    return (
+      <button key={item.label} type="button" role="menuitem" aria-current={active ? 'page' : undefined} onClick={() => { onNavigate(item.intent); onClose?.(); }}>
+        {item.label}
+      </button>
+    );
+  });
 }
 
-function NavigationMenu({ item, currentPage, onNavigate, menuState, onOpen, onRequestClose, onCloseNow }) {
+function NavigationMenu({ item, currentPage, navigationContext, onNavigate, menuState, onOpen, onRequestClose, onCloseNow }) {
   const open = menuState === 'open';
   const mounted = menuState !== 'closed';
   const ref = useRef(null);
@@ -111,10 +114,10 @@ function NavigationMenu({ item, currentPage, onNavigate, menuState, onOpen, onRe
   }
   return (
     <div ref={ref} className="app-shell__nav-group" onMouseEnter={() => onOpen(item.key)} onMouseLeave={() => onRequestClose(item.key, NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen(item.key)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose(item.key, 0); }}>
-      <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} aria-haspopup="menu" aria-expanded={open} onClick={(event) => { event.preventDefault(); onNavigate({ page: item.key, params: {} }); }} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); onOpen(item.key); window.setTimeout(() => focusItem(0), 0); } }}>
+      <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} aria-haspopup="menu" aria-expanded={open} onClick={(event) => { event.preventDefault(); onNavigate(item.intent || { page: item.key, params: {} }); }} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); onOpen(item.key); window.setTimeout(() => focusItem(0), 0); } }}>
         {item.label}<ChevronDown aria-hidden="true" size={15} />
       </a>
-      {mounted && <div className="app-shell__nav-menu" data-state={menuState} role="menu" aria-label={`${item.label}菜单`}><MenuItems items={item.children} onNavigate={onNavigate} onClose={() => onCloseNow(item.key)} /></div>}
+      {mounted && <div className="app-shell__nav-menu" data-state={menuState} role="menu" aria-label={`${item.label}菜单`}><MenuItems items={item.children} currentIntent={{ page: currentPage, params: navigationContext }} onNavigate={onNavigate} onClose={() => onCloseNow(item.key)} /></div>}
     </div>
   );
 }
@@ -140,7 +143,7 @@ function LearningTargetNavigationMenu({ menuState, onOpen, onRequestClose, onClo
   );
 }
 
-function MobileNavItems({ items, currentPage, onNavigate, onClose, onTargetSelected }) {
+function MobileNavItems({ items, currentPage, navigationContext, onNavigate, onClose, onTargetSelected }) {
   const [expanded, setExpanded] = useState(null);
   const openSelectedPath = (selection) => {
     onTargetSelected(selection);
@@ -163,7 +166,7 @@ function MobileNavItems({ items, currentPage, onNavigate, onClose, onTargetSelec
               <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} onClick={(event) => { event.preventDefault(); onNavigate(item.intent || { page: item.key, params: {} }); onClose(); }}>{item.label}</a>
               {item.children && <button type="button" aria-label={`展开${item.label}`} aria-expanded={expanded === item.key} onClick={() => setExpanded(expanded === item.key ? null : item.key)}><ChevronDown aria-hidden="true" size={17} /></button>}
             </div>
-            {item.children && expanded === item.key && <div role="menu"><MenuItems items={item.children} onNavigate={onNavigate} onClose={onClose} /></div>}
+            {item.children && expanded === item.key && <div role="menu"><MenuItems items={item.children} currentIntent={{ page: currentPage, params: navigationContext }} onNavigate={onNavigate} onClose={onClose} /></div>}
           </div>
         );
       })}
@@ -216,14 +219,61 @@ function QualificationTargetSection({
 }
 
 const profileMenuItems = [
-  { key: 'mistake_variation', label: '收藏夹', description: '错题库', icon: FolderHeart },
-  { key: 'question_favorites', label: '笔记本', description: '题目收藏', icon: BookMarked },
-  { key: 'study_notes', label: '学情分析', description: '学习笔记', icon: NotebookPen },
+  {
+    key: 'question_favorites',
+    label: '收藏夹',
+    description: '题目收藏',
+    icon: FolderHeart,
+    intent: { page: 'practice', params: { view: 'workspace', taskType: 'question_favorites' } },
+  },
+  {
+    key: 'study_notes',
+    label: '笔记本',
+    description: '学习笔记',
+    icon: NotebookPen,
+    intent: { page: 'practice', params: { view: 'workspace', taskType: 'study_notes' } },
+  },
 ];
 
+const notificationView = (item) => {
+  const category = String(item?.category || '').toLowerCase();
+  const sourceType = String(item?.source?.type || '').toLowerCase();
+  return category.includes('conflict') || sourceType.includes('conflict') ? 'conflicts' : 'governance';
+};
+
+const notificationTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
+};
+
+function NotificationPopover({ open, items, loading, onClose, onSelect, panelRef }) {
+  if (!open) return null;
+  return (
+    <section ref={panelRef} className="app-shell__notification-popover" role="dialog" aria-label="未处理通知">
+      <header>
+        <div><strong>通知</strong><span>{items.length ? `${items.length} 条未处理` : '暂无未处理通知'}</span></div>
+        <button type="button" aria-label="关闭通知" onClick={onClose}><X aria-hidden="true" size={17} /></button>
+      </header>
+      <div className="app-shell__notification-list">
+        {loading && <div className="app-shell__notification-empty" role="status">正在读取通知…</div>}
+        {!loading && items.map((item) => (
+          <button key={item.notification_id} type="button" className="app-shell__notification-item" onClick={() => onSelect(item)}>
+            <span className="app-shell__notification-dot" aria-hidden="true" />
+            <span><strong>{item.title || '学习提醒'}</strong><small>{item.message || '查看通知详情'}</small><time>{notificationTime(item.created_at)}</time></span>
+          </button>
+        ))}
+        {!loading && items.length === 0 && <div className="app-shell__notification-empty"><Bell aria-hidden="true" size={22} /><span>目前没有需要处理的通知</span></div>}
+      </div>
+      <button type="button" className="app-shell__notification-all" onClick={() => { onClose(); onSelect(null); }}>查看全部系统通知</button>
+    </section>
+  );
+}
+
 function DesktopTopbar({
-  shell, displayName, avatarUrl, avatarInitial, unreadNotifications,
-  onNavigate, onLogout, onOpenProfile, onTargetSelected,
+  shell, navigationContext, displayName, avatarUrl, avatarInitial, unreadNotifications,
+  notificationOpen, onToggleNotifications, onNavigate, onLogout, onOpenProfile, onTargetSelected,
 }) {
   const [openKey, setOpenKey] = useState(null);
   const [closingKey, setClosingKey] = useState(null);
@@ -292,7 +342,10 @@ function DesktopTopbar({
 
   const toggleProfileMenu = () => {
     if (profileMenuOpen) closeProfileMenu();
-    else openProfileMenu();
+    else {
+      onToggleNotifications(false);
+      openProfileMenu();
+    }
   };
 
   useEffect(() => {
@@ -311,9 +364,9 @@ function DesktopTopbar({
     };
   }, [profileMenuOpen]);
 
-  const navigateFromProfileMenu = (taskType) => {
+  const navigateFromProfileMenu = (intent) => {
     closeProfileMenu();
-    onNavigate({ page: 'practice', params: { view: 'workspace', taskType } });
+    onNavigate(intent);
   };
 
   return (
@@ -323,13 +376,13 @@ function DesktopTopbar({
         <nav aria-label="平台导航" className="app-shell__desktop-nav">
           {shell.primaryNav.map((item) => item.kind === 'learning-target'
             ? <LearningTargetNavigationMenu key={item.key} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} onTargetSelected={onTargetSelected} />
-            : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} onNavigate={onNavigate} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} />)}
+            : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} navigationContext={navigationContext} onNavigate={onNavigate} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} />)}
         </nav>
         <div className="app-shell__topbar-actions">
           <button type="button" className="app-shell__assistant-entry" aria-label="AI 智能助教" onClick={() => onNavigate({ page: 'assistant', params: { newConversation: true } })}>
             <MessageSquareMore aria-hidden="true" size={18} /><span>AI 智能助教</span>
           </button>
-          <button type="button" className="app-shell__topbar-icon" aria-label={'通知，' + unreadNotifications + ' 条未读'} onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}>
+          <button type="button" data-notification-trigger className="app-shell__topbar-icon" aria-label={'通知，' + unreadNotifications + ' 条未读'} aria-haspopup="dialog" aria-expanded={notificationOpen} onClick={() => { closeProfileMenu(); onToggleNotifications(); }}>
             <Bell aria-hidden="true" size={19} />
             {unreadNotifications > 0 && <span className="app-shell__notification-badge">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
           </button>
@@ -351,8 +404,8 @@ function DesktopTopbar({
                   </span>
                 </div>
                 <div className="app-shell__profile-menu-shortcuts">
-                  {profileMenuItems.map(({ key, label, description, icon: Icon }) => (
-                    <button key={key} type="button" className={'app-shell__profile-shortcut app-shell__profile-shortcut--' + key} role="menuitem" onClick={() => navigateFromProfileMenu(key)}>
+                  {profileMenuItems.map(({ key, label, description, icon: Icon, intent }) => (
+                    <button key={key} type="button" className={'app-shell__profile-shortcut app-shell__profile-shortcut--' + key} role="menuitem" onClick={() => navigateFromProfileMenu(intent)}>
                       <span className="app-shell__profile-shortcut-icon">{React.createElement(Icon, { "aria-hidden": true, size: 21 })}</span>
                       <span className="app-shell__profile-shortcut-copy"><strong>{label}</strong><small>{description}</small></span>
                     </button>
@@ -360,9 +413,7 @@ function DesktopTopbar({
                 </div>
                 <div className="app-shell__profile-menu-divider" />
                 <div className="app-shell__profile-menu-actions">
-                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onNavigate({ page: 'settings', params: { view: 'account' } }); }}><Settings aria-hidden="true" size={18} /><span>用户设置</span></button>
-                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onNavigate({ page: 'settings', params: { view: 'governance' } }); }}><Bell aria-hidden="true" size={18} /><span>系统通知{unreadNotifications ? `（${unreadNotifications}）` : ''}</span></button>
-                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onOpenProfile(); }}><UserRound aria-hidden="true" size={18} /><span>账号资料</span></button>
+                  <button type="button" role="menuitem" onClick={() => { closeProfileMenu(); onOpenProfile(); }}><UserRound aria-hidden="true" size={18} /><span>账号设置</span></button>
                   <button type="button" role="menuitem" className="app-shell__profile-menu-logout" onClick={onLogout}><LogOut aria-hidden="true" size={18} /><span>退出登录</span></button>
                 </div>
               </div>
@@ -381,6 +432,7 @@ function MobileDrawer({
   onNavigate,
   onLogout,
   displayName,
+  navigationContext,
   onTargetSelected,
 }) {
   const dialogRef = useModalFocus(open);
@@ -413,6 +465,7 @@ function MobileDrawer({
         <MobileNavItems
           items={shell.primaryNav}
           currentPage={shell.currentPage}
+          navigationContext={navigationContext}
           onNavigate={onNavigate}
           onClose={onClose}
           onTargetSelected={onTargetSelected}
@@ -438,11 +491,15 @@ function MobileDrawer({
   );
 }
 
-export default function AppShell({ currentUser, currentPage, onNavigate, onLogout, onUserUpdated, children }) {
+export default function AppShell({ currentUser, currentPage, navigationContext = {}, onNavigate, onLogout, onUserUpdated, children }) {
   const shell = getAppShellConfig({ currentUser, currentPage });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [notificationItems, setNotificationItems] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const notificationPanelRef = useRef(null);
   const drawerExitTimerRef = useRef(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [accountProfile, setAccountProfile] = useState(null);
@@ -459,17 +516,58 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
   useEffect(() => {
     let cancelled = false;
     const loadUnread = async () => {
+      setNotificationsLoading(true);
       try {
-        const response = await fetchWithAuth(`${API_BASE}/v1/notifications?status=unread&limit=1`);
+        const response = await fetchWithAuth(`${API_BASE}/v1/notifications?status=unread&limit=6`);
         const payload = await readJsonResponse(response, {});
-        if (!cancelled && response.ok) setUnreadNotifications(Number(payload.unread_count) || 0);
+        if (!cancelled && response.ok) {
+          setUnreadNotifications(Number(payload.unread_count) || 0);
+          setNotificationItems(Array.isArray(payload.items) ? payload.items : []);
+        }
       } catch {
-        if (!cancelled) setUnreadNotifications(0);
+        if (!cancelled) {
+          setUnreadNotifications(0);
+          setNotificationItems([]);
+        }
+      } finally {
+        if (!cancelled) setNotificationsLoading(false);
       }
     };
     loadUnread();
     return () => { cancelled = true; };
   }, [currentPage]);
+
+  useEffect(() => {
+    if (!notificationOpen) return undefined;
+    const closeOutside = (event) => {
+      if (!notificationPanelRef.current?.contains(event.target) && !event.target.closest?.('[data-notification-trigger]')) setNotificationOpen(false);
+    };
+    const closeOnEscape = (event) => { if (event.key === 'Escape') setNotificationOpen(false); };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [notificationOpen]);
+
+  const openNotificationDestination = async (item) => {
+    setNotificationOpen(false);
+    const view = item ? notificationView(item) : 'governance';
+    if (item?.notification_id) {
+      setNotificationItems((current) => current.filter((entry) => entry.notification_id !== item.notification_id));
+      setUnreadNotifications((current) => Math.max(0, current - 1));
+      try {
+        await fetchWithAuth(`${API_BASE}/v1/notifications/${item.notification_id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'read' }),
+        });
+      } catch {
+        // Navigation remains available even when the read receipt cannot be saved.
+      }
+    }
+    onNavigate({ page: 'settings', params: { view, ...(item?.notification_id ? { notificationId: item.notification_id } : {}) } });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -520,10 +618,13 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
     <div className="app-shell" data-mode={shell.shellMode}>
       <DesktopTopbar
         shell={shell}
+        navigationContext={navigationContext}
         displayName={displayName}
         avatarUrl={avatarUrl}
         avatarInitial={avatarInitial}
         unreadNotifications={unreadNotifications}
+        notificationOpen={notificationOpen}
+        onToggleNotifications={(force) => setNotificationOpen((current) => typeof force === 'boolean' ? force : !current)}
         onNavigate={onNavigate}
         onLogout={onLogout}
         onOpenProfile={() => setProfileOpen(true)}
@@ -542,7 +643,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
             <Menu aria-hidden="true" size={21} />
           </button>
           <ShellIdentity onNavigate={onNavigate} />
-          <button type="button" className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} onClick={() => onNavigate({ page: 'settings', params: { view: 'governance' } })}><Bell aria-hidden="true" size={18} />{unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}</button>
+          <button type="button" data-notification-trigger className="icon-button relative" aria-label={`通知，${unreadNotifications} 条未读`} aria-haspopup="dialog" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((current) => !current)}><Bell aria-hidden="true" size={18} />{unreadNotifications > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}</button>
         </header>
 
         <main
@@ -572,6 +673,7 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
         mounted={drawerMounted}
         open={drawerOpen}
         shell={shell}
+        navigationContext={navigationContext}
         displayName={displayName}
         onClose={closeDrawer}
         onNavigate={onNavigate}
@@ -583,6 +685,14 @@ export default function AppShell({ currentUser, currentPage, onNavigate, onLogou
         currentUser={currentUser}
         onClose={() => setProfileOpen(false)}
         onSaved={handleProfileSaved}
+      />
+      <NotificationPopover
+        open={notificationOpen}
+        items={notificationItems}
+        loading={notificationsLoading}
+        panelRef={notificationPanelRef}
+        onClose={() => setNotificationOpen(false)}
+        onSelect={openNotificationDestination}
       />
     </div>
   );

@@ -148,7 +148,7 @@ describe('AppShell', () => {
     expect(screen.queryByRole('menuitem', { name: '试卷生成' })).not.toBeInTheDocument();
   });
 
-  it('closes the training menu 500ms after the pointer leaves, with an exit phase', async () => {
+  it('closes the training menu 200ms after the pointer leaves, with an exit phase', async () => {
     vi.useFakeTimers();
     try {
       renderShell();
@@ -158,7 +158,7 @@ describe('AppShell', () => {
       fireEvent.mouseEnter(group);
       expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'open');
       fireEvent.mouseLeave(group);
-      await act(() => vi.advanceTimersByTimeAsync(499));
+      await act(() => vi.advanceTimersByTimeAsync(199));
       expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'open');
       await act(() => vi.advanceTimersByTimeAsync(1));
       expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'closing');
@@ -169,35 +169,72 @@ describe('AppShell', () => {
     }
   });
 
-  it('opens the user profile directly from personalization without a dropdown', async () => {
+  it('opens the learning report by default and exposes personalization views in a dropdown', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();
     renderShell({ onNavigate });
 
-    const personalization = screen.getByRole('link', { name: '个性数据' });
-    expect(personalization).not.toHaveAttribute('aria-haspopup');
-    await user.click(personalization);
+    const reports = screen.getByRole('link', { name: '个人数据' });
+    expect(reports).toHaveAttribute('aria-haspopup', 'menu');
+    await user.hover(reports);
+    expect(screen.getByRole('menuitem', { name: '学情报告' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: '学习画像' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: '复习与掌握' })).toBeVisible();
+    await user.click(reports);
 
     expect(onNavigate).toHaveBeenCalledWith({
       page: 'personalization',
-      params: { view: 'user-profile' },
+      params: { view: 'reports' },
     });
-    expect(screen.queryByRole('menu', { name: '个性数据菜单' })).not.toBeInTheDocument();
   });
 
-  it('shows settings, notifications, and logout in the avatar menu', async () => {
+  it('highlights the current personal data view in its dropdown', async () => {
+    const user = userEvent.setup();
+    renderShell({ currentPage: 'personalization', navigationContext: { view: 'user-profile' } });
+
+    await user.hover(screen.getByRole('link', { name: '个人数据' }));
+    expect(screen.getByRole('menuitem', { name: '学习画像' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('menuitem', { name: '学情报告' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('shows account settings and logout in the avatar menu', async () => {
     const onNavigate = vi.fn();
     const onLogout = vi.fn();
     const user = userEvent.setup();
     renderShell({ onNavigate, onLogout });
 
     await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
-    expect(screen.getByRole('menuitem', { name: '用户设置' })).toBeVisible();
-    expect(screen.getByRole('menuitem', { name: /系统通知/ })).toBeVisible();
+    expect(screen.queryByRole('menuitem', { name: '用户设置' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /系统通知/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '账号设置' })).toBeVisible();
     expect(screen.getByRole('menuitem', { name: '退出登录' })).toBeVisible();
 
-    await user.click(screen.getByRole('menuitem', { name: '用户设置' }));
-    expect(onNavigate).toHaveBeenCalledWith({ page: 'settings', params: { view: 'account' } });
+  });
+
+  it('routes avatar shortcuts to their matching destinations', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ onNavigate });
+
+    const clickShortcut = async (name) => {
+      await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
+      await user.click(screen.getByRole('menuitem', { name: new RegExp(name) }));
+    };
+
+    await clickShortcut('收藏夹');
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: { view: 'workspace', taskType: 'question_favorites' },
+    });
+
+    await clickShortcut('笔记本');
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: { view: 'workspace', taskType: 'study_notes' },
+    });
+
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
+    expect(screen.queryByRole('menuitem', { name: /学情分析/ })).not.toBeInTheDocument();
   });
 
   it('closes the avatar menu with Escape and an outside click', async () => {
@@ -206,11 +243,11 @@ describe('AppShell', () => {
 
     await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
     await user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('menuitem', { name: '用户设置' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: '账号设置' })).not.toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
     await user.click(screen.getByText('Dashboard content'));
-    await waitFor(() => expect(screen.queryByRole('menuitem', { name: '用户设置' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: '账号设置' })).not.toBeInTheDocument());
   });
 
   it('keeps the notification shortcut and workspace scroll contract', async () => {
@@ -221,7 +258,8 @@ describe('AppShell', () => {
     expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
     expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'contained');
     await user.click(screen.getAllByRole('button', { name: '通知，0 条未读' })[0]);
-    expect(onNavigate).toHaveBeenCalledWith({ page: 'settings', params: { view: 'governance' } });
+    expect(screen.getByRole('dialog', { name: '未处理通知' })).toBeVisible();
+    expect(onNavigate).not.toHaveBeenCalled();
 
     rerender(<AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="training-workshop" onNavigate={onNavigate} onLogout={vi.fn()}><div>Workshop</div></AppShell>);
     expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
