@@ -5892,12 +5892,11 @@ textarea:focus-visible {
 .home-portal__route-details::-webkit-scrollbar { width: 8px; }
 .home-portal__route-details::-webkit-scrollbar-track { background: transparent; }
 .home-portal__route-details::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 99px; background: rgba(42, 133, 101, .36); background-clip: padding-box; }
-.home-portal__route-details-grid { display: grid; min-height: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; background: rgba(255, 255, 255, .38); }
-.home-portal__route-details-grid article { min-width: 0; padding: 22px 26px 34px; }
-.home-portal__route-details-grid article + article { border-left: 1px solid rgba(190, 214, 204, .48); }
-.home-portal__route-details-grid h3 { margin: 0 0 18px; color: #17372e; font-size: 1rem; font-weight: 850; }
-.home-portal__route-details-grid article > div { color: #48635b; font-size: .86rem; line-height: 1.95; white-space: pre-wrap; }
-.home-portal__planning-markdown { overflow-x: auto; color: #48635b; font-size: .86rem; line-height: 1.8; white-space: normal; }
+.home-portal__planning-document { min-width: 0; min-height: 100%; background: rgba(255, 255, 255, .38); padding: 24px 28px 38px; }
+.home-portal__planning-document > section { min-width: 0; }
+.home-portal__planning-document > section + section { margin-top: 32px; border-top: 1px solid rgba(190, 214, 204, .62); padding-top: 28px; }
+.home-portal__planning-document > section > h3 { margin: 0 0 18px; color: #17372e; font-size: 1.08rem; font-weight: 850; }
+.home-portal__planning-markdown { overflow-x: hidden; color: #48635b; font-size: .86rem; line-height: 1.8; white-space: normal; }
 .home-portal__planning-markdown > :first-child { margin-top: 0; }
 .home-portal__planning-markdown > :last-child { margin-bottom: 0; }
 .home-portal__planning-markdown p { margin: 0 0 13px; }
@@ -5914,10 +5913,10 @@ textarea:focus-visible {
 .home-portal__planning-markdown li + li { margin-top: 5px; }
 .home-portal__planning-markdown li::marker { color: #2f946d; }
 .home-portal__planning-markdown strong { color: #204f3e; font-weight: 800; }
-.home-portal__planning-markdown table { width: 100%; min-width: 520px; margin: 14px 0 18px; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 1px solid #d8e9e1; border-radius: 12px; background: rgba(255, 255, 255, .78); font-size: .78rem; line-height: 1.58; }
+.home-portal__planning-markdown table { width: 100%; min-width: 0; table-layout: fixed; margin: 14px 0 18px; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 1px solid #d8e9e1; border-radius: 12px; background: rgba(255, 255, 255, .78); font-size: .76rem; line-height: 1.55; }
 .home-portal__planning-markdown th,
-.home-portal__planning-markdown td { border-right: 1px solid #e2eee8; border-bottom: 1px solid #e2eee8; padding: 10px 11px; text-align: left; vertical-align: top; }
-.home-portal__planning-markdown th { background: #eff8f3; color: #28634f; font-weight: 800; white-space: nowrap; }
+.home-portal__planning-markdown td { overflow-wrap: anywhere; word-break: break-word; white-space: normal; border-right: 1px solid #e2eee8; border-bottom: 1px solid #e2eee8; padding: 9px 8px; text-align: left; vertical-align: top; }
+.home-portal__planning-markdown th { background: #eff8f3; color: #28634f; font-weight: 800; }
 .home-portal__planning-markdown tr:last-child td { border-bottom: 0; }
 .home-portal__planning-markdown th:last-child,
 .home-portal__planning-markdown td:last-child { border-right: 0; }
@@ -12303,23 +12302,51 @@ textarea:focus-visible {
 .app-shell__main[data-page="learning-path"] .home-portal__hero-actions {
   width: auto;
   align-items: flex-end;
+  flex-direction: column;
+  gap: 7px;
 }
 
-.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__checkin {
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__checkin,
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__survey-trigger {
   width: auto;
   min-height: 34px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
   gap: 7px;
+  border: 1px solid #d7e8e0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .92);
   padding: 0 12px;
+  color: #41695c;
   font-size: .78rem;
+  font-weight: 750;
+  box-shadow: 0 5px 14px rgba(37, 99, 78, .08);
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__survey-trigger:hover,
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__survey-trigger:focus-visible {
+  border-color: #b9ddcd;
+  background: #eef9f4;
+  color: #167e5e;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-header {
+  --route-control-height: 34px;
   align-items: center;
+  flex-direction: row;
   justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 20px;
+  flex-wrap: nowrap;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 17px 18px 4px;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header::-webkit-scrollbar {
+  display: none;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-title-block {
@@ -12333,77 +12360,62 @@ textarea:focus-visible {
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-kicker h2 {
   overflow: visible;
+  margin-top: 0;
+  font-size: clamp(1rem, 1.45vw, 1.22rem);
+  line-height: 1.2;
   text-overflow: clip;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-switch {
-  flex: 0 0 270px;
-  width: 270px;
+  flex: 0 0 220px;
+  width: 220px;
   margin-left: 0;
   border-color: #bfe4d4;
+  padding: 3px;
 }
 
-.app-shell__main[data-page="learning-path"] .home-portal__route-controls {
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 0;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-left: 0;
+.app-shell__main[data-page="learning-path"] .home-portal__route-switch-indicator {
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
 }
 
-.app-shell__main[data-page="learning-path"] .home-portal__route-controls > .home-portal__route-detail-toggle,
-.app-shell__main[data-page="learning-path"] .home-portal__route-controls > .home-portal__survey-trigger {
+.app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-switch button,
+.app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-mode button {
+  min-height: var(--route-control-height);
+  padding: 0 10px;
+  font-size: .74rem;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-mode {
+  display: grid;
+  width: 220px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 0 0 220px;
+  gap: 2px;
+  padding: 3px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-detail-toggle {
   display: inline-flex;
-  min-height: 38px;
+  min-width: 88px;
+  min-height: calc(var(--route-control-height) + 6px);
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   border: 1px solid #d6e6df;
   border-radius: 999px;
   background: #fff;
-  padding: 0 12px;
+  padding: 0 13px;
   color: #5d766d;
-  font-size: .78rem;
+  font-size: .74rem;
   white-space: nowrap;
-}
-
-.app-shell__main[data-page="learning-path"] .home-portal__route-controls > .home-portal__survey-trigger {
-  gap: 5px;
-}
-
-.app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-mode button {
-  min-height: 38px;
-  padding: 0 12px;
-  font-size: .78rem;
-}
-
-@media (max-width: 1280px) {
-  .app-shell__main[data-page="learning-path"] .home-portal__route-controls {
-    flex: 1 1 100%;
-    width: 100%;
-    justify-content: flex-start;
-  }
 }
 
 @media (max-width: 720px) {
   .app-shell__main[data-page="learning-path"] .home-portal__route-header {
-    align-items: stretch;
-  }
-
-  .app-shell__main[data-page="learning-path"] .home-portal__route-title-block,
-  .app-shell__main[data-page="learning-path"] .home-portal__route-switch,
-  .app-shell__main[data-page="learning-path"] .home-portal__route-controls {
-    width: 100%;
-    flex-basis: 100%;
-  }
-
-  .app-shell__main[data-page="learning-path"] .home-portal__route-switch,
-  .app-shell__main[data-page="learning-path"] .home-portal__route-controls {
-    flex: 1 1 100%;
-  }
-
-  .app-shell__main[data-page="learning-path"] .home-portal__route-controls {
-    flex-wrap: wrap;
+    padding-inline: 14px;
   }
 }
 

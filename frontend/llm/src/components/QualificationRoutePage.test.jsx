@@ -1,4 +1,6 @@
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -200,8 +202,14 @@ describe('QualificationRoutePage', () => {
     expect([...routeHeader.children].map((child) => child.className)).toEqual([
       'home-portal__route-title-block',
       'home-portal__route-switch',
-      'home-portal__route-controls',
+      'home-portal__route-mode',
+      'home-portal__route-detail-toggle',
     ]);
+    expect(within(routeHeader).getByRole('button', { name: '规划详情' })).toBeInTheDocument();
+    expect(within(routeHeader).queryByRole('button', { name: '学情调研' })).not.toBeInTheDocument();
+    const heroActions = screen.getByLabelText('学习首页操作');
+    expect(within(heroActions).getByRole('button', { name: '今日签到' })).toBeInTheDocument();
+    expect(within(heroActions).getByRole('button', { name: '学情调研' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '进入中医基础与文化语言阶段' }));
     expect(viewButtons[1]).toHaveAttribute('aria-pressed', 'true');
@@ -220,7 +228,7 @@ describe('QualificationRoutePage', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/learning-path'))).toBe(true);
   });
 
-  it('opens the editable learner survey from the route header', async () => {
+  it('opens the editable learner survey from the hero actions', async () => {
     installHomeFetch({});
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
@@ -355,15 +363,40 @@ describe('QualificationRoutePage', () => {
     });
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: '了解详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '规划详情' }));
 
     expect(await screen.findByRole('heading', { name: '目标契约', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: '阶段' })).toBeInTheDocument();
     expect(screen.getByRole('listitem')).toHaveTextContent('完成中医基础理论复习。');
-    expect(screen.getByRole('region', { name: '长期规划和短期规划说明' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '返回' }));
+    const details = screen.getByRole('region', { name: '长期规划和短期规划说明' });
+    const planningDocument = details.querySelector('.home-portal__planning-document');
+    expect(planningDocument).toBeInTheDocument();
+    expect(planningDocument.querySelectorAll(':scope > section')).toHaveLength(2);
+    expect([...planningDocument.querySelectorAll(':scope > section > h3')].map((heading) => heading.textContent)).toEqual([
+      '长期规划',
+      '短期规划',
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: '返回路径' }));
     expect(await screen.findByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
+  });
+
+  it('keeps the learning path controls compact and lets planning tables wrap inside the page', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
+    const compactHeaderRule = [...css.matchAll(/\.app-shell__main\[data-page="learning-path"\] \.home-portal__route-header\s*\{([^}]*)\}/g)]
+      .map((match) => match[1])
+      .find((rule) => rule.includes('--route-control-height'));
+    const planningTableRule = css.match(/\.home-portal__planning-markdown table\s*\{([^}]*)\}/)?.[1] || '';
+    const planningCellRule = css.match(/\.home-portal__planning-markdown th,\s*\.home-portal__planning-markdown td\s*\{([^}]*)\}/)?.[1] || '';
+
+    expect(compactHeaderRule).toMatch(/--route-control-height:\s*34px/);
+    expect(compactHeaderRule).toMatch(/flex-direction:\s*row/);
+    expect(compactHeaderRule).toMatch(/flex-wrap:\s*nowrap/);
+    expect(compactHeaderRule).toMatch(/overflow-x:\s*auto/);
+    expect(planningTableRule).toMatch(/table-layout:\s*fixed/);
+    expect(planningTableRule).not.toMatch(/min-width:\s*520px/);
+    expect(planningCellRule).toMatch(/overflow-wrap:\s*anywhere/);
+    expect(planningCellRule).toMatch(/white-space:\s*normal/);
   });
 
   it('records a daily check-in and keeps the new homepage usable after summary failure', async () => {

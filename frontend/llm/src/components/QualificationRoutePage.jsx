@@ -295,14 +295,15 @@ function CurrentLearningPlan({
 function HomeLearningRoute({
   onNavigate,
   onCurrentProgress,
+  onSurveyClose,
   selectedTarget,
+  surveyOpen,
 }) {
   const [routeMode, setRouteMode] = useState('classic');
   const [routeView, setRouteView] = useState('cards');
   const [renderedRouteView, setRenderedRouteView] = useState('cards');
   const [routeTransitionPhase, setRouteTransitionPhase] = useState('idle');
   const routeTransitionTimerRef = useRef(null);
-  const [surveyOpen, setSurveyOpen] = useState(false);
   const [routeRevision, setRouteRevision] = useState(0);
   const [routeState, setRouteState] = useState({
     loading: true,
@@ -526,33 +527,27 @@ function HomeLearningRoute({
             学习路径
           </button>
         </div>
-        <div className="home-portal__route-controls">
-          <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
-            {routeView === 'details' ? '返回' : '了解详情'}
+        <div className="home-portal__route-mode" role="group" aria-label="学习路径类型">
+          <button
+            type="button"
+            className={routeMode === 'classic' ? 'is-active' : ''}
+            aria-pressed={routeMode === 'classic'}
+            onClick={() => selectRouteMode('classic')}
+          >
+            经典路径
           </button>
-          <button type="button" className="home-portal__survey-trigger" onClick={() => setSurveyOpen(true)}>
-            <ClipboardList aria-hidden="true" size={15} />
-            学情调研
+          <button
+            type="button"
+            className={routeMode === 'personalized' ? 'is-active' : ''}
+            aria-pressed={routeMode === 'personalized'}
+            onClick={() => selectRouteMode('personalized')}
+          >
+            个性化路径
           </button>
-          <div className="home-portal__route-mode" role="group" aria-label="学习路径类型">
-            <button
-              type="button"
-              className={routeMode === 'classic' ? 'is-active' : ''}
-              aria-pressed={routeMode === 'classic'}
-              onClick={() => selectRouteMode('classic')}
-            >
-              经典路径
-            </button>
-            <button
-              type="button"
-              className={routeMode === 'personalized' ? 'is-active' : ''}
-              aria-pressed={routeMode === 'personalized'}
-              onClick={() => selectRouteMode('personalized')}
-            >
-              个性化路径
-            </button>
-          </div>
         </div>
+        <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
+          {routeView === 'details' ? '返回路径' : '规划详情'}
+        </button>
       </header>
       <div className="home-portal__route-view-content" data-view={renderedRouteView} data-phase={routeTransitionPhase}>
       {renderedRouteView === 'orbit' && (
@@ -588,16 +583,16 @@ function HomeLearningRoute({
           {planningDetails.loading && <div className="home-portal__route-details-state" role="status">正在读取规划说明…</div>}
           {!planningDetails.loading && planningDetails.error && <div className="home-portal__route-details-state" role="alert">{planningDetails.error}</div>}
           {!planningDetails.loading && !planningDetails.error && (
-            <div className="home-portal__route-details-grid">
-              <article>
-                <h3>长期规划说明</h3>
+            <article className="home-portal__planning-document">
+              <section>
+                <h3>长期规划</h3>
                 <PlanningMarkdown content={planningDetails.longTerm} fallback="尚未制定长期规划。" />
-              </article>
-              <article>
-                <h3>短期规划说明</h3>
+              </section>
+              <section>
+                <h3>短期规划</h3>
                 <PlanningMarkdown content={planningDetails.shortTerm} fallback="尚未制定短期规划。" />
-              </article>
-            </div>
+              </section>
+            </article>
           )}
         </div>
       )}
@@ -615,15 +610,15 @@ function HomeLearningRoute({
               type="button"
               className="home-portal__survey-close"
               aria-label="关闭学情调研"
-              onClick={() => setSurveyOpen(false)}
+              onClick={onSurveyClose}
             >
               <X aria-hidden="true" size={19} />
             </button>
             <OnboardingSurveyPanel
               exitLabel="退出调研"
-              onExit={() => setSurveyOpen(false)}
+              onExit={onSurveyClose}
               onSaved={() => {
-                setSurveyOpen(false);
+                onSurveyClose?.();
                 setRouteRevision((value) => value + 1);
               }}
             />
@@ -641,6 +636,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [checkinMessage, setCheckinMessage] = useState('');
   const [currentProgress, setCurrentProgress] = useState('');
+  const [surveyOpen, setSurveyOpen] = useState(false);
   const [learningTarget, setLearningTarget] = useState({ name: '中医执业医师资格考试', examDate: '' });
   const [learningTargetReady, setLearningTargetReady] = useState(false);
   const [summaryRevision, setSummaryRevision] = useState(0);
@@ -851,9 +847,13 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       <section className="home-portal__learning-area" aria-label="学习路线与学习进度">
         <div className="home-portal__main-column">
           <section className="home-portal__hero" aria-labelledby="home-portal-title">
-            <div className="home-portal__hero-actions">
+            <div className="home-portal__hero-actions" aria-label="学习首页操作">
               <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
                 <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
+              </button>
+              <button type="button" className="home-portal__survey-trigger" onClick={() => setSurveyOpen(true)}>
+                <ClipboardList aria-hidden="true" size={15} />
+                学情调研
               </button>
             </div>
             <HeroTypewriter
@@ -872,7 +872,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             <HomeLearningRoute
               onNavigate={onNavigate}
               onCurrentProgress={setCurrentProgress}
+              onSurveyClose={() => setSurveyOpen(false)}
               selectedTarget={learningTarget}
+              surveyOpen={surveyOpen}
             />
           ) : (
             <section className="home-portal__route" aria-label="正在读取学习路径">
