@@ -437,3 +437,93 @@
         padding-inline: 28px;
     }
 }
+
+.acupuncture-model {
+    position: relative;
+    width: min(100%, 760px);
+    height: min(66vh, 620px);
+    min-height: 420px;
+    overflow: hidden;
+    border: 1px solid #24594b;
+    border-radius: 16px;
+    background: #333333;
+}
+
+.acupuncture-model__viewport {
+    position: absolute;
+    inset: 0;
+    touch-action: none;
+}
+
+.acupuncture-model__viewport canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.acupuncture-model__markers-button,
+.acupuncture-model__status,
+.acupuncture-model__count,
+.acupuncture-model__hint {
+    position: absolute;
+    z-index: 1;
+    border: 1px solid rgba(157, 236, 210, .3);
+    border-radius: 9px;
+    color: #d9fff2;
+    background: rgba(8, 34, 28, .84);
+    backdrop-filter: blur(8px);
+}
+
+.acupuncture-model__markers-button {
+    top: 12px;
+    left: 12px;
+    padding: 8px 11px;
+    cursor: pointer;
+}
+
+.acupuncture-model__status {
+    top: 14px;
+    right: 12px;
+    padding: 6px 9px;
+    color: #9ee8cf;
+    font-size: .76rem;
+}
+
+.acupuncture-model__count {
+    right: 12px;
+    bottom: 38px;
+    padding: 5px 8px;
+    font-size: .72rem;
+}
+
+.acupuncture-model__hint {
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 0;
+    padding: 4px 8px;
+    color: rgba(217, 255, 242, .72);
+    font-size: .72rem;
+    white-space: nowrap;
+}
+
+.acupuncture-model.is-interactive .acupuncture-model__viewport {
+    cursor: crosshair;
+}
+
+.acupuncture-case-parameters {
+    display: grid;
+    gap: 7px;
+    width: min(100%, 300px);
+    border: 1px solid #cfe5d8;
+    border-radius: 12px;
+    padding: 13px 15px;
+    color: #426152;
+    background: #f5fcf8;
+    text-align: left;
+    font-size: .86rem;
+}
+
+.acupuncture-case-parameters strong {
+    color: #08794f;
+}
