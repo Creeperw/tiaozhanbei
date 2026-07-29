@@ -184,22 +184,22 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         );
 
         if (step === 2) return (
-            <section className="acupuncture-card acupuncture-card--wide">
+            <section className="acupuncture-card acupuncture-card--wide acupuncture-card--fullscreen">
                 <span className="acupuncture-card__eyebrow"><MapPinned size={16} /> 第二步</span>
                 <h2>观察 3D 人体模型</h2>
                 <p>旋转、缩放模型观察人体；点击左上角按钮显示或隐藏穴位。准备好后直接进入施针。</p>
-                <AcupunctureModelCanvas expanded standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} showMarkers={showModelMarkers} revealStandardPoints={false} onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
+                <AcupunctureModelCanvas expanded fullScreen standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} showMarkers={showModelMarkers} revealStandardPoints={false} onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
                 <button className="acupuncture-primary" onClick={() => setStep(3)}>开始下针</button>
             </section>
         );
 
         if (step === 3) return (
-            <section className="acupuncture-card acupuncture-card--wide">
+            <section className="acupuncture-card acupuncture-card--wide acupuncture-card--fullscreen">
                 <span className="acupuncture-card__eyebrow"><Crosshair size={16} /> 第三步</span>
                 <h2>开始下针</h2>
                 <p>点击人体表面完成施针定位；提交前可撤销上一针并重新选择位置。</p>
                 <div className="acupuncture-needling-layout">
-                    <AcupunctureModelCanvas expanded standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} interactive onSurfacePick={placeModelNeedle} showMarkers={showModelMarkers} revealStandardPoints={false} onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
+                    <AcupunctureModelCanvas expanded fullScreen standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} interactive onSurfacePick={placeModelNeedle} showMarkers={showModelMarkers} revealStandardPoints={false} onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
                     <div className="acupuncture-controls">
                         <div className="acupuncture-insertion-choice" role="group" aria-label="选择进针类型">
                             <span>进针类型</span>
@@ -220,12 +220,12 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         );
 
         if (step === 4) return (
-            <section className="acupuncture-card">
+            <section className="acupuncture-card acupuncture-card--fullscreen">
                 <span className="acupuncture-card__eyebrow"><CheckCircle2 size={16} /> 第四步</span>
                 <h2>展示正确答案</h2>
                 <div className="acupuncture-summary-list"><span>落针数量<strong>{needles.length} 针</strong></span><span>案例留针<strong>{caseRetentionMinutes ?? '未配置'} {caseRetentionRange?.unit || ''}</strong></span></div>
                 <p>下面显示本病例的标准穴位。确认后进入评分，本次施针操作将不再修改。</p>
-                <AcupunctureModelCanvas expanded standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} showMarkers={showModelMarkers} revealStandardPoints onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
+                <AcupunctureModelCanvas expanded fullScreen standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} showMarkers={showModelMarkers} revealStandardPoints onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
                 <div className="acupuncture-case-parameters">
                     <strong>本案例施针标准</strong>
                     <span>角度：{primaryStandardPoint?.needleAngle || '未配置'}</span>

@@ -27,6 +27,7 @@ export default function AcupunctureModelCanvas({
     standardNodeNames = [],
     revealStandardPoints = false,
     expanded = false,
+    fullScreen = false,
     onStandardPointsReady,
     interactive = false,
     onSurfacePick,
@@ -234,7 +235,7 @@ export default function AcupunctureModelCanvas({
     };
 
     return (
-        <div className={`acupuncture-model${interactive ? ' is-interactive' : ''}${expanded ? ' is-expanded' : ''}`}>
+        <div className={`acupuncture-model${interactive ? ' is-interactive' : ''}${expanded ? ' is-expanded' : ''}${fullScreen ? ' is-fullscreen' : ''}`}>
             <div ref={(node) => {
                 hostRef.current = node;
             }} className="acupuncture-model__viewport" onPointerDown={handlePointerDown} />
