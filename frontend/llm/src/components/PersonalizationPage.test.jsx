@@ -107,6 +107,8 @@ describe('PersonalizationPage single-task views', () => {
     expect(screen.getByRole('heading', { name: '我的学习画像' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '基础信息' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '学习偏好' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '基础信息' }).querySelector(':scope > .user-profile-panel__card-title')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '学习偏好' }).querySelector(':scope > .user-profile-panel__card-title')).toBeInTheDocument();
     expect(screen.getByLabelText('画像完整度 38%')).toBeInTheDocument();
     expect(screen.getByText('非医学专业')).toBeInTheDocument();
     expect(screen.getByText('零基础；非医学专业')).toBeInTheDocument();
