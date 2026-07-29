@@ -47,6 +47,7 @@ export const emptyReport = {
   overview: { stage_id: 'T0', stage_name: '', summary: '', confidence: 0, due_review_count: 0 },
   dimensions: [],
   activity_trends: { days: 30, series: [] },
+  activity_summary: null,
   mastery_heatmap: [],
   mistake_distribution: [],
   data_quality: { confidence: 0, sample_count: 0, sources: [], is_sufficient_for_intervention: false },
@@ -355,7 +356,11 @@ export const isVariationSourcesPayloadValid = (data) => (
     && hasNonEmptyText(item.question_version_id)
     && hasNonEmptyText(item.stem)
     && hasNonEmptyText(item.question_type)
-    && Number.isInteger(item.difficulty)
+    && (
+      item.difficulty === undefined
+      || item.difficulty === null
+      || Number.isInteger(item.difficulty)
+    )
     && hasItemsArray(item.kp_ids) && item.kp_ids.every(hasNonEmptyText)
   ))
 );
@@ -370,7 +375,11 @@ export const isPracticeQuestionPayloadValid = (data) => (
     && hasNonEmptyText(data.question.stem)
     && hasItemsArray(data.question.options)
     && hasItemsArray(data.question.kp_ids)
-    && (data.question.difficulty === undefined || Number.isInteger(data.question.difficulty))
+    && (
+      data.question.difficulty === undefined
+      || data.question.difficulty === null
+      || Number.isInteger(data.question.difficulty)
+    )
     && hasNonEmptyText(data.question.request_id)
   ))
 );
@@ -487,10 +496,15 @@ export const isPaperSubmissionPayloadValid = (data) => (
 
 export async function loadPlanningData({ fetcher }) {
   try {
-    const [summaryResult, contextResult, multiscaleResult, candidatesResult] = await Promise.allSettled([
+    const [summaryResult, contextResult, planContextResult, multiscaleResult, candidatesResult] = await Promise.allSettled([
       fetcher({ paths: planningPaths, fallback: emptyPlan, validator: isPlanPayloadValid }),
       fetcher({
         paths: ['/v1/learning-context'],
+        fallback: {},
+        validator: (data) => data && typeof data === 'object',
+      }),
+      fetcher({
+        paths: ['/v1/learning-plans/current/context'],
         fallback: {},
         validator: (data) => data && typeof data === 'object',
       }),
@@ -505,11 +519,20 @@ export async function loadPlanningData({ fetcher }) {
         validator: isPathCandidatesValid,
       }),
     ]);
-    if (summaryResult.status !== 'fulfilled' && contextResult.status !== 'fulfilled') {
-      throw summaryResult.reason || contextResult.reason || new Error('学习规划加载失败');
+    if (summaryResult.status !== 'fulfilled'
+      && contextResult.status !== 'fulfilled'
+      && planContextResult.status !== 'fulfilled') {
+      throw summaryResult.reason
+        || contextResult.reason
+        || planContextResult.reason
+        || new Error('学习规划加载失败');
     }
     const summary = summaryResult.status === 'fulfilled' ? summaryResult.value : { data: emptyPlan, source: null };
     const learningContext = contextResult.status === 'fulfilled' ? contextResult.value.data : {};
+    const planContext = planContextResult.status === 'fulfilled' ? planContextResult.value.data : {};
+    const canonicalLongTermPlan = planContext.long_term_plan || learningContext.long_term_plan || null;
+    const canonicalShortTermPlan = planContext.short_term_plan || learningContext.short_term_plan || null;
+    const canonicalLearningTask = planContext.learning_task || learningContext.learning_task || null;
     const multiscale = multiscaleResult.status === 'fulfilled'
       ? multiscaleResult.value.data
       : null;
@@ -519,12 +542,12 @@ export async function loadPlanningData({ fetcher }) {
     const data = {
       ...emptyPlan,
       ...summary.data,
-      long_term_plan_content: String(learningContext.long_term_plan?.content || ''),
-      long_term_plan_stages: Array.isArray(learningContext.long_term_plan?.stages)
-        ? learningContext.long_term_plan.stages
+      long_term_plan_content: String(canonicalLongTermPlan?.content || ''),
+      long_term_plan_stages: Array.isArray(canonicalLongTermPlan?.stages)
+        ? canonicalLongTermPlan.stages
         : [],
-      short_term_plan_content: String(learningContext.short_term_plan?.content || ''),
-      daily_tasks: learningTaskToDailyTasks(learningContext.learning_task),
+      short_term_plan_content: String(canonicalShortTermPlan?.content || ''),
+      daily_tasks: learningTaskToDailyTasks(canonicalLearningTask),
       daily_task_timer: learningContext.daily_task_timer || null,
       multiscale,
       path_candidates: pathCandidates,
@@ -550,8 +573,24 @@ export async function loadReportsData({ fetcher }) {
       fallback: emptyReport,
       validator: isLearningInsightsPayloadValid,
     });
+    let activitySummary = null;
     let resourceReport = emptyReport.resource_match_report;
     let multiscale = null;
+    try {
+      const activityResult = await fetcher({
+        paths: ['/v1/learning-activity/summary?days=30&recent_limit=100'],
+        fallback: null,
+        validator: (value) => (
+          value
+          && typeof value === 'object'
+          && value.counters
+          && typeof value.counters === 'object'
+        ),
+      });
+      activitySummary = activityResult.data;
+    } catch {
+      activitySummary = null;
+    }
     try {
       const resourceResult = await fetcher({
         paths: ['/v1/resource-match-report?limit=12'],
@@ -576,6 +615,7 @@ export async function loadReportsData({ fetcher }) {
       report: {
         ...emptyReport,
         ...data,
+        activity_summary: activitySummary,
         resource_match_report: resourceReport,
         multiscale,
       },
@@ -956,8 +996,8 @@ export async function loadDailyTaskPracticeQuestion({ fetcher, taskItemId }) {
   try {
     const { data, source } = await fetcher({
       paths: [
-        `/v1/daily-task-items/${encodedTaskItemId}/practice/next`,
         `/daily-task-items/${encodedTaskItemId}/practice/next`,
+        `/v1/daily-task-items/${encodedTaskItemId}/practice/next`,
       ],
       fallback,
       validator: isDailyTaskPracticeQuestionPayloadValid,
@@ -976,8 +1016,8 @@ export async function recordDailyTaskVideoEvidence({ fetcher, taskItemId, eviden
   try {
     const { data, source } = await fetcher({
       paths: [
-        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence`,
         `/daily-task-items/${encodedTaskItemId}/video-evidence`,
+        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence`,
       ],
       fallback: null,
       options: {
@@ -1004,8 +1044,8 @@ export async function confirmDailyTaskIframeVideo({ fetcher, taskItemId }) {
   try {
     const { data, source } = await fetcher({
       paths: [
-        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence/confirm`,
         `/daily-task-items/${encodedTaskItemId}/video-evidence/confirm`,
+        `/v1/daily-task-items/${encodedTaskItemId}/video-evidence/confirm`,
       ],
       fallback: null,
       options: { method: 'POST', body: JSON.stringify({ confirmed: true }) },
@@ -1023,7 +1063,7 @@ export async function submitPracticeAnswer({ fetcher, question, answer, taskItem
   }
   try {
     const { data, source } = await fetcher({
-      paths: ['/v1/workshop/practice/grade', '/training/practice/grade'],
+      paths: ['/training/practice/grade', '/v1/workshop/practice/grade'],
       fallback: null,
       options: {
         method: 'POST',

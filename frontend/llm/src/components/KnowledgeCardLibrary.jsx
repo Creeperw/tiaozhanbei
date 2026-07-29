@@ -138,7 +138,18 @@ function DailyTaskVideoPlayer({ player, video, taskItemId }) {
   </>;
 }
 
-export default function KnowledgeCardLibrary({ cardId = '', kpId = '', taskItemId = '' }) {
+const normalizedResourceView = (value) => (
+  ['explanation', 'textbook', 'videos', 'questions'].includes(value) ? value : 'explanation'
+);
+
+export default function KnowledgeCardLibrary({
+  cardId = '',
+  kpId = '',
+  taskItemId = '',
+  initialResource = '',
+  directVideo = null,
+  directTitle = '',
+}) {
   const [cards, setCards] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
   const [query, setQuery] = useState('');
@@ -172,16 +183,32 @@ export default function KnowledgeCardLibrary({ cardId = '', kpId = '', taskItemI
       if (!active) return;
       if (detail?.error) setError(detail.error);
       if (detail?.card) {
-        setActiveResource('explanation');
+        setActiveResource(normalizedResourceView(initialResource));
         setActiveVideoIndex(0);
         setActiveCard(detail.card);
+      } else if (directVideo && typeof directVideo === 'object') {
+        setActiveResource('videos');
+        setActiveVideoIndex(0);
+        setActiveCard({
+          card_id: `daily-video:${taskItemId || directVideo.source_id || directVideo.url || 'current'}`,
+          kp_id: kpId,
+          title: directTitle || videoTitle(directVideo),
+          resource_bundle: {
+            knowledge_point: { title: directTitle || videoTitle(directVideo) },
+            explanation: { content: '' },
+            textbook_slices: [],
+            videos: [directVideo],
+            questions: [],
+            coverage: { fallback_used: [] },
+          },
+        });
       }
       await refresh();
       if (active) setLoading(false);
     };
     load();
     return () => { active = false; };
-  }, [cardId, kpId]);
+  }, [cardId, directTitle, directVideo, initialResource, kpId, taskItemId]);
 
   const openCard = async (id) => {
     setLoading(true);

@@ -7,23 +7,38 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from competition_app.agents.common import envelope
+from competition_app.agents.paper_blueprint_compiler import PaperBlueprintCompilerAgent
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.paper import BlueprintUnit, PaperBlueprint
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
-from competition_app.llm.schemas import PaperBlueprintModelOutput
 from competition_app.llm.stub import StubChatModel
 
 
 class PaperBlueprintAgent:
     """Expert stage one: design retrieval-ready blueprint units before retrieval."""
 
-    def __init__(self, chat_model: ChatModel | None = None) -> None:
+    def __init__(
+        self,
+        chat_model: ChatModel | None = None,
+        blueprint_compiler: PaperBlueprintCompilerAgent | None = None,
+    ) -> None:
         self.chat_model = chat_model or StubChatModel()
+        self.blueprint_compiler = (
+            blueprint_compiler or PaperBlueprintCompilerAgent(self.chat_model)
+        )
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[PaperBlueprint]:
         skill = prompt_skill_registry.load("expert_agent", "paper_blueprint")
+        conversation_scope = self._conversation_scope_context(context)
+        blueprint_request = str(context.get("user_request") or "")
+        if conversation_scope:
+            blueprint_request = (
+                f"{blueprint_request}\n"
+                "本轮指代所承接的上一轮学习主题："
+                f"{conversation_scope['previous_user_request']}"
+            )
         explicit_distribution = self._explicit_question_type_distribution(context)
         explicit_count = (
             sum(explicit_distribution.values())
@@ -39,21 +54,62 @@ class PaperBlueprintAgent:
                         prompt_skill=skill,
                         payload={
                             "phase": "paper_blueprint",
-                            "user_request": context.get("user_request", ""),
+                            "blueprint_output_mode": "natural_language_document",
+                            "user_request": blueprint_request,
+                            "conversation_scope": conversation_scope,
                             "exam_constraints": context.get("exam_constraints", {}),
                             "session_time_budget_minutes": context.get("available_minutes"),
                             "learning_scope": self._requested_learning_scope(context),
                             "planning_context": self._planning_context(context),
                             "user_profile": context.get("user_profile", {}),
-                            "output_schema": PaperBlueprintModelOutput.model_json_schema(),
+                            "output_contract": {
+                                "blueprint_document": (
+                                "一篇完整、详细、可读的自然语言试卷蓝图原稿；"
+                                "正文必须用独立单行明确“试卷标题”和“范围摘要”，"
+                                "并用独立单行写每个单元的学习目标、检索表达、"
+                                "题型偏好、目标题数、可选分值、假设和验收条件。"
+                            )
+                            },
                         },
                         permission_note=(
-                            "只生成结构化试卷蓝图和分单元检索需求；不得检索题目、选择题目、"
+                            "只生成详细自然语言试卷蓝图原稿和分单元检索需求；不得检索题目、选择题目、"
                             "生成试卷正文、答案、解析、系统ID或系统未提供的评级字段。"
                         ),
                     ),
                 )
-            normalized = self._normalize_blueprint(raw_output, context)
+            blueprint_document = str(
+                raw_output.get("blueprint_document")
+                if isinstance(raw_output, dict)
+                else raw_output
+            ).strip()
+            if not blueprint_document:
+                raise ValueError("paper blueprint agent did not provide natural-language draft")
+            compilation = await self.blueprint_compiler.compile(
+                context,
+                blueprint_document=blueprint_document,
+            )
+            if compilation.result.status != "compiled":
+                details = ", ".join(
+                    f"{issue.code}@{issue.field_path}"
+                    for issue in compilation.result.issues
+                )
+                raise ValueError(
+                    "paper blueprint draft could not be compiled: " + details
+                )
+            contract = compilation.result.contract
+            normalized = {
+                "title": contract.title,
+                "scope_summary": contract.scope_summary,
+                "duration_minutes": contract.duration_minutes,
+                "total_score": contract.total_score,
+                "assumptions": contract.assumptions,
+                "acceptance_criteria": contract.acceptance_criteria,
+                "units": [
+                    unit.model_dump(mode="python", exclude={"unit_key"})
+                    for unit in contract.units
+                ],
+            }
+            normalized = self._normalize_blueprint(normalized, context)
             user_request = str(context.get("user_request") or "")
             normalized["units"] = self._constrain_units_to_explicit_coverage(
                 normalized.get("units", []),
@@ -72,60 +128,99 @@ class PaperBlueprintAgent:
                     else self._explicit_question_types(context)
                 ),
             )
-            try:
-                output = PaperBlueprintModelOutput.model_validate(normalized)
-            except ValidationError:
-                # Keep only the fields needed by the retrieval stage and fill
-                # optional planning prose with deterministic defaults.
-                fallback_units = []
-                for index, unit in enumerate(normalized.get("units", []), start=1):
-                    fallback_units.append({
-                        "knowledge_module": str(unit.get("knowledge_module") or f"知识单元{index}"),
-                        "learning_objective": str(unit.get("learning_objective") or "掌握该知识单元的核心内容"),
-                        "retrieval_query": str(unit.get("retrieval_query") or unit.get("knowledge_module") or "相关知识"),
-                        "question_type_preferences": unit.get("question_type_preferences") or [],
-                        "required_question_count": int(unit.get("required_question_count") or 1),
-                        "score_total": unit.get("score_total"),
-                        "candidate_limit": int(unit.get("candidate_limit") or 10),
-                        "selection_rules": unit.get("selection_rules") or [],
-                    })
-                output = PaperBlueprintModelOutput.model_validate({
-                    **normalized,
-                    "units": fallback_units or [{
-                        "knowledge_module": str(context.get("user_request") or "指定知识主题"),
-                        "learning_objective": "掌握用户指定主题的核心知识",
-                        "retrieval_query": str(context.get("user_request") or "指定知识主题"),
-                        "required_question_count": 1,
-                        "candidate_limit": 5,
-                    }],
-                })
+            units = [
+                BlueprintUnit(
+                    unit_id=f"UNIT_{index:02d}",
+                    sequence=index,
+                    candidate_limit=self._candidate_limit(
+                        int(unit.get("required_question_count") or 1)
+                    ),
+                    **{
+                        key: value
+                        for key, value in unit.items()
+                        if key != "candidate_limit"
+                    },
+                )
+                for index, unit in enumerate(normalized["units"], start=1)
+            ]
         except ValidationError as exc:
             raise ValueError("paper blueprint model output violates protocol") from exc
-        units = [
-            BlueprintUnit(
-                unit_id=f"UNIT_{index:02d}",
-                sequence=index,
-                **unit.model_dump(),
-            )
-            for index, unit in enumerate(output.units, start=1)
-        ]
         blueprint = PaperBlueprint(
             blueprint_id=f"BLUEPRINT_{uuid4().hex}",
-            title=output.title,
-            source_status=output.source_status,
-            scope_summary=output.scope_summary,
-            duration_minutes=output.duration_minutes,
-            total_score=output.total_score,
+            title=normalized["title"],
+            source_status=normalized["source_status"],
+            scope_summary=normalized["scope_summary"],
+            duration_minutes=normalized.get("duration_minutes"),
+            total_score=normalized.get("total_score"),
             required_total_question_count=explicit_count,
             required_question_type_distribution=explicit_distribution,
             question_count_is_hard_constraint=(
                 explicit_count is not None
             ),
             units=units,
-            assumptions=output.assumptions,
-            acceptance_criteria=output.acceptance_criteria,
+            assumptions=normalized.get("assumptions", []),
+            acceptance_criteria=normalized.get("acceptance_criteria", []),
         )
         return envelope(context, "expert_agent", "paper_blueprint", blueprint)
+
+    @staticmethod
+    def _conversation_scope_context(context: dict[str, Any]) -> dict[str, Any]:
+        """Resolve anaphoric paper requests from the nearest prior user turn.
+
+        Planner owns task routing, while the blueprint agent owns the actual
+        exam scope.  A request such as “给我一套相关试卷” is therefore routed
+        correctly but still needs its antecedent supplied here; otherwise the
+        much larger persisted learning plan can incorrectly become the topic.
+        """
+
+        request = str(context.get("user_request") or "").strip()
+        reference_tokens = (
+            "相关",
+            "这个",
+            "上述",
+            "刚才",
+            "前面",
+            "同主题",
+            "对应",
+        )
+        if not request or not any(
+            token in request
+            for token in reference_tokens
+        ):
+            return {}
+        skipped_current = False
+        for message in reversed(list(context.get("messages") or [])):
+            if not isinstance(message, dict) or message.get("role") != "user":
+                continue
+            content = str(message.get("content") or "").strip()
+            if not content:
+                continue
+            if not skipped_current and content == request:
+                skipped_current = True
+                continue
+            if content == request:
+                continue
+            if (
+                any(token in content for token in ("试卷", "组卷", "套题"))
+                and any(token in content for token in reference_tokens)
+            ):
+                # A failed/retried “相关试卷” turn does not become its own
+                # topic. Continue walking back to the explicit learning turn.
+                continue
+            return {
+                "is_contextual_followup": True,
+                "previous_user_request": content[:800],
+                "resolution_rule": (
+                    "本轮未另行指定范围时，试卷只承接该上一轮学习主题；"
+                    "不得改用画像目标、长期阶段或短期计划作为试卷主题。"
+                ),
+            }
+        return {}
+
+    @staticmethod
+    def _candidate_limit(required_question_count: int) -> int:
+        """System-owned retrieval capacity; never sourced from model prose."""
+        return min(50, max(5, required_question_count * 2))
 
     @staticmethod
     def _explicit_question_count(context: dict[str, Any]) -> int | None:

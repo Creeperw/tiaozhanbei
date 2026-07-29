@@ -32,6 +32,19 @@ _QUESTION_TYPES = {
 }
 
 
+def _optional_difficulty(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    text = str(value).strip().upper()
+    if text.startswith("D"):
+        text = text[1:]
+    try:
+        rating = float(text)
+    except (TypeError, ValueError):
+        return None
+    return rating if 1 <= rating <= 5 else None
+
+
 @dataclass(frozen=True)
 class FormalContentImportSummary:
     data_version: str
@@ -237,7 +250,11 @@ def _upsert_questions(
         question.analysis = str(item.get("题目答案解析") or "")
         question.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
         question.question_type = _question_type(item.get("题型"))
-        question.difficulty = None
+        source_difficulty = _optional_difficulty(
+            item.get("difficulty", item.get("难度"))
+        )
+        question.difficulty = source_difficulty
+        question.difficulty_source = source_tag if source_difficulty is not None else None
         question.quality_score = 0.7
         question.source = source_tag
         question.status = "active" if kp_ids else "pending_link"
@@ -253,7 +270,8 @@ def _upsert_questions(
         mirror.question_content = question.stem
         mirror.answer_json = json.dumps([question.answer], ensure_ascii=False)
         mirror.explanation = question.analysis
-        mirror.difficulty = None
+        mirror.difficulty = source_difficulty
+        mirror.difficulty_source = source_tag if source_difficulty is not None else None
         mirror.kp_ids_json = question.kp_ids_json
 
         version_id = _formal_version_id(question_id, source_tag)
@@ -269,7 +287,10 @@ def _upsert_questions(
         version.stem = question.stem
         version.answer = question.answer
         version.analysis = question.analysis
-        version.standard_difficulty = None
+        version.standard_difficulty = (
+            int(source_difficulty) if source_difficulty is not None else None
+        )
+        version.difficulty_source = source_tag if source_difficulty is not None else None
         version.source_kind = source_tag
         version.status = "active"
         db.flush()

@@ -88,6 +88,66 @@ class MarkdownMemoryUploadLimitsTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
 
+    def _candidate(self, *, status="pending"):
+        db = self.Session()
+        try:
+            candidate = database.MemoryCandidate(
+                user_id=1,
+                title="学习偏好",
+                content="喜欢先理解后练习。",
+                status=status,
+            )
+            db.add(candidate)
+            db.commit()
+            db.refresh(candidate)
+            return candidate.id
+        finally:
+            db.close()
+
+    def test_promote_candidate_retry_returns_same_memory(self):
+        candidate_id = self._candidate()
+        payload = {"category": "preference", "importance": "normal"}
+
+        first = self.client.patch(
+            f"/personalization/candidates/{candidate_id}/promote", json=payload
+        )
+        second = self.client.patch(
+            f"/personalization/candidates/{candidate_id}/promote", json=payload
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.json()["memory"]["id"], second.json()["memory"]["id"])
+        self.assertTrue(second.json()["replayed"])
+        db = self.Session()
+        try:
+            self.assertEqual(db.query(database.PersonalizationMemory).count(), 1)
+        finally:
+            db.close()
+
+    def test_promote_ignored_candidate_is_rejected(self):
+        candidate_id = self._candidate(status="ignored")
+
+        response = self.client.patch(
+            f"/personalization/candidates/{candidate_id}/promote",
+            json={"category": "preference", "importance": "normal"},
+        )
+
+        self.assertEqual(response.status_code, 409)
+
+    def test_promoted_candidate_cannot_be_reset(self):
+        candidate_id = self._candidate()
+        self.client.patch(
+            f"/personalization/candidates/{candidate_id}/promote",
+            json={"category": "preference", "importance": "normal"},
+        )
+
+        response = self.client.put(
+            f"/personalization/candidates/{candidate_id}", json={"status": "pending"}
+        )
+
+        self.assertEqual(response.status_code, 409)
+
 
 if __name__ == "__main__":
     unittest.main()

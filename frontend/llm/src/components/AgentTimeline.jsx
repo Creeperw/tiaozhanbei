@@ -179,7 +179,7 @@ export function AgentTimeline({
     >
       <header className="agent-desk__header">
         <div>
-          <span className="agent-desk__eyebrow">六智能体协作</span>
+          <span className="agent-desk__eyebrow">多智能体协作</span>
           <h2>{title}</h2>
           <p>{activeRole ? `${activeRole.label}正在处理` : nodes.length ? `已完成 ${completedCount} 个环节` : '发送消息后显示实时进度'}</p>
         </div>

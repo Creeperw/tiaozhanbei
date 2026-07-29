@@ -2,13 +2,16 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
+import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from './WorkshopSaveActions';
 import * as api from './workshopLibraryApi';
 
 vi.mock('./workshopLibraryApi', () => ({
   loadFavoriteFolders: vi.fn(),
+  loadNoteFolders: vi.fn(),
   createFavoriteFolder: vi.fn(),
+  createNoteFolder: vi.fn(),
   saveFavorite: vi.fn(),
+  deleteFavorite: vi.fn(),
   createNote: vi.fn(),
 }));
 
@@ -27,6 +30,7 @@ describe('WorkshopSaveActions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     api.loadFavoriteFolders.mockResolvedValue({ items: [{ folder_id: 'F1', name: '方剂重点' }] });
+    api.loadNoteFolders.mockResolvedValue({ items: [{ folder_id: 'N1', name: '默认笔记本' }] });
   });
 
   it('saves a graded question into a selected folder', async () => {
@@ -48,12 +52,30 @@ describe('WorkshopSaveActions', () => {
     render(<NoteQuestionButton question={question} source="智能组卷" />);
 
     fireEvent.click(screen.getByRole('button', { name: '记笔记' }));
+    await screen.findByRole('option', { name: '默认笔记本' });
     fireEvent.change(screen.getByPlaceholderText(/写下解题思路/), { target: { value: '记住人参为君药。' } });
     fireEvent.click(screen.getByRole('button', { name: '保存笔记' }));
 
     await waitFor(() => expect(api.createNote).toHaveBeenCalledWith(expect.objectContaining({
-      title: '智能组卷 · 第 1 题', context: question.content, resource_id: 'Q1',
+      title: '智能组卷 · 第 1 题', context: { ...question.content, notebook: '默认笔记本' }, resource_id: 'Q1',
     })));
     expect(screen.getByText('笔记已保存')).toBeInTheDocument();
+  });
+
+  it('favorites a question immediately from the solving screen', async () => {
+    api.saveFavorite.mockResolvedValue({ favorite: { favorite_id: 'V1' } });
+    render(<FavoriteQuestionIconButton question={question} source="题目训练" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '收藏本题' }));
+    await waitFor(() => expect(api.saveFavorite).toHaveBeenCalledWith(expect.objectContaining({
+      folder_id: 'F1',
+      resource_id: 'Q1',
+      source: '题目训练',
+    })));
+    const removeButton = screen.getByRole('button', { name: '取消收藏本题' });
+    expect(removeButton).toBeEnabled();
+    fireEvent.click(removeButton);
+    await waitFor(() => expect(api.deleteFavorite).toHaveBeenCalledWith('V1'));
+    expect(screen.getByRole('button', { name: '收藏本题' })).toBeEnabled();
   });
 });

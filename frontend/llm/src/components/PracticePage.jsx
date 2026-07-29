@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
-  ArrowUpRight,
+  ArrowRight,
   BookMarked,
+  CalendarDays,
+  ChevronRight,
+  CirclePlay,
   ClipboardCheck,
+  Clock3,
   FileText,
   Files,
   FolderHeart,
   HeartPulse,
-  Lightbulb,
   NotebookPen,
-  Sparkles,
+  Stethoscope,
   Target,
+  TrendingUp,
   UploadCloud,
 } from 'lucide-react';
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
@@ -27,7 +31,6 @@ import KnowledgeCardLibrary from './KnowledgeCardLibrary';
 import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
 import QuestionFavoritesPanel from './QuestionFavoritesPanel';
 import StudyNotesPanel from './StudyNotesPanel';
-import { isTrainingTaskResultApproved } from '../pageDataLoaders.js';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -180,51 +183,53 @@ function ArtifactResult({ taskResult }) {
 
 const trainingCards = [
   {
-    key: 'question_training',
+    key: 'topic_training',
     initialMode: 'objective',
-    title: '综合套题',
-    description: '覆盖核心知识点，系统巩固基础能力。',
-    icon: ClipboardCheck,
-    tone: 'emerald',
+    title: '专题训练',
+    description: '按教材章节定位知识点，聚焦薄弱环节精准提升。',
+    icon: Stethoscope,
+    tone: 'teal',
   },
   {
     key: 'paper_workspace',
     title: '智能组卷',
-    description: '按学习目标组卷，灵活安排练习节奏。',
+    description: '自选题型与题量，AI 审核生成试卷，支持练习或限时测试。',
     icon: Files,
     tone: 'green',
   },
   {
-    key: 'special_training',
-    initialMode: 'case_training',
-    title: '专项训练',
-    description: '聚焦案例简答，针对题型强化训练。',
-    icon: Target,
-    tone: 'teal',
-  },
-  {
-    key: 'topic_training',
+    key: 'question_training',
     initialMode: 'objective',
-    title: '专题训练',
-    description: '按知识点训练，承接每日任务并覆盖全部教材。',
-    icon: Lightbulb,
-    tone: 'cyan',
+    title: '综合套题',
+    description: '从正式题库抽取客观题与案例，模拟综合考试场景。',
+    icon: ClipboardCheck,
+    tone: 'emerald',
   },
   {
     key: 'ai_patient_simulation',
     title: '模拟病患',
-    description: '置身临床情境，训练辨证与问诊思路。',
+    description: 'AI 扮演患者，训练问诊、辨证与处方全流程能力。',
     icon: HeartPulse,
     tone: 'rose',
   },
-  {
-    key: 'question_workspace',
-    title: '上传题库',
-    description: '上传学习资料，沉淀个人专属题库。',
-    icon: UploadCloud,
-    tone: 'amber',
-  },
 ];
+
+const featuredTrainingCard = {
+  key: 'special_training',
+  initialMode: 'case_training',
+  title: '专项训练',
+  description: '覆盖核心知识点，系统巩固基础能力。',
+  icon: Target,
+  tone: 'cyan',
+};
+
+const uploadQuestionBankCard = {
+  key: 'question_workspace',
+  title: '上传题库',
+  description: '上传学习资料，沉淀个人专属题库。',
+  icon: UploadCloud,
+  tone: 'amber',
+};
 
 const utilityCards = [
   {
@@ -236,19 +241,132 @@ const utilityCards = [
   },
   {
     key: 'question_favorites',
-    title: '知识收藏',
-    description: '汇总重点内容，随时回顾复习。',
+    title: '收藏夹',
+    description: '收藏重点题目与解析，构建个人知识库随时回顾。',
     icon: BookMarked,
     available: true,
   },
   {
     key: 'study_notes',
-    title: '学习笔记',
-    description: '沉淀学习心得，形成个人知识脉络。',
+    title: '笔记本',
+    description: '按笔记本整理心得，沉淀学习思考。',
     icon: NotebookPen,
     available: true,
   },
 ];
+
+const DEFAULT_TRAINING_OVERVIEW_STATS = Object.freeze({
+  streakDays: null,
+  todayAccuracy: null,
+  windowPracticeCount: null,
+  todayGoal: 20,
+  averageAccuracy: null,
+  totalHours: null,
+  totalQuestions: null,
+  recentTaskKey: 'question_training',
+});
+
+const finiteNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const nonNegativeNumberOrNull = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  return parsed === null ? null : Math.max(0, parsed);
+};
+
+const percentageOrNull = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  return parsed === null ? null : Math.min(100, Math.max(0, parsed));
+};
+
+const resumableTrainingCards = [
+  featuredTrainingCard,
+  ...trainingCards,
+  ...utilityCards,
+  uploadQuestionBankCard,
+  {
+    key: 'knowledge_cards',
+    title: '知识卡片',
+    initialMode: 'knowledge_cards',
+  },
+];
+
+function normalizeTrainingOverviewStats(stats = {}) {
+  const safeStats = stats && typeof stats === 'object' && !Array.isArray(stats) ? stats : {};
+  const recentTaskKey = resumableTrainingCards.some((card) => card.key === safeStats.recentTaskKey)
+    ? safeStats.recentTaskKey
+    : DEFAULT_TRAINING_OVERVIEW_STATS.recentTaskKey;
+
+  return {
+    streakDays: nonNegativeNumberOrNull(safeStats.streakDays),
+    todayAccuracy: percentageOrNull(safeStats.todayAccuracy),
+    windowPracticeCount: nonNegativeNumberOrNull(safeStats.windowPracticeCount),
+    todayGoal: nonNegativeNumberOrNull(safeStats.todayGoal) ?? DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
+    averageAccuracy: percentageOrNull(safeStats.averageAccuracy),
+    totalHours: nonNegativeNumberOrNull(safeStats.totalHours),
+    totalQuestions: nonNegativeNumberOrNull(safeStats.totalQuestions),
+    recentTaskKey,
+  };
+}
+
+const scoreAsPercentage = (value) => {
+  const parsed = finiteNumberOrNull(value);
+  if (parsed === null) return null;
+  return Math.round((parsed <= 1 ? parsed * 100 : parsed) * 10) / 10;
+};
+
+const recentTaskKeyFromActivity = (activity = {}) => {
+  const source = `${activity.resource_type || ''} ${activity.activity_type || ''}`.toLowerCase();
+  if (source.includes('favorite')) return 'question_favorites';
+  if (source.includes('note')) return 'study_notes';
+  if (source.includes('mistake')) return 'mistake_variation';
+  if (source.includes('paper')) return 'paper_workspace';
+  if (source.includes('patient') || source.includes('case')) return 'ai_patient_simulation';
+  if (source.includes('topic')) return 'topic_training';
+  if (source.includes('special') || source.includes('knowledge_point')) return 'special_training';
+  return source.includes('question') || source.includes('practice') ? 'question_training' : null;
+};
+
+const isScoredTrainingActivity = (activity = {}) => {
+  const activityType = String(activity.activity_type || '').toLowerCase();
+  return ['question', 'practice', 'paper', 'case', 'grading', 'exam']
+    .some((type) => activityType.includes(type));
+};
+
+const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, checkin = {}) => {
+  const lifetime = statistics?.lifetime || {};
+  const currentWindow = statistics?.current_window || {};
+  const recentActivities = Array.isArray(activitySummary?.recent_activities)
+    ? activitySummary.recent_activities
+    : [];
+  const latestResumableActivity = recentActivities.find(recentTaskKeyFromActivity);
+  const focusMinutes = nonNegativeNumberOrNull(lifetime.focus_minutes);
+
+  // Today accuracy — filter activities from today only
+  const todayStr = String(activitySummary?.calculated_at || new Date().toISOString()).slice(0, 10);
+  const todayActivities = recentActivities.filter(
+    (a) => isScoredTrainingActivity(a) && String(a.timestamp || a.created_at || '').slice(0, 10) === todayStr,
+  );
+  const todayScores = todayActivities.map((a) => finiteNumberOrNull(a?.score)).filter((s) => s !== null);
+  const todayAccuracy = todayScores.length > 0
+    ? todayScores.reduce((sum, s) => sum + (s <= 1 ? s * 100 : s), 0) / todayScores.length
+    : null;
+
+  return {
+    streakDays: nonNegativeNumberOrNull(checkin?.streak),
+    todayAccuracy: todayAccuracy !== null ? Math.round(todayAccuracy * 10) / 10 : null,
+    windowPracticeCount: nonNegativeNumberOrNull(currentWindow.questions_completed),
+    todayGoal: DEFAULT_TRAINING_OVERVIEW_STATS.todayGoal,
+    averageAccuracy: scoreAsPercentage(currentWindow.score_rate),
+    totalHours: focusMinutes === null ? null : Math.round((focusMinutes / 60) * 10) / 10,
+    totalQuestions: nonNegativeNumberOrNull(lifetime.questions_completed),
+    recentTaskKey: recentTaskKeyFromActivity(latestResumableActivity)
+      || DEFAULT_TRAINING_OVERVIEW_STATS.recentTaskKey,
+  };
+};
 
 const workspaceTitles = {
   question_training: '综合套题',
@@ -258,8 +376,8 @@ const workspaceTitles = {
   mistake_variation: '错题库',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
-  question_favorites: '知识收藏',
-  study_notes: '学习笔记',
+  question_favorites: '收藏夹',
+  study_notes: '笔记本',
 };
 
 const legacyTaskTypes = {
@@ -276,44 +394,132 @@ const normalizeTaskIntent = (taskType = '') => legacyTaskTypes[taskType] || {
 };
 
 function TrainingBannerIllustration() {
+  const [hint, setHint] = useState('快来跟我一起练习吧');
+  const phrases = ['快来跟我一起练习吧', '今天也要加油哦', '温故而知新', '学而时习之', '坚持就是胜利'];
   return (
-    <div className="practice-overview__illustration" aria-hidden="true">
-      <div className="practice-overview__speech-bubble">快来跟我一起练习吧</div>
-      <img
-        className="practice-overview__character"
-        src="/assistant-character/lizhizhen-center-cutout.png"
-        alt=""
-      />
+    <div className="practice-overview__illustration">
+      <span className="practice-overview__character-note" aria-live="polite">{hint}</span>
+      <button
+        type="button"
+        className="practice-overview__character-button"
+        onClick={() => {
+          const next = phrases.filter((phrase) => phrase !== hint);
+          setHint(next[Math.floor(Math.random() * next.length)]);
+        }}
+        aria-label="和李时珍互动"
+      >
+        <img
+          className="practice-overview__character"
+          src="/assistant-character/lizhizhen-center-cutout.png"
+          alt=""
+        />
+      </button>
     </div>
   );
 }
 
-function TrainingOverview({ onOpenModule }) {
+function OverviewMetricCard({ icon: Icon, label, value, hint, tone = 'green' }) {
+  return (
+    <div className={`practice-overview__hero-metric practice-overview__hero-metric--${tone}`}>
+      <span className="practice-overview__metric-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 21 })}</span>
+      <span className="practice-overview__metric-copy">
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <em>{hint}</em>
+      </span>
+    </div>
+  );
+}
+
+function OverviewSummaryMetric({ icon: Icon, label, value, hint, tone = 'green', progress }) {
+  return (
+    <div className={`practice-overview__summary-metric practice-overview__summary-metric--${tone}`}>
+      <span className="practice-overview__summary-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 22 })}</span>
+      <span className="practice-overview__summary-copy">
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <em>{hint}</em>
+        {progress !== undefined && (
+          <span
+            className="practice-overview__progress"
+            role="progressbar"
+            aria-label="今日目标完成度"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress}
+          >
+            <span style={{ width: `${progress}%` }} />
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function TrainingOverview({ onOpenModule, overviewStats }) {
+  const stats = normalizeTrainingOverviewStats(overviewStats);
+  const recentCard = resumableTrainingCards
+    .find((card) => card.key === stats.recentTaskKey) || trainingCards[2];
+  const formatPercent = (value) => value === null ? '--' : `${value}%`;
+  const formatDays = (value) => value === null ? '--' : `${value} 天`;
+  const formatHours = (value) => value === null ? '--' : `${value} 小时`;
+  const formatQuestions = (value) => value === null ? '累计练习待接入' : `累计练习 ${value} 题`;
+
   return (
     <section className="practice-overview" aria-labelledby="practice-overview-title">
       <header className="practice-overview__banner">
-        <div>
-          <span className="practice-overview__eyebrow"><Sparkles size={16} aria-hidden="true" />训练中心</span>
-          <h1 id="practice-overview-title">训练工坊，实战精进</h1>
-          <p>聚焦实战训练，强化能力，在每一次复盘中稳步精进。</p>
+        <div className="practice-overview__hero-copy">
+          <span className="practice-overview__greeting"><span>准备开始今天的训练</span> <span aria-hidden="true">🌿</span></span>
+          <h1 id="practice-overview-title">训练工坊</h1>
+          <p>今日建议完成 <strong>{stats.todayGoal}</strong> 道综合题，预计 <strong>15</strong> 分钟</p>
+          <div className="practice-overview__hero-actions">
+            <button type="button" className="practice-overview__primary-action" onClick={() => onOpenModule(featuredTrainingCard)}>
+              <CirclePlay aria-hidden="true" size={18} />开始今日训练
+            </button>
+            <button type="button" className="practice-overview__secondary-action" onClick={() => onOpenModule(recentCard)}>
+              <Clock3 aria-hidden="true" size={17} />继续上次练习
+            </button>
+          </div>
+        </div>
+        <div className="practice-overview__hero-metrics">
+          <OverviewMetricCard
+            icon={CalendarDays}
+            label="连续学习"
+            value={formatDays(stats.streakDays)}
+            hint="再接再厉，保持节奏"
+          />
+          <OverviewMetricCard
+            icon={TrendingUp}
+            label="今日正确率"
+            value={formatPercent(stats.todayAccuracy)}
+            hint="稳保持，稳步提升"
+            tone="mint"
+          />
         </div>
         <TrainingBannerIllustration />
       </header>
 
       <div className="practice-overview__layout">
-        <section className="practice-overview__main" aria-label="训练路径">
-          <div className="practice-overview__section-heading">
-            <div>
-              <span>训练路径</span>
-              <h2>选择今天的练习方式</h2>
-            </div>
-          </div>
+        <section className="practice-overview__main" aria-label="训练模块">
+          <button type="button" className="practice-overview__featured-card" onClick={() => onOpenModule(featuredTrainingCard)}>
+            <span className="practice-overview__featured-icon"><Target aria-hidden="true" size={30} /></span>
+            <span className="practice-overview__featured-copy">
+              <span className="practice-overview__featured-title"><strong>{featuredTrainingCard.title}</strong><em>推荐</em></span>
+              <small>覆盖核心知识点，系统巩固基础能力。</small>
+              <span>20 题 <i /> 15 分钟 <i /> 覆盖核心知识点</span>
+            </span>
+            <span className="practice-overview__featured-action">
+              <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
+              <small>上次练习：待接入</small>
+              <small>正确率：{formatPercent(stats.todayAccuracy)}</small>
+            </span>
+          </button>
           <div className="practice-overview__training-grid">
             {trainingCards.map((card) => {
               const Icon = card.icon;
               return (
                 <button
-                  key={`${card.title}-${card.key}`}
+                  key={card.key}
                   type="button"
                   className={`practice-overview__training-card practice-overview__training-card--${card.tone}`}
                   onClick={() => onOpenModule(card)}
@@ -323,65 +529,125 @@ function TrainingOverview({ onOpenModule }) {
                     <strong>{card.title}</strong>
                     <small>{card.description}</small>
                   </span>
-                  <ArrowUpRight className="practice-overview__card-arrow" aria-hidden="true" size={20} />
+                  <ChevronRight className="practice-overview__card-arrow" aria-hidden="true" size={19} />
                 </button>
               );
             })}
           </div>
+
+          <section className="practice-overview__summary" role="region" aria-label="学习概览">
+            <OverviewSummaryMetric
+              icon={CalendarDays}
+              label="近 30 天练习"
+              value={stats.windowPracticeCount === null ? '--' : `${stats.windowPracticeCount} 题`}
+              hint="正式审核完成题目"
+            />
+            <OverviewSummaryMetric
+              icon={Target}
+              label="平均正确率"
+              value={formatPercent(stats.averageAccuracy)}
+              hint={stats.averageAccuracy === null ? '暂无数据' : '继续保持'}
+            />
+            <OverviewSummaryMetric
+              icon={Clock3}
+              label="累计学习"
+              value={formatHours(stats.totalHours)}
+              hint={formatQuestions(stats.totalQuestions)}
+              tone="purple"
+            />
+          </section>
         </section>
 
-        <aside className="practice-overview__utilities" aria-label="常用学习工具">
-          <div className="practice-overview__section-heading">
-            <div>
-              <span>常用工具</span>
-              <h2>复盘与沉淀</h2>
-            </div>
-          </div>
+        <aside className="practice-overview__utilities" aria-label="学习工具">
           <div className="practice-overview__utility-list">
-            {utilityCards.map((card) => {
+            {utilityCards.filter((card) => card.available).map((card) => {
               const Icon = card.icon;
-              const content = <>
-                <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
-                <span><strong>{card.title}</strong><small>{card.description}</small></span>
-              </>;
-              return card.available ? (
+              return (
                 <button
                   key={card.title}
                   type="button"
                   className="practice-overview__utility-card"
                   onClick={() => onOpenModule(card)}
                 >
-                  {content}
+                  <span className="practice-overview__utility-icon"><Icon aria-hidden="true" size={22} /></span>
+                  <span><strong>{card.title}</strong><small>{card.description}</small></span>
+                  <ChevronRight aria-hidden="true" size={18} />
                 </button>
-              ) : (
-                <div key={card.title} className="practice-overview__utility-card" aria-disabled="true">
-                  {content}
-                </div>
               );
             })}
+            <button
+              type="button"
+              className="practice-overview__utility-card practice-overview__utility-card--upload"
+              onClick={() => onOpenModule(uploadQuestionBankCard)}
+            >
+              <span className="practice-overview__utility-icon"><UploadCloud aria-hidden="true" size={22} /></span>
+              <span><strong>上传题库</strong><small>上传学习资料，沉淀个人专属题库。</small><em>支持 Word / Excel / TXT · 智能解析</em></span>
+              <ChevronRight aria-hidden="true" size={18} />
+            </button>
           </div>
         </aside>
       </div>
-
-      <footer className="practice-overview__summary" aria-label="学习摘要">
-        <span><ClipboardCheck aria-hidden="true" size={18} /><b>今日练习</b><em>暂无记录</em></span>
-        <span><Target aria-hidden="true" size={18} /><b>正确率</b><em>暂无记录</em></span>
-        <span><BookMarked aria-hidden="true" size={18} /><b>累计学习</b><em>暂无记录</em></span>
-        <p>保持练习，积累每一次进步。</p>
-      </footer>
     </section>
   );
 }
 
-export default function PracticePage({ navigationContext = {} }) {
+export default function PracticePage({
+  navigationContext = {},
+  overviewStats,
+  onNavigate,
+}) {
   const selectedKnowledgePoint = practiceContextFromIntent(navigationContext);
   const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
   const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
   const [activeInitialMode, setActiveInitialMode] = useState(() => initialTaskIntent.initialMode);
-  const [taskResult, setTaskResult] = useState(null);
-  const [mobilePage, setMobilePage] = useState('task');
   const [view, setView] = useState(() => (navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'));
+  const [loadedOverviewStats, setLoadedOverviewStats] = useState(DEFAULT_TRAINING_OVERVIEW_STATS);
   const taskItemId = navigationContext.taskItemId || navigationContext.task_item_id || '';
+  const returnIntent = navigationContext.returnTo;
+  const returnLabel = returnIntent?.page === 'assistant'
+    ? '返回智能助教'
+    : returnIntent?.page === 'qualification-route'
+      ? '返回今日学习'
+      : returnIntent?.page === 'personalization' && returnIntent?.params?.view === 'reports'
+        ? '返回学情报告'
+        : returnIntent?.page === 'practice' && returnIntent?.params?.view === 'textbook-chapters'
+          ? '返回教材学习'
+      : '返回训练工坊';
+
+  const leaveWorkspace = () => {
+    if (returnIntent && onNavigate) {
+      onNavigate(returnIntent);
+      return;
+    }
+    setView('overview');
+  };
+
+  useEffect(() => {
+    if (overviewStats !== undefined) return undefined;
+
+    let active = true;
+    const requestOverview = (path) => fetchJsonWithAuthFallback({
+      paths: [path],
+      fallback: {},
+    }).then((result) => result.data).catch(() => ({}));
+
+    // Auto check-in when visiting training workshop
+    fetchJsonWithAuthFallback({ paths: ['/v1/checkin'], fallback: {}, options: { method: 'POST', body: '{}' } }).catch(() => {});
+
+    Promise.all([
+      requestOverview('/v1/learning-statistics/overview?days=30'),
+      requestOverview('/v1/learning-activity/summary?days=7&recent_limit=100'),
+      requestOverview('/v1/checkin'),
+    ]).then(([statistics, activitySummary, checkin]) => {
+      if (active) {
+        setLoadedOverviewStats(buildTrainingOverviewStats(statistics, activitySummary, checkin));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [overviewStats]);
 
   useEffect(() => {
     const request = async (path, body) => {
@@ -408,46 +674,31 @@ export default function PracticePage({ navigationContext = {} }) {
 
   const handlePracticeResult = (result, question) => {
     const grading = result?.grading || {};
-    setTaskResult({
-      task_id: result?.attempt_id || `practice-${question.question_id}`,
-      task_type: 'practice_grading',
-      status: 'completed',
-      title: `${question.question_type}批改结果`,
-      summary: grading.is_correct ? '回答正确，学习记录已更新。' : '回答错误，已进入错题记录。',
-      artifact: {
-        artifact_type: 'grading_result',
-        title: '练习批改结果',
-        content: { grading, remediation: {} },
-      },
-      evidence_pack: {},
-      audit: { decision: 'pass', reason: '正式题库受控批改已完成' },
-      trace: [],
-      learning_updates: { writeback: result?.writeback || {} },
-      next_actions: [],
-    });
-    setMobilePage('result');
+    void grading;
+    void question;
   };
 
   const openWorkshopModule = ({ key, initialMode }) => {
     setActiveTaskType(key);
     setActiveInitialMode(initialMode || key);
-    setTaskResult(null);
-    setMobilePage('task');
     setView('workspace');
   };
 
-  const taskResultApproved = isTrainingTaskResultApproved(taskResult);
-
   if (view === 'overview') {
-    return <TrainingOverview onOpenModule={openWorkshopModule} />;
+    return (
+      <TrainingOverview
+        onOpenModule={openWorkshopModule}
+        overviewStats={overviewStats ?? loadedOverviewStats}
+      />
+    );
   }
 
   if (activeTaskType === 'question_workspace') {
     return (
       <div className="space-y-5 text-slate-800">
         <div className="practice-workspace__toolbar">
-          <button type="button" className="practice-workspace__back" onClick={() => setView('overview')}>
-            <ArrowLeft aria-hidden="true" size={18} />返回训练工坊
+          <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}>
+            <ArrowLeft aria-hidden="true" size={18} />{returnLabel}
           </button>
         </div>
         <QuestionWorkspacePage />
@@ -458,50 +709,29 @@ export default function PracticePage({ navigationContext = {} }) {
   const isSP = activeTaskType === 'ai_patient_simulation';
 
   if (isSP) {
-    return <SimulatedPatientChat onBack={() => setView('overview')} />;
+    return <SimulatedPatientChat onBack={leaveWorkspace} />;
   }
 
   return (
-    <div className="space-y-5 text-slate-800">
-      <div className="practice-workspace__toolbar">
-        <button type="button" className="practice-workspace__back" onClick={() => setView('overview')}>
-          <ArrowLeft aria-hidden="true" size={18} />返回训练工坊
+    <div className={`practice-workspace practice-workspace--${activeTaskType} space-y-5 text-slate-800`}>
+      <div className="flex items-center gap-4 border-b border-slate-200 pb-4">
+        <button type="button" className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50" onClick={leaveWorkspace}>
+          <ArrowLeft aria-hidden="true" size={16} />{returnLabel}
         </button>
-      </div>
-      <header>
-        <span className="app-shell__section-label">训练工坊</span>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
-      </header>
-
-      <div className="practice-mobile-tabs" role="tablist" aria-label="移动端训练视图">
-        {[
-          ['task', '任务'],
-          ['result', '结果'],
-        ].map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={mobilePage === key}
-            onClick={() => setMobilePage(key)}
-          >
-            {label}
-          </button>
-        ))}
+        <h1 className="text-2xl font-bold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
       </div>
 
       {selectedKnowledgePoint && (
         <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" aria-label="当前考纲知识点">
           <div className="font-semibold">当前训练上下文：{selectedKnowledgePoint.kpName}</div>
-          <div className="mt-1 font-mono text-xs text-emerald-800">{selectedKnowledgePoint.kpId}</div>
           <p className="mt-2 leading-6 text-emerald-900">
-            该知识点已带入训练工坊；当前兼容示例题不代表该知识点的正式题目，正式题源筛选将在题库接入后启用。
+            已按该知识点筛选训练内容，作答结果会写回掌握度与复习记录。
           </p>
         </section>
       )}
 
       <div className="min-w-0 space-y-5">
-          <section data-mobile-active={String(mobilePage === 'task')} className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
+          <section className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
             {activeTaskType === 'question_training' && !taskItemId ? (
               <QualificationPaperPanel enabled />
             ) : activeTaskType === 'mistake_variation' ? (
@@ -513,6 +743,9 @@ export default function PracticePage({ navigationContext = {} }) {
                 cardId={navigationContext.cardId || navigationContext.card_id || ''}
                 kpId={navigationContext.kpId || navigationContext.kp_id || ''}
                 taskItemId={taskItemId}
+                initialResource={navigationContext.resourceView || navigationContext.resource_view || ''}
+                directVideo={navigationContext.directVideo || navigationContext.video || null}
+                directTitle={navigationContext.directTitle || navigationContext.kpName || navigationContext.kp_name || ''}
               />
             ) : activeTaskType === 'question_favorites' ? (
               <QuestionFavoritesPanel />
@@ -536,31 +769,6 @@ export default function PracticePage({ navigationContext = {} }) {
               <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
                 此模块正在准备中，暂不支持提交任务。
               </div>
-            )}
-
-          </section>
-
-          <section
-            data-testid="practice-result-panel"
-            data-mobile-active={String(mobilePage === 'result')}
-            aria-busy="false"
-            aria-labelledby="training-artifact-title"
-            className="practice-result-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50"
-          >
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-              <FileText size={16} aria-hidden="true" />
-              <h2 id="training-artifact-title" className="text-sm font-semibold text-slate-900">训练产物</h2>
-            </div>
-            {taskResult && !taskResultApproved ? (
-              <div role="alert" className="mt-4 border border-rose-300 bg-rose-50 px-4 py-4 text-rose-950">
-                <h3 className="text-base font-semibold">{displayValue(taskResult.title || taskResult.artifact?.title)}</h3>
-                <p className="mt-2 text-sm font-semibold leading-6">审核未通过/任务未完成，该候选内容不可作为学习依据。</p>
-                <p className="mt-2 text-sm leading-6">状态：{displayValue(taskResult.status)}</p>
-                <p className="mt-1 text-sm leading-6">审核原因：{displayValue(taskResult.audit?.reason)}</p>
-                <p className="mt-3 text-sm font-semibold">请调整输入后重试。</p>
-              </div>
-            ) : (
-              <div className="mt-4 [overflow-wrap:anywhere]"><ArtifactResult taskResult={taskResult} /></div>
             )}
           </section>
       </div>

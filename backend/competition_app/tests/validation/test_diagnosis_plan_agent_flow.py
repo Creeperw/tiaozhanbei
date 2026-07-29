@@ -120,13 +120,26 @@ class RevisingPlanModel:
             "estimated_minutes": 10,
             "expected_output": "一份默写。",
             "completion_criteria": "组成正确。",
+            "total_duration_days": 30,
             "long_term_plan_stages": [
                 {
                     "stage": 1,
+                    "stage_name": "基础阶段",
                     "book": ["《方剂学》"],
                     "goal": "掌握基础理论",
+                    "duration_days": 30,
+                    "schedule_summary": (
+                        "使用《方剂学》梳理基础理论，形成框架笔记并闭卷验收。"
+                    ),
                 }
             ],
+            "short_term_duration_days": 7,
+            "short_term_progression_nodes": [
+                "周初完成四君子汤组成回忆。",
+                "周末完成纠错复述与综合验收。",
+            ],
+            "learning_chapter": "《方剂学》补益剂章",
+            "focus_knowledge_points": ["四君子汤组成", "四君子汤功用"],
         }
 
 
@@ -318,7 +331,7 @@ async def test_diagnosis_result_keeps_system_fields_outside_model_proposal() -> 
 
 
 @pytest.mark.asyncio
-async def test_diagnosis_revises_invalid_three_layer_output_only_once() -> None:
+async def test_diagnosis_does_not_revise_valid_structured_output() -> None:
     model = RevisingPlanModel()
     route = route_output()
     route.payload.phases = [
@@ -348,9 +361,15 @@ async def test_diagnosis_revises_invalid_three_layer_output_only_once() -> None:
 
     result = (await DiagnosisAgent(model).run(context)).payload
 
-    assert len(model.calls) == 2
-    assert model.calls[1]["payload"]["revision_issues"] == ["当日任务与短期计划完全失配。"]
-    assert "四君子汤" in result.learning_plan_proposal.daily_task_content
+    assert len(model.calls) == 1
+    assert (
+        result.learning_plan_proposal.task_proposal.learning_chapter
+        == "《方剂学》补益剂章"
+    )
+    assert result.learning_plan_proposal.task_proposal.focus_knowledge_points == [
+        "四君子汤组成",
+        "四君子汤功用",
+    ]
 
 
 @pytest.mark.asyncio

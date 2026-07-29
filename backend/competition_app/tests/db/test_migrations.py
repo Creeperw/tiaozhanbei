@@ -28,6 +28,7 @@ def test_atomic_daily_task_outbox_migration_is_sqlite_compatible_and_idempotent(
     applied = runner.run()
 
     assert "010_atomic_daily_task_execution.sql" in applied
+    assert "014_disable_registration_onboarding.sql" in applied
     assert runner.run() == []
     inspector = inspect(engine)
     assert "learning_task_sync_outbox" in inspector.get_table_names()

@@ -11,6 +11,7 @@ import {
 import { loadDailyTaskPracticeQuestion, loadPracticeQuestion, submitPracticeAnswer } from '../../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../../utils/api';
 import { Button, EmptyState, InlineError, Skeleton } from '../ui';
+import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from '../WorkshopSaveActions';
 
 const multipleTypes = new Set(['multiple_choice', '多选题', '多项选择题']);
 const singleTypes = new Set(['single_choice', 'true_false', '单选题', '单项选择题', '判断题']);
@@ -105,12 +106,26 @@ export default function AtlasPracticePanel({
   const isSingle = singleTypes.has(question?.question_type);
   const submittedAnswer = isMultiple ? selectedAnswers.join(',') : answer.trim();
   const typeLabel = questionTypeLabel(question?.question_type, mode);
-  const knowledgeLabels = kpName
+  const knowledgeLabels = [...new Set((kpName
     ? [kpName]
     : (Array.isArray(question?.kp_names)
-      ? question.kp_names.filter((label) => label && !question?.kp_ids?.includes(label)).slice(0, 3)
-      : []);
+      ? question.kp_names.filter((label) => label && !question?.kp_ids?.includes(label))
+      : []))
+    .map((label) => String(label).trim())
+    .filter(Boolean))].slice(0, 3);
   const guidance = buildGuidance({ isMultiple, isSingle, mode, kpName: kpName || knowledgeLabels[0] || '' });
+  const favoriteQuestion = {
+    resource_id: question?.question_id || question?.id || `${question?.stem || ''}`.slice(0, 80),
+    title: `${typeLabel} · ${String(question?.stem || '').slice(0, 80)}`,
+    content: {
+      question_content: question?.stem || '',
+      question_type: question?.question_type || '',
+      options: question?.options || [],
+      standard_answer: result?.grading?.standard_answer || [],
+      explanation: result?.grading?.question_explanation || '',
+      knowledge_points: knowledgeLabels,
+    },
+  };
 
   const toggleMultiple = (value) => {
     setSelectedAnswers((current) => (
@@ -157,7 +172,7 @@ export default function AtlasPracticePanel({
 
   return (
     <section className="practice-question-shell" aria-labelledby="practice-question">
-      <div className="practice-question-grid">
+      <div className="practice-question-grid" data-hint-visible={String(hintVisible)}>
         <div className="practice-answer-workspace">
           <header className="practice-section-heading">
             <span className="practice-section-heading__icon" aria-hidden="true"><PenLine size={20} /></span>
@@ -173,6 +188,7 @@ export default function AtlasPracticePanel({
               <span>{typeLabel}</span>
             </div>
             <p id="practice-question">{question.stem}</p>
+            <FavoriteQuestionIconButton question={favoriteQuestion} source="题目训练" />
           </article>
 
           {knowledgeLabels.length > 0 && (
@@ -187,14 +203,14 @@ export default function AtlasPracticePanel({
           <button
             type="button"
             className="practice-hint-trigger"
-            aria-label="若暂时没有思路，点我查看提示"
+            aria-label={hintVisible ? '收起答题提示' : '查看答题提示'}
             aria-expanded={hintVisible}
             aria-controls="practice-hint-panel"
             onClick={() => setHintVisible((visible) => !visible)}
           >
             <CircleHelp size={21} aria-hidden="true" />
             <span>
-              <strong>若暂时没有思路，点我查看提示</strong>
+              <strong>{hintVisible ? '收起答题提示' : '查看答题提示'}</strong>
               <small>提示只提供解题方向，不会直接显示答案</small>
             </span>
             <ChevronRight className={hintVisible ? 'is-expanded' : ''} size={19} aria-hidden="true" />
@@ -271,12 +287,16 @@ export default function AtlasPracticePanel({
                 </div>
               )}
               <small>学习写回：{result.writeback?.status || '未返回'}</small>
-              <Button variant="secondary" onClick={nextQuestion}>下一题</Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <FavoriteQuestionButton question={favoriteQuestion} source="题目训练" />
+                <NoteQuestionButton question={favoriteQuestion} source="题目训练" />
+                <Button variant="secondary" onClick={nextQuestion}>下一题</Button>
+              </div>
             </div>
           )}
         </div>
 
-        <aside
+        {hintVisible && <aside
           id="practice-hint-panel"
           data-testid="practice-hint-panel"
           data-visible={String(hintVisible)}
@@ -291,13 +311,6 @@ export default function AtlasPracticePanel({
             </div>
           </header>
 
-          {!hintVisible ? (
-            <div className="practice-hint-locked">
-              <CircleHelp size={30} aria-hidden="true" />
-              <strong>提示尚未展开</strong>
-              <p>先尝试独立分析题干；遇到卡点时，点击左侧提示按钮。</p>
-            </div>
-          ) : (
             <div className="practice-hint-content">
               <section>
                 <h4>思路引导</h4>
@@ -319,8 +332,7 @@ export default function AtlasPracticePanel({
                 </dl>
               </section>
             </div>
-          )}
-        </aside>
+        </aside>}
       </div>
     </section>
   );

@@ -72,16 +72,30 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
     frontend_root = tmp_path / "frontend"
     assets_root = frontend_root / "assets"
     covers_root = frontend_root / "textbook-covers"
+    status_icons_root = frontend_root / "textbook-status-icons"
+    acupuncture_root = frontend_root / "acupuncture"
     assets_root.mkdir(parents=True)
     covers_root.mkdir(parents=True)
+    status_icons_root.mkdir(parents=True)
+    acupuncture_root.mkdir(parents=True)
     (frontend_root / "index.html").write_text(
         '<div id="root"></div><script src="/assets/app.js"></script>',
         encoding="utf-8",
     )
     (frontend_root / "favicon.ico").write_bytes(b"icon")
+    (frontend_root / "favicon.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"/>',
+        encoding="utf-8",
+    )
+    (frontend_root / "hero_word.txt").write_text(
+        "今天，从这里开始\n循序渐进",
+        encoding="utf-8",
+    )
     (assets_root / "app.js").write_text("window.loaded = true", encoding="utf-8")
     (assets_root / "app.css").write_text("body { color: green; }", encoding="utf-8")
     (covers_root / "方剂学.jpg").write_bytes(b"textbook-cover")
+    (status_icons_root / "completed.svg").write_bytes(b"status-icon")
+    (acupuncture_root / "body-front.jpg").write_bytes(b"acupuncture-image")
     container = ApplicationContainer.build(
         Settings(mode="stub", frontend_dist_root=frontend_root),
         snapshot_root=tmp_path / "snapshots",
@@ -94,7 +108,20 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
         cover = client.get("/textbook-covers/%E6%96%B9%E5%89%82%E5%AD%A6.jpg")
         assert cover.status_code == 200
         assert cover.content == b"textbook-cover"
+        status_icon = client.get("/textbook-status-icons/completed.svg")
+        assert status_icon.status_code == 200
+        assert status_icon.content == b"status-icon"
+        acupuncture = client.get("/acupuncture/body-front.jpg")
+        assert acupuncture.status_code == 200
+        assert acupuncture.content == b"acupuncture-image"
         assert client.get("/favicon.ico").status_code == 200
+        assert client.get("/favicon.svg").status_code == 200
+        assert client.get("/favicon.svg").headers["content-type"].startswith(
+            "image/svg+xml"
+        )
+        hero_word = client.get("/hero_word.txt")
+        assert hero_word.status_code == 200
+        assert hero_word.text.splitlines() == ["今天，从这里开始", "循序渐进"]
         protected = client.post(
             "/api/v1/review-cards",
             json={"learner_id": "anonymous", "user_request": "生成复习卡"},
@@ -103,11 +130,31 @@ def test_formal_frontend_assets_are_public_but_business_api_stays_protected(
     assert protected.status_code == 401
 
 
+def test_platform_video_asset_is_public_and_uses_h264() -> None:
+    app = create_app(ApplicationContainer.build(Settings(mode="stub")))
+    video_path = (
+        Path(__file__).resolve().parents[2]
+        / "static"
+        / "platform-assets"
+        / "home"
+        / "platform-agents.mp4"
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/platform-assets/home/platform-agents.mp4")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("video/mp4")
+    assert response.content == video_path.read_bytes()
+    assert b"avc1" in response.content
+    assert b"hvc1" not in response.content
+
+
 def test_register_login_me_and_logout(tmp_path: Path) -> None:
     client = build_client(tmp_path)
     user = register(client, "LinStudent")
     assert user["role"] == "user"
-    assert user["onboarding_required"] is True
+    assert user["onboarding_required"] is False
 
     current = client.get("/api/v1/auth/me")
     assert current.status_code == 200
@@ -230,6 +277,10 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     )
     assert folder.status_code == 201
     folder_id = folder.json()["folder"]["folder_id"]
+    notebook = alice_client.post(
+        "/api/v1/workshop/note-folders", json={"name": "经方笔记"}
+    )
+    assert notebook.status_code == 201
 
     favorite = alice_client.post(
         "/api/v1/workshop/favorites",
@@ -255,7 +306,10 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
             "source": "智能组卷",
             "resource_type": "question",
             "resource_id": "Q_SIJUNZI",
-            "context": {"question_content": "四君子汤的君药是？"},
+            "context": {
+                "notebook": "经方笔记",
+                "question_content": "四君子汤的君药是？",
+            },
         },
     )
     assert favorite.status_code == 201
@@ -264,6 +318,7 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     note_id = note.json()["note"]["note_id"]
 
     assert bob_client.get("/api/v1/workshop/favorite-folders").json()["items"] == []
+    assert bob_client.get("/api/v1/workshop/note-folders").json()["items"] == []
     assert bob_client.get("/api/v1/workshop/favorites").json()["items"] == []
     assert bob_client.get("/api/v1/workshop/notes").json()["items"] == []
     assert bob_client.delete(f"/api/v1/workshop/favorites/{favorite_id}").status_code == 404
@@ -285,8 +340,12 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     restarted.cookies.set(SESSION_COOKIE, alice_client.cookies.get(SESSION_COOKIE))
     persisted_favorites = restarted.get("/api/v1/workshop/favorites").json()["items"]
     persisted_notes = restarted.get("/api/v1/workshop/notes").json()["items"]
+    persisted_notebooks = restarted.get("/api/v1/workshop/note-folders").json()["items"]
     assert persisted_favorites[0]["content"]["standard_answer"] == ["A"]
     assert persisted_notes[0]["content"] == "人参、白术、茯苓、炙甘草。"
+    assert len(persisted_notebooks) == 1
+    assert persisted_notebooks[0]["name"] == "经方笔记"
+    assert persisted_notebooks[0]["note_count"] == 1
 
     assert restarted.delete(f"/api/v1/workshop/favorites/{favorite_id}").status_code == 204
     assert restarted.delete(f"/api/v1/workshop/notes/{note_id}").status_code == 204
@@ -295,12 +354,12 @@ def test_workshop_favorites_and_notes_are_private_and_persistent(tmp_path: Path)
     ).status_code == 204
 
 
-def test_registration_onboarding_gate_is_persistent_until_completed(
+def test_registration_enters_the_application_without_onboarding_gate(
     tmp_path: Path,
 ) -> None:
     client = build_client(tmp_path)
-    user = register(client, "survey-required")
-    assert user["onboarding_required"] is True
+    user = register(client, "direct-entry")
+    assert user["onboarding_required"] is False
 
     completed = client.post("/api/v1/auth/onboarding/complete")
 

@@ -1,270 +1,293 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import AppShell from './AppShell';
 
-vi.mock('./UserProfileModal', () => ({
-  default: ({ open }) => open ? <div role="dialog" aria-label="完善个人信息">profile modal</div> : null,
-}));
+function renderShell(props = {}) {
+  return render(<AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="dashboard" onNavigate={vi.fn()} onLogout={vi.fn()} {...props}><div>Dashboard content</div></AppShell>);
+}
 
 describe('AppShell', () => {
-  it('exposes an accessible current page and mobile navigation drawer', async () => {
-    const user = userEvent.setup();
-    render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="dashboard"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <div>Dashboard content</div>
-      </AppShell>,
-    );
+  it('renders a top navigation instead of the former global sidebar', () => {
+    renderShell();
 
-    expect(screen.getByRole('link', { name: '平台首页' })).toHaveAttribute('aria-current', 'page');
-    const menuButton = screen.getByRole('button', { name: '打开导航菜单' });
-    expect(menuButton).toHaveAttribute('aria-expanded', 'false');
-    await user.click(menuButton);
-    expect(menuButton).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('dialog', { name: '主导航' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '关闭导航菜单' })).toHaveFocus();
-    await user.keyboard('{Escape}');
-    expect(menuButton).toHaveAttribute('aria-expanded', 'false');
-    expect(menuButton).toHaveFocus();
+    expect(document.querySelector('.app-shell__topbar')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: '平台导航' })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '平台首页' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: '返回主页' })).toHaveLength(2);
   });
 
-  it('opens the training workshop in a fixed expanded workspace shell without a duplicate heading', () => {
-    render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="training-workshop"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <div>Practice content</div>
-      </AppShell>,
-    );
-
-    expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false');
-    expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
-    expect(screen.queryByRole('heading', { name: '训练工坊' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '学习工坊' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /侧栏/ })).not.toBeInTheDocument();
-  });
-
-  it('redirects the retired questions destination to the unified knowledge workspace', () => {
-    render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="question-workspace"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <div>Question workspace content</div>
-      </AppShell>,
-    );
-
-    expect(screen.queryByRole('link', { name: '知识仓库' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '我的题目' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '知识治理' })).not.toBeInTheDocument();
-  });
-
-  it('navigates using an intent while preserving the destination label', async () => {
+  it('keeps the learning path compact and returns task details to the path', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();
-    render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="dashboard"
-        onNavigate={onNavigate}
-        onLogout={vi.fn()}
-      >
-        <div>Dashboard content</div>
+    const { rerender } = renderShell({ currentPage: 'learning-path', onNavigate });
+
+    expect(document.querySelector('.app-shell__page-header')).not.toBeInTheDocument();
+
+    rerender(
+      <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="learning-path-tasks" onNavigate={onNavigate} onLogout={vi.fn()}>
+        <div>Task content</div>
       </AppShell>,
     );
+    await user.click(screen.getByRole('button', { name: '返回' }));
 
-    await user.click(screen.getByRole('link', { name: '学习工坊' }));
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} });
+  });
+
+  it('opens teaching resources directly without a dropdown', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    renderShell({ onNavigate });
+    const resources = screen.getByRole('link', { name: '教学资源' });
+
+    expect(resources).not.toHaveAttribute('aria-haspopup');
+    expect(resources.querySelector('svg')).not.toBeInTheDocument();
+    await user.click(resources);
     expect(onNavigate).toHaveBeenCalledWith({ page: 'practice', params: {} });
-    await user.click(screen.getByRole('link', { name: '训练工坊' }));
-    expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: {} });
+    expect(screen.queryByRole('menu', { name: '教学资源菜单' })).not.toBeInTheDocument();
   });
 
-  it('opens moved intervention notifications from the notification action', async () => {
+  it('places the learning target dropdown first in the desktop navigation', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const path = String(url);
+      const payload = path.endsWith('/qualification-targets')
+        ? { items: [
+          { target_id: 'target-a', exam_track_id: 'track-a', official_name: '中医执业医师资格考试' },
+          { target_id: 'target-b', exam_track_id: 'track-b', official_name: '中医执业助理医师资格考试' },
+        ] }
+        : path.endsWith('/personalization/learning-target') && options.method === 'PUT'
+          ? { target: { exam_track_id: 'track-b' } }
+          : path.endsWith('/personalization/learning-target')
+            ? { target: { exam_track_id: 'track-a' } }
+            : {};
+      return Promise.resolve({ ok: true, status: 200, text: async () => JSON.stringify(payload) });
+    }));
+    const onNavigate = vi.fn();
+    const targetChanged = vi.fn();
+    window.addEventListener('shizhen:learning-target-changed', targetChanged);
+    renderShell({ onNavigate });
+
+    const navigation = screen.getByRole('navigation', { name: '平台导航' });
+    const entries = [...navigation.querySelectorAll(':scope > .app-shell__nav-group')];
+    expect(entries[0]).toHaveTextContent('考试类别');
+    expect(entries[1]).toHaveTextContent('学习路径');
+
+    const targetButton = screen.getByRole('button', { name: '考试类别' });
+    await user.hover(targetButton);
+    expect(targetButton).toHaveAttribute('aria-expanded', 'true');
+    const currentTarget = await screen.findByRole('menuitemradio', { name: '中医执业医师资格考试' });
+    const nextTarget = screen.getByRole('menuitemradio', { name: '中医执业助理医师资格考试' });
+    expect(currentTarget).toHaveAttribute('aria-checked', 'true');
+    expect(nextTarget).toHaveAttribute('aria-checked', 'false');
+    await user.click(nextTarget);
+    await waitFor(() => expect(targetButton).toHaveAttribute('aria-expanded', 'false'));
+    expect(onNavigate).toHaveBeenCalledWith({
+      page: 'learning-path',
+      params: {
+        targetId: 'target-b',
+        examTrackId: 'track-b',
+        textbookRouteId: '',
+      },
+    });
+    expect(targetChanged).toHaveBeenCalledWith(expect.objectContaining({ detail: expect.objectContaining({ target_id: 'target-b' }) }));
+    window.removeEventListener('shizhen:learning-target-changed', targetChanged);
+  });
+
+  it('returns to the dashboard from the brand identity', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();
-    render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="dashboard"
-        onNavigate={onNavigate}
-        onLogout={vi.fn()}
-      >
-        <div>Dashboard content</div>
-      </AppShell>,
-    );
+    renderShell({ currentPage: 'personalization', onNavigate });
 
-    await user.click(screen.getAllByRole('button', { name: '通知，0 条未读' })[0]);
-    expect(onNavigate).toHaveBeenCalledWith({ page: 'settings', params: { view: 'governance' } });
+    const home = screen.getAllByRole('button', { name: '返回主页' })[0];
+    await user.click(home);
+
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'dashboard', params: {} });
   });
 
-  it('keeps the desktop shell expanded without a collapse control', () => {
-    render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="dashboard"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <div>Dashboard content</div>
-      </AppShell>,
-    );
-
-    expect(screen.queryByRole('heading', { name: '培训助手首页' })).not.toBeInTheDocument();
-    expect(screen.getByRole('main')).toHaveAttribute('data-page', 'dashboard');
-    expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false');
-    expect(screen.queryByRole('button', { name: /侧栏/ })).not.toBeInTheDocument();
-  });
-
-  it('keeps the fixed expanded sidebar open when changing modules', async () => {
-    const { rerender } = render(
-      <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="dashboard" onNavigate={vi.fn()} onLogout={vi.fn()}>
-        <div>Dashboard content</div>
-      </AppShell>,
-    );
-
-    expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false');
-
-    rerender(
-      <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="assistant" onNavigate={vi.fn()} onLogout={vi.fn()}>
-        <div>Assistant workspace</div>
-      </AppShell>,
-    );
-
-    await waitFor(() => expect(screen.getByRole('complementary')).toHaveAttribute('data-collapsed', 'false'));
-  });
-
-  it('marks assistant and knowledge as workspace pages and omits a duplicate module heading', () => {
-    const { rerender } = render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="assistant"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <div>Assistant workspace</div>
-      </AppShell>,
-    );
-
-    expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
-    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'contained');
-    expect(screen.queryByRole('heading', { name: '智能助教' })).not.toBeInTheDocument();
-
-    rerender(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="knowledge"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <div>Knowledge workspace</div>
-      </AppShell>,
-    );
-    expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
-    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'contained');
-    expect(screen.queryByRole('heading', { name: '知识库' })).not.toBeInTheDocument();
-  });
-
-  it('keeps the personalization secondary navigation at the top without a duplicate page heading', () => {
-    render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="personalization"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <nav aria-label="个性数据二级菜单">Secondary navigation</nav>
-      </AppShell>,
-    );
-
-    expect(screen.getByRole('main')).toHaveAttribute('data-page', 'personalization');
-    expect(screen.queryByText('当前模块')).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '个性数据' })).not.toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: '个性数据二级菜单' })).toBeInTheDocument();
-  });
-
-  it('keeps user settings secondary navigation at the top without a duplicate page heading', () => {
-    render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="settings"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <nav aria-label="用户设置二级菜单">Secondary navigation</nav>
-      </AppShell>,
-    );
-
-    expect(screen.getByRole('main')).toHaveAttribute('data-page', 'settings');
-    expect(screen.queryByText('当前模块')).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '用户设置' })).not.toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: '用户设置二级菜单' })).toBeInTheDocument();
-  });
-
-  it('gives dashboard and training workshop an independently scrollable page region', () => {
-    const { rerender } = render(
-      <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="dashboard" onNavigate={vi.fn()} onLogout={vi.fn()}>
-        <div style={{ height: 2000 }}>Long dashboard</div>
-      </AppShell>,
-    );
-
-    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'page');
-    rerender(
-      <AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="practice" onNavigate={vi.fn()} onLogout={vi.fn()}>
-        <div style={{ height: 2000 }}>Long workshop</div>
-      </AppShell>,
-    );
-    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'page');
-  });
-
-  it('keeps the mobile drawer mounted for its exit motion before removing it', async () => {
+  it('returns home and closes the mobile drawer from its brand identity', async () => {
+    const onNavigate = vi.fn();
     const user = userEvent.setup();
-    const { container } = render(
-      <AppShell
-        currentUser={{ username: 'alice', role: 'user' }}
-        currentPage="dashboard"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <div>Dashboard content</div>
-      </AppShell>,
-    );
+    renderShell({ currentPage: 'personalization', onNavigate });
 
     await user.click(screen.getByRole('button', { name: '打开导航菜单' }));
-    await user.click(screen.getByRole('button', { name: '关闭导航菜单' }));
+    const drawer = screen.getByRole('dialog', { name: '主导航' });
+    await user.click(within(drawer).getByRole('button', { name: '返回主页' }));
 
-    const exitingBackdrop = container.querySelector('.app-shell__drawer-backdrop');
-    expect(exitingBackdrop).toHaveAttribute('data-state', 'closing');
-    await waitFor(() => expect(container.querySelector('.app-shell__drawer-backdrop')).not.toBeInTheDocument(), { timeout: 500 });
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'dashboard', params: {} });
+    expect(drawer.parentElement).toHaveAttribute('data-state', 'closing');
   });
 
-  it('places an editable avatar beside the current user details', async () => {
+  it('opens the learning path directly without a dropdown', async () => {
+    const onNavigate = vi.fn();
     const user = userEvent.setup();
-    render(
-      <AppShell
-        currentUser={{ username: 'mmm', display_name: '明同学', role: 'user' }}
-        currentPage="dashboard"
-        onNavigate={vi.fn()}
-        onLogout={vi.fn()}
-      >
-        <div>Dashboard content</div>
-      </AppShell>,
-    );
+    renderShell({ onNavigate });
 
-    expect(screen.getByText('当前用户')).toBeInTheDocument();
-    expect(screen.getByText('明同学')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '打开个人信息' }));
-    expect(screen.getByRole('dialog', { name: '完善个人信息' })).toBeInTheDocument();
+    const learningPath = screen.getByRole('link', { name: '学习路径' });
+    expect(learningPath).not.toHaveAttribute('aria-haspopup');
+    await user.click(learningPath);
+
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} });
+    expect(screen.queryByRole('menuitem', { name: '路径规划' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: '当前阶段' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: '教材学习' })).not.toBeInTheDocument();
+  });
+
+  it('navigates with the persisted dropdown intent and closes the menu', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ onNavigate });
+
+    await user.hover(screen.getByRole('link', { name: '训练工坊' }));
+    await user.click(screen.getByRole('menuitem', { name: '试卷生成' }));
+
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: { taskType: 'paper_generation' } });
+    expect(screen.queryByRole('menuitem', { name: '试卷生成' })).not.toBeInTheDocument();
+  });
+
+  it('closes the training menu 200ms after the pointer leaves, with an exit phase', async () => {
+    vi.useFakeTimers();
+    try {
+      renderShell();
+      const trigger = screen.getByRole('link', { name: '训练工坊' });
+      const group = trigger.closest('.app-shell__nav-group');
+
+      fireEvent.mouseEnter(group);
+      expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'open');
+      fireEvent.mouseLeave(group);
+      await act(() => vi.advanceTimersByTimeAsync(199));
+      expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'open');
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(screen.getByRole('menu', { name: '训练工坊菜单' })).toHaveAttribute('data-state', 'closing');
+      await act(() => vi.runOnlyPendingTimersAsync());
+      expect(screen.queryByRole('menu', { name: '训练工坊菜单' })).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('opens the learning report by default and exposes personalization views in a dropdown', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ onNavigate });
+
+    const reports = screen.getByRole('link', { name: '个人数据' });
+    expect(reports).toHaveAttribute('aria-haspopup', 'menu');
+    await user.hover(reports);
+    expect(screen.getByRole('menuitem', { name: '学情报告' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: '学习画像' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: '复习与掌握' })).toBeVisible();
+    await user.click(reports);
+
+    expect(onNavigate).toHaveBeenCalledWith({
+      page: 'personalization',
+      params: { view: 'reports' },
+    });
+  });
+
+  it('highlights the current personal data view in its dropdown', async () => {
+    const user = userEvent.setup();
+    renderShell({ currentPage: 'personalization', navigationContext: { view: 'user-profile' } });
+
+    await user.hover(screen.getByRole('link', { name: '个人数据' }));
+    expect(screen.getByRole('menuitem', { name: '学习画像' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('menuitem', { name: '学情报告' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('shows account settings and logout in the avatar menu', async () => {
+    const onNavigate = vi.fn();
+    const onLogout = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ onNavigate, onLogout });
+
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
+    expect(screen.queryByRole('menuitem', { name: '用户设置' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /系统通知/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '账号设置' })).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: '退出登录' })).toBeVisible();
+
+  });
+
+  it('routes avatar shortcuts to their matching destinations', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ onNavigate });
+
+    const clickShortcut = async (name) => {
+      await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
+      await user.click(screen.getByRole('menuitem', { name: new RegExp(name) }));
+    };
+
+    await clickShortcut('收藏夹');
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: { view: 'workspace', taskType: 'question_favorites' },
+    });
+
+    await clickShortcut('笔记本');
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: { view: 'workspace', taskType: 'study_notes' },
+    });
+
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
+    expect(screen.queryByRole('menuitem', { name: /学情分析/ })).not.toBeInTheDocument();
+  });
+
+  it('closes the avatar menu with Escape and an outside click', async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: '账号设置' })).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
+    await user.click(screen.getByText('Dashboard content'));
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: '账号设置' })).not.toBeInTheDocument());
+  });
+
+  it('keeps the notification shortcut and workspace scroll contract', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = renderShell({ onNavigate, currentPage: 'assistant' });
+
+    expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
+    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'contained');
+    await user.click(screen.getAllByRole('button', { name: '通知，0 条未读' })[0]);
+    expect(screen.getByRole('dialog', { name: '未处理通知' })).toBeVisible();
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    rerender(<AppShell currentUser={{ username: 'alice', role: 'user' }} currentPage="training-workshop" onNavigate={onNavigate} onLogout={vi.fn()}><div>Workshop</div></AppShell>);
+    expect(screen.getByRole('main')).toHaveAttribute('data-mode', 'workspace');
+    expect(screen.getByRole('main')).toHaveAttribute('data-scroll-region', 'page');
+  });
+
+  it('uses a touch-operable mobile drawer accordion', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ onNavigate });
+
+    const menuButton = screen.getByRole('button', { name: '打开导航菜单' });
+    await user.click(menuButton);
+    expect(screen.getByRole('dialog', { name: '主导航' })).toBeVisible();
+    const expandWorkshop = screen.getByRole('button', { name: '展开训练工坊' });
+    await user.click(expandWorkshop);
+    expect(expandWorkshop).toHaveAttribute('aria-expanded', 'true');
+    await user.click(screen.getByRole('menuitem', { name: '题目训练' }));
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'training-workshop', params: { taskType: 'topic_training' } });
+    await waitFor(() => expect(menuButton).toHaveAttribute('aria-expanded', 'false'));
+  });
+
+  it('keeps mobile drawer mounted for its exit motion', async () => {
+    const user = userEvent.setup();
+    const { container } = renderShell();
+    await user.click(screen.getByRole('button', { name: '打开导航菜单' }));
+    await user.click(screen.getByRole('button', { name: '关闭导航菜单' }));
+    expect(container.querySelector('.app-shell__drawer-backdrop')).toHaveAttribute('data-state', 'closing');
+    await waitFor(() => expect(container.querySelector('.app-shell__drawer-backdrop')).not.toBeInTheDocument(), { timeout: 500 });
   });
 });

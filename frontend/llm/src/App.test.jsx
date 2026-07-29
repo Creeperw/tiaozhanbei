@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
+import { readJsonResponse } from './utils/api';
 
 vi.mock('./utils/api', () => ({
   AUTH_API_BASE: 'http://api.test/api/v1/auth',
@@ -44,6 +45,13 @@ vi.mock('./components/learning-stage/StagePageTransition', () => ({
   ) : null,
 }));
 vi.mock('./components/ChatInterface', () => ({ default: ({ embedded }) => <div>Assistant page {String(embedded)}</div> }));
+vi.mock('./components/CompactAssistant', () => ({
+  default: ({ onOpenFull }) => (
+    <button type="button" aria-label="全局悬浮智能助教" onClick={() => onOpenFull('session-floating')}>
+      Floating assistant
+    </button>
+  ),
+}));
 vi.mock('./components/KnowledgePage', () => ({
   default: ({ navigationContext = {} }) => (
     <div
@@ -69,7 +77,7 @@ vi.mock('./components/PracticePage', () => ({
 }));
 vi.mock('./components/PersonalizationHubPage', () => ({
   default: ({ navigationContext = {} }) => (
-    <div data-testid="personalization-page" data-view={navigationContext.view || ''}>Personalization page</div>
+    <div data-testid="personalization-page" data-view={navigationContext.view || 'reports'}>Personalization page</div>
   ),
 }));
 vi.mock('./components/SettingsHubPage', () => ({
@@ -100,6 +108,17 @@ describe('authenticated application shell', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+  });
+
+  it('enters the system directly even when an existing session still carries the legacy onboarding flag', async () => {
+    vi.mocked(readJsonResponse).mockResolvedValueOnce({
+      user: { username: 'new-user', role: 'user', onboarding_required: true },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText('Home portal')).toBeInTheDocument();
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
   });
 
   it('consumes a one-time external navigation intent for an audited paper', async () => {
@@ -150,6 +169,17 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'admin-feedback');
   });
 
+  it('opens the full assistant from the global floating assistant and hides the duplicate dock there', async () => {
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: '全局悬浮智能助教' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '全局悬浮智能助教' }));
+
+    expect(screen.getByText('Assistant page true')).toBeInTheDocument();
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'assistant');
+    expect(screen.queryByRole('button', { name: '全局悬浮智能助教' })).not.toBeInTheDocument();
+  });
+
   it('resets the training workshop when its primary navigation entry is selected again', async () => {
     render(<App />);
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
@@ -173,15 +203,15 @@ describe('authenticated application shell', () => {
 
   });
 
-  it('routes moved learning memory and governance links into user settings', async () => {
+  it('routes learning memory into personal data and governance into system notifications', async () => {
     render(<App />);
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Go personalization' }));
-    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'user-profile');
+    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'reports');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go memory' }));
-    expect(screen.getByTestId('settings-page')).toHaveAttribute('data-view', 'memory');
+    expect(screen.getByTestId('personalization-page')).toHaveAttribute('data-view', 'memory');
 
     fireEvent.click(screen.getByRole('button', { name: 'Go governance' }));
     expect(screen.getByTestId('settings-page')).toHaveAttribute('data-view', 'governance');

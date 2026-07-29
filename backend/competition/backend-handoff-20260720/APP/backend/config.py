@@ -17,7 +17,7 @@ def _get_float_env(name: str, default: float) -> float:
         return default
 
 # --- 端口配置 ---
-# FastAPI 后端端口。vLLM 规划/执行模型占用 8000，因此后端改为 7860。
+# 集成 FastAPI 后端统一使用 7860。
 API_PORT = 7860
 
 
@@ -60,15 +60,15 @@ LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 # 远程 LLM Anthropic 兼容服务地址。
 LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://api.deepseek.com/anthropic")
 # 远程 LLM 模型名。
-LLM_API_MODEL = os.getenv("LLM_API_MODEL", "qwen3.7-plus-2026-05-26")
+LLM_API_MODEL = os.getenv("LLM_API_MODEL", "qwen3.7-max-2026-06-08")
 
 # --- 本地 vLLM OpenAI 兼容接口配置（LLM_MODE=local 时启用） ---
 # Planner/Executor 模型的 OpenAI 兼容服务地址。
-PLANNER_EXECUTOR_BASE_URL = os.getenv("PLANNER_EXECUTOR_BASE_URL", "http://127.0.0.1:8000/v1")
+PLANNER_EXECUTOR_BASE_URL = os.getenv("PLANNER_EXECUTOR_BASE_URL", "")
 # Planner/Executor 模型服务名。
 PLANNER_EXECUTOR_MODEL = os.getenv("PLANNER_EXECUTOR_MODEL", "sining")
 # Manager/Reviewer/Compression 模型的 OpenAI 兼容服务地址。
-MANAGER_REVIEWER_BASE_URL = os.getenv("MANAGER_REVIEWER_BASE_URL", "http://127.0.0.1:8001/v1")
+MANAGER_REVIEWER_BASE_URL = os.getenv("MANAGER_REVIEWER_BASE_URL", "")
 # Manager/Reviewer/Compression 模型服务名。
 MANAGER_REVIEWER_MODEL = os.getenv("MANAGER_REVIEWER_MODEL", "qwen")
 # LLM HTTP 请求超时时间，单位秒。

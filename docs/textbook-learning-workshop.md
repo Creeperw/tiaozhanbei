@@ -1,6 +1,13 @@
 # 学习工坊教材学习说明
 
-本说明对应 `ikram/学习工坊` 分支中的教材学习功能、教材结构数据和教材封面资源。
+本说明对应 `ikram/新的不能再新的学习工坊丨注册页面` 分支中的最新注册流程、学习工坊教材学习功能、教材结构数据和教材封面资源。
+
+## 变更基线
+
+- 本分支以 GitHub `origin/main` 的最新提交为基线，不能从旧的学习工坊分支直接部署。
+- 注册、登录和学习工坊都使用同一个主后端 `backend/competition_app`，开发环境端口为 `7860`。
+- 前端正式工程只有 `frontend/llm`；Vite 开发服务器默认端口为 `5173`，并将 `/api` 请求代理到 `7860`。
+- 认证请求使用 HttpOnly Cookie，前端请求必须携带 `credentials: 'include'`；不要再启动独立交接服务作为前端代理目标。
 
 ## 功能入口
 
@@ -14,6 +21,23 @@
    - 任务预计时长；
    - 计划教材状态或进度。
 5. 点击“点击继续学习”或任意教材卡片，进入教材章节学习页面。
+
+## 注册与登录数据
+
+注册页面由 `frontend/llm/src/components/AuthPage.jsx`、
+`RegistrationJourney.jsx`、`RegistrationJourneyFrame.jsx` 和
+`OnboardingSurveyPanel.jsx` 组成。注册后会先创建用户，再保存首次画像问卷；问卷数据用于首页、学习计划、学习阶段和推荐教材。
+
+主后端认证接口如下：
+
+| 用途 | 接口 | 说明 |
+| --- | --- | --- |
+| 注册 | `POST /api/v1/auth/register` | 创建账号并返回用户信息 |
+| 登录 | `POST /api/v1/auth/login` | 建立 HttpOnly 会话 Cookie |
+| 当前用户 | `GET /api/v1/auth/me` | 恢复刷新后的登录态 |
+| 登出 | `POST /api/v1/auth/logout` | 清理会话 Cookie |
+
+注册画像的主要字段包括目标考试/课程、长期目标、短期目标、学习基础、专业或角色、学历、已学课程、每日可用时间、资源偏好和教材路线。数据库迁移位于 `backend/competition_app/migrations/`；用户资料、学习计划、学习活动、收藏和笔记属于运行时数据库数据，不应提交到 Git。
 
 ## 教材列表规则
 
@@ -70,7 +94,7 @@ backend/competition/knowledge_atlas_chapters/2026-07-22/final/
 - `publish-report.json`：最终发布数量和完整性报告。
 - `section_video_matches.jsonl`：视频分 P 到教材小节完整视频的正式映射。
 
-同一日期目录下还保留了生成、审核和修复过程资料，例如 `reviewed-v2/`、`reviewed-v3/`、`audit_data/` 和若干处理脚本。这些是开发审计资料，不是运行时必须文件；正式消费应优先使用 `final/` 目录。
+同一日期目录下还保留了生成、审核和修复过程资料，例如 `reviewed-v2/`、`reviewed-v3/`、`audit_data/` 和若干处理脚本。运行时章节服务优先选择配置的章节根目录；未配置时优先选择仓库内 `reviewed-v3/`，再回退到 `final/`。这些目录都属于版本化数据，部署时不能只复制前端代码而遗漏章节文件。
 
 ### 2. 原始教材切片
 
@@ -130,6 +154,17 @@ frontend/llm/src/appShell.js
 | 查询当前用户学习计划 | `GET /api/v1/learning-path` |
 | 查询首页当前任务和计划教材 | `GET /api/v1/dashboard/home` |
 
+教材目录接口的层级约定如下：
+
+| `level` | 节点 | 必填上下文 |
+| --- | --- | --- |
+| `1` | 教材 | `route` |
+| `2` | 章节 | `route`、`lv1` |
+| `3` | 小节 | `route`、`lv1`、`chapter` 或 `chapterId` |
+| `4` | 知识点 | `route`、`lv1`、`chapter`、`chapterId`、`lv2` 或 `sectionId` |
+
+当前章节学习页会在搜索时读取 level 3 和 level 4，并对单个章节或小节请求失败进行容错；搜索可以匹配章节、小节和知识点名称。小节详情仍通过 `/knowledge/atlas/section/{sectionId}` 读取正文、视频和相关学习数据。
+
 后端章节数据根目录由环境变量 `KNOWLEDGE_ATLAS_CHAPTER_ROOT` 指定。未配置时，后端按项目的知识库公共资产目录和回退目录查找同名章节文件。配置示例位于：
 
 ```text
@@ -166,6 +201,32 @@ backend/competition/knowledge_atlas_chapters/2026-07-22/final/section_video_matc
 3. 仓库内置的 `2026-07-22/final/section_video_matches.jsonl`。
 
 因此，合并本分支后不需要在服务器上手工寻找作者本机文件；只要仓库内置正式发布目录存在，小节完整视频就能加载。知识点时间戳视频仍依赖 `KNOWLEDGE_ATLAS_VIDEO_ROOT` 下的 `full_batch_results`。
+
+### 6. 不提交到 Git 的运行时数据
+
+以下目录可能在本机或部署机存在，但不是分支交付内容：
+
+```text
+backend/competition_app/data/                 # 用户和业务运行数据
+backend/competition/vdb_store/                # 向量索引生成物
+backend/competition/backend-handoff-20260720/.run/  # 本地运行状态
+runtime/                                      # PID、日志和临时状态
+frontend/llm/node_modules/                    # 前端依赖安装目录
+```
+
+知识图谱正式章节数据、封面静态资源、源代码和测试属于交付内容；用户账号、密码哈希、Cookie、模型密钥、上传文件和本地日志不得提交。
+
+## 验收清单
+
+启动后依次验收：
+
+1. 新用户注册成功，刷新页面后仍保持登录态；错误邮箱、重复账号和错误密码能显示明确错误。
+2. 登录后首页能加载学习阶段、学习计划和推荐教材。
+3. 打开学习工坊，教材列表、计划教材优先、展开全部教材和教材搜索均正常。
+4. 打开教材后，章节可以展开/收起，小节可以进入，搜索“一”和“辨证施护”均能返回匹配结果。
+5. 进入小节后，知识点、正文、完整视频和时间戳视频能加载；视频切换与返回上一个视频正常。
+6. 训练工坊、知识图谱、学习报告和退出登录不受教材页面改动影响。
+7. 前端构建、单元测试和后端测试全部通过，且浏览器 Network 中的后端请求全部指向集成服务。
 
 后端知识资产和交付逻辑位于：
 

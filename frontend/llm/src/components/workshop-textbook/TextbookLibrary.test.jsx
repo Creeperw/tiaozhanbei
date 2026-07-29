@@ -21,3 +21,16 @@ it('renders textbook cards with introductions and opens the selected book', () =
   fireEvent.click(screen.getByRole('button', { name: '学习《中医学基础》' }));
   expect(onOpen).toHaveBeenCalledWith(book);
 });
+it('overrides the planning label for configured thirteen-five textbooks', () => {
+  const book = {
+    node_id: 'BOOK_13_5',
+    title: '\u300a\u523a\u6cd5\u7078\u6cd5\u5b66\u300b',
+    stage_title: '\u5341\u56db\u4e94\u89c4\u5212\u6559\u6750',
+    navigation: { route_id: 'textbook_14_5', book: '\u523a\u6cd5\u7078\u6cd5\u5b66' },
+  };
+
+  render(<TextbookLibrary books={[book]} />);
+
+  expect(screen.getByText('\u5341\u4e09\u4e94\u89c4\u5212\u6559\u6750')).toBeInTheDocument();
+  expect(screen.queryByText('\u5341\u56db\u4e94\u89c4\u5212\u6559\u6750')).not.toBeInTheDocument();
+});

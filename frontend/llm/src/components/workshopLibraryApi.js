@@ -31,6 +31,11 @@ export const deleteFavorite = (favoriteId) => request(
   { method: 'DELETE' },
 );
 
+export const loadNoteFolders = () => request('/workshop/note-folders');
+export const createNoteFolder = (name) => request(
+  '/workshop/note-folders',
+  jsonOptions('POST', { name }),
+);
 export const loadNotes = ({ source = '', noteType = '', query = '' } = {}) => {
   const params = new URLSearchParams();
   if (source) params.set('source', source);
@@ -51,3 +56,9 @@ export const deleteNote = (noteId) => request(
   `/workshop/notes/${encodeURIComponent(noteId)}`,
   { method: 'DELETE' },
 );
+
+export const uploadNoteImage = async (file) => {
+  const form = new FormData();
+  form.append('file', file);
+  return request('/workshop/note-images', { method: 'POST', body: form });
+};

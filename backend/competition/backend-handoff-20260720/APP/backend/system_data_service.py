@@ -374,7 +374,7 @@ def _migrate_legacy_task_activities(
             else "completed"
         )
         resource_ids = [activity.resource_id] if activity.resource_id else []
-        db.add(LearningTask(
+        task = LearningTask(
             task_id=task_id,
             user_id=user_id,
             task_type=task_type,
@@ -383,7 +383,17 @@ def _migrate_legacy_task_activities(
             status=status,
             created_at=activity.created_at,
             completed_at=activity.created_at if status == "completed" else None,
-        ))
+        )
+        try:
+            # Several dashboard panels rebuild the same snapshot concurrently.
+            # Their initial SELECT can legitimately race, so isolate each
+            # compatibility insert in a savepoint and let the unique task_id be
+            # the final idempotency guard.
+            with db.begin_nested():
+                db.add(task)
+                db.flush()
+        except IntegrityError:
+            pass
         existing_task_ids.add(task_id)
 
 

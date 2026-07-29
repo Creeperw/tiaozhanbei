@@ -16,10 +16,6 @@ vi.mock('./QuestionWorkspacePage', () => ({
   default: () => <div>题目内容已并入知识库</div>,
 }));
 
-vi.mock('./CompactAssistant', () => ({
-  default: () => <aside aria-label="知识资料智能助教">资料助教</aside>,
-}));
-
 vi.mock('./knowledge-atlas/KnowledgeAtlas', () => ({
   default: ({ initialContext, workspaceNavigation }) => (
     <section data-testid="knowledge-atlas">
@@ -90,7 +86,7 @@ describe('KnowledgePage workspace navigation', () => {
     expect(screen.getByText('题库-v2')).toBeInTheDocument();
   });
 
-  it('organizes sources as collection, search-and-reader, and contextual assistant columns', async () => {
+  it('keeps source collections and reading in a focused workspace without an embedded assistant column', async () => {
     render(
       <KnowledgePage
         currentUser={{ username: 'alice', role: 'user' }}
@@ -101,7 +97,7 @@ describe('KnowledgePage workspace navigation', () => {
     const workbench = await screen.findByRole('region', { name: '知识资料工作台' });
     expect(within(workbench).getByRole('complementary', { name: '资料集合' })).toBeInTheDocument();
     expect(within(workbench).getByRole('main', { name: '资料检索与阅读' })).toBeInTheDocument();
-    expect(within(workbench).getByRole('complementary', { name: '知识资料智能助教' })).toBeInTheDocument();
+    expect(within(workbench).queryByLabelText('知识资料智能助教')).not.toBeInTheDocument();
     expect(within(workbench).getByRole('heading', { name: '资料检索' })).toBeInTheDocument();
     expect(within(workbench).getByText('索引与导入状态')).toBeInTheDocument();
   });

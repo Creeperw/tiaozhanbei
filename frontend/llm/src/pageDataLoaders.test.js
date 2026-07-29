@@ -13,6 +13,8 @@ import {
   isCaseSessionPayloadValid,
   isCaseTypesPayloadValid,
   isPaperPayloadValid,
+  isPracticeQuestionPayloadValid,
+  isVariationSourcesPayloadValid,
   loadCaseSession,
   loadCaseTypes,
   loadDailyTaskPracticeQuestion,
@@ -40,6 +42,31 @@ import {
   submitTrainingWorkspaceTask,
 } from './pageDataLoaders.js';
 
+test('accepts absent difficulty metadata without inventing a default', () => {
+  assert.equal(isPracticeQuestionPayloadValid({
+    available: true,
+    question: {
+      question_id: 'Q_NO_DIFFICULTY',
+      question_type: 'single_choice',
+      stem: '题干',
+      options: [],
+      kp_ids: ['KP_1'],
+      difficulty: null,
+      request_id: 'REQ_1',
+    },
+  }), true);
+  assert.equal(isVariationSourcesPayloadValid({
+    items: [{
+      mistake_id: 1,
+      question_version_id: 'QV_1',
+      stem: '题干',
+      question_type: 'single_choice',
+      difficulty: null,
+      kp_ids: ['KP_1'],
+    }],
+  }), true);
+});
+
 test('loads versioned multiscale state without parsing plan prose', async () => {
   const multiscale = {
     ...emptyMultiscaleState,
@@ -65,6 +92,9 @@ test('loads versioned multiscale state without parsing plan prose', async () => 
       }
       if (paths[0].startsWith('/v1/resource-match-report')) {
         return { data: emptyReport.resource_match_report, source: paths[0] };
+      }
+      if (paths[0].startsWith('/v1/learning-activity/summary')) {
+        return { data: { counters: {} }, source: paths[0] };
       }
       assert.equal(paths[0], '/v1/learning-state/multiscale?window_days=30');
       return { data: multiscale, source: paths[0] };
@@ -106,6 +136,9 @@ test('preserves unavailable metrics instead of coercing them to zero', async () 
       }
       if (paths[0].startsWith('/v1/resource-match-report')) {
         return { data: emptyReport.resource_match_report, source: paths[0] };
+      }
+      if (paths[0].startsWith('/v1/learning-activity/summary')) {
+        return { data: { counters: {} }, source: paths[0] };
       }
       return { data: multiscale, source: paths[0] };
     },
@@ -800,8 +833,8 @@ test('bound daily-task practice keeps the item id in next and grade contracts', 
 
   assert.equal(loaded.practice.question.question_id, 'Q_BOUND');
   assert.deepEqual(requests[0].paths, [
-    '/v1/daily-task-items/ITEM%2FBOUND/practice/next',
     '/daily-task-items/ITEM%2FBOUND/practice/next',
+    '/v1/daily-task-items/ITEM%2FBOUND/practice/next',
   ]);
   assert.equal(JSON.parse(requests[1].options.body).daily_task_item_id, 'ITEM/BOUND');
   assert.equal(graded.result.grading.is_correct, true);

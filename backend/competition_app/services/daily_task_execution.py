@@ -85,6 +85,19 @@ class DailyTaskExecutionCoordinator:
         )
         return progress if isinstance(progress, dict) else {}
 
+    def ensure_current_snapshot(self, learner_id: str) -> bool:
+        """Idempotently repair a missing delivered snapshot for the current version."""
+
+        if self.backend_handoff_runtime is None:
+            return False
+        plans = self.plan_repository.get_current(learner_id)
+        if plans is None or plans.learning_task is None:
+            return False
+        task = plans.learning_task
+        payload = task.model_dump(mode="json")
+        self.backend_handoff_runtime.upsert_daily_task_execution(learner_id, payload)
+        return True
+
     def reconcile_parent_status(self, learner_id: str) -> bool:
         if self.backend_handoff_runtime is None:
             return False

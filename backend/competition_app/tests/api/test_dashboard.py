@@ -148,6 +148,20 @@ def test_dashboard_returns_handoff_owned_item_progress_and_safe_action(tmp_path:
         def load_daily_task_progress(self, _learner_id, _payload):
             return progress
 
+        def load_learning_activity_summary(self, _learner_id, *, days, recent_limit):
+            assert days == 30
+            assert recent_limit == 20
+            return {
+                "recent_activities": [{
+                    "activity_id": "ACT_DASHBOARD",
+                    "activity_type": "training_workspace_task",
+                    "resource_id": "TRAINING_DASHBOARD",
+                    "title": "四君子汤专项练习",
+                    "task_type": "question_training",
+                    "completion_status": "completed",
+                }]
+            }
+
         def get_checkin_status(self, _learner_id, *, days=7):
             return {"checked_in_today": False, "streak": 0, "total_checkins": 0, "calendar_days": []}
 
@@ -216,9 +230,12 @@ def test_dashboard_returns_handoff_owned_item_progress_and_safe_action(tmp_path:
         "estimated_minutes": 10,
         "kp_id": "KP_1",
         "kp_name": "四君子汤",
+        "resource_ref": {},
+        "completion_policy": {"policy": "frozen_question_set"},
         "status": "in_progress",
         "progress": {"reviewed_questions": 2, "required_questions": 3},
         "action": {
+            "action_type": "practice",
             "destination": "workshop.practice",
             "params": {
                 "taskItemId": "DTI_DASHBOARD",
@@ -228,6 +245,7 @@ def test_dashboard_returns_handoff_owned_item_progress_and_safe_action(tmp_path:
         },
     }]
     assert "answer" not in str(current["items"]).lower()
+    assert response.json()["learning_activity"]["recent_activities"][0]["title"] == "四君子汤专项练习"
     assert calls == [("dispatch", learner_id, 20), ("reconcile", learner_id)]
 
 

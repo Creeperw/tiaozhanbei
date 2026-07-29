@@ -1,6 +1,6 @@
-# 注册、用户画像与学情报告说明
+# 注册、用户画像、学情报告与复习面板说明
 
-本文说明 `ikram/新注册丨新学习工坊` 分支中的新注册流程、注册后用户画像和学情报告界面。相关代码集中在当前目录。
+本文说明当前正式前端中的注册流程、注册后用户画像、学情报告和复习掌握界面。相关代码集中在当前目录。
 
 ## 功能入口
 
@@ -31,9 +31,10 @@ frontend/llm/src/
    ├─ RegistrationJourney.css
    ├─ OnboardingSurveyPanel.jsx
    ├─ PersonalizationPage.jsx
+   ├─ LearningInsightsReportPage.jsx
    ├─ LearningTrendDualAxisChart.jsx
    ├─ LearningActivityHeatmap.jsx
-   ├─ ReportsPage.jsx
+   ├─ MasteryHeatmap.jsx
    └─ ReviewDashboardPanel.jsx
 ```
 
@@ -45,9 +46,9 @@ frontend/llm/src/
 - `RegistrationJourney.css`：固定问卷和李时珍位置、桌面端与移动端布局；
 - `OnboardingSurveyPanel.jsx`：加载问题、恢复答案、必填校验、跳过、返回和最终提交；
 - `App.jsx`：识别 `onboarding_required`，阻止未完成初始化的账号直接进入工作台；
-- `PersonalizationPage.jsx`：注册结果对应的用户画像编辑、逐字段锁定和保存；
-- `ReportsPage.jsx`、两张图表组件：学情报告首屏、雷达图、学习趋势和活跃度；
-- `ReviewDashboardPanel.jsx`：复习与掌握统计。
+- `PersonalizationPage.jsx`：以只读卡片展示注册结果，用户通过“编辑画像”弹窗修改、逐字段锁定和保存；
+- `LearningInsightsReportPage.jsx`：消费正式学情洞察和行为汇总，展示能力雷达、学习趋势、活跃度与薄弱知识点；
+- `MasteryHeatmap.jsx`、`ReviewDashboardPanel.jsx`：展示知识点掌握、可信度、练习次数、复习保持率和复习队列。
 
 ## 注册与学情接口
 
@@ -107,25 +108,25 @@ frontend/llm/src/
 | 已确认学习上下文 | `GET {MAIN_API_BASE}/learning-context` |
 | 基础画像保存 | `PUT {API_BASE}/personalization/profile` |
 
-页面分为“学习基础与目标”和“偏好与约束”两列。字段默认可输入；点击输入框右侧锁图标后：
+页面分为“基础信息”和“学习偏好”两列，默认以只读方式呈现。点击“编辑画像”后：
 
-- 字段加入 `locked_fields`；
-- 输入框被禁用并变灰；
-- 再次点击解锁后恢复输入；
-- 点击“保存用户画像”后，字段值、锁定列表和 `lock_reason` 一起提交。
+- 弹窗加载当前画像，不使用占位演示值覆盖用户数据；
+- 可编辑专业背景、当前基础、学习目标、可投入时间和偏好字段；
+- 点击字段锁定按钮后将其加入 `locked_fields`，再次点击可解除；
+- 点击“保存画像”后，字段值、锁定列表和 `lock_reason` 一起提交。
 
 锁定只是保护后续推荐和智能体更新时不要覆盖用户确认值，不代表数据库字段不可修改；用户主动解锁后仍可编辑。
 
 ## 学情报告与复习统计
 
-- 学习趋势使用 `focus_minutes` 和 `task_completion_rate`；
-- 有效学习时长为绿色，任务完成率为橙色；
-- 左右坐标轴根据当前最大数据动态缩放，不固定在不合适的量程；
-- 学习活跃度综合有效学习时长、任务完成率和登录状态；
-- 雷达图无真实数据时暂用预览值展示后期形态；
-- 复习统计的“已评估知识点”等名称显示在卡片标题位置。
+- 学情报告通过 `/api/v1/learning-insights?days=30` 获取能力维度、趋势和薄弱点；
+- 累计学习时长、完成练习和活跃天数补充读取 `/api/v1/learning-activity/summary?days=30&recent_limit=100`；
+- 学习趋势使用 `focus_minutes` 和 `task_completion_rate`，双坐标轴根据真实数据动态缩放；
+- 雷达图和薄弱点没有可靠证据时显示数据不足，不生成预览成绩；
+- 复习面板通过正式复习与掌握接口展示热力图、到期队列、知识点明细和历史变化；
+- 复习队列仍只接纳完成知识点题目并通过批改的记录，知识卡生成本身不会入队。
 
-后端真实数据接入后，应删除雷达图临时预览值，不能把演示值当成用户成绩。
+所有百分比均来自后端正式字段；缺失值渲染为“—”或数据不足，不按零分处理。
 
 ## 布局约束
 
@@ -158,5 +159,6 @@ npm --prefix frontend/llm run build
 4. 返回第一步不会重复创建账号；
 5. `onboarding_required=true` 的已有账号能继续调查；
 6. 用户画像锁定后不能输入，解锁后可以输入；
-7. 学情报告第二行指标在首屏可见；
-8. 趋势图颜色、动态坐标轴和复习统计标题正确。
+7. 学情报告的四项摘要、能力雷达、趋势、薄弱点和活跃度均来自当前用户数据；
+8. 复习面板的热力图、到期队列、掌握明细与历史变化按当前用户隔离；
+9. 1024px 以上用户画像充分使用工作区，窄屏可纵向滚动且无横向溢出。

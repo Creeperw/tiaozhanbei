@@ -4,12 +4,14 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
+  Download,
   FileCheck2,
   History,
   ListChecks,
   Loader2,
   Minus,
   Plus,
+  RotateCcw,
   Sparkles,
   Sprout,
 } from 'lucide-react';
@@ -28,7 +30,6 @@ const questionTypes = [
 const sectionButton = 'inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40';
 
 export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
-  const [activeSection, setActiveSection] = useState('compose');
   const [papers, setPapers] = useState([]);
   const [kind, setKind] = useState('special');
   const [topic, setTopic] = useState('');
@@ -42,6 +43,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   const [answerMode, setAnswerMode] = useState('practice');
   const [duration, setDuration] = useState(60);
   const [activePaperId, setActivePaperId] = useState(paperId);
+  const [activeTaskItemId, setActiveTaskItemId] = useState(taskItemId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,8 +60,68 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   const total = Object.values(distribution).reduce((sum, value) => sum + value, 0);
   const selectedTypes = questionTypes.filter(([key]) => distribution[key] > 0);
 
-  if (activePaperId || taskItemId) {
-    return <PaperGenerationPanel enabled paperId={activePaperId} taskItemId={taskItemId} />;
+  const handleDownloadPaper = async (paperId, title, format) => {
+    try {
+      const result = await loadPaper({ fetcher: fetchJsonWithAuthFallback, paperId });
+      if (result.error || !result.paper?.items?.length) return;
+      const p = result.paper;
+      const safeName = (title || '试卷').replace(/[\\/:*?"<>|]/g, '_');
+      const lines = [];
+      lines.push('# ' + (title || p.title || '试卷'));
+      if (p.total_score) lines.push('**满分**：' + p.total_score + ' 分  ·  **题量**：' + p.items.length + ' 题');
+      lines.push('---');
+      p.items.forEach((item) => {
+        lines.push('## ' + (item.position || '') + '. ' + (item.question_type || '题目'));
+        lines.push(String(item.stem || '').replace(/<[^>]+>/g, ''));
+        (Array.isArray(item.options) ? item.options : []).forEach((opt, i) => {
+          const label = String.fromCharCode(65 + i);
+          let text = typeof opt === 'string' ? opt : (opt.content || opt.value || opt.text || '');
+          text = String(text || '').replace(/<[^>]+>/g, '').trim().replace(/^[A-Z][.．、)\s]\s*/, '');
+          lines.push('- ' + label + '. ' + text);
+        });
+        lines.push('---');
+      });
+      const md = lines.join('\n');
+      if (format === 'md') {
+        const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = safeName + '.md'; a.click(); URL.revokeObjectURL(url);
+      } else if (format === 'doc') {
+        const html = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+title+'</title><style>@page{margin:1.5cm}body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:10px;font-size:11pt;line-height:1.4}h1{font-size:13pt}h2{font-size:10.5pt;margin:12px 0 3px}hr{border:0;border-top:1px solid #e5e7eb;margin:6px 0}li{margin:1px 0;font-size:11pt}</style></head><body>'
+          + md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')+'</body></html>';
+        const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = safeName + '.doc'; a.click(); URL.revokeObjectURL(url);
+      } else if (format === 'png') {
+        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:20px;font-size:13px;line-height:1.45;color:#1a1a1a}h1{font-size:1.15em}h2{font-size:.95em}hr{border:0;border-top:1px solid #e5e7eb;margin:8px 0}li{margin:1px 0;font-size:13px}</style></head><body>'
+          + md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')+'</body></html>';
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;background:#fff;padding:40px;font-family:"Microsoft YaHei",sans-serif;font-size:13px;z-index:-1';
+        container.innerHTML = html;
+        document.body.appendChild(container);
+        const { default: h2c } = await import('html2canvas');
+        try { const canvas = await h2c(container, { scale: 2, backgroundColor: '#ffffff', logging: false });
+          canvas.toBlob((blob) => { if (blob) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = safeName + '.png'; a.click(); URL.revokeObjectURL(url); } }, 'image/png');
+        } finally { document.body.removeChild(container); }
+      } else if (format === 'pdf') {
+        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:20px;font-size:13px;line-height:1.45}h1{font-size:1.15em}h2{font-size:.95em}hr{border:0;border-top:1px solid #e5e7eb;margin:8px 0}li{margin:1px 0}@media print{@page{margin:1cm}}</style></head><body>'
+          + md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')+'</body></html>';
+        const w = window.open('', '_blank', 'width=800,height=600');
+        if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+      }
+    } catch {}
+  };
+
+  if (activePaperId || activeTaskItemId) {
+    return (
+      <PaperGenerationPanel
+        enabled
+        paperId={activePaperId}
+        taskItemId={activeTaskItemId}
+        onExit={() => {
+          setActivePaperId('');
+          setActiveTaskItemId('');
+        }}
+      />
+    );
   }
 
   const setCount = (key, value) => {
@@ -85,7 +147,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
         distribution: Object.fromEntries(Object.entries(distribution).filter(([, value]) => value > 0)),
         answerMode,
         durationMinutes: answerMode === 'test' ? duration : null,
-        taskItemId,
+        taskItemId: activeTaskItemId,
       });
       if (response.error) throw new Error(response.error);
       const loaded = await loadPaper({ fetcher: fetchJsonWithAuthFallback, paperId: response.paperId });
@@ -98,12 +160,6 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
     }
   };
 
-  const sections = [
-    { key: 'compose', label: '智能合成', icon: Sparkles },
-    { key: 'pending', label: '待办试卷', count: pendingPapers.length, icon: ListChecks },
-    { key: 'history', label: '历史存档', count: historyPapers.length, icon: History },
-  ];
-
   return (
     <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <header className="relative overflow-hidden border-b border-emerald-100 bg-[radial-gradient(circle_at_top_right,rgba(167,243,208,0.45),transparent_42%),linear-gradient(135deg,#f7fcf8,#eef8f1)] px-5 pb-6 pt-5 sm:px-7">
@@ -115,32 +171,24 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
         <div className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full border-[28px] border-white/50" aria-hidden="true" />
       </header>
 
-      <nav className="flex overflow-x-auto border-b border-slate-200 bg-slate-50/70 px-3 sm:px-5" aria-label="智能组卷视图">
-        {sections.map((section) => {
-          const Icon = section.icon;
-          return (
-            <button
-              key={section.key}
-              type="button"
-              aria-current={activeSection === section.key ? 'page' : undefined}
-              onClick={() => { setActiveSection(section.key); setError(''); }}
-              className={`relative inline-flex min-w-max items-center gap-2 px-4 py-3.5 text-sm font-semibold transition ${activeSection === section.key ? 'text-emerald-800' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              <Icon size={16} aria-hidden="true" />{section.label}
-              {section.count !== undefined && <span className={`rounded-md px-1.5 py-0.5 text-xs ${activeSection === section.key ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>{section.count}</span>}
-              {activeSection === section.key && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-emerald-600" />}
-            </button>
-          );
-        })}
-      </nav>
+      <section className="smart-paper__archive-grid grid gap-3 border-b border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 sm:p-5" role="region" aria-label="试卷存档">
+        <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900"><ListChecks size={16} className="text-emerald-700" />待办试卷</h3><span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">{pendingPapers.length}</span></header>
+          <PaperList papers={pendingPapers} onOpen={setActivePaperId} onDownload={handleDownloadPaper} empty="当前没有待作答试卷" mode="pending" compact />
+        </article>
+        <article className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900"><History size={16} className="text-slate-600" />历史存档</h3><span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{historyPapers.length}</span></header>
+          <PaperList papers={historyPapers} onOpen={setActivePaperId} onDownload={handleDownloadPaper} empty="完成的试卷会保存在这里" mode="history" compact />
+        </article>
+      </section>
 
-      {activeSection === 'compose' && <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <main className="min-w-0 space-y-7 p-5 sm:p-7">
           <section aria-labelledby="paper-source-title">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div><h3 id="paper-source-title" className="text-base font-semibold text-slate-950">1. 选择出题范围</h3><p className="mt-1 text-sm leading-6 text-slate-500">明确主题，或交给系统依据学习状态选择。</p></div>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-3">
               <button type="button" aria-pressed={kind === 'special'} onClick={() => setKind('special')} className={`rounded-xl border p-4 text-left transition duration-200 ${kind === 'special' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
                 <span className="flex items-center gap-2 text-sm font-semibold text-slate-950"><FileCheck2 size={18} className="text-emerald-700" />专项练</span>
                 <span className="mt-2 block text-xs leading-5 text-slate-600">围绕指定教材章节、知识点或能力目标出题。</span>
@@ -149,11 +197,16 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
                 <span className="flex items-center gap-2 text-sm font-semibold text-slate-950"><Sprout size={18} className="text-emerald-700" />随心练</span>
                 <span className="mt-2 block text-xs leading-5 text-slate-600">结合薄弱知识点、近期错题和复习队列智能选题。</span>
               </button>
+              <button type="button" data-paper-source="mistake_redo" aria-pressed={kind === 'mistakes'} onClick={() => setKind('mistakes')} className={`rounded-xl border p-4 text-left transition duration-200 ${kind === 'mistakes' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-950"><RotateCcw size={18} className="text-emerald-700" />错题集重做</span>
+                <span className="mt-2 block text-xs leading-5 text-slate-600">从个人错题集中抽取题目重新作答，集中巩固薄弱点。</span>
+              </button>
             </div>
             {kind === 'special' && <label className="mt-4 block text-sm font-semibold text-slate-800">练习主题
               <textarea aria-label="专项练主题" value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="例如：四君子汤的组成、功效主治与配伍意义" className="mt-2 min-h-24 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100" />
             </label>}
             {kind === 'free' && <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">系统会读取当前学习计划、掌握度、错题和待复习知识点，组合本次试卷范围。</div>}
+            {kind === 'mistakes' && <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">系统将依据个人错题集生成重做试卷，该功能即将开放。</div>}
           </section>
 
           <section aria-labelledby="paper-types-title">
@@ -164,7 +217,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
                   <label htmlFor={`paper-count-${key}`} className="block text-sm font-semibold text-slate-800">{label}</label>
                   <div className="mt-3 flex items-center rounded-lg border border-slate-200 bg-white">
                     <button type="button" aria-label={`减少${label}`} onClick={() => setCount(key, distribution[key] - 1)} disabled={distribution[key] === 0} className="inline-flex h-9 w-9 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30"><Minus size={14} /></button>
-                    <input id={`paper-count-${key}`} aria-label={label} type="number" min="0" max="50" value={distribution[key]} onChange={(event) => setCount(key, event.target.value)} className="h-9 min-w-0 flex-1 border-x border-slate-200 bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none" />
+                    <input id={`paper-count-${key}`} aria-label={label} type="text" inputMode="numeric" pattern="[0-9]*" value={distribution[key]} onChange={(event) => setCount(key, event.target.value)} className="h-9 min-w-0 flex-1 border-x border-slate-200 bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none" />
                     <button type="button" aria-label={`增加${label}`} onClick={() => setCount(key, distribution[key] + 1)} disabled={total >= 50} className="inline-flex h-9 w-9 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30"><Plus size={14} /></button>
                   </div>
                 </div>
@@ -195,40 +248,56 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
             <p className="text-xs font-semibold tracking-wide text-emerald-700">组卷预览</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-slate-950">{total}<span className="ml-1 text-sm font-medium text-slate-500">题</span></p>
             <dl className="mt-5 space-y-3 border-y border-slate-200 py-4 text-sm">
-              <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">范围</dt><dd className="max-w-40 text-right font-medium text-slate-800">{kind === 'free' ? '基于学情智能选择' : topic.trim() || '尚未填写主题'}</dd></div>
+              <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">范围</dt><dd className="max-w-40 text-right font-medium text-slate-800">{kind === 'free' ? '基于学情智能选择' : kind === 'mistakes' ? '错题集重做' : topic.trim() || '尚未填写主题'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">题型</dt><dd className="font-medium text-slate-800">{selectedTypes.length || 0} 种</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">模式</dt><dd className="font-medium text-slate-800">{answerMode === 'test' ? `测试 · ${duration} 分钟` : '练习'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">发布门禁</dt><dd className="font-medium text-emerald-700">智能体审核</dd></div>
             </dl>
-            <button type="button" onClick={generate} disabled={loading || !total || total > 50 || (kind === 'special' && !topic.trim())} className={`${sectionButton} mt-5 w-full border-emerald-700 bg-emerald-700 px-4 py-3 text-white shadow-[0_10px_24px_rgba(22,101,52,0.16)] hover:-translate-y-0.5 hover:bg-emerald-800`}>
+            <button type="button" onClick={generate} disabled={loading || kind === 'mistakes' || !total || total > 50 || (kind === 'special' && !topic.trim())} className={`${sectionButton} mt-5 w-full border-emerald-700 bg-emerald-700 px-4 py-3 text-white shadow-[0_10px_24px_rgba(22,101,52,0.16)] hover:-translate-y-0.5 hover:bg-emerald-800`}>
               {loading ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
-              {loading ? '正在组卷并审核' : '生成试卷'}
+              {loading ? '正在组卷并审核' : kind === 'mistakes' ? '错题集重做即将开放' : '生成试卷'}
             </button>
             <p className="mt-3 text-xs leading-5 text-slate-500">审核通过后进入单题作答界面；不在对话区展开试卷正文。</p>
           </div>
         </aside>
-      </div>}
-
-      {activeSection === 'pending' && <PaperList papers={pendingPapers} onOpen={setActivePaperId} empty="当前没有待作答试卷" mode="pending" />}
-      {activeSection === 'history' && <PaperList papers={historyPapers} onOpen={setActivePaperId} empty="完成的试卷会保存在这里" mode="history" />}
+      </div>
       {error && <p role="alert" className="mx-5 mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-800">{error}</p>}
     </div>
   );
 }
 
-function PaperList({ papers, onOpen, empty, mode }) {
+function PaperList({ papers, onOpen, onDownload, empty, mode, compact = false }) {
+  const [downloadMenu, setDownloadMenu] = useState(null);
   if (!papers.length) {
-    return <div className="grid min-h-64 place-items-center px-5 py-12 text-center"><div><FileCheck2 className="mx-auto text-slate-300" size={34} /><h3 className="mt-3 text-sm font-semibold text-slate-800">{empty}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{mode === 'pending' ? '生成并审核通过的试卷将自动进入待办。' : '提交试卷后可随时回来查看结果与解析。'}</p></div></div>;
+    return <div className={`grid place-items-center px-5 text-center ${compact ? 'min-h-32 py-6' : 'min-h-64 py-12'}`}><div><FileCheck2 className="mx-auto text-slate-300" size={compact ? 26 : 34} /><h3 className="mt-3 text-sm font-semibold text-slate-800">{empty}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{mode === 'pending' ? '生成并审核通过的试卷将自动进入待办。' : '提交试卷后可随时回来查看结果与解析。'}</p></div></div>;
   }
   return (
-    <div className="grid gap-3 p-5 sm:p-7 md:grid-cols-2">
+    <div className={`grid gap-3 ${compact ? 'max-h-52 overflow-y-auto p-3' : 'p-5 sm:p-7 md:grid-cols-2'}`}>
       {papers.map((paper) => (
-        <article key={paper.paper_id} className="group flex min-h-32 flex-col rounded-xl border border-slate-200 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+        <article key={paper.paper_id} className={`group flex flex-col rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md ${compact ? 'min-h-24 p-3' : 'min-h-32 p-4'}`}>
           <div className="flex items-start justify-between gap-3">
             <span className={`rounded-md px-2 py-1 text-xs font-semibold ${mode === 'pending' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>{mode === 'pending' ? '待作答' : '已完成'}</span>
-            <span className="inline-flex items-center gap-1 text-xs text-slate-500"><Clock3 size={13} />{paper.duration_minutes} 分钟</span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-xs text-slate-500"><Clock3 size={13} />{paper.duration_minutes} 分钟</span>
+              {onDownload && (
+                <div className="relative">
+                  <button type="button" title="下载试卷" onClick={(e) => { e.stopPropagation(); setDownloadMenu(downloadMenu === paper.paper_id ? null : paper.paper_id); }} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-emerald-600">
+                    <Download size={28} />
+                  </button>
+                  {downloadMenu === paper.paper_id && <><button type="button" aria-label="关闭下载菜单" onClick={(e) => { e.stopPropagation(); setDownloadMenu(null); }} className="fixed inset-0 z-10" />
+                  <div className="absolute right-0 top-full z-20 mt-1 w-36 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                    {[{k:'md',l:'Markdown'},{k:'doc',l:'Word 文档'},{k:'png',l:'图片'},{k:'pdf',l:'打印 PDF'}].map(f => (
+                      <button key={f.k} type="button" onClick={(e) => { e.stopPropagation(); setDownloadMenu(null); onDownload(paper.paper_id, paper.title, f.k); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50">{f.l}</button>
+                    ))}
+                  </div></>}
+                </div>
+              )}
+            </div>
           </div>
           <h3 className="mt-3 text-sm font-semibold leading-6 text-slate-950">{paper.title}</h3>
+          {mode === 'history' && paper.score !== undefined && paper.score !== null && (
+            <p className="mt-1 text-xs text-slate-500">得分：<span className="font-semibold text-slate-700">{paper.score}</span> / {paper.max_score || 100} 分</p>
+          )}
           <button type="button" onClick={() => onOpen(paper.paper_id)} className="mt-auto inline-flex items-center gap-1 self-end pt-3 text-sm font-semibold text-emerald-700 transition group-hover:gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
             {mode === 'pending' ? '开始答题' : '查看试卷'}<ChevronRight size={16} />
           </button>

@@ -301,6 +301,31 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def ensure_executable_knowledge_bundle(
+        self,
+        bundle: dict[str, Any],
+        *,
+        required_question_count: int = 3,
+    ) -> str:
+        """Register one trusted atlas bundle in the executable task store."""
+
+        database = importlib.import_module("APP.backend.database")
+        service = importlib.import_module("APP.backend.daily_task_progress_service")
+        db = database.SessionLocal()
+        try:
+            kp_id = service.ensure_executable_knowledge_bundle(
+                db,
+                bundle,
+                required_question_count=required_question_count,
+            )
+            db.commit()
+            return kp_id
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
     def record_daily_checkin(self, external_user_id: str) -> dict[str, Any]:
         database = importlib.import_module("APP.backend.database")
         checkin = importlib.import_module("APP.backend.checkin_service")
@@ -524,6 +549,133 @@ class BackendHandoffRuntime:
                 ],
                 "learning_trends": trends,
                 "diagnosis": report_payload,
+            }
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def list_active_personalization_memories(
+        self, external_user_id: str
+    ) -> list[dict[str, Any]]:
+        """Read active, non-expired memories for the mapped host user only."""
+
+        database = importlib.import_module("APP.backend.database")
+        time_utils = importlib.import_module("APP.backend.time_utils")
+        sqlalchemy = importlib.import_module("sqlalchemy")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            rows = (
+                db.query(database.PersonalizationMemory)
+                .filter(
+                    database.PersonalizationMemory.user_id == user.id,
+                    database.PersonalizationMemory.is_active.is_(True),
+                    sqlalchemy.or_(
+                        database.PersonalizationMemory.expires_at.is_(None),
+                        database.PersonalizationMemory.expires_at > time_utils.utc_now(),
+                    ),
+                )
+                .order_by(
+                    database.PersonalizationMemory.updated_at.desc(),
+                    database.PersonalizationMemory.id.desc(),
+                )
+                .all()
+            )
+            return [
+                {
+                    "id": row.id,
+                    "category": row.category or "note",
+                    "importance": row.importance or "normal",
+                    "title": row.title or "",
+                    "content": row.content or "",
+                    "source": row.source or "",
+                    "confidence": float(row.confidence or 0.0),
+                    "updated_at": row.updated_at.isoformat()
+                    if row.updated_at
+                    else None,
+                }
+                for row in rows
+                if str(row.content or "").strip()
+            ]
+        finally:
+            db.close()
+
+    def persist_memory_governance(
+        self,
+        external_user_id: str,
+        *,
+        execution_id: str,
+        candidates: list[dict[str, Any]],
+        resolution: str = "none",
+        conflicts: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Persist pending candidates and only user-confirmed replacements."""
+
+        allowed_resolutions = {
+            "none", "keep_existing", "use_current_once", "replace_existing"
+        }
+        if resolution not in allowed_resolutions:
+            raise ValueError("memory governance is not ready for persistence")
+        database = importlib.import_module("APP.backend.database")
+        memory_service = importlib.import_module("APP.backend.health_memory")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            normalized_candidates = [
+                {
+                    "content": str(item.get("content") or item.get("summary") or "").strip(),
+                    "title": str(item.get("title") or "")[:200],
+                    "importance": "normal",
+                    "reason": str(item.get("reason") or "Memory Agent 提取，等待用户在学习记忆设置中确认。"),
+                    "confidence": float(item.get("confidence") or 0.8),
+                }
+                for item in candidates
+                if str(item.get("content") or item.get("summary") or "").strip()
+            ]
+            saved = memory_service.save_extracted_memories(
+                db,
+                user.id,
+                {"candidates": normalized_candidates},
+                source="memory_agent",
+                session_id=None,
+                commit=False,
+            )
+            replacement_result: dict[str, Any] = {"replaced": []}
+            if resolution == "replace_existing":
+                replacement_result = memory_service.apply_confirmed_memory_replacements(
+                    db,
+                    user.id,
+                    list(conflicts or []),
+                )
+            db.add(
+                database.AgentEvent(
+                    user_id=user.id,
+                    agent_name="memory_agent",
+                    event_type="learning_memory_governance",
+                    input_summary="学习记忆候选与冲突治理",
+                    output_summary=(
+                        f"候选{len(normalized_candidates)}条，决策{resolution}"
+                    ),
+                    payload=json.dumps(
+                        {
+                            "execution_id": execution_id,
+                            "resolution": resolution,
+                            "candidate_contents": [
+                                item["content"] for item in normalized_candidates
+                            ],
+                            "replacements": replacement_result.get("replaced", []),
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            )
+            db.commit()
+            return {
+                "candidates": saved.get("non_important_candidates", []),
+                "resolution": resolution,
+                **replacement_result,
             }
         except Exception:
             db.rollback()
@@ -992,6 +1144,23 @@ class BackendHandoffRuntime:
             task_statuses = Counter(str(row.status or "unknown") for row in tasks)
             focus_statuses = Counter(str(row.status or "unknown") for row in focus_sessions)
             activity_types = Counter(str(row.activity_type or "unknown") for row in activities)
+            training_task_ids = {
+                str(row.resource_id)
+                for row in activities
+                if str(row.activity_type or "") == "training_workspace_task"
+                and row.resource_id
+            }
+            training_tasks = {}
+            if training_task_ids:
+                training_tasks = {
+                    str(row.task_id): row
+                    for row in db.query(database.TrainingTaskRecord)
+                    .filter(
+                        database.TrainingTaskRecord.user_id == user.id,
+                        database.TrainingTaskRecord.task_id.in_(training_task_ids),
+                    )
+                    .all()
+                }
             db.commit()
             return {
                 "schema_version": "1.0",
@@ -1024,6 +1193,16 @@ class BackendHandoffRuntime:
                         "score": float(row.score) if row.score is not None else None,
                         "duration_minutes": int(row.duration_minutes or 0),
                         "created_at": row.created_at.isoformat() if row.created_at else None,
+                        "title": (
+                            training_tasks.get(str(row.resource_id)).title
+                            if training_tasks.get(str(row.resource_id))
+                            else ""
+                        ),
+                        "task_type": (
+                            training_tasks.get(str(row.resource_id)).task_type
+                            if training_tasks.get(str(row.resource_id))
+                            else ""
+                        ),
                     }
                     for row in activities[:recent_limit]
                 ],
@@ -1489,12 +1668,12 @@ class BackendHandoffRuntime:
                     "stem": stem,
                     "options": options,
                     "kp_ids": kp_ids,
-                    "kp_names": [
+                    "kp_names": list(dict.fromkeys(
                         kp_names[kp_id]
                         for kp_id in kp_ids
                         if str(kp_names.get(kp_id) or "").strip()
                         and kp_names[kp_id] != kp_id
-                    ],
+                    )),
                     "request_id": request_id,
                     "source_scope": "formal_question_bank",
                 },
@@ -1764,6 +1943,112 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def release_practice_claim(self, external_user_id: str) -> None:
+        """Delete all active practice claims for this user."""
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            db.query(database.CorePracticeSubmissionClaim).filter_by(
+                user_id=user.id, daily_task_item_id=None,
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+
+    def record_qualification_paper_outcomes(
+        self,
+        external_user_id: str,
+        *,
+        attempt_id: str,
+        outcomes: list[dict[str, Any]],
+    ) -> dict[str, int]:
+        """Project comprehensive-paper answers into the canonical mistake store."""
+        database = importlib.import_module("APP.backend.database")
+        db = database.SessionLocal()
+        recorded = 0
+        mistakes_saved = 0
+        try:
+            user = self._workshop_user(db, external_user_id)
+            for outcome in outcomes:
+                question_id = str(outcome.get("question_id") or "").strip()
+                if not question_id or outcome.get("is_correct") is None:
+                    continue
+                request_id = f"qualification:{attempt_id}:{question_id}"
+                existing = db.query(database.LearningQuestionAttempt).filter_by(
+                    user_id=user.id,
+                    request_id=request_id,
+                ).one_or_none()
+                if existing is not None:
+                    continue
+
+                question = db.query(database.LearningQuestion).filter_by(
+                    question_id=question_id,
+                ).one_or_none()
+                if question is None:
+                    question = database.LearningQuestion(question_id=question_id)
+                    db.add(question)
+                question.question_type = str(outcome.get("question_type") or "short_answer")
+                question.question_content = str(outcome.get("question_content") or "")
+                question.options_json = json.dumps(outcome.get("options") or [], ensure_ascii=False)
+                question.answer_json = json.dumps(outcome.get("standard_answer") or [], ensure_ascii=False)
+                question.explanation = str(outcome.get("explanation") or "")
+                question.kp_ids_json = json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False)
+                db.flush()
+
+                is_correct = bool(outcome["is_correct"])
+                submitted_answer = str(outcome.get("submitted_answer") or "")
+                feedback = str(outcome.get("explanation") or "")
+                db.add(database.LearningQuestionAttempt(
+                    attempt_id=str(uuid4()),
+                    user_id=user.id,
+                    question_id=question_id,
+                    request_id=request_id,
+                    submitted_answer_json=json.dumps(
+                        [value.strip() for value in submitted_answer.split(",") if value.strip()],
+                        ensure_ascii=False,
+                    ),
+                    is_correct=is_correct,
+                    score=100.0 if is_correct else 0.0,
+                    reason_for_mistake="" if is_correct else "综合套题答题错误",
+                ))
+                db.add(database.QuestionAttempt(
+                    user_id=user.id,
+                    question_id=question_id,
+                    answer=submitted_answer,
+                    is_correct=is_correct,
+                    score=100.0 if is_correct else 0.0,
+                    kp_ids_json=json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False),
+                    feedback=feedback,
+                ))
+                recorded += 1
+                if not is_correct:
+                    mistake = db.query(database.MistakeRecord).filter_by(
+                        user_id=user.id,
+                        question_id=question_id,
+                        status="active",
+                    ).one_or_none()
+                    if mistake is None:
+                        mistake = database.MistakeRecord(
+                            user_id=user.id,
+                            question_id=question_id,
+                            status="active",
+                        )
+                        db.add(mistake)
+                    mistake.kp_ids_json = json.dumps(outcome.get("kp_ids") or [], ensure_ascii=False)
+                    mistake.error_type = "综合套题答题错误"
+                    mistake.summary = feedback or "本题答案需要复盘。"
+                    mistakes_saved += 1
+            db.commit()
+            return {"attempts_recorded": recorded, "mistakes_saved": mistakes_saved}
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
     def list_papers(
         self, external_user_id: str, *, offset: int = 0, limit: int = 50
     ) -> dict[str, Any]:
@@ -1774,18 +2059,49 @@ class BackendHandoffRuntime:
             query = db.query(database.PaperInstanceRecord).filter_by(learner_id=user.id)
             total = query.count()
             rows = query.order_by(database.PaperInstanceRecord.created_at.desc()).offset(offset).limit(limit).all()
+            paper_ids = [row.paper_id for row in rows]
+            submission_scores: dict[str, dict[str, Any]] = {}
+            if paper_ids:
+                submission_rows = (
+                    db.query(database.PaperSubmissionRecord)
+                    .filter(
+                        database.PaperSubmissionRecord.paper_id.in_(paper_ids),
+                        database.PaperSubmissionRecord.status == "submitted",
+                    )
+                    .all()
+                )
+                for sub in submission_rows:
+                    score = None
+                    max_score = None
+                    try:
+                        parsed = json.loads(sub.result_json or "{}")
+                        if isinstance(parsed, dict):
+                            raw_score = parsed.get("score")
+                            raw_max = parsed.get("max_score")
+                            if raw_score is not None:
+                                score = int(raw_score) if isinstance(raw_score, (int, float)) else None
+                            if raw_max is not None:
+                                max_score = int(raw_max) if isinstance(raw_max, (int, float)) else None
+                    except (json.JSONDecodeError, TypeError, ValueError):
+                        pass
+                    submission_scores[str(sub.paper_id)] = {"score": score, "max_score": max_score}
+            items = []
+            for row in rows:
+                item = {
+                    "paper_id": row.paper_id,
+                    "title": row.title,
+                    "status": row.status,
+                    "duration_minutes": int(row.duration_minutes or 60),
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                entry = submission_scores.get(row.paper_id)
+                if entry is not None:
+                    item["score"] = entry["score"]
+                    item["max_score"] = entry["max_score"]
+                items.append(item)
             return {
                 "schema_version": "1.0",
-                "items": [
-                    {
-                        "paper_id": row.paper_id,
-                        "title": row.title,
-                        "status": row.status,
-                        "duration_minutes": int(row.duration_minutes or 60),
-                        "created_at": row.created_at.isoformat() if row.created_at else None,
-                    }
-                    for row in rows
-                ],
+                "items": items,
                 "total": total,
                 "offset": offset,
                 "limit": limit,
@@ -1876,6 +2192,7 @@ class BackendHandoffRuntime:
                 database.LearningAttemptRecord,
                 database.LearningAttemptItemRecord,
                 database.GradingResultRecord,
+                database.AuditResultRecord,
             )
             .join(
                 database.LearningAttemptItemRecord,
@@ -1887,9 +2204,18 @@ class BackendHandoffRuntime:
                 database.GradingResultRecord.attempt_item_id
                 == database.LearningAttemptItemRecord.attempt_item_id,
             )
+            .join(
+                database.AuditResultRecord,
+                database.AuditResultRecord.source_artifact_id
+                == database.GradingResultRecord.artifact_id,
+            )
             .filter(
                 database.LearningAttemptRecord.learner_id == user_id,
                 database.GradingResultRecord.status == "reviewed",
+                database.AuditResultRecord.source_artifact_version
+                == database.GradingResultRecord.version,
+                database.AuditResultRecord.decision == "pass",
+                database.AuditResultRecord.status.in_(("completed", "reviewed")),
             )
             .order_by(
                 database.LearningAttemptItemRecord.created_at.desc(),
@@ -1898,13 +2224,26 @@ class BackendHandoffRuntime:
             .limit(200)
             .all()
         )
-        for attempt, item, grading in graded_rows:
+        daily_groups: dict[str, list[tuple[Any, Any, Any]]] = {}
+        for attempt, item, grading, _audit in graded_rows:
+            if attempt.request_id:
+                seen_request_ids.add(str(attempt.request_id))
+            daily_item_id = str(attempt.daily_task_item_id or "").strip()
+            if daily_item_id:
+                daily_item = db.query(database.DailyTaskItemRecord).filter_by(
+                    task_item_id=daily_item_id,
+                    user_id=user_id,
+                ).one_or_none()
+                if daily_item is None or daily_item.status != "completed":
+                    continue
+                daily_groups.setdefault(daily_item_id, []).append(
+                    (attempt, item, grading)
+                )
+                continue
             source_id = f"HANDOFF_ITEM_{item.attempt_item_id}"
             if source_id in seen_attempt_ids:
                 continue
             seen_attempt_ids.add(source_id)
-            if attempt.request_id:
-                seen_request_ids.add(str(attempt.request_id))
             kp_ids = cls._json_list(grading.kp_ids_json)
             if not kp_ids:
                 kp_ids = cls._kp_snapshot_ids(item.kp_snapshot_json)
@@ -1924,6 +2263,66 @@ class BackendHandoffRuntime:
                     "kp_ids": kp_ids,
                     "hint_used": bool(item.hint_used),
                     "feedback": grading.error_reason,
+                    "completion_status": "completed",
+                    "grading_status": "reviewed",
+                    "audit_decision": "pass",
+                }
+            )
+        for daily_item_id, rows in daily_groups.items():
+            source_id = f"HANDOFF_DAILY_ITEM_{daily_item_id}"
+            if source_id in seen_attempt_ids:
+                continue
+            kp_ids = list(
+                dict.fromkeys(
+                    kp_id
+                    for _attempt, item, grading in rows
+                    for kp_id in (
+                        cls._json_list(grading.kp_ids_json)
+                        or cls._kp_snapshot_ids(item.kp_snapshot_json)
+                    )
+                )
+            )
+            if not kp_ids:
+                continue
+            answered_at = max(
+                (
+                    attempt.submitted_at or item.created_at
+                    for attempt, item, _grading in rows
+                    if attempt.submitted_at is not None or item.created_at is not None
+                ),
+                default=None,
+            )
+            ratios = [
+                max(0.0, min(1.0, grading.score / grading.max_score))
+                for _attempt, _item, grading in rows
+                if grading.score is not None
+                and grading.max_score is not None
+                and grading.max_score > 0
+            ]
+            seen_attempt_ids.add(source_id)
+            attempts.append(
+                {
+                    "attempt_id": source_id,
+                    "user_id": external_user_id,
+                    "question_id": f"daily-task-item:{daily_item_id}",
+                    "submitted_answer": [
+                        item.submitted_answer for _attempt, item, _grading in rows
+                    ],
+                    "is_correct": all(
+                        bool(grading.is_correct)
+                        for _attempt, _item, grading in rows
+                    ),
+                    "score": (
+                        round(100 * sum(ratios) / len(ratios), 2)
+                        if ratios
+                        else 0.0
+                    ),
+                    "max_score": 100.0,
+                    "answered_at": answered_at.isoformat()
+                    if answered_at is not None
+                    else None,
+                    "kp_ids": kp_ids,
+                    "feedback": "知识点题组已全部完成，按整组结果进入复习队列。",
                     "completion_status": "completed",
                     "grading_status": "reviewed",
                     "audit_decision": "pass",
@@ -2000,6 +2399,32 @@ class BackendHandoffRuntime:
                     "audit_decision": "pass",
                 }
             )
+
+        all_kp_ids = list(dict.fromkeys(
+            kp_id
+            for attempt in attempts
+            for kp_id in attempt.get("kp_ids", [])
+            if str(kp_id or "").strip()
+        ))
+        kp_names = {
+            str(row.kp_id): str(row.name).strip()
+            for row in (
+                db.query(database.KnowledgePoint)
+                .filter(database.KnowledgePoint.kp_id.in_(all_kp_ids))
+                .all()
+                if all_kp_ids
+                else []
+            )
+            if str(row.name or "").strip() and str(row.name).strip() != str(row.kp_id)
+        }
+        for attempt in attempts:
+            attempt["kp_names"] = {
+                kp_id: kp_names[kp_id]
+                for kp_id in attempt.get("kp_ids", [])
+                if kp_id in kp_names
+            }
+            if len(attempt["kp_ids"]) == 1 and attempt["kp_ids"][0] in kp_names:
+                attempt["knowledge_point_name"] = kp_names[attempt["kp_ids"][0]]
 
         attempts.sort(key=lambda item: str(item.get("answered_at") or ""), reverse=True)
         return attempts[:100]

@@ -98,4 +98,21 @@ describe('KnowledgeCardLibrary', () => {
     expect(screen.getByRole('progressbar', { name: '有效专注进度' })).toHaveValue(0);
     expect(screen.getByRole('button', { name: '确认看完' })).toBeDisabled();
   });
+
+  it('opens a daily-task video directly even when no learned knowledge card exists yet', async () => {
+    loadKnowledgeCards.mockResolvedValue({ cards: { items: [] }, error: '' });
+
+    render(
+      <KnowledgeCardLibrary
+        taskItemId="ITEM_VIDEO"
+        initialResource="videos"
+        directTitle="观看补气剂章节视频"
+        directVideo={{ title: '补气剂章节精讲', url: 'https://example.test/video.mp4' }}
+      />,
+    );
+
+    expect(await screen.findByRole('heading', { name: '观看补气剂章节视频' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '视频资源 1' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTitle('补气剂章节精讲')).toHaveAttribute('src', 'https://example.test/video.mp4');
+  });
 });

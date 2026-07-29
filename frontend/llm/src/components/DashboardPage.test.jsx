@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import DashboardPage from './DashboardPage';
+import DashboardPage, { visibleWorkshopTextbooks } from './DashboardPage';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
 import {
   loadClassicLearningRoute,
@@ -86,6 +86,34 @@ describe('DashboardPage replacement learning workshop', () => {
     })));
   });
 
+
+  it('shows every textbook when no long-term plan exists', () => {
+    const all = [{ name: 'book-a' }, { name: 'book-b' }];
+    expect(visibleWorkshopTextbooks({
+      allTextbooks: all,
+      plannedBooks: [],
+      remainingTextbooks: all,
+      showAllTextbooks: false,
+    })).toEqual(all);
+  });
+
+  it('always opens a textbook from the all-textbook route', async () => {
+    const onNavigate = vi.fn();
+    render(<DashboardPage onNavigate={onNavigate} />);
+
+    const library = await screen.findByRole('region', { name: '教材学习列表' });
+    fireEvent.click(within(library).getByRole('button', { name: '学习《中医学基础》' }));
+
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: {
+        view: 'textbook-chapters',
+        route: 'textbook_14_5',
+        lv1: '中医学基础',
+        source: 'textbook-library',
+      },
+    });
+  });
   it('uses the textbook library as the complete learning-workshop surface', async () => {
     render(<DashboardPage onNavigate={vi.fn()} />);
 

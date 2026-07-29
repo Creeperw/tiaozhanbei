@@ -193,7 +193,7 @@ async def test_knowledge_explanation_falls_back_to_open_self_check_questions() -
     result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(_context())
 
     questions = result.payload.content["配套练习"]
-    assert len(questions) == 2
+    assert len(questions) == 1
     assert all(item["选项"] == [] for item in questions)
     assert result.payload.question_consumption is not None
     assert result.payload.question_consumption.use_question_candidates is False

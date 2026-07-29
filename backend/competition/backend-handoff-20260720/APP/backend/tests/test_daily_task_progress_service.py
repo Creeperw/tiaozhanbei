@@ -11,6 +11,7 @@ from APP.backend.daily_task_progress_service import (
     DailyTaskProgressError,
     confirm_iframe_video,
     daily_task_progress,
+    ensure_executable_knowledge_bundle,
     record_reviewed_question,
     record_video_evidence,
     resolve_executable_knowledge_point,
@@ -57,6 +58,119 @@ class DailyTaskProgressServiceTests(unittest.TestCase):
             self.assertEqual(resolve_executable_knowledge_point(db, " 牙菌斑 "), "KP_1")
             self.assertIsNone(resolve_executable_knowledge_point(db, "不存在"))
 
+    def test_trusted_atlas_bundle_becomes_an_executable_frozen_question_item(self):
+        bundle = {
+            "source": "knowledge_atlas",
+            "kp_id": "KP_ATLAS",
+            "knowledge_point_name": "阴阳转化",
+            "kp": {
+                "kp_id": "KP_ATLAS",
+                "kp_lv1": "中医学基础",
+                "kp_lv2": "阴阳学说",
+                "kp_lv3": "阴阳转化",
+                "other_name": "阴阳的相互转化",
+                "raw_content": ["C_1"],
+                "order": "1",
+            },
+            "questions": [
+                {
+                    "question_id": f"Q_ATLAS_{index}",
+                    "question_type": "单项选择题",
+                    "question_content": f"阴阳转化题目{index}",
+                    "options": [
+                        {"option_id": "A", "content": "正确"},
+                        {"option_id": "B", "content": "错误"},
+                    ],
+                    "answer": ["A"],
+                    "explanation": "教材解析",
+                    "kp_ids": ["KP_ATLAS"],
+                }
+                for index in range(1, 4)
+            ],
+        }
+        with self.session_factory() as db:
+            kp_id = ensure_executable_knowledge_bundle(db, bundle)
+            snapshot = upsert_daily_task_snapshot(
+                db,
+                user_id=1,
+                payload={
+                    "host_task_id": "TASK_ATLAS",
+                    "host_task_version": 1,
+                    "items": [
+                        {
+                            "task_item_id": "ITEM_ATLAS",
+                            "item_type": "knowledge_practice",
+                            "kp_id": kp_id,
+                            "required_question_count": 3,
+                        }
+                    ],
+                },
+            )
+
+            self.assertEqual(kp_id, "KP_ATLAS")
+            self.assertEqual(len(snapshot["items"][0]["questions"]), 3)
+            self.assertEqual(
+                resolve_executable_knowledge_point(db, "阴阳的相互转化"),
+                "KP_ATLAS",
+            )
+            imported = db.query(database.QuestionBankItem).filter_by(
+                question_id="Q_ATLAS_1"
+            ).one()
+            self.assertIsNone(imported.difficulty)
+            self.assertIsNone(imported.difficulty_source)
+
+    def test_trusted_atlas_can_promote_same_kp_from_audited_agent_paper(self):
+        bundle = {
+            "source": "knowledge_atlas",
+            "kp_id": "KP_AUDITED",
+            "knowledge_point_name": "阴阳的特性",
+            "kp": {
+                "kp_id": "KP_AUDITED",
+                "kp_lv1": "中医学基础",
+                "kp_lv2": "阴阳学说",
+                "kp_lv3": "阴阳的特性",
+                "raw_content": ["C_AUDITED"],
+                "order": "2",
+            },
+            "questions": [
+                {
+                    "question_id": f"Q_AUDITED_{index}",
+                    "question_type": "单项选择题",
+                    "question_content": f"阴阳特性题目{index}",
+                    "options": [
+                        {"option_id": "A", "content": "正确"},
+                        {"option_id": "B", "content": "错误"},
+                    ],
+                    "answer": ["A"],
+                    "explanation": "教材解析",
+                    "kp_ids": ["KP_AUDITED"],
+                }
+                for index in range(1, 4)
+            ],
+        }
+        with self.session_factory() as db:
+            db.add(
+                database.KnowledgePoint(
+                    kp_id="KP_AUDITED",
+                    name="阴阳的特性",
+                    aliases_json="[]",
+                    source="agent_audited_paper",
+                    status="active",
+                )
+            )
+            db.flush()
+
+            kp_id = ensure_executable_knowledge_bundle(db, bundle)
+
+            self.assertEqual(kp_id, "KP_AUDITED")
+            point = db.query(database.KnowledgePoint).filter_by(
+                kp_id="KP_AUDITED"
+            ).one()
+            self.assertEqual(
+                point.source,
+                "formal-content:knowledge-atlas-2026-07-18",
+            )
+
     def test_publication_rejects_uncompletable_recall_before_persisting_parent(self):
         with self.session_factory() as db:
             with self.assertRaises(DailyTaskProgressError) as captured:
@@ -86,6 +200,34 @@ class DailyTaskProgressServiceTests(unittest.TestCase):
             first_item = result["items"][0]
             self.assertEqual(first_item["status"], "pending")
             self.assertEqual(first_item["required_question_count"], 1)
+
+    def test_metadata_only_parent_version_keeps_frozen_item_progress_visible(self):
+        with self.session_factory() as db:
+            payload = {
+                "host_task_id": "TASK_VERSIONED",
+                "host_task_version": 1,
+                "items": [
+                    {
+                        "task_item_id": "ITEM_VERSIONED",
+                        "kp_id": "KP_1",
+                        "required_question_count": 1,
+                    }
+                ],
+            }
+            upsert_daily_task_snapshot(db, user_id=1, payload=payload)
+            payload["host_task_version"] = 2
+            upsert_daily_task_snapshot(db, user_id=1, payload=payload)
+
+            progress = daily_task_progress(
+                db,
+                user_id=1,
+                payload={
+                    "host_task_id": "TASK_VERSIONED",
+                    "host_task_version": 2,
+                },
+            )
+            self.assertEqual(progress["total_items"], 1)
+            self.assertEqual(progress["items"][0]["task_item_id"], "ITEM_VERSIONED")
 
     def test_all_frozen_questions_terminally_reviewed_complete_item(self):
         with self.session_factory() as db:

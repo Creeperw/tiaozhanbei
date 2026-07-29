@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import process from 'node:process'
 
 // https://vite.dev/config/
+const apiTarget = process.env.VITE_API_TARGET || 'http://127.0.0.1:7860'
+
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -30,22 +32,21 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/v1': {
-        target: process.env.VITE_MAIN_API_TARGET || 'http://127.0.0.1:7860',
+        target: process.env.VITE_MAIN_API_TARGET || apiTarget,
         changeOrigin: true,
       },
       '/api': {
-        target: process.env.VITE_HANDOFF_API_TARGET || 'http://127.0.0.1:7860',
+        target: apiTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/health': {
-        target: process.env.VITE_MAIN_API_TARGET || 'http://127.0.0.1:7860',
+        target: process.env.VITE_MAIN_API_TARGET || apiTarget,
         changeOrigin: true,
       },
-      '/handoff-health': {
-        target: process.env.VITE_HANDOFF_API_TARGET || 'http://127.0.0.1:7860',
+      '/platform-assets': {
+        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:7860',
         changeOrigin: true,
-        rewrite: () => '/health',
       },
     },
   },

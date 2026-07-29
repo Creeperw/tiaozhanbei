@@ -34,6 +34,7 @@ from competition_app.services.auth import InvalidCredentialsError
 from competition_app.services.learning_path_projection import LearningPathProjectionService
 from competition_app.services.profile_readiness import ProfileReadinessService
 from competition_app.services.planning_readiness import PlanningReadinessService
+from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.workshop import WorkshopKnowledgeService
 from competition_app.services.qualification_papers import QualificationPaperRepository
@@ -47,6 +48,9 @@ QUALIFICATION_TARGET_CATALOG = (
     / "data"
     / "qualification_targets"
     / "tcm_qualification_targets.v1.json"
+)
+WORKSHOP_NOTE_IMAGE_ROOT = (
+    Path(__file__).resolve().parents[1] / "data" / "workshop_note_images"
 )
 
 _PRACTICE_TYPE_ALIASES = {
@@ -69,6 +73,10 @@ _CASE_PRACTICE_TYPES = {"short_answer", "case_quiz"}
 
 
 class FavoriteFolderCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class NoteFolderCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
 
 
@@ -96,6 +104,11 @@ class WorkshopNoteUpdateRequest(BaseModel):
     content: str = Field(min_length=1, max_length=20_000)
 
 
+class StageEvidenceRequest(BaseModel):
+    requirement: str = Field(min_length=1, max_length=1000)
+    task_id: str = Field(min_length=1, max_length=160)
+
+
 def _practice_question_type(value: object) -> str:
     text = str(value or "").strip()
     return _PRACTICE_TYPE_ALIASES.get(text, text)
@@ -108,6 +121,26 @@ def _practice_mode_matches(question_type: object, mode: str) -> bool:
     if mode == "case":
         return normalized in _CASE_PRACTICE_TYPES
     return True
+
+
+def _sanitize_practice_question_labels(payload: dict) -> dict:
+    question = payload.get("question") if isinstance(payload, dict) else None
+    if not isinstance(question, dict):
+        return payload
+    kp_ids = {
+        str(value).strip()
+        for value in question.get("kp_ids") or []
+        if str(value).strip()
+    }
+    raw_names = question.get("kp_names") or []
+    if isinstance(raw_names, dict):
+        raw_names = raw_names.values()
+    question["kp_names"] = list(dict.fromkeys(
+        str(value).strip()
+        for value in raw_names
+        if str(value).strip() and str(value).strip() not in kp_ids
+    ))
+    return payload
 
 
 def _profile_practice_query(context: dict) -> str:
@@ -139,11 +172,20 @@ def _formal_question_payload(question: dict, kp_names: dict[str, str]) -> dict:
     ))
     raw_difficulty = question.get("difficulty", question.get("难度"))
     try:
-        difficulty = max(1, min(5, int(float(raw_difficulty))))
-        difficulty_source = "formal_question_bank"
+        if raw_difficulty is None or isinstance(raw_difficulty, bool):
+            raise ValueError("difficulty is absent")
+        parsed_difficulty = float(raw_difficulty)
+        if not parsed_difficulty.is_integer() or not 1 <= parsed_difficulty <= 5:
+            raise ValueError("difficulty must be an integer from 1 to 5")
+        difficulty = int(parsed_difficulty)
+        difficulty_source = str(
+            question.get("difficulty_source")
+            or question.get("难度来源")
+            or "source_metadata"
+        ).strip()
     except (TypeError, ValueError):
-        difficulty = 2
-        difficulty_source = "system_default"
+        difficulty = None
+        difficulty_source = None
     return {
         "question_id": str(question.get("question_id") or question.get("题目id") or "").strip(),
         "question_type": _practice_question_type(
@@ -223,6 +265,12 @@ class WorkshopPaperSubmitRequest(BaseModel):
     request_id: str = Field(min_length=1, max_length=120)
 
 
+class MistakeRedoPaperRequest(BaseModel):
+    distribution: dict[str, int] = Field(default_factory=dict)
+    answer_mode: str = Field(default="practice", pattern="^(practice|test)$")
+    duration_minutes: int | None = Field(default=None, ge=10, le=300)
+
+
 class QualificationAttemptCreateRequest(BaseModel):
     answer_mode: str = Field(pattern="^(practice|test)$")
     duration_minutes: int | None = Field(default=None, ge=10, le=300)
@@ -270,16 +318,37 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        workshop_dispatcher = None
         if backend_handoff is not None:
             await backend_handoff.startup()
+        if container.writeback_executor is not None and backend_handoff is not None:
+            async def dispatch_workshop_outbox() -> None:
+                while True:
+                    try:
+                        await asyncio.to_thread(
+                            container.writeback_executor.dispatch_pending_workshop_publications,
+                            backend_handoff,
+                        )
+                    except Exception:
+                        pass
+                    await asyncio.sleep(5)
+
+            workshop_dispatcher = asyncio.create_task(dispatch_workshop_outbox())
         try:
             yield
         finally:
+            if workshop_dispatcher is not None:
+                workshop_dispatcher.cancel()
+                try:
+                    await workshop_dispatcher
+                except asyncio.CancelledError:
+                    pass
             if backend_handoff is not None:
                 await backend_handoff.shutdown()
 
     app = FastAPI(title="Competition App", version="0.1.0", lifespan=lifespan)
     static_root = Path(__file__).parents[1] / "static"
+    platform_assets_root = static_root / "platform-assets"
     chat_root = Path(__file__).parents[1] / "chat_static"
     auth_root = Path(__file__).parents[1] / "auth_static"
     frontend_root = container.frontend_dist_root
@@ -314,6 +383,23 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "textbook-covers"),
             name="frontend_textbook_covers",
         )
+    if frontend_root and (frontend_root / "textbook-status-icons").is_dir():
+        app.mount(
+            "/textbook-status-icons",
+            StaticFiles(directory=frontend_root / "textbook-status-icons"),
+            name="frontend_textbook_status_icons",
+        )
+    if frontend_root and (frontend_root / "acupuncture").is_dir():
+        app.mount(
+            "/acupuncture",
+            StaticFiles(directory=frontend_root / "acupuncture"),
+            name="frontend_acupuncture",
+        )
+    app.mount(
+        "/platform-assets",
+        StaticFiles(directory=platform_assets_root),
+        name="platform_assets",
+    )
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
     app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
     app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
@@ -338,6 +424,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         public_path = (
             path == "/"
             or path == "/favicon.ico"
+            or path == "/favicon.svg"
+            or path == "/hero_word.txt"
             or path == "/health"
             or path == "/openapi.json"
             or path.startswith(
@@ -347,6 +435,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "/assistant-character/",
                     "/learning-stage/",
                     "/textbook-covers/",
+                    "/textbook-status-icons/",
+                    "/acupuncture/",
+                    "/platform-assets/",
                 )
             )
             or path.startswith(("/auth", "/docs", "/redoc"))
@@ -366,6 +457,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         response = await call_next(request)
         completed_question_submission = (
             path == "/training/practice/grade"
+            or path == "/api/training/practice/grade"
             or path == "/api/v1/workshop/practice/grade"
             or (
                 path.startswith("/training/workspace/papers/")
@@ -383,6 +475,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             and backend_handoff is not None
         ):
             try:
+                # Release practice claim so next request gets a fresh question
+                backend_handoff.release_practice_claim(current_user.user_id)
+
                 behavior = await asyncio.to_thread(
                     backend_handoff.load_learning_context, current_user.user_id
                 )
@@ -424,6 +519,21 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=403, detail="无权访问其他用户的数据")
         return user
 
+    async def canonical_review_queue(learner_id: str, *, limit: int = 200):
+        """Refresh and read the single review queue used by every user-facing metric."""
+
+        if backend_handoff is not None and hasattr(
+            backend_handoff, "load_learning_context"
+        ):
+            behavior = await asyncio.to_thread(
+                backend_handoff.load_learning_context, learner_id
+            )
+            container.review_service.ingest_question_attempts(
+                learner_id=learner_id,
+                attempts=behavior.get("question_attempt", []),
+            )
+        return container.review_service.get_queue(learner_id, limit=limit)
+
     @app.get("/api/v1/qualification-papers/catalog")
     async def qualification_paper_catalog(
         request: Request,
@@ -433,6 +543,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     ) -> dict:
         current_user(request)
         return qualification_papers.list_catalog(exam_id=exam_id, year=year, paper_type=paper_type)
+
+    @app.post("/api/v1/workshop/papers/mistake-redo", status_code=501)
+    async def create_mistake_redo_paper(
+        payload: MistakeRedoPaperRequest, request: Request
+    ) -> dict:
+        current_user(request)
+        del payload
+        raise HTTPException(status_code=501, detail="错题集重做组卷接口已预留")
 
     @app.post("/api/v1/qualification-papers/{template_id}/attempts")
     async def create_qualification_attempt(
@@ -450,6 +568,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             )
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/qualification-paper-attempts")
+    async def list_qualification_attempts(request: Request, offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=200)) -> dict:
+        user = current_user(request)
+        if user is None: raise HTTPException(status_code=401, detail="请先登录后继续")
+        return qualification_papers.list_attempts(user.user_id, offset=offset, limit=limit)
 
     @app.get("/api/v1/qualification-paper-attempts/{attempt_id}")
     async def get_qualification_attempt(attempt_id: str, request: Request) -> dict:
@@ -488,7 +612,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         try:
-            return qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
+            result = qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
+            if backend_handoff is not None and hasattr(
+                backend_handoff, "record_qualification_paper_outcomes"
+            ):
+                try:
+                    result["learning_writeback"] = await asyncio.to_thread(
+                        backend_handoff.record_qualification_paper_outcomes,
+                        user.user_id,
+                        attempt_id=attempt_id,
+                        outcomes=qualification_papers.submission_outcomes(user.user_id, attempt_id),
+                    )
+                except Exception:
+                    result["learning_writeback"] = {"status": "retry_pending"}
+            return result
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -522,7 +659,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return HTTPException(status_code=500, detail=str(exc))
 
     def current_plan_context(learner_id: str) -> dict[str, dict]:
-        state = container.review_card_use_case.plan_repository.get_current(learner_id)
+        state = container.learning_plan_service.get_current(learner_id)
         if state is None:
             return {}
         context = {
@@ -676,6 +813,54 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is not None and state.get("learner_id") != user.user_id:
             raise HTTPException(status_code=404, detail="LangGraph 会话不存在或已过期")
         return state
+
+    def safe_failure_message(error_code: object) -> str:
+        messages = {
+            "knowledge_timeout": "知识检索超时，已保存当前会话，请稍后重试。",
+            "knowledge_step_failed": "知识检索未能完成，请稍后重试。",
+            "paper_blueprint_timeout": "试卷蓝图生成超时，请稍后重试。",
+            "model_timeout": "模型调用超时，请稍后重试。",
+            "workflow_timeout": "本次处理超时，已保存当前会话，请稍后重试。",
+            "plan_compilation_failed": "学习规划未能通过结构化校验，请稍后重试。",
+            "audit_step_failed": "内容审核未能完成，请稍后重试。",
+            "daily_task_publication_failed": "今日任务发布未能完成，请稍后重试。",
+            "paper_generation_failed": "试卷生成未能完成，请稍后重试。",
+            "persistence_failed": "结果保存失败，请稍后重试。",
+        }
+        return messages.get(
+            str(error_code or ""),
+            "这次处理没有成功完成，请稍后重试。",
+        )
+
+    def safe_run_status(state: dict[str, Any]) -> dict[str, Any]:
+        result = state.get("result")
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        if not isinstance(result, dict):
+            result = None
+        payload = {
+            "status": state.get("status"),
+            "thread_id": state.get("thread_id"),
+            "execution_id": state.get("execution_id"),
+            "task_type": state.get("task_type")
+            or (result or {}).get("task_type"),
+            "result": _sanitize(result) if result is not None else None,
+            "message": (
+                safe_failure_message(state.get("error_code"))
+                if state.get("status") == "failed"
+                else None
+            ),
+            "error_code": state.get("error_code"),
+            "error_type": state.get("error_type"),
+            "retryable": bool(state.get("retryable", False)),
+            "failed_step": state.get("failed_step"),
+            "interrupt": _sanitize(state.get("interrupt"))
+            if isinstance(state.get("interrupt"), dict)
+            else None,
+        }
+        if state.get("learner_id"):
+            payload["learner_id"] = state["learner_id"]
+        return payload
 
     def require_available_thread(request: Request, thread_id: str | None) -> None:
         if not thread_id:
@@ -871,6 +1056,25 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=404, detail="收藏不存在")
         return Response(status_code=204)
 
+    @app.get("/api/v1/workshop/note-folders")
+    async def list_note_folders(request: Request) -> dict:
+        user = current_user(request)
+        items = container.workshop_library_service.list_note_folders(user.user_id)
+        return {"items": items, "total": len(items)}
+
+    @app.post("/api/v1/workshop/note-folders", status_code=201)
+    async def create_note_folder(
+        payload: NoteFolderCreateRequest, request: Request
+    ) -> dict:
+        user = current_user(request)
+        try:
+            folder = container.workshop_library_service.create_note_folder(
+                user.user_id, payload.name
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return {"folder": folder}
+
     @app.get("/api/v1/workshop/notes")
     async def list_workshop_notes(
         request: Request,
@@ -918,6 +1122,59 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if not container.workshop_library_service.delete_note(user.user_id, note_id):
             raise HTTPException(status_code=404, detail="笔记不存在")
         return Response(status_code=204)
+
+    @app.post("/api/v1/workshop/note-images", status_code=201)
+    async def upload_workshop_note_image(
+        request: Request, file: UploadFile = File(...)
+    ) -> dict:
+        user = current_user(request)
+        media_type = str(file.content_type or "").lower()
+        extensions = {
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+        }
+        if media_type not in extensions:
+            raise HTTPException(
+                status_code=422, detail="笔记图片仅支持 JPG、PNG、WebP 或 GIF"
+            )
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=422, detail="上传图片不能为空")
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=422, detail="笔记图片不能超过 5 MB")
+        user_directory = WORKSHOP_NOTE_IMAGE_ROOT / user.user_id
+        user_directory.mkdir(parents=True, exist_ok=True)
+        image_id = uuid4().hex
+        target = user_directory / f"{image_id}{extensions[media_type]}"
+        target.write_bytes(content)
+        return {
+            "image_id": image_id,
+            "url": f"/api/v1/workshop/note-images/{image_id}",
+            "media_type": media_type,
+        }
+
+    @app.get("/api/v1/workshop/note-images/{image_id}")
+    async def get_workshop_note_image(image_id: str, request: Request):
+        user = current_user(request)
+        if not re.fullmatch(r"[a-f0-9]{32}", image_id):
+            raise HTTPException(status_code=404, detail="笔记图片不存在")
+        user_directory = WORKSHOP_NOTE_IMAGE_ROOT / user.user_id
+        for extension, media_type in (
+            (".jpg", "image/jpeg"),
+            (".png", "image/png"),
+            (".webp", "image/webp"),
+            (".gif", "image/gif"),
+        ):
+            target = user_directory / f"{image_id}{extension}"
+            if target.is_file():
+                return FileResponse(
+                    target,
+                    media_type=media_type,
+                    headers={"Cache-Control": "private, max-age=86400"},
+                )
+        raise HTTPException(status_code=404, detail="笔记图片不存在")
 
     @app.post("/api/v1/auth/onboarding/complete")
     async def complete_registration_onboarding(request: Request):
@@ -1048,6 +1305,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if favicon_path is None or not favicon_path.is_file():
             return Response(status_code=204)
         return FileResponse(favicon_path)
+
+    @app.get("/favicon.svg", include_in_schema=False)
+    async def favicon_svg():
+        favicon_path = frontend_root / "favicon.svg" if frontend_root else None
+        if favicon_path is None or not favicon_path.is_file():
+            return Response(status_code=204)
+        return FileResponse(favicon_path, media_type="image/svg+xml")
+
+    @app.get("/hero_word.txt", include_in_schema=False)
+    async def hero_word():
+        hero_word_path = frontend_root / "hero_word.txt" if frontend_root else None
+        if hero_word_path is None or not hero_word_path.is_file():
+            return Response(status_code=404)
+        return FileResponse(hero_word_path, media_type="text/plain; charset=utf-8")
 
     @app.get("/demo-app", include_in_schema=False)
     async def demo_app() -> FileResponse:
@@ -1333,11 +1604,32 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=503, detail="学习成果统计服务未启用")
         if days not in {7, 30, 90}:
             raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
-        return await asyncio.to_thread(
+        result = await asyncio.to_thread(
             backend_handoff.load_learning_statistics,
             user.user_id,
             days=days,
         )
+        queue = await canonical_review_queue(user.user_id)
+        lifetime = dict(result.get("lifetime") or {})
+        lifetime.update(
+            {
+                "review_queue_total": len(queue.entries),
+                "reviews_due": queue.due_count,
+                "review_tasks_pending": queue.active_task_count,
+            }
+        )
+        definitions = dict(result.get("metric_definitions") or {})
+        definitions["reviews_due"] = {
+            "label": "当前到期复习数",
+            "formula": "count(canonical review memory where next_review_at <= calculated_at)",
+            "sources": ["canonical_review_memory"],
+        }
+        return {
+            **result,
+            "lifetime": lifetime,
+            "metric_definitions": definitions,
+            "review_projection_source": "canonical_review_memory",
+        }
 
     @app.get("/api/v1/learning-context")
     async def learning_context(request: Request) -> dict:
@@ -1358,7 +1650,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         daily_task_timer = await asyncio.to_thread(
             container.daily_task_refresh_service.ensure_current, user.user_id
         )
-        plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
+        plans = container.learning_plan_service.get_current(user.user_id)
         queue = container.review_service.get_queue(user.user_id, limit=12)
         long_term_payload = (
             plans.long_term_plan.model_dump(mode="json")
@@ -1464,7 +1756,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             if backend_handoff is not None
             else {}
         )
-        plans = container.review_card_use_case.plan_repository.get_current(user.user_id)
+        plans = container.learning_plan_service.get_current(user.user_id)
         long_plan = (
             plans.long_term_plan.model_dump(mode="json")
             if plans is not None and plans.long_term_plan is not None
@@ -1486,6 +1778,95 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             learner_id=user.user_id,
         )
         return readiness.model_dump(mode="json")
+
+    @app.get("/api/v1/learning-plans/current")
+    async def current_learning_plans(request: Request) -> dict:
+        """Return plan prose, structured contracts and executable pass gates."""
+
+        user = current_user(request)
+        coordinator = container.daily_task_execution_coordinator
+        task_progress: dict[str, Any] = {}
+        if coordinator is not None:
+            try:
+                await asyncio.to_thread(coordinator.dispatch_pending, user.user_id, 20)
+                ensure_snapshot = getattr(coordinator, "ensure_current_snapshot", None)
+                if callable(ensure_snapshot):
+                    await asyncio.to_thread(ensure_snapshot, user.user_id)
+                await asyncio.to_thread(coordinator.reconcile_parent_status, user.user_id)
+                task_progress = await asyncio.to_thread(
+                    coordinator.load_current_progress, user.user_id
+                )
+            except Exception:
+                task_progress = {}
+        plans = container.learning_plan_service.get_current(user.user_id)
+        return build_plan_progress(plans, daily_task_progress=task_progress)
+
+    @app.get("/api/v1/learning-plans/current/context")
+    async def current_learning_plans_context(request: Request) -> dict:
+        """Return the canonical plan payload used by chat and planning pages."""
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        plans = container.learning_plan_service.get_current(user.user_id)
+        if plans is None:
+            return {
+                "learner_id": user.user_id,
+                "long_term_plan": None,
+                "short_term_plan": None,
+                "learning_task": None,
+                "source": "learning_plan_repository",
+            }
+        return {
+            "learner_id": user.user_id,
+            "long_term_plan": (
+                plans.long_term_plan.model_dump(mode="json")
+                if plans.long_term_plan is not None else None
+            ),
+            "short_term_plan": (
+                plans.short_term_plan.model_dump(mode="json")
+                if plans.short_term_plan is not None else None
+            ),
+            "learning_task": (
+                plans.learning_task.model_dump(mode="json")
+                if plans.learning_task is not None else None
+            ),
+            "source": "learning_plan_repository",
+        }
+
+    @app.post("/api/v1/learning-plans/current/stages/{stage}/evidence")
+    async def record_stage_evidence(
+        stage: int,
+        payload: StageEvidenceRequest,
+        request: Request,
+    ) -> dict:
+        """Bind a completed server-owned task to one approved stage requirement."""
+
+        if stage < 1:
+            raise HTTPException(status_code=422, detail="stage 必须大于等于 1")
+        user = current_user(request)
+        coordinator = container.daily_task_execution_coordinator
+        task_progress: dict[str, Any] = {}
+        if coordinator is not None:
+            try:
+                await asyncio.to_thread(coordinator.dispatch_pending, user.user_id, 20)
+                await asyncio.to_thread(coordinator.reconcile_parent_status, user.user_id)
+                task_progress = await asyncio.to_thread(
+                    coordinator.load_current_progress, user.user_id
+                )
+            except Exception:
+                task_progress = {}
+        try:
+            plans = await asyncio.to_thread(
+                container.learning_plan_service.record_completed_task_stage_evidence,
+                user.user_id,
+                stage=stage,
+                requirement=payload.requirement,
+                task_id=payload.task_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return build_plan_progress(plans, daily_task_progress=task_progress)
 
     @app.get("/api/v1/learning-monitoring/snapshot")
     async def learning_monitoring_snapshot(
@@ -1517,13 +1898,27 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=503, detail="学情洞察服务未启用")
         if days not in {7, 30, 90}:
             raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
-        return await asyncio.to_thread(
+        result = await asyncio.to_thread(
             backend_handoff.load_learning_insights,
             user.user_id,
             days=days,
             plan_context=current_plan_context(user.user_id),
             run_automation=run_automation,
         )
+        queue = await canonical_review_queue(user.user_id)
+        overview = {
+            **dict(result.get("overview") or {}),
+            "due_review_count": queue.due_count,
+            "review_projection_source": "canonical_review_memory",
+        }
+        data_sources = list(result.get("data_sources") or [])
+        if "canonical_review_memory" not in data_sources:
+            data_sources.append("canonical_review_memory")
+        return {
+            **result,
+            "overview": overview,
+            "data_sources": data_sources,
+        }
 
     @app.get("/api/v1/resource-match-report")
     async def resource_match_report(
@@ -1830,7 +2225,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 if payload["standard_answer"] and payload["kp_ids"]:
                     candidates.append(payload)
 
-        if not candidates and not kp_id:
+        if not kp_id:
             # A broad credential goal may not resolve to one KP name. The source
             # is still the complete formal bank; choose a linked question of the
             # requested type instead of reporting that the bank is empty. An
@@ -1860,6 +2255,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         candidates.append(payload)
         if not candidates:
             return None
+        # Ensure variety by shuffling candidates
+        import random as _random
+        _random.shuffle(candidates)
         return next(
             (
                 question
@@ -1887,7 +2285,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 mode=mode,
             )
             if personal.get("available") or scope == "user":
-                return personal
+                return _sanitize_practice_question_labels(personal)
 
         context: dict = {}
         try:
@@ -1943,7 +2341,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         "strategy": "current_learning_adaptive_v1",
                         "reason": "active_claim",
                     }
-                    return resumed
+                    return _sanitize_practice_question_labels(resumed)
 
         current_task_kp_ids = [
             str(value).strip()
@@ -1996,17 +2394,18 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "strategy": "current_learning_adaptive_v1",
                     "reason": reason,
                 }
-                return issued
+                return _sanitize_practice_question_labels(issued)
         except Exception:
             # Keep projected formal questions usable while the read-only bank
             # is temporarily unavailable; never reinterpret this as an empty bank.
             pass
-        return await asyncio.to_thread(
+        cached = await asyncio.to_thread(
             runtime.issue_cached_public_practice,
             user.user_id,
             kp_id=kp_id,
             mode=mode,
         )
+        return _sanitize_practice_question_labels(cached)
 
     @app.get("/api/v1/workshop/knowledge-cards")
     async def list_workshop_knowledge_cards(
@@ -2147,6 +2546,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     async def dashboard_home(request: Request) -> dict:
         user = current_user(request)
         behavior = {}
+        learning_activity = {"recent_activities": []}
         if backend_handoff is not None:
             try:
                 behavior = await asyncio.to_thread(
@@ -2155,9 +2555,27 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             except Exception:
                 # The home portal remains usable while optional behavior metrics recover.
                 behavior = {}
+            try:
+                learning_activity = await asyncio.to_thread(
+                    backend_handoff.load_learning_activity_summary,
+                    user.user_id,
+                    days=30,
+                    recent_limit=20,
+                )
+            except Exception:
+                # Recent workshop history is supplemental to the dashboard response.
+                learning_activity = {"recent_activities": []}
         daily_task_timer = await asyncio.to_thread(
             container.daily_task_refresh_service.ensure_current, user.user_id
         )
+        try:
+            await asyncio.to_thread(
+                container.learning_plan_service.ensure_executable_daily_resources,
+                user.user_id,
+            )
+        except Exception:
+            # Legacy-task repair must not make the home portal unavailable.
+            pass
         coordinator = container.daily_task_execution_coordinator
         if coordinator is not None:
             try:
@@ -2310,6 +2728,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                             "estimated_minutes": item.estimated_minutes,
                             "kp_id": item.kp_id,
                             "kp_name": item.knowledge_point_name,
+                            "resource_ref": dict(item.resource_ref),
+                            "completion_policy": dict(item.completion_policy),
                             "status": str(
                                 progress_items.get(item.task_item_id, {}).get("status")
                                 or "pending"
@@ -2329,22 +2749,34 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                                     "active_seconds",
                                 }
                             },
-                            "action": {
-                                "destination": "workshop.practice",
-                                "params": {
-                                    "taskItemId": item.task_item_id,
-                                    **(
-                                        {
-                                            "kpId": item.kp_id,
-                                            "kpName": item.knowledge_point_name,
-                                        }
-                                        if item.item_type == "knowledge_practice"
-                                        and item.kp_id
-                                        and item.knowledge_point_name
-                                        else {}
-                                    ),
-                                },
-                            },
+                            "action": (
+                                {
+                                    "action_type": "watch_video",
+                                    "destination": "workshop.knowledge_video",
+                                    "params": {
+                                        "taskItemId": item.task_item_id,
+                                        "video": dict(item.resource_ref),
+                                    },
+                                }
+                                if item.item_type == "video_section"
+                                else {
+                                    "action_type": "practice",
+                                    "destination": "workshop.practice",
+                                    "params": {
+                                        "taskItemId": item.task_item_id,
+                                        **(
+                                            {
+                                                "kpId": item.kp_id,
+                                                "kpName": item.knowledge_point_name,
+                                            }
+                                            if item.item_type == "knowledge_practice"
+                                            and item.kp_id
+                                            and item.knowledge_point_name
+                                            else {}
+                                        ),
+                                    },
+                                }
+                            ),
                         }
                         for item in task.items
                     ],
@@ -2364,17 +2796,44 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         or list(task.focus_knowledge_points)
                     ),
                     "knowledge_cards": resolved_points,
+                    "recommended_resources": {
+                        "chapter_videos": [
+                            {
+                                "task_item_id": item.task_item_id,
+                                "title": item.title,
+                                "resource": dict(item.resource_ref),
+                                "completion_policy": dict(item.completion_policy),
+                            }
+                            for item in task.items
+                            if item.item_type == "video_section"
+                        ],
+                        "knowledge_practice": [
+                            {
+                                "task_item_id": item.task_item_id,
+                                "kp_id": item.kp_id,
+                                "kp_name": item.knowledge_point_name,
+                                "required_question_count": item.required_question_count,
+                            }
+                            for item in task.items
+                            if item.item_type == "knowledge_practice"
+                        ],
+                    },
                 }
                 today_tasks.append(task_projection)
                 current_learning_task = task_projection
         for entry in queue.entries:
             if entry.task is None:
                 continue
+            # ReviewTask is an execution binding and intentionally does not carry a
+            # duration budget.  Keep the dashboard projection backward-compatible
+            # with the front end without coupling it to a removed contract field.
+            review_minutes = 10
             today_tasks.append(
                 {
                     "task_id": entry.task.review_task_id,
                     "title": entry.memory_unit.prompt_abstract,
-                    "duration": f"{entry.task.estimated_minutes} 分钟",
+                    "duration": f"{review_minutes} 分钟",
+                    "estimated_minutes": review_minutes,
                     "status": entry.task.status,
                     "source": "review_queue",
                 }
@@ -2406,6 +2865,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "announcements": [],
             "review_queue": queue.model_dump(mode="json"),
             "checkin_status": checkin_status,
+            "learning_activity": learning_activity,
         }
 
     @app.get("/api/v1/checkin")
@@ -2490,6 +2950,28 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 else None
             ),
             "daily_task_timer": timer,
+        }
+
+    @app.post("/api/v1/learning-tasks/current/materialize-resources")
+    async def materialize_current_learning_task_resources(request: Request) -> dict:
+        """Idempotently bind the current task to trusted video/question resources."""
+
+        user = current_user(request)
+        try:
+            task = await asyncio.to_thread(
+                container.learning_plan_service.ensure_executable_daily_resources,
+                user.user_id,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        coordinator = container.daily_task_execution_coordinator
+        if coordinator is not None:
+            await asyncio.to_thread(coordinator.dispatch_pending, user.user_id, 20)
+            ensure_snapshot = getattr(coordinator, "ensure_current_snapshot", None)
+            if callable(ensure_snapshot):
+                await asyncio.to_thread(ensure_snapshot, user.user_id)
+        return {
+            "learning_task": task.model_dump(mode="json") if task is not None else None
         }
 
     @app.get("/api/v1/knowledge/routes")
@@ -2802,7 +3284,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     @app.get("/api/v1/review-cards/runs/{thread_id}")
     async def get_review_card_run(thread_id: str, request: Request):
         state = require_run_owner(request, thread_id)
-        return _sanitize(state)
+        return safe_run_status(state)
 
     @app.get("/api/v1/learners/{learner_id}/review-queue")
     async def get_review_queue(learner_id: str, request: Request, limit: int = 50):
@@ -2955,6 +3437,89 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     ) -> StreamingResponse:
         queue: asyncio.Queue[dict[str, object] | None] = asyncio.Queue()
 
+        def failure_event(exc: Exception) -> dict[str, object]:
+            run_state = container.review_card_use_case.get_run_state(thread_id) or {}
+            execution_id = run_state.get("execution_id")
+            message = str(exc).strip()
+            error_type = type(exc).__name__
+            normalized = message.lower()
+            failed_step = run_state.get("failed_step")
+            step_match = re.search(r"步骤\s+([^（(\s]+)", message)
+            if step_match and failed_step in {
+                None,
+                "",
+                "orchestrator",
+                "finalization",
+            }:
+                failed_step = step_match.group(1)
+            persisted_code = str(run_state.get("error_code") or "").strip()
+            if persisted_code:
+                error_code = persisted_code
+                retryable = bool(run_state.get("retryable", False))
+            elif "timeout" in normalized or "timed out" in normalized:
+                if failed_step in {"knowledge", "knowledge_base_agent"} or "knowledge" in normalized:
+                    error_code = "knowledge_timeout"
+                elif failed_step in {"paper_blueprint", "paper_blueprint_agent"}:
+                    error_code = "paper_blueprint_timeout"
+                elif "model" in normalized or "transport" in normalized:
+                    error_code = "model_timeout"
+                else:
+                    error_code = "workflow_timeout"
+                retryable = True
+            elif "knowledge" in normalized:
+                error_code = "knowledge_step_failed"
+                retryable = True
+            elif (
+                failed_step in {"learning_plan", "learning_plan_service"}
+                and "dailytaskprogresserror" in normalized
+            ):
+                error_code = "daily_task_publication_failed"
+                retryable = True
+            elif (
+                failed_step in {
+                    "diagnosis",
+                    "diagnosis_agent",
+                    "diagnosis_long",
+                    "diagnosis_short",
+                }
+                and (
+                    "plan contract" in normalized
+                    or "规划合同" in message
+                    or "规划正文" in message
+                )
+            ):
+                error_code = "plan_compilation_failed"
+                retryable = False
+            elif failed_step in {"audit", "audit_agent"} or "audit decision" in normalized:
+                error_code = "audit_step_failed"
+                retryable = True
+            elif failed_step in {
+                "paper_blueprint",
+                "question_pool",
+                "paper_assembly",
+                "paper_audit",
+            }:
+                error_code = "paper_generation_failed"
+                retryable = True
+            elif "database" in normalized or "mysql" in normalized or "持久化" in message:
+                error_code = "persistence_failed"
+                retryable = True
+            else:
+                error_code = "workflow_failed"
+                retryable = False
+            user_message = safe_failure_message(error_code)
+            return {
+                "event": "run_failed",
+                "error_type": error_type,
+                "error_code": error_code,
+                "retryable": retryable,
+                "message": user_message,
+                "user_message": user_message,
+                "thread_id": thread_id,
+                "execution_id": execution_id,
+                "failed_step": failed_step,
+            }
+
         def publish(event: dict[str, object]) -> None:
             queue.put_nowait(event)
 
@@ -2982,15 +3547,20 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     }
                 )
             except Exception as exc:
-                container.review_card_use_case.mark_run_failed(thread_id, str(exc))
-                await queue.put(
-                    {
-                        "event": "run_failed",
-                        "error_type": type(exc).__name__,
-                        "message": str(exc),
-                        "thread_id": thread_id,
-                    }
+                failure = failure_event(exc)
+                container.review_card_use_case.mark_run_failed(
+                    thread_id,
+                    str(exc),
+                    error_type=str(failure["error_type"]),
+                    error_code=str(failure["error_code"]),
+                    retryable=bool(failure["retryable"]),
+                    failed_step=(
+                        str(failure["failed_step"])
+                        if failure.get("failed_step")
+                        else None
+                    ),
                 )
+                await queue.put(failure)
             finally:
                 reset_event_sink(token)
                 await queue.put(None)

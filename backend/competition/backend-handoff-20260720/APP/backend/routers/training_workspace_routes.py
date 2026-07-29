@@ -18,6 +18,7 @@ from APP.backend.database import (
     LearningAttemptItemRecord,
     LearningAttemptRecord,
     LearningQuestion,
+    KnowledgePoint,
     MistakeRecord,
     QuestionAttempt,
     QuestionBankItem,
@@ -300,6 +301,24 @@ def _mistake_payload(
         mistake.id in variation_ids
         and (not context_required or answer_context is not None)
     )
+    kp_ids = _json_list(mistake.kp_ids_json)
+    kp_name_by_id = {
+        str(row.kp_id): str(row.name).strip()
+        for row in (
+            db.query(KnowledgePoint).filter(KnowledgePoint.kp_id.in_(kp_ids)).all()
+            if kp_ids
+            else []
+        )
+        if str(row.name or "").strip() and str(row.name).strip() != str(row.kp_id)
+    }
+    kp_names = list(dict.fromkeys(
+        kp_name_by_id[kp_id] for kp_id in kp_ids if kp_id in kp_name_by_id
+    ))
+    summary = str(mistake.summary or "")
+    if summary.startswith("本题考查") and "。" in summary:
+        _, remainder = summary.split("。", 1)
+        readable = "、".join(kp_names) if kp_names else "知识点名称待补充"
+        summary = f"本题考查{readable}。{remainder}"
     return {
         "mistake_id": mistake.id,
         "status": mistake.status,
@@ -308,9 +327,10 @@ def _mistake_payload(
         "attempt_item_id": mistake.attempt_item_id,
         "stem": question["stem"],
         "question_type": question["question_type"],
-        "kp_ids": _json_list(mistake.kp_ids_json),
+        "kp_ids": kp_ids,
+        "kp_names": kp_names,
         "error_type": mistake.error_type,
-        "summary": mistake.summary,
+        "summary": summary,
         "answer_context_required": context_required,
         "answer_context_completed": not context_required or answer_context is not None,
         "answer_context": answer_context,

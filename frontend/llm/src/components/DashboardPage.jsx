@@ -61,6 +61,11 @@ function getTrackId(target, tracks, requestedTrackId) {
   return tracks?.[0]?.track_id || '';
 }
 
+export function visibleWorkshopTextbooks({ allTextbooks = [], plannedBooks = [], remainingTextbooks = [], showAllTextbooks = false } = {}) {
+  if (!plannedBooks.length) return allTextbooks;
+  return showAllTextbooks ? [...plannedBooks, ...remainingTextbooks] : plannedBooks;
+}
+
 function getTrackLabel(target, tracks, trackId) {
   return target?.exam_name
     || tracks?.find((track) => track.track_id === trackId)?.title_normalized
@@ -118,7 +123,10 @@ export default function DashboardPage({
   const [textbookError, setTextbookError] = useState('');
   const [textbooksLoading, setTextbooksLoading] = useState(true);
   const [currentLearningTask, setCurrentLearningTask] = useState(null);
-  const [showAllTextbooks, setShowAllTextbooks] = useState(false);
+  const [showAllTextbooks, setShowAllTextbooks] = useState(
+    () => Boolean(navigationContext.expandAll),
+  );
+  const hidePlan = Boolean(navigationContext.hidePlan || navigationContext.libraryOnly);
 
   useEffect(() => {
     let cancelled = false;
@@ -312,9 +320,9 @@ export default function DashboardPage({
   const remainingTextbooks = useMemo(() => (
     allTextbooks.filter((book) => !planBookNames.has(normalizedBookName(book)))
   ), [allTextbooks, planBookNames]);
-  const visibleTextbooks = useMemo(() => (
-    showAllTextbooks ? [...plannedBooks, ...remainingTextbooks] : plannedBooks
-  ), [plannedBooks, remainingTextbooks, showAllTextbooks]);
+  const visibleTextbooks = useMemo(() => visibleWorkshopTextbooks({
+    allTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks,
+  }), [allTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks]);
   const currentBookName = taskBookName || normalizedBookName(currentPlanBook);
   const currentChapter = currentLearningTask?.learning_chapter?.title || '';
   const currentBookProgress = Number(currentPlanBook?.progress || 0);
@@ -373,7 +381,8 @@ export default function DashboardPage({
       page: 'practice',
       params: {
         view: 'textbook-chapters',
-        route: node.navigation?.route_id || 'textbook_14_5',
+        // 学习工坊教材目录来自全量教材路线，不能沿用考试路线的筛选 route。
+        route: 'textbook_14_5',
         lv1: name,
         source: 'textbook-library',
       },
@@ -409,10 +418,12 @@ export default function DashboardPage({
         pathContent={(
           <div className="workshop-library-page">
               {textbooksLoading ? (
-                <div className="dashboard-daily__path-empty">教材目录正在准备中</div>
+                <div className="workshop-library-page__loading" role="status" aria-label="正在加载教材目录">
+                  <span aria-hidden="true" />
+                </div>
               ) : allTextbooks.length > 0 ? (
                 <>
-                  <section className="workshop-plan" aria-label="当前学习计划">
+                  {!hidePlan && <section className="workshop-plan" aria-label="当前学习计划">
                     <div className="workshop-plan__summary">
                       <span><Route aria-hidden="true" size={15} />Learning plan</span>
                       <h1>学习计划</h1>
@@ -423,7 +434,7 @@ export default function DashboardPage({
                         <span>{plannedBooks.length} 本计划教材</span>
                       </div>
                     </div>
-                    <div className="workshop-plan__focus">
+                    <div className={`workshop-plan__focus${currentBookName ? '' : ' is-awaiting-plan'}`}>
                       <span><Sparkles aria-hidden="true" size={14} />现在继续</span>
                       {currentBookName ? (
                         <>
@@ -446,12 +457,12 @@ export default function DashboardPage({
                         </>
                       )}
                     </div>
-                  </section>
+                  </section>}
                   <TextbookLibrary
                     books={visibleTextbooks}
                     emptyText="当前计划暂未匹配到教材"
                     onOpen={openTextbook}
-                    remainingCount={showAllTextbooks ? 0 : remainingTextbooks.length}
+                    remainingCount={plannedBooks.length > 0 && !showAllTextbooks ? remainingTextbooks.length : 0}
                     onExpandAll={() => setShowAllTextbooks(true)}
                   />
                 </>

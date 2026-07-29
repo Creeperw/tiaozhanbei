@@ -6,6 +6,15 @@ from typing import Any
 from pydantic import BaseModel
 
 
+_INTERNAL_REASON_MARKERS = (
+    "agent",
+    "routing",
+    "requires_compression",
+    "系统已补全",
+    "确定性依赖节点",
+)
+
+
 def _plain(value: Any) -> Any:
     if isinstance(value, BaseModel):
         return value.model_dump(mode="json")
@@ -75,11 +84,19 @@ def workflow_result_to_markdown(result: Any) -> str:
             if str(question).strip()
         ]
         intro = str(interruption.get("reason") or "我还需要确认一些信息。").strip()
+        if any(marker in intro.lower() for marker in _INTERNAL_REASON_MARKERS):
+            intro = "为了继续为你安排合适的学习内容，我还需要确认一点信息。"
         continuation = "流程已在当前节点暂停；回答后会从检查点继续，不会重复已完成的步骤。"
         question_text = "\n".join(
             f"{index}. {question}" for index, question in enumerate(questions, 1)
         )
         return "\n\n".join(part for part in (intro, continuation, question_text) if part)
+
+    if body.get("task_type") == "casual_conversation":
+        return str(
+            body.get("direct_response")
+            or "你好！我是时珍智训智能助教。有什么想学习或练习的内容，可以直接告诉我。"
+        ).strip()
 
     if body.get("task_type") == "paper_generation":
         actions = body.get("ui_actions") or []

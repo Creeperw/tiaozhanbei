@@ -29,13 +29,26 @@ def three_layer_output() -> dict:
         "estimated_minutes": 15,
         "expected_output": "一份闭卷默写记录。",
         "completion_criteria": "四味药全部正确。",
+        "total_duration_days": 30,
         "long_term_plan_stages": [
             {
                 "stage": 1,
+                "stage_name": "方剂基础",
                 "book": ["《方剂学》"],
                 "goal": "建立方剂组成、功效与配伍之间的联系。",
+                "duration_days": 30,
+                "schedule_summary": (
+                    "使用《方剂学》完成方剂框架笔记，并以闭卷说明验收。"
+                ),
             }
         ],
+        "short_term_duration_days": 7,
+        "short_term_progression_nodes": [
+            "周初完成四君子汤组成回忆。",
+            "周末完成配伍说明闭卷验收。",
+        ],
+        "learning_chapter": "《方剂学》补益剂章",
+        "focus_knowledge_points": ["四君子汤组成", "四君子汤配伍"],
     }
 
 
@@ -52,6 +65,9 @@ def test_three_layer_model_boundary_is_minimal_and_has_independent_content() -> 
         "expected_output",
         "completion_criteria",
         "long_term_plan_stages",
+        "total_duration_days",
+        "short_term_duration_days",
+        "short_term_progression_nodes",
         "selected_textbook_route_id",
         "selected_stage_id",
             "selected_books",
@@ -67,6 +83,33 @@ def test_three_layer_model_boundary_normalizes_null_optional_book_selection() ->
     parsed = ThreeLayerPlanningModelOutput.model_validate(candidate)
 
     assert parsed.selected_books == []
+
+
+def test_three_layer_model_boundary_normalizes_object_progression_nodes() -> None:
+    candidate = {
+        **three_layer_output(),
+        "short_term_progression_nodes": [
+            {"title": "周初推进", "content": "完成教材核心章节。"},
+            {"description": "周末完成闭卷验收。"},
+        ],
+    }
+
+    parsed = ThreeLayerPlanningModelOutput.model_validate(candidate)
+
+    assert parsed.short_term_progression_nodes == [
+        "周初推进：完成教材核心章节。",
+        "周末完成闭卷验收。",
+    ]
+
+
+def test_three_layer_model_boundary_rejects_unrecognized_progression_object() -> None:
+    candidate = {
+        **three_layer_output(),
+        "short_term_progression_nodes": [{"unexpected": "不能静默序列化"}],
+    }
+
+    with pytest.raises(ValidationError):
+        ThreeLayerPlanningModelOutput.model_validate(candidate)
 
 
 @pytest.mark.parametrize(

@@ -1,41 +1,124 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, Loader2, NotebookPen, Plus, Search, Trash2 } from 'lucide-react';
-import { createNote, deleteNote, loadNotes, updateNote } from './workshopLibraryApi';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import {
+  Bold,
+  Code2,
+  Eye,
+  FilePlus2,
+  Heading2,
+  ImagePlus,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Loader2,
+  NotebookPen,
+  PanelLeftClose,
+  PencilLine,
+  Plus,
+  Quote,
+  Save,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
+import {
+  createNote,
+  createNoteFolder,
+  deleteNote,
+  loadNoteFolders,
+  loadNotes,
+  updateNote,
+  uploadNoteImage,
+} from './workshopLibraryApi';
 
 const emptyDraft = { title: '', content: '' };
 
 function QuestionContext({ context }) {
   if (!context?.question_content) return null;
-  const options = Array.isArray(context.options) ? context.options : [];
   const answer = Array.isArray(context.standard_answer)
     ? context.standard_answer.join('、')
     : String(context.standard_answer || '');
-  return <div className="workshop-notes__context">
-    <strong>关联题目</strong>
-    <p>{context.question_content}</p>
-    {options.map((option, index) => <p key={index}>{option.option_id || option.key || String.fromCharCode(65 + index)}. {option.content || option.value || String(option)}</p>)}
-    {answer && <p><strong>参考答案：</strong>{answer}</p>}
-    {context.explanation && <p><strong>解析：</strong>{context.explanation}</p>}
-  </div>;
+  const myAnswer = String(context.my_answer || '');
+  const options = Array.isArray(context.options) ? context.options : [];
+  return (
+    <aside className="notion-note__question-context">
+      <strong>关联题目</strong>
+      <p>{context.question_content}</p>
+      {options.length > 0 && (
+        <div style={{marginTop:8}}>
+          {options.map((opt, i) => {
+            const label = String.fromCharCode(65 + i);
+            const text = typeof opt === 'string' ? opt : (opt.label || opt.content || opt.value || '');
+            const val = String(opt.value || opt.label || text);
+            const isMy = myAnswer.includes(val);
+            const isCorrect = answer.includes(val);
+            let bg = 'transparent';
+            if (isMy && isCorrect) bg = '#dcfce7';
+            else if (isMy && !isCorrect) bg = '#fee2e2';
+            else if (!isMy && isCorrect) bg = '#dcfce7';
+            return <div key={i} style={{background:bg,borderRadius:4,padding:'3px 8px',margin:'3px 0',fontSize:'.85rem'}}>{label}. {String(text).replace(/^[A-Z][.．、)\s]\s*/, '')}{isMy&&<span style={{color:'#ef4444',fontSize:'.75rem',marginLeft:8}}>我的作答</span>}{isCorrect&&!isMy&&<span style={{color:'#16a34a',fontSize:'.75rem',marginLeft:8}}>正确答案</span>}</div>;
+          })}
+        </div>
+      )}
+      {answer && <p style={{marginTop:8}}><b>参考答案：</b>{answer}</p>}
+      {context.explanation && <p style={{marginTop:4}}><b>解析：</b>{context.explanation}</p>}
+    </aside>
+  );
 }
+
+function MarkdownDocument({ children }) {
+  return (
+    <div className="notion-note__markdown">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children || '*还没有正文。*'}</ReactMarkdown>
+    </div>
+  );
+}
+
+const tools = [
+  { label: '二级标题', icon: Heading2, before: '## ', after: '' },
+  { label: '粗体', icon: Bold, before: '**', after: '**' },
+  { label: '斜体', icon: Italic, before: '*', after: '*' },
+  { label: '无序列表', icon: List, before: '- ', after: '' },
+  { label: '有序列表', icon: ListOrdered, before: '1. ', after: '' },
+  { label: '引用', icon: Quote, before: '> ', after: '' },
+  { label: '行内代码', icon: Code2, before: '`', after: '`' },
+  { label: '链接', icon: Link2, before: '[', after: '](https://)' },
+];
 
 export default function StudyNotesPanel() {
   const [notes, setNotes] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [selectedNotebook, setSelectedNotebook] = useState('');
+  const [activeNoteId, setActiveNoteId] = useState('');
   const [draft, setDraft] = useState(emptyDraft);
+  const [isNew, setIsNew] = useState(false);
+  const [mode, setMode] = useState('edit');
   const [query, setQuery] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [expandedId, setExpandedId] = useState('');
-  const [editDraft, setEditDraft] = useState(emptyDraft);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [error, setError] = useState('');
+  const [newNotebookOpen, setNewNotebookOpen] = useState(false);
+  const [newNotebookName, setNewNotebookName] = useState('');
+  const editorRef = useRef(null);
+  const imageInputRef = useRef(null);
 
-  const refresh = async () => {
+  const refresh = async ({ keepActive = true } = {}) => {
     setLoading(true);
     setError('');
     try {
-      const payload = await loadNotes();
-      setNotes(payload.items || []);
+      const [notesPayload, folderPayload] = await Promise.all([loadNotes(), loadNoteFolders()]);
+      const nextNotes = notesPayload.items || [];
+      const nextFolders = folderPayload.items || [];
+      setNotes(nextNotes);
+      setFolders(nextFolders);
+      if (!selectedNotebook) setSelectedNotebook(nextFolders[0]?.name || '默认笔记本');
+      if (keepActive && activeNoteId) {
+        const next = nextNotes.find((note) => note.note_id === activeNoteId);
+        if (next) setDraft({ title: next.title, content: next.content });
+      }
     } catch (reason) {
       setError(reason.message || '笔记加载失败');
     } finally {
@@ -43,90 +126,208 @@ export default function StudyNotesPanel() {
     }
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { refresh({ keepActive: false }); }, []);
 
-  const sources = useMemo(() => [...new Set(notes.map((note) => note.source).filter(Boolean))], [notes]);
-  const types = useMemo(() => [...new Set(notes.map((note) => note.note_type).filter(Boolean))], [notes]);
-  const visibleNotes = notes.filter((note) => {
-    const keyword = query.trim().toLocaleLowerCase();
-    return (!sourceFilter || note.source === sourceFilter)
-      && (!typeFilter || note.note_type === typeFilter)
-      && (!keyword || `${note.title} ${note.content}`.toLocaleLowerCase().includes(keyword));
-  });
-
-  const addNote = async (event) => {
-    event.preventDefault();
-    if (!draft.title.trim() || !draft.content.trim()) return;
-    setError('');
-    try {
-      await createNote({
-        title: draft.title.trim(),
-        content: draft.content.trim(),
-        note_type: '心得体会',
-        source: '训练工坊',
-        context: {},
-      });
-      setDraft(emptyDraft);
-      await refresh();
-    } catch (reason) {
-      setError(reason.message || '笔记保存失败');
+  const notebooks = useMemo(() => {
+    const map = new Map(folders.map((folder) => [folder.name, { ...folder, items: [] }]));
+    notes.forEach((note) => {
+      const name = String(note.context?.notebook || '默认笔记本').trim() || '默认笔记本';
+      if (!map.has(name)) map.set(name, { folder_id: name, name, items: [] });
+      map.get(name).items.push(note);
+    });
+    if (map.size === 0) {
+      map.set('默认笔记本', { folder_id: 'default-notebook', name: '默认笔记本', items: [] });
     }
+    return [...map.values()];
+  }, [folders, notes]);
+
+  const notebookNotes = useMemo(() => notes.filter(
+    (note) => String(note.context?.notebook || '默认笔记本') === selectedNotebook,
+  ), [notes, selectedNotebook]);
+  const visibleNotes = notebookNotes.filter((note) => {
+    const keyword = query.trim().toLocaleLowerCase();
+    return !keyword || `${note.title} ${note.content}`.toLocaleLowerCase().includes(keyword);
+  });
+  const activeNote = notes.find((note) => note.note_id === activeNoteId);
+
+  const selectNotebook = (name) => {
+    setSelectedNotebook(name);
+    setActiveNoteId('');
+    setDraft(emptyDraft);
+    setIsNew(false);
   };
 
   const openNote = (note) => {
-    const open = expandedId === note.note_id;
-    setExpandedId(open ? '' : note.note_id);
-    setEditDraft(open ? emptyDraft : { title: note.title, content: note.content });
+    setActiveNoteId(note.note_id);
+    setDraft({ title: note.title, content: note.content });
+    setIsNew(false);
+    setMode('edit');
   };
 
-  const saveEdit = async (noteId) => {
-    if (!editDraft.title.trim() || !editDraft.content.trim()) return;
+  const newNote = () => {
+    setActiveNoteId('');
+    setDraft({ title: '无标题', content: '' });
+    setIsNew(true);
+    setMode('edit');
+    requestAnimationFrame(() => editorRef.current?.focus());
+  };
+
+  const save = async () => {
+    if (!draft.title.trim() || !draft.content.trim() || !selectedNotebook) return;
+    setSaving(true);
     setError('');
     try {
-      await updateNote(noteId, {
-        title: editDraft.title.trim(),
-        content: editDraft.content.trim(),
-      });
+      if (isNew) {
+        const payload = await createNote({
+          title: draft.title.trim(),
+          content: draft.content,
+          note_type: '笔记本',
+          source: '训练工坊',
+          context: { notebook: selectedNotebook },
+        });
+        setActiveNoteId(payload.note.note_id);
+        setIsNew(false);
+      } else if (activeNoteId) {
+        await updateNote(activeNoteId, { title: draft.title.trim(), content: draft.content });
+      }
       await refresh();
     } catch (reason) {
-      setError(reason.message || '笔记修改失败');
+      setError(reason.message || '笔记保存失败');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const removeNote = async (noteId) => {
+  const remove = async () => {
+    if (!activeNoteId) return;
     setError('');
     try {
-      await deleteNote(noteId);
-      setExpandedId('');
-      await refresh();
+      await deleteNote(activeNoteId);
+      setActiveNoteId('');
+      setDraft(emptyDraft);
+      await refresh({ keepActive: false });
     } catch (reason) {
       setError(reason.message || '笔记删除失败');
     }
   };
 
-  return <section className="workshop-notes" aria-labelledby="notes-title">
-    <header className="workshop-library__header">
-      <div><span>个人知识沉淀</span><h2 id="notes-title">学习笔记</h2><p>记录学习心得，也统一查看从试卷解析生成的题目笔记。</p></div>
-    </header>
-    <form className="workshop-notes__composer" onSubmit={addNote}>
-      <label>标题<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={200} placeholder="今天学到了什么？" /></label>
-      <label>内容<textarea value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} maxLength={20000} rows={4} placeholder="写下理解、辨析要点或复习提醒…" /></label>
-      <button type="submit" disabled={!draft.title.trim() || !draft.content.trim()}><Plus size={16} />保存笔记</button>
-    </form>
-    <div className="workshop-notes__filters">
-      <label className="workshop-notes__search"><Search size={16} /><input aria-label="搜索笔记" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题或正文" /></label>
-      <label>来源<select aria-label="筛选笔记来源" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><option value="">全部</option>{sources.map((source) => <option key={source}>{source}</option>)}</select></label>
-      <label>类型<select aria-label="筛选笔记类型" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="">全部</option>{types.map((type) => <option key={type}>{type}</option>)}</select></label>
-    </div>
-    {error && <p role="alert" className="workshop-library__error">{error}</p>}
-    {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载笔记…</p> : visibleNotes.length === 0 ? <div className="workshop-library__empty"><NotebookPen size={28} /><h3>暂无符合条件的笔记</h3><p>可以在上方直接记录，也可以从已批改题目的解析处创建。</p></div> : <div className="workshop-notes__list">
-      {visibleNotes.map((note) => {
-        const open = expandedId === note.note_id;
-        return <article key={note.note_id}>
-          <button type="button" className="workshop-library__item-toggle" aria-expanded={open} onClick={() => openNote(note)}><span><strong>{note.title}</strong><small>{note.source} · {note.note_type} · {String(note.updated_at || '').slice(0, 10)}</small></span>{open ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</button>
-          {open && <div className="workshop-notes__editor"><QuestionContext context={note.context} /><label>标题<input value={editDraft.title} onChange={(event) => setEditDraft({ ...editDraft, title: event.target.value })} /></label><label>内容<textarea rows={5} value={editDraft.content} onChange={(event) => setEditDraft({ ...editDraft, content: event.target.value })} /></label><div><button type="button" onClick={() => saveEdit(note.note_id)}>保存修改</button><button type="button" className="workshop-library__delete" onClick={() => removeNote(note.note_id)}><Trash2 size={14} />删除笔记</button></div></div>}
-        </article>;
-      })}
-    </div>}
-  </section>;
+  const insertMarkdown = (before, after) => {
+    const editor = editorRef.current;
+    if (!editor) {
+      setDraft((current) => ({ ...current, content: `${current.content}${before}${after}` }));
+      return;
+    }
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const selected = draft.content.slice(start, end);
+    const next = `${draft.content.slice(0, start)}${before}${selected}${after}${draft.content.slice(end)}`;
+    setDraft({ ...draft, content: next });
+    requestAnimationFrame(() => {
+      editor.focus();
+      editor.setSelectionRange(start + before.length, start + before.length + selected.length);
+    });
+  };
+
+  const uploadImage = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImageUploading(true);
+    setError('');
+    try {
+      const payload = await uploadNoteImage(file);
+      const alt = file.name.replace(/\.[^.]+$/, '') || '笔记图片';
+      insertMarkdown(`\n![${alt}](${payload.url})\n`, '');
+    } catch (reason) {
+      setError(reason.message || '图片上传失败');
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const createNotebook = async (event) => {
+    event.preventDefault();
+    if (!newNotebookName.trim()) return;
+    try {
+      const payload = await createNoteFolder(newNotebookName.trim());
+      setFolders((current) => [payload.folder, ...current.filter((item) => item.folder_id !== payload.folder.folder_id)]);
+      setSelectedNotebook(payload.folder.name);
+      setActiveNoteId('');
+      setNewNotebookName('');
+      setNewNotebookOpen(false);
+    } catch (reason) {
+      setError(reason.message || '笔记本创建失败');
+    }
+  };
+
+  return (
+    <section className="notion-notes" aria-labelledby="notes-title">
+      <aside className="notion-notes__sidebar">
+        <header><NotebookPen size={19} /><strong id="notes-title">笔记本</strong><button type="button" aria-label="新建笔记本" onClick={() => setNewNotebookOpen(true)}><Plus size={16} /></button></header>
+        <div className="notion-notes__notebooks">
+          {notebooks.map((notebook) => (
+            <button key={notebook.name} type="button" className={selectedNotebook === notebook.name ? 'is-active' : ''} onClick={() => selectNotebook(notebook.name)}>
+              <PanelLeftClose size={14} /><span>{notebook.name}</span><small>{notebook.items.length}</small>
+            </button>
+          ))}
+        </div>
+        <div className="notion-notes__note-tools">
+          <label><Search size={15} /><input aria-label="搜索笔记" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索笔记" /></label>
+          <button type="button" onClick={newNote} disabled={!selectedNotebook}><FilePlus2 size={15} />新建笔记</button>
+        </div>
+        <nav className="notion-notes__note-list" aria-label="笔记列表">
+          {visibleNotes.map((note) => (
+            <button key={note.note_id} type="button" className={activeNoteId === note.note_id ? 'is-active' : ''} onClick={() => openNote(note)}>
+              <strong>{note.title}</strong><small>{String(note.updated_at || note.created_at || '').slice(0, 10)}</small>
+            </button>
+          ))}
+          {!loading && selectedNotebook && !visibleNotes.length && <p>这个笔记本还没有内容。</p>}
+        </nav>
+      </aside>
+
+      <main className="notion-note">
+        {loading ? <p role="status" className="workshop-library__loading"><Loader2 className="animate-spin" size={18} />正在加载笔记…</p> : (!activeNote && !isNew) ? (
+          <div className="notion-note__empty"><NotebookPen size={34} /><h2>{selectedNotebook || '笔记本'}</h2><p>从左侧选择一篇笔记，或创建新页面。</p><button type="button" onClick={newNote} disabled={!selectedNotebook}><Plus size={16} />新建页面</button></div>
+        ) : (
+          <>
+            <header className="notion-note__topbar">
+              <div className="notion-note__mode">
+                <button type="button" className={mode === 'edit' ? 'is-active' : ''} onClick={() => setMode('edit')}><PencilLine size={15} />编辑</button>
+                <button type="button" className={mode === 'preview' ? 'is-active' : ''} onClick={() => setMode('preview')}><Eye size={15} />预览</button>
+              </div>
+              <div><button type="button" onClick={remove} disabled={isNew || !activeNoteId} className="is-danger"><Trash2 size={15} />删除</button><button type="button" onClick={save} disabled={saving || !draft.title.trim() || !draft.content.trim()}><Save size={15} />{saving ? '保存中…' : '保存'}</button></div>
+            </header>
+            <div className="notion-note__document">
+              <input className="notion-note__title" aria-label="笔记标题" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={200} placeholder="无标题" />
+              <QuestionContext context={activeNote?.context} />
+              {mode === 'edit' ? (
+                <>
+                  <div className="notion-note__toolbar" aria-label="Markdown 工具栏">
+                    {tools.map((tool) => {
+                      const Icon = tool.icon;
+                      return <button key={tool.label} type="button" title={tool.label} aria-label={tool.label} onClick={() => insertMarkdown(tool.before, tool.after)}><Icon size={16} /></button>;
+                    })}
+                    <button type="button" title="上传图片" aria-label="上传图片" disabled={imageUploading} onClick={() => imageInputRef.current?.click()}>{imageUploading ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}</button>
+                    <input ref={imageInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={uploadImage} />
+                    <span>支持 Markdown 与图片</span>
+                  </div>
+                  <textarea
+                    ref={editorRef}
+                    aria-label="笔记内容"
+                    value={draft.content}
+                    onChange={(event) => setDraft({ ...draft, content: event.target.value })}
+                    maxLength={20000}
+                    placeholder="输入 / 开始记录，或使用上方 Markdown 工具……"
+                  />
+                </>
+              ) : <MarkdownDocument>{draft.content}</MarkdownDocument>}
+            </div>
+          </>
+        )}
+        {error && <p role="alert" className="notion-note__error">{error}</p>}
+      </main>
+
+      {newNotebookOpen && <div className="workshop-save-dialog" role="dialog" aria-modal="true" aria-labelledby="new-notebook-dialog-title"><div><form onSubmit={createNotebook}><header><h3 id="new-notebook-dialog-title">新建笔记本</h3><button type="button" aria-label="关闭新建笔记本窗口" onClick={() => setNewNotebookOpen(false)}><X size={18} /></button></header><label>笔记本名称<input value={newNotebookName} onChange={(event) => setNewNotebookName(event.target.value)} maxLength={80} placeholder="例如：伤寒论" /></label><footer><button type="button" onClick={() => setNewNotebookOpen(false)}>取消</button><button type="submit" disabled={!newNotebookName.trim()}>创建并进入</button></footer></form></div></div>}
+    </section>
+  );
 }

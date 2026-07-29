@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { runtimeEventToTrace, streamWorkflowTurn } from './workflowChatClient';
+import {
+  getResumableWorkflowRunId,
+  runtimeEventToTrace,
+  streamWorkflowTurn,
+} from './workflowChatClient';
 
 describe('workflow chat event adapter', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -94,5 +98,30 @@ describe('workflow chat event adapter', () => {
     );
     expect(JSON.parse(request.mock.calls[0][1].body)).toEqual({ answer: '每天 2 小时' });
     expect(outcome.status).toBe('interrupted');
+  });
+
+  it('discards a stale pending run when the backend checkpoint no longer exists', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ detail: 'Not Found' }),
+      { status: 404, headers: { 'Content-Type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', request);
+
+    await expect(getResumableWorkflowRunId('THREAD_STALE')).resolves.toBeNull();
+    expect(request.mock.calls[0][0]).toBe(
+      '/api/v1/review-cards/runs/THREAD_STALE',
+    );
+  });
+
+  it('only resumes a run that is actually waiting for user input', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ thread_id: 'THREAD_WAITING', status: 'interrupted' }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', request);
+
+    await expect(getResumableWorkflowRunId('THREAD_WAITING')).resolves.toBe(
+      'THREAD_WAITING',
+    );
   });
 });

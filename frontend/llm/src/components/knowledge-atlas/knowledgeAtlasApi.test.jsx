@@ -12,6 +12,13 @@ import {
 vi.mock('../../utils/api', () => ({
   API_BASE: '/api',
   fetchWithAuth: vi.fn(),
+  readJsonResponse: vi.fn(async (response, fallback = {}) => {
+    try {
+      return await response.json();
+    } catch {
+      return fallback;
+    }
+  }),
 }));
 
 import { fetchWithAuth } from '../../utils/api';

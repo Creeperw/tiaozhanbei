@@ -1,5 +1,9 @@
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
-import { createWorkflowRunId, streamWorkflowTurn } from './workflowChatClient';
+import {
+  createWorkflowRunId,
+  getResumableWorkflowRunId,
+  streamWorkflowTurn,
+} from './workflowChatClient';
 
 const PENDING_RUNS_STORAGE_KEY = 'assistantPendingWorkflowRuns';
 
@@ -62,7 +66,16 @@ export async function streamAssistantMessage(sessionId, content, {
   onUpdate,
   signal,
 } = {}) {
-  const pending = readPendingRuns()[sessionId] || null;
+  const storedRunId = readPendingRuns()[sessionId] || null;
+  let pending = null;
+  if (storedRunId) {
+    try {
+      pending = await getResumableWorkflowRunId(storedRunId);
+    } catch {
+      pending = null;
+    }
+    if (!pending) rememberPendingRun(sessionId, null);
+  }
   const runId = pending || createWorkflowRunId();
   rememberPendingRun(sessionId, runId);
   const progress = [];

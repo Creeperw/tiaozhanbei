@@ -1,47 +1,68 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import PersonalizationPage from './PersonalizationPage';
-import ReportsPage from './ReportsPage';
+import LearningInsightsReportPage from './LearningInsightsReportPage';
 import ReviewDashboardPanel from './ReviewDashboardPanel';
 
-const tabs = [
-  { key: 'user-profile', label: '用户画像' },
-  { key: 'reports', label: '学情报告' },
-  { key: 'review', label: '复习与掌握' },
-];
-
-const validTaskKeys = new Set(tabs.map((tab) => tab.key));
+const validTaskKeys = new Set(['user-profile', 'reports', 'review', 'memory']);
 const normalizeTask = (value) => (
-  validTaskKeys.has(value) ? value : 'user-profile'
+  validTaskKeys.has(value) ? value : 'reports'
 );
 
-export default function PersonalizationHubPage({ navigationContext = {}, onNavigate }) {
-  const routeTab = normalizeTask(navigationContext.view);
-  const [selectedTab, setSelectedTab] = useState(null);
-  const activeTab = selectedTab || routeTab;
+export default function PersonalizationHubPage({ navigationContext = {}, onNavigate, currentUser }) {
+  const activeTab = normalizeTask(navigationContext.view);
+  const [renderedTab, setRenderedTab] = useState(activeTab);
+  const [transitionPhase, setTransitionPhase] = useState('idle');
+  const timersRef = useRef([]);
+  const displayName = String(
+    currentUser?.display_name || currentUser?.username || currentUser || '用户',
+  ).trim() || '用户';
 
-  const selectTask = (task) => {
-    setSelectedTab(task);
-    onNavigate?.({ page: 'personalization', params: { view: task } });
-  };
+  useEffect(() => {
+    timersRef.current.forEach((timer) => window.clearTimeout(timer));
+    timersRef.current = [];
+    if (activeTab === renderedTab) {
+      setTransitionPhase('idle');
+      return undefined;
+    }
+    setTransitionPhase('exiting');
+    timersRef.current.push(window.setTimeout(() => {
+      setRenderedTab(activeTab);
+      setTransitionPhase('entering');
+      timersRef.current.push(window.setTimeout(() => setTransitionPhase('idle'), 110));
+    }, 85));
+    return () => timersRef.current.forEach((timer) => window.clearTimeout(timer));
+  }, [activeTab]);
+
+  const tabs = [
+    { key: 'reports', label: `${displayName}的学情报告` },
+    { key: 'user-profile', label: '学习画像' },
+    { key: 'review', label: '复习与掌握' },
+    { key: 'memory', label: '学习记忆' },
+  ];
 
   return (
     <div className="personalization-hub">
-      <nav className="personalization-hub__tabs" aria-label="个性数据二级菜单">
+      <nav className="personalization-hub__section-nav" aria-label="个人数据页面切换">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
             aria-current={activeTab === tab.key ? 'page' : undefined}
-            onClick={() => selectTask(tab.key)}
+            onClick={() => onNavigate?.({ page: 'personalization', params: { view: tab.key } })}
           >
             {tab.label}
           </button>
         ))}
       </nav>
-      <main className="personalization-hub__task" aria-live="polite">
-        {activeTab === 'user-profile' && <PersonalizationPage onBackHome={null} embedded view="user-profile" />}
-        {activeTab === 'reports' && <ReportsPage />}
-        {activeTab === 'review' && <ReviewDashboardPanel />}
+      <main
+        className={`personalization-hub__task${renderedTab === 'user-profile' ? ' personalization-hub__task--profile' : ''}`}
+        data-phase={transitionPhase}
+        aria-live="polite"
+      >
+        {renderedTab === 'user-profile' && <PersonalizationPage onBackHome={null} embedded view="user-profile" />}
+        {renderedTab === 'reports' && <LearningInsightsReportPage onNavigate={onNavigate} currentUser={currentUser} />}
+        {renderedTab === 'review' && <ReviewDashboardPanel />}
+        {renderedTab === 'memory' && <PersonalizationPage onBackHome={null} embedded view="memory" />}
       </main>
     </div>
   );

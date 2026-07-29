@@ -32,20 +32,27 @@ export default function QuestionTrainingPanel({
 
   return (
     <div className="question-training-panel">
-      <div className="question-training-mode-tabs" role="tablist" aria-label="题目训练模式">
-        {modes.map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={mode === key}
-            onClick={() => setMode(key)}
-            className={mode === key ? 'is-active' : ''}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {taskItemId ? (
+        <div className="question-training-mode-tabs" aria-label="今日任务训练模式">
+          <strong>今日任务题目</strong>
+          <span>题型以当前任务冻结的正式题目为准</span>
+        </div>
+      ) : (
+        <div className="question-training-mode-tabs" role="tablist" aria-label="题目训练模式">
+          {modes.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={mode === key}
+              onClick={() => setMode(key)}
+              className={mode === key ? 'is-active' : ''}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {(mode === 'objective' || mode === 'case') && (
         <div className="question-training-content">

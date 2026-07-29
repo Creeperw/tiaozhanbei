@@ -1,4 +1,5 @@
 import json
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -7,12 +8,239 @@ from pydantic import ValidationError
 from competition_app.application.personalized_review_card import (
     CoordinationSummary,
     PersonalizedReviewCardUseCase,
+    ReviewCardRequest,
     ReviewCardResult,
+    WorkflowResumeRequest,
 )
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 from competition_app.repositories.runtime import InMemoryRunStateRepository
 from competition_app.runtime.orchestrator import ExecutionResult
 from competition_app.runtime.trace import CommunicationTrace
+
+
+class _FailingPlanner:
+    async def run(self, context):
+        raise TimeoutError("planner timed out")
+
+
+class _FailingMemoryRetriever:
+    async def retrieve(self, learner_id, user_request):
+        raise TimeoutError("knowledge retrieval timed out")
+
+
+class _CancelledPlanner:
+    async def run(self, context):
+        raise asyncio.CancelledError()
+
+
+class _AgentRegistry:
+    def __init__(self, planner):
+        self.planner = planner
+
+    def get(self, name):
+        assert name == "planner_agent"
+        return self.planner
+
+
+class _Orchestrator:
+    def __init__(self, planner):
+        self.agent_registry = _AgentRegistry(planner)
+
+
+class _SnapshotExporter:
+    def export(self, case_id, execution_id, payload):
+        return Path("snapshot.json")
+
+
+def _use_case(*, planner, memory_retriever=None):
+    return PersonalizedReviewCardUseCase(
+        orchestrator=_Orchestrator(planner),
+        snapshot_exporter=_SnapshotExporter(),
+        memory_retriever=memory_retriever,
+    )
+
+
+def _request(thread_id="THREAD_PHASE2"):
+    return ReviewCardRequest(
+        thread_id=thread_id,
+        conversation_id=thread_id,
+        learner_id="learner-phase2",
+        user_request="请制定一个学习计划",
+    )
+
+
+def test_nested_step_error_prefers_exact_step_and_plan_compilation_code() -> None:
+    error = ValueError(
+        "步骤 diagnosis（diagnosis_agent）失败："
+        "ValueError: 最终规划正文未能编译为可审核合同"
+    )
+
+    assert PersonalizedReviewCardUseCase._failure_step(error) == "diagnosis"
+    assert (
+        PersonalizedReviewCardUseCase._failure_code(error)
+        == "plan_compilation_failed"
+    )
+
+
+def test_orchestrator_audit_repair_failure_uses_audit_error_code() -> None:
+    error = RuntimeError(
+        "personalized review card execution failed: "
+        "audit findings could not be safely repaired: 讲解内容需要修订"
+    )
+
+    assert (
+        PersonalizedReviewCardUseCase._failure_code(error)
+        == "audit_step_failed"
+    )
+
+
+def test_daily_task_publication_error_is_not_mislabeled_as_knowledge_failure() -> None:
+    error = RuntimeError(
+        "步骤 learning_plan（learning_plan_service）失败："
+        "DailyTaskProgressError: knowledge point 003299 belongs to another source"
+    )
+
+    assert (
+        PersonalizedReviewCardUseCase._failure_code(error)
+        == "daily_task_publication_failed"
+    )
+
+
+def test_paper_assembly_compiler_failure_has_paper_error_code() -> None:
+    error = RuntimeError(
+        "步骤 paper_assembly（paper_assembly_agent）失败："
+        "ValueError: paper assembly draft could not be compiled"
+    )
+
+    assert (
+        PersonalizedReviewCardUseCase._failure_code(error)
+        == "paper_generation_failed"
+    )
+
+
+def test_second_plan_audit_revision_has_audit_error_code() -> None:
+    error = RuntimeError(
+        "personalized review card execution failed: "
+        "audit still requires review after the bounded repair"
+    )
+
+    assert PersonalizedReviewCardUseCase._failure_code(error) == "audit_step_failed"
+
+
+@pytest.mark.asyncio
+async def test_execute_failure_is_persisted_as_failed_with_step_metadata() -> None:
+    use_case = _use_case(planner=_FailingPlanner())
+
+    with pytest.raises(TimeoutError):
+        await use_case.execute(_request())
+
+    state = use_case.get_run_state("THREAD_PHASE2")
+    assert state is not None
+    assert state["status"] == "failed"
+    assert state["error_code"] == "workflow_timeout"
+    assert state["failed_step"] == "planner"
+    assert state["retryable"] is True
+
+
+@pytest.mark.asyncio
+async def test_execute_memory_failure_is_persisted_as_failed() -> None:
+    use_case = _use_case(
+        planner=_FailingPlanner(),
+        memory_retriever=_FailingMemoryRetriever(),
+    )
+
+    with pytest.raises(TimeoutError):
+        await use_case.execute(_request("THREAD_PHASE2_MEMORY"))
+
+    state = use_case.get_run_state("THREAD_PHASE2_MEMORY")
+    assert state is not None
+    assert state["status"] == "failed"
+    assert state["error_code"] == "knowledge_timeout"
+    assert state["failed_step"] == "memory"
+
+
+@pytest.mark.asyncio
+async def test_execute_cancellation_is_not_converted_to_failed() -> None:
+    use_case = _use_case(planner=_CancelledPlanner())
+
+    with pytest.raises(asyncio.CancelledError):
+        await use_case.execute(_request("THREAD_PHASE2_CANCEL"))
+
+    state = use_case.get_run_state("THREAD_PHASE2_CANCEL")
+    assert state is not None
+    assert state["status"] == "running"
+
+
+@pytest.mark.asyncio
+async def test_resume_profile_writeback_failure_is_persisted_as_failed() -> None:
+    use_case = _use_case(planner=_FailingPlanner())
+    use_case._remember_run(
+        "THREAD_PHASE2_RESUME",
+        {
+            "status": "interrupted",
+            "thread_id": "THREAD_PHASE2_RESUME",
+            "execution_id": "EXE_PHASE2_RESUME",
+            "continuation": {
+                "request": _request("THREAD_PHASE2_RESUME").model_dump(mode="json"),
+                "case_id": "CASE_PHASE2_RESUME",
+                "execution_id": "EXE_PHASE2_RESUME",
+                "execution_plan": {
+                    "plan_id": "PLAN_PHASE2_RESUME",
+                    "task_type": "learning_plan",
+                        "steps": [
+                            {
+                                "step_id": "diagnosis",
+                                "agent": "diagnosis_agent",
+                            }
+                        ],
+                },
+                "planner_output": {
+                    "artifact_id": "ART_PHASE2_RESUME",
+                    "artifact_type": "planner_decision",
+                    "case_id": "CASE_PHASE2_RESUME",
+                    "trace_id": "TRACE_PHASE2_RESUME",
+                    "request_id": "REQ_PHASE2_RESUME",
+                    "execution_id": "EXE_PHASE2_RESUME",
+                    "step_id": "planner",
+                    "producer": "planner_agent",
+                    "task_type": "learning_plan",
+                    "learner_id": "learner-phase2",
+                    "payload": {
+                        "task_type": "learning_plan",
+                        "plan_scope": "long_term",
+                        "selected_agents": [],
+                        "routing_reason": "test",
+                    },
+                },
+                "context": {},
+            },
+        },
+    )
+    use_case.profile_update_writer = lambda *args: (_ for _ in ()).throw(
+        RuntimeError("profile writeback failed")
+    )
+    use_case._remember_run(
+        "THREAD_PHASE2_RESUME",
+        {
+            "status": "interrupted",
+            "interrupt": {
+                "interrupt_type": "profile_completion",
+                "profile_fields": ["learning_goal"],
+            },
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="profile writeback failed"):
+        await use_case.resume(
+            "THREAD_PHASE2_RESUME",
+            WorkflowResumeRequest(answer="准备参加考试"),
+        )
+
+    state = use_case.get_run_state("THREAD_PHASE2_RESUME")
+    assert state is not None
+    assert state["status"] == "failed"
+    assert state["error_code"] == "persistence_failed"
+    assert state["failed_step"] == "profile_writeback"
 
 
 def test_long_term_plan_message_includes_system_owned_stage_data() -> None:
@@ -77,6 +305,36 @@ def test_daily_task_message_names_chapter_and_focus_knowledge_points() -> None:
     assert "今日章节：《中医学基础》阴阳学说" in message
     assert "重点知识点：阴阳对立制约、阴阳互根互用" in message
     assert "预计用时：45 分钟" in message
+
+
+def test_casual_conversation_returns_direct_natural_language() -> None:
+    message = workflow_result_to_markdown({
+        "status": "success",
+        "task_type": "casual_conversation",
+        "direct_response": "你好！今天想学点什么？",
+    })
+
+    assert message == "你好！今天想学点什么？"
+    assert "流程已在当前节点暂停" not in message
+
+
+def test_interruption_hides_internal_planner_routing_reason() -> None:
+    message = workflow_result_to_markdown({
+        "status": "interrupted",
+        "interrupt": {
+            "reason": (
+                "选择 Diagnosis Agent 并不选择 Memory Agent，"
+                "因为 requires_compression=false。系统已补全确定性依赖节点。"
+            ),
+            "questions": ["你希望制定长期计划还是短期计划？"],
+        },
+    })
+
+    assert "Diagnosis Agent" not in message
+    assert "Memory Agent" not in message
+    assert "requires_compression" not in message
+    assert "确定性依赖节点" not in message
+    assert "你希望制定长期计划还是短期计划？" in message
 
 
 def test_paper_message_keeps_exam_body_in_workspace() -> None:

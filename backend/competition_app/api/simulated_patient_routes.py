@@ -95,7 +95,7 @@ class SPRequest(BaseModel):
     session_id: str = Field(..., min_length=1, max_length=128)
     action: str = Field(
         ...,
-        pattern=r"^(start|dialogue|help|submit|stats|mistakes|collections|history|clear|reset|dialog_history|history_detail)$",
+        pattern=r"^(start|dialogue|help|submit|stats|mistakes|collections|history|history_list|clear|reset|dialog_history|history_detail)$",
     )
     user_input: str = Field(default="", max_length=2000)
     case_id: Optional[str] = Field(default=None, max_length=128)

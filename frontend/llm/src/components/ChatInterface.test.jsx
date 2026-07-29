@@ -169,6 +169,52 @@ describe('ChatInterface session workspace', () => {
       params: expect.objectContaining({
         taskType: 'paper_workspace',
         paperId: 'PAPER_1',
+        returnTo: { page: 'assistant', params: { sessionId: 'session-paper' } },
+      }),
+    }));
+  });
+
+  it('opens persisted video actions in the embedded knowledge-card player', async () => {
+    const onNavigate = vi.fn();
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.endsWith('/conversations')) {
+        return Promise.resolve(jsonResponse([{ id: 'session-video', title: '视频学习' }]));
+      }
+      if (url.endsWith('/conversations/session-video/messages')) {
+        return Promise.resolve(jsonResponse([{
+          id: 9,
+          role: 'assistant',
+          content: '章节视频已经准备好。',
+          actions: [{
+            label: '观看视频',
+            destination: 'workshop.knowledge_video',
+            params: {
+              task_item_id: 'ITEM_VIDEO',
+              video: { title: '章节精讲', url: 'https://example.test/video.mp4' },
+            },
+          }],
+        }]));
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    render(
+      <ChatInterface
+        currentUser="alice"
+        preferredSessionId="session-video"
+        embedded
+        onNavigate={onNavigate}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '观看视频' }));
+    expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({
+      page: 'practice',
+      params: expect.objectContaining({
+        taskType: 'knowledge_cards',
+        resourceView: 'videos',
+        taskItemId: 'ITEM_VIDEO',
+        directVideo: { title: '章节精讲', url: 'https://example.test/video.mp4' },
       }),
     }));
   });

@@ -206,91 +206,15 @@ def _deactivate_expired_memories(db: Session, user_id: int) -> int:
 
 
 def resolve_personalization_conflicts(db: Session, user_id: int) -> int:
-    """Keep the latest active memory for each semantic slot and deactivate older conflicts."""
-    db.flush()
+    """Apply deterministic expiry only; semantic conflicts require user confirmation.
+
+    The historical implementation grouped rows through keyword-derived slots and
+    silently superseded older memories.  Similar wording is not proof of a
+    contradiction, so semantic conflict resolution now belongs to Memory Agent.
+    This compatibility entry point deliberately performs no semantic mutation.
+    """
+
     changed = _deactivate_expired_memories(db, user_id)
-    if changed:
-        db.flush()
-
-    active_rows = db.query(PersonalizationMemory).filter(
-        PersonalizationMemory.user_id == user_id,
-        PersonalizationMemory.is_active == True,
-        or_(PersonalizationMemory.expires_at.is_(None), PersonalizationMemory.expires_at > utc_now()),
-    ).all()
-    if not active_rows:
-        return changed
-
-    grouped: Dict[str, List[PersonalizationMemory]] = {}
-    for row in active_rows:
-        key = _infer_memory_conflict_key(row)
-        grouped.setdefault(key, []).append(row)
-
-    now = utc_now()
-    for rows in grouped.values():
-        if len(rows) <= 1:
-            row = rows[0]
-            if row.conflict_key != _infer_memory_conflict_key(row):
-                row.conflict_key = _infer_memory_conflict_key(row)
-                changed += 1
-            continue
-        key = _infer_memory_conflict_key(rows[0])
-        winner = max(
-            rows,
-            key=lambda item: (
-                item.updated_at or item.created_at or datetime.min,
-                MEMORY_SOURCE_PRIORITY.get((item.source or "").strip().lower(), 0),
-                item.id or 0,
-            ),
-        )
-        for row in rows:
-            if row.conflict_key != key:
-                row.conflict_key = key
-                changed += 1
-            if row.id == winner.id:
-                continue
-            row.is_active = False
-            row.superseded_by = winner.id
-            row.superseded_at = now
-            row.updated_at = now
-            changed += 1
-
-    if changed:
-        db.flush()
-
-    active_keys = {_infer_memory_conflict_key(row) for row in active_rows if row.is_active}
-    pending_candidates = db.query(MemoryCandidate).filter(
-        MemoryCandidate.user_id == user_id,
-        MemoryCandidate.status == "pending",
-    ).all()
-    candidate_groups: Dict[str, List[MemoryCandidate]] = {}
-    for candidate in pending_candidates:
-        key = _infer_memory_conflict_key(PersonalizationMemory(
-            title=candidate.title or "",
-            content=candidate.content or "",
-            category="note",
-            importance=candidate.importance or "normal",
-            source=candidate.source or "auto_extract",
-        ))
-        if key in active_keys:
-            candidate.status = "ignored"
-            candidate.reason = ((candidate.reason or "") + "\n已由最新有效记忆覆盖，自动忽略。").strip()
-            candidate.updated_at = now
-            changed += 1
-            continue
-        candidate_groups.setdefault(key, []).append(candidate)
-
-    for rows in candidate_groups.values():
-        if len(rows) <= 1:
-            continue
-        winner = max(rows, key=lambda item: (item.updated_at or item.created_at or datetime.min, item.id or 0))
-        for row in rows:
-            if row.id == winner.id:
-                continue
-            row.status = "ignored"
-            row.reason = ((row.reason or "") + "\n同类候选已有更新版本，自动忽略。").strip()
-            row.updated_at = now
-            changed += 1
-
     if changed:
         db.flush()
     return changed
@@ -321,9 +245,6 @@ def get_or_create_profile(
 
 def retrieve_user_context(db: Session, user_id: int, query: str = "") -> str:
     profile = get_or_create_profile(db, user_id)
-    changed = resolve_personalization_conflicts(db, user_id)
-    if changed:
-        db.commit()
     lines = []
     profile_fields = [
         ("昵称", profile.display_name),
@@ -471,7 +392,15 @@ def _trim_pending_candidates(db: Session, user_id: int) -> None:
     for item in overflow:
         db.delete(item)
 
-def save_extracted_memories(db: Session, user_id: int, extracted: Dict[str, Any], source: str = "agent", session_id: str | None = None) -> Dict[str, Any]:
+def save_extracted_memories(
+    db: Session,
+    user_id: int,
+    extracted: Dict[str, Any],
+    source: str = "agent",
+    session_id: str | None = None,
+    *,
+    commit: bool = True,
+) -> Dict[str, Any]:
     important_items = _collect_extracted_items(extracted, [
         "important_short_term", "important", "short_term", "long_term", "preferences", "feedback",
     ])
@@ -486,42 +415,21 @@ def save_extracted_memories(db: Session, user_id: int, extracted: Dict[str, Any]
         "summary": extracted.get("summary") or "",
     }
 
-    expires_at = utc_now() + timedelta(days=SHORT_TERM_MEMORY_DAYS)
-    for item in important_items:
-        content = item["content"]
-        conflict_key = _infer_memory_conflict_key(PersonalizationMemory(
-            title=item.get("title", ""),
-            content=content,
-            category="short_term",
-            importance="important" if item.get("importance") == "important" else "normal",
-            source=source,
-        ))
-        exists = db.query(PersonalizationMemory).filter(
-            PersonalizationMemory.user_id == user_id,
-            PersonalizationMemory.category == "short_term",
-            PersonalizationMemory.content == content,
-            PersonalizationMemory.is_active == True,
-        ).first()
-        if exists:
-            exists.importance = "important" if item.get("importance") == "important" else exists.importance
-            exists.title = item.get("title") or exists.title
-            exists.source = source
-            exists.expires_at = expires_at
-            exists.conflict_key = conflict_key
-            exists.updated_at = utc_now()
-            continue
-        db.add(PersonalizationMemory(
-            user_id=user_id,
-            category="short_term",
-            importance="important" if item.get("importance") == "important" else "normal",
-            title=item.get("title", ""),
-            content=content,
-            source=source,
-            expires_at=expires_at,
-            conflict_key=conflict_key,
-            confidence=float(item.get("confidence", 0.8)) if str(item.get("confidence", "")).strip() else 0.8,
-        ))
-
+    # Model-extracted facts are proposals, not confirmed active memories.  Keep
+    # the existing settings-page confirmation and promotion workflow as the
+    # authority boundary for both important and ordinary extracted items.
+    candidate_items = [
+        *[
+            {
+                **item,
+                "importance": "normal",
+                "reason": item.get("reason") or "记忆管理智能体识别为重要信息，等待用户确认。",
+            }
+            for item in important_items
+        ],
+        *candidate_items,
+    ]
+    candidate_items = _dedupe_memory_items(candidate_items)
     for item in candidate_items:
         content = item["content"]
         existing_memory = db.query(PersonalizationMemory).filter(
@@ -560,9 +468,68 @@ def save_extracted_memories(db: Session, user_id: int, extracted: Dict[str, Any]
         ))
     db.flush()
     _trim_pending_candidates(db, user_id)
-    resolve_personalization_conflicts(db, user_id)
-    db.commit()
+    if commit:
+        db.commit()
     return persisted_extracted
+
+
+def apply_confirmed_memory_replacements(
+    db: Session,
+    user_id: int,
+    replacements: List[Dict[str, Any]],
+    *,
+    source: str = "memory_agent_confirmed",
+) -> Dict[str, Any]:
+    """Apply only explicit, current-user memory replacements in one transaction."""
+
+    replaced: List[Dict[str, int]] = []
+    for replacement in replacements:
+        memory_id = int(replacement.get("memory_id") or 0)
+        proposed_content = str(replacement.get("proposed_memory") or "").strip()
+        if memory_id <= 0 or not _is_valid_memory_content(proposed_content):
+            raise ValueError("confirmed memory replacement is incomplete")
+        existing = db.query(PersonalizationMemory).filter(
+            PersonalizationMemory.id == memory_id,
+            PersonalizationMemory.user_id == user_id,
+        ).first()
+        if existing is None:
+            raise ValueError("confirmed memory does not belong to the current user")
+        if existing.superseded_by is not None:
+            successor = db.query(PersonalizationMemory).filter(
+                PersonalizationMemory.id == existing.superseded_by,
+                PersonalizationMemory.user_id == user_id,
+            ).first()
+            if successor is None or str(successor.content or "").strip() != proposed_content:
+                raise ValueError("memory was already superseded by a different value")
+            replaced.append({"memory_id": existing.id, "successor_id": successor.id})
+            continue
+        if existing.is_active and str(existing.content or "").strip() == proposed_content:
+            replaced.append({"memory_id": existing.id, "successor_id": existing.id})
+            continue
+        successor = db.query(PersonalizationMemory).filter(
+            PersonalizationMemory.user_id == user_id,
+            PersonalizationMemory.content == proposed_content,
+            PersonalizationMemory.is_active == True,
+        ).first()
+        if successor is None:
+            successor = PersonalizationMemory(
+                user_id=user_id,
+                category=existing.category or "note",
+                importance=existing.importance or "normal",
+                title=existing.title or "",
+                content=proposed_content,
+                source=source,
+                confidence=1.0,
+            )
+            db.add(successor)
+            db.flush()
+        existing.is_active = False
+        existing.superseded_by = successor.id
+        existing.superseded_at = utc_now()
+        existing.updated_at = utc_now()
+        replaced.append({"memory_id": existing.id, "successor_id": successor.id})
+    db.flush()
+    return {"replaced": replaced}
 
 def should_compress(messages: List[DbMessage], limit: int) -> bool:
     total = sum(rough_token_count(m.content or "") for m in messages)

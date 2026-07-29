@@ -7,10 +7,12 @@ from competition_app.llm.schemas import PlannerModelOutput
 def test_dynamic_plan_contains_only_planner_selected_agents() -> None:
     decision = PlannerDecision(
         task_type="learning_plan",
+        plan_scope="long_term",
         selected_agents=[
             "default_route_resolver",
             "knowledge_base_agent",
             "diagnosis_agent",
+            "audit_agent",
             "learning_plan_service",
         ],
         routing_reason="仅制定学习计划",
@@ -24,13 +26,18 @@ def test_dynamic_plan_contains_only_planner_selected_agents() -> None:
         "knowledge_base_agent",
         "default_route_resolver",
         "diagnosis_agent",
+        "audit_agent",
         "learning_plan_service",
     ]
     assert plan.steps.index(route) < plan.steps.index(diagnosis)
     assert route.agent == "default_route_resolver"
     assert set(diagnosis.depends_on) == {"knowledge", "route_resolution"}
+    assert diagnosis.timeout_seconds == 720.0
     assert "expert_agent" not in {step.agent for step in plan.steps}
-    assert "audit_agent" not in {step.agent for step in plan.steps}
+    audit = next(step for step in plan.steps if step.step_id == "audit")
+    publication = next(step for step in plan.steps if step.step_id == "learning_plan")
+    assert audit.depends_on == ["diagnosis"]
+    assert set(publication.depends_on) == {"diagnosis", "audit"}
 
 
 def test_dynamic_router_rejects_expert_without_required_upstream_agents() -> None:
@@ -66,12 +73,76 @@ class CapturingPlannerModel:
         }
 
 
+class CasualPlannerModel:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def complete_json(self, role, payload, on_delta=None):
+        self.calls += 1
+        return {
+            "task_type": "casual_conversation",
+            "plan_scope": None,
+            "selected_agents": [],
+            "casual_response": "你好，很高兴继续陪你学习。今天想从哪里开始？",
+            "routing_reason": "用户本轮只是问候，没有提出学习任务。",
+            "risk_level": "low",
+            "requires_audit": False,
+        }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("user_request", "hint"),
+    [
+        ("你好，请制定长期规划", "long_term"),
+        ("你好，请制定短期计划", "short_term"),
+        ("谢谢，再安排今天任务", "daily_task"),
+        ("您好，讲解阴阳学说", None),
+        ("再见前帮我组一份试卷", None),
+        ("你好，帮我制定一个学习规划", None),
+        ("你好，给我生成学习卡", None),
+        ("谢谢，帮我安排一下学习", None),
+        ("再见前给我一些可以直接学习的资源", None),
+    ],
+)
+async def test_mixed_business_request_cannot_be_swallowed_as_casual(
+    user_request: str,
+    hint: str | None,
+) -> None:
+    with pytest.raises(ValueError, match="planner output validation failed"):
+        await PlannerAgent(CasualPlannerModel()).run(
+            {
+                "case_id": "C_MIXED",
+                "trace_id": "T_MIXED",
+                "request_id": "R_MIXED",
+                "execution_id": "E_MIXED",
+                "step_id": "planner",
+                "learner_id": "L_MIXED",
+                "user_request": user_request,
+                "plan_scope_hint": hint,
+                "messages": [{"role": "user", "content": user_request}],
+            }
+        )
+
+
 class LongTermPlanWithoutKnowledgeModel:
     async def complete_json(self, role, payload, on_delta=None):
         return {
             "task_type": "learning_plan",
+            "plan_scope": "long_term",
             "selected_agents": ["diagnosis_agent", "learning_plan_service"],
             "routing_reason": "用户画像和学情足以生成长期规划，无需教材检索。",
+            "risk_level": "low",
+            "requires_audit": False,
+        }
+
+
+class PlanWithoutScopeModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        return {
+            "task_type": "learning_plan",
+            "selected_agents": ["diagnosis_agent", "learning_plan_service"],
+            "routing_reason": "用户要求制定学习安排。",
             "risk_level": "low",
             "requires_audit": False,
         }
@@ -113,6 +184,30 @@ class DailyTaskSemanticPlannerModel:
 
 
 @pytest.mark.asyncio
+async def test_plain_greeting_never_enters_learning_plan_or_resource_chain() -> None:
+    model = CasualPlannerModel()
+    result = await PlannerAgent(model).run(
+        {
+            "case_id": "C_GREETING",
+            "trace_id": "T_GREETING",
+            "request_id": "R_GREETING",
+            "execution_id": "E_GREETING",
+            "step_id": "planner",
+            "learner_id": "L_GREETING",
+            "user_request": "你好！",
+            "messages": [{"role": "user", "content": "你好！"}],
+        }
+    )
+
+    assert result.payload.task_type == "casual_conversation"
+    assert result.payload.plan_scope is None
+    assert result.payload.selected_agents == []
+    assert result.payload.requires_audit is False
+    assert result.payload.casual_response == "你好，很高兴继续陪你学习。今天想从哪里开始？"
+    assert model.calls == 1
+
+
+@pytest.mark.asyncio
 async def test_plan_scope_deterministically_forces_learning_plan_route() -> None:
     result = await PlannerAgent(ScopeIgnoringPlannerModel()).run(
         {
@@ -131,8 +226,10 @@ async def test_plan_scope_deterministically_forces_learning_plan_route() -> None
 
     assert result.payload.task_type == "learning_plan"
     assert result.payload.selected_agents == [
+        "memory_agent",
         "default_route_resolver",
         "diagnosis_agent",
+        "audit_agent",
         "learning_plan_service",
     ]
 
@@ -191,7 +288,7 @@ async def test_planner_semantics_override_classifier_hint() -> None:
 
 @pytest.mark.asyncio
 async def test_planner_uses_hint_only_when_model_omits_learning_plan_scope() -> None:
-    result = await PlannerAgent(LongTermPlanWithoutKnowledgeModel()).run(
+    result = await PlannerAgent(PlanWithoutScopeModel()).run(
         {
             "case_id": "C_FALLBACK",
             "trace_id": "T_FALLBACK",
@@ -212,7 +309,7 @@ async def test_planner_uses_hint_only_when_model_omits_learning_plan_scope() -> 
 
 @pytest.mark.asyncio
 async def test_planner_uses_unspecified_instead_of_null_for_ambiguous_plan() -> None:
-    result = await PlannerAgent(LongTermPlanWithoutKnowledgeModel()).run(
+    result = await PlannerAgent(PlanWithoutScopeModel()).run(
         {
             "case_id": "C_UNSPECIFIED",
             "trace_id": "T_UNSPECIFIED",
@@ -276,17 +373,19 @@ async def test_planner_preserves_no_knowledge_selection_for_long_term_plan() -> 
     plan = PlannerAgent.build_plan(result.payload)
 
     assert result.payload.selected_agents == [
+        "memory_agent",
         "default_route_resolver",
         "diagnosis_agent",
+        "audit_agent",
         "learning_plan_service",
     ]
     assert [step.agent for step in plan.steps] == result.payload.selected_agents
     assert "knowledge_base_agent" not in result.payload.selected_agents
 
-
 def test_planner_completes_learning_plan_service_without_forcing_knowledge() -> None:
     output = PlannerModelOutput(
         task_type="learning_plan",
+        plan_scope="daily_task",
         selected_agents=["diagnosis_agent"],
         routing_reason="用户询问最近学习状态。",
         risk_level="low",
@@ -367,7 +466,7 @@ class IncompleteReviewCardModel:
     [
         (["memory_agent"], True, True),
         (["knowledge_base_agent"], True, True),
-        (["knowledge_base_agent"], False, False),
+        (["knowledge_base_agent"], False, True),
     ],
 )
 async def test_planner_completes_incomplete_review_card_delivery_chain_from_model_output(
@@ -429,11 +528,13 @@ def test_paper_generation_uses_minimal_evidence_expert_audit_chain() -> None:
         ("audit_agent", ["paper_blueprint", "question_pool", "paper_assembly"]),
     ]
     question_pool_step = next(step for step in plan.steps if step.step_id == "question_pool")
-    assert question_pool_step.timeout_seconds == 300.0
+    blueprint_step = next(step for step in plan.steps if step.step_id == "paper_blueprint")
+    assert blueprint_step.timeout_seconds == 420.0
+    assert question_pool_step.timeout_seconds == 600.0
     paper_assembly_step = next(step for step in plan.steps if step.step_id == "paper_assembly")
-    assert paper_assembly_step.timeout_seconds == 180.0
+    assert paper_assembly_step.timeout_seconds == 900.0
     audit_step = next(step for step in plan.steps if step.step_id == "audit")
-    assert audit_step.timeout_seconds == 120.0
+    assert audit_step.timeout_seconds == 420.0
 
 
 def test_knowledge_explanation_does_not_include_planning_or_review_services() -> None:

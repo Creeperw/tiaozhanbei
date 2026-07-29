@@ -59,13 +59,117 @@ class TrainingServicePhase4Tests(unittest.TestCase):
                 "student_answer": "A,C",
                 "standard_answer": "A,B",
                 "knowledge_points": ["022758"],
-                "knowledge_point_names": ["感冒辨证"],
+                "knowledge_point_names": ["感冒辨证", "感冒辨证"],
             },
         )
         self.assertEqual(payload["grading"]["score"], 0)
         self.assertFalse(payload["grading"]["is_correct"])
         self.assertIn("感冒辨证", payload["grading"]["analysis"])
+        self.assertEqual(payload["grading"]["analysis"].count("感冒辨证"), 1)
         self.assertNotIn("022758", payload["grading"]["analysis"])
+
+    def test_single_choice_accepts_json_array_standard_answer(self):
+        service = self._service()
+        payload = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-single",
+                "question_type": "single_choice",
+                "stem": "请选择正确项",
+                "student_answer": "A",
+                "standard_answer": '["A"]',
+                "knowledge_points": ["KP_1"],
+                "knowledge_point_names": ["理论形成时期"],
+            },
+        )
+
+        self.assertTrue(payload["grading"]["is_correct"])
+        self.assertEqual(payload["grading"]["score"], 100)
+        self.assertIsNone(payload["mistake_record"])
+
+    def test_choice_grading_accepts_ui_option_labels_with_text(self):
+        service = self._service()
+
+        single = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-single-labeled",
+                "question_type": "single_choice",
+                "stem": "阴阳双方在一定条件下相互转变称为什么？",
+                "student_answer": "C. 阴阳转化",
+                "standard_answer": "C",
+                "knowledge_points": ["KP_1"],
+            },
+        )
+        multiple = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-multiple-labeled",
+                "question_type": "multiple_choice",
+                "stem": "请选择正确项",
+                "student_answer": "A. 对立制约,C. 消长平衡",
+                "standard_answer": "A,C",
+                "knowledge_points": ["KP_1"],
+            },
+        )
+
+        self.assertTrue(single["grading"]["is_correct"])
+        self.assertEqual(single["grading"]["score"], 100)
+        self.assertTrue(multiple["grading"]["is_correct"])
+        self.assertEqual(multiple["grading"]["score"], 100)
+
+    def test_true_false_accepts_equivalent_ui_and_textbook_tokens(self):
+        service = self._service()
+        for student_answer, standard_answer in (
+            ("正确", '["√"]'),
+            ("true", "对"),
+            ("错误", '["×"]'),
+            ("false", "错"),
+        ):
+            with self.subTest(
+                student_answer=student_answer,
+                standard_answer=standard_answer,
+            ):
+                payload = service.grade_practice_submission(
+                    profile={},
+                    memories=[],
+                    submission={
+                        "question_id": "q-true-false",
+                        "question_type": "true_false",
+                        "stem": "判断正误",
+                        "student_answer": student_answer,
+                        "standard_answer": standard_answer,
+                        "knowledge_points": ["KP_1"],
+                    },
+                )
+                self.assertTrue(payload["grading"]["is_correct"])
+                self.assertEqual(payload["grading"]["score"], 100)
+
+    def test_fill_blank_has_no_base_score_and_receives_deterministic_audit(self):
+        service = self._service()
+        payload = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-fill",
+                "question_type": "fill_blank",
+                "stem": "填写四君子汤组成。",
+                "student_answer": "完全错误答案",
+                "standard_answer": "人参、白术、茯苓、炙甘草",
+                "knowledge_points": ["四君子汤"],
+            },
+        )
+
+        self.assertEqual(payload["grading"]["score"], 0)
+        self.assertFalse(payload["grading"]["is_correct"])
+        self.assertEqual(payload["audit"]["decision"], "pass")
+        self.assertEqual(
+            payload["audit"]["audit_source"],
+            "deterministic_objective_grading",
+        )
 
     def test_subjective_answer_uses_model_expert_and_independent_audit(self):
         service = self._service()

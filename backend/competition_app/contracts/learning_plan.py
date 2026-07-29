@@ -28,8 +28,23 @@ class PlanMilestone(ContractModel):
 
 class LongTermPlanStage(ContractModel):
     stage: int = Field(ge=1)
+    stage_name: str = ""
     book: list[str] = Field(min_length=1)
     goal: str = Field(min_length=1)
+    duration_days: int = Field(default=0, ge=0, le=3_650)
+    schedule_summary: str = ""
+
+
+class StageEvidenceRecord(ContractModel):
+    """System-verified evidence used by a long-term stage progression gate."""
+
+    evidence_id: str = Field(min_length=1)
+    stage: int = Field(ge=1)
+    requirement: str = Field(min_length=1)
+    source_type: Literal["completed_daily_task", "audited_assessment"]
+    source_id: str = Field(min_length=1)
+    verified_by: str = Field(min_length=1)
+    verified_at: datetime
 
 
 class ShortTermTaskBlock(ContractModel):
@@ -67,7 +82,11 @@ class TextbookSelectionContext(ContractModel):
 
 
 class ShortTermLearningPackage(ContractModel):
-    time_window_weeks: Literal[1, 2] | None = None
+    # Retained for API compatibility. New planning logic uses duration_days as
+    # the authoritative value and derives this display-oriented week count.
+    time_window_weeks: int | None = Field(default=None, ge=1, le=53)
+    duration_days: int | None = Field(default=None, ge=1, le=365)
+    progression_nodes: list[str] = Field(default_factory=list)
     current_goal: str = Field(min_length=1)
     task_blocks: list[str | ShortTermTaskBlock] = Field(min_length=1)
     review_minutes: int | None = Field(default=None, ge=0)
@@ -184,6 +203,7 @@ class LongTermPlan(ContractModel):
     created_at: datetime
     updated_at: datetime
     stages: list[LongTermPlanStage] = Field(default_factory=list)
+    stage_evidence: list = Field(default_factory=list)
     planning_route: ResolvedPlanningRoute | None = None
     goal_contract: GoalContract | None = None
     milestones: list[PlanMilestone] = Field(default_factory=list)

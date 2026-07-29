@@ -66,7 +66,7 @@ class AuthenticationService:
             normalized_username=self.normalize_username(username),
             display_name=display_name,
             role=role,
-            onboarding_required=role == "user",
+            onboarding_required=False,
             password_hash=self._derive_password(
                 password, salt, self.password_iterations
             ).hex(),

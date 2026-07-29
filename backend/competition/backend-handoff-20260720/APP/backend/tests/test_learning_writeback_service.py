@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from APP.backend.database import (
     AuditResultRecord, Base, EvidencePackRecord, GradingResultRecord,
+    DailyTaskItemRecord,
     KnowledgeMasteryState, LearnerKPReviewState, LearnerKnowledgeMastery,
     LearningAttemptItemRecord, LearningAttemptRecord, LearningWritebackReceipt,
     MasteryHistoryRecord, MistakeRecord, ReviewTaskRecord, UserModel,
@@ -180,13 +181,39 @@ class LearningWritebackServiceTests(unittest.TestCase):
         self.assertNotEqual(first.receipt_id, second.receipt_id)
         self.assertEqual(self.db.query(LearningWritebackReceipt).count(), 2)
         self.assertEqual(self.db.query(MasteryHistoryRecord).count(), 2)
-        self.assertEqual(self.db.query(ReviewTaskRecord).count(), 2)
+        self.assertEqual(self.db.query(ReviewTaskRecord).count(), 1)
 
         self.assertEqual(apply_grading_writeback(self.db, 1, first_command), first)
         self.assertEqual(apply_grading_writeback(self.db, 1, second_command), second)
         self.assertEqual(self.db.query(LearningWritebackReceipt).count(), 2)
         self.assertEqual(self.db.query(MasteryHistoryRecord).count(), 2)
-        self.assertEqual(self.db.query(ReviewTaskRecord).count(), 2)
+        self.assertEqual(self.db.query(ReviewTaskRecord).count(), 1)
+
+    def test_incomplete_daily_question_does_not_admit_mastery_or_review(self):
+        command = self.seed()
+        attempt = self.db.query(LearningAttemptRecord).one()
+        attempt.daily_task_item_id = "DAILY_ITEM_1"
+        self.db.add(
+            DailyTaskItemRecord(
+                task_item_id="DAILY_ITEM_1",
+                host_task_id="TASK_1",
+                host_task_version=1,
+                user_id=1,
+                kp_id="kp-1",
+                item_kind="knowledge_practice",
+                required_question_count=3,
+                status="in_progress",
+            )
+        )
+        self.db.commit()
+
+        result = apply_grading_writeback(self.db, 1, command)
+
+        self.assertEqual(result.mastery_updates, ())
+        self.assertEqual(result.review_task_ids, ())
+        self.assertEqual(self.db.query(KnowledgeMasteryState).count(), 0)
+        self.assertEqual(self.db.query(ReviewTaskRecord).count(), 0)
+        self.assertEqual(self.db.query(MistakeRecord).count(), 1)
 
     def test_regrades_same_attempt_item_updates_one_active_mistake(self):
         first = apply_grading_writeback(self.db, 1, self.seed())

@@ -110,6 +110,12 @@ def test_chat_client_reuses_stream_api_and_restores_browser_session() -> None:
     assert "learning_task:" in script.text
     assert "run_completed" in script.text
     assert "run_interrupted" in script.text
+    assert "streamErrorMessage" in script.text
+    assert "error_code" in script.text
+    assert "serverFailure" in script.text
+    assert "lastError" in script.text
+    assert "connectionLost" in script.text
+    assert "reconcileDisconnectedRun" in script.text
     assert "requires_clarification" in script.text
     assert "AbortController" in script.text
     assert "pendingThreadId" in script.text

@@ -8,9 +8,20 @@ from sqlalchemy import create_engine
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.resource import AuditResult
+from competition_app.contracts.knowledge import QuestionDetail, QuestionRetrievalMetadata
+from competition_app.contracts.paper import (
+    BlueprintUnit,
+    ExamPaperDraft,
+    ExamPaperItem,
+    PaperBlueprint,
+    QuestionCandidatePool,
+    UnitQuestionCandidates,
+)
 from competition_app.contracts.local_repair import RepairIssue
 from competition_app.contracts.learning_plan import LearningPlanClarificationResult
+from competition_app.contracts.memory import LearnerContextBrief, MemoryGovernanceDecision
 from competition_app.contracts.default_route import ResolvedPlanningRoute
+from competition_app.agents.memory import MemoryAgentResult
 from competition_app.contracts.textbook_route import ResolvedTextbookRoute
 from competition_app.agents.common import envelope
 from competition_app.application.container import ApplicationContainer
@@ -58,6 +69,21 @@ class CountingAgent:
         return {"draft": self.calls}
 
 
+class PassingAuditPublisher:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.audit_decisions: list[str | None] = []
+
+    async def run(self, context):
+        self.calls += 1
+        audit = context["dependency_outputs"]["audit"]
+        decision = getattr(getattr(audit, "payload", None), "decision", None)
+        self.audit_decisions.append(decision)
+        if decision != "pass":
+            raise RuntimeError("publication requires a passing audit")
+        return {"published": True}
+
+
 class AuditSequenceAgent:
     def __init__(self, decisions: list[str]) -> None:
         self.decisions = decisions
@@ -84,6 +110,41 @@ class AuditSequenceAgent:
                     else []
                 ),
             )
+        )
+
+
+class EnvelopeAuditSequenceAgent(AuditSequenceAgent):
+    async def run(self, context):
+        decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
+        self.calls += 1
+        return AgentEnvelope[AuditResult](
+            artifact_id=f"ART_AUDIT_GATE_{self.calls}",
+            artifact_type="audit_result",
+            case_id="CASE_AUDIT_GATE",
+            trace_id="TRACE_AUDIT_GATE",
+            request_id="REQ_AUDIT_GATE",
+            execution_id="EXE_AUDIT_GATE",
+            step_id=str(context["step_id"]),
+            producer="audit_agent",
+            task_type="learning_plan",
+            learner_id="",
+            payload=AuditResult(
+                audit_result_id=f"AUDIT_GATE_{self.calls}",
+                decision=decision,
+                structured_findings=(
+                    [
+                        RepairIssue(
+                            issue_id=f"ISSUE_GATE_{self.calls}",
+                            issue_type="content_quality",
+                            message="内容质量需修订",
+                            owner_step_id="expert",
+                            affected_step_ids=["expert"],
+                        )
+                    ]
+                    if decision == "revise"
+                    else []
+                ),
+            ),
         )
 
 
@@ -193,6 +254,107 @@ def test_restore_checkpoint_output_retypes_dict_payload_inside_envelope() -> Non
     assert restored.payload.findings == ["证据缺失"]
 
 
+@pytest.mark.parametrize(
+    ("artifact_type", "payload", "expected_type"),
+    [
+        (
+            "paper_blueprint",
+            PaperBlueprint(
+                blueprint_id="BLUEPRINT_REPLAY",
+                title="重放测试试卷",
+                source_status="practice_sample",
+                scope_summary="测试检查点类型恢复",
+                units=[
+                    BlueprintUnit(
+                        unit_id="UNIT_REPLAY",
+                        sequence=1,
+                        knowledge_module="四君子汤",
+                        learning_objective="掌握组成",
+                        retrieval_query="四君子汤 组成",
+                        required_question_count=1,
+                    )
+                ],
+            ),
+            PaperBlueprint,
+        ),
+        (
+            "question_candidate_pool",
+            QuestionCandidatePool(
+                pool_id="POOL_REPLAY",
+                blueprint_id="BLUEPRINT_REPLAY",
+                units=[
+                    UnitQuestionCandidates(
+                        unit_id="UNIT_REPLAY",
+                        retrieval_query="四君子汤 组成",
+                        requested_limit=5,
+                        required_question_count=1,
+                    )
+                ],
+            ),
+            QuestionCandidatePool,
+        ),
+        (
+            "exam_paper_draft",
+            ExamPaperDraft(
+                paper_draft_id="DRAFT_REPLAY",
+                blueprint_id="BLUEPRINT_REPLAY",
+                candidate_pool_id="POOL_REPLAY",
+                title="重放测试试卷",
+                instructions="请作答。",
+                items=[
+                    ExamPaperItem(
+                        sequence=1,
+                        unit_id="UNIT_REPLAY",
+                        question=QuestionDetail(
+                            question_id="QUESTION_REPLAY",
+                            question_type="填空题",
+                            stem="四君子汤由____组成。",
+                            reference_answer="人参、白术、茯苓、甘草",
+                            analysis="考查方剂组成。",
+                            tags=["四君子汤"],
+                            source_metadata={},
+                            bridges=[],
+                            retrieval=QuestionRetrievalMetadata(
+                                channels=["bm25"],
+                                channel_scores={"bm25": 1.0},
+                                fusion_score=1.0,
+                            ),
+                        ),
+                        selection_rationale="覆盖核心组成。",
+                    )
+                ],
+                answer_key={"QUESTION_REPLAY": "人参、白术、茯苓、甘草"},
+                explanations={"QUESTION_REPLAY": "考查方剂组成。"},
+            ),
+            ExamPaperDraft,
+        ),
+    ],
+)
+def test_restore_checkpoint_output_retypes_paper_payloads(
+    artifact_type: str,
+    payload,
+    expected_type: type,
+) -> None:
+    flattened = AgentEnvelope[dict[str, object]](
+        artifact_id=f"ART_{artifact_type}",
+        artifact_type=artifact_type,
+        case_id="CASE_PAPER_REPLAY",
+        trace_id="TRACE_PAPER_REPLAY",
+        request_id="REQ_PAPER_REPLAY",
+        execution_id="EXE_PAPER_REPLAY",
+        step_id=artifact_type,
+        producer="test_agent",
+        task_type="paper_generation",
+        learner_id="LEARNER_PAPER_REPLAY",
+        payload=payload.model_dump(mode="json"),
+    )
+
+    restored = LangGraphOrchestrator._restore_checkpoint_output(flattened)
+
+    assert isinstance(restored, AgentEnvelope)
+    assert isinstance(restored.payload, expected_type)
+
+
 class ClarifyingAgent:
     def __init__(self) -> None:
         self.calls = 0
@@ -237,6 +399,53 @@ class PrerequisiteClarifyingAgent:
             "resolved_request": context["user_request"],
             "plan_scope": context.get("plan_scope"),
         }
+
+
+class MemoryConflictClarifyingAgent:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def run(self, context):
+        self.calls += 1
+        answer = str(context.get("memory_conflict_answer") or "").strip()
+        if not answer:
+            decision = MemoryGovernanceDecision(
+                analysis="新旧每日学习时长不能同时成立。",
+                conflicts=[
+                    {
+                        "memory_id": 7,
+                        "proposed_memory": "以后每天学习一小时。",
+                        "reason": "与已有每天最多二十分钟冲突。",
+                    }
+                ],
+                requires_clarification=True,
+                clarification_questions=["保留旧记忆、仅本次使用还是替换旧记忆？"],
+                interrupt_type="memory_conflict",
+                resolution="needs_clarification",
+            )
+        else:
+            decision = MemoryGovernanceDecision(
+                analysis="用户已明确选择仅本次使用新时间安排。",
+                conflicts=[
+                    {
+                        "memory_id": 7,
+                        "proposed_memory": "本次学习一小时。",
+                        "reason": "仅本次覆盖，不修改稳定记忆。",
+                    }
+                ],
+                resolution="use_current_once",
+            )
+        return envelope(
+            context,
+            "memory_agent",
+            "memory_context",
+            MemoryAgentResult(
+                learner_context=LearnerContextBrief(
+                    learner_id=str(context["learner_id"])
+                ),
+                governance=decision,
+            ),
+        )
 
 
 class DependencyAwareClarifyingAgent(ClarifyingAgent):
@@ -450,6 +659,45 @@ async def test_langgraph_preserves_single_audit_revision() -> None:
 
 
 @pytest.mark.asyncio
+async def test_langgraph_holds_downstream_publication_until_reaudit_passes() -> None:
+    registry = AgentRegistry()
+    expert = CountingAgent()
+    audit = EnvelopeAuditSequenceAgent(["revise", "pass"])
+    publisher = PassingAuditPublisher()
+    registry.register("expert_agent", expert)
+    registry.register("audit_agent", audit)
+    registry.register("publisher_agent", publisher)
+    plan = ExecutionPlan(
+        plan_id="P_REVISE_BEFORE_PUBLISH",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(step_id="expert", agent="expert_agent"),
+            ExecutionStep(
+                step_id="audit", agent="audit_agent", depends_on=["expert"]
+            ),
+            ExecutionStep(
+                step_id="publish",
+                agent="publisher_agent",
+                depends_on=["expert", "audit"],
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "success", (
+        result.error_type,
+        result.error_message,
+        result.outputs,
+        result.repair_trace,
+    )
+    assert expert.calls == 2
+    assert audit.calls == 2
+    assert publisher.calls == 1
+    assert publisher.audit_decisions == ["pass"]
+
+
+@pytest.mark.asyncio
 async def test_langgraph_empty_modern_audit_findings_fail_closed() -> None:
     registry = AgentRegistry()
     expert = CountingAgent()
@@ -600,11 +848,56 @@ async def test_langgraph_interrupts_and_resumes_same_thread_from_checkpoint() ->
         },
     )
 
-    assert resumed.status == "success"
+    assert resumed.status == "success", (
+        resumed.error_type,
+        resumed.error_message,
+        resumed.trace,
+    )
     assert "半年内完成方剂学" in resumed.outputs["diagnosis"]["resolved_request"]
     assert resumed.outputs["diagnosis"]["plan_scope"] == "long_term"
     assert agent.calls == 3
     assert orchestrator.pending_interrupt("THREAD_INTERRUPT_001") is None
+
+
+@pytest.mark.asyncio
+async def test_langgraph_memory_conflict_resume_does_not_overwrite_learning_goal() -> None:
+    registry = AgentRegistry()
+    agent = MemoryConflictClarifyingAgent()
+    registry.register("memory_agent", agent)
+    orchestrator = LangGraphOrchestrator(registry)
+    plan = ExecutionPlan(
+        plan_id="P_MEMORY_CONFLICT",
+        task_type="learning_plan",
+        steps=[ExecutionStep(step_id="memory", agent="memory_agent")],
+    )
+    context = {
+        "case_id": "CASE_MEMORY_CONFLICT",
+        "trace_id": "TRACE_MEMORY_CONFLICT",
+        "request_id": "REQ_MEMORY_CONFLICT",
+        "execution_id": "EXE_MEMORY_CONFLICT",
+        "learner_id": "LEARNER_MEMORY_CONFLICT",
+        "user_request": "以后每天学习一小时。",
+        "learning_goal": "中医执业医师考试",
+        "interruptible": True,
+    }
+
+    interrupted = await orchestrator.execute(
+        plan, context, thread_id="THREAD_MEMORY_CONFLICT"
+    )
+    resumed = await orchestrator.resume(
+        "THREAD_MEMORY_CONFLICT", {"answer": "仅本次采用一小时"}
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["interrupt_type"] == "memory_conflict"
+    assert resumed.status == "success", (
+        resumed.error_type,
+        resumed.error_message,
+        resumed.trace,
+    )
+    assert context["memory_conflict_answer"] == "仅本次采用一小时"
+    assert context["learning_goal"] == "中医执业医师考试"
+    assert agent.calls >= 2
 
 
 @pytest.mark.asyncio
@@ -1041,3 +1334,56 @@ def test_langgraph_resume_does_not_fabricate_unrelated_handoff_facts() -> None:
         "time_budget",
         "multi_scale_learning_state",
     }
+
+
+@pytest.mark.parametrize(
+    ("answer", "scope"),
+    [
+        ("长期规划", "long_term"),
+        ("短期计划", "short_term"),
+        ("当日任务", "daily_task"),
+    ],
+)
+def test_langgraph_resume_treats_scope_answer_as_control_data(
+    answer: str,
+    scope: str,
+) -> None:
+    context = {
+        "user_request": "请结合我的学习状态，为我制定一份学习计划。",
+        "plan_scope": "unspecified",
+        "learning_goal": "中医执业医师资格考试",
+        "messages": [],
+    }
+
+    LangGraphOrchestrator._apply_resume_value(
+        context,
+        {"answer": answer, "plan_scope": scope},
+        requested_scope="unspecified",
+    )
+
+    assert context["plan_scope"] == scope
+    assert context["learning_goal"] == "中医执业医师资格考试"
+    assert context["user_request"] == "请结合我的学习状态，为我制定一份学习计划。"
+    assert "plan_change_context" not in context
+    assert context["messages"][-1] == {"role": "user", "content": answer}
+
+
+def test_langgraph_resume_keeps_ambiguous_scope_answer_out_of_learning_goal() -> None:
+    context = {
+        "user_request": "请结合我的学习状态，为我制定一份学习计划。",
+        "plan_scope": "unspecified",
+        "learning_goal": "中医执业医师资格考试",
+        "messages": [],
+    }
+
+    LangGraphOrchestrator._apply_resume_value(
+        context,
+        {"answer": "都可以", "clarification_kind": "plan_scope"},
+        requested_scope="unspecified",
+    )
+
+    assert context["plan_scope"] == "unspecified"
+    assert context["learning_goal"] == "中医执业医师资格考试"
+    assert context["user_request"] == "请结合我的学习状态，为我制定一份学习计划。"
+    assert "plan_change_context" not in context
+    assert context["messages"][-1] == {"role": "user", "content": "都可以"}

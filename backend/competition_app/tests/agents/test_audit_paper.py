@@ -15,20 +15,87 @@ from competition_app.contracts.paper import (
 
 class PassingAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
-        return {"decision": "pass", "findings": []}
+        if role == "paper_audit_findings_compiler":
+            return {"status": "compiled", "contract_version": "1.0", "issues": []}
+        return {
+            "decision": "pass",
+            "findings": [],
+            "audit_report": "试卷蓝图、题目、答案与解析均已核验通过。",
+        }
 
 
 class RevisingAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
+        if role == "paper_audit_findings_compiler":
+            return {
+                "status": "compiled",
+                "contract_version": "1.0",
+                "issues": [
+                    {
+                        "issue_type": "content_quality",
+                        "message": "存在可进一步优化的知识覆盖表达。",
+                        "blocking": False,
+                        "source_anchors": [
+                            {
+                                "source_field": "findings",
+                                "source_quote": "存在可进一步优化的知识覆盖表达。",
+                            }
+                        ],
+                    }
+                ],
+            }
         return {
             "decision": "revise",
             "findings": ["存在可进一步优化的知识覆盖表达。"],
+            "audit_report": "试卷可发布，但知识覆盖表达仍可优化。",
         }
 
 
 class InvalidAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
+        if role == "paper_audit_findings_compiler":
+            return {"status": "compiled", "contract_version": "1.0", "issues": []}
         return {"result": "试卷整体可用"}
+
+
+class ContradictoryPassingAuditModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        if role == "paper_audit_findings_compiler":
+            return {
+                "status": "compiled",
+                "contract_version": "1.0",
+                "issues": [
+                    {
+                        "issue_type": "content_quality",
+                        "message": "题1与题2考查内容重复，违反去重约束。",
+                        "blocking": True,
+                        "source_anchors": [
+                            {
+                                "source_field": "findings",
+                                "source_quote": "题1与题2考查内容重复，违反去重约束。",
+                            }
+                        ],
+                    }
+                ],
+            }
+        return {
+            "decision": "pass",
+            "findings": [
+                "题1与题2考查内容重复，违反去重约束。",
+                "修改要求：请替换题2后重新审核。",
+            ],
+            "audit_report": "试卷存在重复题，必须修订后重新审核。",
+        }
+
+
+class CapturingAuditModel(PassingAuditModel):
+    def __init__(self):
+        self.audit_payload = None
+
+    async def complete_json(self, role, payload, on_delta=None):
+        if role == "audit_agent":
+            self.audit_payload = payload
+        return await super().complete_json(role, payload, on_delta=on_delta)
 
 
 def test_paper_audit_uses_the_same_subjective_question_aliases_as_assembly() -> None:
@@ -124,6 +191,61 @@ async def test_paper_audit_passes_when_hard_question_count_is_met() -> None:
     result = await AuditAgent(PassingAuditModel()).run(_audit_context(20))
 
     assert result.payload.decision == "pass"
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_excludes_large_retrieval_metadata_from_model_context() -> None:
+    context = _audit_context(1, required_count=1)
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.items[0].question.source_metadata = {
+        "raw_retrieval_payload": "x" * 200_000,
+    }
+    model = CapturingAuditModel()
+
+    result = await AuditAgent(model).run(context)
+
+    assert result.payload.decision == "pass"
+    serialized = str(model.audit_payload)
+    assert "raw_retrieval_payload" not in serialized
+    assert "题干Q1" in serialized
+    assert len(serialized) < 25_000
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_fails_closed_on_contradictory_pass_findings() -> None:
+    result = await AuditAgent(ContradictoryPassingAuditModel()).run(
+        _audit_context(2, required_count=2)
+    )
+
+    assert result.payload.decision == "revise"
+    assert any("违反去重约束" in finding for finding in result.payload.findings)
+    assert result.payload.audit_report == "试卷存在重复题，必须修订后重新审核。"
+    assert result.payload.structured_findings[0].issue_type == "content_quality"
+    assert result.payload.structured_findings[0].owner_step_id == "paper_assembly"
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_revises_when_any_selected_question_lacks_explanation() -> None:
+    context = _audit_context(2, required_count=2)
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.explanations["Q1"] = None
+
+    result = await AuditAgent(PassingAuditModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert any("缺少解析" in finding and "Q1" in finding for finding in result.payload.findings)
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_revises_when_any_selected_question_lacks_answer() -> None:
+    context = _audit_context(2, required_count=2)
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.answer_key["Q2"] = ""
+
+    result = await AuditAgent(PassingAuditModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert any("缺少标准答案" in finding and "Q2" in finding for finding in result.payload.findings)
 
 
 @pytest.mark.asyncio

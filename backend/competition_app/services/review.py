@@ -132,9 +132,24 @@ class ReviewService:
                 continue
             is_correct = bool(raw.get("is_correct"))
             score = self._normalized_attempt_score(raw, is_correct=is_correct)
+            names_by_kp = self._attempt_knowledge_point_names(raw, kp_ids)
             for kp_id in dict.fromkeys(kp_ids):
                 current = self.repository.get_memory_unit(learner_id, kp_id)
+                prompt_abstract = names_by_kp.get(kp_id) or "知识点名称待补充"
                 if current is not None:
+                    if (
+                        prompt_abstract != "知识点名称待补充"
+                        and current.prompt_abstract
+                        in ("", kp_id, "知识点名称待补充")
+                    ):
+                        current = current.model_copy(
+                            update={
+                                "prompt_abstract": prompt_abstract,
+                                "version": current.version + 1,
+                                "updated_at": answered_at,
+                            }
+                        )
+                        self.repository.save_memory_unit(current)
                     if current.source_attempt_id == attempt_id:
                         continue
                     if (
@@ -187,7 +202,7 @@ class ReviewService:
                     prompt_abstract=(
                         current.prompt_abstract
                         if current
-                        else str(raw.get("knowledge_point_name") or kp_id)
+                        else prompt_abstract
                     ),
                     mastery_score=mastery * 100,
                     lambda_per_day=forgetting,
@@ -216,6 +231,40 @@ class ReviewService:
                 self.repository.save_memory_unit(unit)
                 activated += 1
         return activated
+
+    @staticmethod
+    def _attempt_knowledge_point_names(
+        raw: dict,
+        kp_ids: list[str],
+    ) -> dict[str, str]:
+        """Resolve trusted display names without presenting internal IDs as names."""
+
+        resolved: dict[str, str] = {}
+        raw_names = raw.get("kp_names")
+        if isinstance(raw_names, dict):
+            for kp_id, value in raw_names.items():
+                normalized_id = str(kp_id or "").strip()
+                normalized_name = str(value or "").strip()
+                if (
+                    normalized_id in kp_ids
+                    and normalized_name
+                    and normalized_name != normalized_id
+                ):
+                    resolved[normalized_id] = normalized_name
+        elif isinstance(raw_names, list) and len(raw_names) == len(kp_ids):
+            for kp_id, value in zip(kp_ids, raw_names):
+                normalized_name = str(value or "").strip()
+                if normalized_name and normalized_name != kp_id:
+                    resolved[kp_id] = normalized_name
+
+        single_name = str(raw.get("knowledge_point_name") or "").strip()
+        if (
+            len(kp_ids) == 1
+            and single_name
+            and single_name != kp_ids[0]
+        ):
+            resolved.setdefault(kp_ids[0], single_name)
+        return resolved
 
     def has_completed_attempt(self, learner_id: str, kp_id: str) -> bool:
         unit = self.repository.get_memory_unit(learner_id, kp_id)
@@ -305,6 +354,11 @@ class ReviewService:
         for unit in self.repository.list_memory_units(learner_id):
             if not unit.source_attempt_id:
                 continue
+            display_unit = (
+                unit.model_copy(update={"prompt_abstract": "知识点名称待补充"})
+                if not unit.prompt_abstract.strip() or unit.prompt_abstract.strip() == unit.kp_id
+                else unit
+            )
             retention = self._retention(unit, calculated_at)
             due = calculated_at >= self._as_utc(unit.next_review_at)
             reasons = []
@@ -319,7 +373,7 @@ class ReviewService:
                 reasons.append("resource_ready" if delivery.resource else "resource_pending")
             entries.append(
                 ReviewQueueEntry(
-                    memory_unit=unit,
+                    memory_unit=display_unit,
                     retention_estimate=retention,
                     is_due=due,
                     reason_codes=reasons,

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import re
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,6 +49,12 @@ from competition_app.services.learning_monitoring import LearningMonitoringServi
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 
 
+_FAILURE_STEP_CONTEXT: ContextVar[str | None] = ContextVar(
+    "personalized_review_card_failure_step",
+    default=None,
+)
+
+
 class PlanChangeContext(BaseModel):
     original_request: str = Field(min_length=1)
     target_layers: list[Literal["long_term", "short_term", "daily_task"]] = Field(min_length=1)
@@ -57,6 +66,7 @@ class PlanChangeContext(BaseModel):
 
 
 class ReviewCardRequest(BaseModel):
+    operation_id: str | None = Field(default=None, min_length=8, max_length=96)
     thread_id: str | None = Field(default=None, min_length=8, max_length=128)
     conversation_id: str | None = Field(default=None, min_length=8, max_length=128)
     learner_id: str
@@ -83,6 +93,7 @@ class ReviewCardResult(BaseModel):
     status: Literal["success", "failed"]
     execution_id: str
     task_type: str
+    direct_response: str | None = None
     agent_outputs: list[AgentEnvelope[Any]]
     learning_plan: Any | None = None
     review_schedule: ReviewSchedule | None = None
@@ -154,6 +165,8 @@ class PersonalizedReviewCardUseCase:
         behavior_context_loader: Callable[[str], dict[str, Any]] | None = None,
         multiscale_state_loader: Callable[..., dict[str, Any]] | None = None,
         path_candidate_loader: Callable[..., dict[str, Any]] | None = None,
+        memory_retriever: Any | None = None,
+        memory_governance_writer: Callable[..., dict[str, Any]] | None = None,
         profile_update_writer: Callable[[str, dict[str, Any], str | None], dict[str, Any]] | None = None,
         profile_memory_extractor: Callable[[str, str, str | None], dict[str, Any]] | None = None,
         data_permission_gateway: AgentDataPermissionGateway | None = None,
@@ -173,6 +186,8 @@ class PersonalizedReviewCardUseCase:
         self.behavior_context_loader = behavior_context_loader
         self.multiscale_state_loader = multiscale_state_loader
         self.path_candidate_loader = path_candidate_loader
+        self.memory_retriever = memory_retriever
+        self.memory_governance_writer = memory_governance_writer
         self.profile_update_writer = profile_update_writer
         self.profile_memory_extractor = profile_memory_extractor
         self.data_permission_gateway = data_permission_gateway or AgentDataPermissionGateway()
@@ -182,22 +197,51 @@ class PersonalizedReviewCardUseCase:
     async def execute(
         self, request: ReviewCardRequest
     ) -> ReviewCardResult | WorkflowInterruptedResult:
-        if self.model_trace_recorder:
-            self.model_trace_recorder.reset()
         thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
         conversation_id = request.conversation_id or thread_id
-        execution_id = f"EXE_{uuid4().hex}"
-        case_id = f"CASE_{uuid4().hex}"
-        self._remember_run(
-            thread_id,
-            {
-                "status": "running",
-                "thread_id": thread_id,
-                "execution_id": execution_id,
-                "case_id": case_id,
-                "learner_id": request.learner_id,
-            },
-        )
+        operation_id = request.operation_id or thread_id
+        operation_digest = hashlib.sha256(
+            f"{request.learner_id}:{operation_id}".encode("utf-8")
+        ).hexdigest()[:32]
+        execution_id = f"EXE_{operation_digest}"
+        case_id = f"CASE_{operation_digest}"
+        try:
+            if self.model_trace_recorder:
+                self.model_trace_recorder.reset()
+            _FAILURE_STEP_CONTEXT.set("run_state")
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "running",
+                    "thread_id": thread_id,
+                    "execution_id": execution_id,
+                    "case_id": case_id,
+                    "learner_id": request.learner_id,
+                },
+            )
+            _FAILURE_STEP_CONTEXT.set("conversation")
+            return await self._execute_started_run(
+                request=request,
+                thread_id=thread_id,
+                conversation_id=conversation_id,
+                execution_id=execution_id,
+                case_id=case_id,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._record_run_failure(thread_id, exc)
+            raise
+
+    async def _execute_started_run(
+        self,
+        *,
+        request: ReviewCardRequest,
+        thread_id: str,
+        conversation_id: str,
+        execution_id: str,
+        case_id: str,
+    ) -> ReviewCardResult | WorkflowInterruptedResult:
         existing_messages = self.conversation_repository.get_messages(
             conversation_id, request.learner_id
         )
@@ -226,19 +270,23 @@ class PersonalizedReviewCardUseCase:
             conversation_id, request.learner_id, persisted_messages
         )
         if not existing_messages:
+            _FAILURE_STEP_CONTEXT.set("persistence")
             self.conversation_repository.rename_session(
                 conversation_id,
                 request.learner_id,
                 request.user_request.strip().replace("\n", " ")[:40] or "新对话",
             )
-        if self.profile_memory_extractor is not None:
-            await asyncio.to_thread(
-                self.profile_memory_extractor,
+        _FAILURE_STEP_CONTEXT.set("behavior_context")
+        behavior_context = await self._load_behavior_context(request.learner_id)
+        _FAILURE_STEP_CONTEXT.set("memory")
+        memory_retrieval = (
+            await self.memory_retriever.retrieve(
                 request.learner_id,
                 request.user_request,
-                execution_id,
             )
-        behavior_context = await self._load_behavior_context(request.learner_id)
+            if self.memory_retriever is not None
+            else {"items": [], "degraded": False, "error": None}
+        )
         effective_user_profile = self._merge_context_dict(
             request.user_profile, behavior_context.get("user_profile", {})
         )
@@ -283,6 +331,7 @@ class PersonalizedReviewCardUseCase:
                 states=effective_knowledge_states,
                 prompt_abstract=request.user_request,
             )
+        _FAILURE_STEP_CONTEXT.set("planning_context")
         persisted_plans = self.plan_repository.get_current(request.learner_id)
         current_long_term_plan = (
             request.long_term_plan
@@ -352,6 +401,7 @@ class PersonalizedReviewCardUseCase:
             ),
             "daily_task",
         )
+        _FAILURE_STEP_CONTEXT.set("multiscale_planning")
         multiscale_state, path_candidates = (
             await self._load_multiscale_planning_context(
                 request.learner_id,
@@ -429,6 +479,14 @@ class PersonalizedReviewCardUseCase:
                 current_short_term_plan=current_short_term_plan,
             ),
             "behavior_context_source": behavior_context.get("source"),
+            "relevant_personalization_memories": memory_retrieval.get("items", []),
+            "memory_retrieval_degraded": bool(memory_retrieval.get("degraded")),
+            "memory_retrieval_error": memory_retrieval.get("error"),
+            "confirmed_memories": [
+                str(item.get("content") or "")
+                for item in memory_retrieval.get("items", [])
+                if str(item.get("content") or "").strip()
+            ],
             # Every product entry point follows the same backend-owned planning
             # prerequisite policy. Tests that call agents directly remain able to
             # opt in explicitly without manufacturing persistence dependencies.
@@ -467,6 +525,7 @@ class PersonalizedReviewCardUseCase:
             },
             "terminal_trace": self.terminal_trace,
         }
+        _FAILURE_STEP_CONTEXT.set("planner")
         planner = self.orchestrator.agent_registry.get("planner_agent")
         planner_context = dict(context)
         planner_context["step_id"] = "planner"
@@ -481,10 +540,54 @@ class PersonalizedReviewCardUseCase:
         emit_runtime_event(
             "step_completed", step_id="planner", agent="planner_agent", status="success"
         )
+        if planner_output.payload.task_type == "casual_conversation":
+            _FAILURE_STEP_CONTEXT.set("snapshot")
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "agent_outputs": [planner_output],
+                    "model_trace": self._model_trace(),
+                },
+            )
+            result = ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type="casual_conversation",
+                direct_response=planner_output.payload.casual_response,
+                agent_outputs=[planner_output],
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+            )
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "completed",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._save_assistant_message(
+                conversation_id, request.learner_id, persisted_messages, result
+            )
+            return result
+        _FAILURE_STEP_CONTEXT.set("planner")
         execution_plan = PlannerAgent.build_plan(planner_output.payload)
         context["task_type"] = planner_output.payload.task_type
         context["plan_scope"] = planner_output.payload.plan_scope
+        context["planner_requires_clarification"] = (
+            planner_output.payload.requires_clarification
+        )
+        context["planner_clarification_question"] = (
+            planner_output.payload.clarification_question
+        )
+        context["planner_routing_reason"] = planner_output.payload.routing_reason
         self._emit_compiled_graph(execution_plan)
+        _FAILURE_STEP_CONTEXT.set("orchestrator")
         execution = await self.orchestrator.execute(
             execution_plan,
             context,
@@ -531,16 +634,17 @@ class PersonalizedReviewCardUseCase:
                     ),
                 },
             )
+            _FAILURE_STEP_CONTEXT.set("persistence")
             self._save_assistant_message(
                 conversation_id, request.learner_id, persisted_messages, interrupted
             )
             return interrupted
         if execution.status != "success":
-            self.mark_run_failed(thread_id, execution.error_message or execution.status)
             detail = execution.error_message or self._execution_failure_detail(execution)
             if "blocked path candidate" in detail:
                 raise ValueError(detail)
             raise RuntimeError(f"personalized review card execution failed: {detail}")
+        _FAILURE_STEP_CONTEXT.set("finalization")
         result = self._finalize_execution(
             request=request,
             case_id=case_id,
@@ -549,6 +653,7 @@ class PersonalizedReviewCardUseCase:
             execution=execution,
             planner_output=planner_output,
         )
+        _FAILURE_STEP_CONTEXT.set("persistence")
         self._remember_run(
             thread_id,
             {
@@ -568,6 +673,20 @@ class PersonalizedReviewCardUseCase:
         thread_id: str,
         request: WorkflowResumeRequest,
     ) -> ReviewCardResult | WorkflowInterruptedResult:
+        try:
+            _FAILURE_STEP_CONTEXT.set("resume_restore")
+            return await self._resume_started_run(thread_id, request)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._record_run_failure(thread_id, exc)
+            raise
+
+    async def _resume_started_run(
+        self,
+        thread_id: str,
+        request: WorkflowResumeRequest,
+    ) -> ReviewCardResult | WorkflowInterruptedResult:
         continuation = self._continuations.get(thread_id)
         if continuation is None:
             continuation = self._restore_continuation(thread_id)
@@ -575,7 +694,9 @@ class PersonalizedReviewCardUseCase:
                 self._continuations[thread_id] = continuation
         if continuation is None:
             raise KeyError(f"没有可恢复的 LangGraph 会话：{thread_id}")
+        _FAILURE_STEP_CONTEXT.set("run_state")
         self._remember_run(thread_id, {"status": "running", "thread_id": thread_id})
+        _FAILURE_STEP_CONTEXT.set("conversation")
         conversation_id = continuation.request.conversation_id or thread_id
         persisted_messages = self.conversation_repository.get_messages(
             conversation_id, continuation.request.learner_id
@@ -587,7 +708,26 @@ class PersonalizedReviewCardUseCase:
         resume_payload = request.model_dump(mode="json", exclude_none=True)
         run_state = self.get_run_state(thread_id) or {}
         interrupt_payload = run_state.get("interrupt") or {}
+        if (
+            "plan_scope" not in resume_payload
+            and self._is_plan_scope_clarification(interrupt_payload)
+        ):
+            resume_payload["clarification_kind"] = "plan_scope"
+            _FAILURE_STEP_CONTEXT.set("planner_resume_resolution")
+            resolved_scope, followup_question = await self._resolve_resume_plan_scope(
+                continuation=continuation,
+                answer=request.answer,
+                persisted_messages=persisted_messages,
+                interrupt_payload=interrupt_payload,
+            )
+            if resolved_scope is not None:
+                resume_payload["plan_scope"] = resolved_scope
+            elif followup_question:
+                continuation.context["planner_clarification_question"] = (
+                    followup_question
+                )
         if interrupt_payload.get("interrupt_type") == "profile_completion":
+            _FAILURE_STEP_CONTEXT.set("profile_writeback")
             pending_fields = {
                 str(field)
                 for field in interrupt_payload.get("profile_fields") or []
@@ -616,6 +756,7 @@ class PersonalizedReviewCardUseCase:
             interrupt_payload.get("interrupt_type") == "route_resolution"
             and self.profile_memory_extractor is not None
         ):
+            _FAILURE_STEP_CONTEXT.set("memory")
             extracted_profile = await asyncio.to_thread(
                 self.profile_memory_extractor,
                 continuation.request.learner_id,
@@ -638,6 +779,7 @@ class PersonalizedReviewCardUseCase:
                         and value not in (None, "", [], {})
                     }
                 )
+        _FAILURE_STEP_CONTEXT.set("orchestrator")
         execution = await self.orchestrator.resume(
             thread_id,
             resume_payload,
@@ -684,8 +826,8 @@ class PersonalizedReviewCardUseCase:
             return interrupted
         if execution.status != "success":
             detail = execution.error_message or self._execution_failure_detail(execution)
-            self.mark_run_failed(thread_id, detail)
             raise RuntimeError(f"personalized review card execution failed: {detail}")
+        _FAILURE_STEP_CONTEXT.set("finalization")
         result = self._finalize_execution(
             request=continuation.request,
             case_id=continuation.case_id,
@@ -695,6 +837,7 @@ class PersonalizedReviewCardUseCase:
             planner_output=continuation.planner_output,
         )
         self._continuations.pop(thread_id, None)
+        _FAILURE_STEP_CONTEXT.set("persistence")
         self._remember_run(
             thread_id,
             {
@@ -711,6 +854,109 @@ class PersonalizedReviewCardUseCase:
             result,
         )
         return result
+
+    @staticmethod
+    def _is_plan_scope_clarification(interrupt_payload: dict[str, Any]) -> bool:
+        if interrupt_payload.get("interrupt_type") == "plan_scope_resolution":
+            return True
+        if interrupt_payload.get("requested_scope") != "unspecified":
+            return False
+        questions = [
+            str(item)
+            for item in (interrupt_payload.get("questions") or [])
+            if str(item).strip()
+        ]
+        return any(
+            all(label in question for label in ("长期规划", "短期计划", "当日任务"))
+            for question in questions
+        )
+
+    async def _resolve_resume_plan_scope(
+        self,
+        *,
+        continuation: _WorkflowContinuation,
+        answer: str,
+        persisted_messages: list[dict[str, Any]],
+        interrupt_payload: dict[str, Any],
+    ) -> tuple[
+        Literal["long_term", "short_term", "daily_task"] | None,
+        str | None,
+    ]:
+        """Let Planner interpret a clarification answer in conversation context."""
+
+        planner = self.orchestrator.agent_registry.get("planner_agent")
+        original_request = str(
+            continuation.context.get("original_user_request")
+            or continuation.context.get("user_request")
+            or ""
+        ).strip()
+        questions = [
+            str(item).strip()
+            for item in (interrupt_payload.get("questions") or [])
+            if str(item).strip()
+        ]
+        resolution_context = {
+            **continuation.context,
+            "step_id": "planner_resume_resolution",
+            "user_request": "\n".join(
+                item
+                for item in (
+                    original_request,
+                    f"上一轮追问：{questions[0]}" if questions else "",
+                    f"用户回答：{answer.strip()}",
+                )
+                if item
+            ),
+            "messages": persisted_messages,
+            "plan_scope": None,
+            "plan_scope_hint": infer_plan_scope(answer),
+            "continued_plan_scope": None,
+        }
+        emit_runtime_event(
+            "step_started",
+            step_id="planner_resume_resolution",
+            agent="planner_agent",
+            depends_on=[],
+        )
+        try:
+            planner_output = await planner.run(resolution_context)
+            emit_runtime_event(
+                "system_output",
+                step_id="planner_resume_resolution",
+                agent="planner_agent",
+                output=planner_output,
+            )
+            resolved_scope = planner_output.payload.plan_scope
+            if (
+                planner_output.payload.task_type == "learning_plan"
+                and resolved_scope in {"long_term", "short_term", "daily_task"}
+            ):
+                emit_runtime_event(
+                    "step_completed",
+                    step_id="planner_resume_resolution",
+                    agent="planner_agent",
+                    status="success",
+                )
+                return resolved_scope, None
+            if planner_output.payload.requires_clarification:
+                question = str(
+                    planner_output.payload.clarification_question or ""
+                ).strip()
+                if question:
+                    return None, question
+        except Exception as exc:
+            emit_runtime_event(
+                "step_failed",
+                step_id="planner_resume_resolution",
+                agent="planner_agent",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+        # Fail-safe only: normal clarification answers are interpreted by Planner.
+        fallback_scope = infer_plan_scope(answer)
+        if fallback_scope in {"long_term", "short_term", "daily_task"}:
+            return fallback_scope, None
+        return None, None
 
     def _save_assistant_message(
         self,
@@ -736,17 +982,140 @@ class PersonalizedReviewCardUseCase:
     def get_run_state(self, thread_id: str) -> dict[str, Any] | None:
         return self.run_state_repository.get(thread_id)
 
-    def mark_run_failed(self, thread_id: str, message: str) -> None:
+    def mark_run_failed(
+        self,
+        thread_id: str,
+        message: str,
+        *,
+        error_type: str | None = None,
+        error_code: str | None = None,
+        retryable: bool | None = None,
+        failed_step: str | None = None,
+    ) -> None:
         self._continuations.pop(thread_id, None)
+        state = self.run_state_repository.get(thread_id) or {}
+        if state.get("status") == "failed":
+            return
+        error_type = str(error_type or state.get("error_type") or "workflow_failed")
+        error_code = str(error_code or state.get("error_code") or "workflow_failed")
         self._remember_run(
             thread_id,
             {
                 "status": "failed",
                 "thread_id": thread_id,
                 "message": message,
+                "error_type": error_type,
+                "error_code": error_code,
+                "retryable": (
+                    bool(retryable)
+                    if retryable is not None
+                    else bool(state.get("retryable", False))
+                ),
+                "failed_step": failed_step or state.get("failed_step"),
                 "continuation": None,
             },
         )
+
+    def _record_run_failure(self, thread_id: str, exc: BaseException) -> None:
+        message = str(exc).strip() or type(exc).__name__
+        if (self.run_state_repository.get(thread_id) or {}).get("status") == "failed":
+            return
+        self.mark_run_failed(
+            thread_id,
+            message,
+            error_type=type(exc).__name__,
+            error_code=self._failure_code(exc),
+            retryable=self._is_retryable_failure(exc),
+            failed_step=self._failure_step(exc),
+        )
+        self._remember_run(
+            thread_id,
+            {
+                "failure_model_trace": [
+                    {
+                        "sequence": item.sequence,
+                        "agent": item.agent,
+                        "error_type": item.error_type,
+                    }
+                    for item in self._model_trace()
+                ][-12:]
+            },
+        )
+
+    @staticmethod
+    def _failure_code(exc: BaseException) -> str:
+        message = str(exc).lower()
+        failed_step = PersonalizedReviewCardUseCase._failure_step(exc)
+        if isinstance(exc, KeyError) and "恢复" in str(exc):
+            return "workflow_resume_unavailable"
+        if isinstance(exc, (TimeoutError, asyncio.TimeoutError)) or "timeout" in message or "timed out" in message:
+            if failed_step in {"knowledge", "knowledge_base_agent"} or "knowledge" in message or "知识" in message:
+                return "knowledge_timeout"
+            if failed_step in {"paper_blueprint", "paper_blueprint_agent"}:
+                return "paper_blueprint_timeout"
+            if "model" in message or "transport" in message:
+                return "model_timeout"
+            return "workflow_timeout"
+        if (
+            failed_step in {"learning_plan", "learning_plan_service"}
+            and "dailytaskprogresserror" in message
+        ):
+            return "daily_task_publication_failed"
+        if failed_step in {"knowledge", "knowledge_base_agent"} or "knowledge" in message:
+            return "knowledge_step_failed"
+        if (
+            failed_step in {"diagnosis", "diagnosis_agent", "diagnosis_long", "diagnosis_short"}
+            and ("plan contract" in message or "规划合同" in message or "规划正文" in message)
+        ):
+            return "plan_compilation_failed"
+        if (
+            failed_step in {"audit", "audit_agent"}
+            or "audit decision" in message
+            or "audit findings" in message
+            or "audit still requires" in message
+            or "审核" in str(exc)
+        ):
+            return "audit_step_failed"
+        if failed_step in {
+            "paper_blueprint",
+            "question_pool",
+            "paper_assembly",
+            "paper_audit",
+        }:
+            return "paper_generation_failed"
+        if failed_step in {"conversation", "persistence", "snapshot", "profile_writeback"}:
+            return "persistence_failed"
+        if any(term in message for term in ("database", "mysql", "持久化", "保存失败", "writeback")):
+            return "persistence_failed"
+        return "workflow_failed"
+
+    @staticmethod
+    def _is_retryable_failure(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        if isinstance(exc, (TimeoutError, asyncio.TimeoutError)):
+            return True
+        return any(
+            term in message
+            for term in (
+                "timeout",
+                "timed out",
+                "temporarily",
+                "connection",
+                "transport",
+                "database",
+                "mysql",
+                "知识检索",
+                "审核",
+                "writeback",
+            )
+        )
+
+    @staticmethod
+    def _failure_step(exc: BaseException) -> str | None:
+        match = re.search(r"步骤\s+([^（(\s]+)", str(exc))
+        if match:
+            return match.group(1)
+        return _FAILURE_STEP_CONTEXT.get()
 
     def _continuation_payload(
         self, continuation: _WorkflowContinuation
@@ -819,11 +1188,17 @@ class PersonalizedReviewCardUseCase:
         agent_outputs = [planner_output, *[
             output for output in execution.outputs.values() if isinstance(output, AgentEnvelope)
         ]]
+        self._persist_memory_governance(
+            request=request,
+            execution_id=execution_id,
+            agent_outputs=agent_outputs,
+        )
         learning_plan_output = execution.outputs.get("learning_plan")
         learning_plan = (
             getattr(learning_plan_output, "payload", None) if learning_plan_output else None
         )
         if planner_output.payload.task_type == "learning_plan":
+            _FAILURE_STEP_CONTEXT.set("snapshot")
             snapshot_path = self.snapshot_exporter.export(
                 case_id,
                 execution_id,
@@ -850,6 +1225,7 @@ class PersonalizedReviewCardUseCase:
                 coordination=self._execution_coordination(execution),
             )
         if planner_output.payload.task_type == "paper_generation":
+            _FAILURE_STEP_CONTEXT.set("paper_blueprint")
             return self._publish_paper_blueprint(
                 request=request,
                 case_id=case_id,
@@ -860,6 +1236,7 @@ class PersonalizedReviewCardUseCase:
                 agent_outputs=agent_outputs,
             )
         if planner_output.payload.task_type == "knowledge_explanation":
+            _FAILURE_STEP_CONTEXT.set("knowledge")
             return self._publish_standalone_resource(
                 request=request,
                 case_id=case_id,
@@ -870,6 +1247,44 @@ class PersonalizedReviewCardUseCase:
                 agent_outputs=agent_outputs,
             )
         audit = execution.outputs["audit"].payload
+        if planner_output.payload.requires_learning_plan_output:
+            long_audit = execution.outputs["audit_long"].payload
+            short_audit = execution.outputs["audit_short"].payload
+            if getattr(learning_plan, "requires_clarification", False):
+                snapshot_path = self.snapshot_exporter.export(
+                    case_id,
+                    execution_id,
+                    {
+                        "request": request,
+                        "plan": execution_plan,
+                        "agent_outputs": agent_outputs,
+                        "learning_plan": learning_plan,
+                        "audit_long": long_audit,
+                        "audit_short": short_audit,
+                        "audit_resource": audit,
+                        "publication_blocked": True,
+                    },
+                )
+                return ReviewCardResult(
+                    status="success",
+                    execution_id=execution_id,
+                    task_type=planner_output.payload.task_type,
+                    agent_outputs=agent_outputs,
+                    learning_plan=learning_plan,
+                    snapshot_path=snapshot_path,
+                    writeback_intents=[],
+                    model_trace=self._model_trace(),
+                    coordination=self._execution_coordination(execution),
+                )
+            if (
+                long_audit.decision != "pass"
+                or long_audit.subject_type != "long_term_plan"
+                or short_audit.decision != "pass"
+                or short_audit.subject_type != "short_term_plan"
+                or audit.subject_type != "resource"
+                or short_audit.parent_subject_digest != long_audit.subject_digest
+            ):
+                raise RuntimeError("combined publication requires three independent passing audits")
         if audit.decision != "pass":
             raise RuntimeError(f"resource was not approved: {audit.decision}")
         resource = execution.outputs["expert"].payload
@@ -904,6 +1319,7 @@ class PersonalizedReviewCardUseCase:
         writeback_intents = self._build_writeback_intents(
             execution_id, audit, resource_version, review_task, resource_binding
         )
+        _FAILURE_STEP_CONTEXT.set("persistence")
         if self.writeback_executor:
             self.writeback_executor.execute_batch(writeback_intents)
         if self.review_service is not None:
@@ -952,6 +1368,48 @@ class PersonalizedReviewCardUseCase:
             coordination=self._execution_coordination(execution),
         )
 
+    def _persist_memory_governance(
+        self,
+        *,
+        request: ReviewCardRequest,
+        execution_id: str,
+        agent_outputs: list[AgentEnvelope[Any]],
+    ) -> None:
+        _FAILURE_STEP_CONTEXT.set("memory")
+        if self.memory_governance_writer is None:
+            return
+        memory_output = next(
+            (item for item in reversed(agent_outputs) if item.producer == "memory_agent"),
+            None,
+        )
+        payload = getattr(memory_output, "payload", None)
+        if payload is None:
+            return
+        candidates = [
+            {
+                "summary": candidate.summary,
+                "source_refs": [
+                    source.model_dump(mode="json") for source in candidate.source_refs
+                ],
+            }
+            for candidate in getattr(payload, "memory_candidates", [])
+        ]
+        governance = getattr(payload, "governance", None)
+        resolution = getattr(governance, "resolution", "none") if governance else "none"
+        if resolution == "needs_clarification":
+            raise RuntimeError("unresolved memory conflict cannot be finalized")
+        conflicts = [
+            conflict.model_dump(mode="json")
+            for conflict in getattr(governance, "conflicts", [])
+        ] if governance else []
+        self.memory_governance_writer(
+            request.learner_id,
+            execution_id=execution_id,
+            candidates=candidates,
+            resolution=resolution,
+            conflicts=conflicts,
+        )
+
     def _publish_paper_blueprint(
         self,
         *,
@@ -963,6 +1421,7 @@ class PersonalizedReviewCardUseCase:
         planner_output,
         agent_outputs: list[AgentEnvelope[Any]],
     ) -> ReviewCardResult:
+        _FAILURE_STEP_CONTEXT.set("paper_blueprint")
         audit = execution.outputs["audit"].payload
         if audit.decision != "pass":
             raise RuntimeError(f"exam paper was not approved: {audit.decision}")
@@ -970,6 +1429,8 @@ class PersonalizedReviewCardUseCase:
         blueprint = execution.outputs["paper_blueprint"].payload
         candidate_pool = execution.outputs["question_pool"].payload
         paper_publication: dict[str, Any] | None = None
+        workshop_operation_id = f"WORKSHOP_PAPER_{execution_id}"
+        workshop_publication_payload: dict[str, Any] | None = None
         if self.workshop_runtime is not None:
             self.data_permission_gateway.authorize(
                 agent="paper_assembly_agent",
@@ -977,20 +1438,23 @@ class PersonalizedReviewCardUseCase:
                 action="write",
                 fields={"paper", "blueprint", "evidence_pack", "execution_id"},
             )
-            knowledge_output = execution.outputs.get("knowledge")
-            evidence_pack = getattr(knowledge_output, "payload", None)
-            paper_publication = self.workshop_runtime.publish_agent_paper(
-                request.learner_id,
-                execution_id=execution_id,
-                paper=paper.model_dump(mode="json"),
-                blueprint=blueprint.model_dump(mode="json"),
-                evidence_pack=(
+            evidence_pack = candidate_pool
+            workshop_publication_payload = {
+                "operation_id": workshop_operation_id,
+                "artifact_type": "paper",
+                "learner_id": request.learner_id,
+                "audit_result_id": audit.audit_result_id,
+                "publication": {
+                    "paper": paper.model_dump(mode="json"),
+                    "blueprint": blueprint.model_dump(mode="json"),
+                    "evidence_pack": (
                     evidence_pack.model_dump(mode="json")
                     if hasattr(evidence_pack, "model_dump")
                     else {}
                 ),
-                daily_task_item_id=request.daily_task_item_id,
-            )
+                    "daily_task_item_id": request.daily_task_item_id,
+                },
+            }
         publish_answers = self._paper_answers_requested(request)
         paper_content: dict[str, Any] = {
             "试卷说明": paper.instructions,
@@ -1072,8 +1536,34 @@ class PersonalizedReviewCardUseCase:
                 ),
             ),
         ]
+        if workshop_publication_payload is not None and self.writeback_executor:
+            writeback_intents.append(
+                WritebackIntent(
+                    intent_id=f"WBI_{uuid4().hex}",
+                    source_artifact_id=resource.resource_draft_id,
+                    effect_type="enqueue_workshop_publication",
+                    target_service="workshop_service",
+                    target_entity_type="paper",
+                    payload=workshop_publication_payload,
+                    preconditions=["audit_pass"],
+                    idempotency_key=f"{workshop_operation_id}:enqueue",
+                )
+            )
+        _FAILURE_STEP_CONTEXT.set("persistence")
         if self.writeback_executor:
             self.writeback_executor.execute_batch(writeback_intents)
+            if workshop_publication_payload is not None:
+                paper_publication = self.writeback_executor.dispatch_workshop_publication(
+                    workshop_operation_id, self.workshop_runtime
+                )
+        elif workshop_publication_payload is not None:
+            publication = workshop_publication_payload["publication"]
+            paper_publication = self.workshop_runtime.publish_agent_paper(
+                request.learner_id,
+                execution_id=workshop_operation_id,
+                **publication,
+            )
+        _FAILURE_STEP_CONTEXT.set("snapshot")
         snapshot_path = self.snapshot_exporter.export(
             case_id,
             execution_id,
@@ -1147,6 +1637,7 @@ class PersonalizedReviewCardUseCase:
         planner_output,
         agent_outputs: list[AgentEnvelope[Any]],
     ) -> ReviewCardResult:
+        _FAILURE_STEP_CONTEXT.set("knowledge")
         audit = execution.outputs["audit"].payload
         if audit.decision != "pass":
             raise RuntimeError(f"standalone resource was not approved: {audit.decision}")
@@ -1159,12 +1650,14 @@ class PersonalizedReviewCardUseCase:
             audit_result_id=audit.audit_result_id,
             published_at=datetime.now(timezone.utc),
         )
-        card_publication = self._publish_knowledge_card(
+        workshop_operation_id = f"WORKSHOP_CARD_{execution_id}"
+        card_payload = self._build_knowledge_card_publication(
             request=request,
             execution_id=execution_id,
             execution=execution,
             resource=resource,
         )
+        card_publication: dict[str, Any] | None = None
         writeback_intents = [
             WritebackIntent(
                 intent_id=f"WBI_{uuid4().hex}",
@@ -1192,8 +1685,39 @@ class PersonalizedReviewCardUseCase:
                 ),
             ),
         ]
+        if card_payload is not None and self.writeback_executor:
+            writeback_intents.append(
+                WritebackIntent(
+                    intent_id=f"WBI_{uuid4().hex}",
+                    source_artifact_id=resource.resource_draft_id,
+                    effect_type="enqueue_workshop_publication",
+                    target_service="workshop_service",
+                    target_entity_type="knowledge_card",
+                    payload={
+                        "operation_id": workshop_operation_id,
+                        "artifact_type": "knowledge_card",
+                        "learner_id": request.learner_id,
+                        "audit_result_id": audit.audit_result_id,
+                        "publication": card_payload,
+                    },
+                    preconditions=["audit_pass"],
+                    idempotency_key=f"{workshop_operation_id}:enqueue",
+                )
+            )
+        _FAILURE_STEP_CONTEXT.set("persistence")
         if self.writeback_executor:
             self.writeback_executor.execute_batch(writeback_intents)
+            if card_payload is not None:
+                card_publication = self.writeback_executor.dispatch_workshop_publication(
+                    workshop_operation_id, self.workshop_runtime
+                )
+        elif card_payload is not None and self.workshop_runtime is not None:
+            card_publication = self.workshop_runtime.save_knowledge_card(
+                request.learner_id,
+                source_execution_id=workshop_operation_id,
+                **card_payload,
+            )
+        _FAILURE_STEP_CONTEXT.set("snapshot")
         snapshot_path = self.snapshot_exporter.export(
             case_id,
             execution_id,
@@ -1236,7 +1760,7 @@ class PersonalizedReviewCardUseCase:
             ),
         )
 
-    def _publish_knowledge_card(
+    def _build_knowledge_card_publication(
         self,
         *,
         request: ReviewCardRequest,
@@ -1336,13 +1860,11 @@ class PersonalizedReviewCardUseCase:
             },
             "provenance": provenance,
         }
-        return self.workshop_runtime.save_knowledge_card(
-            request.learner_id,
-            kp_id=kp_ids[0],
-            title=resource.title,
-            resource_bundle=bundle,
-            source_execution_id=execution_id,
-        )
+        return {
+            "kp_id": kp_ids[0],
+            "title": resource.title,
+            "resource_bundle": bundle,
+        }
 
     async def _load_behavior_context(self, learner_id: str) -> dict[str, Any]:
         if self.behavior_context_loader is None:

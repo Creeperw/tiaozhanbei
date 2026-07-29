@@ -91,7 +91,8 @@ async def test_paper_blueprint_prompt_exposes_candidates_without_answers() -> No
             self.payload = None
 
         async def complete_json(self, role, payload, on_delta=None):
-            self.payload = payload
+            if role == "expert_agent":
+                self.payload = payload
             return await super().complete_json(role, payload, on_delta)
 
     model = CapturingModel()
@@ -254,6 +255,57 @@ def test_blueprint_resolves_requested_stage_from_current_long_term_plan() -> Non
     }
 
 
+def test_blueprint_contextual_paper_inherits_nearest_user_topic() -> None:
+    scope = PaperBlueprintAgent._conversation_scope_context(
+        {
+            "user_request": "给我一套相关试卷",
+            "messages": [
+                {"role": "user", "content": "你好"},
+                {"role": "assistant", "content": "你好！"},
+                {"role": "user", "content": "给我讲解一下感冒的知识点"},
+                {"role": "assistant", "content": "感冒讲解正文"},
+                {"role": "user", "content": "给我一套相关试卷"},
+            ],
+        }
+    )
+
+    assert scope["is_contextual_followup"] is True
+    assert scope["previous_user_request"] == "给我讲解一下感冒的知识点"
+    assert "不得改用画像目标" in scope["resolution_rule"]
+
+
+def test_explicit_paper_topic_does_not_inherit_previous_turn() -> None:
+    assert (
+        PaperBlueprintAgent._conversation_scope_context(
+            {
+                "user_request": "请生成一份四君子汤试卷",
+                "messages": [
+                    {"role": "user", "content": "给我讲解感冒"},
+                    {"role": "user", "content": "请生成一份四君子汤试卷"},
+                ],
+            }
+        )
+        == {}
+    )
+
+
+def test_contextual_paper_retry_skips_previous_referential_paper_turn() -> None:
+    scope = PaperBlueprintAgent._conversation_scope_context(
+        {
+            "user_request": "给我一套相关试卷",
+            "messages": [
+                {"role": "user", "content": "给我讲解一下感冒的知识点"},
+                {"role": "assistant", "content": "感冒讲解正文"},
+                {"role": "user", "content": "再给我一套相关试卷"},
+                {"role": "assistant", "content": "上次生成失败"},
+                {"role": "user", "content": "给我一套相关试卷"},
+            ],
+        }
+    )
+
+    assert scope["previous_user_request"] == "给我讲解一下感冒的知识点"
+
+
 def test_blueprint_resolves_requested_stage_from_long_term_plan_content() -> None:
     scope = PaperBlueprintAgent._requested_learning_scope({
         "user_request": "给我第三阶段的测试卷",
@@ -308,7 +360,8 @@ async def test_blueprint_prompt_receives_current_planning_context() -> None:
             self.payload = None
 
         async def complete_json(self, role, payload, on_delta=None):
-            self.payload = payload
+            if role == "expert_agent":
+                self.payload = payload
             return await super().complete_json(role, payload, on_delta)
 
     model = CapturingBlueprintModel()

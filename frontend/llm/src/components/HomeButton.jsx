@@ -1,7 +1,9 @@
 import React from 'react';
-import { Home } from 'lucide-react';
+import { ArrowLeft, Home } from 'lucide-react';
 
 export default function HomeButton({ onClick, className = '', label = '返回主页' }) {
+  const isBack = label === '返回';
+  const Icon = isBack ? ArrowLeft : Home;
   return (
     <button
       type="button"
@@ -13,9 +15,9 @@ export default function HomeButton({ onClick, className = '', label = '返回主
         className,
       ].join(' ')}
     >
-      <Home size={16} />
+      <Icon size={16} />
       <span className="hidden sm:inline">{label}</span>
-      <span className="sm:hidden">主页</span>
+      <span className="sm:hidden">{isBack ? '返回' : '主页'}</span>
     </button>
   );
 }

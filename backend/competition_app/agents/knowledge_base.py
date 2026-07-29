@@ -106,7 +106,27 @@ class KnowledgeBaseAgent:
                     "knowledge_base_agent", valid=False, detail="KnowledgeRetrievalPlanModelOutput"
                 )
             raise ValueError("knowledge retrieval plan validation failed") from exc
-        pack = await self._build_evidence_pack(retrieval_plan.kp_query, context)
+        try:
+            pack = await self._build_evidence_pack(retrieval_plan.kp_query, context)
+        except LookupError:
+            # The retrieval planner occasionally replaces a concrete learner
+            # topic (for example, “感冒”) with a generic label such as
+            # “中医药基础知识点”.  That label cannot resolve to a catalog KP,
+            # even though the original request can.  Treat the model query as
+            # a retrieval hint, not as the authoritative business input.
+            fallback_query = self._fallback_kp_query(user_request)
+            if not fallback_query or fallback_query == retrieval_plan.kp_query.strip():
+                raise
+            pack = await self._build_evidence_pack(fallback_query, context)
+            retrieval_plan = retrieval_plan.model_copy(
+                update={
+                    "kp_query": fallback_query,
+                    "retrieval_reason": (
+                        retrieval_plan.retrieval_reason
+                        + " 模型检索词未命中正式知识点，已回退到用户原始主题。"
+                    )[:500],
+                }
+            )
         query = pack.query
         question_result = await self._search_question_candidates(
             retrieval_plan.question_query,
@@ -604,6 +624,31 @@ class KnowledgeBaseAgent:
     @staticmethod
     def _compact_topic_text(value: str) -> str:
         return "".join(character.lower() for character in value if character.isalnum())
+
+    @staticmethod
+    def _fallback_kp_query(user_request: str) -> str:
+        """Keep the learner's concrete topic while removing request boilerplate."""
+        query = str(user_request).strip()
+        prefixes = (
+            "请结合教材证据",
+            "请结合教材",
+            "请根据教材",
+            "请给我",
+            "给我",
+            "请",
+        )
+        for prefix in prefixes:
+            if query.startswith(prefix):
+                query = query[len(prefix):].strip(" ，,：:")
+                break
+        query = re.sub(r"^(讲解一下|讲解|讲讲|解释一下|解释|介绍一下|介绍)", "", query)
+        query = re.sub(
+            r"(的知识点|相关知识点|这个知识点|一个知识点|知识点)$",
+            "",
+            query,
+        )
+        query = re.split(r"[，,；;。\n]", query, maxsplit=1)[0]
+        return query.strip(" ‘“”’《》()（）") or str(user_request).strip()
 
     async def _build_evidence_pack(self, topic: str, context: dict[str, Any]) -> EvidencePack:
         registry = context.get("tool_registry")

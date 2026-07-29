@@ -7,18 +7,21 @@ import {
   ChevronRight,
   ClipboardList,
   Clock3,
+  Download,
+  FileText,
   Grid3X3,
   Loader2,
   PanelRightClose,
   PanelRightOpen,
   Pause,
   Play,
+  Printer,
   X,
 } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import { generateWorkshopPaperWithAgents, loadPaper, loadPapers, savePaperAnswers, setPaperTimerPaused, submitPaper } from '../pageDataLoaders';
 import { groupPaperItems } from './paperQuestionGroups';
-import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
+import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from './WorkshopSaveActions';
 
 const questionTypes = [
   ['single_choice', '单选题'],
@@ -83,7 +86,7 @@ const questionTypeLabel = (value) => ({
   多项选择题: '多选题',
 }[value] || value || '题目');
 
-export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId = '' }) {
+export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId = '', onExit }) {
   const [topic, setTopic] = useState('围绕四君子汤与脾胃气虚证完成训练');
   const [distribution, setDistribution] = useState({
     single_choice: 1,
@@ -104,6 +107,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
   const [position, setPosition] = useState(1);
   const [markedPositions, setMarkedPositions] = useState([]);
   const [answerCardOpen, setAnswerCardOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
 
   const questionCount = useMemo(
     () => Object.values(distribution).reduce((total, count) => total + count, 0),
@@ -243,6 +247,81 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
     }
   };
 
+  const buildPaperMarkdown = () => {
+    if (!paper?.items?.length) return '';
+    const typeLabel = (type) => ({single_choice:'单选题',multiple_choice:'多选题',fill_blank:'填空题',short_answer:'简答题',case_quiz:'案例题',true_false:'判断题'}[type]||type||'题目');
+    const lines = [];
+    lines.push(`# ${paper.title || '智能组卷'}`);
+    if (paper.total_score) lines.push(`**满分**：${paper.total_score} 分  ·  **题量**：${paper.items.length} 题`);
+    lines.push('---');
+    paper.items.forEach((item) => {
+      lines.push(`## ${item.position || ''}. ${typeLabel(item.question_type)}`);
+      lines.push(String(item.stem || '').replace(/<[^>]+>/g, ''));
+      const options = Array.isArray(item.options) ? item.options : [];
+      options.forEach((opt, i) => {
+        const label = String.fromCharCode(65 + i);
+        let text = typeof opt === 'string' ? opt : (opt.content || opt.value || opt.text || '');
+        text = String(text || '').replace(/<[^>]+>/g, '').trim().replace(/^[A-Z][.．、)\s]\s*/, '');
+        lines.push(`- ${label}. ${text}`);
+      });
+      lines.push('---');
+    });
+    return lines.join('\n');
+  };
+
+  const buildPaperHtml = () => {
+    const md = buildPaperMarkdown();
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+(paper?.title||'试卷')+'</title>'
+    +'<style>body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:0 8px;color:#1a1a1a;font-size:13px;line-height:1.45}'
+    +'h1{font-size:1.15em;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin:0 0 10px 0}'
+    +'h2{font-size:.95em;margin:14px 0 4px 0;font-weight:700}p{margin:0 0 4px 0}'
+    +'hr{border:0;border-top:1px solid #e5e7eb;margin:8px 0}li{margin:1px 0;font-size:13px}'
+    +'@media print{body{margin:0;padding:0 4px}@page{margin:1cm}}</style></head><body>'
+    +md.split('\n').map(l=>{if(l.startsWith('# '))return'<h1>'+l.slice(2)+'</h1>';if(l.startsWith('## '))return'<h2>'+l.slice(3)+'</h2>';if(l.startsWith('**'))return'<p><strong>'+l.replace(/\*\*/g,'')+'</strong></p>';if(l.startsWith('- '))return'<li>'+l.slice(2)+'</li>';if(l==='---')return'<hr>';if(l==='')return'';return'<p>'+l+'</p>';}).join('\n')
+    +'</body></html>';
+  };
+
+  const downloadMarkdown = () => {
+    const md = buildPaperMarkdown();
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `${(paper?.title || '试卷').replace(/[\\/:*?"<>|]/g, '_')}.md`;
+    a.click(); URL.revokeObjectURL(url); setSaveMenuOpen(false);
+  };
+
+  const downloadDocx = () => {
+    const html = buildPaperHtml();
+    const docxHtml = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+(paper?.title||'试卷')+'</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page{margin:1.5cm}body{font-family:"Microsoft YaHei",sans-serif;max-width:760px;margin:0 auto;padding:10px;color:#1a1a1a;font-size:11pt;line-height:1.4}h1{font-size:13pt;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin:0 0 10px 0}h2{font-size:10.5pt;margin:12px 0 3px 0;font-weight:700}hr{border:0;border-top:1px solid #e5e7eb;margin:6px 0}li{margin:1px 0;font-size:11pt}p{margin:0 0 3px 0}</style></head><body>'+html.replace(/^[\s\S]*<body>/, '').replace(/<\/body>[\s\S]*$/, '')+'</body></html>';
+    const blob = new Blob([docxHtml], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = `${(paper?.title || '试卷').replace(/[\\/:*?"<>|]/g, '_')}.doc`;
+    a.click(); URL.revokeObjectURL(url); setSaveMenuOpen(false);
+  };
+
+  const downloadImage = async () => {
+    const html = buildPaperHtml();
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;background:#fff;padding:40px;font-family:"Microsoft YaHei",sans-serif;color:#1a1a1a;line-height:1.45;font-size:13px;z-index:-1';
+    container.innerHTML = html.replace(/^[\s\S]*<body>/, '').replace(/<\/body>[\s\S]*$/, '');
+    document.body.appendChild(container);
+    const { default: html2canvas } = await import('html2canvas');
+    try {
+      const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', logging: false });
+      canvas.toBlob((blob) => {
+        if (blob) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${(paper?.title || '试卷').replace(/[\\/:*?"<>|]/g, '_')}.png`; a.click(); URL.revokeObjectURL(url); }
+      }, 'image/png');
+    } finally { document.body.removeChild(container); }
+    setSaveMenuOpen(false);
+  };
+
+  const printPaper = () => {
+    const html = buildPaperHtml();
+    const w = window.open('', '_blank', 'width=800,height=600');
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+    setSaveMenuOpen(false);
+  };
+
   const returnToPaperLibrary = async () => {
     if (boundPaper) return;
     sessionStorage.removeItem(paperStorageKey);
@@ -332,6 +411,11 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
       const saved = await save();
       if (!saved) return;
     }
+    if (onExit) {
+      sessionStorage.removeItem(paperStorageKey);
+      onExit();
+      return;
+    }
     await returnToPaperLibrary();
   };
 
@@ -416,6 +500,20 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
             <button type="button" aria-label={answerCardOpen ? '收起答题卡' : '展开答题卡'} aria-expanded={answerCardOpen} aria-controls="smart-paper-answer-card" onClick={() => setAnswerCardOpen(!answerCardOpen)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
               {answerCardOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}<span className="hidden sm:inline">答题卡</span>
             </button>
+            <div className="relative">
+              <button type="button" onClick={() => setSaveMenuOpen(!saveMenuOpen)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>
+                <Download size={16} /><span className="hidden sm:inline">保存试卷</span>
+              </button>
+              {saveMenuOpen && <>
+                <button type="button" aria-label="关闭保存菜单" onClick={() => setSaveMenuOpen(false)} className="fixed inset-0 z-10" />
+                <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <button type="button" onClick={downloadMarkdown} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><FileText size={15} />Markdown (.md)</button>
+                  <button type="button" onClick={downloadDocx} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><FileText size={15} />Word 文档 (.doc)</button>
+                  <button type="button" onClick={downloadImage} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><FileText size={15} />图片 (.png)</button>
+                  <button type="button" onClick={printPaper} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Printer size={15} />打印为 PDF</button>
+                </div>
+              </>}
+            </div>
           </div>
         </header>
 
@@ -432,12 +530,26 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
         <article className="mx-auto max-w-3xl px-5 py-8 sm:py-10">
           <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
             <span className="rounded-md bg-emerald-100 px-2.5 py-1 text-emerald-800">{questionTypeLabel(currentItem.question_type)}</span>
-            {markedPositions.includes(position) && <span className="rounded-md bg-slate-900 px-2.5 py-1 text-white">已标记</span>}
+            {markedPositions.includes(position) && <span className="rounded-md border border-emerald-200 bg-emerald-100 px-2.5 py-1 text-emerald-800">已标记</span>}
             {paperSubmitted && currentResult && <span className={`rounded-md px-2.5 py-1 ${currentResult.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{currentResult.is_correct ? '回答正确' : '需要复盘'}</span>}
           </div>
           <div className="flex items-start gap-3 text-lg font-medium leading-8 text-slate-950">
             <span className="mt-0.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-sm font-bold text-emerald-800">{position}</span>
-            <PaperQuestionContent content={currentItem.stem} />
+            <span className="min-w-0 flex-1"><PaperQuestionContent content={currentItem.stem} /></span>
+            <FavoriteQuestionIconButton
+              question={{
+                resource_id: currentItem.paper_item_id,
+                title: `智能组卷 · ${String(currentItem.stem || '').slice(0, 80)}`,
+                content: {
+                  question_content: currentItem.stem,
+                  question_type: currentItem.question_type,
+                  options: currentOptions,
+                  standard_answer: currentResult?.standard_answer || [],
+                  explanation: currentResult?.explanation || '',
+                },
+              }}
+              source="智能组卷"
+            />
           </div>
 
           <fieldset className="mt-6" disabled={loading || answerLocked}>
@@ -468,7 +580,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
 
         <footer className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 border-t border-slate-200 px-5 py-4">
           <button type="button" disabled={position === 1} onClick={() => goToPosition(position - 1)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}><ChevronLeft size={16} />上一题</button>
-          {!paperSubmitted && <button type="button" onClick={toggleMarked} className={`${paperButton} ${markedPositions.includes(position) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'}`}><Bookmark size={16} />{markedPositions.includes(position) ? '取消标记' : '标记本题'}</button>}
+          {!paperSubmitted && <button type="button" onClick={toggleMarked} className={`${paperButton} ${markedPositions.includes(position) ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'}`}><Bookmark size={16} />{markedPositions.includes(position) ? '取消标记' : '标记本题'}</button>}
           <button type="button" disabled={position === paper.items.length} onClick={() => goToPosition(position + 1)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>下一题<ChevronRight size={16} /></button>
           {!paperSubmitted && <button type="button" onClick={() => submit({ allowIncomplete: timeExpired })} disabled={loading || (!timeExpired && !allAnswered)} className={`${paperButton} ml-auto border-slate-900 bg-slate-900 text-white hover:bg-slate-800`}><ClipboardList size={16} />{timeExpired ? '按当前答案交卷' : '提交试卷'}</button>}
         </footer>
@@ -489,7 +601,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
                   : result
                     ? result.is_correct ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                     : markedPositions.includes(itemPosition)
-                      ? 'bg-slate-900 text-white'
+                      ? 'border border-emerald-300 bg-emerald-100 text-emerald-800'
                       : answeredIds.has(item.paper_item_id)
                         ? 'bg-emerald-600 text-white'
                         : 'border border-slate-300 bg-white text-slate-700';
@@ -497,7 +609,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
               })}</div>
             </section>)}
           </div>
-          <div className="border-t border-slate-200 px-4 py-3 text-xs leading-5 text-slate-500">绿色为已答，深色为标记；交卷后绿色与红色分别表示正确和错误。</div>
+          <div className="border-t border-slate-200 px-4 py-3 text-xs leading-5 text-slate-500">绿色为已答，浅绿色为标记；交卷后绿色与红色分别表示正确和错误。</div>
         </aside></>}
       </section>}
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm leading-6 text-rose-700">{error}</p>}

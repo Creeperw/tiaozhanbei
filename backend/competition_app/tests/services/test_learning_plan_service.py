@@ -7,11 +7,21 @@ from competition_app.agents.learning_plan_service import LearningPlanServiceAdap
 from competition_app.application.container import ApplicationContainer
 from competition_app.config import Settings
 from competition_app.contracts.base import AgentEnvelope
+from competition_app.agents.diagnosis import DiagnosisResult
+from competition_app.contracts.resource import AuditResult
+from competition_app.contracts.plan_compilation import (
+    CompiledLongTermContract,
+    CompiledLongTermStage,
+    CompiledPlanContractResult,
+    PlanCompilationEnvelope,
+    PlanSourceAnchor,
+)
 from competition_app.contracts.default_route import ResolvedPlanningRoute
 from competition_app.contracts.learning_plan import (
     GoalContract,
     LearningPlanProposal,
     LearningTaskProposal,
+    LongTermPlanStage,
     PlanMilestone,
     RecoveryPolicy,
     RecommendationTrace,
@@ -20,9 +30,17 @@ from competition_app.contracts.learning_plan import (
 )
 from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
+from competition_app.services.plan_progress import build_plan_progress
+from competition_app.services.textbook_route import TextbookRouteRepository
 
 
 DATA_DIRECTORY = Path(__file__).resolve().parents[2] / "data" / "default_routes"
+TEXTBOOK_ROUTE_FILE = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "textbook_routes"
+    / "tcm_textbook_routes.v1.json"
+)
 
 
 @pytest.fixture
@@ -368,6 +386,165 @@ def test_service_selects_published_video_for_legacy_model_block_from_formal_kp(
     ]
     assert task.items[0].resource_ref["bvid"] == "BV_REAL"
     assert task.items[0].completion_policy["policy"] == "iframe_focus_and_confirmation"
+
+
+def test_service_always_attempts_chapter_video_before_focus_practice(
+    repository: DefaultRouteRepository,
+) -> None:
+    value = structured_proposal(repository)
+    value.task_proposal.task_content = "学习四君子汤并完成配套练习"
+    value.task_proposal.learning_chapter = "《方剂学》补益剂·补气"
+    value.task_proposal.estimated_minutes = 20
+    value.task_proposal.focus_knowledge_points = ["四君子汤"]
+    value.short_term_learning_package.task_blocks = [
+        "学习四君子汤并完成配套练习"
+    ]
+    observed_refs = []
+
+    def resolve_video(resource_ref):
+        observed_refs.append(resource_ref)
+        return {
+            "source": "knowledge_atlas",
+            "provider": "bilibili",
+            "bvid": "BV_CHAPTER",
+            "page": 1,
+            "start_seconds": 0,
+            "end_seconds": 600,
+        }
+
+    service = LearningPlanService(
+        repository,
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else None
+        ),
+        video_resource_resolver=resolve_video,
+    )
+    task = service.materialize("LEARNER_CHAPTER_VIDEO", value).learning_task
+
+    assert observed_refs == [
+        {
+            "learning_chapter": "《方剂学》补益剂·补气",
+            "kp_ids": ["KP_FORMAL_1"],
+        }
+    ]
+    assert [item.item_type for item in task.items] == [
+        "video_section",
+        "knowledge_practice",
+    ]
+    assert task.items[0].title == "观看《方剂学》补益剂·补气章节视频"
+    assert task.items[1].kp_id == "KP_FORMAL_1"
+
+    normalized = service.ensure_executable_daily_resources(
+        "LEARNER_CHAPTER_VIDEO"
+    )
+    assert normalized.focus_knowledge_points == ["四君子汤"]
+    assert normalized.task_content == (
+        "今日围绕《方剂学》补益剂·补气学习：观看《方剂学》补益剂·补气章节视频；"
+        "完成知识点 四君子汤 练习。"
+    )
+    assert normalized.expected_output == "1条章节视频观看记录与3道配套题提交记录"
+    assert normalized.completion_criteria == (
+        "完成全部2个原子任务（1个章节视频、1个知识点共3道题）；"
+        "以服务端记录全部完成为通过标准。"
+    )
+
+
+def test_completed_task_evidence_drives_the_stage_pass_gate(
+    repository: DefaultRouteRepository,
+) -> None:
+    service = LearningPlanService(repository)
+    plans = service.materialize("LEARNER_STAGE_GATE", structured_proposal(repository))
+    requirements = plans.long_term_plan.planning_route.phases[0].exit_evidence
+    task = plans.learning_task.model_copy(
+        update={
+            "status": "completed",
+            "expected_output": "；".join(requirements),
+        }
+    )
+    service.plan_repository.save_current(
+        "LEARNER_STAGE_GATE",
+        plans.model_copy(update={"learning_task": task}),
+    )
+    updated = plans
+    for requirement in requirements:
+        updated = service.record_completed_task_stage_evidence(
+            "LEARNER_STAGE_GATE",
+            stage=1,
+            requirement=requirement,
+            task_id=task.task_id,
+        )
+    progress = build_plan_progress(updated)
+
+    first_stage = progress["long_term"]["stage_progress"][0]
+    assert first_stage["passed"] is True
+    assert first_stage["can_advance"] is True
+    assert first_stage["indicators"][0]["status"] == "satisfied"
+    assert first_stage["indicators"][0]["evidence_refs"][0]["source_id"] == task.task_id
+
+
+def test_stage_progress_projects_the_approved_textbook_route_as_authoritative(
+    repository: DefaultRouteRepository,
+) -> None:
+    planning_route = repository.resolve(
+        goal_type="credential", goal_name="中医执业医师"
+    )
+    textbook_route = TextbookRouteRepository.from_file(TEXTBOOK_ROUTE_FILE).resolve(
+        exam_route_id="tcm_physician_standard_degree",
+        goal_text="中医执业医师资格考试",
+    )
+    planning_route = planning_route.model_copy(
+        update={"textbook_route": textbook_route}
+    )
+    plans = LearningPlanService(repository).materialize(
+        "LEARNER_ROUTE_PROJECTION",
+        structured_proposal(repository, route=planning_route),
+    )
+    plans = plans.model_copy(
+        update={
+            "long_term_plan": plans.long_term_plan.model_copy(
+                update={
+                    "stages": [
+                        LongTermPlanStage(
+                            stage=1,
+                            book=["模型误写教材"],
+                            goal="模型误写目标",
+                        )
+                    ]
+                }
+            )
+        }
+    )
+
+    first_stage = build_plan_progress(plans)["long_term"]["stage_progress"][0]
+    trusted_stage = (
+        plans.long_term_plan.planning_route.textbook_route.route.stages[0]
+    )
+    assert first_stage["name"] == trusted_stage.name
+    assert first_stage["books"] == trusted_stage.books
+    assert first_stage["goal"] == trusted_stage.objective
+    assert [item["description"] for item in first_stage["indicators"]] == (
+        trusted_stage.exit_evidence
+    )
+
+
+def test_stage_gate_rejects_unapproved_requirement(
+    repository: DefaultRouteRepository,
+) -> None:
+    service = LearningPlanService(repository)
+    plans = service.materialize("LEARNER_STAGE_GATE_BAD", structured_proposal(repository))
+    task = plans.learning_task.model_copy(update={"status": "completed"})
+    service.plan_repository.save_current(
+        "LEARNER_STAGE_GATE_BAD",
+        plans.model_copy(update={"learning_task": task}),
+    )
+
+    with pytest.raises(ValueError, match="approved stage gate"):
+        service.record_completed_task_stage_evidence(
+            "LEARNER_STAGE_GATE_BAD",
+            stage=1,
+            requirement="自行编造的阶段通过条件",
+            task_id=task.task_id,
+        )
 
 
 def test_service_updates_only_target_layer_versions() -> None:
@@ -1095,6 +1272,102 @@ async def test_adapter_injects_repository_and_passes_available_minutes(
         await adapter.run(context)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("decision", "digest", "message"),
+    [
+        ("revise", "a" * 64, "requires a passing audit"),
+        ("pass", "b" * 64, "approval does not match current proposal"),
+    ],
+)
+async def test_adapter_rejects_unapproved_long_term_plan_before_materialization(
+    repository: DefaultRouteRepository,
+    decision: str,
+    digest: str,
+    message: str,
+) -> None:
+    adapter = LearningPlanServiceAdapter(route_repository=repository)
+    value = structured_proposal(repository)
+    contract = CompiledLongTermContract(
+        scope="long_term",
+        long_term_plan_content=value.long_term_plan_content,
+        total_duration_days=30,
+        stages=[
+            CompiledLongTermStage(
+                stage=1,
+                stage_name="基础阶段",
+                books=["《中医基础理论》"],
+                goal="建立基础框架。",
+                duration_days=30,
+                schedule_summary="使用《中医基础理论》建立基础框架。",
+            )
+        ],
+        field_anchors={
+            "/long_term_plan_content": [
+                PlanSourceAnchor(
+                    source_field="long_term_plan_content",
+                    source_quote=value.long_term_plan_content,
+                )
+            ]
+        },
+    )
+    diagnosis = DiagnosisResult(
+        learning_plan_proposal=value,
+        plan_scope="long_term",
+        compiled_plan_contract=PlanCompilationEnvelope(
+            result=CompiledPlanContractResult(status="compiled", contract=contract),
+            source_digest="c" * 64,
+        ),
+    )
+    audit = AuditResult(
+        audit_result_id="AUDIT_GATE",
+        decision=decision,
+        subject_digest=digest,
+        plan_scope="long_term",
+    )
+    context = {
+        "case_id": "CASE_GATE",
+        "trace_id": "TRACE_GATE",
+        "request_id": "REQUEST_GATE",
+        "execution_id": "EXECUTION_GATE",
+        "step_id": "learning_plan",
+        "learner_id": "LEARNER_GATE",
+        "dependency_outputs": {
+            "diagnosis": AgentEnvelope(
+                artifact_id="ART_DIAGNOSIS_GATE",
+                artifact_type="diagnosis_result",
+                producer="diagnosis_agent",
+                payload=diagnosis,
+                case_id="CASE_GATE",
+                trace_id="TRACE_GATE",
+                request_id="REQUEST_GATE",
+                execution_id="EXECUTION_GATE",
+                step_id="diagnosis",
+                task_type="learning_plan",
+                learner_id="LEARNER_GATE",
+            ),
+            "audit": AgentEnvelope(
+                artifact_id="ART_AUDIT_GATE",
+                artifact_type="audit_result",
+                producer="audit_agent",
+                payload=audit,
+                case_id="CASE_GATE",
+                trace_id="TRACE_GATE",
+                request_id="REQUEST_GATE",
+                execution_id="EXECUTION_GATE",
+                step_id="audit",
+                task_type="learning_plan",
+                learner_id="LEARNER_GATE",
+            ),
+        },
+    }
+
+    with pytest.raises(RuntimeError, match=message):
+        await adapter.run(context)
+
+    assert adapter.service.get_current("LEARNER_GATE") is None
+
+
 def test_container_shares_route_repository_between_resolver_and_service(tmp_path: Path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     registry = container.review_card_use_case.orchestrator.agent_registry
@@ -1126,7 +1399,10 @@ def test_container_injects_same_production_resolvers_into_plan_and_refresh(
         "learning_plan_service"
     )
 
-    assert adapter.service.knowledge_point_resolver is formal_resolver
-    assert container.daily_task_refresh_service.knowledge_point_resolver is formal_resolver
+    assert (
+        adapter.service.knowledge_point_resolver
+        is container.daily_task_refresh_service.knowledge_point_resolver
+    )
+    assert adapter.service.knowledge_point_resolver("四君子汤") == "KP_FORMAL"
     assert adapter.service.video_resource_resolver is None
     assert container.daily_task_refresh_service.video_resource_resolver is None

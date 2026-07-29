@@ -6,13 +6,16 @@ import PersonalizationHubPage from './components/PersonalizationHubPage';
 import SettingsHubPage from './components/SettingsHubPage';
 import AdminFeedbackPage from './components/AdminFeedbackPage';
 import HomePage from './components/HomePage';
+import CapabilityDetailPage from './components/CapabilityDetailPage';
+import QualificationRoutePage from './components/QualificationRoutePage';
+import LearningPathPage from './components/LearningPathPage';
 import DashboardPage from './components/DashboardPage';
 import PracticePage from './components/PracticePage';
 import LearningStageLanding from './components/learning-stage/LearningStageLanding';
 import TextbookChapterLearning from './components/workshop-textbook/TextbookChapterLearning';
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
-import RegistrationJourney from './components/RegistrationJourney';
+import CompactAssistant from './components/CompactAssistant';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -49,6 +52,7 @@ export default function App() {
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const [stageTransition, setStageTransition] = useState(null);
+  const [floatingAssistantSessionId, setFloatingAssistantSessionId] = useState(null);
   const currentPage = getIntentPage(pageIntent);
   const shellPage = currentPage === 'practice' && pageIntent.params.view === 'workspace'
     ? 'training-workshop'
@@ -82,14 +86,6 @@ export default function App() {
 
   const handleLogin = (user) => {
     setCurrentUser(user);
-    if (!user?.onboarding_required) navigateToPage('dashboard');
-  };
-
-  const handleOnboardingSaved = (payload) => {
-    setCurrentUser(payload?.user || {
-      ...currentUser,
-      onboarding_required: false,
-    });
     navigateToPage('dashboard');
   };
 
@@ -128,10 +124,16 @@ export default function App() {
           setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
           return;
         }
-        setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'user-profile' }));
+        setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'reports' }));
         return;
       }
-      if (destination.page === 'training-workshop') setNavigationRevision((value) => value + 1);
+      if (
+        destination.page === 'training-workshop'
+        || (destination.page === 'practice' && params.view === 'workspace')
+        || (destination.page === 'assistant' && params.newConversation)
+      ) {
+        setNavigationRevision((value) => value + 1);
+      }
       setPageIntent(createPageIntent(destination));
       return;
     }
@@ -156,10 +158,16 @@ export default function App() {
         setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
         return;
       }
-      setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'user-profile' }));
+      setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'reports' }));
       return;
     }
-    if (destination === 'training-workshop') setNavigationRevision((value) => value + 1);
+    if (
+      destination === 'training-workshop'
+      || (destination === 'practice' && params.view === 'workspace')
+      || (destination === 'assistant' && params.newConversation)
+    ) {
+      setNavigationRevision((value) => value + 1);
+    }
     setPageIntent(createPageIntent(destination, params));
   };
 
@@ -189,23 +197,31 @@ export default function App() {
     return <AuthPage onLogin={handleLogin} />;
   }
 
-  if (currentUser.onboarding_required) {
-    return (
-      <RegistrationJourney
-        existingUser={currentUser}
-        onComplete={(user) => handleOnboardingSaved({ user })}
-        onExit={handleLogout}
-      />
-    );
-  }
-
   const renderAuthenticatedPage = () => {
     switch (shellConfig.currentPage) {
       case 'dashboard':
         return <HomePage currentUser={currentUser} onNavigate={navigateToPage} />;
+      case 'capability-detail':
+        return (
+          <CapabilityDetailPage
+            capabilityKey={pageIntent.params.capability}
+            onNavigate={navigateToPage}
+          />
+        );
+      case 'learning-path':
+        return <QualificationRoutePage key={pageIntent.params.examTrackId || 'current-learning-path'} currentUser={currentUser} onNavigate={navigateToPage} />;
+      case 'learning-path-tasks':
+        return (
+          <LearningPathPage
+            key={pageIntent.params.examTrackId || 'current-learning-path'}
+            currentUser={currentUser}
+            onNavigate={navigateToPage}
+          />
+        );
       case 'assistant':
         return (
           <ChatInterface
+            key={`assistant-${navigationRevision}`}
             embedded
             currentUser={currentUser?.username || 'User'}
             currentUserRole={currentUser?.role || 'user'}
@@ -217,6 +233,7 @@ export default function App() {
             onNavigate={navigateToPage}
             preferredSessionId={selectedSessionId}
             initialContext={pageIntent.params.context || ''}
+            forceNewConversation={Boolean(pageIntent.params.newConversation)}
           />
         );
       case 'practice':
@@ -229,7 +246,14 @@ export default function App() {
           );
         }
         if (pageIntent.params.view === 'workspace') {
-          return <PracticePage navigationContext={pageIntent.params} onBackHome={() => navigateToPage('dashboard')} />;
+          return (
+            <PracticePage
+              key={`practice-workspace-${navigationRevision}`}
+              navigationContext={pageIntent.params}
+              onNavigate={navigateToPage}
+              onBackHome={() => navigateToPage('dashboard')}
+            />
+          );
         }
         if (pageIntent.params.view === 'stages') {
           return (
@@ -251,7 +275,14 @@ export default function App() {
           />
         );
       case 'training-workshop':
-        return <PracticePage key={`training-workshop-${navigationRevision}`} navigationContext={pageIntent.params} />;
+        return (
+          <PracticePage
+            key={`training-workshop-${navigationRevision}`}
+            navigationContext={pageIntent.params}
+            onNavigate={navigateToPage}
+            onBackHome={() => navigateToPage('dashboard')}
+          />
+        );
       case 'knowledge':
         return (
           <KnowledgePage
@@ -265,7 +296,7 @@ export default function App() {
           />
         );
       case 'personalization':
-        return <PersonalizationHubPage navigationContext={pageIntent.params} onNavigate={navigateToPage} />;
+        return <PersonalizationHubPage navigationContext={pageIntent.params} onNavigate={navigateToPage} currentUser={currentUser} />;
       case 'settings':
         return <SettingsHubPage navigationContext={pageIntent.params} onNavigate={navigateToPage} />;
       case 'admin-feedback':
@@ -279,6 +310,7 @@ export default function App() {
     <AppShell
       currentUser={currentUser}
       currentPage={shellConfig.currentPage}
+      navigationContext={pageIntent.params}
       onNavigate={navigateToPage}
       onLogout={handleLogout}
       onUserUpdated={(updatedUser) => setCurrentUser((current) => ({ ...current, ...updatedUser }))}
@@ -289,6 +321,23 @@ export default function App() {
         onMidpoint={openStagePathAtMidpoint}
         onComplete={finishStageTransition}
       />
+      {shellConfig.currentPage !== 'assistant' && (
+        <CompactAssistant
+          className="global-assistant-dock"
+          currentUser={currentUser?.display_name || currentUser?.username || '同学'}
+          preferredSessionId={floatingAssistantSessionId}
+          contextLabel={shellConfig.pageTitle}
+          initiallyCollapsed
+          characterHint="多智能体助教"
+          onOpenFull={(sessionId) => {
+            if (sessionId) setFloatingAssistantSessionId(sessionId);
+            navigateToPage({
+              page: 'assistant',
+              params: sessionId ? { sessionId } : {},
+            });
+          }}
+        />
+      )}
     </AppShell>
   );
 }

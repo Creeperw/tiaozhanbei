@@ -164,6 +164,7 @@ class DailyTaskRefreshService:
             refresh_due_at=now + DAILY_TASK_REFRESH_INTERVAL,
             items=materialize_daily_task_items(
                 task_content=content,
+                learning_chapter=task.learning_chapter,
                 estimated_minutes=int(minutes or task.estimated_minutes),
                 focus_knowledge_points=list(task.focus_knowledge_points),
                 task_blocks=[selected_block] if selected_block is not None else [],

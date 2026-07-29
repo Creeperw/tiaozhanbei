@@ -11,16 +11,43 @@ from competition_app.contracts.memory import (
     ConversationContextSummary,
     LearnerContextBrief,
     LongTermMemoryCandidate,
+    MemoryConflict,
+    MemoryGovernanceDecision,
 )
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
-from competition_app.llm.schemas import MemoryModelOutput, validate_training_style_output
+from competition_app.llm.schemas import (
+    MemoryGovernanceModelOutput,
+    MemoryModelOutput,
+    validate_training_style_output,
+)
 
 
 class MemoryAgentResult(ContractModel):
     context_summary: ConversationContextSummary | None = None
     learner_context: LearnerContextBrief
     memory_candidates: list[LongTermMemoryCandidate] = Field(default_factory=list)
+    governance: MemoryGovernanceDecision | None = None
+
+    @property
+    def requires_clarification(self) -> bool:
+        return bool(self.governance and self.governance.requires_clarification)
+
+    @property
+    def clarification_questions(self) -> list[str]:
+        return (
+            list(self.governance.clarification_questions)
+            if self.governance
+            else []
+        )
+
+    @property
+    def interrupt_type(self) -> str | None:
+        return self.governance.interrupt_type if self.governance else None
+
+    @property
+    def reason(self) -> str | None:
+        return self.governance.analysis if self.governance else None
 
 
 class MemoryAgent:
@@ -48,37 +75,94 @@ class MemoryAgent:
         should_compress = bool(context.get("force_context_compression")) or (
             total_chars > self.compression_threshold_chars
         )
-        if not should_compress:
-            raise ValueError("memory agent must only run after the compression threshold is exceeded")
-        prompt_skill = prompt_skill_registry.load("memory_agent", "conversation_compression")
+        summary = None
+        compression_candidates: list[str] = []
+        if should_compress:
+            prompt_skill = prompt_skill_registry.load("memory_agent", "conversation_compression")
+            try:
+                raw_output = await self.chat_model.complete_json(
+                    "memory_agent",
+                    build_model_context(
+                        context,
+                        target_agent="memory_agent",
+                        prompt_skill=prompt_skill,
+                        payload={
+                            "user_profile": {
+                                "user_preference": context.get("profile", {}).get(
+                                    "confirmed_preferences", {}
+                                )
+                            },
+                            "messages": [
+                                {"role": item["role"], "content": item.get("content", "")}
+                                for item in messages
+                            ],
+                            "temporary_constraints": context.get("temporary_constraints", []),
+                            "expected_uncertainty": [],
+                            "output_schema": MemoryModelOutput.model_json_schema(),
+                        },
+                        permission_note="只处理当前会话、已确认偏好和临时约束；不得生成掌握度、计划或知识库事实。",
+                    ),
+                )
+                if isinstance(raw_output, dict) and isinstance(raw_output.get("summary"), str):
+                    raw_output = {**raw_output, "summary": raw_output["summary"][:2_000]}
+                model_output = validate_training_style_output(
+                    MemoryModelOutput,
+                    raw_output,
+                    [],
+                )
+            except ValueError as exc:
+                if context.get("terminal_trace"):
+                    context["terminal_trace"].validation("memory_agent", valid=False, detail=str(exc))
+                raise
+            summary = ConversationContextSummary(
+                summary=model_output.summary,
+                source_refs=source_refs,
+                preserved_facts=model_output.preserved_facts,
+                unresolved_questions=model_output.unresolved_questions,
+                temporary_constraints=model_output.temporary_constraints,
+            ) if source_refs else None
+            compression_candidates = list(model_output.memory_candidates)
+
+        governance_skill = prompt_skill_registry.load(
+            "memory_agent", "learning_memory_governance"
+        )
         try:
             raw_output = await self.chat_model.complete_json(
                 "memory_agent",
                 build_model_context(
                     context,
                     target_agent="memory_agent",
-                    prompt_skill=prompt_skill,
+                    prompt_skill=governance_skill,
                     payload={
-                        "user_profile": {
-                            "user_preference": context.get("profile", {}).get(
-                                "confirmed_preferences", {}
-                            )
-                        },
-                        "messages": [
-                            {"role": item["role"], "content": item.get("content", "")}
-                            for item in messages
-                        ],
+                        "current_user_request": context.get("user_request", ""),
+                        "current_user_message": next(
+                            (
+                                item.get("content", "")
+                                for item in reversed(messages)
+                                if item.get("role") == "user"
+                            ),
+                            "",
+                        ),
+                        "relevant_memories": context.get(
+                            "relevant_personalization_memories", []
+                        ),
+                        "retrieval_degraded": bool(
+                            context.get("memory_retrieval_degraded")
+                        ),
+                        "memory_conflict_answer": context.get(
+                            "memory_conflict_answer"
+                        ),
                         "temporary_constraints": context.get("temporary_constraints", []),
-                        "expected_uncertainty": [],
-                        "output_schema": MemoryModelOutput.model_json_schema(),
+                        "output_schema": MemoryGovernanceModelOutput.model_json_schema(),
                     },
-                    permission_note="只处理当前会话、已确认偏好和临时约束；不得生成掌握度、计划或知识库事实。",
+                    permission_note=(
+                        "只提取用户明确陈述并判断相关记忆是否真正冲突；"
+                        "不得覆盖记忆、写画像、生成计划或通过关键词直接下结论。"
+                    ),
                 ),
             )
-            if isinstance(raw_output, dict) and isinstance(raw_output.get("summary"), str):
-                raw_output = {**raw_output, "summary": raw_output["summary"][:2_000]}
-            model_output = validate_training_style_output(
-                MemoryModelOutput,
+            governance_output = validate_training_style_output(
+                MemoryGovernanceModelOutput,
                 raw_output,
                 [],
             )
@@ -87,17 +171,10 @@ class MemoryAgent:
                 context["terminal_trace"].validation("memory_agent", valid=False, detail=str(exc))
             raise
         if context.get("terminal_trace"):
-            context["terminal_trace"].validation("memory_agent", valid=True, detail="MemoryModelOutput")
-        artifact_id = f"MEMCTX_{uuid4().hex}"
-        summary = None
-        if should_compress and source_refs:
-            summary = ConversationContextSummary(
-                summary=model_output.summary,
-                source_refs=source_refs,
-                preserved_facts=model_output.preserved_facts,
-                unresolved_questions=model_output.unresolved_questions,
-                temporary_constraints=model_output.temporary_constraints,
+            context["terminal_trace"].validation(
+                "memory_agent", valid=True, detail="MemoryGovernanceModelOutput"
             )
+        artifact_id = f"MEMCTX_{uuid4().hex}"
 
         profile = dict(context.get("profile", {}))
         learner_context = LearnerContextBrief(
@@ -113,13 +190,48 @@ class MemoryAgent:
         )
         memory_candidates = [
             LongTermMemoryCandidate(summary=item, source_refs=source_refs)
-            for item in model_output.memory_candidates
+            for item in dict.fromkeys(
+                [*compression_candidates, *governance_output.memory_candidates]
+            )
             if source_refs
         ]
+        valid_memory_ids = {
+            int(item["id"])
+            for item in context.get("relevant_personalization_memories", [])
+            if isinstance(item, dict) and isinstance(item.get("id"), int)
+        }
+        unknown_conflicts = [
+            item.memory_id
+            for item in governance_output.conflicts
+            if item.memory_id not in valid_memory_ids
+        ]
+        if unknown_conflicts:
+            raise ValueError("memory governance referenced an unknown memory id")
+        governance = MemoryGovernanceDecision(
+            analysis=governance_output.governance_notes,
+            memory_candidates=memory_candidates,
+            conflicts=[
+                MemoryConflict(
+                    memory_id=item.memory_id,
+                    proposed_memory=item.proposed_memory,
+                    reason=item.reason,
+                )
+                for item in governance_output.conflicts
+            ],
+            requires_clarification=governance_output.requires_clarification,
+            clarification_questions=governance_output.clarification_questions,
+            interrupt_type=(
+                "memory_conflict"
+                if governance_output.requires_clarification
+                else None
+            ),
+            resolution=governance_output.resolution,
+        )
         payload = MemoryAgentResult(
             context_summary=summary,
             learner_context=learner_context,
             memory_candidates=memory_candidates,
+            governance=governance,
         )
         return AgentEnvelope[MemoryAgentResult](
             artifact_id=artifact_id,
@@ -130,7 +242,7 @@ class MemoryAgent:
             execution_id=str(context["execution_id"]),
             step_id=str(context["step_id"]),
             producer="memory_agent",
-            task_type="build_learner_context",
+            task_type="govern_learning_memory",
             learner_id=learner_id,
             payload=payload,
             input_refs=source_refs,

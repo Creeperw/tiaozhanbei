@@ -23,7 +23,7 @@ describe('ReviewDashboardPanel', () => {
             memory_unit: { kp_id: 'KP_1', mastery_score: 76, next_review_at: '2026-07-22T10:00:00Z' },
           }],
         },
-        mastery: [{ kp_id: 'KP_1', kp_name: '四君子汤', mastery_score: 76, attempt_count: 2, review_stage: 'learning' }],
+        mastery: [{ kp_id: 'KP_1', kp_name: '四君子汤', mastery_score: 76, mastery_confidence: 0.8, attempt_count: 2, review_stage: 'learning', last_review_at: '2026-07-22T09:00:00Z' }],
         mastery_history: [{ history_id: 'H_1', kp_id: 'KP_1', kp_name: '四君子汤', mastery_score: 76, calculated_at: '2026-07-22T09:00:00Z' }],
         review_states: [],
         review_tasks: [],
@@ -32,15 +32,23 @@ describe('ReviewDashboardPanel', () => {
     });
   });
 
-  it('shows queue, mastery and history with knowledge point names', async () => {
+  it('orders the summary, heatmap and queue, then the detail sections vertically', async () => {
     render(<ReviewDashboardPanel />);
 
-    expect(await screen.findAllByText('四君子汤')).toHaveLength(3);
+    expect((await screen.findAllByText('四君子汤')).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('已到期')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '已评估知识点' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '平均掌握度' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '当前到期' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '掌握记录' })).toBeInTheDocument();
+    expect(screen.getByText('平均掌握度')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '知识点掌握热力图' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '知识点掌握度' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '最近复习与掌握变化' })).toBeInTheDocument();
     expect(screen.getAllByText(/76/).length).toBeGreaterThan(0);
+
+    const summary = screen.getByText('复习与掌握').closest('section');
+    const heatmap = screen.getByRole('region', { name: '知识点掌握热力图' });
+    const mastery = screen.getByRole('region', { name: '知识点掌握度' });
+    const history = screen.getByRole('region', { name: '最近复习与掌握变化' });
+    expect(summary.compareDocumentPosition(heatmap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(heatmap.compareDocumentPosition(mastery) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mastery.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
