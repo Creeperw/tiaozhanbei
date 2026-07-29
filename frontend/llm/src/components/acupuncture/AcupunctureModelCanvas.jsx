@@ -26,6 +26,7 @@ export default function AcupunctureModelCanvas({
     highlightNames = [],
     standardNodeNames = [],
     revealStandardPoints = false,
+    expanded = false,
     onStandardPointsReady,
     interactive = false,
     onSurfacePick,
@@ -35,6 +36,7 @@ export default function AcupunctureModelCanvas({
     const hostRef = useRef(null);
     const sceneRef = useRef(null);
     const markerGroupRef = useRef(null);
+    const standardMarkerGroupRef = useRef(null);
     const needleGroupRef = useRef(null);
     const modelRef = useRef(null);
     const raycasterRef = useRef(new THREE.Raycaster());
@@ -83,6 +85,10 @@ export default function AcupunctureModelCanvas({
         markerGroup.visible = false;
         markerGroupRef.current = markerGroup;
         scene.add(markerGroup);
+        const standardMarkerGroup = new THREE.Group();
+        standardMarkerGroup.visible = false;
+        standardMarkerGroupRef.current = standardMarkerGroup;
+        scene.add(standardMarkerGroup);
         const needleGroup = new THREE.Group();
         needleGroupRef.current = needleGroup;
         scene.add(needleGroup);
@@ -131,7 +137,8 @@ export default function AcupunctureModelCanvas({
                 marker.position.copy(object.getWorldPosition(new THREE.Vector3()));
                 marker.userData.nodeName = object.name;
                 marker.userData.isCasePoint = highlightedNames.has(object.name);
-                markerGroup.add(marker);
+                if (marker.userData.isCasePoint) standardMarkerGroup.add(marker);
+                else markerGroup.add(marker);
                 if (marker.userData.isCasePoint) {
                     standardPoints[object.name] = marker.position.toArray();
                 }
@@ -159,6 +166,7 @@ export default function AcupunctureModelCanvas({
             controls.dispose();
             renderer.dispose();
             markerGroup.clear();
+            standardMarkerGroup.clear();
             needleGroup.clear();
             scene.clear();
             delete host.__acupunctureCamera;
@@ -168,11 +176,12 @@ export default function AcupunctureModelCanvas({
 
     useEffect(() => {
         if (markerGroupRef.current) markerGroupRef.current.visible = showMarkers;
-    }, [showMarkers]);
+        if (standardMarkerGroupRef.current) standardMarkerGroupRef.current.visible = revealStandardPoints;
+    }, [revealStandardPoints, showMarkers]);
 
     useEffect(() => {
         const names = new Set(highlightNames);
-        markerGroupRef.current?.children.forEach((marker) => {
+        [...(markerGroupRef.current?.children || []), ...(standardMarkerGroupRef.current?.children || [])].forEach((marker) => {
             const highlighted = names.has(marker.userData.nodeName)
                 || (revealStandardPoints && marker.userData.isCasePoint);
             marker.material.color.set(highlighted ? '#ff5f57' : '#f7c948');
@@ -191,7 +200,8 @@ export default function AcupunctureModelCanvas({
             const reference = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
             const tangent = new THREE.Vector3().crossVectors(reference, normal).normalize();
             const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
-            const tilt = THREE.MathUtils.degToRad(Number(needle.tiltAngle || 0));
+            const insertionTilts = { direct: 0, oblique: 45, transverse: 78 };
+            const tilt = THREE.MathUtils.degToRad(insertionTilts[needle.insertionType] ?? Number(needle.tiltAngle || 0));
             const azimuth = THREE.MathUtils.degToRad(Number(needle.directionAngle || 0));
             const direction = normal.clone().multiplyScalar(Math.cos(tilt))
                 .add(tangent.multiplyScalar(Math.sin(tilt) * Math.cos(azimuth)))
@@ -224,12 +234,12 @@ export default function AcupunctureModelCanvas({
     };
 
     return (
-        <div className={`acupuncture-model${interactive ? ' is-interactive' : ''}`}>
+        <div className={`acupuncture-model${interactive ? ' is-interactive' : ''}${expanded ? ' is-expanded' : ''}`}>
             <div ref={(node) => {
                 hostRef.current = node;
             }} className="acupuncture-model__viewport" onPointerDown={handlePointerDown} />
             <button type="button" className="acupuncture-model__markers-button" onClick={onToggleMarkers}>
-                {showMarkers ? '隐藏穴位' : '显示穴位'}
+                {revealStandardPoints ? (showMarkers ? '隐藏其他穴位' : '显示其他穴位') : (showMarkers ? '隐藏穴位' : '显示穴位')}
             </button>
             <div className="acupuncture-model__status">{status}</div>
             <span className="acupuncture-model__hint">拖拽旋转 · 滚轮缩放{interactive ? ' · 点击人体记录针位' : ''}</span>

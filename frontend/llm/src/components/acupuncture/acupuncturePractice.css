@@ -107,7 +107,7 @@
 }
 
 .acupuncture-practice main {
-    max-width: 900px;
+    max-width: 1480px;
     margin: 0 auto;
 }
 
@@ -126,7 +126,7 @@
 }
 
 .acupuncture-card--wide {
-    max-width: 860px;
+    max-width: 1440px;
 }
 
 .acupuncture-card h2,
@@ -436,13 +436,19 @@
         height: 350px;
         padding-inline: 28px;
     }
+
+    .acupuncture-model,
+    .acupuncture-model.is-expanded {
+        height: 68vh;
+        min-height: 420px;
+    }
 }
 
 .acupuncture-model {
     position: relative;
-    width: min(100%, 760px);
-    height: min(66vh, 620px);
-    min-height: 420px;
+    width: 100%;
+    height: min(72vh, 760px);
+    min-height: 480px;
     overflow: hidden;
     border: 1px solid #24594b;
     border-radius: 16px;
@@ -526,4 +532,9 @@
 
 .acupuncture-case-parameters strong {
     color: #08794f;
+}
+
+.acupuncture-model.is-expanded {
+    height: min(78vh, 900px);
+    min-height: 560px;
 }
