@@ -549,11 +549,11 @@
 }
 
 .acupuncture-card--fullscreen .acupuncture-model__markers-button {
-    top: 82px;
+    top: 132px;
 }
 
 .acupuncture-card--fullscreen .acupuncture-model__status {
-    top: 82px;
+    top: 20px;
 }
 
 .acupuncture-card--fullscreen>h2 {
@@ -635,6 +635,10 @@
     .acupuncture-card--fullscreen .acupuncture-summary-list,
     .acupuncture-card--fullscreen .acupuncture-case-parameters {
         left: 12px;
+    }
+
+    .acupuncture-card--fullscreen .acupuncture-model__markers-button {
+        top: 126px;
     }
 }
 
