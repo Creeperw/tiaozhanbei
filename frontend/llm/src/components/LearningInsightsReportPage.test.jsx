@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LearningInsightsReportPage from './LearningInsightsReportPage';
 import {
@@ -13,6 +13,7 @@ import {
   loadResourceEffectiveness,
   recordResourceRecommendationEvent,
 } from '../pageDataLoaders.js';
+import { fetchJsonWithAuthFallback } from '../utils/api';
 
 vi.mock('../pageDataLoaders.js', () => ({
   emptyReport: {
@@ -30,6 +31,10 @@ vi.mock('../pageDataLoaders.js', () => ({
 vi.mock('../utils/api', () => ({ fetchJsonWithAuthFallback: vi.fn() }));
 
 describe('LearningInsightsReportPage', () => {
+  beforeEach(() => {
+    fetchJsonWithAuthFallback.mockResolvedValue({ data: { lifetime: { focus_minutes: 5160 } } });
+  });
+
   it('renders the reference-style report and removes the retired report sections', async () => {
     const onNavigate = vi.fn();
     loadResourceEffectiveness.mockResolvedValue({
@@ -124,6 +129,7 @@ describe('LearningInsightsReportPage', () => {
     render(<LearningInsightsReportPage onNavigate={onNavigate} currentUser={{ username: 'alice' }} />);
 
     expect(await screen.findByText('累计学习时长')).toBeInTheDocument();
+    expect(screen.getByText('5160')).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: '学情报告快捷入口' })).not.toBeInTheDocument();
     expect(screen.getByText('完成练习')).toBeInTheDocument();
     expect(screen.getByText('平均正确率')).toBeInTheDocument();

@@ -34,6 +34,7 @@ import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
 import QuestionFavoritesPanel from './QuestionFavoritesPanel';
 import StudyNotesPanel from './StudyNotesPanel';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
+import { focusMinutesFromStatistics } from './learningPlanDashboard';
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -354,7 +355,7 @@ const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, check
     ? activitySummary.recent_activities
     : [];
   const latestResumableActivity = recentActivities.find(recentTaskKeyFromActivity);
-  const focusMinutes = nonNegativeNumberOrNull(lifetime.focus_minutes);
+  const focusMinutes = focusMinutesFromStatistics(statistics);
 
   // Today accuracy — filter activities from today only
   const todayStr = String(activitySummary?.calculated_at || new Date().toISOString()).slice(0, 10);
