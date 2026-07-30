@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowLeft,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -40,7 +39,7 @@ function buildTopicRecommendations(report) {
   return [...new Set([...weakPointNames, ...fallbackTopicRecommendations])].slice(0, 4);
 }
 
-export default function SmartPaperPanel({ paperId = '', taskItemId = '', onBack }) {
+export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   const [papers, setPapers] = useState([]);
   const [topicRecommendations, setTopicRecommendations] = useState(fallbackTopicRecommendations);
   const [recommendationsLoading, setRecommendationsLoading] = useState(true);
@@ -190,11 +189,6 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', onBack 
   return (
     <div className="smart-paper-panel overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <header className="relative overflow-hidden border-b border-emerald-100 bg-[radial-gradient(circle_at_top_right,rgba(167,243,208,0.45),transparent_42%),linear-gradient(135deg,#f7fcf8,#eef8f1)] px-5 pb-6 pt-5 sm:px-7">
-        {onBack && (
-          <button type="button" className="smart-paper-panel__back" onClick={onBack}>
-            <ArrowLeft aria-hidden="true" size={16} />返回
-          </button>
-        )}
         <div className="relative z-[1] max-w-2xl">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-950">把学习目标变成一张可作答的试卷</h2>
           <p className="mt-2 max-w-xl text-[15px] leading-6 text-slate-600">选择练习主题、题型和作答方式，系统完成检索、补题与审核后再发布试卷。</p>

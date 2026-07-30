@@ -718,18 +718,14 @@ export default function PracticePage({
     );
   }
 
-  const showWorkspaceHeading = activeTaskType !== 'paper_workspace';
-
   return (
     <div className={`practice-workspace practice-workspace--${activeTaskType} space-y-5 text-slate-800`}>
-      {showWorkspaceHeading && (
-        <div className={`practice-workspace__heading flex items-center gap-4 border-b border-slate-200 pb-4${activeTaskType === 'training_history' ? ' practice-workspace__heading--history' : ''}`}>
-          <button type="button" className="practice-workspace__back" aria-label={returnLabel} onClick={leaveWorkspace}>
-            <ArrowLeft aria-hidden="true" size={16} />返回
-          </button>
-          <h1 className="text-2xl font-bold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
-        </div>
-      )}
+      <div className={`practice-workspace__heading flex items-center gap-4 border-b border-slate-200 pb-4${activeTaskType === 'training_history' ? ' practice-workspace__heading--history' : ''}`}>
+        <button type="button" className="practice-workspace__back" aria-label={returnLabel} onClick={leaveWorkspace}>
+          <ArrowLeft aria-hidden="true" size={16} />返回
+        </button>
+        <h1 className="text-2xl font-bold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
+      </div>
       {selectedKnowledgePoint && (
         <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-[15px] text-emerald-950" aria-label="当前考纲知识点">
           <div className="font-semibold">当前训练上下文：{selectedKnowledgePoint.kpName}</div>
@@ -754,7 +750,6 @@ export default function PracticePage({
                 enabled
                 paperId={navigationContext.paperId || navigationContext.paper_id || ''}
                 taskItemId={taskItemId}
-                onBack={leaveWorkspace}
               />
             ) : activeTaskType === 'knowledge_cards' ? (
               <KnowledgeCardLibrary
