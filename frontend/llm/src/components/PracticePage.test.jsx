@@ -270,7 +270,7 @@ describe('PracticePage training modules', () => {
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(title) }));
 
-    if (title !== '模拟病患') {
+    if (!['模拟病患', '智能组卷'].includes(title)) {
       expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
     }
     expect(screen.getByTestId(panelTestId)).toBeInTheDocument();

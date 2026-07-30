@@ -709,17 +709,25 @@ export default function PracticePage({
   const isSP = activeTaskType === 'ai_patient_simulation';
 
   if (isSP) {
-    return <SimulatedPatientChat onBack={leaveWorkspace} />;
+    return (
+      <div className="practice-workspace practice-workspace--ai_patient_simulation">
+        <SimulatedPatientChat onBack={leaveWorkspace} />
+      </div>
+    );
   }
+
+  const showWorkspaceHeading = activeTaskType !== 'paper_workspace';
 
   return (
     <div className={`practice-workspace practice-workspace--${activeTaskType} space-y-5 text-slate-800`}>
-      <div className={`practice-workspace__heading flex items-center gap-4 border-b border-slate-200 pb-4${activeTaskType === 'training_history' ? ' practice-workspace__heading--history' : ''}`}>
-        <button type="button" className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50" onClick={leaveWorkspace}>
-          <ArrowLeft aria-hidden="true" size={16} />{returnLabel}
-        </button>
-        <h1 className="text-2xl font-bold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
-      </div>
+      {showWorkspaceHeading && (
+        <div className={`practice-workspace__heading flex items-center gap-4 border-b border-slate-200 pb-4${activeTaskType === 'training_history' ? ' practice-workspace__heading--history' : ''}`}>
+          <button type="button" className="practice-workspace__back" aria-label={returnLabel} onClick={leaveWorkspace}>
+            <ArrowLeft aria-hidden="true" size={16} />返回
+          </button>
+          <h1 className="text-2xl font-bold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
+        </div>
+      )}
       {selectedKnowledgePoint && (
         <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-[15px] text-emerald-950" aria-label="当前考纲知识点">
           <div className="font-semibold">当前训练上下文：{selectedKnowledgePoint.kpName}</div>
@@ -740,7 +748,12 @@ export default function PracticePage({
             ) : activeTaskType === 'training_history' ? (
               <TrainingHistoryPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
-              <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} taskItemId={taskItemId} />
+              <SmartPaperPanel
+                enabled
+                paperId={navigationContext.paperId || navigationContext.paper_id || ''}
+                taskItemId={taskItemId}
+                onBack={leaveWorkspace}
+              />
             ) : activeTaskType === 'knowledge_cards' ? (
               <KnowledgeCardLibrary
                 cardId={navigationContext.cardId || navigationContext.card_id || ''}
