@@ -249,3 +249,8 @@ __marimo__/
 .streamlit/secrets.toml
 # User-scoped workshop note uploads are runtime data.
 backend/competition_app/data/workshop_note_images/
+
+# Local delivery archives, logs and disposable test artifacts.
+/release_packages/
+/.runlogs/
+/tmp/
