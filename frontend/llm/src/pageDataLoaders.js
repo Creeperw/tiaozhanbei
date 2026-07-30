@@ -251,6 +251,14 @@ export const isResourceMatchReportValid = (data) => (
   && hasItemsArray(data.matches)
 );
 
+export const isResourceEffectivenessValid = (data) => (
+  data && typeof data === 'object'
+  && Number.isInteger(data.window_days)
+  && data.funnel && typeof data.funnel === 'object'
+  && data.learning_outcomes && typeof data.learning_outcomes === 'object'
+  && data.ranking_feedback && typeof data.ranking_feedback === 'object'
+);
+
 export const isMultiscaleStateValid = (data) => (
   data && typeof data === 'object'
   && data.schema_version === '1.0'
@@ -496,10 +504,15 @@ export const isPaperSubmissionPayloadValid = (data) => (
 
 export async function loadPlanningData({ fetcher }) {
   try {
-    const [summaryResult, contextResult, multiscaleResult, candidatesResult] = await Promise.allSettled([
+    const [summaryResult, contextResult, planContextResult, multiscaleResult, candidatesResult] = await Promise.allSettled([
       fetcher({ paths: planningPaths, fallback: emptyPlan, validator: isPlanPayloadValid }),
       fetcher({
         paths: ['/v1/learning-context'],
+        fallback: {},
+        validator: (data) => data && typeof data === 'object',
+      }),
+      fetcher({
+        paths: ['/v1/learning-plans/current/context'],
         fallback: {},
         validator: (data) => data && typeof data === 'object',
       }),
@@ -514,11 +527,20 @@ export async function loadPlanningData({ fetcher }) {
         validator: isPathCandidatesValid,
       }),
     ]);
-    if (summaryResult.status !== 'fulfilled' && contextResult.status !== 'fulfilled') {
-      throw summaryResult.reason || contextResult.reason || new Error('学习规划加载失败');
+    if (summaryResult.status !== 'fulfilled'
+      && contextResult.status !== 'fulfilled'
+      && planContextResult.status !== 'fulfilled') {
+      throw summaryResult.reason
+        || contextResult.reason
+        || planContextResult.reason
+        || new Error('学习规划加载失败');
     }
     const summary = summaryResult.status === 'fulfilled' ? summaryResult.value : { data: emptyPlan, source: null };
     const learningContext = contextResult.status === 'fulfilled' ? contextResult.value.data : {};
+    const planContext = planContextResult.status === 'fulfilled' ? planContextResult.value.data : {};
+    const canonicalLongTermPlan = planContext.long_term_plan || learningContext.long_term_plan || null;
+    const canonicalShortTermPlan = planContext.short_term_plan || learningContext.short_term_plan || null;
+    const canonicalLearningTask = planContext.learning_task || learningContext.learning_task || null;
     const multiscale = multiscaleResult.status === 'fulfilled'
       ? multiscaleResult.value.data
       : null;
@@ -528,12 +550,12 @@ export async function loadPlanningData({ fetcher }) {
     const data = {
       ...emptyPlan,
       ...summary.data,
-      long_term_plan_content: String(learningContext.long_term_plan?.content || ''),
-      long_term_plan_stages: Array.isArray(learningContext.long_term_plan?.stages)
-        ? learningContext.long_term_plan.stages
+      long_term_plan_content: String(canonicalLongTermPlan?.content || ''),
+      long_term_plan_stages: Array.isArray(canonicalLongTermPlan?.stages)
+        ? canonicalLongTermPlan.stages
         : [],
-      short_term_plan_content: String(learningContext.short_term_plan?.content || ''),
-      daily_tasks: learningTaskToDailyTasks(learningContext.learning_task),
+      short_term_plan_content: String(canonicalShortTermPlan?.content || ''),
+      daily_tasks: learningTaskToDailyTasks(canonicalLearningTask),
       daily_task_timer: learningContext.daily_task_timer || null,
       multiscale,
       path_candidates: pathCandidates,
@@ -634,6 +656,71 @@ export async function loadReportsData({ fetcher }) {
         source: null,
       };
     }
+  }
+}
+
+export async function loadResourceEffectiveness({ fetcher, days = 30 }) {
+  try {
+    const { data, source } = await fetcher({
+      paths: [`/v1/resource-effectiveness?days=${days}`],
+      fallback: null,
+      validator: isResourceEffectivenessValid,
+    });
+    return { effectiveness: data, error: '', source };
+  } catch (error) {
+    return {
+      effectiveness: null,
+      error: error.message || '资源推荐效果加载失败',
+      source: null,
+    };
+  }
+}
+
+export async function recordResourceRecommendationEvent({
+  fetcher,
+  feedback,
+  eventType,
+}) {
+  const supportedEvents = Array.isArray(feedback?.supported_events)
+    ? feedback.supported_events
+    : [];
+  if (!feedback?.recommendation_view_id || !feedback?.resource_id) {
+    return { event: null, error: '当前资源缺少推荐反馈凭证', source: null };
+  }
+  if (!['impression', 'click', 'complete'].includes(eventType)
+    || (supportedEvents.length > 0 && !supportedEvents.includes(eventType))) {
+    return { event: null, error: '当前资源不支持该反馈事件', source: null };
+  }
+  try {
+    const endpoint = String(
+      feedback.event_endpoint || '/v1/resource-recommendations/events',
+    ).replace(/^\/api(?=\/)/, '');
+    const { data, source } = await fetcher({
+      paths: [endpoint],
+      fallback: null,
+      options: {
+        method: 'POST',
+        body: JSON.stringify({
+          event_type: eventType,
+          recommendation_view_id: feedback.recommendation_view_id,
+          resource_id: feedback.resource_id,
+          resource_type: feedback.resource_type || '',
+          kp_ids: Array.isArray(feedback.kp_ids) ? feedback.kp_ids : [],
+        }),
+      },
+      validator: (value) => (
+        value && typeof value === 'object'
+        && value.event_type === eventType
+        && value.recorded === true
+      ),
+    });
+    return { event: data, error: '', source };
+  } catch (error) {
+    return {
+      event: null,
+      error: error.message || '资源反馈记录失败',
+      source: null,
+    };
   }
 }
 
@@ -1049,7 +1136,7 @@ export async function submitPracticeAnswer({ fetcher, question, answer, taskItem
   }
   try {
     const { data, source } = await fetcher({
-      paths: ['/training/practice/grade', '/v1/workshop/practice/grade'],
+      paths: ['/v1/workshop/practice/grade', '/training/practice/grade'],
       fallback: null,
       options: {
         method: 'POST',

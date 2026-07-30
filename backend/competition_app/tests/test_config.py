@@ -13,6 +13,11 @@ def test_stub_mode_does_not_require_external_secrets(monkeypatch: pytest.MonkeyP
     for name in ("DASHSCOPE_API_KEY", "SILICONFLOW_API_KEY", "MYSQL_PASSWORD"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("COMPETITION_APP_MODE", "stub")
+    monkeypatch.setenv(
+        "CHAT_MODELS",
+        "qwen3.7-flash,qwen3.7-max-preview,glm-5.2,"
+        "qwen3.7-flash-2026-07-15,qwen-plus",
+    )
 
     settings = Settings.from_env()
 

@@ -401,6 +401,7 @@ def get_question_detail(
         "explanation": question.explanation or "",
     }
 
+
 @router.get("/mistakes/{mistake_id}")
 @stable_practice_router.get("/mistakes/{mistake_id}")
 def get_mistake(

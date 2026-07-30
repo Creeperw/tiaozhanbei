@@ -62,7 +62,7 @@ function NotificationSettingsDialog({ open, onClose }) {
   );
 }
 
-export default function LearningGovernancePanel() {
+export default function LearningGovernancePanel({ focusNotificationId = '' }) {
   const [notifications, setNotifications] = useState({ unread_count: 0, items: [] });
   const [interventions, setInterventions] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -91,6 +91,13 @@ export default function LearningGovernancePanel() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!focusNotificationId || loading) return;
+    window.setTimeout(() => {
+      document.getElementById(`notification-${focusNotificationId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+  }, [focusNotificationId, loading]);
 
   const updateNotification = async (notificationId, status) => {
     setBusy(`notification:${notificationId}`);
@@ -148,7 +155,7 @@ export default function LearningGovernancePanel() {
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><Bell size={16} />通知</div>
           <div className="mt-4 space-y-3">
             {(notifications.items || []).map((item) => (
-              <div key={item.notification_id} className={`rounded-2xl p-4 ${item.status === 'unread' ? 'bg-emerald-50/80' : 'bg-slate-50'}`}>
+              <div id={`notification-${item.notification_id}`} key={item.notification_id} className={`rounded-2xl p-4 transition-shadow ${item.notification_id === focusNotificationId ? 'ring-2 ring-emerald-400 ring-offset-2' : ''} ${item.status === 'unread' ? 'bg-emerald-50/80' : 'bg-slate-50'}`}>
                 <div className="flex items-start justify-between gap-3"><div><div className="text-sm font-semibold text-slate-950">{item.title}</div><p className="mt-1 text-sm leading-6 text-slate-600">{item.message}</p></div><span className="text-xs text-slate-400">{item.category}</span></div>
                 {item.status === 'unread' && <div className="mt-3 flex gap-2"><button type="button" className="button button--secondary" disabled={busy === `notification:${item.notification_id}`} onClick={() => updateNotification(item.notification_id, 'read')}><Check size={14} />已读</button><button type="button" className="button button--ghost" disabled={busy === `notification:${item.notification_id}`} onClick={() => updateNotification(item.notification_id, 'dismissed')}><X size={14} />忽略</button></div>}
               </div>

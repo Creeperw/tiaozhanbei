@@ -102,3 +102,32 @@ async def test_blueprint_compiler_rejects_value_missing_from_document() -> None:
         issue.field_path == "/units/0/retrieval_query"
         for issue in envelope.result.issues
     )
+
+
+class MarkdownNormalizedBlueprintCompilerModel(AnchoredBlueprintCompilerModel):
+    async def complete_json(self, role, payload, on_delta=None):
+        value = await super().complete_json(role, payload, on_delta)
+        value["contract"]["field_anchors"].pop("/units")
+        value["contract"]["field_anchors"]["/title"] = [
+            {
+                "source_field": "blueprint_document",
+                "source_quote": "标题：四君子汤练习卷",
+            }
+        ]
+        value["contract"]["field_anchors"]["/units/0/learning_objective"] = [
+            {
+                "source_field": "blueprint_document",
+                "source_quote": "学习目标：掌握组成。",
+            }
+        ]
+        return value
+
+
+@pytest.mark.asyncio
+async def test_blueprint_compiler_accepts_formatting_only_anchor_differences() -> None:
+    document = _DOCUMENT.replace("【标题】", "**标题**：")
+    envelope = await PaperBlueprintCompilerAgent(
+        MarkdownNormalizedBlueprintCompilerModel()
+    ).compile(_CONTEXT, blueprint_document=document)
+
+    assert envelope.result.status == "compiled"

@@ -10,19 +10,20 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from APP.backend import diagnosis_agent_service, system_data_service
+from APP.backend import (
+    diagnosis_agent_service,
+    learning_statistics_service,
+    system_data_service,
+)
 from APP.backend.database import (
-    AuditResultRecord,
-    GradingResultRecord,
     KnowledgeCardRecord,
     KnowledgeMasteryState,
     KnowledgePoint,
-    LearningAttemptItemRecord,
-    LearningAttemptRecord,
     LearnerKPReviewState,
     LearnerKnowledgeMastery,
     LearningInterventionLifecycle,
     LearningInterventionRecord,
+    LearningActivityRecord,
     LearningQuestionAttempt,
     MistakeRecord,
     NotificationPreference,
@@ -36,7 +37,7 @@ from APP.backend.time_utils import utc_now
 
 
 SCHEMA_VERSION = "1.0"
-METHODOLOGY_VERSION = "learning-monitoring-v3-daily-atomic"
+METHODOLOGY_VERSION = "learning-monitoring-v4-auditable-window"
 REFERENCE_LINKS = [
     {
         "reference_id": "caliper-1edtech-1.2",
@@ -112,21 +113,22 @@ def _retention_value(row: LearnerKPReviewState, now: datetime) -> tuple[float | 
 def _dimension(
     key: str,
     label: str,
-    value: float,
+    value: float | None,
     *,
     source_ids: list[str],
     formula: str,
     evidence_count: int,
     window_days: int | None,
 ) -> dict[str, Any]:
+    observed = evidence_count > 0 and value is not None
     return {
         "key": key,
         "label": label,
-        "value": round(_clamp(value), 4),
+        "value": round(_clamp(value), 4) if observed else None,
         "source_ids": source_ids,
         "formula": formula,
         "evidence_count": max(0, int(evidence_count)),
-        "status": "observed" if evidence_count > 0 else "insufficient_evidence",
+        "status": "observed" if observed else "insufficient_evidence",
         "window_days": window_days,
     }
 
@@ -199,7 +201,13 @@ def _mastery_rows(db: Session, user_id: int) -> list[dict[str, Any]]:
     ]
 
 
-def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dict[str, Any]:
+def build_learning_insights(
+    db: Session,
+    user_id: int,
+    *,
+    days: int = 30,
+    review_projection: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if days not in {7, 30, 90}:
         raise ValueError("days must be one of: 7, 30, 90")
     now = utc_now()
@@ -245,43 +253,15 @@ def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dic
         LearningQuestionAttempt.answered_at >= window_start,
         LearningQuestionAttempt.answered_at <= now,
     ).all()
-    scored_attempts = (
-        db.query(GradingResultRecord)
-        .join(
-            LearningAttemptItemRecord,
-            LearningAttemptItemRecord.attempt_item_id
-            == GradingResultRecord.attempt_item_id,
-        )
-        .join(
-            LearningAttemptRecord,
-            LearningAttemptRecord.attempt_id == LearningAttemptItemRecord.attempt_id,
-        )
-        .join(
-            AuditResultRecord,
-            (AuditResultRecord.source_artifact_id == GradingResultRecord.artifact_id)
-            & (
-                AuditResultRecord.source_artifact_version
-                == GradingResultRecord.version
-            ),
-        )
-        .filter(
-            LearningAttemptRecord.learner_id == user_id,
-            LearningAttemptRecord.attempt_type.in_(("practice", "paper")),
-            LearningAttemptRecord.submitted_at >= window_start,
-            LearningAttemptRecord.submitted_at <= now,
-            GradingResultRecord.status == "reviewed",
-            GradingResultRecord.score.is_not(None),
-            GradingResultRecord.max_score.is_not(None),
-            GradingResultRecord.score >= 0,
-            GradingResultRecord.max_score > 0,
-            GradingResultRecord.score <= GradingResultRecord.max_score,
-            AuditResultRecord.decision == "pass",
-            AuditResultRecord.status.in_(("completed", "reviewed")),
-        )
-        .all()
-    )
-    scored_points = sum(float(row.score) for row in scored_attempts)
-    available_points = sum(float(row.max_score) for row in scored_attempts)
+    scored_attempts = [
+        row
+        for row in learning_statistics_service._accepted_grading_rows(db, user_id)
+        if row["attempt_type"] in {"practice", "paper"}
+        and row["submitted_at"] is not None
+        and window_start <= row["submitted_at"] <= now
+    ]
+    scored_points = sum(float(row["score"]) for row in scored_attempts)
+    available_points = sum(float(row["max_score"]) for row in scored_attempts)
     practice_score_rate = (
         scored_points / available_points if available_points > 0 else 0.0
     )
@@ -313,9 +293,26 @@ def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dic
         and len(attempts) >= 3
         and len(mastery) >= 1
     )
-    due_count = sum(
+    legacy_due_count = sum(
         row.status == "active" and row.next_review_at is not None and row.next_review_at <= now
         for row in review_rows
+    )
+    canonical_due_count = (
+        review_projection.get("due_count")
+        if isinstance(review_projection, dict)
+        and review_projection.get("source") == "canonical_review_memory"
+        else None
+    )
+    due_count = (
+        max(0, int(canonical_due_count))
+        if isinstance(canonical_due_count, (int, float))
+        and not isinstance(canonical_due_count, bool)
+        else legacy_due_count
+    )
+    review_projection_source = (
+        "canonical_review_memory"
+        if canonical_due_count is not None
+        else "learner_kp_review_states"
     )
     weak_points = [
         {
@@ -339,6 +336,7 @@ def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dic
             "confidence": evidence_coverage,
             "confidence_interpretation": "data_coverage_score_not_statistical_confidence",
             "due_review_count": due_count,
+            "review_projection_source": review_projection_source,
         },
         "dimensions": [
             _dimension("mastery", "知识掌握", average_mastery,
@@ -411,6 +409,17 @@ def build_learning_insights(db: Session, user_id: int, *, days: int = 30) -> dic
             {"source_id": "audit_result_records", "table": "audit_result_records", "fields": ["source_artifact_id", "source_artifact_version", "decision", "status"], "time_field": None, "window_days": days},
             {"source_id": "knowledge_mastery_states", "table": "knowledge_mastery_states", "fields": ["mastery_score", "mastery_confidence", "attempt_count", "calculation_version"], "unit": "percent_0_100", "window_days": None},
             {"source_id": "learner_kp_review_states", "table": "learner_kp_review_states", "fields": ["last_review_at", "stability_seconds", "next_review_at", "formula_version"], "window_days": None},
+            {
+                "source_id": "canonical_review_memory",
+                "table": "review_memory_units",
+                "fields": ["source_attempt_id", "next_review_at", "version"],
+                "window_days": None,
+                "status": (
+                    "authoritative_due_projection"
+                    if review_projection_source == "canonical_review_memory"
+                    else "not_supplied"
+                ),
+            },
             {"source_id": "mistake_records", "table": "mistake_records", "fields": ["error_type", "kp_ids_json", "created_at"], "time_field": "created_at", "window_days": days},
         ],
         "methodology": {
@@ -573,9 +582,42 @@ def build_resource_match_report(
         if str(kp_id) in target_set
     }
     aggregate_coverage = len(covered_kps) / len(target_set) if target_set else 0.0
+    recommendation_view = None
+    if selected:
+        recommendation_view = LearningActivityRecord(
+            user_id=user_id,
+            activity_type="resource_recommendation_offer",
+            resource_id=f"recommendation-view:{uuid4()}",
+            resource_type="resource_match_report",
+            completion_status="offered",
+            payload_json=json.dumps(
+                {
+                    "recommendation_keys": [
+                        str(item["resource_id"]) for item in selected
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            created_at=utc_now(),
+        )
+        db.add(recommendation_view)
+        db.flush()
+    if recommendation_view is not None:
+        for item in selected:
+            item["feedback"] = {
+                "recommendation_view_id": recommendation_view.resource_id,
+                "resource_id": item["resource_id"],
+                "resource_type": item["resource_type"],
+                "kp_ids": list(item.get("kp_ids") or []),
+                "event_endpoint": "/api/v1/resource-recommendations/events",
+                "supported_events": ["impression", "click", "complete"],
+            }
     return {
         "schema_version": SCHEMA_VERSION,
         "generated_at": insights.get("generated_at"),
+        "recommendation_view_id": (
+            recommendation_view.resource_id if recommendation_view is not None else None
+        ),
         "target": {
             "kp_ids": target_kps,
             "available_minutes": available_minutes,
@@ -610,6 +652,542 @@ def build_resource_match_report(
             "recommended_validation_metrics": ["Precision@K", "Recall@K", "NDCG@K", "task_completion_rate", "post_test_learning_gain"],
             "references": [REFERENCE_LINKS[-1]],
         },
+    }
+
+
+def build_task_load_policy(
+    db: Session,
+    user_id: int,
+    *,
+    plan_context: dict[str, Any] | None = None,
+    review_projection: dict[str, Any] | None = None,
+    days: int = 7,
+) -> dict[str, Any]:
+    """Compute the next daily-task budget from auditable system observations.
+
+    This policy is deliberately deterministic.  The model may explain the
+    result, but it does not calculate or override the recommended budget.
+    Missing observations are neutral instead of being interpreted as failure.
+    """
+
+    if days not in {7, 30, 90}:
+        raise ValueError("days must be one of: 7, 30, 90")
+    plan_context = plan_context or {}
+    task = plan_context.get("learning_task")
+    task = task if isinstance(task, dict) else {}
+    short_plan = plan_context.get("short_term_plan")
+    short_plan = short_plan if isinstance(short_plan, dict) else {}
+    metrics = system_data_service.build_learning_window_metrics(
+        db, user_id=user_id, days=days
+    )
+    insights = build_learning_insights(
+        db,
+        user_id,
+        days=days,
+        review_projection=review_projection,
+    )
+    completion_metric = metrics.get("daily_atomic_task_completion_rate") or {}
+    completion = (
+        float(completion_metric.get("value"))
+        if completion_metric.get("available")
+        and isinstance(completion_metric.get("value"), (int, float))
+        else None
+    )
+    counts = metrics.get("counts") or {}
+    focus_minutes = max(0, round(float(counts.get("focus_seconds") or 0) / 60))
+    accuracy_dimension = next(
+        (
+            item
+            for item in insights.get("dimensions") or []
+            if isinstance(item, dict) and item.get("key") == "accuracy"
+        ),
+        {},
+    )
+    accuracy = (
+        float(accuracy_dimension.get("value"))
+        if accuracy_dimension.get("status") == "observed"
+        and isinstance(accuracy_dimension.get("value"), (int, float))
+        else None
+    )
+    mastery_rows = insights.get("mastery_heatmap") or []
+    average_mastery = (
+        sum(float(item.get("score") or 0.0) for item in mastery_rows) / len(mastery_rows)
+        if mastery_rows
+        else None
+    )
+    canonical_due = (
+        review_projection.get("due_count")
+        if isinstance(review_projection, dict)
+        and review_projection.get("source") == "canonical_review_memory"
+        else None
+    )
+    due_count = (
+        max(0, int(canonical_due))
+        if isinstance(canonical_due, (int, float))
+        and not isinstance(canonical_due, bool)
+        else int(insights.get("overview", {}).get("due_review_count") or 0)
+    )
+
+    package = short_plan.get("short_term_learning_package")
+    package = package if isinstance(package, dict) else {}
+    block_minutes = [
+        int(item.get("estimated_minutes"))
+        for item in package.get("task_blocks") or []
+        if isinstance(item, dict)
+        and isinstance(item.get("estimated_minutes"), (int, float))
+        and int(item.get("estimated_minutes")) > 0
+    ]
+    baseline_minutes = int(
+        task.get("estimated_minutes")
+        or (round(sum(block_minutes) / len(block_minutes)) if block_minutes else 60)
+    )
+    baseline_minutes = max(10, min(24 * 60, baseline_minutes))
+
+    # Completion is the primary load signal.  Accuracy/mastery influence task
+    # composition, but low scores never trigger a larger workload.
+    factor = 1.0
+    reasons: list[str] = []
+    if completion is None:
+        reasons.append("近期待办完成样本不足，保持当前基准负载。")
+    elif completion < 0.5:
+        factor = 0.65
+        reasons.append("近期原子任务完成率低于50%，缩小次日任务量。")
+    elif completion < 0.8:
+        factor = 0.85
+        reasons.append("近期原子任务完成率尚未稳定，适度降低次日任务量。")
+    elif completion >= 0.9 and (accuracy is None or accuracy >= 0.7):
+        factor = 1.1
+        reasons.append("近期执行稳定，在不突破时间上限的前提下小幅增加负载。")
+    else:
+        reasons.append("近期执行基本稳定，保持当前负载。")
+
+    planned_window_minutes = max(1, baseline_minutes * max(1, int(counts.get("tasks") or 1)))
+    focus_ratio = focus_minutes / planned_window_minutes
+    if int(counts.get("focus_sessions") or 0) > 0 and focus_ratio < 0.5:
+        factor = min(factor, 0.8)
+        reasons.append("有效专注时长低于已发布任务量的一半，避免继续加量。")
+
+    recommended_minutes = max(10, round(baseline_minutes * factor))
+    review_minutes = min(
+        recommended_minutes // 3,
+        due_count * 5,
+    )
+    if due_count:
+        reasons.append(f"当前有{due_count}个到期复习知识点，预留复习时间。")
+    remediation_needed = (
+        (accuracy is not None and accuracy < 0.6)
+        or (average_mastery is not None and average_mastery < 0.6)
+    )
+    remediation_minutes = (
+        min(recommended_minutes // 3, max(10, recommended_minutes // 4))
+        if remediation_needed
+        else 0
+    )
+    if remediation_needed:
+        reasons.append("练习得分或掌握状态偏低，保留补弱训练，不追加新知识量。")
+    new_learning_minutes = max(
+        0, recommended_minutes - review_minutes - remediation_minutes
+    )
+
+    evidence = {
+        "task_completion_rate": completion,
+        "effective_focus_minutes": focus_minutes
+        if int(counts.get("focus_sessions") or 0) > 0
+        else None,
+        "practice_score_rate": accuracy,
+        "average_mastery": round(average_mastery, 4)
+        if average_mastery is not None
+        else None,
+        "due_review_count": due_count,
+    }
+    return {
+        "schema_version": "1.0",
+        "policy_id": "next-day-load-v1",
+        "generated_at": _iso(utc_now()),
+        "baseline_minutes": baseline_minutes,
+        "recommended_minutes": recommended_minutes,
+        "change_minutes": recommended_minutes - baseline_minutes,
+        "direction": (
+            "increase"
+            if recommended_minutes > baseline_minutes
+            else "decrease"
+            if recommended_minutes < baseline_minutes
+            else "hold"
+        ),
+        "allocation": {
+            "new_learning_minutes": new_learning_minutes,
+            "review_minutes": review_minutes,
+            "remediation_minutes": remediation_minutes,
+            "buffer_minutes": 0,
+        },
+        "evidence": evidence,
+        "evidence_availability": {
+            key: value is not None for key, value in evidence.items()
+        },
+        "reasons": reasons,
+        "constraints": {
+            "minimum_minutes": 10,
+            "maximum_minutes": 24 * 60,
+            "does_not_fill_available_time": True,
+            "missing_data_policy": "neutral",
+        },
+        "data_sources": [
+            "daily_task_instances,daily_task_items",
+            "learning_focus_sessions",
+            "grading_result_records,learning_attempts,audit_result_records",
+            "knowledge_mastery_states",
+            (
+                "review_memory_units"
+                if canonical_due is not None
+                else "learner_kp_review_states"
+            ),
+        ],
+    }
+
+
+def _recommendation_view(
+    db: Session,
+    user_id: int,
+    recommendation_view_id: str,
+) -> LearningActivityRecord:
+    row = (
+        db.query(LearningActivityRecord)
+        .filter_by(
+            user_id=user_id,
+            activity_type="dashboard_recommendations_view",
+            resource_id=recommendation_view_id,
+        )
+        .one_or_none()
+    )
+    if row is None:
+        raise LookupError("recommendation view was not found for current user")
+    return row
+
+
+def record_resource_recommendation_event(
+    db: Session,
+    user_id: int,
+    *,
+    event_type: str,
+    recommendation_view_id: str,
+    resource_id: str,
+    resource_type: str = "",
+    kp_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    """Persist a user-owned recommendation click or verified completion."""
+
+    if event_type not in {"impression", "click", "complete"}:
+        raise ValueError("event_type must be impression, click or complete")
+    if event_type == "impression":
+        view = (
+            db.query(LearningActivityRecord)
+            .filter_by(
+                user_id=user_id,
+                resource_id=recommendation_view_id,
+            )
+            .filter(
+                LearningActivityRecord.activity_type.in_(
+                    (
+                        "resource_recommendation_offer",
+                        "dashboard_recommendations_view",
+                    )
+                )
+            )
+            .one_or_none()
+        )
+        if view is None:
+            raise LookupError("recommendation offer was not found for current user")
+    else:
+        view = _recommendation_view(db, user_id, recommendation_view_id)
+    displayed = {
+        str(item)
+        for item in _json(view.payload_json, {}).get("recommendation_keys", [])
+        if str(item).strip()
+    }
+    if resource_id not in displayed:
+        raise ValueError("resource was not displayed in this recommendation view")
+    if event_type == "impression":
+        already_recorded = view.activity_type == "dashboard_recommendations_view"
+        if not already_recorded:
+            view.activity_type = "dashboard_recommendations_view"
+            view.resource_type = "dashboard_recommendations"
+            view.completion_status = "viewed"
+            db.flush()
+            system_data_service.rebuild_system_data(db, user_id=user_id)
+        return {
+            "event_type": event_type,
+            "recommendation_view_id": recommendation_view_id,
+            "resource_id": resource_id,
+            "recorded": True,
+            "idempotent": already_recorded,
+            "created_at": _iso(view.created_at),
+        }
+    activity_type = "resource_click" if event_type == "click" else "resource_complete"
+    rows = (
+        db.query(LearningActivityRecord)
+        .filter_by(
+            user_id=user_id,
+            activity_type=activity_type,
+            resource_id=resource_id,
+        )
+        .order_by(LearningActivityRecord.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    existing = next(
+        (
+            row
+            for row in rows
+            if _json(row.payload_json, {}).get("recommendation_view_id")
+            == recommendation_view_id
+        ),
+        None,
+    )
+    if existing is None:
+        normalized_kps = list(
+            dict.fromkeys(str(item).strip() for item in (kp_ids or []) if str(item).strip())
+        )
+        mastery_by_kp = {
+            str(row.kp_id): _percent_score_to_ratio(row.mastery_score)
+            for row in db.query(KnowledgeMasteryState)
+            .filter(
+                KnowledgeMasteryState.learner_id == user_id,
+                KnowledgeMasteryState.kp_id.in_(normalized_kps or [""]),
+            )
+            .all()
+        }
+        payload = {
+            "recommendation_view_id": recommendation_view_id,
+            "kp_ids": normalized_kps,
+            "baseline_mastery": mastery_by_kp,
+            "event_source": "resource_match_report",
+        }
+        existing = LearningActivityRecord(
+            user_id=user_id,
+            activity_type=activity_type,
+            resource_id=resource_id,
+            resource_type=resource_type or "learning_resource",
+            completion_status="completed",
+            payload_json=json.dumps(payload, ensure_ascii=False),
+            created_at=utc_now(),
+        )
+        db.add(existing)
+        db.flush()
+        system_data_service.rebuild_system_data(db, user_id=user_id)
+    return {
+        "event_type": event_type,
+        "recommendation_view_id": recommendation_view_id,
+        "resource_id": resource_id,
+        "recorded": True,
+        "idempotent": existing in rows,
+        "created_at": _iso(existing.created_at),
+    }
+
+
+def build_resource_effectiveness_report(
+    db: Session,
+    user_id: int,
+    *,
+    days: int = 30,
+) -> dict[str, Any]:
+    """Aggregate recommendation use and observable post-use learning evidence."""
+
+    if days not in {7, 30, 90}:
+        raise ValueError("days must be one of: 7, 30, 90")
+    now = utc_now()
+    window_start = now - timedelta(days=days)
+    rows = (
+        db.query(LearningActivityRecord)
+        .filter(
+            LearningActivityRecord.user_id == user_id,
+            LearningActivityRecord.created_at >= window_start,
+            LearningActivityRecord.created_at <= now,
+            LearningActivityRecord.activity_type.in_(
+                (
+                    "dashboard_recommendations_view",
+                    "resource_click",
+                    "resource_complete",
+                )
+            ),
+        )
+        .all()
+    )
+    views = [row for row in rows if row.activity_type == "dashboard_recommendations_view"]
+    clicks = [row for row in rows if row.activity_type == "resource_click"]
+    completions = [row for row in rows if row.activity_type == "resource_complete"]
+    displayed = {
+        (row.resource_id, str(resource_id))
+        for row in views
+        for resource_id in _json(row.payload_json, {}).get("recommendation_keys", [])
+    }
+    clicked = {
+        (_json(row.payload_json, {}).get("recommendation_view_id"), row.resource_id)
+        for row in clicks
+    }
+    completed = {
+        (_json(row.payload_json, {}).get("recommendation_view_id"), row.resource_id)
+        for row in completions
+    }
+
+    current_mastery = {
+        str(row.kp_id): _percent_score_to_ratio(row.mastery_score)
+        for row in db.query(KnowledgeMasteryState)
+        .filter(KnowledgeMasteryState.learner_id == user_id)
+        .all()
+    }
+    gains: list[float] = []
+    completed_kps: set[str] = set()
+    completed_at_by_kp: dict[str, datetime] = {}
+    for row in completions:
+        payload = _json(row.payload_json, {})
+        baseline = payload.get("baseline_mastery")
+        baseline = baseline if isinstance(baseline, dict) else {}
+        for kp_id in payload.get("kp_ids") or []:
+            kp_key = str(kp_id)
+            completed_kps.add(kp_key)
+            observed_at = completed_at_by_kp.get(kp_key)
+            if observed_at is None or row.created_at < observed_at:
+                completed_at_by_kp[kp_key] = row.created_at
+            if kp_key in baseline and kp_key in current_mastery:
+                gains.append(current_mastery[kp_key] - float(baseline[kp_key]))
+
+    question_kps = {
+        str(row.question_id): {
+            str(item)
+            for item in _json(row.kp_ids_json, [])
+            if str(item).strip()
+        }
+        for row in db.query(QuestionBankItem)
+        .filter(QuestionBankItem.status == "active")
+        .all()
+    }
+    post_attempts = []
+    for row in (
+        db.query(LearningQuestionAttempt)
+        .filter(
+            LearningQuestionAttempt.user_id == user_id,
+            LearningQuestionAttempt.answered_at >= window_start,
+            LearningQuestionAttempt.answered_at <= now,
+        )
+        .all()
+    ):
+        overlapping_kps = question_kps.get(str(row.question_id), set()) & completed_kps
+        if any(
+            row.answered_at >= completed_at_by_kp[kp_id]
+            for kp_id in overlapping_kps
+            if kp_id in completed_at_by_kp
+        ):
+            post_attempts.append(row)
+    post_accuracy = (
+        sum(bool(row.is_correct) for row in post_attempts) / len(post_attempts)
+        if post_attempts
+        else None
+    )
+    return {
+        "schema_version": "1.0",
+        "generated_at": _iso(now),
+        "window_days": days,
+        "funnel": {
+            "displayed_resource_count": len(displayed),
+            "clicked_resource_count": len(displayed & clicked),
+            "completed_resource_count": len(displayed & completed),
+            "click_through_rate": round(len(displayed & clicked) / len(displayed), 4)
+            if displayed
+            else None,
+            "completion_rate_after_click": round(
+                len(clicked & completed) / len(clicked), 4
+            )
+            if clicked
+            else None,
+        },
+        "learning_outcomes": {
+            "post_resource_attempt_count": len(post_attempts),
+            "post_resource_accuracy": round(post_accuracy, 4)
+            if post_accuracy is not None
+            else None,
+            "mastery_delta": round(sum(gains) / len(gains), 4) if gains else None,
+            "status": "observed" if post_attempts or gains else "insufficient_evidence",
+        },
+        "ranking_feedback": {
+            "eligible_for_weight_calibration": len(completions) >= 5
+            and (len(post_attempts) >= 5 or len(gains) >= 3),
+            "policy": "do_not_change_ranking_weights_until_sufficient_outcome_evidence",
+        },
+        "data_sources": [
+            "learning_activity_records",
+            "learning_question_attempts,question_bank_items",
+            "knowledge_mastery_states",
+        ],
+    }
+
+
+def record_plan_progression_event(
+    db: Session,
+    user_id: int,
+    progression: dict[str, Any],
+) -> dict[str, Any]:
+    """Persist one idempotent plan-progression activity and notification."""
+
+    event_id = str(progression.get("event_id") or "").strip()
+    if not event_id:
+        raise ValueError("progression event_id is required")
+    stage = int(progression.get("stage") or 0)
+    next_stage = progression.get("next_stage")
+    completed_layer = str(progression.get("completed_layer") or "daily_task")
+    existing = (
+        db.query(LearningActivityRecord)
+        .filter_by(
+            user_id=user_id,
+            activity_type="plan_progression",
+            resource_id=event_id,
+        )
+        .one_or_none()
+    )
+    if existing is None:
+        existing = LearningActivityRecord(
+            user_id=user_id,
+            activity_type="plan_progression",
+            resource_id=event_id,
+            resource_type=completed_layer,
+            completion_status="completed",
+            payload_json=json.dumps(progression, ensure_ascii=False),
+            created_at=utc_now(),
+        )
+        db.add(existing)
+        db.flush()
+    if progression.get("long_term_completed"):
+        title = "长期规划已完成"
+        message = "所有长期阶段的验收证据均已通过。"
+    elif next_stage:
+        title = "学习阶段已推进"
+        message = f"阶段{stage}已通过，系统已进入阶段{int(next_stage)}。"
+    elif progression.get("short_term_completed"):
+        title = "短期计划已通过"
+        message = "本期任务块均已完成，可据此制定下一期短期计划。"
+    else:
+        title = "今日任务已完成"
+        message = "今日原子任务已全部完成，完成证据已写入学习规划。"
+    notification = create_notification(
+        db,
+        user_id,
+        category="plan_review",
+        title=title,
+        message=message,
+        dedupe_key=f"plan-progression:{event_id}",
+        source_type="plan_progression",
+        source_id=event_id,
+        action={
+            "type": "navigate",
+            "page": "learning_path",
+            "params": {"stage": next_stage or stage or 1},
+        },
+    )
+    return {
+        "event_id": event_id,
+        "recorded": True,
+        "notification_id": (
+            notification.notification_id if notification is not None else None
+        ),
     }
 
 
@@ -818,6 +1396,8 @@ def evaluate_due_interventions(
     current = {
         item["key"]: float(item["value"])
         for item in insights.get("dimensions", [])
+        if isinstance(item.get("value"), (int, float))
+        and not isinstance(item.get("value"), bool)
     }
     evaluated = []
     for lifecycle in rows:
@@ -891,6 +1471,34 @@ def record_intervention_feedback(db: Session, user_id: int, intervention_id: int
     return serialize_intervention(db, lifecycle) if lifecycle else {"intervention_id": row.id, "effect_status": row.effect_status}
 
 
+def _consecutive_low_completion_days(
+    insights: dict[str, Any],
+    *,
+    threshold: float = 0.5,
+) -> int:
+    """Count the latest contiguous planned days below the completion threshold."""
+    series = (
+        insights.get("activity_trends", {}).get("series", [])
+        if isinstance(insights.get("activity_trends"), dict)
+        else []
+    )
+    observed = [
+        item
+        for item in series
+        if isinstance(item, dict) and str(item.get("date") or "").strip()
+    ]
+    observed.sort(key=lambda item: str(item.get("date")))
+    streak = 0
+    for item in reversed(observed):
+        value = item.get("daily_atomic_task_completion_rate")
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            break
+        if float(value) >= threshold:
+            break
+        streak += 1
+    return streak
+
+
 def run_plan_review(
     db: Session,
     user_id: int,
@@ -903,18 +1511,81 @@ def run_plan_review(
     iso_year, iso_week, _ = now.isocalendar()
     period_key = f"{iso_year}-W{iso_week:02d}" if trigger_type == "weekly" else now.date().isoformat()
     existing = db.query(PlanReviewRecord).filter_by(user_id=user_id, trigger_type=trigger_type, period_key=period_key).one_or_none()
-    if existing is not None:
-        return serialize_plan_review(existing)
-    dimensions = {item["key"]: float(item["value"]) for item in insights.get("dimensions", [])}
-    completion = dimensions.get("execution", 0.0)
-    mastery = dimensions.get("mastery", 0.0)
+    dimensions = {
+        item["key"]: float(item["value"])
+        for item in insights.get("dimensions", [])
+        if isinstance(item.get("value"), (int, float))
+        and not isinstance(item.get("value"), bool)
+    }
+    completion = dimensions.get("execution")
+    mastery = dimensions.get("mastery")
     due = int(insights.get("overview", {}).get("due_review_count") or 0)
+    low_completion_streak_days = _consecutive_low_completion_days(insights)
     evidence = [
-        f"任务完成率 {completion:.0%}",
-        f"平均掌握度 {mastery:.0%}",
+        (
+            f"任务完成率 {completion:.0%}"
+            if completion is not None
+            else "任务完成率暂无足够证据"
+        ),
+        (
+            f"平均掌握度 {mastery:.0%}"
+            if mastery is not None
+            else "平均掌握度暂无足够证据"
+        ),
         f"到期复习 {due} 个知识点",
     ]
-    if completion < 0.5:
+    if low_completion_streak_days:
+        evidence.append(
+            f"连续 {low_completion_streak_days} 个有正式任务的自然日完成率低于50%"
+        )
+    policy_conditions: list[dict[str, Any]] = []
+    for layer, plan_key in (
+        ("long_term", "long_term_plan"),
+        ("short_term", "short_term_plan"),
+    ):
+        plan = plan_context.get(plan_key)
+        plan = plan if isinstance(plan, dict) else {}
+        recovery = plan.get("recovery_policy")
+        recovery = recovery if isinstance(recovery, dict) else {}
+        for condition in recovery.get("trigger_conditions") or []:
+            text = str(condition or "").strip()
+            if not text:
+                continue
+            policy_conditions.append(
+                {
+                    "target_layer": layer,
+                    "condition": text,
+                    # Natural-language conditions such as “连续两周” cannot be
+                    # proven from a single aggregate. Keep them visible and
+                    # let the monitoring engine make only evidence-supported
+                    # recommendations.
+                    "evaluation": "referenced",
+                }
+            )
+    if policy_conditions:
+        evidence.append(
+            "已对照当前计划中的重规划条件；仅在监控证据足以支持时提出调整建议。"
+        )
+    if low_completion_streak_days >= 3:
+        outcome = "short_replan_suggested"
+        summary = (
+            f"已连续{low_completion_streak_days}个有正式任务的自然日完成率低于50%，"
+            "建议确认后启动多智能体短期重规划，缩小任务范围并保留必要复习。"
+        )
+        proposal = {
+            "target_layer": "short_term",
+            "operation": "replan_for_low_completion",
+            "requires_confirmation": True,
+            "workflow_request": {
+                "task_type": "learning_plan",
+                "plan_scope": "short_term",
+                "user_request": (
+                    "请结合最近连续低完成率的真实学习监控证据，强制调整我的短期计划；"
+                    "缩小单次任务范围，优先保留当前阶段核心内容和到期复习。"
+                ),
+            },
+        }
+    elif completion is not None and completion < 0.5:
         outcome = "daily_adjustment_suggested"
         summary = "近期任务完成率偏低，建议减少今日任务数量，但不改变长期路径。"
         proposal = {"target_layer": "daily_task", "operation": "reduce_load", "requires_confirmation": False}
@@ -922,51 +1593,128 @@ def run_plan_review(
         outcome = "short_replan_suggested"
         summary = "到期复习积压较多，建议在短期计划中增加复习窗口。"
         proposal = {"target_layer": "short_term", "operation": "add_review_window", "requires_confirmation": True}
-    elif mastery < 0.45 and insights.get("data_quality", {}).get("sample_count", 0) >= 5:
+    elif (
+        mastery is not None
+        and mastery < 0.45
+        and insights.get("data_quality", {}).get("sample_count", 0) >= 5
+    ):
         outcome = "short_replan_suggested"
         summary = "当前阶段知识掌握度不足，建议放慢短期计划推进速度。"
         proposal = {"target_layer": "short_term", "operation": "slow_progress", "requires_confirmation": True}
     else:
-        outcome = "on_track"
-        summary = "当前学习节奏与计划基本一致，继续执行现有计划。"
+        outcome = (
+            "on_track"
+            if completion is not None or mastery is not None
+            else "insufficient_evidence"
+        )
+        summary = (
+            "当前学习节奏与计划基本一致，继续执行现有计划。"
+            if outcome == "on_track"
+            else "当前学习证据不足，暂不自动调整现有计划。"
+        )
         proposal = {}
     refs = {
         key: value.get("plan_id") or value.get("task_id")
         for key, value in plan_context.items()
         if isinstance(value, dict) and (value.get("plan_id") or value.get("task_id"))
     }
-    review = PlanReviewRecord(
-        review_id=f"PLAN_REVIEW_{uuid4().hex}",
-        user_id=user_id,
-        trigger_type=trigger_type,
-        period_key=period_key,
-        status="completed" if outcome == "on_track" else "proposal_pending",
-        outcome=outcome,
-        summary=summary,
-        evidence_json=json.dumps(evidence, ensure_ascii=False),
-        proposal_json=json.dumps(proposal, ensure_ascii=False),
-        plan_refs_json=json.dumps(refs, ensure_ascii=False),
-        input_snapshot_json=json.dumps({"dimensions": dimensions, "data_quality": insights.get("data_quality", {})}, ensure_ascii=False),
-    )
-    db.add(review)
+    input_snapshot = {
+        "dimensions": dimensions,
+        "data_quality": insights.get("data_quality", {}),
+        "policy_conditions": policy_conditions,
+        "low_completion_streak_days": low_completion_streak_days,
+    }
+    if existing is not None:
+        previous = serialize_plan_review(existing)
+        priority = {
+            "insufficient_evidence": 0,
+            "on_track": 0,
+            "daily_adjustment_suggested": 1,
+            "short_replan_suggested": 2,
+        }
+        previous_priority = priority.get(previous["outcome"], 1)
+        current_priority = priority.get(outcome, 1)
+        already_decided = existing.status in {"accepted", "rejected"}
+        no_stronger_evidence = (
+            current_priority < previous_priority
+            or (
+                outcome == previous["outcome"]
+                and (
+                    already_decided
+                    or previous["low_completion_streak_days"]
+                    >= low_completion_streak_days
+                )
+            )
+        )
+        if no_stronger_evidence:
+            return previous
+        review = existing
+        review.status = "completed" if outcome == "on_track" else "proposal_pending"
+        review.outcome = outcome
+        review.summary = summary
+        review.evidence_json = json.dumps(evidence, ensure_ascii=False)
+        review.proposal_json = json.dumps(proposal, ensure_ascii=False)
+        review.plan_refs_json = json.dumps(refs, ensure_ascii=False)
+        review.input_snapshot_json = json.dumps(input_snapshot, ensure_ascii=False)
+    else:
+        review = PlanReviewRecord(
+            review_id=f"PLAN_REVIEW_{uuid4().hex}",
+            user_id=user_id,
+            trigger_type=trigger_type,
+            period_key=period_key,
+            status="completed" if outcome == "on_track" else "proposal_pending",
+            outcome=outcome,
+            summary=summary,
+            evidence_json=json.dumps(evidence, ensure_ascii=False),
+            proposal_json=json.dumps(proposal, ensure_ascii=False),
+            plan_refs_json=json.dumps(refs, ensure_ascii=False),
+            input_snapshot_json=json.dumps(input_snapshot, ensure_ascii=False),
+        )
+        db.add(review)
     db.flush()
     if outcome != "on_track":
-        create_notification(
+        notification = create_notification(
             db,
             user_id,
             category="plan_review",
             title="学习规划复盘建议",
             message=summary,
-            dedupe_key=f"plan-review:{trigger_type}:{period_key}",
+            dedupe_key=(
+                f"plan-review:{proposal.get('target_layer', 'general')}:"
+                f"{now.date().isoformat()}"
+            ),
             severity="warning",
             source_type="plan_review",
             source_id=review.review_id,
-            action={"type": "open_plan_review", "review_id": review.review_id},
+            action={
+                "type": "open_plan_review",
+                "review_id": review.review_id,
+                "target_layer": proposal.get("target_layer"),
+                "workflow_request": proposal.get("workflow_request"),
+            },
         )
+        if notification is not None and notification.source_id == review.review_id:
+            notification.message = summary
+            notification.severity = "warning"
+            notification.action_json = json.dumps(
+                {
+                    "type": "open_plan_review",
+                    "review_id": review.review_id,
+                    "target_layer": proposal.get("target_layer"),
+                    "workflow_request": proposal.get("workflow_request"),
+                },
+                ensure_ascii=False,
+            )
+            if notification.status in {"read", "dismissed"}:
+                notification.status = "unread"
+                notification.read_at = None
+            notification.delivered_at = utc_now()
+            db.flush()
     return serialize_plan_review(review)
 
 
 def serialize_plan_review(row: PlanReviewRecord) -> dict[str, Any]:
+    input_snapshot = _json(row.input_snapshot_json, {})
     return {
         "review_id": row.review_id,
         "trigger_type": row.trigger_type,
@@ -977,6 +1725,11 @@ def serialize_plan_review(row: PlanReviewRecord) -> dict[str, Any]:
         "evidence": _json(row.evidence_json, []),
         "proposal": _json(row.proposal_json, {}),
         "plan_refs": _json(row.plan_refs_json, {}),
+        "policy_conditions": input_snapshot.get("policy_conditions", []),
+        "low_completion_streak_days": int(
+            input_snapshot.get("low_completion_streak_days") or 0
+        ),
+        "data_quality": input_snapshot.get("data_quality", {}),
         "created_at": _iso(row.created_at),
         "decided_at": _iso(row.decided_at),
     }
@@ -1030,8 +1783,14 @@ def run_automation_cycle(
     *,
     plan_context: dict[str, Any] | None = None,
     days: int = 30,
+    review_projection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    insights = build_learning_insights(db, user_id, days=days)
+    insights = build_learning_insights(
+        db,
+        user_id,
+        days=days,
+        review_projection=review_projection,
+    )
     enqueue_due_review_notification(db, user_id, insights)
     evaluated_interventions = evaluate_due_interventions(db, user_id, insights)
     intervention = evaluate_intervention(db, user_id, insights)

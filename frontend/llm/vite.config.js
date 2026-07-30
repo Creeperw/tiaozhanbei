@@ -32,7 +32,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/v1': {
-        target: apiTarget,
+        target: process.env.VITE_MAIN_API_TARGET || apiTarget,
         changeOrigin: true,
       },
       '/api': {
@@ -41,7 +41,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/health': {
-        target: apiTarget,
+        target: process.env.VITE_MAIN_API_TARGET || apiTarget,
         changeOrigin: true,
       },
       '/platform-assets': {

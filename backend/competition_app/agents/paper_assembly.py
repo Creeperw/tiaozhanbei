@@ -104,8 +104,9 @@ class PaperAssemblyAgent:
                     ),
                     "output_contract": {
                         "assembly_document": (
-                            "完整自然语言组卷原稿；明确试卷标题、按单元选中的候选题ID，"
-                            "以及每一道原创缺口题的题干、选项、答案、解析和依据。"
+                            "完整自然语言组卷原稿；用独立一行明确试卷标题，"
+                            "按单元写明选中的候选题ID；每一道原创缺口题用一个连续题目块"
+                            "逐项写明所属单元、题型、题干、选项、答案、解析和依据引用。"
                         )
                     },
                 },
@@ -123,7 +124,19 @@ class PaperAssemblyAgent:
                 compilation = await self.assembly_compiler.compile(
                     context,
                     assembly_document=str(raw_output["assembly_document"]),
-                    candidate_catalog=candidate_catalog,
+                    # The compiler only validates the selected unit/question
+                    # pairs. Re-sending stems, tags and external search results
+                    # adds context pressure without improving that decision.
+                    candidate_catalog=[
+                        {
+                            "unit_id": unit["unit_id"],
+                            "items": [
+                                {"question_id": item["question_id"]}
+                                for item in unit["items"]
+                            ],
+                        }
+                        for unit in candidate_catalog
+                    ],
                 )
                 if compilation.result.status != "compiled":
                     details = ", ".join(

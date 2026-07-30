@@ -48,6 +48,9 @@ AUTH_COOKIE_SECURE=false
 ```dotenv
 COMPETITION_APP_MODE=live
 COMPETITION_EXECUTION_ENGINE=langgraph
+CHAT_BASE_URL=https://llm-298mleun258tyc3o.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+# 单次模型 HTTP 请求上限；工作流节点另有覆盖多次调用的独立预算。
+LLM_TIMEOUT_SECONDS=180
 DASHSCOPE_API_KEY=填写真实密钥
 SILICONFLOW_API_KEY=填写真实密钥
 EXA_API_KEY=填写真实密钥

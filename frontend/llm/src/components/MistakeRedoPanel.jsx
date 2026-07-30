@@ -79,7 +79,7 @@ function mapMistake(m, counts) {
 
 // ── Sub-components ───────────────────────────────────────────
 
-function ReviewSession({ mistake, currentIndex, totalCount, onSubmit, onExit, onEndEarly }) {
+function ReviewSession({ mistake, currentIndex, totalCount, onSubmit, onExit, onEndEarly, onRestart }) {
   const [userAnswer, setUserAnswer] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(null);
@@ -193,7 +193,7 @@ function ReviewSession({ mistake, currentIndex, totalCount, onSubmit, onExit, on
               <button onClick={() => { onSubmit(isCorrect); setUserAnswer(''); setShowResult(false); setIsCorrect(null); setShowExplanation(false); }} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-base font-semibold text-white transition hover:bg-emerald-700">
                 退出
               </button>
-              <button onClick={() => { onSubmit(isCorrect); endReviewSession(); startReviewSession(); }} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 py-3 text-base font-semibold text-emerald-700 transition hover:bg-emerald-100">
+              <button onClick={() => { onSubmit(isCorrect); onRestart(); }} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 py-3 text-base font-semibold text-emerald-700 transition hover:bg-emerald-100">
                 开始今日复盘
               </button>
             </div>
@@ -368,7 +368,7 @@ export default function MistakeRedoPanel() {
       {loading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="animate-spin text-emerald-600" size={24} /></div>
       ) : isReviewing ? (
-        <ReviewSession mistake={reviewQueue[currentReviewIndex]} currentIndex={currentReviewIndex} totalCount={reviewQueue.length} onSubmit={submitAnswer} onExit={endReviewSession} onEndEarly={() => { setIsReviewing(false); setShowResult(true); }} />
+        <ReviewSession mistake={reviewQueue[currentReviewIndex]} currentIndex={currentReviewIndex} totalCount={reviewQueue.length} onSubmit={submitAnswer} onExit={endReviewSession} onEndEarly={() => { setIsReviewing(false); setShowResult(true); }} onRestart={() => startReviewSession()} />
       ) : showResult ? (
         <ReviewResult results={reviewResults} onContinue={() => startReviewSession()} onFinish={endReviewSession} />
       ) : (<>

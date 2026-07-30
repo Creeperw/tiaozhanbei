@@ -15,6 +15,9 @@ _EXPLICIT_DAILY_TASK = re.compile(
     r"(?:安排|制定|生成|更新|调整|给我|再给我|来一个)[^，。；！？?]{0,18}"
     r"(?:当日|今日|今天|今晚)(?:的)?(?:学习)?任务"
 )
+_DAILY_TASK_NOUN = re.compile(
+    r"(?:当日|今日|今天|今晚)(?:的)?(?:学习)?任务"
+)
 _SHORT_TERM_TARGET = re.compile(
     r"(?:制定|生成|调整|修改|重做|给我|来一份)?"
     r"[^，。；！？?]{0,18}(?:短期(?:学习)?(?:规划|计划)|本周(?:学习|复习)?(?:规划|计划|任务)|这周(?:学习|复习)?(?:规划|计划|任务))"
@@ -50,7 +53,11 @@ def infer_plan_scope(user_request: str) -> PlanScope | None:
     request = str(user_request or "").strip()
     if not request:
         return None
-    if _DIRECT_DAILY_QUESTION.search(request) or _EXPLICIT_DAILY_TASK.search(request):
+    if (
+        _DIRECT_DAILY_QUESTION.search(request)
+        or _EXPLICIT_DAILY_TASK.search(request)
+        or _DAILY_TASK_NOUN.search(request)
+    ):
         return "daily_task"
     planning_words = ("计划", "规划", "安排", "任务", "制定", "调整", "修改")
     if any(word in request for word in planning_words):

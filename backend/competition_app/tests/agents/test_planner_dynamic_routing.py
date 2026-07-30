@@ -32,7 +32,7 @@ def test_dynamic_plan_contains_only_planner_selected_agents() -> None:
     assert plan.steps.index(route) < plan.steps.index(diagnosis)
     assert route.agent == "default_route_resolver"
     assert set(diagnosis.depends_on) == {"knowledge", "route_resolution"}
-    assert diagnosis.timeout_seconds == 300.0
+    assert diagnosis.timeout_seconds == 720.0
     assert "expert_agent" not in {step.agent for step in plan.steps}
     audit = next(step for step in plan.steps if step.step_id == "audit")
     publication = next(step for step in plan.steps if step.step_id == "learning_plan")
@@ -183,6 +183,18 @@ class DailyTaskSemanticPlannerModel:
         }
 
 
+class LearnerDataPlannerModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        return {
+            "task_type": "learner_data_query",
+            "query_kind": "recent_learning",
+            "selected_agents": ["diagnosis_agent"],
+            "routing_reason": "用户只询问本人近期完成的学习内容。",
+            "risk_level": "low",
+            "requires_audit": False,
+        }
+
+
 @pytest.mark.asyncio
 async def test_plain_greeting_never_enters_learning_plan_or_resource_chain() -> None:
     model = CasualPlannerModel()
@@ -205,6 +217,109 @@ async def test_plain_greeting_never_enters_learning_plan_or_resource_chain() -> 
     assert result.payload.requires_audit is False
     assert result.payload.casual_response == "你好，很高兴继续陪你学习。今天想从哪里开始？"
     assert model.calls == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("user_request", "expected_kind"),
+    [
+        ("我最近学了些什么东西？", "recent_learning"),
+        ("我最近需要学习些什么？", "next_learning"),
+        ("接下来我应该重点学什么？", "next_learning"),
+        ("我最近做了多少题？", "progress_summary"),
+        ("哪些知识点还没掌握？", "mastery_status"),
+        ("最近有哪些复习到期？", "review_status"),
+        ("当前长期规划进展到哪一步？", "plan_progress"),
+    ],
+)
+async def test_learner_data_queries_use_read_only_diagnosis_route(
+    user_request: str,
+    expected_kind: str,
+) -> None:
+    result = await PlannerAgent(LearnerDataPlannerModel()).run(
+        {
+            "case_id": "C_DATA",
+            "trace_id": "T_DATA",
+            "request_id": "R_DATA",
+            "execution_id": "E_DATA",
+            "step_id": "planner",
+            "learner_id": "L_DATA",
+            "user_request": user_request,
+            "messages": [{"role": "user", "content": user_request}],
+        }
+    )
+
+    assert result.payload.task_type == "learner_data_query"
+    assert result.payload.query_kind == expected_kind
+    assert result.payload.selected_agents == ["memory_agent", "diagnosis_agent"]
+    assert result.payload.requires_audit is False
+    plan = PlannerAgent.build_plan(result.payload)
+    assert [step.agent for step in plan.steps] == [
+        "memory_agent",
+        "diagnosis_agent",
+    ]
+
+
+def test_resource_and_plan_requests_do_not_become_learner_data_queries() -> None:
+    for request_text in (
+        "给我生成四君子汤复习卡",
+        "给我讲解四君子汤",
+        "请结合学习状态制定短期计划",
+        "根据最近学习进度给我组一份试卷",
+    ):
+        normalized = PlannerAgent._normalize_output(
+            {},
+            {"user_request": request_text},
+        )
+        assert normalized["task_type"] != "learner_data_query"
+
+
+def test_chapter_learning_points_use_flexible_learning_support_route() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "knowledge_explanation",
+            "selected_agents": [
+                "knowledge_base_agent",
+                "expert_agent",
+                "audit_agent",
+            ],
+            "routing_reason": "模型初步识别为知识讲解。",
+            "risk_level": "low",
+            "requires_audit": True,
+        },
+        {
+            "user_request": "你先给我讲讲《中医学基础》阴阳学说章节的学习要点吧",
+        },
+    )
+
+    assert normalized["task_type"] == "general_learning_support"
+    assert normalized["plan_scope"] is None
+    assert normalized["selected_agents"] == [
+        "knowledge_base_agent",
+        "expert_agent",
+        "audit_agent",
+    ]
+    assert normalized["requires_audit"] is True
+
+
+def test_weak_point_question_request_uses_personalized_resource_chain() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "learner_data_query",
+            "query_kind": "mastery_status",
+            "selected_agents": ["diagnosis_agent"],
+            "routing_reason": "只读取薄弱点。",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {
+            "user_request": "我有哪些核心薄弱点，需要做哪些题目？",
+        },
+    )
+
+    assert normalized["task_type"] == "personalized_review_card"
+    assert normalized["query_kind"] is None
+    assert normalized["requires_audit"] is True
 
 
 @pytest.mark.asyncio
@@ -328,6 +443,31 @@ async def test_planner_uses_unspecified_instead_of_null_for_ambiguous_plan() -> 
     assert result.payload.plan_scope == "unspecified"
 
 
+def test_explicit_force_change_cannot_be_downgraded_to_plan_reuse() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "learning_plan",
+            "plan_scope": "short_term",
+            "plan_action": "reuse",
+            "selected_agents": ["learning_plan_service"],
+            "routing_reason": "模型误判为复用。",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {
+            "user_request": "请强制修改短期计划，未来两周每天只能学习20分钟。",
+            "current_short_term_plan": {
+                "content": "当前短期计划",
+                "status": "active",
+            },
+        },
+    )
+
+    assert normalized["plan_scope"] == "short_term"
+    assert normalized["plan_action"] == "create_or_update"
+    assert normalized["requires_audit"] is True
+
+
 @pytest.mark.asyncio
 async def test_planner_receives_routing_skills_and_does_not_output_knowledge_query() -> None:
     model = CapturingPlannerModel()
@@ -346,8 +486,9 @@ async def test_planner_receives_routing_skills_and_does_not_output_knowledge_que
     assert model.payload["prompt_skill_id"] == "planner.route_request"
     assert "任务目标" in model.payload["task_instructions"]
     assert {item["task_type"] for item in payload["routing_skills"]} == {
-        "knowledge_explanation", "learning_plan", "personalized_review_card",
-        "paper_generation"
+        "general_learning_support", "knowledge_explanation",
+        "learner_data_query", "learning_plan",
+        "personalized_review_card", "paper_generation"
     }
     assert payload["conversation_context"]["requires_compression"] is False
     assert payload["conversation_context"]["recent_turns"] == [
@@ -528,11 +669,13 @@ def test_paper_generation_uses_minimal_evidence_expert_audit_chain() -> None:
         ("audit_agent", ["paper_blueprint", "question_pool", "paper_assembly"]),
     ]
     question_pool_step = next(step for step in plan.steps if step.step_id == "question_pool")
-    assert question_pool_step.timeout_seconds == 300.0
+    blueprint_step = next(step for step in plan.steps if step.step_id == "paper_blueprint")
+    assert blueprint_step.timeout_seconds == 420.0
+    assert question_pool_step.timeout_seconds == 600.0
     paper_assembly_step = next(step for step in plan.steps if step.step_id == "paper_assembly")
-    assert paper_assembly_step.timeout_seconds == 180.0
+    assert paper_assembly_step.timeout_seconds == 900.0
     audit_step = next(step for step in plan.steps if step.step_id == "audit")
-    assert audit_step.timeout_seconds == 120.0
+    assert audit_step.timeout_seconds == 420.0
 
 
 def test_knowledge_explanation_does_not_include_planning_or_review_services() -> None:

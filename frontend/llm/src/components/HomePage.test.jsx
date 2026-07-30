@@ -23,17 +23,27 @@ function response(payload, ok = true, status = 200) {
   return { ok, status, text: async () => JSON.stringify(payload) };
 }
 
-function installLearningTargetApi() {
-  vi.stubGlobal('fetch', vi.fn((url) => {
+function installLearningTargetApi({ savedTarget = { exam_track_id: 'track-a' }, saveOk = true } = {}) {
+  const fetchMock = vi.fn((url, options = {}) => {
     const path = String(url);
     if (path.endsWith('/qualification-targets')) {
       return Promise.resolve(response({ items: qualificationTargets }));
     }
     if (path.endsWith('/personalization/learning-target')) {
-      return Promise.resolve(response({ target: { exam_track_id: 'track-a' } }));
+      if (options.method === 'PUT') {
+        const body = JSON.parse(options.body);
+        return Promise.resolve(response(
+          saveOk ? { target: { exam_track_id: body.exam_track_id } } : { detail: '保存失败' },
+          saveOk,
+          saveOk ? 200 : 500,
+        ));
+      }
+      return Promise.resolve(response({ target: savedTarget }));
     }
     throw new Error(`Unexpected request: ${path}`);
-  }));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
 }
 
 function installMotionPreference(reduced = false) {
@@ -94,34 +104,63 @@ describe('HomePage', () => {
     );
   });
 
-  it('routes the hero call to action to the learning path', () => {
+  it('opens the login page instead of loading a learning target for an unauthenticated visitor', () => {
+    const onLoginRequested = vi.fn();
+    render(<HomePage currentUser={null} onNavigate={vi.fn()} onLoginRequested={onLoginRequested} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
+
+    expect(onLoginRequested).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('routes users with a saved qualification target directly to the learning path', async () => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
-    expect(onNavigate).toHaveBeenLastCalledWith({ page: 'learning-path', params: {} });
+    await waitFor(() => expect(onNavigate).toHaveBeenLastCalledWith({ page: 'learning-path', params: {} }));
   });
 
-  it('routes the secondary hero action to a new assistant conversation', () => {
+  it('asks first-time learners to choose and save a qualification target before entering', async () => {
+    const fetchMock = installLearningTargetApi({ savedTarget: null });
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '多智能体助教' }));
-    expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'assistant',
-      params: { newConversation: true },
-    });
+    fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
+
+    expect(await screen.findByRole('dialog', { name: '选择资格考试' })).toBeInTheDocument();
+    expect(onNavigate).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('radio', { name: '中西医结合执业医师资格考试' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认并开始学习' }));
+
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} }));
+    const saveRequest = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT');
+    expect(JSON.parse(saveRequest[1].body)).toMatchObject({ exam_track_id: 'track-b' });
+    expect(screen.queryByRole('dialog', { name: '选择资格考试' })).not.toBeInTheDocument();
   });
 
-  it('renders both hero actions as static text without SVG goo filter animation', () => {
+  it('keeps the first-time target dialog open when saving fails', async () => {
+    installLearningTargetApi({ savedTarget: null, saveOk: false });
+    const onNavigate = vi.fn();
+    render(<HomePage onNavigate={onNavigate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
+    await screen.findByRole('radio', { name: '中医执业医师资格考试' });
+    fireEvent.click(screen.getByRole('button', { name: '确认并开始学习' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('保存失败');
+    expect(screen.getByRole('dialog', { name: '选择资格考试' })).toBeInTheDocument();
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('keeps the hero focused on learning without a duplicate assistant action', () => {
     const { container } = render(<HomePage onNavigate={vi.fn()} />);
     const learningAction = screen.getByRole('button', { name: '开始学习' });
-    const assistantAction = screen.getByRole('button', { name: '多智能体助教' });
 
     expect(learningAction).toBeInTheDocument();
-    expect(assistantAction).toBeInTheDocument();
     expect(learningAction.textContent).toContain('开始学习');
-    expect(assistantAction.textContent).toContain('多智能体助教');
+    expect(screen.queryByRole('button', { name: '多智能体助教' })).not.toBeInTheDocument();
 
     expect(container.querySelectorAll('feColorMatrix[values*="25 -9"]')).toHaveLength(0);
     expect(container.querySelectorAll('feComposite[operator="atop"]')).toHaveLength(0);
@@ -131,8 +170,8 @@ describe('HomePage', () => {
   it.each([
     ['多智能体协同', 'multi-agent'],
     ['个性化学习路径', 'learning-path'],
-    ['专项训练与模拟', 'knowledge-graph'],
-    ['知识库与资料溯源', 'data-growth'],
+    ['专项训练', 'knowledge-graph'],
+    ['人机协同', 'human-collaboration'],
   ])('routes the %s capability card', (name, intent) => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);
@@ -141,6 +180,19 @@ describe('HomePage', () => {
     expect(onNavigate).toHaveBeenCalledWith({
       page: 'capability-detail',
       params: { capability: intent },
+    });
+  });
+
+  it('explains the four innovation-oriented homepage capabilities', () => {
+    render(<HomePage onNavigate={vi.fn()} />);
+
+    [
+      '学情诊断、学习规划、专家等六大智能体协同处理学习任务，按需分工，每项建议都关联证据、约束与审核结果，贯穿学习全流程完成诊断、答疑与学习支持。',
+      '结合考试目标、阶段计划与近期答题表现，在前置知识、复习到期和可用时间等约束下，生成可解释、可调整的学习路径。',
+      '围绕薄弱点提供章节练习、错题变式、病例训练与试卷生成，把诊断结论转化为可完成的训练任务。',
+      '学生可确认目标与时间、调整难度或更换资源，并查看推荐依据；任务反馈与完成效果共同进入下一轮路径和资源匹配。',
+    ].forEach((description) => {
+      expect(screen.getByText(description)).toBeInTheDocument();
     });
   });
 

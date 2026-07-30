@@ -21,6 +21,13 @@ from APP.backend.database import (
 
 _SOURCE_PREFIX = "formal-content:"
 _QUESTION_TYPES = {
+    "single_choice": "single_choice",
+    "multiple_choice": "multiple_choice",
+    "true_false": "true_false",
+    "fill_blank": "fill_blank",
+    "term_explanation": "term_explanation",
+    "short_answer": "short_answer",
+    "case_quiz": "case_quiz",
     "单项选择题": "single_choice",
     "多项选择题": "multiple_choice",
     "判断题": "true_false",
@@ -86,9 +93,10 @@ def import_formal_learning_content(
     if batch is not None:
         return replace(_summary_from_json(batch.summary_json), idempotent=True)
 
-    knowledge_points = _json_array(sources["knowledge_points"])
-    questions = _json_array(sources["questions"])
+    knowledge_points = _normalize_knowledge_points(_json_array(sources["knowledge_points"]))
+    questions, embedded_links = _normalize_questions(_json_array(sources["questions"]))
     links = _jsonl(sources["question_kp_links"]) if "question_kp_links" in sources else []
+    links.extend(embedded_links)
     _require_unique(knowledge_points, "kp_id")
     _require_unique(questions, "题目id")
 
@@ -160,6 +168,51 @@ def _jsonl(path: Path) -> list[dict[str, Any]]:
                 raise ValueError(f"{path}:{line_number} must contain a JSON object")
             records.append(record)
     return records
+
+
+def _normalize_knowledge_points(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized = []
+    for row in rows:
+        current = row.get("kp")
+        if not isinstance(current, dict):
+            normalized.append(row)
+            continue
+        normalized.append({
+            "kp_id": current.get("kp_id"),
+            "kp_Lv1": current.get("kp_lv1"),
+            "kp_Lv2": current.get("kp_lv2"),
+            "kp_Lv3_standard": current.get("kp_lv3"),
+            "kp_Lv3_others": current.get("other_name"),
+            "raw_content": current.get("raw_content"),
+            "global_order": current.get("order"),
+        })
+    return normalized
+
+
+def _normalize_questions(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    normalized = []
+    embedded_links = []
+    for row in rows:
+        if "question_id" not in row or "题目id" in row:
+            normalized.append(row)
+            continue
+        question_id = str(row.get("question_id") or "").strip()
+        kp_ids = [str(value).strip() for value in row.get("kp_ids") or [] if str(value).strip()]
+        embedded_links.extend({"question_id": question_id, "kp_id": kp_id} for kp_id in kp_ids)
+        answer = row.get("answer")
+        normalized.append({
+            "题目id": question_id,
+            "题目内容": row.get("question_content") or row.get("stem"),
+            "题目答案": ", ".join(str(value) for value in answer) if isinstance(answer, list) else answer,
+            "题目答案解析": row.get("explanation") or row.get("analysis"),
+            "题型": row.get("question_type"),
+            "difficulty": row.get("difficulty"),
+            "options": row.get("options"),
+            "tokenized_content": row.get("tokenized_content"),
+            "scoring_rubric": row.get("scoring_rubric"),
+            "key_points": row.get("key_points"),
+        })
+    return normalized, embedded_links
 
 
 def _require_unique(rows: list[dict[str, Any]], key: str) -> None:
@@ -270,9 +323,13 @@ def _upsert_questions(
         mirror.question_content = question.stem
         mirror.answer_json = json.dumps([question.answer], ensure_ascii=False)
         mirror.explanation = question.analysis
+        mirror.options_json = json.dumps(item.get("options") or [], ensure_ascii=False)
         mirror.difficulty = source_difficulty
         mirror.difficulty_source = source_tag if source_difficulty is not None else None
         mirror.kp_ids_json = question.kp_ids_json
+        mirror.tokenized_content_json = json.dumps(item.get("tokenized_content") or [], ensure_ascii=False)
+        mirror.scoring_rubric = str(item.get("scoring_rubric") or "")
+        mirror.key_points = str(item.get("key_points") or "")
 
         version_id = _formal_version_id(question_id, source_tag)
         version = db.query(QuestionVersionRecord).filter_by(question_version_id=version_id).one_or_none()
@@ -366,6 +423,8 @@ def _rows_for_ids(db: Session, model, column, values: set[str]) -> Iterable[Any]
 
 
 def _aliases(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return list(dict.fromkeys(str(item).strip() for item in value if str(item).strip()))
     if not isinstance(value, str):
         return []
     return list(dict.fromkeys(item.strip() for item in value.replace("；", ";").split(";") if item.strip()))

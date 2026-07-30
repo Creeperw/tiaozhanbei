@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from competition_app.agents.diagnosis import DiagnosisAgent
@@ -713,6 +715,8 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "time_constraints",
         "learning_evidence",
             "learning_state",
+            "task_load_policy",
+            "task_load_policy_instruction",
             "path_candidates",
             "path_candidate_policy",
             "default_route",
@@ -1016,6 +1020,38 @@ async def test_personalized_review_skill_keeps_resource_generation_boundary() ->
     assert actions["long_term_action"] == "reuse"
     assert actions["short_term_action"] == "reuse"
     assert actions["daily_task_action"] == "update"
+
+
+@pytest.mark.asyncio
+async def test_due_review_dispatch_uses_confirmed_queue_state_without_model_call() -> None:
+    class FailingIfCalledModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            raise AssertionError("due review dispatch must not re-diagnose the learner")
+
+    diagnosis_context = build_context("diagnosis")
+    diagnosis_context.update(
+        task_type="personalized_review_card",
+        system_operation="due_review_dispatch",
+        user_knowledge_states=[{
+            "user_id": diagnosis_context["learner_id"],
+            "kp_id": "KP_FJ_001",
+            "knowledge_mastery": 0.5,
+            "answer_accuracy": 0.5,
+            "forgetting_coefficient": 0.08,
+            "kp_review_status": "到期",
+            "calculated_at": "2026-07-18T12:00:00Z",
+        }],
+    )
+    diagnosis_context["dependency_outputs"] = {
+        "knowledge": await build_knowledge(build_context("knowledge")),
+    }
+
+    result = await DiagnosisAgent(FailingIfCalledModel()).run(diagnosis_context)
+
+    assert result.payload.stage_id == "review_due"
+    assert result.payload.weak_kp_ids == ["KP_FJ_001"]
+    assert result.payload.daily_review_policy.capacity == 1
+    assert result.payload.learning_plan_proposal is None
 
 
 @pytest.mark.asyncio
@@ -1326,3 +1362,31 @@ async def test_diagnosis_falls_back_when_latest_goals_is_null() -> None:
     await DiagnosisAgent(model).run(diagnosis_context)
 
     assert model.payload["payload"]["goals"] == ["沿用既有方剂组成学习目标"]
+
+
+@pytest.mark.asyncio
+async def test_diagnosis_injects_bounded_audit_feedback_for_repair() -> None:
+    model = CapturingDiagnosisModel()
+    diagnosis_context = build_context("diagnosis")
+    diagnosis_context["audit_feedback"] = SimpleNamespace(
+        payload=SimpleNamespace(
+            findings=[
+                "第3阶段正文必须列出《人体解剖学》《生理学》。",
+                "阶段安排不得使用笼统学科简称。",
+            ],
+            audit_report="其余阶段已经通过，仅修正第三阶段教材全称。",
+        )
+    )
+    diagnosis_context["dependency_outputs"] = {
+        "knowledge": await build_knowledge(build_context("knowledge"))
+    }
+
+    await DiagnosisAgent(model).run(diagnosis_context)
+
+    revision = model.payload["payload"]["audit_revision"]
+    assert revision["findings"] == [
+        "第3阶段正文必须列出《人体解剖学》《生理学》。",
+        "阶段安排不得使用笼统学科简称。",
+    ]
+    assert "强制修订项" in revision["instruction"]
+    assert "仅修正第三阶段" in revision["audit_report"]

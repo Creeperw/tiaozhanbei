@@ -112,6 +112,7 @@ function emptyState() {
     pendingClarification: null,
     pendingThreadId: null,
     pendingInterrupt: null,
+    lastError: null,
     executionTrace: defaultExecutionTrace(),
   };
 }
@@ -148,6 +149,9 @@ function restoreState() {
       pendingThreadId: typeof saved.pendingThreadId === 'string' ? saved.pendingThreadId : null,
       pendingInterrupt: saved.pendingInterrupt && typeof saved.pendingInterrupt === 'object'
         ? saved.pendingInterrupt
+        : null,
+      lastError: saved.lastError && typeof saved.lastError === 'object'
+        ? saved.lastError
         : null,
       executionTrace: normalizeExecutionTrace(saved.executionTrace),
     };
@@ -800,6 +804,11 @@ function handleExecutionEvent(event) {
     elements.executionToggle.className = 'execution-toggle is-error';
     markExecutionNode(stepId, 'failed', '执行失败');
     addExecutionEvent(event.message || '流程执行失败', 'error');
+    state.lastError = {
+      message: event.user_message || event.message || '流程执行失败，请稍后重试。',
+      code: event.error_code || 'workflow_failed',
+      retryable: Boolean(event.retryable),
+    };
     stopExecutionClock();
   }
   persistState();
@@ -1091,7 +1100,10 @@ function renderSession() {
   });
   elements.availableMinutes.value = state.availableMinutes;
   if (state.pendingRequest) {
-    addErrorMessage('上次回复因页面关闭或连接中断而未完成，你可以从这里继续。', state.pendingRequest);
+    addErrorMessage(
+      state.lastError?.message || '上次回复因页面关闭或连接中断而未完成，你可以从这里继续。',
+      state.pendingRequest,
+    );
   }
 }
 
@@ -1333,12 +1345,127 @@ async function consumeEventStream(response, loadingNode) {
       const event = JSON.parse(dataLine.slice(6));
       handleExecutionEvent(event);
       updateLoadingLabel(loadingNode, event);
-      if (event.event === 'run_failed') throw new Error(event.message || '生成失败，请稍后重试。');
+      if (event.event === 'run_failed') {
+        const error = new Error(event.user_message || event.message || '生成失败，请稍后重试。');
+        error.code = event.error_code || 'workflow_failed';
+        error.retryable = Boolean(event.retryable);
+        error.serverFailure = true;
+        throw error;
+      }
       if (event.event === 'run_interrupted') return event.result;
       if (event.event === 'run_completed') return event.result;
     }
   }
-  throw new Error('连接已结束，但没有收到完整回复。');
+  const error = new Error('连接已结束，但没有收到完整回复。');
+  error.connectionLost = true;
+  throw error;
+}
+
+function streamErrorMessage(error) {
+  if (error?.serverFailure) return error.message;
+  if (error?.name === 'AbortError') return '';
+  if (error?.message?.startsWith('请求失败（HTTP 401）')) return '登录状态已失效，请重新登录后再试。';
+  if (error?.message?.startsWith('请求失败（HTTP 403）')) return '当前账号没有执行此任务的权限。';
+  if (error?.message?.startsWith('请求失败（HTTP 422）')) return '请求内容未通过校验，请检查后再试。';
+  if (error?.message?.startsWith('请求失败（HTTP ')) return '服务暂时不可用，请稍后重试。';
+  return '连接已中断，正在确认服务端运行状态；请稍后查看当前会话。';
+}
+
+function applyRecoveredCompletedRun(run) {
+  if (!run?.result || !state.pendingRequest) return false;
+  const body = run.result;
+  const requestText = state.pendingRequest;
+  state.executionTrace.status = 'completed';
+  stopExecutionClock();
+  renderExecutionMonitor();
+  const presentation = buildAssistantPresentation(body);
+  updatePlanningContext(body);
+  loadLearningContext({ quiet: true });
+  updateClarificationContext(body, requestText, state.pendingClarification);
+  state.messages.push({
+    id: createId('MSG'),
+    role: 'assistant',
+    content: presentation.plainText,
+    presentation,
+  });
+  state.pendingRequest = null;
+  if (body.status !== 'interrupted') {
+    state.pendingThreadId = null;
+    state.pendingInterrupt = null;
+  }
+  state.lastError = null;
+  persistState();
+  renderAssistantMessage(presentation);
+  setConnectionStatus('已恢复并完成', 'online');
+  return true;
+}
+
+function applyRecoveredInterruptedRun(run) {
+  state.executionTrace.status = 'interrupted';
+  stopExecutionClock();
+  renderExecutionMonitor();
+  state.pendingInterrupt = run.interrupt || run.result?.interrupt || null;
+  if (!state.pendingClarification) {
+    const requestText = state.pendingRequest || '请继续';
+    const body = run.result || { status: 'interrupted', interrupt: state.pendingInterrupt };
+    const presentation = buildAssistantPresentation(body);
+    updateClarificationContext(body, requestText, null);
+    state.messages.push({
+      id: createId('MSG'),
+      role: 'assistant',
+      content: presentation.plainText,
+      presentation,
+    });
+    state.pendingRequest = null;
+    renderAssistantMessage(presentation);
+  }
+  state.lastError = null;
+  persistState();
+  setConnectionStatus('等待你回答后继续', 'online');
+  return true;
+}
+
+function applyRecoveredFailedRun(run) {
+  state.executionTrace.status = 'failed';
+  stopExecutionClock();
+  renderExecutionMonitor();
+  state.lastError = {
+    message: run.message || '上次执行失败，请稍后重试。',
+    code: run.error_code || 'workflow_failed',
+    retryable: Boolean(run.retryable),
+  };
+  persistState();
+  renderSession();
+  setConnectionStatus('执行失败', 'offline');
+  return true;
+}
+
+async function reconcileDisconnectedRun(threadId) {
+  try {
+    const response = await fetch(`/api/v1/review-cards/runs/${encodeURIComponent(threadId)}`);
+    if (!response.ok) return false;
+    const run = await response.json();
+    if (run.status === 'completed') return applyRecoveredCompletedRun(run);
+    if (run.status === 'interrupted') return applyRecoveredInterruptedRun(run);
+    if (run.status === 'failed') return applyRecoveredFailedRun(run);
+    if (run.status === 'running') {
+      state.executionTrace.status = 'running';
+      state.lastError = {
+        message: '连接已中断，但服务端仍在处理；页面会继续尝试恢复。',
+        code: 'stream_disconnected',
+        retryable: true,
+      };
+      renderExecutionMonitor();
+      persistState();
+      renderSession();
+      setConnectionStatus('服务端仍在处理', 'online');
+      window.setTimeout(restoreLangGraphRun, 2500);
+      return true;
+    }
+  } catch (_error) {
+    // Keep the pending thread so restoreLangGraphRun can retry after reload.
+  }
+  return false;
 }
 
 function requestMessages() {
@@ -1362,6 +1489,7 @@ async function sendMessage(rawText, options = {}) {
   }
 
   state.pendingRequest = text;
+  state.lastError = null;
   state.availableMinutes = Math.max(1, Math.min(1440, Number(elements.availableMinutes.value) || 60));
   persistState();
   const loadingNode = addLoadingMessage();
@@ -1432,8 +1560,19 @@ async function sendMessage(rawText, options = {}) {
   } catch (error) {
     loadingNode.remove();
     if (error.name !== 'AbortError') {
-      addErrorMessage('连接暂时中断；服务端流程会继续运行，重新打开页面后可恢复。', text);
-      setConnectionStatus('连接中断', 'offline');
+      if (error.connectionLost && state.pendingThreadId) {
+        const recovered = await reconcileDisconnectedRun(state.pendingThreadId);
+        if (recovered) return;
+      }
+      const message = streamErrorMessage(error);
+      if (message) addErrorMessage(message, text);
+      state.lastError = {
+        message,
+        code: error.serverFailure ? error.code : 'stream_disconnected',
+        retryable: Boolean(error.retryable),
+      };
+      persistState();
+      setConnectionStatus(error.serverFailure ? '执行失败' : '连接中断', 'offline');
     }
   } finally {
     activeRequest = null;
@@ -1467,50 +1606,12 @@ async function restoreLangGraphRun() {
       return;
     }
     if (run.status === 'interrupted') {
-      state.executionTrace.status = 'interrupted';
-      stopExecutionClock();
-      renderExecutionMonitor();
-      state.pendingInterrupt = run.interrupt;
-      if (!state.pendingClarification) {
-        const requestText = state.pendingRequest || '请继续';
-        const body = { status: 'interrupted', interrupt: run.interrupt };
-        const presentation = buildAssistantPresentation(body);
-        updateClarificationContext(body, requestText, null);
-        state.messages.push({
-          id: createId('MSG'), role: 'assistant', content: presentation.plainText, presentation,
-        });
-        state.pendingRequest = null;
-        renderSession();
-      }
-      persistState();
-      setConnectionStatus('等待你回答后继续', 'online');
+      applyRecoveredInterruptedRun(run);
       return;
     }
-    if (run.status === 'completed' && run.result && state.pendingRequest) {
-      state.executionTrace.status = 'completed';
-      stopExecutionClock();
-      renderExecutionMonitor();
-      const presentation = buildAssistantPresentation(run.result);
-      updatePlanningContext(run.result);
-      loadLearningContext({ quiet: true });
-      state.messages.push({
-        id: createId('MSG'), role: 'assistant', content: presentation.plainText, presentation,
-      });
-      state.pendingRequest = null;
-      state.pendingClarification = null;
-      state.pendingThreadId = null;
-      state.pendingInterrupt = null;
-      persistState();
-      renderSession();
-      setConnectionStatus('已恢复并完成', 'online');
-      return;
-    }
+    if (run.status === 'completed' && applyRecoveredCompletedRun(run)) return;
     if (run.status === 'failed') {
-      state.executionTrace.status = 'failed';
-      stopExecutionClock();
-      renderExecutionMonitor();
-      persistState();
-      setConnectionStatus('上次执行失败', 'offline');
+      applyRecoveredFailedRun(run);
     }
   } catch (_error) {
     setConnectionStatus('等待重新连接', 'offline');

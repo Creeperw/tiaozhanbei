@@ -69,6 +69,21 @@ class CountingAgent:
         return {"draft": self.calls}
 
 
+class PassingAuditPublisher:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.audit_decisions: list[str | None] = []
+
+    async def run(self, context):
+        self.calls += 1
+        audit = context["dependency_outputs"]["audit"]
+        decision = getattr(getattr(audit, "payload", None), "decision", None)
+        self.audit_decisions.append(decision)
+        if decision != "pass":
+            raise RuntimeError("publication requires a passing audit")
+        return {"published": True}
+
+
 class AuditSequenceAgent:
     def __init__(self, decisions: list[str]) -> None:
         self.decisions = decisions
@@ -95,6 +110,41 @@ class AuditSequenceAgent:
                     else []
                 ),
             )
+        )
+
+
+class EnvelopeAuditSequenceAgent(AuditSequenceAgent):
+    async def run(self, context):
+        decision = self.decisions[min(self.calls, len(self.decisions) - 1)]
+        self.calls += 1
+        return AgentEnvelope[AuditResult](
+            artifact_id=f"ART_AUDIT_GATE_{self.calls}",
+            artifact_type="audit_result",
+            case_id="CASE_AUDIT_GATE",
+            trace_id="TRACE_AUDIT_GATE",
+            request_id="REQ_AUDIT_GATE",
+            execution_id="EXE_AUDIT_GATE",
+            step_id=str(context["step_id"]),
+            producer="audit_agent",
+            task_type="learning_plan",
+            learner_id="",
+            payload=AuditResult(
+                audit_result_id=f"AUDIT_GATE_{self.calls}",
+                decision=decision,
+                structured_findings=(
+                    [
+                        RepairIssue(
+                            issue_id=f"ISSUE_GATE_{self.calls}",
+                            issue_type="content_quality",
+                            message="内容质量需修订",
+                            owner_step_id="expert",
+                            affected_step_ids=["expert"],
+                        )
+                    ]
+                    if decision == "revise"
+                    else []
+                ),
+            ),
         )
 
 
@@ -606,6 +656,45 @@ async def test_langgraph_preserves_single_audit_revision() -> None:
     assert result.status == "success"
     assert expert.calls == 2
     assert audit.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_langgraph_holds_downstream_publication_until_reaudit_passes() -> None:
+    registry = AgentRegistry()
+    expert = CountingAgent()
+    audit = EnvelopeAuditSequenceAgent(["revise", "pass"])
+    publisher = PassingAuditPublisher()
+    registry.register("expert_agent", expert)
+    registry.register("audit_agent", audit)
+    registry.register("publisher_agent", publisher)
+    plan = ExecutionPlan(
+        plan_id="P_REVISE_BEFORE_PUBLISH",
+        task_type="learning_plan",
+        steps=[
+            ExecutionStep(step_id="expert", agent="expert_agent"),
+            ExecutionStep(
+                step_id="audit", agent="audit_agent", depends_on=["expert"]
+            ),
+            ExecutionStep(
+                step_id="publish",
+                agent="publisher_agent",
+                depends_on=["expert", "audit"],
+            ),
+        ],
+    )
+
+    result = await LangGraphOrchestrator(registry).execute(plan, {})
+
+    assert result.status == "success", (
+        result.error_type,
+        result.error_message,
+        result.outputs,
+        result.repair_trace,
+    )
+    assert expert.calls == 2
+    assert audit.calls == 2
+    assert publisher.calls == 1
+    assert publisher.audit_decisions == ["pass"]
 
 
 @pytest.mark.asyncio

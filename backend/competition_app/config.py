@@ -13,7 +13,7 @@ REPOSITORY_ROOT = BACKEND_ROOT.parent
 # The main backend remains authoritative for every model dependency. Values from
 # config_new.py are deliberately not used as an alternative model stack.
 CHAT_BASE_URL = (
-    "https://llm-1nvjq1o5rj1bf5yi.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+    "https://llm-298mleun258tyc3o.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 )
 CHAT_MODELS = (
     "qwen3.7-flash",
@@ -30,6 +30,10 @@ DEFAULT_RUNTIME_ROOT = PACKAGE_ROOT / "runtime"
 DEFAULT_FRONTEND_DIST_ROOT = REPOSITORY_ROOT / "frontend" / "llm" / "dist"
 DEFAULT_QUESTION_VECTOR_STORE_ROOT = BACKEND_ROOT / "competition" / "vdb_store"
 DEFAULT_KNOWLEDGE_VECTOR_STORE_ROOT = DEFAULT_QUESTION_VECTOR_STORE_ROOT
+DEFAULT_TEXTBOOK_PDF_ROOT = BACKEND_ROOT / "competition" / "textbook_pdfs"
+DEFAULT_TEXTBOOK_PDF_CATALOG_PATH = (
+    PACKAGE_ROOT / "data" / "textbook_pdfs" / "catalog.v1.json"
+)
 DEFAULT_KNOWLEDGE_HANDOFF_ROOT = (
     BACKEND_ROOT / "competition" / "知识星球视频知识库_前端交接包_2026-07-18"
 )
@@ -179,7 +183,7 @@ class Settings:
     embedding_model: str = EMBEDDING_MODEL
     embedding_mode: Literal["enabled", "disabled"] = "enabled"
     embedding_model_path: Path | None = None
-    llm_timeout_seconds: float = 120.0
+    llm_timeout_seconds: float = 180.0
 
     def __post_init__(self) -> None:
         normalized_models = tuple(
@@ -209,6 +213,8 @@ class Settings:
     knowledge_atlas_video_root: Path = DEFAULT_KNOWLEDGE_HANDOFF_ROOT
     knowledge_atlas_contract_path: Path | None = None
     official_exam_data_dir: Path = DEFAULT_KNOWLEDGE_HANDOFF_ROOT
+    textbook_pdf_root: Path = DEFAULT_TEXTBOOK_PDF_ROOT
+    textbook_pdf_catalog_path: Path = DEFAULT_TEXTBOOK_PDF_CATALOG_PATH
 
     # Transitional delivered-backend integration.
     backend_handoff_enabled: bool = False
@@ -339,7 +345,7 @@ class Settings:
                 else None
             ),
             llm_timeout_seconds=_parse_float(
-                values, "LLM_TIMEOUT_SECONDS", 120.0, minimum=1.0
+                values, "LLM_TIMEOUT_SECONDS", 180.0, minimum=1.0
             ),
             question_vector_store_root=_parse_path(
                 values,
@@ -389,6 +395,15 @@ class Settings:
                 / "data"
                 / "backend_delivery"
                 / "08_exam_learning_path_2025",
+            ),
+            textbook_pdf_root=_parse_path(
+                values, "TEXTBOOK_PDF_ROOT", DEFAULT_TEXTBOOK_PDF_ROOT
+            ),
+            textbook_pdf_catalog_path=_parse_path(
+                values,
+                "TEXTBOOK_PDF_CATALOG_PATH",
+                DEFAULT_TEXTBOOK_PDF_CATALOG_PATH,
+                base=REPOSITORY_ROOT,
             ),
             backend_handoff_enabled=_parse_bool(
                 values, "BACKEND_HANDOFF_ENABLED", False

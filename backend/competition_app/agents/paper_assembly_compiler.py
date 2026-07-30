@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
@@ -108,14 +109,22 @@ class PaperAssemblyCompilerAgent:
             for item in unit.get("items", [])
         }
         issues: list[dict[str, Any]] = []
-        if "/title" not in result.contract.field_anchors:
+        title_anchors = (
+            result.contract.field_anchors.get("/title")
+            or result.contract.field_anchors.get("title")
+            or []
+        )
+        if not title_anchors:
             issues.append({"code": "source_anchor_missing", "field_path": "/title"})
         anchor_groups = list(result.contract.field_anchors.values())
         anchor_groups.extend(item.source_anchors for item in result.contract.selected_items)
         anchor_groups.extend(item.source_anchors for item in result.contract.generated_items)
         for anchors in anchor_groups:
             for anchor in anchors:
-                if anchor.source_quote not in assembly_document:
+                if not PaperAssemblyCompilerAgent._source_contains(
+                    assembly_document,
+                    anchor.source_quote,
+                ):
                     issues.append(
                         {
                             "code": "source_anchor_invalid",
@@ -138,9 +147,12 @@ class PaperAssemblyCompilerAgent:
                     "detail": selected.question_id,
                 }
             )
-        title_anchors = result.contract.field_anchors.get("/title", [])
         if title_anchors and not any(
-            result.contract.title in anchor.source_quote for anchor in title_anchors
+            PaperAssemblyCompilerAgent._source_contains(
+                anchor.source_quote,
+                result.contract.title,
+            )
+            for anchor in title_anchors
         ):
             issues.append(
                 {
@@ -158,7 +170,19 @@ class PaperAssemblyCompilerAgent:
                 ("unit_id", selected.unit_id),
                 ("question_id", selected.question_id),
             ):
-                if value not in anchored:
+                # The selected pair is independently checked against the
+                # read-only candidate catalog above.  Compiler models
+                # occasionally anchor only the question line even though the
+                # unit label is present in the surrounding source block.
+                # Accept that formatting variation only when the value is
+                # still present in the original assembly document; never use
+                # the catalog as a substitute for a missing source mention.
+                if not (
+                    PaperAssemblyCompilerAgent._source_contains(anchored, value)
+                    or PaperAssemblyCompilerAgent._source_contains(
+                        assembly_document, value
+                    )
+                ):
                     issues.append(
                         {
                             "code": "source_anchor_invalid",
@@ -180,7 +204,10 @@ class PaperAssemblyCompilerAgent:
                 *generated.source_basis_refs,
             ]
             for value in values:
-                if value and value not in anchored:
+                if value and not PaperAssemblyCompilerAgent._source_contains(
+                    anchored,
+                    value,
+                ):
                     issues.append(
                         {
                             "code": "source_anchor_invalid",
@@ -197,3 +224,19 @@ class PaperAssemblyCompilerAgent:
                     }
                 )
         return issues
+
+    @staticmethod
+    def _source_contains(source: str, value: str) -> bool:
+        """Allow Markdown layout differences while keeping facts source-bound."""
+        if value in source:
+            return True
+
+        def canonical(text: str) -> str:
+            return re.sub(
+                r"[\s*_#>`~\-•:：;；,.，。、“”\"'()（）【】]+",
+                "",
+                text,
+            )
+
+        normalized_value = canonical(value)
+        return bool(normalized_value) and normalized_value in canonical(source)

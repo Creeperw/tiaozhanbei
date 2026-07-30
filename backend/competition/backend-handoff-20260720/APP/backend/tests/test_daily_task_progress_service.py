@@ -119,6 +119,58 @@ class DailyTaskProgressServiceTests(unittest.TestCase):
             self.assertIsNone(imported.difficulty)
             self.assertIsNone(imported.difficulty_source)
 
+    def test_trusted_atlas_can_promote_same_kp_from_audited_agent_paper(self):
+        bundle = {
+            "source": "knowledge_atlas",
+            "kp_id": "KP_AUDITED",
+            "knowledge_point_name": "阴阳的特性",
+            "kp": {
+                "kp_id": "KP_AUDITED",
+                "kp_lv1": "中医学基础",
+                "kp_lv2": "阴阳学说",
+                "kp_lv3": "阴阳的特性",
+                "raw_content": ["C_AUDITED"],
+                "order": "2",
+            },
+            "questions": [
+                {
+                    "question_id": f"Q_AUDITED_{index}",
+                    "question_type": "单项选择题",
+                    "question_content": f"阴阳特性题目{index}",
+                    "options": [
+                        {"option_id": "A", "content": "正确"},
+                        {"option_id": "B", "content": "错误"},
+                    ],
+                    "answer": ["A"],
+                    "explanation": "教材解析",
+                    "kp_ids": ["KP_AUDITED"],
+                }
+                for index in range(1, 4)
+            ],
+        }
+        with self.session_factory() as db:
+            db.add(
+                database.KnowledgePoint(
+                    kp_id="KP_AUDITED",
+                    name="阴阳的特性",
+                    aliases_json="[]",
+                    source="agent_audited_paper",
+                    status="active",
+                )
+            )
+            db.flush()
+
+            kp_id = ensure_executable_knowledge_bundle(db, bundle)
+
+            self.assertEqual(kp_id, "KP_AUDITED")
+            point = db.query(database.KnowledgePoint).filter_by(
+                kp_id="KP_AUDITED"
+            ).one()
+            self.assertEqual(
+                point.source,
+                "formal-content:knowledge-atlas-2026-07-18",
+            )
+
     def test_publication_rejects_uncompletable_recall_before_persisting_parent(self):
         with self.session_factory() as db:
             with self.assertRaises(DailyTaskProgressError) as captured:

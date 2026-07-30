@@ -22,6 +22,7 @@ from APP.backend.database import (
     ReviewTaskRecord,
 )
 from APP.backend.time_utils import BEIJING_TZ, as_beijing, utc_now
+from APP.backend.system_data_service import focus_seconds_in_window
 
 
 SCHEMA_VERSION = "1.0"
@@ -163,6 +164,7 @@ def _metric_block(
     paper_submissions: list[PaperSubmissionRecord],
     mistakes: list[MistakeRecord],
     focus_sessions: list[LearningFocusSession],
+    effective_focus_seconds: int | None = None,
 ) -> dict[str, Any]:
     question_versions = {
         str(row["question_version_id"])
@@ -177,6 +179,11 @@ def _metric_block(
     max_score = sum(float(row["max_score"]) for row in rows)
     attempt_types = Counter(str(row["attempt_type"]) for row in rows)
     source_kinds = Counter(str(row["source_kind"]) for row in rows)
+    question_attempt_counts = Counter(
+        str(row["question_version_id"])
+        for row in rows
+        if str(row["question_version_id"])
+    )
     completed_attempt_ids = {
         str(row["attempt_id"]) for row in rows
     }
@@ -185,10 +192,14 @@ def _metric_block(
     paper_questions_completed = max(canonical_paper_items, persisted_paper_items)
     non_paper_items = sum(row["attempt_type"] != "paper" for row in rows)
     completed_questions = non_paper_items + paper_questions_completed
-    active_seconds = sum(
-        max(0, int(row.active_seconds or 0))
-        for row in focus_sessions
-        if row.status in {"active", "completed"}
+    active_seconds = (
+        max(0, int(effective_focus_seconds))
+        if effective_focus_seconds is not None
+        else sum(
+            max(0, int(row.active_seconds or 0))
+            for row in focus_sessions
+            if row.status in {"active", "completed"}
+        )
     )
     return {
         "questions_completed": completed_questions,
@@ -213,6 +224,9 @@ def _metric_block(
             row["attempt_id"] for row in rows if row["attempt_type"] == "case"
         }),
         "accepted_attempts_completed": len(completed_attempt_ids),
+        "retry_count": sum(
+            max(0, count - 1) for count in question_attempt_counts.values()
+        ),
         "mistakes_recorded": len(mistakes),
         "active_mistakes": sum(str(row.status or "") == "active" for row in mistakes),
         "focus_minutes": round(active_seconds / 60),
@@ -262,9 +276,17 @@ def build_learning_statistics(
         LearningFocusSession.user_id == learner_id
     ).all()
     window_focus = [
-        row for row in all_focus
-        if row.started_at is not None and row.started_at >= window_start
+        row
+        for row in all_focus
+        if row.started_at is not None
+        and row.started_at <= calculated_at
+        and (row.ended_at is None or row.ended_at >= window_start)
     ]
+    window_focus_seconds = focus_seconds_in_window(
+        window_focus,
+        window_start=window_start,
+        window_end=calculated_at,
+    )
 
     lifetime = _metric_block(
         all_rows,
@@ -280,6 +302,7 @@ def build_learning_statistics(
         paper_submissions=_completed_papers(db, learner_id, since=window_start),
         mistakes=window_mistakes,
         focus_sessions=window_focus,
+        effective_focus_seconds=window_focus_seconds,
     )
     window_question_versions = {
         str(row["question_version_id"])
@@ -371,6 +394,15 @@ def build_learning_statistics(
                 "label": "正式批改得分率",
                 "formula": "sum(accepted score) / sum(accepted max_score)",
                 "sources": ["grading_result_records", "audit_result_records"],
+            },
+            "retry_count": {
+                "label": "同题重复作答次数",
+                "formula": "sum(max(accepted attempts per question_version_id - 1, 0))",
+                "sources": [
+                    "learning_attempt_items",
+                    "grading_result_records",
+                    "audit_result_records",
+                ],
             },
             "paper_attempts_completed": {
                 "label": "已完成试卷数",

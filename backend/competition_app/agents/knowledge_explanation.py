@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from competition_app.agents.common import envelope
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.base import AgentEnvelope
+from competition_app.contracts.knowledge import QuestionDetail
 from competition_app.contracts.resource import (
     QuestionConsumptionDecision,
     ResourceClaim,
@@ -31,7 +32,14 @@ class KnowledgeExplanationAgent:
         evidence_pack = context["dependency_outputs"]["knowledge"].payload
         if not evidence_pack.evidence_items:
             raise ValueError("knowledge explanation requires textbook evidence")
-        skill = prompt_skill_registry.load("expert_agent", "knowledge_explanation")
+        task_type = str(context.get("task_type") or "knowledge_explanation")
+        skill_name = (
+            "general_learning_support"
+            if task_type == "general_learning_support"
+            else "knowledge_explanation"
+        )
+        skill = prompt_skill_registry.load("expert_agent", skill_name)
+        flexible_support = task_type == "general_learning_support"
         preferences = context.get("user_profile", {}).get("user_preference", {})
         semantic_evidence = [
             {
@@ -57,7 +65,7 @@ class KnowledgeExplanationAgent:
                         target_agent="expert_agent",
                         prompt_skill=skill,
                         payload={
-                            "phase": "knowledge_explanation",
+                            "phase": skill_name,
                             "user_request": context.get("user_request", ""),
                             "recent_conversation": [
                                 {
@@ -84,7 +92,12 @@ class KnowledgeExplanationAgent:
                                 )
                             ),
                             "output_contract": {
-                                "content": "直接输出完整自然语言讲解正文。",
+                                "content": (
+                                    "直接输出完整自然语言学习支持正文；按用户问题自然组织，"
+                                    "不要求固定标题或固定段落。"
+                                    if flexible_support
+                                    else "直接输出完整自然语言讲解正文。"
+                                ),
                                 "title": "可选标题。",
                                 "uncertainty": "可选待确认内容。",
                             },
@@ -109,7 +122,11 @@ class KnowledgeExplanationAgent:
             )
             output = KnowledgeExplanationModelOutput.model_validate(
                 {
-                    "title": raw_output.get("title") or f"{evidence_pack.query}知识讲解",
+                    "title": raw_output.get("title") or (
+                        f"{evidence_pack.query}学习要点"
+                        if flexible_support
+                        else f"{evidence_pack.query}知识讲解"
+                    ),
                     "explanation_content": body,
                     "uncertainty": uncertainty,
                 }
@@ -119,17 +136,29 @@ class KnowledgeExplanationAgent:
                 item.content_summary for item in evidence_pack.evidence_items[:3]
             )
             output = KnowledgeExplanationModelOutput(
-                title=f"{evidence_pack.query}知识讲解",
+                title=(
+                    f"{evidence_pack.query}学习要点"
+                    if flexible_support
+                    else f"{evidence_pack.query}知识讲解"
+                ),
                 explanation_content=fallback,
                 uncertainty=["模型讲解格式不可用，系统展示检索总结。"],
             )
         primary = evidence_pack.evidence_items[0]
-        content: dict[str, object] = {"知识讲解": output.explanation_content}
+        content: dict[str, object] = {
+            "学习支持" if flexible_support else "知识讲解":
+                output.explanation_content
+        }
         selected_questions = [
             item
             for item in evidence_pack._question_details
             if self._is_safe_practice_question(item.question_type)
-        ][:3]
+            and self._is_relevant_practice_question(
+                item,
+                evidence_pack.query,
+                str(context.get("user_request") or ""),
+            )
+        ][:1]
         if selected_questions:
             content["配套练习"] = [
                 {
@@ -146,11 +175,6 @@ class KnowledgeExplanationAgent:
                 {
                     "题型": "简答题",
                     "题目": f"请用自己的话概括“{evidence_pack.query}”的核心结论，并说明判断依据。",
-                    "选项": [],
-                },
-                {
-                    "题型": "辨析题",
-                    "题目": "请指出本次讲解中最容易混淆的两个概念，并说明它们的区别。",
                     "选项": [],
                 },
             ]
@@ -227,6 +251,42 @@ class KnowledgeExplanationAgent:
             "多项选择题",
             "判断题",
         }
+
+    @staticmethod
+    def _is_relevant_practice_question(
+        question: QuestionDetail,
+        *topic_texts: str,
+    ) -> bool:
+        """Reject safe-but-off-topic retrieval candidates before publication."""
+
+        source = " ".join(str(value or "") for value in topic_texts)
+        source = re.sub(r"《[^》]+》", " ", source)
+        for phrase in (
+            "你先给我讲讲", "请给我讲讲", "给我讲讲", "请结合教材证据",
+            "学习要点", "学习重点", "阅读重点", "知识点", "相关的",
+            "相关", "章节", "这一章", "这部分", "帮我梳理", "带我梳理",
+            "有哪些", "是什么", "为什么", "怎么学", "如何学习",
+        ):
+            source = source.replace(phrase, " ")
+        anchors: list[str] = []
+        for segment in re.findall(r"[\u4e00-\u9fffA-Za-z0-9]{2,16}", source):
+            normalized = segment.strip().lower()
+            if normalized in {"中医", "教材", "理论", "内容", "介绍"}:
+                continue
+            anchors.append(normalized)
+            for suffix in ("学说", "理论", "证型", "辨析"):
+                if normalized.endswith(suffix) and len(normalized) > len(suffix) + 1:
+                    anchors.append(normalized[:-len(suffix)])
+        anchors = list(dict.fromkeys(anchor for anchor in anchors if len(anchor) >= 2))
+        if not anchors:
+            return False
+        searchable = " ".join(
+            [
+                str(question.stem or ""),
+                *[str(option or "") for option in question.options],
+            ]
+        ).replace(" ", "").lower()
+        return any(anchor in searchable for anchor in anchors)
 
     @staticmethod
     def _learner_options(options: list[str]) -> list[str]:

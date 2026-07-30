@@ -247,6 +247,69 @@ class FormalContentImportServiceTests(unittest.TestCase):
         self.assertEqual(self.db.query(database.QuestionVersionRecord).count(), 1)
         self.assertEqual(self.db.query(database.QuestionKPLinkRecord).count(), 1)
 
+    def test_import_accepts_current_delivery_schema_and_embedded_question_links(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            knowledge_points_path = root / "knowledge_points.json"
+            questions_path = root / "formatted_questions.json"
+            knowledge_points_path.write_text(json.dumps([{
+                "kp": {
+                    "kp_id": "KP_CURRENT_1",
+                    "kp_lv1": "基础",
+                    "kp_lv2": "理论",
+                    "kp_lv3": "阴阳",
+                    "other_name": ["阴阳学说"],
+                    "raw_content": "知识点原文",
+                    "order": 1,
+                },
+            }], ensure_ascii=False), encoding="utf-8")
+            questions_path.write_text(json.dumps([{
+                "question_id": "Q_CURRENT_1",
+                "question_content": "阴阳的基本含义是？",
+                "answer": ["A"],
+                "explanation": "解析",
+                "options": ["A", "B"],
+                "kp_ids": ["KP_CURRENT_1"],
+                "question_type": "single_choice",
+                "difficulty": 2,
+                "tokenized_content": ["阴阳"],
+                "scoring_rubric": "选对得分",
+                "key_points": "阴阳",
+            }], ensure_ascii=False), encoding="utf-8")
+
+            summary = import_formal_learning_content(
+                self.db,
+                knowledge_points_path=knowledge_points_path,
+                questions_path=questions_path,
+                question_kp_links_path=None,
+                data_version="current-schema-v1",
+            )
+            self.db.commit()
+
+        self.assertEqual(summary.knowledge_points, 1)
+        self.assertEqual(summary.active_questions, 1)
+        self.assertEqual(
+            self.db.query(database.KnowledgePoint).filter_by(kp_id="KP_CURRENT_1").one().name,
+            "阴阳",
+        )
+        question = self.db.query(database.QuestionBankItem).filter_by(question_id="Q_CURRENT_1").one()
+        self.assertEqual(question.status, "active")
+        self.assertEqual(question.question_type, "single_choice")
+        learning_question = self.db.query(database.LearningQuestion).filter_by(question_id="Q_CURRENT_1").one()
+        self.assertEqual(json.loads(learning_question.options_json), ["A", "B"])
+        self.assertEqual(json.loads(learning_question.tokenized_content_json), ["阴阳"])
+        self.assertEqual(learning_question.scoring_rubric, "选对得分")
+        self.assertEqual(learning_question.key_points, "阴阳")
+        version = self.db.query(database.QuestionVersionRecord).filter_by(question_id="Q_CURRENT_1").one()
+        self.assertEqual(
+            self.db.query(database.QuestionKPLinkRecord).filter_by(
+                question_version_id=version.question_version_id,
+                kp_id="KP_CURRENT_1",
+                status="active",
+            ).count(),
+            1,
+        )
+
     @staticmethod
     def _write_source_files(root: Path, *, bridges: list[dict[str, str]]):
         knowledge_points = [

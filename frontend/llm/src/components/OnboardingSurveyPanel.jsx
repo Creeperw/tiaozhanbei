@@ -105,6 +105,7 @@ export default function OnboardingSurveyPanel({
   stepOffset = 0,
   onBackToAccount,
   onExit,
+  exitLabel = '退出注册',
 }) {
   const [template, setTemplate] = useState(emptyTemplate);
   const [routes, setRoutes] = useState([]);
@@ -327,7 +328,7 @@ export default function OnboardingSurveyPanel({
       description={current.description}
       mascotMessage={current.mascotMessage}
       onExit={onExit}
-      exitLabel="退出注册"
+      exitLabel={exitLabel}
     >
       {loading && step < 2 ? (
         <div className="registration-journey__options" aria-label="正在加载选项">

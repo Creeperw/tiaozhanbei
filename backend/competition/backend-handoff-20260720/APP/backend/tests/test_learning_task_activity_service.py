@@ -82,7 +82,7 @@ class LearningTaskActivityServiceTests(unittest.TestCase):
             completed = end_focus_session(db, user_id=1, focus_session_id=focus.focus_session_id, now=self.now + timedelta(seconds=170))
             db.commit()
 
-        self.assertEqual(completed.active_seconds, 90)
+        self.assertEqual(completed.active_seconds, 110)
         self.assertEqual(completed.status, "completed")
 
     def test_periodic_heartbeats_do_not_extend_activity_without_recent_interaction(self):
@@ -116,7 +116,7 @@ class LearningTaskActivityServiceTests(unittest.TestCase):
             completed = end_focus_session(db, user_id=1, focus_session_id=focus.focus_session_id, now=self.now + timedelta(minutes=8))
             db.commit()
 
-        self.assertEqual(completed.active_seconds, 290)
+        self.assertEqual(completed.active_seconds, 300)
 
     def test_hidden_or_idle_sessions_cannot_accrue_focus_time(self):
         with self.Session() as db:
@@ -141,7 +141,27 @@ class LearningTaskActivityServiceTests(unittest.TestCase):
             completed = end_focus_session(db, user_id=1, focus_session_id=focus.focus_session_id, now=self.now + timedelta(minutes=6, seconds=10))
             db.commit()
 
-        self.assertEqual(completed.active_seconds, 0)
+        self.assertEqual(completed.active_seconds, 10)
+
+    def test_short_focus_session_is_credited_when_it_ends_before_first_heartbeat(self):
+        with self.Session() as db:
+            focus = start_focus_session(
+                db,
+                user_id=1,
+                task_id=None,
+                resource_type="question",
+                resource_id="Q_SHORT",
+                now=self.now,
+            )
+            completed = end_focus_session(
+                db,
+                user_id=1,
+                focus_session_id=focus.focus_session_id,
+                now=self.now + timedelta(seconds=12),
+            )
+            db.commit()
+
+        self.assertEqual(completed.active_seconds, 12)
 
 
 if __name__ == "__main__":
