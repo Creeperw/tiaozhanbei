@@ -80,6 +80,104 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* Learning-path planning details: preserve readable Markdown/GFM documents. */
+.home-portal__planning-document {
+  min-width: 0;
+  min-height: 100%;
+  background: rgba(255, 255, 255, .38);
+  padding: 24px 28px 38px;
+}
+
+.home-portal__planning-document > section { min-width: 0; }
+.home-portal__planning-document > section + section {
+  margin-top: 32px;
+  border-top: 1px solid rgba(190, 214, 204, .62);
+  padding-top: 28px;
+}
+.home-portal__planning-document > section > h3 {
+  margin: 0 0 18px;
+  color: #17372e;
+  font-size: 1.08rem;
+  font-weight: 850;
+}
+.home-portal__planning-markdown {
+  overflow-x: hidden;
+  color: #48635b;
+  font-size: .86rem;
+  line-height: 1.8;
+  white-space: normal;
+}
+.home-portal__planning-markdown > :first-child { margin-top: 0; }
+.home-portal__planning-markdown > :last-child { margin-bottom: 0; }
+.home-portal__planning-markdown p { margin: 0 0 13px; }
+.home-portal__planning-markdown h1,
+.home-portal__planning-markdown h2,
+.home-portal__planning-markdown h3,
+.home-portal__planning-markdown h4 {
+  margin: 24px 0 10px;
+  color: #1f5745;
+  font-weight: 850;
+  letter-spacing: -.015em;
+  line-height: 1.35;
+}
+.home-portal__planning-markdown h1 { font-size: 1.18rem; }
+.home-portal__planning-markdown h2 {
+  border-left: 3px solid #39a27b;
+  padding-left: 10px;
+  font-size: 1rem;
+}
+.home-portal__planning-markdown h3 { font-size: .92rem; }
+.home-portal__planning-markdown p.is-section-label {
+  display: inline-flex;
+  margin: 3px 0 10px;
+  border-radius: 999px;
+  background: #eaf7f0;
+  padding: 3px 9px;
+  color: #207457;
+  font-size: .74rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.home-portal__planning-markdown ul,
+.home-portal__planning-markdown ol { margin: 0 0 14px; padding-left: 1.3rem; }
+.home-portal__planning-markdown li + li { margin-top: 5px; }
+.home-portal__planning-markdown li::marker { color: #2f946d; }
+.home-portal__planning-markdown strong { color: #204f3e; font-weight: 800; }
+.home-portal__planning-markdown table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  margin: 14px 0 18px;
+  border: 1px solid #d8e9e1;
+  border-radius: 12px;
+  border-spacing: 0;
+  border-collapse: separate;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .78);
+  font-size: .76rem;
+  line-height: 1.55;
+}
+.home-portal__planning-markdown th,
+.home-portal__planning-markdown td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  border-right: 1px solid #e2eee8;
+  border-bottom: 1px solid #e2eee8;
+  padding: 9px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.home-portal__planning-markdown th { background: #eff8f3; color: #28634f; font-weight: 800; }
+.home-portal__planning-markdown tr:last-child td { border-bottom: 0; }
+.home-portal__planning-markdown th:last-child,
+.home-portal__planning-markdown td:last-child { border-right: 0; }
+
+@media (max-width: 760px) {
+  .home-portal__planning-document { padding: 20px 14px 28px; }
+  .home-portal__planning-document > section + section { margin-top: 24px; padding-top: 22px; }
+}
+
 /* Retained learning-path controls from the qualification route. */
 .app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__survey-trigger {
   display: inline-flex;
