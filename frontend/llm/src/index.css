@@ -12712,11 +12712,11 @@ textarea:focus-visible {
   height: 100%;
   min-height: 0;
   gap: clamp(9px, 1vw, 16px);
-  padding: clamp(8px, .8vw, 13px);
-  border: 1px solid #e4eee9;
-  border-radius: clamp(20px, 2vw, 28px);
-  background: #fff;
-  box-shadow: 0 14px 34px rgba(27, 91, 64, .07);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-shell__main[data-page="assistant"] .assistant-session-rail {
