@@ -8,8 +8,8 @@ describe('CapabilityDetailPage', () => {
   it.each([
     ['multi-agent', '多智能体协同', '进入智能助教', 6],
     ['learning-path', '个性化学习路径', '查看我的学习路径', 3],
-    ['knowledge-graph', '专项训练与模拟', '进入训练工坊', 3],
-    ['data-growth', '知识库与资料溯源', '进入知识库', 3],
+    ['knowledge-graph', '专项训练', '进入训练工坊', 3],
+    ['human-collaboration', '人机协同', '参与路径调整', 3],
   ])('renders the %s capability content', (key, title, actionLabel, featureCount) => {
     render(<CapabilityDetailPage capabilityKey={key} onNavigate={vi.fn()} />);
 
@@ -18,14 +18,14 @@ describe('CapabilityDetailPage', () => {
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(featureCount);
   });
 
-  it('opens the real module from the capability action', () => {
+  it('opens the learning path from the human-collaboration capability action', () => {
     const onNavigate = vi.fn();
-    render(<CapabilityDetailPage capabilityKey="data-growth" onNavigate={onNavigate} />);
+    render(<CapabilityDetailPage capabilityKey="human-collaboration" onNavigate={onNavigate} />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: '进入知识库' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: '参与路径调整' })[0]);
 
     expect(onNavigate).toHaveBeenCalledWith({
-      page: 'knowledge',
+      page: 'learning-path',
       params: {},
     });
   });

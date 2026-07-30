@@ -10,6 +10,90 @@ function renderShell(props = {}) {
 }
 
 describe('AppShell', () => {
+  it('marks the desktop AI assistant entry as the featured action', () => {
+    renderShell();
+
+    expect(screen.getByRole('button', { name: 'AI 智能助教' })).toHaveClass('app-shell__assistant-entry--featured');
+  });
+
+  it('shows a login entry instead of the profile menu for visitors', async () => {
+    const onLoginRequested = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ currentUser: null, onLoginRequested });
+
+    expect(screen.getByText('未登录')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '打开用户菜单' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '登录' }));
+    expect(onLoginRequested).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: '打开导航菜单' }));
+    const drawer = screen.getByRole('dialog', { name: '主导航' });
+    expect(within(drawer).getByText('未登录')).toBeInTheDocument();
+    await user.click(within(drawer).getByRole('button', { name: '登录' }));
+    expect(onLoginRequested).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens login instead of navigating when a visitor uses desktop menu actions', async () => {
+    const onLoginRequested = vi.fn();
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ currentUser: null, onLoginRequested, onNavigate });
+
+    const actions = [
+      screen.getByRole('button', { name: '考试类别' }),
+      screen.getByRole('link', { name: '学习路径' }),
+      screen.getByRole('link', { name: '教学资源' }),
+      screen.getByRole('link', { name: '训练工坊' }),
+      screen.getByRole('link', { name: '个人数据' }),
+      screen.getByRole('button', { name: 'AI 智能助教' }),
+    ];
+
+    for (const action of actions) await user.click(action);
+
+    expect(onLoginRequested).toHaveBeenCalledTimes(actions.length);
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('keeps visitor desktop dropdowns open on hover and routes their options to login', async () => {
+    const onLoginRequested = vi.fn();
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ currentUser: null, onLoginRequested, onNavigate });
+
+    await user.hover(screen.getByRole('link', { name: '训练工坊' }));
+    const workshopMenu = screen.getByRole('menu', { name: '训练工坊菜单' });
+    expect(workshopMenu).toBeVisible();
+    await user.click(within(workshopMenu).getByRole('menuitem', { name: '题目训练' }));
+
+    await user.hover(screen.getByRole('button', { name: '考试类别' }));
+    const targetOption = screen.getByRole('menuitemradio', { name: '中医执业医师资格考试' });
+    expect(screen.getByRole('menuitemradio', { name: '执业药师职业资格考试（中药学类）' })).toBeVisible();
+    await user.click(targetOption);
+
+    expect(onLoginRequested).toHaveBeenCalledTimes(2);
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('opens login from visitor mobile navigation actions instead of expanding or navigating', async () => {
+    const onLoginRequested = vi.fn();
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ currentUser: null, onLoginRequested, onNavigate });
+
+    await user.click(screen.getByRole('button', { name: '打开导航菜单' }));
+    const firstDrawer = screen.getByRole('dialog', { name: '主导航' });
+    await user.click(within(firstDrawer).getByRole('link', { name: '学习路径' }));
+    expect(onLoginRequested).toHaveBeenCalledTimes(1);
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: '打开导航菜单' }));
+    const secondDrawer = screen.getByRole('dialog', { name: '主导航' });
+    await user.click(within(secondDrawer).getByRole('button', { name: '展开训练工坊' }));
+    expect(onLoginRequested).toHaveBeenCalledTimes(2);
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
   it('renders a top navigation instead of the former global sidebar', () => {
     renderShell();
 
@@ -80,8 +164,12 @@ describe('AppShell', () => {
     const targetButton = screen.getByRole('button', { name: '考试类别' });
     await user.hover(targetButton);
     expect(targetButton).toHaveAttribute('aria-expanded', 'true');
+    expect(targetButton.closest('.app-shell__target-group')).toHaveAttribute('data-has-current-target', 'true');
     const currentTarget = await screen.findByRole('menuitemradio', { name: '中医执业医师资格考试' });
     const nextTarget = screen.getByRole('menuitemradio', { name: '中医执业助理医师资格考试' });
+    const currentTargetLabel = screen.getByText('当前 · 中医执业医师资格考试');
+    expect(currentTargetLabel).toHaveClass('app-shell__target-current');
+    expect(currentTargetLabel).toHaveAttribute('title', '中医执业医师资格考试');
     expect(currentTarget).toHaveAttribute('aria-checked', 'true');
     expect(nextTarget).toHaveAttribute('aria-checked', 'false');
     await user.click(nextTarget);
@@ -125,7 +213,11 @@ describe('AppShell', () => {
   it('opens the learning path directly without a dropdown', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();
-    renderShell({ onNavigate });
+    const currentIntent = {
+      page: 'learning-path',
+      params: { targetId: 'target-a', examTrackId: 'track-a' },
+    };
+    renderShell({ onNavigate, currentIntent, currentPage: 'learning-path' });
 
     const learningPath = screen.getByRole('link', { name: '学习路径' });
     expect(learningPath).not.toHaveAttribute('aria-haspopup');
@@ -215,7 +307,11 @@ describe('AppShell', () => {
   it('routes avatar shortcuts to their matching destinations', async () => {
     const onNavigate = vi.fn();
     const user = userEvent.setup();
-    renderShell({ onNavigate });
+    const currentIntent = {
+      page: 'learning-path',
+      params: { targetId: 'target-a', examTrackId: 'track-a' },
+    };
+    renderShell({ onNavigate, currentIntent, currentPage: 'learning-path' });
 
     const clickShortcut = async (name) => {
       await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
@@ -225,13 +321,13 @@ describe('AppShell', () => {
     await clickShortcut('收藏夹');
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
-      params: { view: 'workspace', taskType: 'question_favorites' },
+      params: { view: 'workspace', taskType: 'question_favorites', returnTo: currentIntent },
     });
 
     await clickShortcut('笔记本');
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
-      params: { view: 'workspace', taskType: 'study_notes' },
+      params: { view: 'workspace', taskType: 'study_notes', returnTo: currentIntent },
     });
 
     await user.click(screen.getByRole('button', { name: '打开用户菜单' }));
