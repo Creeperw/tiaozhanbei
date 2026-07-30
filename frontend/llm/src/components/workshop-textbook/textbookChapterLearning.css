@@ -169,7 +169,7 @@
 
 /* Revealed section */
 .section-exam-revealed { margin-top:14px; padding-top:14px; border-top:1px solid #e8e0c4; }
-.section-exam-selfcheck { display:flex; align-items:center; gap:6px; margin-bottom:12px; padding:8px 12px; border-radius:8px; font-size:13px; font-weight:700; }
+.section-exam-selfcheck { display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border-radius:8px; font-size:13px; font-weight:700; white-space:nowrap; }
 .section-exam-selfcheck.is-correct { color:#1b6e3d; background:#e2f7ea; }
 .section-exam-selfcheck.is-incorrect { color:#8a2e2e; background:#fdeaea; }
 .section-exam-revealed h4 { display:flex; align-items:center; gap:5px; margin:10px 0 5px; color:#37634f; font-size:12px; font-weight:800; }

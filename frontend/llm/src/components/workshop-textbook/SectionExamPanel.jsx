@@ -319,29 +319,30 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack }) {
                     <Eye size={14} aria-hidden="true" />查看答案
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    className="section-exam-hide-btn"
-                    onClick={() => hideAnswer(q.question_id)}
-                  >
-                    <EyeOff size={14} aria-hidden="true" />隐藏答案
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="section-exam-hide-btn"
+                      onClick={() => hideAnswer(q.question_id)}
+                    >
+                      <EyeOff size={14} aria-hidden="true" />隐藏答案
+                    </button>
+                    {userAnswer && (
+                      <span className={`section-exam-selfcheck ${isCorrect ? 'is-correct' : 'is-incorrect'}`}>
+                        {isCorrect ? (
+                          <><CheckCircle2 size={14} aria-hidden="true" />回答正确</>
+                        ) : (
+                          <><XCircle size={14} aria-hidden="true" />回答错误</>
+                        )}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
 
               {/* Revealed answer section */}
               {revealed && (
                 <div className="section-exam-revealed">
-                  {/* Self-check result */}
-                  {userAnswer && (
-                    <div className={`section-exam-selfcheck ${isCorrect ? 'is-correct' : 'is-incorrect'}`}>
-                      {isCorrect ? (
-                        <><CheckCircle2 size={16} aria-hidden="true" />回答正确</>
-                      ) : (
-                        <><XCircle size={16} aria-hidden="true" />回答错误</>
-                      )}
-                    </div>
-                  )}
 
                   <div className="section-exam-answer">
                     <h4><CircleHelp size={14} aria-hidden="true" />参考答案</h4>
