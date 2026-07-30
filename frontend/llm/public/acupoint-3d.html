@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 穴位人体</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;overflow:hidden;font-family:'Microsoft YaHei',sans-serif}
+#panel{position:absolute;top:16px;left:16px;background:rgba(22,27,34,.92);color:#e6edf3;padding:12px 18px;border-radius:10px;border:1px solid #30363d;font-size:13px;z-index:10}
+#legend{position:absolute;top:16px;right:16px;background:rgba(22,27,34,.88);border:1px solid #30363d;border-radius:10px;padding:10px 14px;font-size:10px;display:flex;flex-wrap:wrap;gap:3px;max-width:260px;max-height:80vh;overflow-y:auto;z-index:10}
+.leg{display:flex;align-items:center;gap:4px;padding:2px 5px;border-radius:4px;color:#c9d1d9}
+.leg .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#tip{position:absolute;pointer-events:none;display:none;background:rgba(22,27,34,.95);color:#e6edf3;padding:8px 14px;border-radius:8px;border:1px solid #30363d;font-size:13px;z-index:100}
+#tip .n{color:#58a6ff;font-weight:bold}
+.hint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:#484f58;font-size:12px;z-index:10}
+#status{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);color:#f0883e;font-size:14px;z-index:10}
+</style>
+</head>
+<body>
+<div id="panel"><b>针灸3D人体模型</b><br><span id="info" style="font-size:11px;color:#8b949e"></span></div>
+<div id="legend"></div>
+<div id="tip"></div>
+<div id="status">正在加载...</div>
+<div class="hint">拖拽旋转 | 滚轮缩放 | 悬停穴位查看名称</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+const MC={LU:'#f5a623',LI:'#f7dc6f',ST:'#e67e22',SP:'#f0b27a',HT:'#e74c3c',SI:'#d35400',BL:'#3498db',KI:'#2ecc71',PC:'#9b59b6',TE:'#8e44ad',GB:'#1abc9c',LR:'#27ae60',CV:'#ecf0f1',GV:'#bdc3c7'};
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color('#0d1117');
+const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.05,500);
+cam.position.set(35,80,120);
+const rdr=new THREE.WebGLRenderer({antialias:true});
+rdr.setSize(innerWidth,innerHeight);rdr.setPixelRatio(Math.min(devicePixelRatio,2));
+document.body.appendChild(rdr.domElement);
+
+scene.add(new THREE.AmbientLight('#8899aa',4));
+scene.add(new THREE.DirectionalLight('#ffffff',5)).position.set(50,100,50);
+
+// Grid
+const grid=new THREE.GridHelper(200,20,'#333','#222');
+scene.add(grid);
+
+// Axes
+scene.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(0,0,0),30,'#ff4444'));
+scene.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(0,0,0),30,'#44ff44'));
+scene.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(0,0,0),30,'#4444ff'));
+
+const ctrl=new OrbitControls(cam,rdr.domElement);
+ctrl.target.set(0,90,0);ctrl.enableDamping=true;ctrl.dampingFactor=0.08;
+ctrl.minDistance=20;ctrl.maxDistance=300;ctrl.maxPolarAngle=Math.PI*.85;ctrl.update();
+
+const mkrGrp=new THREE.Group();scene.add(mkrGrp);
+const allPts=[];
+const rc=new THREE.Raycaster();const ms2=new THREE.Vector2();
+const tip=document.getElementById('tip');
+
+// Step 1: Load acupoints directly
+async function init(){
+  const st=document.getElementById('status');
+  try{
+    const r=await fetch('/acupoint_data.json');
+    const data=await r.json();
+    st.textContent=`加载了 ${data.length} 个穴位数据`;
+
+    // APK coordinates are in native space: Y[0,182], X[-44,44], Z[-23,35]
+    const ms=new Set();const mc={};
+    const step=Math.ceil(data.length/500);
+    let n=0;
+
+    for(let i=0;i<data.length;i+=step){
+      const p=data[i];
+      const mer=p.meridian||'?';ms.add(mer);mc[mer]=(mc[mer]||0)+1;
+      const c=MC[mer]||'#aaa';
+      const mat=new THREE.MeshStandardMaterial({color:c,roughness:.3,metalness:.1,emissive:c,emissiveIntensity:.5});
+      const mk=new THREE.Mesh(new THREE.SphereGeometry(1.2,6,4),mat);
+      // Use APK native coordinates directly
+      mk.position.set(p.x,p.y,p.z);
+      mk.userData=p;mkrGrp.add(mk);allPts.push(mk);n++;
+    }
+
+    document.getElementById('info').innerHTML=`穴位: ${n} 个 | 经络: ${ms.size} 条<br><span style="color:#8b949e">APK原始坐标 X[-44~44] Y[0~182]</span>`;
+    document.getElementById('legend').innerHTML=Object.entries(MC).filter(([k])=>ms.has(k)).map(([k,c])=>`<span class="leg"><span class="dot" style="background:${c}"></span>${k}(${mc[k]})</span>`).join('');
+    st.textContent=`✓ ${n} 穴位已显示 | 坐标轴: 红=X 绿=Y 蓝=Z`;
+    console.log('Acupoints:',n,'meridians:',ms.size);
+
+    // Step 2: Try loading the body model
+    st.textContent+=' | 加载3D模型...';
+    const ldr=new GLTFLoader();
+    ldr.load('/human_real.glb',gltf=>{
+      const mdl=gltf.scene;
+      const bx=new THREE.Box3().setFromObject(mdl);
+      const sz=bx.getSize(new THREE.Vector3());
+      console.log('Model bounds:',bx.min.toArray(),bx.max.toArray(),'Size:',sz.toArray());
+
+      // Scale to match APK height (182 units)
+      const h=Math.max(sz.y,sz.z);
+      const sc=182/h;
+      mdl.scale.setScalar(sc);
+      const bx2=new THREE.Box3().setFromObject(mdl);
+      const mn=bx2.min;const sz2=bx2.getSize(new THREE.Vector3());
+      mdl.position.set(-mn.x-sz2.x/2,-mn.y,-mn.z-sz2.z/2);
+
+      mdl.traverse(c=>{if(c.isMesh){c.material=new THREE.MeshStandardMaterial({color:'#e8c9a0',roughness:.5,metalness:.03,transparent:true,opacity:.7});c.castShadow=true}});
+      scene.add(mdl);
+      st.textContent=`✓ 完成 | 模型尺寸: ${sz2.y.toFixed(0)} 单位`;
+      ctrl.target.set(0,90,0);ctrl.update();
+    },p=>{
+      const pct=Math.round(p.loaded/p.total*100);
+      st.textContent=`模型加载 ${pct}%...`;
+    },e=>{
+      st.textContent=`⚠ 模型加载失败（穴位点仍可见）`;
+      console.error('Model error:',e);
+    });
+
+  }catch(e){
+    st.textContent='❌ 数据加载失败: '+e.message;
+    console.error(e);
+  }
+}
+
+init();
+
+rdr.domElement.addEventListener('mousemove',e=>{
+  ms2.x=(e.clientX/innerWidth)*2-1;ms2.y=-(e.clientY/innerHeight)*2+1;
+  rc.setFromCamera(ms2,cam);
+  const h=rc.intersectObjects(allPts,false);
+  if(h.length){const p=h[0].object.userData;tip.style.display='block';tip.style.left=(e.clientX+16)+'px';tip.style.top=(e.clientY-12)+'px';const s=p.side==='L'?'左':p.side==='R'?'右':'中';tip.innerHTML=`<span class="n">${p.name}</span> ${p.meridian}·${s}侧`}else{tip.style.display='none'}
+});
+
+function anim(){requestAnimationFrame(anim);ctrl.update();rdr.render(scene,cam)}
+anim();
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();rdr.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>

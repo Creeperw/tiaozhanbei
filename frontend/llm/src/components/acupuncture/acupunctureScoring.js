@@ -1,14 +1,21 @@
 export const scoreAcupunctureAttempt = (caseData, needles) => {
     const standards = Array.isArray(caseData?.standardPoints) ? caseData.standardPoints : [];
+    const excellentTolerance = Number(caseData?.scoring?.positionToleranceExcellent);
+    const passTolerance = Number(caseData?.scoring?.positionTolerancePass);
     const tolerance = Number(caseData?.scoring?.positionTolerancePercent);
     const depthRange = caseData?.scoring?.depthRange || caseData?.scoring?.depthRangeMm;
     const retentionRange = caseData?.scoring?.retentionRangeMinutes;
-    const positionConfigured = standards.length > 0 && Number.isFinite(tolerance)
-        && standards.every((standard) => Number.isFinite(standard.x) && Number.isFinite(standard.y));
+    const insertionConfigured = standards.length > 0 && standards.every((standard) => standard.insertionType);
+    const worldPositionConfigured = standards.length > 0
+        && Number.isFinite(excellentTolerance) && Number.isFinite(passTolerance)
+        && standards.every((standard) => Array.isArray(standard.modelPosition));
+    const positionConfigured = worldPositionConfigured || (standards.length > 0 && Number.isFinite(tolerance)
+        && standards.every((standard) => Number.isFinite(standard.x) && Number.isFinite(standard.y)));
+    const positionTolerance = worldPositionConfigured ? passTolerance : tolerance;
     const depthConfigured = Array.isArray(depthRange);
     const retentionConfigured = Array.isArray(retentionRange);
 
-    if (!positionConfigured && !depthConfigured && !retentionConfigured) {
+    if (!positionConfigured && !depthConfigured && !retentionConfigured && !insertionConfigured) {
         return {
             available: false,
             total: null,
@@ -20,7 +27,11 @@ export const scoreAcupunctureAttempt = (caseData, needles) => {
     }
 
     const positionHits = positionConfigured ? standards.filter((standard) => needles.some((needle) => {
-        if (standard.regionId && needle.regionId !== standard.regionId) return false;
+        if (worldPositionConfigured) {
+            if (!Array.isArray(needle.point)) return false;
+            const distance = Math.hypot(...needle.point.map((value, index) => value - standard.modelPosition[index]));
+            return distance <= positionTolerance;
+        }
         return Math.hypot(needle.x - standard.x, needle.y - standard.y) <= tolerance;
     })).length : 0;
     const position = positionConfigured ? Math.round((positionHits / standards.length) * 100) : null;
@@ -31,7 +42,11 @@ export const scoreAcupunctureAttempt = (caseData, needles) => {
     const retentionHits = retentionConfigured ? needles.filter((needle) => needle.retentionMinutes >= retentionRange[0] && needle.retentionMinutes <= retentionRange[1]).length : 0;
     const depth = depthConfigured ? (needles.length ? Math.round((depthHits / needles.length) * 100) : 0) : null;
     const retention = retentionConfigured ? (needles.length ? Math.round((retentionHits / needles.length) * 100) : 0) : null;
-    const scoreParts = [position, depth, retention].filter((value) => value !== null);
+    const insertionHits = insertionConfigured
+        ? needles.filter((needle) => standards.some((standard) => standard.insertionType === needle.insertionType)).length
+        : 0;
+    const insertion = insertionConfigured ? (needles.length ? Math.round((insertionHits / needles.length) * 100) : 0) : null;
+    const scoreParts = [position, depth, retention, insertion].filter((value) => value !== null);
     const total = Math.round(scoreParts.reduce((sum, value) => sum + value, 0) / scoreParts.length);
     const configuredFeedback = total >= 85
         ? caseData.feedback?.excellent
@@ -45,6 +60,7 @@ export const scoreAcupunctureAttempt = (caseData, needles) => {
         position,
         depth,
         retention,
+        insertion,
         feedback: configuredFeedback || (total >= 85
             ? position === null
                 ? '进针深度和留针时间已配置；坐标补充后即可生成位置判定。'
