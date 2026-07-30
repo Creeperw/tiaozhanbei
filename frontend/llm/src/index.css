@@ -12705,22 +12705,27 @@ textarea:focus-visible {
   min-height: 0;
   padding: clamp(10px, 1.35vw, 22px);
   background: #fff;
+  overflow: visible !important;
 }
 
 .app-shell__main[data-page="assistant"] .assistant-workspace {
-  width: 100%;
+  width: auto;
   height: 100%;
   min-height: 0;
+  min-width: 0;
+  flex: 1 1 0;
   gap: clamp(9px, 1vw, 16px);
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  overflow: visible !important;
 }
 
 .app-shell__main[data-page="assistant"] .assistant-session-rail {
   width: clamp(208px, 17vw, 238px) !important;
+  flex: 0 0 clamp(208px, 17vw, 238px) !important;
   border: 1px solid rgba(198, 228, 213, .95);
   border-radius: clamp(16px, 1.5vw, 22px);
   background: #fff;
@@ -12750,6 +12755,8 @@ textarea:focus-visible {
 }
 
 .app-shell__main[data-page="assistant"] .assistant-chat-pane {
+  width: auto !important;
+  flex: 1 1 0 !important;
   overflow: hidden;
   border: 1px solid rgba(204, 230, 219, .9);
   border-radius: clamp(16px, 1.5vw, 22px);
