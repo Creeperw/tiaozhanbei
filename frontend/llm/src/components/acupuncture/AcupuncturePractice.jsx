@@ -240,7 +240,7 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         );
 
         if (step === 5) return (
-            <section className={`acupuncture-card${scoreGenerated ? ' acupuncture-score-card' : ''}`}>
+            <section className="acupuncture-card acupuncture-score-card">
                 <span className="acupuncture-card__eyebrow"><Crosshair size={16} /> 第五步</span>
                 <h2>开始评分</h2>
                 {!scoreGenerated && <>
