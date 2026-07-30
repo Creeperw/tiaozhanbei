@@ -44,6 +44,7 @@ from competition_app.services.textbook_route import TextbookRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
 from competition_app.services.daily_task_refresh import DailyTaskRefreshService
 from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
+from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.review import ReviewService
 from competition_app.llm.terminal import (
     terminal_agent_finished,
@@ -269,10 +270,33 @@ class ApplicationContainer:
             knowledge_point_resolver=knowledge_point_resolver,
             video_resource_resolver=video_resource_resolver,
         )
+        task_load_policy_loader = None
+        if backend_handoff_runtime is not None:
+
+            def load_task_load_policy(
+                learner_id: str,
+                *,
+                plan_context: dict,
+            ) -> dict:
+                queue = review_service.get_queue(learner_id, limit=500)
+                return backend_handoff_runtime.load_task_load_policy(
+                    learner_id,
+                    plan_context=plan_context,
+                    review_projection={
+                        "source": "canonical_review_memory",
+                        "due_count": queue.due_count,
+                        "total_count": len(queue.entries),
+                        "active_task_count": queue.active_task_count,
+                    },
+                    days=7,
+                )
+
+            task_load_policy_loader = load_task_load_policy
         daily_task_refresh_service = DailyTaskRefreshService(
             plan_repository,
             knowledge_point_resolver=knowledge_point_resolver,
             video_resource_resolver=video_resource_resolver,
+            task_load_policy_loader=task_load_policy_loader,
         )
         exa_retriever = (
             ExaVideoRetriever(settings.exa_api_key)
@@ -324,6 +348,84 @@ class ApplicationContainer:
             else None
         )
         tool_registry = ToolRegistry()
+
+        def unavailable_learner_data(
+            external_user_id: str,
+            *,
+            days: int = 7,
+            recent_limit: int = 20,
+        ) -> dict:
+            del external_user_id, recent_limit
+            return {
+                "schema_version": "1.0",
+                "window_days": days,
+                "evidence_status": "unavailable",
+                "reason": "learning data runtime is unavailable",
+            }
+
+        recent_learning_handler = unavailable_learner_data
+        learning_progress_handler = (
+            lambda external_user_id, *, days=30: unavailable_learner_data(
+                external_user_id, days=days
+            )
+        )
+        review_status_handler = (
+            lambda external_user_id, *, history_limit=100: unavailable_learner_data(
+                external_user_id, days=30, recent_limit=history_limit
+            )
+        )
+        if backend_handoff_runtime is not None:
+            recent_learning_handler = (
+                backend_handoff_runtime.load_recent_learning_summary
+            )
+            learning_progress_handler = backend_handoff_runtime.load_learning_statistics
+            review_status_handler = backend_handoff_runtime.load_review_dashboard
+
+        def load_current_plan_progress(external_user_id: str) -> dict:
+            plans = plan_repository.get_current(external_user_id)
+            daily_progress = {}
+            if (
+                plans is not None
+                and plans.learning_task is not None
+                and backend_handoff_runtime is not None
+            ):
+                try:
+                    daily_progress = backend_handoff_runtime.load_daily_task_progress(
+                        external_user_id,
+                        plans.learning_task.model_dump(mode="json"),
+                    )
+                except Exception:
+                    daily_progress = {}
+            return build_plan_progress(
+                plans,
+                daily_task_progress=daily_progress,
+            )
+
+        tool_registry.register(
+            "get_recent_learning_summary",
+            recent_learning_handler,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_learning_progress",
+            learning_progress_handler,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_mastery_snapshot",
+            review_status_handler,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_review_status",
+            review_status_handler,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_current_plan_progress",
+            load_current_plan_progress,
+            allowed_agents={"diagnosis_agent"},
+        )
         tool_registry.register(
             "get_kp_with_content",
             knowledge_tool.get_kp_with_content,

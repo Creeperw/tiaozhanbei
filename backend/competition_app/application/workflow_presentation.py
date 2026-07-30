@@ -14,6 +14,26 @@ _INTERNAL_REASON_MARKERS = (
     "确定性依赖节点",
 )
 
+_INTERNAL_RESOURCE_FIELDS = {
+    "kp_id",
+    "kp_ids",
+    "question_id",
+    "resource_type",
+    "source_id",
+}
+
+_RESOURCE_FIELD_LABELS = {
+    "kp_name": "知识点",
+    "exp": "讲解",
+    "question_type": "题型",
+    "stem": "题目",
+    "options": "选项",
+    "tags": "相关知识点",
+    "title": "标题",
+    "summary": "简介",
+    "url": "链接",
+}
+
 
 def _plain(value: Any) -> Any:
     if isinstance(value, BaseModel):
@@ -39,10 +59,17 @@ def _markdown_value(value: Any, depth: int = 0) -> str:
     if isinstance(value, dict):
         rows = []
         for key, item in value.items():
+            if str(key) in _INTERNAL_RESOURCE_FIELDS:
+                continue
+            if str(key) == "summary" and isinstance(item, str):
+                item = item[:240].rstrip() + ("…" if len(item) > 240 else "")
             rendered = _markdown_value(item, depth + 1).strip()
             if not rendered:
                 continue
-            label = str(key).replace("_", " ")
+            label = _RESOURCE_FIELD_LABELS.get(
+                str(key),
+                str(key).replace("_", " "),
+            )
             rows.append(f"**{label}**：{rendered}")
         return "\n\n".join(rows)
     return json.dumps(value, ensure_ascii=False, default=str)
@@ -98,6 +125,12 @@ def workflow_result_to_markdown(result: Any) -> str:
             or "你好！我是时珍智训智能助教。有什么想学习或练习的内容，可以直接告诉我。"
         ).strip()
 
+    if body.get("task_type") == "learner_data_query":
+        return str(
+            body.get("direct_response")
+            or "暂时没有查到可用于回答的学习记录。"
+        ).strip()
+
     if body.get("task_type") == "paper_generation":
         actions = body.get("ui_actions") or []
         has_answer_action = any(
@@ -129,7 +162,21 @@ def workflow_result_to_markdown(result: Any) -> str:
             "short_term": "短期计划已经整理好。",
             "daily_task": "当日任务已经结合当前短期计划安排好。",
         }
-        parts = [intros.get(generated_scope, "我已经结合你的目标和当前信息整理好了安排。")]
+        reused_existing = bool(plan.get("reused_existing"))
+        if reused_existing:
+            reused_labels = {
+                "long_term": "你已有有效的长期规划，我会继续沿用当前正式版本。",
+                "short_term": "你已有有效的短期计划，我会继续沿用当前正式版本。",
+                "daily_task": "今天已有有效任务，我会继续沿用，不重复生成。",
+            }
+            parts = [
+                reused_labels.get(
+                    generated_scope,
+                    "当前已有有效学习计划，我会继续沿用正式版本。",
+                )
+            ]
+        else:
+            parts = [intros.get(generated_scope, "我已经结合你的目标和当前信息整理好了安排。")]
         long_term = _plain(plan.get("long_term_plan")) or {}
         short_term = _plain(plan.get("short_term_plan")) or {}
         learning_task = _plain(plan.get("learning_task")) or {}
@@ -166,6 +213,8 @@ def workflow_result_to_markdown(result: Any) -> str:
                 ),
             ]
             parts.append("\n\n".join(str(item) for item in task_parts if item))
+        if plan.get("force_replan_prompt"):
+            parts.append(str(plan["force_replan_prompt"]))
         return "\n\n".join(part for part in parts if part)
 
     resource = _plain(body.get("resource")) or {}

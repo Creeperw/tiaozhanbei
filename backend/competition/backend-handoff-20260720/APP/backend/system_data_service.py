@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 
 from APP.backend.time_utils import BEIJING_TZ, as_beijing, utc_now
@@ -24,7 +25,7 @@ from APP.backend.database import (
 )
 
 _ACTIVITY_WINDOW_DAYS = 30
-_CALCULATION_VERSION = "system-data-v3-daily-atomic"
+_CALCULATION_VERSION = "system-data-v4-auditable-window"
 _RECOMMENDATION_VIEW_ACTIVITY = "dashboard_recommendations_view"
 _RESOURCE_CLICK_ACTIVITY = "resource_click"
 _LEGACY_TASK_ACTIVITY_TYPES = {
@@ -148,8 +149,11 @@ def rebuild_system_data(
     )
     focus_sessions = db.query(LearningFocusSession).filter(
         LearningFocusSession.user_id == user_id,
-        LearningFocusSession.started_at >= window_start,
         LearningFocusSession.started_at <= calculated_at,
+        or_(
+            LearningFocusSession.ended_at.is_(None),
+            LearningFocusSession.ended_at >= window_start,
+        ),
     ).all()
 
     snapshot.time_data_json = json.dumps(
@@ -208,11 +212,33 @@ def build_learning_window_metrics(
     recommendation_clicks = [
         row for row in activities if row.activity_type == _RESOURCE_CLICK_ACTIVITY
     ]
-    active_focus_sessions = [
-        row for row in focus_sessions if row.status == "completed" and (row.active_seconds or 0) > 0
+    effective_focus_sessions = [
+        row
+        for row in focus_sessions
+        if row.status in {"active", "completed"} and (row.active_seconds or 0) > 0
     ]
+    focus_seconds = focus_seconds_in_window(
+        focus_sessions,
+        window_start=window_start,
+        window_end=calculated_at,
+    )
+    login_events = [
+        row for row in activities if row.activity_type == "login"
+    ]
+    checkin_events = [
+        row for row in activities if row.activity_type == "daily_checkin"
+    ]
+    login_dates = {
+        as_beijing(row.created_at).date() for row in login_events
+    }
+    checkin_dates = {
+        as_beijing(row.created_at).date() for row in checkin_events
+    }
     daily_atomic_task_completion_rate = _daily_atomic_task_completion_rate(
         daily_items, window_start, calculated_at
+    )
+    daily_item_statuses = Counter(
+        str(row.status or "unknown") for row in daily_items
     )
     return {
         "window": {
@@ -229,12 +255,22 @@ def build_learning_window_metrics(
             "activity_records": len(activities),
             "tasks": len(daily_items),
             "completed_tasks": sum(row.status == "completed" for row in daily_items),
-            "focus_sessions": len(active_focus_sessions),
+            "incomplete_tasks": sum(
+                row.status != "completed" for row in daily_items
+            ),
+            "pending_tasks": int(daily_item_statuses.get("pending", 0)),
+            "tasks_by_status": dict(sorted(daily_item_statuses.items())),
+            "focus_sessions": len(effective_focus_sessions),
+            "focus_seconds": focus_seconds,
+            "login_events": len(login_events),
+            "distinct_login_days": len(login_dates),
+            "checkin_days": len(checkin_dates),
+            "active_days": len(login_dates | checkin_dates),
             "recommendation_views": len(recommendation_views),
             "recommendation_clicks": len(recommendation_clicks),
         },
         "data_source": "daily_task_instances,daily_task_items,learning_focus_sessions,learning_activity_records",
-        "calculation_version": "learning-window-v2-daily-atomic",
+        "calculation_version": "learning-window-v3-auditable",
         "calculated_at": _beijing_iso(calculated_at),
     }
 
@@ -273,11 +309,21 @@ def build_learning_trends(
         ),
     ).all()
 
-    login_dates = {
+    active_dates = {
         as_beijing(activity.created_at).date()
         for activity in activities
         if activity.activity_type in {"login", "daily_checkin"}
     }
+    login_dates = {
+        as_beijing(activity.created_at).date()
+        for activity in activities
+        if activity.activity_type == "login"
+    }
+    login_events_by_date = Counter(
+        as_beijing(activity.created_at).date()
+        for activity in activities
+        if activity.activity_type == "login"
+    )
     focus_seconds_by_date = _focus_seconds_by_beijing_date(
         focus_sessions,
         window_start=window_start,
@@ -295,7 +341,12 @@ def build_learning_trends(
         completed = sum(item.status == "completed" for item in daily_tasks)
         series.append({
             "date": day.isoformat(),
-            "login_days": int(day in login_dates),
+            # Compatibility field: historically this represented an active day
+            # observed from either login or check-in, not a raw login event.
+            "login_days": int(day in active_dates),
+            "active_days": int(day in active_dates),
+            "distinct_login_days": int(day in login_dates),
+            "login_events": int(login_events_by_date.get(day, 0)),
             "focus_minutes": round(focus_seconds_by_date.get(day, 0) / 60),
             "task_completion_rate": completed / len(daily_tasks) if daily_tasks else None,
             "daily_atomic_task_completion_rate": completed / len(daily_tasks) if daily_tasks else None,
@@ -345,6 +396,29 @@ def _focus_seconds_by_beijing_date(
             elapsed_processed += segment_seconds
             cursor = segment_end
     return seconds_by_date
+
+
+def focus_seconds_in_window(
+    focus_sessions: list[LearningFocusSession],
+    *,
+    window_start: datetime,
+    window_end: datetime,
+) -> int:
+    """Return focus seconds attributable to the requested window.
+
+    A focus row stores accumulated effective seconds rather than heartbeat
+    segments.  For a session crossing a window boundary, the persisted effective
+    seconds are therefore allocated proportionally across its observed duration.
+    Sessions fully inside the window retain their exact accumulated seconds.
+    """
+
+    return sum(
+        _focus_seconds_by_beijing_date(
+            focus_sessions,
+            window_start=window_start,
+            window_end=window_end,
+        ).values()
+    )
 
 
 def _migrate_legacy_task_activities(
@@ -403,24 +477,49 @@ def _time_data(
     window_start: datetime,
     window_end: datetime,
 ) -> dict[str, Any]:
-    login_dates = {
+    active_dates = {
         as_beijing(activity.created_at).date().isoformat()
         for activity in activities
         if activity.activity_type in {"login", "daily_checkin"}
     }
-    focus_slot = ""
-    completed_focus_sessions = [
-        focus for focus in focus_sessions
-        if focus.status == "completed" and focus.active_seconds > 0
+    login_events = [
+        activity for activity in activities if activity.activity_type == "login"
     ]
-    if completed_focus_sessions:
+    login_dates = {
+        as_beijing(activity.created_at).date().isoformat()
+        for activity in login_events
+    }
+    checkin_dates = {
+        as_beijing(activity.created_at).date().isoformat()
+        for activity in activities
+        if activity.activity_type == "daily_checkin"
+    }
+    focus_slot = ""
+    effective_focus_sessions = [
+        focus for focus in focus_sessions
+        if focus.status in {"active", "completed"} and focus.active_seconds > 0
+    ]
+    if effective_focus_sessions:
         seconds_by_hour: dict[int, int] = {}
-        for focus in completed_focus_sessions:
+        for focus in effective_focus_sessions:
             hour = as_beijing(focus.started_at).hour
             seconds_by_hour[hour] = seconds_by_hour.get(hour, 0) + focus.active_seconds
         focus_slot = _hour_slot(max(seconds_by_hour, key=lambda hour: (seconds_by_hour[hour], -hour)))
+    focus_seconds = focus_seconds_in_window(
+        focus_sessions,
+        window_start=window_start,
+        window_end=window_end,
+    )
     return {
-        "login_frequency": _metric(len(login_dates), "days", window_start, window_end),
+        # Kept for clients that already consume the legacy name. Its historical
+        # meaning is active days (login or check-in), not raw login count.
+        "login_frequency": _metric(len(active_dates), "active_days", window_start, window_end),
+        "active_days": _metric(len(active_dates), "days", window_start, window_end),
+        "login_event_count": _metric(len(login_events), "events", window_start, window_end),
+        "distinct_login_days": _metric(len(login_dates), "days", window_start, window_end),
+        "checkin_days": _metric(len(checkin_dates), "days", window_start, window_end),
+        "focus_seconds": _metric(focus_seconds, "seconds", window_start, window_end),
+        "focus_minutes": _metric(round(focus_seconds / 60, 2), "minutes", window_start, window_end),
         "focus_time_period": _metric(focus_slot, "hour_slot", window_start, window_end),
     }
 

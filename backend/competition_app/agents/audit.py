@@ -133,7 +133,11 @@ class AuditAgent:
                 }
             )
         if (
-            (knowledge_explanation or str(context.get("task_type")) == "personalized_review_card")
+            (
+                knowledge_explanation
+                or str(context.get("task_type"))
+                in {"personalized_review_card", "general_learning_support"}
+            )
             and context.get("audit_feedback") is not None
             and decision == "revise"
             and not missing

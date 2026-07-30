@@ -70,15 +70,15 @@ def _add_question_candidates(context: dict) -> dict:
         QuestionDetail(
             question_id="Q_1",
             question_type="单项选择题",
-            stem="四君子汤的主要功用是？",
+            stem="风寒感冒的常用治法是？",
             options=[
-                "{'option_id': 'A', 'content': '益气健脾'}",
-                "{'option_id': 'B', 'content': '温中祛寒'}",
+                "{'option_id': 'A', 'content': '辛温解表'}",
+                "{'option_id': 'B', 'content': '益气健脾'}",
                 "{'option_id': 'C', 'content': ''}",
             ],
             reference_answer="A",
-            analysis="四君子汤为益气健脾代表方。",
-            tags=["方剂学"],
+            analysis="风寒感冒以辛温解表为常用治法。",
+            tags=["感冒"],
             source_metadata={},
             bridges=[
                 QuestionBridge(
@@ -132,6 +132,31 @@ async def test_knowledge_explanation_accepts_plain_natural_language_body() -> No
 
 
 @pytest.mark.asyncio
+async def test_general_learning_support_keeps_free_form_natural_language() -> None:
+    class FlexibleSupportModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            assert payload["prompt_skill_id"] == "expert.general_learning_support"
+            assert "不要求固定标题" in payload["payload"]["output_contract"]["content"]
+            return {
+                "title": "阴阳学说章节学习要点",
+                "content": (
+                    "先抓住阴阳的基本属性，再理解对立制约、互根互用、消长平衡和"
+                    "相互转化之间的关系。学习时用同一实例贯穿这些关系即可。"
+                ),
+                "uncertainty": [],
+            }
+
+    context = _context()
+    context["task_type"] = "general_learning_support"
+    context["user_request"] = "梳理《中医学基础》阴阳学说章节的学习要点"
+    result = await KnowledgeExplanationAgent(FlexibleSupportModel()).run(context)
+
+    assert "知识讲解" not in result.payload.content
+    assert result.payload.content["学习支持"].startswith("先抓住阴阳")
+    assert result.payload.content["配套练习"]
+
+
+@pytest.mark.asyncio
 async def test_knowledge_explanation_drops_generic_uncertainty_placeholders() -> None:
     class PlaceholderModel:
         async def complete_json(self, role, payload, on_delta=None):
@@ -178,8 +203,8 @@ async def test_knowledge_explanation_uses_retrieved_questions_without_answers() 
     assert result.payload.content["配套练习"] == [
         {
             "题型": "单项选择题",
-            "题目": "四君子汤的主要功用是？",
-            "选项": ["A. 益气健脾", "B. 温中祛寒"],
+            "题目": "风寒感冒的常用治法是？",
+            "选项": ["A. 辛温解表", "B. 益气健脾"],
         }
     ]
     assert result.payload.question_consumption is not None
@@ -198,3 +223,19 @@ async def test_knowledge_explanation_falls_back_to_open_self_check_questions() -
     assert result.payload.question_consumption is not None
     assert result.payload.question_consumption.use_question_candidates is False
     assert result.payload.question_consumption.resource_type == "practice"
+
+
+@pytest.mark.asyncio
+async def test_knowledge_explanation_rejects_off_topic_question_candidate() -> None:
+    context = _add_question_candidates(_context())
+    question = context["dependency_outputs"]["knowledge"].payload._question_details[0]
+    question.stem = "中医理论体系形成于哪个时期？"
+    question.options = ["{'option_id': 'A', 'content': '先秦至汉代'}"]
+    question.tags = ["阴阳学说", "中医学史"]
+
+    result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(context)
+
+    assert result.payload.question_consumption.use_question_candidates is False
+    assert result.payload.question_consumption.selected_question_ids == []
+    assert result.payload.content["配套练习"][0]["题型"] == "简答题"
+    assert "感冒证型" in result.payload.content["配套练习"][0]["题目"]

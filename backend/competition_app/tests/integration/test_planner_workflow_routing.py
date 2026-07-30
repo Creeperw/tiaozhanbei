@@ -231,7 +231,7 @@ async def test_combined_plan_and_card_does_not_publish_unaudited_plan(tmp_path) 
 
 
 @pytest.mark.asyncio
-async def test_learning_status_request_reuses_existing_plans(tmp_path) -> None:
+async def test_learning_status_request_reads_data_without_rewriting_plans(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     existing_long = {
         "plan_id": "LONG_OLD",
@@ -271,15 +271,47 @@ async def test_learning_status_request_reuses_existing_plans(tmp_path) -> None:
         )
     )
 
-    assert result.task_type == "learning_plan"
-    assert result.learning_plan.long_term_plan.content == existing_long["content"]
-    assert result.learning_plan.short_term_plan.content == existing_short["content"]
+    assert result.task_type == "learner_data_query"
+    assert result.learning_plan is None
+    assert result.resource is None
+    assert result.review_task is None
+    assert result.direct_response
+    assert "复习卡" not in result.direct_response
     diagnosis = next(item for item in result.agent_outputs if item.producer == "diagnosis_agent")
     assert {item.producer for item in result.agent_outputs} == {
-            "planner_agent", "memory_agent", "default_route_resolver", "diagnosis_agent", "learning_plan_service"
+        "planner_agent", "memory_agent", "diagnosis_agent"
     }
-    assert diagnosis.payload.learning_plan_proposal.long_term_plan_action == "reuse"
-    assert diagnosis.payload.learning_plan_proposal.short_term_plan_action == "reuse"
+    assert diagnosis.payload.learning_plan_proposal is None
+    assert diagnosis.payload.learner_data["query_kind"] == "progress_summary"
+
+
+@pytest.mark.asyncio
+async def test_next_learning_query_returns_guidance_without_publishing_short_term_plan(
+    tmp_path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="NEXT_LEARNING_1",
+            user_request="我最近需要学习些什么？",
+            available_minutes=20,
+        )
+    )
+
+    assert result.task_type == "learner_data_query"
+    assert result.learning_plan is None
+    assert result.resource is None
+    assert result.direct_response
+    diagnosis = next(
+        item for item in result.agent_outputs if item.producer == "diagnosis_agent"
+    )
+    assert diagnosis.payload.learner_data["query_kind"] == "next_learning"
+    assert diagnosis.payload.learner_data["sources"] == [
+        "get_current_plan_progress",
+        "get_mastery_snapshot",
+        "get_recent_learning_summary",
+    ]
 
 
 @pytest.mark.asyncio

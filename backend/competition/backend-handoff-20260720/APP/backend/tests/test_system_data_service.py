@@ -107,6 +107,10 @@ class SystemDataServiceTests(unittest.TestCase):
 
         self.assertEqual(snapshot.calculated_at, now)
         self.assertEqual(time_data["login_frequency"]["value"], 2)
+        self.assertEqual(time_data["login_event_count"]["value"], 2)
+        self.assertEqual(time_data["distinct_login_days"]["value"], 2)
+        self.assertEqual(time_data["active_days"]["value"], 2)
+        self.assertEqual(time_data["checkin_days"]["value"], 0)
         self.assertEqual(time_data["focus_time_period"]["value"], "00:00-00:59")
         self.assertEqual(time_data["login_frequency"]["window_end"], "2026-07-16T09:00:00+08:00")
 
@@ -138,6 +142,10 @@ class SystemDataServiceTests(unittest.TestCase):
         time_data = json.loads(snapshot.time_data_json)
 
         self.assertEqual(time_data["login_frequency"]["value"], 2)
+        self.assertEqual(time_data["login_event_count"]["value"], 1)
+        self.assertEqual(time_data["distinct_login_days"]["value"], 1)
+        self.assertEqual(time_data["checkin_days"]["value"], 2)
+        self.assertEqual(time_data["active_days"]["value"], 2)
 
     def test_builds_beijing_daily_learning_trends_for_selected_window(self):
         from APP.backend.system_data_service import build_learning_trends
@@ -184,6 +192,9 @@ class SystemDataServiceTests(unittest.TestCase):
             "2026-07-16",
         ])
         self.assertEqual(trend["series"][5]["login_days"], 1)
+        self.assertEqual(trend["series"][5]["active_days"], 1)
+        self.assertEqual(trend["series"][5]["distinct_login_days"], 1)
+        self.assertEqual(trend["series"][5]["login_events"], 1)
         self.assertEqual(trend["series"][6]["focus_minutes"], 4)
         self.assertEqual(trend["series"][6]["task_completion_rate"], 0.5)
         self.assertEqual(trend["calculated_at"], "2026-07-16T09:00:00+08:00")
@@ -294,8 +305,18 @@ class SystemDataServiceTests(unittest.TestCase):
         self.assertEqual(metrics["resource_click_rate"]["value"], 0.5)
         self.assertEqual(metrics["counts"]["tasks"], 2)
         self.assertEqual(metrics["counts"]["completed_tasks"], 1)
+        self.assertEqual(metrics["counts"]["incomplete_tasks"], 1)
+        self.assertEqual(metrics["counts"]["pending_tasks"], 1)
+        self.assertEqual(
+            metrics["counts"]["tasks_by_status"],
+            {"completed": 1, "pending": 1},
+        )
         self.assertEqual(metrics["counts"]["focus_sessions"], 2)
-        self.assertEqual(metrics["calculation_version"], "learning-window-v2-daily-atomic")
+        self.assertEqual(metrics["counts"]["focus_seconds"], 360)
+        self.assertEqual(metrics["counts"]["login_events"], 1)
+        self.assertEqual(metrics["counts"]["distinct_login_days"], 1)
+        self.assertEqual(metrics["counts"]["active_days"], 1)
+        self.assertEqual(metrics["calculation_version"], "learning-window-v3-auditable")
 
         snapshot = rebuild_system_data(self.db, user_id=1, now=now + timedelta(hours=2))
         self.db.commit()

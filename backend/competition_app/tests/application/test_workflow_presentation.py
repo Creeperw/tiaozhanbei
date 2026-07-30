@@ -359,6 +359,39 @@ def test_paper_message_keeps_exam_body_in_workspace() -> None:
     assert "通过审核" in message
 
 
+def test_resource_message_hides_internal_ids_and_uses_learner_labels() -> None:
+    message = workflow_result_to_markdown(
+        {
+            "status": "success",
+            "task_type": "personalized_review_card",
+            "resource": {
+                "title": "四君子汤个性化练习",
+                "content": {
+                    "知识卡片": {
+                        "kp_id": "003264",
+                        "kp_name": "四君子汤",
+                        "exp": "用于巩固组成与配伍逻辑。",
+                    },
+                    "练习资源": [
+                        {
+                            "question_id": "Q_INTERNAL",
+                            "question_type": "单项选择题",
+                            "stem": "四君子汤的君药是？",
+                            "kp_ids": ["003264"],
+                        }
+                    ],
+                },
+            },
+        }
+    )
+
+    assert "003264" not in message
+    assert "Q_INTERNAL" not in message
+    assert "**知识点**：四君子汤" in message
+    assert "**题型**：单项选择题" in message
+    assert "**题目**：四君子汤的君药是？" in message
+
+
 def test_workflow_run_state_persists_communication_trace_summary() -> None:
     execution = ExecutionResult(
         status="success",

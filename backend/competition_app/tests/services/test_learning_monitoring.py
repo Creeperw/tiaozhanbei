@@ -29,3 +29,34 @@ def test_monitoring_snapshot_exposes_real_sample_counts() -> None:
     assert result.sample_counts.activities == 4
     assert result.metrics["task_completion_rate"] == 0.75
     assert result.metrics["question_accuracy"] == 0.5
+
+
+def test_monitoring_snapshot_prefers_canonical_audited_metrics() -> None:
+    result = LearningMonitoringService().build_snapshot(
+        "U1",
+        {
+            "monitoring_metrics": {
+                "task_completion_rate": 0.25,
+                "question_accuracy": 0.8,
+                "review_stability": None,
+                "retry_count": 2,
+                "sample_counts": {
+                    "activities": 6,
+                    "question_attempts": 5,
+                    "mastery_records": 3,
+                },
+            },
+            "learning_profile": {
+                "question_accuracy": 0.1,
+                "review_stability": 0.9,
+                "behavior_metrics": {"task_completion_rate": 1.0},
+            },
+        },
+    )
+
+    assert result.sample_counts.activities == 6
+    assert result.sample_counts.question_attempts == 5
+    assert result.metrics["task_completion_rate"] == 0.25
+    assert result.metrics["question_accuracy"] == 0.8
+    assert result.metrics["review_stability"] is None
+    assert result.metrics["retry_count"] == 2

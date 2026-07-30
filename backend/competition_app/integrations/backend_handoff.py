@@ -374,14 +374,22 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
-    def load_learning_context(self, external_user_id: str) -> dict[str, Any]:
+    def load_learning_context(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+    ) -> dict[str, Any]:
         """Build a server-owned behavior context for the host application's user."""
 
+        if days not in {7, 30, 90}:
+            raise ValueError("days must be one of: 7, 30, 90")
         database = importlib.import_module("APP.backend.database")
         auth = importlib.import_module("APP.backend.auth")
         diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
         learning_targets = importlib.import_module("APP.backend.learning_target_service")
         memory = importlib.import_module("APP.backend.memory_agent_service")
+        statistics = importlib.import_module("APP.backend.learning_statistics_service")
         system_data = importlib.import_module("APP.backend.system_data_service")
         db = database.SessionLocal()
         try:
@@ -389,7 +397,7 @@ class BackendHandoffRuntime:
                 db, SimpleNamespace(user_id=external_user_id)
             )
             stored_profile = diagnosis.get_or_create_profile(db, user.id, commit=False)
-            snapshot = system_data.rebuild_system_data(db, user_id=user.id)
+            system_data.rebuild_system_data(db, user_id=user.id)
             profile = diagnosis.build_learning_profile(db, user.id)
             behavior_window = diagnosis.build_l3_behavior_window(db, user.id)
             diagnosis_report = diagnosis.build_diagnosis_snapshot(
@@ -399,7 +407,13 @@ class BackendHandoffRuntime:
             learning_target = learning_targets.serialize_learning_target(
                 learning_targets.get_active_learning_target(db, user.id)
             )
-            trends = system_data.build_learning_trends(db, user_id=user.id, days=7)
+            window_metrics = system_data.build_learning_window_metrics(
+                db, user_id=user.id, days=days
+            )
+            trends = system_data.build_learning_trends(db, user_id=user.id, days=days)
+            outcome_statistics = statistics.build_learning_statistics(
+                db, user.id, days=days
+            )
 
             mastery_rows = (
                 db.query(database.LearnerKnowledgeMastery)
@@ -411,7 +425,66 @@ class BackendHandoffRuntime:
             completed_attempts = self._load_completed_question_attempts(
                 database, db, user.id, external_user_id
             )
-            system_payload = system_data.system_data_payload(snapshot)
+            system_payload = {
+                "time_data": window_metrics["time_data"],
+                "task_completion_rate": window_metrics["task_completion_rate"],
+                "daily_atomic_task_completion_rate": window_metrics[
+                    "daily_atomic_task_completion_rate"
+                ],
+                "resource_click_rate": window_metrics["resource_click_rate"],
+                "calculation_version": window_metrics["calculation_version"],
+                "calculated_at": window_metrics["calculated_at"],
+            }
+            current_outcomes = dict(
+                outcome_statistics.get("current_window") or {}
+            )
+            correctness_denominator = (
+                int(current_outcomes.get("correct_answers") or 0)
+                + int(current_outcomes.get("incorrect_answers") or 0)
+            )
+            canonical_accuracy = (
+                int(current_outcomes.get("correct_answers") or 0)
+                / correctness_denominator
+                if correctness_denominator
+                else None
+            )
+            monitoring_metrics = {
+                "task_completion_rate": (
+                    window_metrics.get("daily_atomic_task_completion_rate") or {}
+                ).get("value"),
+                "question_accuracy": canonical_accuracy,
+                "question_score_rate": current_outcomes.get("score_rate"),
+                "review_stability": None,
+                "retry_count": int(behavior_window.get("retry_count") or 0),
+                "sample_counts": {
+                    "activities": int(
+                        (window_metrics.get("counts") or {}).get(
+                            "activity_records"
+                        )
+                        or 0
+                    ),
+                    "question_attempts": int(
+                        current_outcomes.get(
+                            "audited_question_items_completed"
+                        )
+                        or 0
+                    ),
+                    "mastery_records": int(
+                        (outcome_statistics.get("lifetime") or {}).get(
+                            "knowledge_points_assessed"
+                        )
+                        or 0
+                    ),
+                },
+                "sources": [
+                    "daily_task_instances",
+                    "daily_task_items",
+                    "learning_attempt_items",
+                    "grading_result_records",
+                    "audit_result_records",
+                    "knowledge_mastery_states",
+                ],
+            }
             system_payload.update(
                 {
                     "behavior_window": behavior_window,
@@ -528,7 +601,9 @@ class BackendHandoffRuntime:
                     },
                     "behavior_metrics": behavior_window,
                 },
+                "monitoring_metrics": monitoring_metrics,
                 "system_data": system_payload,
+                "learning_statistics": outcome_statistics,
                 "question_attempt": completed_attempts,
                 "mastery": [
                     {
@@ -853,6 +928,7 @@ class BackendHandoffRuntime:
         days: int = 30,
         plan_context: dict[str, Any] | None = None,
         run_automation: bool = True,
+        review_projection: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Return the stable learning-insight contract and run idempotent automation."""
 
@@ -867,6 +943,7 @@ class BackendHandoffRuntime:
                     user.id,
                     plan_context=plan_context or {},
                     days=days,
+                    review_projection=review_projection,
                 )
                 result = cycle["insights"]
                 result["automation"] = {
@@ -874,7 +951,12 @@ class BackendHandoffRuntime:
                     "plan_review": cycle.get("plan_review"),
                 }
             else:
-                result = governance.build_learning_insights(db, user.id, days=days)
+                result = governance.build_learning_insights(
+                    db,
+                    user.id,
+                    days=days,
+                    review_projection=review_projection,
+                )
             db.commit()
             return result
         except Exception:
@@ -905,6 +987,99 @@ class BackendHandoffRuntime:
             )
             db.commit()
             return report
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_task_load_policy(
+        self,
+        external_user_id: str,
+        *,
+        plan_context: dict[str, Any] | None = None,
+        review_projection: dict[str, Any] | None = None,
+        days: int = 7,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.build_task_load_policy(
+                db,
+                user.id,
+                plan_context=plan_context or {},
+                review_projection=review_projection,
+                days=days,
+            )
+        finally:
+            db.close()
+
+    def record_resource_recommendation_event(
+        self,
+        external_user_id: str,
+        *,
+        event_type: str,
+        recommendation_view_id: str,
+        resource_id: str,
+        resource_type: str = "",
+        kp_ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.record_resource_recommendation_event(
+                db,
+                user.id,
+                event_type=event_type,
+                recommendation_view_id=recommendation_view_id,
+                resource_id=resource_id,
+                resource_type=resource_type,
+                kp_ids=kp_ids,
+            )
+            db.commit()
+            return result
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+    def load_resource_effectiveness_report(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 30,
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return governance.build_resource_effectiveness_report(
+                db, user.id, days=days
+            )
+        finally:
+            db.close()
+
+    def record_plan_progression_event(
+        self,
+        external_user_id: str,
+        progression: dict[str, Any],
+    ) -> dict[str, Any]:
+        database = importlib.import_module("APP.backend.database")
+        governance = importlib.import_module("APP.backend.learning_governance_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            result = governance.record_plan_progression_event(
+                db, user.id, progression
+            )
+            db.commit()
+            return result
         except Exception:
             db.rollback()
             raise
@@ -1033,13 +1208,19 @@ class BackendHandoffRuntime:
         *,
         plan_context: dict[str, Any] | None = None,
         trigger_type: str = "manual",
+        review_projection: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         database = importlib.import_module("APP.backend.database")
         governance = importlib.import_module("APP.backend.learning_governance_service")
         db = database.SessionLocal()
         try:
             user = self._workshop_user(db, external_user_id)
-            insights = governance.build_learning_insights(db, user.id, days=30)
+            insights = governance.build_learning_insights(
+                db,
+                user.id,
+                days=30,
+                review_projection=review_projection,
+            )
             result = governance.run_plan_review(
                 db,
                 user.id,
@@ -1104,6 +1285,12 @@ class BackendHandoffRuntime:
                 user_id=user.id,
                 now=calculated_at,
             )
+            window_metrics = system_data.build_learning_window_metrics(
+                db,
+                user_id=user.id,
+                days=days,
+                now=calculated_at,
+            )
             trends = system_data.build_learning_trends(
                 db,
                 user_id=user.id,
@@ -1123,8 +1310,11 @@ class BackendHandoffRuntime:
                 db.query(database.LearningFocusSession)
                 .filter(
                     database.LearningFocusSession.user_id == user.id,
-                    database.LearningFocusSession.started_at >= window_start,
                     database.LearningFocusSession.started_at <= calculated_at,
+                    (
+                        database.LearningFocusSession.ended_at.is_(None)
+                        | (database.LearningFocusSession.ended_at >= window_start)
+                    ),
                 )
                 .all()
             )
@@ -1161,29 +1351,88 @@ class BackendHandoffRuntime:
                     )
                     .all()
                 }
-            db.commit()
-            return {
-                "schema_version": "1.0",
-                "window_days": days,
-                "calculated_at": system_data.system_data_payload(snapshot).get("calculated_at"),
-                "system_data": system_data.system_data_payload(snapshot),
-                "trends": trends,
-                "counters": {
-                    "learning_tasks": {
-                        "total": len(tasks),
-                        "by_status": dict(sorted(task_statuses.items())),
-                    },
-                    "focus_sessions": {
-                        "total": len(focus_sessions),
-                        "active_seconds": sum(max(0, int(row.active_seconds or 0)) for row in focus_sessions),
-                        "by_status": dict(sorted(focus_statuses.items())),
-                    },
-                    "activities": {
-                        "total": len(activities),
-                        "by_type": dict(sorted(activity_types.items())),
-                    },
-                },
-                "recent_activities": [
+            compatibility_snapshot = system_data.system_data_payload(snapshot)
+            exact_system_data = {
+                "time_data": window_metrics["time_data"],
+                "task_completion_rate": window_metrics["task_completion_rate"],
+                "daily_atomic_task_completion_rate": window_metrics[
+                    "daily_atomic_task_completion_rate"
+                ],
+                "resource_click_rate": window_metrics["resource_click_rate"],
+                "calculation_version": window_metrics["calculation_version"],
+                "calculated_at": window_metrics["calculated_at"],
+            }
+            recent_activity_rows = []
+            kp_name_cache: dict[str, str] = {}
+            for row in activities[:recent_limit]:
+                try:
+                    activity_payload = json.loads(row.payload_json or "{}")
+                except (TypeError, ValueError):
+                    activity_payload = {}
+                activity_payload = (
+                    activity_payload if isinstance(activity_payload, dict) else {}
+                )
+                raw_knowledge_points = (
+                    activity_payload.get("knowledge_points")
+                    or activity_payload.get("kp_names")
+                    or activity_payload.get("kp_ids")
+                    or []
+                )
+                if not raw_knowledge_points and isinstance(
+                    activity_payload.get("grading"), dict
+                ):
+                    raw_knowledge_points = (
+                        activity_payload["grading"].get("knowledge_points")
+                        or activity_payload["grading"].get("kp_ids")
+                        or []
+                    )
+                knowledge_points = []
+                for item in (
+                    raw_knowledge_points
+                    if isinstance(raw_knowledge_points, list)
+                    else [raw_knowledge_points]
+                ):
+                    value = (
+                        item.get("name") or item.get("kp_name") or item.get("kp_id")
+                        if isinstance(item, dict)
+                        else item
+                    )
+                    value = str(value or "").strip()
+                    if value and re.fullmatch(
+                        r"(?:KP[_-]?)?\d{3,}|[A-Z]{2,}[_-][A-Z0-9_-]+",
+                        value,
+                        flags=re.IGNORECASE,
+                    ):
+                        if value not in kp_name_cache:
+                            kp_row = (
+                                db.query(database.KnowledgePoint)
+                                .filter(database.KnowledgePoint.kp_id == value)
+                                .one_or_none()
+                            )
+                            kp_name_cache[value] = (
+                                str(kp_row.name or "").strip() if kp_row else ""
+                            )
+                        value = kp_name_cache[value]
+                    if value:
+                        knowledge_points.append(value)
+                training_task = training_tasks.get(str(row.resource_id))
+                label_candidates = (
+                    getattr(training_task, "title", ""),
+                    activity_payload.get("title"),
+                    activity_payload.get("section_name"),
+                    activity_payload.get("chapter_name"),
+                    activity_payload.get("book"),
+                    activity_payload.get("knowledge_point_name"),
+                )
+                label = next(
+                    (
+                        str(value).strip()
+                        for value in label_candidates
+                        if str(value or "").strip()
+                    ),
+                    "",
+                )
+                recent_activity_rows.append(
                     {
                         "activity_id": row.id,
                         "activity_type": row.activity_type,
@@ -1192,22 +1441,68 @@ class BackendHandoffRuntime:
                         "completion_status": row.completion_status,
                         "score": float(row.score) if row.score is not None else None,
                         "duration_minutes": int(row.duration_minutes or 0),
-                        "created_at": row.created_at.isoformat() if row.created_at else None,
-                        "title": (
-                            training_tasks.get(str(row.resource_id)).title
-                            if training_tasks.get(str(row.resource_id))
-                            else ""
+                        "created_at": (
+                            row.created_at.isoformat() if row.created_at else None
                         ),
+                        "title": label,
+                        "knowledge_points": list(dict.fromkeys(knowledge_points)),
                         "task_type": (
-                            training_tasks.get(str(row.resource_id)).task_type
-                            if training_tasks.get(str(row.resource_id))
-                            else ""
+                            str(getattr(training_task, "task_type", "") or "")
                         ),
                     }
-                    for row in activities[:recent_limit]
-                ],
+                )
+            db.commit()
+            return {
+                "schema_version": "1.1",
+                "window_days": days,
+                "calculated_at": window_metrics["calculated_at"],
+                "system_data": exact_system_data,
+                "compatibility_snapshot_30d": compatibility_snapshot,
+                "trends": trends,
+                "counters": {
+                    "daily_task_items": {
+                        "total": window_metrics["counts"]["tasks"],
+                        "completed": window_metrics["counts"]["completed_tasks"],
+                        "incomplete": window_metrics["counts"][
+                            "incomplete_tasks"
+                        ],
+                        "pending": window_metrics["counts"]["pending_tasks"],
+                        "by_status": window_metrics["counts"][
+                            "tasks_by_status"
+                        ],
+                        "completion_rate": window_metrics[
+                            "daily_atomic_task_completion_rate"
+                        ],
+                    },
+                    "learning_tasks": {
+                        "total": len(tasks),
+                        "by_status": dict(sorted(task_statuses.items())),
+                        "scope": "legacy_and_free_learning_tasks",
+                    },
+                    "focus_sessions": {
+                        "total": window_metrics["counts"]["focus_sessions"],
+                        "active_seconds": window_metrics["counts"]["focus_seconds"],
+                        "by_status": dict(sorted(focus_statuses.items())),
+                    },
+                    "login": {
+                        "events": window_metrics["counts"]["login_events"],
+                        "distinct_login_days": window_metrics["counts"][
+                            "distinct_login_days"
+                        ],
+                        "checkin_days": window_metrics["counts"]["checkin_days"],
+                        "active_days": window_metrics["counts"]["active_days"],
+                    },
+                    "activities": {
+                        "total": len(activities),
+                        "by_type": dict(sorted(activity_types.items())),
+                    },
+                },
+                "recent_activities": recent_activity_rows,
                 "collection": {
-                    "task_completion": "learning_tasks",
+                    "task_completion": "published daily_task_instances + daily_task_items",
+                    "legacy_learning_tasks": "learning_tasks",
+                    "login_frequency": "learning_activity_records(activity_type=login)",
+                    "active_days": "learning_activity_records(activity_type in login,daily_checkin)",
                     "focus_time": "learning_focus_sessions heartbeat",
                     "resource_click": "dashboard recommendation view and click",
                     "graded_learning": "question, paper and case submission activities",
@@ -1218,6 +1513,89 @@ class BackendHandoffRuntime:
             raise
         finally:
             db.close()
+
+    def load_recent_learning_summary(
+        self,
+        external_user_id: str,
+        *,
+        days: int = 7,
+        recent_limit: int = 20,
+    ) -> dict[str, Any]:
+        """Return only server-observed learning completions, never recommendation noise."""
+
+        activity = self.load_learning_activity_summary(
+            external_user_id,
+            days=days,
+            recent_limit=min(100, max(recent_limit * 3, recent_limit)),
+        )
+        verified_types = {
+            "question_attempt",
+            "paper_submission",
+            "case_training",
+            "resource_complete",
+            "textbook_section_completed",
+            "training_workspace_task",
+            "practice",
+        }
+        accepted_statuses = {
+            "completed",
+            "submitted",
+            "needs_review",
+            "published",
+        }
+        verified_events = []
+        for item in activity.get("recent_activities", []):
+            activity_type = str(item.get("activity_type") or "")
+            completion_status = str(item.get("completion_status") or "")
+            if activity_type not in verified_types:
+                continue
+            if completion_status not in accepted_statuses:
+                continue
+            verified_events.append(
+                {
+                    key: item.get(key)
+                    for key in (
+                        "activity_type",
+                        "resource_type",
+                        "completion_status",
+                        "score",
+                        "duration_minutes",
+                        "created_at",
+                        "title",
+                        "knowledge_points",
+                        "task_type",
+                    )
+                }
+            )
+            if len(verified_events) >= recent_limit:
+                break
+        return {
+            "schema_version": "1.0",
+            "window_days": days,
+            "calculated_at": activity.get("calculated_at"),
+            "evidence_status": (
+                "observed" if verified_events else "no_verified_records"
+            ),
+            "verified_event_count": len(verified_events),
+            "verified_learning_events": verified_events,
+            "task_completion": activity.get("counters", {}).get(
+                "daily_task_items", {}
+            ),
+            "focus": activity.get("counters", {}).get("focus_sessions", {}),
+            "excluded_event_types": [
+                "login",
+                "daily_checkin",
+                "dashboard_recommendations_view",
+                "resource_recommendation_offer",
+                "resource_click",
+                "onboarding_survey",
+                "diagnosis",
+            ],
+            "evidence_rule": (
+                "只纳入服务端记录的答题、试卷、案例、教材小节、资源完成或"
+                "已完成训练任务；推荐曝光、点击、登录、签到和仅生成资源不算已学习。"
+            ),
+        }
 
     def load_learning_statistics(
         self,

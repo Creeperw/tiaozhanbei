@@ -123,3 +123,37 @@ def test_overdue_task_rolls_to_next_short_term_block_once() -> None:
     assert stored.items[0].task_item_id.startswith("DTI_")
     assert stored.items[0].item_type == "video_section"
     assert stored.items[0].resource_ref["trusted_resource_id"] == "VIDEO_REFRESH_2"
+
+
+def test_overdue_task_applies_system_task_load_policy_without_filling_budget() -> None:
+    now = datetime(2026, 7, 23, 8, tzinfo=timezone.utc)
+    repository = InMemoryLearningPlanRepository()
+    repository.save_current(
+        "learner-daily-refresh",
+        _state(now - timedelta(hours=25), due_at=now - timedelta(hours=1)),
+    )
+    policy_calls = []
+    service = DailyTaskRefreshService(
+        repository,
+        video_resource_resolver=lambda resource_ref: (
+            resource_ref if resource_ref.get("trusted_resource_id") else None
+        ),
+        task_load_policy_loader=lambda learner_id, **kwargs: (
+            policy_calls.append((learner_id, kwargs))
+            or {
+                "policy_id": "next-day-load-v1",
+                "recommended_minutes": 20,
+                "direction": "decrease",
+            }
+        ),
+    )
+
+    result = service.ensure_current("learner-daily-refresh", now=now)
+    stored = repository.get_current("learner-daily-refresh").learning_task
+
+    assert stored.estimated_minutes == 20
+    assert sum(item.estimated_minutes for item in stored.items) == 20
+    assert result["task_load_policy"]["direction"] == "decrease"
+    assert policy_calls[0][1]["plan_context"]["learning_task"]["task_id"] == (
+        "TASK_REFRESH_1"
+    )
