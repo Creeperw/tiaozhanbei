@@ -12,6 +12,27 @@ from APP.backend.database import LearningFocusSession, LearningTask
 _IDLE_SECONDS = 300
 
 
+def _credit_effective_interval(
+    focus: LearningFocusSession,
+    timestamp: datetime,
+) -> None:
+    """Credit only a visible interval backed by a recent interaction."""
+
+    elapsed = max(0, int((timestamp - focus.updated_at).total_seconds()))
+    interaction_age = (
+        max(0, int((timestamp - focus.last_interaction_at).total_seconds()))
+        if focus.last_interaction_at is not None
+        else None
+    )
+    if (
+        focus.is_visible
+        and interaction_age is not None
+        and interaction_age <= _IDLE_SECONDS
+        and elapsed <= _IDLE_SECONDS
+    ):
+        focus.active_seconds += elapsed
+
+
 def begin_learning_task(
     db: Session,
     *,
@@ -70,6 +91,8 @@ def start_focus_session(
         resource_id=resource_id,
         status="active",
         is_visible=True,
+        # Starting a focus session is itself an explicit user interaction.
+        last_interaction_at=timestamp,
         started_at=timestamp,
         updated_at=timestamp,
     )
@@ -93,19 +116,7 @@ def record_focus_heartbeat(
         user_id=user_id,
         status="active",
     ).one()
-    elapsed = max(0, int((timestamp - focus.updated_at).total_seconds()))
-    interaction_age = (
-        max(0, int((timestamp - focus.last_interaction_at).total_seconds()))
-        if focus.last_interaction_at is not None
-        else None
-    )
-    if (
-        focus.is_visible
-        and interaction_age is not None
-        and interaction_age <= _IDLE_SECONDS
-        and elapsed <= _IDLE_SECONDS
-    ):
-        focus.active_seconds += elapsed
+    _credit_effective_interval(focus, timestamp)
     focus.is_visible = visible
     if not visible:
         focus.last_interaction_at = None
@@ -129,6 +140,10 @@ def end_focus_session(
         user_id=user_id,
         status="active",
     ).one()
+    # The client may leave between heartbeats. Credit the final effective
+    # interval before closing so short sessions and the last heartbeat tail are
+    # not systematically under-counted.
+    _credit_effective_interval(focus, timestamp)
     focus.status = "completed"
     focus.ended_at = timestamp
     focus.updated_at = timestamp

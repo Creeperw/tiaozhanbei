@@ -183,14 +183,41 @@ async def test_existing_valid_long_and_short_plans_are_reused_verbatim(tmp_path)
     )
 
     assert reused.learning_plan.generated_scope == "daily_task"
+    assert reused.learning_plan.reused_existing is True
     assert reused.learning_plan.long_term_plan is None
     assert reused.learning_plan.short_term_plan is None
-    assert reused.learning_plan.learning_task.version == initial_plan.learning_task.version + 1
+    assert reused.learning_plan.learning_task.version == initial_plan.learning_task.version
     persisted = container.review_card_use_case.plan_repository.get_current(learner_id)
     assert persisted.long_term_plan.content == initial_plan.long_term_plan.content
     assert persisted.short_term_plan.content == initial_plan.short_term_plan.content
     assert persisted.long_term_plan.version == initial_plan.long_term_plan.version
     assert persisted.short_term_plan.version == initial_plan.short_term_plan.version
+
+
+@pytest.mark.asyncio
+async def test_generic_learning_plan_request_reuses_current_short_term_plan(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    learner_id = "LEARNER_GENERIC_PLAN_REUSE"
+    initial = await build_layered_plan(container, learner_id=learner_id)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id=learner_id,
+            user_request="请结合我的学习状态，为我制定一份学习计划。",
+            available_minutes=30,
+        )
+    )
+
+    assert result.status == "success"
+    assert result.learning_plan.generated_scope == "short_term"
+    assert result.learning_plan.reused_existing is True
+    assert result.learning_plan.short_term_plan.plan_id == initial.short_term_plan.plan_id
+    assert result.learning_plan.short_term_plan.version == initial.short_term_plan.version
+    assert "强制修改" in result.learning_plan.force_replan_prompt
+    assert [item.producer for item in result.agent_outputs] == [
+        "planner_agent",
+        "learning_plan_service",
+    ]
 
 
 @pytest.mark.asyncio
@@ -219,6 +246,26 @@ async def test_today_learning_question_is_materialized_as_daily_task(tmp_path) -
     assert result.learning_plan.learning_task.short_term_plan_id == (
         initial.short_term_plan.plan_id
     )
+
+
+@pytest.mark.asyncio
+async def test_inverted_today_task_wording_reuses_current_daily_task(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    learner_id = "LEARNER_TODAY_INVERTED_SCOPE"
+    initial = await build_layered_plan(container, learner_id=learner_id)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id=learner_id,
+            user_request="今天的任务给我安排一下。",
+            available_minutes=25,
+        )
+    )
+
+    assert result.learning_plan.generated_scope == "daily_task"
+    assert result.learning_plan.reused_existing is True
+    assert result.learning_plan.learning_task.task_id == initial.learning_task.task_id
+    assert result.learning_plan.learning_task.version == initial.learning_task.version
 
 
 @pytest.mark.asyncio

@@ -37,10 +37,20 @@ class ReviewSchedulerAdapter:
         if mismatched_users:
             raise ValueError("user knowledge state identity does not match requested learner")
         resolved_ids = set(knowledge.resolved_kp_ids)
-        relevant_states = [state for state in states if state.kp_id in resolved_ids]
+        due_dispatch = context.get("system_operation") == "due_review_dispatch"
+        scheduling_kp_ids = (
+            list(dict.fromkeys(state.kp_id for state in states))
+            if due_dispatch and states
+            else list(knowledge.resolved_kp_ids)
+        )
+        relevant_states = (
+            states
+            if due_dispatch
+            else [state for state in states if state.kp_id in resolved_ids]
+        )
         schedule = self.scheduler.rank_and_select(
             learner_id=str(context["learner_id"]),
-            kp_ids=list(knowledge.resolved_kp_ids),
+            kp_ids=scheduling_kp_ids,
             states=relevant_states,
             daily_policy=policy,
             formula_policy=ReviewFormulaPolicy(),

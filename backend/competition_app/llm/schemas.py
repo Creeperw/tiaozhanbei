@@ -10,17 +10,41 @@ class PlannerModelOutput(BaseModel):
 
     task_type: Literal[
         "casual_conversation",
+        "general_learning_support",
         "knowledge_explanation",
+        "learner_data_query",
         "learning_plan",
         "personalized_review_card",
         "paper_generation",
     ]
+    query_kind: Literal[
+        "recent_learning",
+        "next_learning",
+        "progress_summary",
+        "mastery_status",
+        "review_status",
+        "plan_progress",
+    ] | None = Field(
+        default=None,
+        description=(
+            "仅在task_type为learner_data_query时标记要读取的学习者数据类别；"
+            "其他任务返回null。"
+        ),
+    )
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = Field(
         default=None,
         description=(
             "学习规划的目标层级；输入已提供本次规划层级时必须原样返回，"
             "其中daily_task表示当日任务而非短期计划。制定或修改计划时"
             "必须返四个枚举值之一；纯学情查询和非规划任务返回null。"
+        ),
+    )
+    plan_action: Literal["reuse", "create_or_update", "clarify"] | None = Field(
+        default=None,
+        description=(
+            "学习规划的处理方式。已有当前有效计划且用户未明确要求强制修改时返回reuse；"
+            "缺少对应计划或用户明确要求重新制定、修改、调整时返回create_or_update；"
+            "只有确实无法确定层级且没有可复用计划时返回clarify。非规划任务返回null。"
         ),
     )
     requires_clarification: bool = Field(
@@ -79,6 +103,10 @@ class PlannerModelOutput(BaseModel):
             raise ValueError("casual conversation requires an agent-generated response")
         if self.task_type != "casual_conversation" and self.casual_response is not None:
             raise ValueError("non-casual task must not include casual_response")
+        if self.task_type == "learner_data_query" and self.query_kind is None:
+            raise ValueError("learner data query requires query_kind")
+        if self.task_type != "learner_data_query" and self.query_kind is not None:
+            raise ValueError("query_kind is only valid for learner data queries")
         return self
 
 
@@ -346,6 +374,7 @@ class NaturalLanguageLearningAnalysisModelOutput(StrictModelOutput):
     """
 
     summary: str = Field(min_length=1, max_length=1_000)
+
     risk_flags: list[str]
     recommendations: list[str]
     uncertainty: list[str]
@@ -397,6 +426,17 @@ class NaturalLanguageLearningAnalysisModelOutput(StrictModelOutput):
                     f"{field_name} missing sections: " + ", ".join(missing)
                 )
         return self
+
+
+class LearnerDataResponseModelOutput(StrictModelOutput):
+    answer: str = Field(
+        min_length=1,
+        max_length=3_000,
+        description=(
+            "只依据系统提供的只读学习证据，用自然语言直接回答用户；"
+            "不得把推荐、浏览、生成资源或进入复习队列表述为已经学会。"
+        ),
+    )
 
 
 class PlanningRoutePhaseModelOutput(StrictModelOutput):

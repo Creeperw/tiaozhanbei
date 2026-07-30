@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, TypeAlias
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from competition_app.contracts.base import ContractModel
 from competition_app.contracts.default_route import ResolvedPlanningRoute
@@ -111,6 +111,8 @@ class RecommendationTrace(ContractModel):
 
 
 class LearningTaskProposal(ContractModel):
+    model_config = ConfigDict(extra="forbid")
+
     task_type: str
     task_content: str
     learning_chapter: str = ""
@@ -172,6 +174,8 @@ class DailyTaskItemSpec(ContractModel):
 
 
 class LearningPlanProposal(ContractModel):
+    model_config = ConfigDict(extra="forbid")
+
     long_term_plan_content: str = Field(min_length=1)
     short_term_plan_content: str = Field(min_length=1)
     long_term_plan_stages: list[LongTermPlanStage] = Field(default_factory=list)
@@ -195,6 +199,8 @@ class LearningPlanProposal(ContractModel):
 
 
 class LongTermPlan(ContractModel):
+    model_config = ConfigDict(extra="forbid")
+
     plan_id: str = Field(min_length=1)
     learner_id: str = Field(min_length=1)
     content: str = Field(min_length=1)
@@ -203,7 +209,7 @@ class LongTermPlan(ContractModel):
     created_at: datetime
     updated_at: datetime
     stages: list[LongTermPlanStage] = Field(default_factory=list)
-    stage_evidence: list = Field(default_factory=list)
+    stage_evidence: list[StageEvidenceRecord] = Field(default_factory=list)
     planning_route: ResolvedPlanningRoute | None = None
     goal_contract: GoalContract | None = None
     milestones: list[PlanMilestone] = Field(default_factory=list)
@@ -215,6 +221,8 @@ class LongTermPlan(ContractModel):
 
 
 class ShortTermPlan(ContractModel):
+    model_config = ConfigDict(extra="forbid")
+
     plan_id: str = Field(min_length=1)
     learner_id: str = Field(min_length=1)
     long_term_plan_id: str = Field(min_length=1)
@@ -233,6 +241,8 @@ class ShortTermPlan(ContractModel):
 
 
 class LearningTask(ContractModel):
+    model_config = ConfigDict(extra="forbid")
+
     task_id: str = Field(min_length=1)
     learner_id: str = Field(min_length=1)
     short_term_plan_id: str = Field(min_length=1)
@@ -265,11 +275,16 @@ class LearningTask(ContractModel):
 
 
 class LearningPlanResult(ContractModel):
+    model_config = ConfigDict(extra="forbid")
+
     long_term_plan: LongTermPlan | None = None
     short_term_plan: ShortTermPlan | None = None
     learning_task: LearningTask | None = None
     generated_scope: PlanScope | Literal["full"] = "full"
     invalidated_layers: list[PlanScope] = Field(default_factory=list)
+    reused_existing: bool = False
+    replan_review: dict[str, Any] = Field(default_factory=dict)
+    force_replan_prompt: str | None = None
 
 
 class PlanChangeDecision(ContractModel):

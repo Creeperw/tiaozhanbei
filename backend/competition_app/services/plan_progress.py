@@ -58,9 +58,10 @@ def build_plan_progress(
                         if short_plan.status == "completed"
                         else "in_progress"
                     ),
-                    "automatic_pass": False,
+                    "automatic_pass": True,
+                    "pass_rule": "all_short_term_task_blocks_completed",
                     "reason": (
-                        "短期计划需汇总周期内任务与验收证据，单个今日任务完成不会自动通过整个短期计划。"
+                        "系统汇总同一短期计划下已完成的今日任务；全部任务块取得服务端完成记录后自动通过。"
                     ),
                 },
             }
