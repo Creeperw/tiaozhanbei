@@ -158,8 +158,9 @@ export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, n
     let documentTask;
     setLoading(true); setError(''); setBook(null); setPdf(null);
     resolveTextbookPdf(bookTitle, { signal: controller.signal }).then(async (payload) => {
-      if (!payload.available || !payload.book) { setLoading(false); return; }
+      if (!payload.book) { setLoading(false); return; }
       setBook(payload.book);
+      if (!payload.available) return;
       const state = await loadPdfReadingState(payload.book.book_id, { signal: controller.signal });
       if (!initialPage || Number(initialPage) <= 1) setPageNumber(Math.max(1, Number(state.page_number) || 1));
       setZoom(clamp(Number(state.zoom) || 1, 0.5, 2.5));
@@ -206,7 +207,7 @@ export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, n
   }, [pdf, pageNumber, zoom, hostWidth, loading]);
 
   useEffect(() => {
-    if (!book) return undefined;
+    if (!book?.available) return undefined;
     const controller = new AbortController();
     loadedPageRef.current = false;
     loadPdfAnnotations(book.book_id, pageNumber, { signal: controller.signal }).then((payload) => {
@@ -221,7 +222,7 @@ export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, n
   }, [book, pageNumber]);
 
   useEffect(() => {
-    if (!book) return undefined;
+    if (!book?.available) return undefined;
     clearTimeout(readingSaveTimer.current);
     readingSaveTimer.current = setTimeout(() => savePdfReadingState(book.book_id, pageNumber, zoom).catch(() => {}), 450);
     return () => clearTimeout(readingSaveTimer.current);
@@ -278,7 +279,8 @@ export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, n
   ], []);
 
   if (loading) return <div className="textbook-pdf__state" role="status"><LoaderCircle className="is-spinning" />正在准备电子教材…</div>;
-  if (!book) return <div className="textbook-pdf__state"><BookFallback /><h2>暂无电子教材</h2><p>当前教材尚未匹配 PDF 文件。</p><button type="button" onClick={onClose}>返回课程目录</button></div>;
+  if (!book) return <div className="textbook-pdf__state"><BookFallback /><h2>暂无电子教材</h2><p>该教材未收录在电子教材索引中。</p><button type="button" onClick={onClose}>返回课程目录</button></div>;
+  if (!book.available) return <div className="textbook-pdf__state"><BookFallback /><h2>电子教材文件未部署</h2><p>《{book.title}》已在教材索引中，但服务端尚未提供对应 PDF 文件。</p><button type="button" onClick={onClose}>返回课程目录</button></div>;
   if (error && !pdf) return <div className="textbook-pdf__state" role="alert"><h2>电子教材加载失败</h2><p>{error}</p><button type="button" onClick={onClose}>返回课程目录</button></div>;
 
   return (

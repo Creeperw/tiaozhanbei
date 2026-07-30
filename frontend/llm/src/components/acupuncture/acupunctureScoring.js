@@ -5,13 +5,25 @@ export const scoreAcupunctureAttempt = (caseData, needles) => {
     const tolerance = Number(caseData?.scoring?.positionTolerancePercent);
     const depthRange = caseData?.scoring?.depthRange || caseData?.scoring?.depthRangeMm;
     const retentionRange = caseData?.scoring?.retentionRangeMinutes;
-    const insertionConfigured = standards.length > 0 && standards.every((standard) => standard.insertionType);
     const worldPositionConfigured = standards.length > 0
         && Number.isFinite(excellentTolerance) && Number.isFinite(passTolerance)
         && standards.every((standard) => Array.isArray(standard.modelPosition));
     const positionConfigured = worldPositionConfigured || (standards.length > 0 && Number.isFinite(tolerance)
         && standards.every((standard) => Number.isFinite(standard.x) && Number.isFinite(standard.y)));
     const positionTolerance = worldPositionConfigured ? passTolerance : tolerance;
+    const insertionStandards = standards.filter((standard) => standard.insertionType);
+    const insertionConfigured = insertionStandards.length > 0 && positionConfigured;
+    const insertionHit = (needle) => {
+        const matchedStandard = insertionStandards.find((standard) => {
+            if (worldPositionConfigured) {
+                if (!Array.isArray(needle.point)) return false;
+                const distance = Math.hypot(...needle.point.map((value, index) => value - standard.modelPosition[index]));
+                return distance <= positionTolerance;
+            }
+            return Math.hypot(needle.x - standard.x, needle.y - standard.y) <= tolerance;
+        });
+        return matchedStandard?.insertionType === needle.insertionType;
+    };
     const depthConfigured = Array.isArray(depthRange);
     const retentionConfigured = Array.isArray(retentionRange);
 
@@ -43,7 +55,7 @@ export const scoreAcupunctureAttempt = (caseData, needles) => {
     const depth = depthConfigured ? (needles.length ? Math.round((depthHits / needles.length) * 100) : 0) : null;
     const retention = retentionConfigured ? (needles.length ? Math.round((retentionHits / needles.length) * 100) : 0) : null;
     const insertionHits = insertionConfigured
-        ? needles.filter((needle) => standards.some((standard) => standard.insertionType === needle.insertionType)).length
+        ? needles.filter(insertionHit).length
         : 0;
     const insertion = insertionConfigured ? (needles.length ? Math.round((insertionHits / needles.length) * 100) : 0) : null;
     const scoreParts = [position, depth, retention, insertion].filter((value) => value !== null);

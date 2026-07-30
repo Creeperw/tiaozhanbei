@@ -50,17 +50,12 @@ describe('SmartPaperPanel', () => {
     render(<SmartPaperPanel />);
 
     expect(await screen.findByText('待办一')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '试卷列表' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'AI推荐主题' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '四君子汤配伍' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '四君子汤配伍' }));
-    expect(screen.getByLabelText('专项练主题')).toHaveValue('四君子汤配伍');
-    expect(screen.getByText('未完成')).toBeInTheDocument();
-    expect(screen.getByText('已完成')).toBeInTheDocument();
-    expect(screen.getByText('历史一')).toBeInTheDocument();
-    expect(screen.queryByText('历史存档')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '试卷存档' })).toBeInTheDocument();
     expect(screen.getByLabelText('专项练主题')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /错题集重做/ })).not.toBeInTheDocument();
+    expect(screen.getByText('待办试卷')).toBeInTheDocument();
+    expect(screen.getByText('历史存档')).toBeInTheDocument();
+    expect(screen.getByText('历史一')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /错题集重做/ })).toBeInTheDocument();
     expect(screen.getByLabelText('单选题')).toHaveAttribute('type', 'text');
   });
   it('returns a task-bound paper to the current smart-paper archive', async () => {

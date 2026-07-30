@@ -999,7 +999,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
             {showBack && (
               <button className="sp-sidebar-back" onClick={onBack || (() => window.history.back())}>
                 <ArrowLeft className="sp-sidebar-back__icon" />
-                返回
+                返回训练工坊
               </button>
             )}
             {viewingHistory && (

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import AuthPage from './components/AuthPage';
 import ChatInterface from './components/ChatInterface';
 import KnowledgePage from './components/KnowledgePage';
@@ -16,7 +16,7 @@ import TextbookChapterLearning from './components/workshop-textbook/TextbookChap
 import StagePageTransition from './components/learning-stage/StagePageTransition';
 import AppShell from './components/AppShell';
 import CompactAssistant from './components/CompactAssistant';
-import { useModalFocus } from './components/ui/useModalFocus';
+import HomeOnboardingGuide from './components/HomeOnboardingGuide';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
@@ -46,45 +46,17 @@ const initialPageIntent = () => {
   }
 };
 
-function AuthOverlay({ open, onClose, onLogin }) {
-  const dialogRef = useModalFocus(open);
-  useEffect(() => {
-    if (!open) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previousOverflow; };
-  }, [open]);
-  if (!open) return null;
-  return (
-    <div className="auth-overlay" onMouseDown={onClose}>
-      <section
-        ref={dialogRef}
-        className="auth-overlay__dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="账号登录"
-        tabIndex={-1}
-        onMouseDown={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') onClose();
-        }}
-      >
-        <button type="button" className="auth-overlay__close" aria-label="关闭登录页面" onClick={onClose}>×</button>
-        <AuthPage onLogin={onLogin} />
-      </section>
-    </div>
-  );
-}
-
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authRequested, setAuthRequested] = useState(false);
   const [pageIntent, setPageIntent] = useState(initialPageIntent);
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const [stageTransition, setStageTransition] = useState(null);
   const [floatingAssistantSessionId, setFloatingAssistantSessionId] = useState(null);
+  const [showHomeGuide, setShowHomeGuide] = useState(false);
+  const authRequestId = useRef(0);
   const currentPage = getIntentPage(pageIntent);
   const shellPage = currentPage === 'practice' && pageIntent.params.view === 'workspace'
     ? 'training-workshop'
@@ -93,22 +65,28 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
+    const requestId = ++authRequestId.current;
     const verifySession = async () => {
       try {
         const res = await fetchWithAuth(`${AUTH_API_BASE}/me`);
         const data = await readJsonResponse(res, {});
-        if (active) {
-          setCurrentUser(res.ok ? data.user || null : null);
+        if (active && requestId === authRequestId.current) {
+          const verifiedUser = res.ok ? data.user || null : null;
+          setCurrentUser(verifiedUser);
+          setShowHomeGuide(Boolean(verifiedUser));
         }
       } catch {
-        if (active) setCurrentUser(null);
+        if (active && requestId === authRequestId.current) setCurrentUser(null);
       } finally {
         if (active) setCheckingAuth(false);
       }
     };
 
     const clearSession = () => {
+      authRequestId.current += 1;
       setCurrentUser(null);
+      setAuthRequested(false);
+      setShowHomeGuide(false);
       setPageIntent(createPageIntent('dashboard'));
     };
     window.addEventListener('competition:unauthorized', clearSession);
@@ -121,7 +99,8 @@ export default function App() {
 
   const handleLogin = (user) => {
     setCurrentUser(user);
-    setAuthOpen(false);
+    setAuthRequested(false);
+    setShowHomeGuide(true);
     navigateToPage('dashboard');
   };
 
@@ -132,6 +111,7 @@ export default function App() {
       setCurrentUser(null);
       setKnowledgeNavigationContext(null);
       setPageIntent(createPageIntent('dashboard'));
+      setShowHomeGuide(false);
     }
   };
 
@@ -230,10 +210,14 @@ export default function App() {
     return <div className="flex h-screen items-center justify-center bg-[#f8fafc] text-gray-400">Loading...</div>;
   }
 
+  if (authRequested && !currentUser) {
+    return <AuthPage onLogin={handleLogin} onBack={() => setAuthRequested(false)} />;
+  }
+
   const renderAuthenticatedPage = () => {
     switch (shellConfig.currentPage) {
       case 'dashboard':
-        return <HomePage currentUser={currentUser} onNavigate={navigateToPage} onLoginRequested={() => setAuthOpen(true)} />;
+        return <HomePage currentUser={currentUser} onNavigate={navigateToPage} onLoginRequested={() => setAuthRequested(true)} />;
       case 'capability-detail':
         return (
           <CapabilityDetailPage
@@ -335,7 +319,7 @@ export default function App() {
       case 'admin-feedback':
         return <AdminFeedbackPage onBackHome={() => navigateToPage('dashboard')} />;
       default:
-        return <HomePage currentUser={currentUser} onNavigate={navigateToPage} onLoginRequested={() => setAuthOpen(true)} />;
+        return <HomePage currentUser={currentUser} onNavigate={navigateToPage} onLoginRequested={() => setAuthRequested(true)} />;
     }
   };
 
@@ -347,7 +331,7 @@ export default function App() {
       navigationContext={pageIntent.params}
       onNavigate={navigateToPage}
       onLogout={handleLogout}
-      onLoginRequested={() => setAuthOpen(true)}
+      onLoginRequested={() => setAuthRequested(true)}
       onUserUpdated={(updatedUser) => setCurrentUser((current) => ({ ...current, ...updatedUser }))}
     >
       {renderAuthenticatedPage()}
@@ -373,7 +357,7 @@ export default function App() {
           }}
         />
       )}
-      <AuthOverlay open={authOpen} onClose={() => setAuthOpen(false)} onLogin={handleLogin} />
+      {showHomeGuide && <HomeOnboardingGuide onClose={() => setShowHomeGuide(false)} />}
     </AppShell>
   );
 }
