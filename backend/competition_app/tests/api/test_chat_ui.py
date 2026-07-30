@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 
 from fastapi.testclient import TestClient
@@ -110,6 +111,10 @@ def test_chat_client_reuses_stream_api_and_restores_browser_session() -> None:
     assert "learning_task:" in script.text
     assert "run_completed" in script.text
     assert "run_interrupted" in script.text
+    assert "run_waiting_human_review" in script.text
+    assert "body?.status === 'waiting_human_review'" in script.text
+    assert "body.review" in script.text
+    assert "等待人工复核" in script.text
     assert "streamErrorMessage" in script.text
     assert "error_code" in script.text
     assert "serverFailure" in script.text
@@ -121,6 +126,22 @@ def test_chat_client_reuses_stream_api_and_restores_browser_session() -> None:
     assert "pendingThreadId" in script.text
     assert "/resume/stream" in script.text
     assert "restoreLangGraphRun" in script.text
+
+
+def test_chat_client_renders_direct_planner_responses() -> None:
+    script = build_client().get("/chat/chat.js").text
+
+    assert "body?.direct_response" in script
+
+
+def test_chat_client_preserves_human_review_execution_status() -> None:
+    script = build_client().get("/chat/chat.js").text
+
+    assert "'waiting_human_review'" in re.search(
+        r"function normalizeExecutionTrace\(value\) \{(?P<content>.*?)\n\}",
+        script,
+        re.DOTALL,
+    ).group("content")
 
 
 def test_chat_client_visualizes_langgraph_events_and_persists_the_trace() -> None:

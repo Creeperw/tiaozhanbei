@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from competition_app.agents.common import envelope
@@ -21,6 +22,12 @@ from pydantic import ValidationError
 
 
 class AuditAgent:
+    OFFICIAL_CURRENT_FACT_HOSTS = {
+        "nmec.org.cn",
+        "weather.com.cn",
+        "cma.cn",
+    }
+
     def __init__(
         self,
         chat_model: ChatModel | None = None,
@@ -63,13 +70,30 @@ class AuditAgent:
             "safety_notes": expert.safety_notes,
         }
         semantic_evidence = [
-            {"text": item.content_summary, "authority": item.authority_level}
+            {
+                "text": item.content_summary,
+                "authority": item.authority_level,
+                "resource_type": item.resource_type,
+                "source_url": item.source_url,
+            }
             for item in evidence.evidence_items
         ]
         diagnosis = getattr(context["dependency_outputs"].get("diagnosis"), "payload", None)
         schedule = getattr(context["dependency_outputs"].get("schedule"), "payload", None)
         knowledge_explanation = str(context.get("task_type")) == "knowledge_explanation"
         paper_generation = str(context.get("task_type")) == "paper_generation"
+        external_information_request = bool(
+            context.get("external_information_request")
+            or any(
+                marker in str(context.get("user_request") or "").lower()
+                for marker in (
+                    "天气", "气温", "降雨", "下雨", "空气质量", "台风",
+                    "距离下次", "考试时间", "考试日期", "什么时候考试",
+                    "报名时间", "截止日期", "日程", "赛程", "最新消息",
+                    "当前时间", "今天几号", "现在几点",
+                )
+            )
+        )
         try:
             model_output = AuditModelOutput.model_validate(await self.chat_model.complete_json(
                 "audit_agent", build_model_context(
@@ -88,6 +112,7 @@ class AuditAgent:
                         "teaching_only": True,
                         "paper_generation": paper_generation,
                         "knowledge_explanation": knowledge_explanation,
+                        "external_information_request": external_information_request,
                         "exam_constraints": context.get("exam_constraints", {}),
                     },
                     "output_schema": AuditModelOutput.model_json_schema(),
@@ -107,12 +132,31 @@ class AuditAgent:
                 context["terminal_trace"].validation("audit_agent", valid=True, detail="AuditModelOutput")
         deterministic_findings: list[str] = []
         selected_task = getattr(schedule, "selected_task", None)
-        if selected_task and expert.target_kp_id != selected_task.primary_kp_id:
-            deterministic_findings.append("资源目标知识点与复习调度任务不一致。")
-        if expert.estimated_minutes > int(context.get("available_minutes", 15)):
-            deterministic_findings.append("资源预计时长超过用户本次可用时间。")
+        if not external_information_request:
+            if selected_task and expert.target_kp_id != selected_task.primary_kp_id:
+                deterministic_findings.append("资源目标知识点与复习调度任务不一致。")
+            if expert.estimated_minutes > int(context.get("available_minutes", 15)):
+                deterministic_findings.append("资源预计时长超过用户本次可用时间。")
         model_decision = model_output.decision
         decision = "revise" if missing or deterministic_findings else model_decision
+        nonofficial_web_evidence = (
+            external_information_request
+            and any(
+                item.resource_type == "web"
+                and item.authority_level != "system_notice"
+                and not self._is_official_current_fact_source(item.source_url)
+                for item in evidence.evidence_items
+            )
+        )
+        if nonofficial_web_evidence:
+            model_output = model_output.model_copy(
+                update={
+                    "findings": [
+                        *model_output.findings,
+                        "实时信息提示：信息来自非官方网页，请以官方渠道为准。",
+                    ]
+                }
+            )
         if (
             decision == "revise"
             and not missing
@@ -133,7 +177,11 @@ class AuditAgent:
                 }
             )
         if (
-            (knowledge_explanation or str(context.get("task_type")) == "personalized_review_card")
+            (
+                knowledge_explanation
+                or str(context.get("task_type"))
+                in {"personalized_review_card", "general_learning_support"}
+            )
             and context.get("audit_feedback") is not None
             and decision == "revise"
             and not missing
@@ -172,6 +220,18 @@ class AuditAgent:
             subject_type="resource",
         )
         return envelope(context, "audit_agent", "audit_result", result)
+
+    @staticmethod
+    def _is_official_current_fact_source(source_url: str | None) -> bool:
+        host = (urlparse(source_url or "").hostname or "").lower()
+        return (
+            host == "gov.cn"
+            or host.endswith(".gov.cn")
+            or any(
+                host == official_host or host.endswith(f".{official_host}")
+                for official_host in AuditAgent.OFFICIAL_CURRENT_FACT_HOSTS
+            )
+        )
 
     @staticmethod
     def _resource_repair_issues(

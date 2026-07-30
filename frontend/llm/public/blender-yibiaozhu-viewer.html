@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blender 人体模型查看器</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: "Microsoft YaHei", system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #071814;
+        }
+
+        #viewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #panel {
+            position: fixed;
+            z-index: 2;
+            top: 18px;
+            left: 18px;
+            min-width: 250px;
+            padding: 16px 18px;
+            border: 1px solid rgba(157, 236, 210, .3);
+            border-radius: 16px;
+            background: rgba(8, 34, 28, .84);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, .24);
+        }
+
+        #acupoint-panel {
+            position: fixed;
+            z-index: 2;
+            top: 18px;
+            right: 18px;
+            width: min(320px, calc(100vw - 36px));
+            max-height: calc(100vh - 72px);
+            padding: 14px;
+            border: 1px solid rgba(157, 236, 210, .3);
+            border-radius: 16px;
+            background: rgba(8, 34, 28, .86);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, .24);
+        }
+
+        #acupoint-panel h2 {
+            margin: 0 0 10px;
+            color: #d9fff2;
+            font-size: 15px;
+        }
+
+        #search {
+            width: 100%;
+            border: 1px solid rgba(157, 236, 210, .28);
+            border-radius: 9px;
+            padding: 9px 10px;
+            color: #e9fff8;
+            outline: none;
+            background: rgba(3, 22, 18, .78);
+        }
+
+        #search:focus {
+            border-color: #65ddb8;
+        }
+
+        #acupoint-list {
+            display: grid;
+            gap: 5px;
+            max-height: calc(100vh - 172px);
+            margin-top: 10px;
+            overflow: auto;
+        }
+
+        .acupoint-item {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 7px 9px;
+            text-align: left;
+            background: rgba(18, 72, 59, .55);
+        }
+
+        .acupoint-item small {
+            color: rgba(217, 255, 242, .55);
+        }
+
+        .acupoint-item[data-selected="true"] {
+            border-color: #ffe082;
+            color: #fff3b4;
+            background: rgba(118, 91, 24, .55);
+        }
+
+        #tooltip {
+            position: fixed;
+            z-index: 4;
+            display: none;
+            pointer-events: none;
+            padding: 7px 10px;
+            border: 1px solid rgba(255, 224, 130, .45);
+            border-radius: 8px;
+            color: #fff4bd;
+            background: rgba(35, 29, 12, .92);
+            font-size: 12px;
+        }
+
+        #panel h1 {
+            margin: 0 0 7px;
+            color: #d9fff2;
+            font-size: 17px;
+        }
+
+        #status {
+            color: #9ee8cf;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        button {
+            cursor: pointer;
+            border: 1px solid rgba(157, 236, 210, .35);
+            border-radius: 9px;
+            padding: 7px 10px;
+            color: #d9fff2;
+            background: rgba(18, 91, 72, .75);
+        }
+
+        button:hover {
+            background: rgba(32, 132, 104, .85);
+        }
+
+        #hint {
+            position: fixed;
+            z-index: 2;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(217, 255, 242, .68);
+            font-size: 12px;
+        }
+
+        .error {
+            color: #ffb4a7 !important;
+        }
+
+        @media (max-width: 760px) {
+            #panel {
+                top: 10px;
+                left: 10px;
+                padding: 12px;
+            }
+
+            #acupoint-panel {
+                top: auto;
+                right: 10px;
+                bottom: 48px;
+                width: 230px;
+                max-height: 42vh;
+            }
+
+            #acupoint-list {
+                max-height: calc(42vh - 92px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="viewer" aria-label="Blender 人体模型 3D 查看区域"></div>
+    <section id="panel">
+        <h1>Blender 人体模型</h1>
+        <div id="status" aria-live="polite">正在加载模型…</div>
+        <div id="controls">
+            <button id="reset" type="button">重置视角</button>
+            <button id="wireframe" type="button">显示线框</button>
+            <button id="markers" type="button">隐藏穴位</button>
+        </div>
+    </section>
+    <aside id="acupoint-panel">
+        <h2 id="acupoint-heading">人工标注穴位</h2>
+        <input id="search" type="search" placeholder="搜索穴位拼音…" aria-label="搜索穴位" />
+        <div id="acupoint-list" aria-labelledby="acupoint-heading"></div>
+    </aside>
+    <div id="tooltip"></div>
+    <div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移</div>
+
+    <script type="importmap">
+    {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+  </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const host = document.querySelector('#viewer');
+        const status = document.querySelector('#status');
+        const list = document.querySelector('#acupoint-list');
+        const search = document.querySelector('#search');
+        const tooltip = document.querySelector('#tooltip');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#071814');
+        scene.fog = new THREE.Fog('#071814', 10, 40);
+
+        const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.01, 1000);
+        camera.position.set(2.4, 1.6, 4.8);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.shadowMap.enabled = true;
+        host.appendChild(renderer.domElement);
+
+        scene.add(new THREE.HemisphereLight('#d8fff2', '#193c35', 2.4));
+        const key = new THREE.DirectionalLight('#ffffff', 3.2);
+        key.position.set(4, 7, 5);
+        key.castShadow = true;
+        scene.add(key);
+        const fill = new THREE.DirectionalLight('#6ee7c2', 1.5);
+        fill.position.set(-5, 2, -4);
+        scene.add(fill);
+
+        const grid = new THREE.GridHelper(10, 20, '#24594b', '#12362d');
+        grid.material.transparent = true;
+        grid.material.opacity = .38;
+        scene.add(grid);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = .08;
+        controls.minDistance = .05;
+        controls.maxDistance = 100;
+
+        let model;
+        let defaultCamera;
+        let wireframe = false;
+        let markersVisible = true;
+        let selectedMarker;
+        const markerGroup = new THREE.Group();
+        const markerMeshes = [];
+        const excludedMarkerNames = new Set(['huantiao.032', 'huantiao032', '空物体.016', '空物体016']);
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        scene.add(markerGroup);
+
+        function frameModel() {
+            if (!model) return;
+            const bounds = new THREE.Box3().setFromObject(model);
+            const center = bounds.getCenter(new THREE.Vector3());
+            const size = bounds.getSize(new THREE.Vector3());
+            const radius = Math.max(size.x, size.y, size.z) * .5;
+            controls.target.copy(center);
+            const distance = Math.max(radius * 2.7, .2);
+            camera.position.set(center.x + distance * .7, center.y + distance * .35, center.z + distance * 1.25);
+            camera.near = Math.max(radius / 1000, .001);
+            camera.far = Math.max(radius * 20, 100);
+            camera.updateProjectionMatrix();
+            controls.update();
+            defaultCamera = { position: camera.position.clone(), target: center.clone() };
+        }
+
+        function setWireframe(enabled) {
+            wireframe = enabled;
+            model?.traverse((object) => {
+                if (!object.isMesh) return;
+                const materials = Array.isArray(object.material) ? object.material : [object.material];
+                materials.forEach((material) => { material.wireframe = enabled; });
+            });
+            document.querySelector('#wireframe').textContent = enabled ? '隐藏线框' : '显示线框';
+        }
+
+        function focusMarker(marker) {
+            if (!marker) return;
+            if (selectedMarker) selectedMarker.material.color.set('#f7c948');
+            selectedMarker = marker;
+            marker.material.color.set('#ff5f57');
+            const position = marker.getWorldPosition(new THREE.Vector3());
+            const distance = Math.max(camera.position.distanceTo(controls.target) * .45, .35);
+            const direction = camera.position.clone().sub(controls.target).normalize();
+            controls.target.copy(position);
+            camera.position.copy(position).add(direction.multiplyScalar(distance));
+            controls.update();
+            document.querySelectorAll('.acupoint-item').forEach((item) => {
+                item.dataset.selected = String(item.dataset.name === marker.userData.acupointName);
+            });
+        }
+
+        function renderAcupointList(query = '') {
+            const normalized = query.trim().toLowerCase();
+            const matches = markerMeshes.filter((marker) => marker.userData.acupointName.toLowerCase().includes(normalized));
+            list.replaceChildren(...matches.map((marker, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'acupoint-item';
+                button.dataset.name = marker.userData.acupointName;
+                button.dataset.selected = String(marker === selectedMarker);
+                const name = document.createElement('span');
+                name.textContent = marker.userData.acupointName;
+                const order = document.createElement('small');
+                order.textContent = String(index + 1).padStart(3, '0');
+                button.append(name, order);
+                button.addEventListener('click', () => focusMarker(marker));
+                return button;
+            }));
+        }
+
+        function createAcupointMarkers(root, markerSize) {
+            root.updateMatrixWorld(true);
+            root.traverse((object) => {
+                if (object === root || !object.name || excludedMarkerNames.has(object.name) || object.isMesh || object.isCamera || object.isLight || object.isBone) return;
+                const marker = new THREE.Mesh(
+                    new THREE.SphereGeometry(markerSize, 12, 8),
+                    new THREE.MeshStandardMaterial({ color: '#f7c948', emissive: '#7d5a00', emissiveIntensity: 1.2 })
+                );
+                marker.position.copy(object.getWorldPosition(new THREE.Vector3()));
+                marker.userData.acupointName = object.name;
+                marker.userData.sourceNode = object;
+                markerGroup.add(marker);
+                markerMeshes.push(marker);
+            });
+            renderAcupointList();
+        }
+
+        document.querySelector('#reset').addEventListener('click', () => {
+            if (!defaultCamera) return;
+            camera.position.copy(defaultCamera.position);
+            controls.target.copy(defaultCamera.target);
+            controls.update();
+        });
+        document.querySelector('#wireframe').addEventListener('click', () => setWireframe(!wireframe));
+        document.querySelector('#markers').addEventListener('click', () => {
+            markersVisible = !markersVisible;
+            markerGroup.visible = markersVisible;
+            document.querySelector('#markers').textContent = markersVisible ? '隐藏穴位' : '显示穴位';
+        });
+        search.addEventListener('input', () => renderAcupointList(search.value));
+
+        renderer.domElement.addEventListener('pointermove', (event) => {
+            const bounds = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+            pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            const hit = markersVisible ? raycaster.intersectObjects(markerMeshes, false)[0] : undefined;
+            tooltip.style.display = hit ? 'block' : 'none';
+            renderer.domElement.style.cursor = hit ? 'pointer' : 'grab';
+            if (hit) {
+                tooltip.textContent = hit.object.userData.acupointName;
+                tooltip.style.left = `${event.clientX + 14}px`;
+                tooltip.style.top = `${event.clientY + 14}px`;
+            }
+        });
+        renderer.domElement.addEventListener('click', () => {
+            raycaster.setFromCamera(pointer, camera);
+            const hit = markersVisible ? raycaster.intersectObjects(markerMeshes, false)[0] : undefined;
+            if (hit) focusMarker(hit.object);
+        });
+
+        new GLTFLoader().load('/blender.yibiaozhu.glb', (gltf) => {
+            model = gltf.scene;
+            model.traverse((object) => {
+                if (object.isMesh) {
+                    object.castShadow = true;
+                    object.receiveShadow = true;
+                }
+            });
+            scene.add(model);
+            const bounds = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+            createAcupointMarkers(model, Math.max(bounds.x, bounds.y, bounds.z) * .007);
+            frameModel();
+            status.textContent = `加载完成 · 网格 1 · 穴位空物体 ${markerMeshes.length} · ${bounds.x.toFixed(2)} × ${bounds.y.toFixed(2)} × ${bounds.z.toFixed(2)}`;
+        }, (event) => {
+            if (event.total) status.textContent = `模型加载 ${Math.round(event.loaded / event.total * 100)}%…`;
+        }, (error) => {
+            console.error(error);
+            status.textContent = '模型加载失败，请检查 GLB 资源';
+            status.classList.add('error');
+        });
+
+        function render() {
+            requestAnimationFrame(render);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        render();
+
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        });
+    </script>
+</body>
+
+</html>

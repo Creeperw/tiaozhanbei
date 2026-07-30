@@ -11,9 +11,13 @@ vi.mock('./utils/api', () => ({
   readJsonResponse: vi.fn(() => Promise.resolve({ user: { username: 'admin', role: 'admin' } })),
 }));
 
-vi.mock('./components/AuthPage', () => ({ default: () => <div>Auth</div> }));
-vi.mock('./components/HomeOnboardingGuide', () => ({
-  default: ({ onClose }) => <button type="button" onClick={onClose}>Close onboarding guide</button>,
+vi.mock('./components/AuthPage', () => ({
+  default: ({ onLogin }) => (
+    <div>
+      Auth
+      <button type="button" onClick={() => onLogin({ username: 'visitor', role: 'user' })}>Complete login</button>
+    </div>
+  ),
 }));
 vi.mock('./components/HomePage', () => ({ default: () => <div>Home portal</div> }));
 vi.mock('./components/DashboardPage', () => ({
@@ -88,8 +92,10 @@ vi.mock('./components/SettingsHubPage', () => ({
 }));
 vi.mock('./components/AdminFeedbackPage', () => ({ default: () => <div>Admin page</div> }));
 vi.mock('./components/AppShell', () => ({
-  default: ({ children, currentPage, onNavigate }) => (
-    <div data-testid="authenticated-shell" data-page={currentPage}>
+  default: ({ children, currentPage, currentIntent, currentUser, onNavigate, onLoginRequested }) => (
+    <div data-testid="authenticated-shell" data-page={currentPage} data-intent-page={currentIntent?.page || ''}>
+      <span>{currentUser ? currentUser.username : '未登录'}</span>
+      {!currentUser && <button type="button" onClick={onLoginRequested}>登录</button>}
       <button type="button" onClick={() => onNavigate({ page: 'assistant', params: {} })}>Go assistant</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: { view: 'atlas' } })}>Go knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
@@ -111,6 +117,7 @@ describe('authenticated application shell', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+    document.body.style.overflow = '';
   });
 
   it('enters the system directly even when an existing session still carries the legacy onboarding flag', async () => {
@@ -122,15 +129,28 @@ describe('authenticated application shell', () => {
 
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
     expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-page', 'dashboard');
+    expect(screen.getByTestId('authenticated-shell')).toHaveAttribute('data-intent-page', 'dashboard');
   });
 
-  it('opens the homepage guide after the login session is verified', async () => {
+  it('shows the homepage to visitors and opens login only from the top-right entry', async () => {
+    vi.mocked(readJsonResponse).mockResolvedValueOnce({ user: null });
+
     render(<App />);
 
-    const guide = await screen.findByRole('button', { name: 'Close onboarding guide' });
-    expect(guide).toBeInTheDocument();
-    fireEvent.click(guide);
-    expect(screen.queryByRole('button', { name: 'Close onboarding guide' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Home portal')).toBeInTheDocument();
+    expect(screen.getByText('未登录')).toBeInTheDocument();
+    expect(screen.queryByText('Auth')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+    expect(screen.getByRole('dialog', { name: '账号登录' })).toBeInTheDocument();
+    expect(screen.getByText('Auth')).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Complete login' }));
+    expect(screen.queryByRole('dialog', { name: '账号登录' })).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe('');
+    expect(screen.getByText('visitor')).toBeInTheDocument();
+    expect(screen.getByText('Home portal')).toBeInTheDocument();
   });
 
   it('consumes a one-time external navigation intent for an audited paper', async () => {

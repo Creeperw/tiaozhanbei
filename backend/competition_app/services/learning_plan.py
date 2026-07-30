@@ -1236,6 +1236,7 @@ class LearningPlanService:
         current_short_term_plan: dict[str, Any],
         current_long_term_plan: dict[str, Any] | None = None,
         current_learning_task: dict[str, Any] | None = None,
+        recommended_minutes: int | None = None,
         now: datetime | None = None,
     ) -> LearningPlanResult:
         if not learner_id:
@@ -1252,6 +1253,13 @@ class LearningPlanService:
         package = self._field(
             current_short_term_plan, "short_term_learning_package"
         )
+        task_minutes = (
+            max(10, min(24 * 60, int(recommended_minutes)))
+            if isinstance(recommended_minutes, int)
+            and not isinstance(recommended_minutes, bool)
+            and recommended_minutes > 0
+            else proposal.task_proposal.estimated_minutes
+        )
         task = LearningTask(
             task_id=str(self._field(task_source, "task_id") or f"TASK_{uuid4().hex}"),
             learner_id=learner_id,
@@ -1260,7 +1268,7 @@ class LearningPlanService:
             task_content=proposal.task_proposal.task_content,
             learning_chapter=proposal.task_proposal.learning_chapter,
             focus_knowledge_points=proposal.task_proposal.focus_knowledge_points,
-            estimated_minutes=proposal.task_proposal.estimated_minutes,
+            estimated_minutes=task_minutes,
             expected_output=proposal.task_proposal.expected_output,
             completion_criteria=proposal.task_proposal.completion_criteria,
             version=int(self._field(task_source, "version") or 0) + 1,
@@ -1272,7 +1280,7 @@ class LearningPlanService:
             items=materialize_daily_task_items(
                 task_content=proposal.task_proposal.task_content,
                 learning_chapter=proposal.task_proposal.learning_chapter,
-                estimated_minutes=proposal.task_proposal.estimated_minutes,
+                estimated_minutes=task_minutes,
                 focus_knowledge_points=list(
                     proposal.task_proposal.focus_knowledge_points
                 ),

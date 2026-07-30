@@ -10,9 +10,6 @@ import {
   PanelRightOpen,
   Maximize2,
   Minimize2,
-  Minus,
-  Plus,
-  RotateCcw,
 } from 'lucide-react';
 import { buildAssistantGreeting, createNewAssistantState } from '../assistantDockModel';
 import {
@@ -88,6 +85,7 @@ export default function CompactAssistant({
   const abortRef = useRef(null);
   const endRef = useRef(null);
   const floatingRef = useRef(null);
+  const characterHitAreaRef = useRef(null);
   const dragRef = useRef(null);
   const suppressExpandRef = useRef(false);
   const collapsedPositionRef = useRef(null);
@@ -102,9 +100,6 @@ export default function CompactAssistant({
     return Number.isFinite(parsed) ? Math.max(0.5, Math.min(3.0, parsed)) : 1.0;
   });
   const scaleSaveTimerRef = useRef(null);
-  const [isScaleDragging, setIsScaleDragging] = useState(false);
-  const [isToolbarVisible, setIsToolbarVisible] = useState(false);
-  const toolbarHideTimerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -396,56 +391,30 @@ export default function CompactAssistant({
     });
   }, [saveCharacterScale]);
 
-  const handleRangeChange = useCallback((event) => {
-    const percent = Number(event.target.value);
-    const newScale = Math.max(0.5, Math.min(3.0, percent / 100));
-    setCharacterScale((prevScale) => {
-      setFloatingPosition((pos) => {
-        if (!pos) return pos;
-        const oldW = CHARACTER_BASE_WIDTH * prevScale;
-        const oldH = CHARACTER_BASE_HEIGHT * prevScale;
-        const newW = CHARACTER_BASE_WIDTH * newScale;
-        const newH = CHARACTER_BASE_HEIGHT * newScale;
-        const left = pos.left + (oldW - newW) / 2;
-        const top = pos.top + (oldH - newH);
-        return {
-          left: clampViewportX(left, newW),
-          top: clampViewportY(top, newH),
-        };
-      });
-      return newScale;
-    });
-  }, []);
-
-  const handleRangePointerUp = useCallback(() => {
-    setIsScaleDragging(false);
-    setCharacterScale((prev) => {
-      localStorage.setItem('compactAssistantCharacterScale', String(prev));
-      return prev;
-    });
-  }, []);
-
-  const handleScaleToggleClick = (event, delta) => {
+  const handleCharacterWheel = useCallback((event) => {
+    if (!event.deltaY) return;
+    event.preventDefault();
     event.stopPropagation();
-    handleScaleChange(delta);
-  };
+    const pageUnit = Math.max(window.innerHeight, 1);
+    const deltaPixels = event.deltaMode === 1
+      ? event.deltaY * 16
+      : event.deltaMode === 2
+        ? event.deltaY * pageUnit
+        : event.deltaY;
+    const magnitude = Math.min(0.12, Math.max(0.005, Math.abs(deltaPixels) * 0.0015));
+    handleScaleChange(deltaPixels < 0 ? magnitude : -magnitude);
+  }, [handleScaleChange]);
 
-  // Toolbar visibility: React state + pointerEnter/pointerLeave with 250ms delayed hide
-  const showScaleToolbar = useCallback(() => {
-    if (toolbarHideTimerRef.current) {
-      clearTimeout(toolbarHideTimerRef.current);
-      toolbarHideTimerRef.current = null;
-    }
-    setIsToolbarVisible(true);
+  useEffect(() => {
+    const hitArea = characterHitAreaRef.current;
+    if (!collapsed || !hitArea) return undefined;
+    hitArea.addEventListener('wheel', handleCharacterWheel, { passive: false });
+    return () => hitArea.removeEventListener('wheel', handleCharacterWheel);
+  }, [collapsed, handleCharacterWheel]);
+
+  useEffect(() => () => {
+    if (scaleSaveTimerRef.current) clearTimeout(scaleSaveTimerRef.current);
   }, []);
-
-  const scheduleHideScaleToolbar = useCallback(() => {
-    if (isScaleDragging) return;
-    if (toolbarHideTimerRef.current) clearTimeout(toolbarHideTimerRef.current);
-    toolbarHideTimerRef.current = window.setTimeout(() => {
-      setIsToolbarVisible(false);
-    }, 250);
-  }, [isScaleDragging]);
 
   const floatingStyle = floatingPosition ? {
     left: floatingPosition.left,
@@ -528,7 +497,6 @@ export default function CompactAssistant({
     .slice(-6);
 
   const handleCollapsedPointerDown = (event) => {
-    if (event.target.closest('.compact-assistant__scale-toggle, .compact-assistant__scale-toolbar, .compact-assistant__scale-value, .compact-assistant__scale-slider')) return;
     startFloatingDrag(event, true);
   };
 
@@ -536,7 +504,7 @@ export default function CompactAssistant({
     return (
       <aside
         ref={floatingRef}
-        className={`compact-assistant is-collapsed${dragging ? ' is-dragging' : ''}${isScaleDragging ? ' is-scale-dragging' : ''} ${className}`.trim()}
+        className={`compact-assistant is-collapsed${dragging ? ' is-dragging' : ''} ${className}`.trim()}
         aria-label="常驻智能助教"
         data-state="collapsed"
         data-floating={String(floating)}
@@ -549,18 +517,18 @@ export default function CompactAssistant({
           ...(floating ? floatingStyle : undefined),
         }}
       >
-        <div
-          className={`compact-assistant__collapsed-controls${isToolbarVisible ? ' is-toolbar-visible' : ''}`}
-          onPointerEnter={showScaleToolbar}
-          onPointerLeave={scheduleHideScaleToolbar}
-        >
-          <div className="compact-assistant__hit-area" onPointerDown={floating ? handleCollapsedPointerDown : undefined}>
+        <div className="compact-assistant__collapsed-controls">
+          <div
+            ref={characterHitAreaRef}
+            className="compact-assistant__hit-area"
+            onPointerDown={floating ? handleCollapsedPointerDown : undefined}
+          >
             {!characterFailed ? (
               <button
                 type="button"
                 className="compact-assistant__restore"
                 aria-label="展开智能助教"
-                title="拖拽移动，点击展开智能助教"
+                title="拖拽移动，滚轮缩放，点击展开智能助教"
                 onClick={restoreAssistant}
               >
                 <span
@@ -598,55 +566,6 @@ export default function CompactAssistant({
                 </span>
               </button>
             )}
-          </div>
-          <div
-            className="compact-assistant__scale-toolbar"
-            onPointerEnter={showScaleToolbar}
-            onPointerLeave={scheduleHideScaleToolbar}
-          >
-            <button
-              type="button"
-              className="compact-assistant__scale-toggle"
-              aria-label="缩小角色"
-              title="缩小5%"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => handleScaleToggleClick(e, -0.05)}
-            >
-              <Minus size={11} />
-            </button>
-            <input
-              type="range"
-              className="compact-assistant__scale-slider"
-              min={50}
-              max={300}
-              step={1}
-              value={Math.round(characterScale * 100)}
-              onPointerDown={(e) => { e.stopPropagation(); setIsScaleDragging(true); }}
-              onChange={handleRangeChange}
-              onPointerUp={handleRangePointerUp}
-              aria-label="角色缩放滑条"
-            />
-            <button
-              type="button"
-              className="compact-assistant__scale-toggle"
-              aria-label="放大角色"
-              title="放大5%"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => handleScaleToggleClick(e, 0.05)}
-            >
-              <Plus size={11} />
-            </button>
-            <span className="compact-assistant__scale-value">{Math.round(characterScale * 100)}%</span>
-            <button
-              type="button"
-              className="compact-assistant__scale-toggle"
-              aria-label="恢复默认大小"
-              title="恢复100%"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); handleScaleChange(0, true); }}
-            >
-              <RotateCcw size={10} />
-            </button>
           </div>
         </div>
       </aside>
@@ -704,27 +623,6 @@ export default function CompactAssistant({
             title="折叠智能助教"
             onClick={collapseAssistant}
           ><PanelRightClose aria-hidden="true" size={15} /></button>
-          <div className="compact-assistant__resize-controls">
-            <button
-              type="button"
-              className="compact-assistant__resize-btn"
-              aria-label="缩小角色"
-              title="缩小角色"
-              onClick={() => handleScaleChange(-0.05)}
-            >
-              <Minus aria-hidden="true" size={12} />
-            </button>
-            <span className="compact-assistant__resize-value">{Math.round(characterScale * 100)}%</span>
-            <button
-              type="button"
-              className="compact-assistant__resize-btn"
-              aria-label="放大角色"
-              title="放大角色"
-              onClick={() => handleScaleChange(0.05)}
-            >
-              <Plus aria-hidden="true" size={12} />
-            </button>
-          </div>
           <button
             type="button"
             aria-label="打开完整智能助教"

@@ -93,7 +93,7 @@ describe('six-agent presentation model', () => {
   it('uses natural Chinese labels for runtime states and logs', () => {
     expect(agentStatusLabel('running')).toBe('执行中');
     expect(agentStatusLabel('error')).toBe('执行失败');
-    expect(agentStatusLabel('waiting_human_review')).toBe('等待补充');
+    expect(agentStatusLabel('waiting_human_review')).toBe('等待人工复核');
     expect(sanitizeAgentLog('audit_agent处理完成')).toBe('内容质量检查完成。');
     expect(sanitizeAgentLog('')).toBe('');
   });

@@ -11,7 +11,7 @@ import {
 import { loadDailyTaskPracticeQuestion, loadPracticeQuestion, submitPracticeAnswer } from '../../pageDataLoaders';
 import { fetchJsonWithAuthFallback } from '../../utils/api';
 import { Button, EmptyState, InlineError, Skeleton } from '../ui';
-import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from '../WorkshopSaveActions';
+import { FavoriteQuestionButton, NoteQuestionButton } from '../WorkshopSaveActions';
 
 const multipleTypes = new Set(['multiple_choice', '多选题', '多项选择题']);
 const singleTypes = new Set(['single_choice', 'true_false', '单选题', '单项选择题', '判断题']);
@@ -188,7 +188,6 @@ export default function AtlasPracticePanel({
               <span>{typeLabel}</span>
             </div>
             <p id="practice-question">{question.stem}</p>
-            <FavoriteQuestionIconButton question={favoriteQuestion} source="题目训练" />
           </article>
 
           {knowledgeLabels.length > 0 && (

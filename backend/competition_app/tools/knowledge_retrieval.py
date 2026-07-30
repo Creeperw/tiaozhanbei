@@ -164,6 +164,96 @@ class KnowledgeRetrievalTool:
             return []
         return await self.exa_retriever.search_questions(query, limit=limit)
 
+    async def search_web_resources(self, query: str, limit: int = 5):
+        """Search current external facts such as official dates or weather."""
+        if self.exa_retriever is None:
+            return []
+        return await self.exa_retriever.search_web(query, limit=limit)
+
+    async def build_external_evidence_pack(
+        self, query: str, *, location: str = ""
+    ) -> EvidencePack:
+        """Build current-fact evidence without resolving a textbook knowledge point."""
+        if self.exa_retriever is None:
+            return EvidencePack(
+                evidence_pack_id=f"EP_{uuid4().hex}",
+                query=query,
+                evidence_items=[
+                    EvidenceItem(
+                        evidence_id="E_WEB_UNAVAILABLE",
+                        source_id="system:web-search-unconfigured",
+                        content_summary=(
+                            "当前运行环境未配置网络搜索服务，无法核验会随日期或地点变化的实时信息。"
+                            "请以考试主管部门、气象服务或其他官方发布页面为准。"
+                        ),
+                        authority_level="system_notice",
+                        confidence=1.0,
+                        bridge_layer="system",
+                        resource_type="web",
+                    )
+                ],
+                risk_notes=["网络搜索服务未配置，当前不能把实时信息写成确定结论。"],
+            )
+        search_query = " ".join(
+            part
+            for part in (
+                query.strip(),
+                location.strip() if self._requires_location(query) else "",
+            )
+            if part
+        )
+        hits = await self.exa_retriever.search_web(search_query, limit=5)
+        if not hits:
+            return self._external_evidence_unavailable_pack(query)
+        return EvidencePack(
+            evidence_pack_id=f"EP_{uuid4().hex}",
+            query=query,
+            evidence_items=[
+                EvidenceItem(
+                    evidence_id=f"E_WEB_{index}",
+                    source_id=item.source_id,
+                    content_summary=f"{item.title}\n{item.summary}",
+                    authority_level="web_current_fact",
+                    confidence=item.score,
+                    bridge_layer="external",
+                    source_url=item.url,
+                    resource_type="web",
+                )
+                for index, item in enumerate(hits, start=1)
+            ],
+            risk_notes=["当前信息来自网络检索，请以官方发布页面为最终依据。"],
+        )
+
+    @staticmethod
+    def _requires_location(query: str) -> bool:
+        text = str(query or "")
+        return any(
+            marker in text
+            for marker in ("天气", "气温", "降雨", "下雨", "空气质量", "台风")
+        )
+
+    @staticmethod
+    def _external_evidence_unavailable_pack(query: str) -> EvidencePack:
+        return EvidencePack(
+            evidence_pack_id=f"EP_{uuid4().hex}",
+            query=query,
+            evidence_items=[
+                EvidenceItem(
+                    evidence_id="E_WEB_UNAVAILABLE",
+                    source_id="system:web-search-unavailable",
+                    content_summary=(
+                        "当前未检索到可用于核验的网络信息，无法确认会随日期或地点变化的实时事实。"
+                        "请以主管部门、气象服务或其他官方发布页面为准。"
+                    ),
+                    authority_level="system_notice",
+                    confidence=1.0,
+                    bridge_layer="system",
+                    resource_type="web",
+                )
+            ],
+            risk_notes=["未获得可核验的网络证据，当前不能把实时信息写成确定结论。"],
+        )
+
     async def search_question_candidates(
         self,
         query: str,

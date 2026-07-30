@@ -1,8 +1,12 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { cwd } from 'node:process';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import QualificationRoutePage from './QualificationRoutePage';
+import { clearQualificationRoutePageCache } from './qualificationRoutePageCache';
 
 function response(payload, ok = true, status = 200) {
   return { ok, status, text: async () => JSON.stringify(payload) };
@@ -27,7 +31,7 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
     const path = String(url);
     if (path.includes('/qualification-targets')) {
       return Promise.resolve(response({
-        items: [{
+        items: [options.qualificationTarget || {
           target_id: 'target-tcm',
           exam_track_id: 'track-tcm',
           official_name: '中医类别执业医师资格考试',
@@ -41,6 +45,7 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
       }));
     }
     if (path.includes('/learning-path')) {
+      if (options.learningPathPromise) return options.learningPathPromise;
       return Promise.resolve(response(routePayload));
     }
     if (path.includes('/learning-routes/textbook-integrated')) {
@@ -96,7 +101,99 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
 }
 
 describe('QualificationRoutePage', () => {
+  beforeEach(() => clearQualificationRoutePageCache());
   afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps the welcome and route frames mounted while their data loads', async () => {
+    installHomeFetch({});
+    render(<QualificationRoutePage currentUser={{ display_name: '林同学' }} onNavigate={vi.fn()} />);
+
+    const heroFrame = document.querySelector('.home-portal__hero');
+    const heroPrimary = document.querySelector('.home-portal__hero-primary');
+    const routeFrame = screen.getByLabelText('中医执业医师资格考试学习路径');
+    const planRail = screen.getByLabelText('今日学习计划');
+    const calendarFrame = screen.getByLabelText('学习日历');
+    const todayFrame = screen.getByLabelText('今日任务');
+    expect(heroPrimary).toHaveAttribute('data-content-ready', 'false');
+    expect(routeFrame).toHaveAttribute('data-content-ready', 'false');
+    expect(planRail).toHaveAttribute('data-content-ready', 'false');
+    expect(calendarFrame).toBeInTheDocument();
+    expect(todayFrame).toBeInTheDocument();
+    expect(within(routeFrame).getByRole('heading', { name: '中医执业医师资格考试' })).toBeInTheDocument();
+    expect(within(routeFrame).getByRole('button', { name: '学习路径' })).toBeInTheDocument();
+    expect(within(routeFrame).queryByText('正在读取学习路径…')).not.toBeInTheDocument();
+
+    expect(await within(routeFrame).findByText('中医基础与文化语言')).toBeInTheDocument();
+    await waitFor(() => expect(heroPrimary).toHaveAttribute('data-content-ready', 'true'));
+    expect(routeFrame).toHaveAttribute('data-content-ready', 'true');
+    expect(planRail).toHaveAttribute('data-content-ready', 'true');
+    await waitFor(
+      () => expect(document.querySelector('.home-portal__hero-caret')).toBeInTheDocument(),
+      { timeout: 900 },
+    );
+    await waitFor(
+      () => expect(document.querySelector('.home-portal__hero-caret')).not.toBeInTheDocument(),
+      { timeout: 2000 },
+    );
+    expect(screen.getByRole('heading', { name: /今天继续学习中医基础与文化语言/ })).toHaveTextContent('中医基础与文化语言');
+    expect(document.querySelector('.home-portal__hero')).toBe(heroFrame);
+    expect(screen.getByLabelText('中医类别执业医师资格考试学习路径')).toBe(routeFrame);
+
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
+    expect(stylesheet).toMatch(/data-page="learning-path"[^}]+\.home-portal__hero\s*\{[^}]*height:\s*190px;/s);
+    expect(stylesheet).toMatch(/data-page="learning-path"[^}]+\.home-portal__route\s*\{[^}]*contain:\s*layout paint;/s);
+    expect(stylesheet).toMatch(/data-page="learning-path"[^}]+\.learning-path-orbit__legend\s*\{[^}]*margin:\s*-3px 18px 8px;/s);
+    expect(stylesheet).toMatch(/home-portal__plan-rail \.home-study-calendar > \*[\s\S]*transition:\s*opacity 480ms ease;/);
+  });
+
+  it('waits for the qualification target before showing the exam countdown', async () => {
+    installHomeFetch({});
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    expect(screen.queryByText(/距离.+还有 \d+ 天/)).not.toBeInTheDocument();
+    const countdownText = await screen.findByText(/距离中医类别执业医师资格考试还有 \d+ 天/);
+    await waitFor(() => expect(countdownText).toBeVisible());
+  });
+
+  it('restores cached page content immediately and refreshes it in the background', async () => {
+    installHomeFetch({
+      current_learning_task: {
+        task_id: 'TASK_CACHED',
+        title: '缓存中的今日任务',
+        items: [{ task_item_id: 'ITEM_CACHED', title: '缓存中的今日任务', estimated_minutes: 20 }],
+      },
+    });
+    const firstRender = render(
+      <QualificationRoutePage currentUser={{ username: 'cache-user' }} onNavigate={vi.fn()} />,
+    );
+
+    const firstRoute = await screen.findByLabelText('中医类别执业医师资格考试学习路径');
+    await within(firstRoute).findByText('中医基础与文化语言');
+    await waitFor(() => expect(screen.getByLabelText('今日学习计划')).toHaveAttribute('data-content-ready', 'true'));
+    expect(screen.getByText('缓存中的今日任务')).toBeVisible();
+    firstRender.unmount();
+
+    const pendingRefresh = vi.fn(() => new Promise(() => {}));
+    vi.stubGlobal('fetch', pendingRefresh);
+    render(<QualificationRoutePage currentUser={{ username: 'cache-user' }} onNavigate={vi.fn()} />);
+
+    expect(screen.getByLabelText('今日学习计划')).toHaveAttribute('data-content-ready', 'true');
+    expect(screen.getByText('缓存中的今日任务')).toBeVisible();
+    expect(screen.getByLabelText('中医类别执业医师资格考试学习路径')).toHaveAttribute('data-content-ready', 'true');
+    expect(pendingRefresh).toHaveBeenCalled();
+  });
+
+  it('keeps asynchronous hero notices fully visible without ellipsis clipping', async () => {
+    installHomeFetch({ announcements: ['这是一条需要完整显示、不能被欢迎框裁切的学习安排提示。'] });
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    expect(await screen.findByRole('status')).toHaveTextContent('这是一条需要完整显示、不能被欢迎框裁切的学习安排提示。');
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
+    const noticeRule = stylesheet.match(/data-page="learning-path"[^}]+\.home-portal__hero-notices \.home-portal__notice\s*\{([^}]+)\}/s)?.[1] || '';
+    expect(noticeRule).toContain('overflow: visible;');
+    expect(noticeRule).toContain('white-space: normal;');
+    expect(noticeRule).not.toContain('text-overflow: ellipsis;');
+  });
 
   it('renders the learning path by default with the current plan on the right', async () => {
     installHomeFetch({
@@ -158,10 +255,11 @@ describe('QualificationRoutePage', () => {
     expect(screen.queryByRole('combobox', { name: '学习目标' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
     expect(screen.queryByText('阶段学习路径')).not.toBeInTheDocument();
-    expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
+    expect(await within(screen.getByLabelText('中医类别执业医师资格考试学习路径')).findByText('中医基础与文化语言')).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '今日学习计划' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '今日任务' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '今日任务' })).toHaveAttribute('data-task-count', '2');
     expect(screen.getByRole('complementary', { name: '学习日历' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: '学习日历' }).compareDocumentPosition(screen.getByRole('region', { name: '今日任务' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('button', { name: '学习与复习任务' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('今日任务完成 1/2')).toBeInTheDocument();
     expect(screen.getByLabelText('2026年7月23日，已学习')).toBeInTheDocument();
@@ -171,13 +269,56 @@ describe('QualificationRoutePage', () => {
 
     const pathViewButton = screen.getByRole('button', { name: '学习路径' });
     const cardViewButton = screen.getByRole('button', { name: '学习阶段' });
-    expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
-    expect(cardViewButton).toHaveAttribute('aria-pressed', 'false');
-    fireEvent.click(cardViewButton);
     expect(cardViewButton).toHaveAttribute('aria-pressed', 'true');
+    expect(pathViewButton).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(screen.getByRole('button', { name: '学习路径' }));
     expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
+  });
+
+  it('restores classic and personalized route choices with the learner survey entry', async () => {
+    const fetchMock = installHomeFetch({});
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    const routeSource = await screen.findByRole('group', { name: '学习路径类型' });
+    const classicButton = within(routeSource).getByRole('button', { name: '经典路径' });
+    const personalizedButton = within(routeSource).getByRole('button', { name: '个性化路径' });
+    expect(classicButton).toHaveAttribute('aria-pressed', 'true');
+    expect(personalizedButton).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(personalizedButton);
+    expect(personalizedButton).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/learning-path'))).toBe(true));
+
+    fireEvent.click(screen.getByRole('button', { name: '学情调研' }));
+    expect(screen.getByRole('dialog', { name: '学情调研' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '关闭学情调研' }));
+    expect(screen.queryByRole('dialog', { name: '学情调研' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a loading state visible while the personalized route is requested', async () => {
+    let resolvePersonalizedPath;
+    const personalizedPath = new Promise((resolve) => { resolvePersonalizedPath = resolve; });
+    installHomeFetch({}, {
+      qualificationTarget: {
+        target_id: 'target-tcm',
+        exam_track_id: 'track-tcm',
+        official_name: '中医类别执业医师资格考试',
+        exam_date: '2026-11-29T23:59:59+08:00',
+        textbook_route_id: 'textbook-integrated',
+      },
+      learningPathPromise: personalizedPath,
+    });
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    await screen.findByText('中西医结合基础阶段');
+    fireEvent.click(screen.getByRole('button', { name: '个性化路径' }));
+
+    expect(await screen.findByText('正在读取个性化学习路径…')).toBeInTheDocument();
+
+    resolvePersonalizedPath(response(routePayload));
+    expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
+    expect(screen.getByLabelText('中医类别执业医师资格考试学习路径')).toHaveAttribute('data-content-ready', 'true');
   });
 
   it('opens the assistant with the current learning context when adding a task', async () => {
@@ -292,15 +433,35 @@ describe('QualificationRoutePage', () => {
   });
 
   it('shows persisted long and short planning narratives from the route header', async () => {
-    installHomeFetch({});
+    installHomeFetch({}, {
+      learningContext: {
+        long_term_plan: {
+          content: '【最终目标】## 目标契约\n最终目标是系统掌握中医执业医师。\n\n## 长期阶段路径\n| 阶段 | 阶段目标 |\n|---|---|\n| 1. 中医基础 | 建立基础概念 |',
+        },
+        short_term_plan: {
+          content: '## 本周安排\n- 完成中医基础理论复习。',
+        },
+      },
+    });
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: '了解详情' }));
+    fireEvent.click(await screen.findByRole('button', { name: '规划详情' }));
 
-    expect(await screen.findByText('【最终目标】通过中医执业医师资格考试。')).toBeInTheDocument();
-    expect(screen.getByText('【本周安排】完成中医基础理论复习。')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '长期规划和短期规划说明' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '返回' }));
+    expect(await screen.findByRole('heading', { name: '目标契约', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '阶段' })).toBeInTheDocument();
+    expect(screen.getByRole('listitem')).toHaveTextContent('完成中医基础理论复习。');
+    const details = screen.getByRole('region', { name: '长期规划和短期规划说明' });
+    const planningDocument = details.querySelector('.home-portal__planning-document');
+    expect(planningDocument).toBeInTheDocument();
+    expect([...planningDocument.querySelectorAll(':scope > section > h3')].map((heading) => heading.textContent)).toEqual([
+      '长期规划',
+      '短期规划',
+    ]);
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
+    expect(stylesheet).toMatch(/\.home-portal__planning-markdown table\s*\{[^}]*table-layout:\s*fixed;/s);
+    expect(stylesheet).toMatch(/\.home-portal__planning-markdown th,\s*\.home-portal__planning-markdown td\s*\{[^}]*overflow-wrap:\s*anywhere;/s);
+    fireEvent.click(screen.getByRole('button', { name: '返回路径' }));
     expect(await screen.findByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
   });
 

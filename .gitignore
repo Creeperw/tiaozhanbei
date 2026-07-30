@@ -223,6 +223,7 @@ backend/competition/知识星球视频知识库_前端交接包_*
 backend/competition/知识星球视频知识库_前端交接包_*/
 backend/competition/zhongyi-learning-planning
 backend/competition/zhongyi-learning-planning/
+backend/competition/textbook_pdfs/
 
 # Visual Studio Code
 #   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
@@ -248,3 +249,8 @@ __marimo__/
 .streamlit/secrets.toml
 # User-scoped workshop note uploads are runtime data.
 backend/competition_app/data/workshop_note_images/
+
+# Local delivery archives, logs and disposable test artifacts.
+/release_packages/
+/.runlogs/
+/tmp/

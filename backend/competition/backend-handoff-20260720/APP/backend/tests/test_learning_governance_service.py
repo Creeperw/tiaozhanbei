@@ -9,9 +9,13 @@ from APP.backend import database
 from APP.backend.learning_governance_service import (
     build_learning_insights,
     build_resource_match_report,
+    build_resource_effectiveness_report,
+    build_task_load_policy,
     decide_plan_review,
     list_notifications,
     record_intervention_feedback,
+    record_plan_progression_event,
+    record_resource_recommendation_event,
     run_automation_cycle,
     update_notification_preferences,
 )
@@ -166,6 +170,129 @@ class LearningGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(question_match["estimated_minutes_basis"], "user_response_time_mean_30d")
         self.assertEqual(report["summary"]["coverage"], 1.0)
         self.assertTrue(report["data_sources"])
+        self.assertTrue(report["recommendation_view_id"].startswith("recommendation-view:"))
+        self.assertEqual(
+            report["matches"][0]["feedback"]["event_endpoint"],
+            "/api/v1/resource-recommendations/events",
+        )
+
+    def test_task_load_policy_uses_missing_data_neutrally_and_reserves_review(self):
+        policy = build_task_load_policy(
+            self.db,
+            1,
+            plan_context={
+                "learning_task": {"estimated_minutes": 25},
+                "short_term_plan": {},
+            },
+            review_projection={
+                "source": "canonical_review_memory",
+                "due_count": 2,
+            },
+            days=7,
+        )
+
+        self.assertEqual(policy["policy_id"], "next-day-load-v1")
+        self.assertEqual(policy["baseline_minutes"], 25)
+        self.assertEqual(policy["recommended_minutes"], 25)
+        self.assertEqual(policy["allocation"]["review_minutes"], 8)
+        self.assertTrue(policy["constraints"]["does_not_fill_available_time"])
+        self.assertFalse(
+            policy["evidence_availability"]["task_completion_rate"]
+        )
+
+    def test_resource_feedback_funnel_and_mastery_gain_are_auditable(self):
+        insights = build_learning_insights(self.db, 1, days=7)
+        report = build_resource_match_report(
+            self.db,
+            1,
+            insights=insights,
+            plan_context={
+                "learning_task": {
+                    "items": [{"kp_id": "KP_FJ_001"}],
+                    "estimated_minutes": 25,
+                }
+            },
+        )
+        recommendation = next(
+            item for item in report["matches"] if item["resource_id"] == "CARD_1"
+        )
+        feedback = recommendation["feedback"]
+        impression = record_resource_recommendation_event(
+            self.db,
+            1,
+            event_type="impression",
+            recommendation_view_id=feedback["recommendation_view_id"],
+            resource_id=feedback["resource_id"],
+            resource_type=feedback["resource_type"],
+            kp_ids=feedback["kp_ids"],
+        )
+        click = record_resource_recommendation_event(
+            self.db,
+            1,
+            event_type="click",
+            recommendation_view_id=feedback["recommendation_view_id"],
+            resource_id=feedback["resource_id"],
+            resource_type=feedback["resource_type"],
+            kp_ids=feedback["kp_ids"],
+        )
+        complete = record_resource_recommendation_event(
+            self.db,
+            1,
+            event_type="complete",
+            recommendation_view_id=feedback["recommendation_view_id"],
+            resource_id=feedback["resource_id"],
+            resource_type=feedback["resource_type"],
+            kp_ids=feedback["kp_ids"],
+        )
+        self.db.query(database.LearningActivityRecord).filter_by(
+            user_id=1,
+            activity_type="resource_complete",
+            resource_id=feedback["resource_id"],
+        ).update(
+            {
+                database.LearningActivityRecord.created_at:
+                    datetime.utcnow() - timedelta(minutes=1)
+            }
+        )
+        self.db.add(
+            database.LearningQuestionAttempt(
+                attempt_id="ATTEMPT_AFTER_RESOURCE",
+                user_id=1,
+                question_id="QUESTION_0",
+                is_correct=True,
+                answered_at=datetime.utcnow(),
+            )
+        )
+        self.db.query(database.KnowledgeMasteryState).filter_by(
+            learner_id=1, kp_id="KP_FJ_001"
+        ).update({database.KnowledgeMasteryState.mastery_score: 50.0})
+        self.db.flush()
+
+        effectiveness = build_resource_effectiveness_report(
+            self.db, 1, days=30
+        )
+
+        self.assertTrue(impression["recorded"])
+        self.assertTrue(click["recorded"])
+        self.assertTrue(complete["recorded"])
+        self.assertGreaterEqual(
+            effectiveness["funnel"]["displayed_resource_count"], 1
+        )
+        self.assertGreaterEqual(
+            effectiveness["funnel"]["clicked_resource_count"], 1
+        )
+        self.assertGreaterEqual(
+            effectiveness["funnel"]["completed_resource_count"], 1
+        )
+        self.assertAlmostEqual(
+            effectiveness["learning_outcomes"]["mastery_delta"], 0.2
+        )
+        self.assertGreaterEqual(
+            effectiveness["learning_outcomes"]["post_resource_attempt_count"], 1
+        )
+        self.assertEqual(
+            effectiveness["learning_outcomes"]["post_resource_accuracy"], 1.0
+        )
 
     def test_practice_score_rate_uses_passed_practice_and_paper_scores(self):
         now = datetime.utcnow()
@@ -216,6 +343,13 @@ class LearningGovernanceServiceTests(unittest.TestCase):
             "REJECTED", attempt_type="practice", score=100, max_score=100,
             decision="reject",
         )
+        self.db.add(database.AuditResultRecord(
+            audit_id="AUDIT_PRACTICE_DUPLICATE",
+            source_artifact_id="GRADING_PRACTICE",
+            source_artifact_version=1,
+            decision="pass",
+            status="completed",
+        ))
         self.db.commit()
 
         insights = build_learning_insights(self.db, 1, days=7)
@@ -245,6 +379,22 @@ class LearningGovernanceServiceTests(unittest.TestCase):
             "completed_non_cancelled_daily_items/non_cancelled_published_daily_items",
         )
         self.assertNotIn("learning_tasks", insights["data_quality"]["sources"])
+
+    def test_empty_dimension_is_null_instead_of_false_zero(self):
+        self.db.add(database.UserModel(
+            id=2,
+            username="empty-governance-learner",
+            email="empty-governance@example.com",
+            hashed_password="x",
+        ))
+        self.db.commit()
+
+        insights = build_learning_insights(self.db, 2, days=7)
+
+        self.assertTrue(insights["dimensions"])
+        for dimension in insights["dimensions"]:
+            self.assertEqual(dimension["status"], "insufficient_evidence")
+            self.assertIsNone(dimension["value"])
 
     def test_resource_report_refuses_untargeted_recommendations(self):
         insights = build_learning_insights(self.db, 1, days=7)
@@ -279,6 +429,118 @@ class LearningGovernanceServiceTests(unittest.TestCase):
             )
             self.assertEqual(feedback["lifecycle_status"], "accepted")
 
+    def test_three_consecutive_low_completion_days_request_short_replanning(self):
+        initial_cycle = run_automation_cycle(
+            self.db,
+            1,
+            plan_context={
+                "short_term_plan": {
+                    "plan_id": "SHORT_LOW_1",
+                    "recovery_policy": {
+                        "trigger_conditions": ["连续3天任务完成率低于50%"]
+                    },
+                }
+            },
+            days=7,
+        )
+        initial_review_id = initial_cycle["plan_review"]["review_id"]
+        now = datetime.utcnow()
+        for offset in range(3):
+            created_at = now - timedelta(days=offset)
+            host_task_id = f"LOW_COMPLETION_TASK_{offset}"
+            self.db.add(database.DailyTaskInstanceRecord(
+                host_task_id=host_task_id,
+                host_task_version=1,
+                user_id=1,
+                status="active",
+                created_at=created_at,
+            ))
+            for ordinal in range(2):
+                self.db.add(database.DailyTaskItemRecord(
+                    task_item_id=f"LOW_COMPLETION_ITEM_{offset}_{ordinal}",
+                    host_task_id=host_task_id,
+                    host_task_version=1,
+                    user_id=1,
+                    kp_id="KP_FJ_001",
+                    ordinal=ordinal,
+                    status="pending",
+                    created_at=created_at,
+                ))
+        self.db.flush()
+
+        cycle = run_automation_cycle(
+            self.db,
+            1,
+            plan_context={
+                "short_term_plan": {
+                    "plan_id": "SHORT_LOW_1",
+                    "recovery_policy": {
+                        "trigger_conditions": ["连续3天任务完成率低于50%"]
+                    },
+                }
+            },
+            days=7,
+        )
+
+        review = cycle["plan_review"]
+        self.assertEqual(review["review_id"], initial_review_id)
+        self.assertEqual(review["outcome"], "short_replan_suggested")
+        self.assertEqual(review["low_completion_streak_days"], 3)
+        self.assertEqual(
+            review["proposal"]["operation"],
+            "replan_for_low_completion",
+        )
+        self.assertTrue(review["proposal"]["requires_confirmation"])
+        workflow_request = review["proposal"]["workflow_request"]
+        self.assertEqual(workflow_request["plan_scope"], "short_term")
+        self.assertIn("强制调整", workflow_request["user_request"])
+        notification = next(
+            item
+            for item in list_notifications(self.db, 1)["items"]
+            if item["category"] == "plan_review"
+        )
+        self.assertEqual(
+            notification["action"]["workflow_request"],
+            workflow_request,
+        )
+
+    def test_canonical_review_projection_drives_insights_notifications_and_plan_review(self):
+        projection = {
+            "source": "canonical_review_memory",
+            "due_count": 6,
+            "total_count": 7,
+            "active_task_count": 2,
+        }
+
+        insights = build_learning_insights(
+            self.db,
+            1,
+            days=7,
+            review_projection=projection,
+        )
+        cycle = run_automation_cycle(
+            self.db,
+            1,
+            plan_context={},
+            days=7,
+            review_projection=projection,
+        )
+
+        self.assertEqual(insights["overview"]["due_review_count"], 6)
+        self.assertEqual(
+            insights["overview"]["review_projection_source"],
+            "canonical_review_memory",
+        )
+        self.assertEqual(
+            cycle["plan_review"]["proposal"]["operation"],
+            "add_review_window",
+        )
+        notifications = list_notifications(self.db, 1)["items"]
+        due_notification = next(
+            item for item in notifications if item["category"] == "review_due"
+        )
+        self.assertIn("6 个", due_notification["message"])
+
     def test_notification_preferences_and_plan_review_decision_are_user_owned(self):
         preferences = update_notification_preferences(
             self.db,
@@ -298,6 +560,31 @@ class LearningGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(preferences["digest_frequency"], "daily")
         self.assertFalse(preferences["categories"]["review_due"])
         self.assertEqual(preferences["quiet_hours"]["start"], "21:30")
+
+    def test_plan_progression_notification_is_idempotent(self):
+        event = {
+            "event_id": "PROGRESSION_TASK_1_1_1_1",
+            "completed_layer": "daily_task",
+            "task_id": "TASK_1",
+            "stage": 1,
+            "next_stage": 2,
+            "short_term_completed": True,
+            "long_term_stage_passed": True,
+            "long_term_completed": False,
+        }
+
+        first = record_plan_progression_event(self.db, 1, event)
+        second = record_plan_progression_event(self.db, 1, event)
+
+        self.assertEqual(first["notification_id"], second["notification_id"])
+        self.assertEqual(
+            self.db.query(database.LearningActivityRecord).filter_by(
+                user_id=1,
+                activity_type="plan_progression",
+                resource_id=event["event_id"],
+            ).count(),
+            1,
+        )
 
 
 if __name__ == "__main__":

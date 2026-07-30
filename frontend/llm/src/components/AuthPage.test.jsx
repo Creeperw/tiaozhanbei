@@ -75,11 +75,15 @@ describe('AuthPage main-backend cookie contract', () => {
 
   it('renders the login form directly without a modal dialog', () => {
     stubHealthyBackend();
-    render(<AuthPage onLogin={vi.fn()} />);
+    const { container } = render(<AuthPage onLogin={vi.fn()} />);
 
     expect(screen.getByLabelText('账号')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '进入时珍智训' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(container.querySelector('.auth-page')).toHaveClass('auth-page--single-screen');
+    expect(screen.queryByRole('heading', { name: /以智能重塑本草学习/ })).not.toBeInTheDocument();
+    expect(container.querySelector('.auth-capability-card')).toBeNull();
+    expect(container.querySelector('footer')).toBeNull();
   });
 
   it('explains that the backend must be started when the health check fails', async () => {

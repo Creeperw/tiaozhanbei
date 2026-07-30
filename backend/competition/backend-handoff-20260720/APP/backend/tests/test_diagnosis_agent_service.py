@@ -2,6 +2,7 @@ import importlib
 import json
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -282,6 +283,123 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
         self.assertEqual(report.stage_name, "证据积累中")
         self.assertEqual(report.attribution["primary"], "证据不足")
         self.assertEqual(report.t_stage["evidence"], ["当前观察窗口内没有已完成的学习活动或题目作答"])
+
+    def test_l3_window_uses_canonical_tasks_login_focus_and_audited_attempts(self):
+        service = self._service()
+        current_metrics = {
+            "daily_atomic_task_completion_rate": {
+                "available": True,
+                "value": 0.4,
+            },
+            "counts": {
+                "activity_records": 3,
+                "tasks": 5,
+                "focus_sessions": 2,
+                "focus_seconds": 600,
+                "distinct_login_days": 1,
+            },
+        }
+        previous_metrics = {
+            "daily_atomic_task_completion_rate": {
+                "available": True,
+                "value": 0.8,
+            },
+            "counts": {
+                "activity_records": 8,
+                "tasks": 5,
+                "focus_sessions": 4,
+                "focus_seconds": 2_400,
+                "distinct_login_days": 4,
+            },
+        }
+        current_outcomes = {
+            "current_window": {
+                "audited_question_items_completed": 2,
+                "retry_count": 1,
+            }
+        }
+        previous_outcomes = {
+            "current_window": {
+                "audited_question_items_completed": 5,
+                "retry_count": 0,
+            }
+        }
+
+        with (
+            mock.patch.object(
+                service.system_data_service,
+                "build_learning_window_metrics",
+                side_effect=[current_metrics, previous_metrics],
+            ),
+            mock.patch.object(
+                service.learning_statistics_service,
+                "build_learning_statistics",
+                side_effect=[current_outcomes, previous_outcomes],
+            ),
+        ):
+            result = service.build_l3_behavior_window(mock.Mock(), 7)
+
+        self.assertEqual(result["task_completion_rate"], 0.4)
+        self.assertEqual(result["login_weekly_change"], -0.75)
+        self.assertEqual(result["focus_time_change"], -0.75)
+        self.assertEqual(result["retry_count"], 1)
+        self.assertEqual(result["evidence_status"], "sufficient")
+        self.assertEqual(result["data_source"], "canonical_learning_monitoring")
+        self.assertEqual(
+            result["sample_counts"]["question_attempts_current_window"],
+            2,
+        )
+
+    def test_l3_window_does_not_treat_missing_daily_tasks_as_zero_completion(self):
+        service = self._service()
+        empty_task_metrics = {
+            "daily_atomic_task_completion_rate": {
+                "available": False,
+                "value": None,
+                "unavailable_reason": "no_planned_daily_task_items",
+            },
+            "counts": {
+                "activity_records": 1,
+                "tasks": 0,
+                "focus_sessions": 0,
+                "focus_seconds": 0,
+                "distinct_login_days": 1,
+            },
+        }
+        previous_metrics = {
+            **empty_task_metrics,
+            "counts": {
+                **empty_task_metrics["counts"],
+                "activity_records": 0,
+                "distinct_login_days": 0,
+            },
+        }
+        no_attempts = {
+            "current_window": {
+                "audited_question_items_completed": 0,
+                "retry_count": 0,
+            }
+        }
+
+        with (
+            mock.patch.object(
+                service.system_data_service,
+                "build_learning_window_metrics",
+                side_effect=[empty_task_metrics, previous_metrics],
+            ),
+            mock.patch.object(
+                service.learning_statistics_service,
+                "build_learning_statistics",
+                side_effect=[no_attempts, no_attempts],
+            ),
+        ):
+            result = service.build_l3_behavior_window(mock.Mock(), 8)
+
+        self.assertEqual(result["task_completion_rate"], 1.0)
+        self.assertFalse(
+            result["metric_availability"]["task_completion_rate"]
+        )
+        self.assertEqual(result["evidence_status"], "limited")
 
 
 if __name__ == "__main__":

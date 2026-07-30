@@ -34,8 +34,14 @@ MySQL/SQLite、Qwen 与 FAISS，负责用户认证、学习行为汇总、三层
 ```text
 backend/
 ├── competition_app/                    # 当前主后端
+│   └── data/textbook_pdfs/catalog.v1.json # 可提交的教材 PDF 索引，不含大文件
 └── competition/
-    └── backend-handoff-20260720/        # 已并入同一 FastAPI 进程的业务接口包
+    ├── backend-handoff-20260720/        # 已并入同一 FastAPI 进程的业务接口包
+    ├── textbook_pdfs/                   # 本地教材 PDF（当前 94 本，不提交 Git）
+    │   ├── 十三五/
+    │   └── 十四五/
+    ├── vdb_store/                       # 本地题库/知识库向量索引（不提交 Git）
+    └── 知识星球视频知识库_前端交接包_2026-07-18/ # 正式知识库交付包（不提交 Git）
 ```
 
 所有命令都从 `backend/` 目录执行。不要从 `competition_app/` 内部直接启动，否则 Python
@@ -105,11 +111,14 @@ export QUESTION_VECTOR_STORE_ROOT='/absolute/path/to/vdb_store'
 export KNOWLEDGE_VECTOR_STORE_ROOT='/absolute/path/to/vdb_store'
 export KNOWLEDGE_HANDOFF_ROOT='/absolute/path/to/知识星球视频知识库_前端交接包_2026-07-18'
 export KNOWLEDGE_RUNTIME_ROOT='/absolute/path/to/知识库管理组件/runtime'
+export TEXTBOOK_PDF_ROOT='/absolute/path/to/textbook_pdfs'
+export TEXTBOOK_PDF_CATALOG_PATH='/absolute/path/to/catalog.v1.json'
 ```
 
-如已有旧项目资产，可直接使用上述绝对路径；也可将 `vdb_store` 和知识库交付包软链接到
-`backend/competition/` 下。不要复制或提交 FAISS 索引，后端会把解析后的本地路径投影给
-交接业务模块。
+如已有旧项目资产，可直接使用上述绝对路径；也可将 `vdb_store`、知识库交付包和
+`textbook_pdfs` 解压或软链接到 `backend/competition/` 下。不要提交 FAISS 索引、知识库交付包
+或 PDF 大文件。教材目录由 `scripts/build_textbook_pdf_catalog.py` 扫描生成，索引文件可提交；
+同名教材优先解析“十四五”，未匹配教材返回“暂无电子教材”，不会错误关联其他 PDF。
 
 缺少正式资产时请使用 Stub 模式；Live 模式不会用伪数据静默降级。
 
@@ -130,6 +139,10 @@ python -m competition_app.cli.app init-db
 
 主框架与交接业务域使用同一 MySQL 实例中的两个数据库，避免同名表冲突。迁移位于
 `competition_app/migrations/`，由 `init-db` 按顺序和校验和执行。
+
+教材 PDF 本身保存在文件系统；用户的页级画笔、荧光笔、文字批注以及阅读页码/缩放状态分别
+保存在 `textbook_pdf_annotations`、`textbook_pdf_reading_state`，均按登录用户隔离。教材页收藏
+和 Markdown 笔记复用 `workshop_favorites`、`workshop_notes`，其上下文携带教材 ID 与 PDF 页码。
 
 启用交接业务域后，`competition_frontend` 会在模块装载时完成建库、缺失表初始化和增量结构修复。生产部署、最小授权、迁移约束、备份与恢复流程见
 [部署与升级指南](../../docs/deployment.md) 和
@@ -176,6 +189,8 @@ fetch('/api/v1/auth/me', {
 | 今日任务到期轮换 | `POST /api/v1/learning-tasks/current/refresh` |
 | 当前任务可信资源物化/旧任务修复 | `POST /api/v1/learning-tasks/current/materialize-resources` |
 | 当前完整规划与通过门禁 | `GET /api/v1/learning-plans/current` |
+| 教材 PDF 解析/文件 | `GET /api/v1/textbooks/pdfs/resolve`、`/textbooks/pdfs/{book_id}/file` |
+| 教材页批注/阅读状态 | `GET/PUT /api/v1/textbooks/pdfs/{book_id}/pages/{page}/annotations`、`/reading-state` |
 | 已完成任务绑定阶段证据 | `POST /api/v1/learning-plans/current/stages/{stage}/evidence` |
 | 普通执行 | `POST /api/v1/review-cards` |
 | 流式执行 | `POST /api/v1/review-cards/stream` |

@@ -194,6 +194,8 @@ class LearningStatisticsServiceTests(unittest.TestCase):
         self.assertEqual(result["current_window"]["questions_completed"], 1)
         self.assertEqual(result["current_window"]["paper_attempts_completed"], 0)
         self.assertEqual(result["current_window"]["score_rate"], 0.8)
+        self.assertEqual(result["current_window"]["retry_count"], 0)
+        self.assertIn("retry_count", result["metric_definitions"])
 
     def test_empty_user_returns_null_rate_instead_of_false_zero_ability(self):
         result = build_learning_statistics(self.db, 1, days=7, now=self.now)
@@ -203,6 +205,24 @@ class LearningStatisticsServiceTests(unittest.TestCase):
         self.assertIsNone(result["lifetime"]["score_rate"])
         self.assertEqual(result["current_window"]["questions_completed"], 0)
         self.assertFalse(result["counting_policy"]["drafts_counted"])
+
+    def test_window_focus_clips_a_session_that_crosses_the_window_boundary(self):
+        boundary = self.now - timedelta(days=7)
+        self.db.add(database.LearningFocusSession(
+            focus_session_id="FOCUS_WINDOW_BOUNDARY",
+            user_id=1,
+            status="completed",
+            active_seconds=3_600,
+            started_at=boundary - timedelta(minutes=30),
+            ended_at=boundary + timedelta(minutes=30),
+            updated_at=boundary + timedelta(minutes=30),
+        ))
+        self.db.commit()
+
+        result = build_learning_statistics(self.db, 1, days=7, now=self.now)
+
+        self.assertEqual(result["lifetime"]["focus_minutes"], 60)
+        self.assertEqual(result["current_window"]["focus_minutes"], 30)
 
     def test_rejects_unsupported_window(self):
         with self.assertRaisesRegex(ValueError, "7, 30, 90"):

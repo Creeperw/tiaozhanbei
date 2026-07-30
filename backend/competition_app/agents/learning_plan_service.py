@@ -211,6 +211,11 @@ class LearningPlanServiceAdapter:
                 current_short_term_plan=context.get("current_short_term_plan") or {},
                 current_long_term_plan=context.get("current_long_term_plan"),
                 current_learning_task=context.get("current_learning_task"),
+                recommended_minutes=(
+                    context.get("task_load_policy", {}).get("recommended_minutes")
+                    if isinstance(context.get("task_load_policy"), dict)
+                    else None
+                ),
             )
         else:
             result = self.service.materialize(

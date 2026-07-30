@@ -6,6 +6,9 @@ import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
 import { completeTextbookSection, loadSectionLearningDetail, loadTextbookProgress } from './textbookChapterApi';
 
 vi.mock('../knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn() }));
+vi.mock('./TextbookPdfReader', () => ({
+  default: ({ onClose, notesOpen }) => <div><span>电子教材阅读器</span>{notesOpen && <span>简约页笔记</span>}<button type="button" onClick={onClose}>课程目录</button></div>,
+}));
 vi.mock('./textbookChapterApi', () => ({
   completeTextbookSection: vi.fn().mockResolvedValue({ ok: true }),
   loadSectionLearningDetail: vi.fn(),
@@ -30,6 +33,10 @@ function prepare({ withSectionVideo = true } = {}) {
   });
 }
 
+async function openCatalog() {
+  fireEvent.click(await screen.findByRole('button', { name: '课程目录' }));
+}
+
 describe('TextbookChapterLearning', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,6 +47,7 @@ describe('TextbookChapterLearning', () => {
   it('shows the textbook introduction and equal chapter/section catalogues', async () => {
     prepare();
     render(<TextbookChapterLearning navigationContext={{ route: 'textbook_14_5', lv1: '中医学基础' }} />);
+    await openCatalog();
 
     expect(screen.getByRole('img', { name: '《中医学基础》教材封面' })).toHaveAttribute('src', '/textbook-covers/%E4%B8%AD%E5%8C%BB%E5%AD%A6%E5%9F%BA%E7%A1%80.jpg');
     expect(screen.getByText(/系统讲解阴阳五行/)).toBeInTheDocument();
@@ -68,6 +76,7 @@ describe('TextbookChapterLearning', () => {
         ],
     }));
     render(<TextbookChapterLearning navigationContext={{ lv1: '中医文献学' }} />);
+    await openCatalog();
 
     await screen.findByRole('button', { name: /第一章 一/ });
     expect(
@@ -85,6 +94,7 @@ describe('TextbookChapterLearning', () => {
   it('replaces the section video with timestamp videos and supports video history back', async () => {
     prepare();
     render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
+    await openCatalog();
 
     fireEvent.click(await screen.findByRole('button', { name: /第一节 基础概念/ }));
     const knowledgePoint = await screen.findByRole('button', { name: /阴阳概念/ });
@@ -111,6 +121,7 @@ describe('TextbookChapterLearning', () => {
   it('replaces recommendation when a timestamp video is selected', async () => {
     prepare({ withSectionVideo: false });
     render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
+    await openCatalog();
 
     fireEvent.click(await screen.findByRole('button', { name: /第一节 基础概念/ }));
     expect(await screen.findByTitle('推荐内容')).toBeInTheDocument();
@@ -119,7 +130,7 @@ describe('TextbookChapterLearning', () => {
     expect(screen.getByTitle('阴阳概念')).toBeInTheDocument();
   });
 
-  it('routes textbook tools into working modules and preserves the textbook return path', async () => {
+  it('keeps the notebook and PDF reader inside the textbook page', async () => {
     const onNavigate = vi.fn();
     prepare();
     render(
@@ -128,7 +139,7 @@ describe('TextbookChapterLearning', () => {
         onNavigate={onNavigate}
       />,
     );
-    await screen.findByRole('button', { name: /第一章 绪论/ });
+    expect(await screen.findByText('电子教材阅读器')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '作业与考试' }));
     expect(onNavigate).toHaveBeenLastCalledWith({
@@ -143,22 +154,14 @@ describe('TextbookChapterLearning', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '知识图谱' }));
-    expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'knowledge',
-      params: {
-        view: 'atlas',
-        route: 'textbook_14_5',
-        lv1: '中医学基础',
-        source: 'textbook-chapters',
-      },
-    });
+    expect(screen.queryByRole('button', { name: '知识图谱' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '笔记本' }));
-    expect(onNavigate).toHaveBeenLastCalledWith(expect.objectContaining({
-      page: 'practice',
-      params: expect.objectContaining({ view: 'workspace', taskType: 'study_notes' }),
-    }));
+    expect(screen.getByText('简约页笔记')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '课程目录' }));
+    fireEvent.click(screen.getByRole('button', { name: '阅读电子教材' }));
+    expect(screen.getByText('电子教材阅读器')).toBeInTheDocument();
   });
 
   it('filters partially completed chapters by section progress', async () => {
@@ -174,6 +177,7 @@ describe('TextbookChapterLearning', () => {
     loadTextbookProgress.mockResolvedValue({ completed_section_ids: ['SEC_1', 'SEC_2'], last_section_id: 'SEC_2' });
 
     render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
+    await openCatalog();
     await screen.findByRole('button', { name: /第一章 绪论/ });
     fireEvent.click(screen.getByRole('button', { name: '已完成' }));
 
@@ -192,6 +196,7 @@ describe('TextbookChapterLearning', () => {
       ] : [section],
     }));
     render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
+    await openCatalog();
     await screen.findByRole('button', { name: /第一章 未完成/ });
 
     fireEvent.click(screen.getByRole('button', { name: '已完成' }));

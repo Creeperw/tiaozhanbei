@@ -14,6 +14,26 @@ _INTERNAL_REASON_MARKERS = (
     "确定性依赖节点",
 )
 
+_INTERNAL_RESOURCE_FIELDS = {
+    "kp_id",
+    "kp_ids",
+    "question_id",
+    "resource_type",
+    "source_id",
+}
+
+_RESOURCE_FIELD_LABELS = {
+    "kp_name": "知识点",
+    "exp": "讲解",
+    "question_type": "题型",
+    "stem": "题目",
+    "options": "选项",
+    "tags": "相关知识点",
+    "title": "标题",
+    "summary": "简介",
+    "url": "链接",
+}
+
 
 def _plain(value: Any) -> Any:
     if isinstance(value, BaseModel):
@@ -39,10 +59,17 @@ def _markdown_value(value: Any, depth: int = 0) -> str:
     if isinstance(value, dict):
         rows = []
         for key, item in value.items():
+            if str(key) in _INTERNAL_RESOURCE_FIELDS:
+                continue
+            if str(key) == "summary" and isinstance(item, str):
+                item = item[:240].rstrip() + ("…" if len(item) > 240 else "")
             rendered = _markdown_value(item, depth + 1).strip()
             if not rendered:
                 continue
-            label = str(key).replace("_", " ")
+            label = _RESOURCE_FIELD_LABELS.get(
+                str(key),
+                str(key).replace("_", " "),
+            )
             rows.append(f"**{label}**：{rendered}")
         return "\n\n".join(rows)
     return json.dumps(value, ensure_ascii=False, default=str)
@@ -76,6 +103,23 @@ def workflow_result_to_markdown(result: Any) -> str:
     """Build the natural-language chat projection; structured data stays in the result."""
 
     body = _plain(result) or {}
+    if body.get("status") == "waiting_human_review":
+        review = _plain(body.get("review")) or {}
+        findings = [
+            str(item).strip()
+            for item in review.get("findings", [])
+            if str(item).strip()
+        ]
+        details = "\n".join(f"- {item}" for item in findings)
+        return "\n\n".join(
+            part
+            for part in (
+                "本次内容已进入人工复核，复核完成前不会发布。",
+                details,
+            )
+            if part
+        )
+
     if body.get("status") == "interrupted":
         interruption = body.get("interrupt") or {}
         questions = [
@@ -96,6 +140,12 @@ def workflow_result_to_markdown(result: Any) -> str:
         return str(
             body.get("direct_response")
             or "你好！我是时珍智训智能助教。有什么想学习或练习的内容，可以直接告诉我。"
+        ).strip()
+
+    if body.get("task_type") == "learner_data_query":
+        return str(
+            body.get("direct_response")
+            or "暂时没有查到可用于回答的学习记录。"
         ).strip()
 
     if body.get("task_type") == "paper_generation":
@@ -129,7 +179,21 @@ def workflow_result_to_markdown(result: Any) -> str:
             "short_term": "短期计划已经整理好。",
             "daily_task": "当日任务已经结合当前短期计划安排好。",
         }
-        parts = [intros.get(generated_scope, "我已经结合你的目标和当前信息整理好了安排。")]
+        reused_existing = bool(plan.get("reused_existing"))
+        if reused_existing:
+            reused_labels = {
+                "long_term": "你已有有效的长期规划，我会继续沿用当前正式版本。",
+                "short_term": "你已有有效的短期计划，我会继续沿用当前正式版本。",
+                "daily_task": "今天已有有效任务，我会继续沿用，不重复生成。",
+            }
+            parts = [
+                reused_labels.get(
+                    generated_scope,
+                    "当前已有有效学习计划，我会继续沿用正式版本。",
+                )
+            ]
+        else:
+            parts = [intros.get(generated_scope, "我已经结合你的目标和当前信息整理好了安排。")]
         long_term = _plain(plan.get("long_term_plan")) or {}
         short_term = _plain(plan.get("short_term_plan")) or {}
         learning_task = _plain(plan.get("learning_task")) or {}
@@ -166,12 +230,21 @@ def workflow_result_to_markdown(result: Any) -> str:
                 ),
             ]
             parts.append("\n\n".join(str(item) for item in task_parts if item))
+        if plan.get("force_replan_prompt"):
+            parts.append(str(plan["force_replan_prompt"]))
         return "\n\n".join(part for part in parts if part)
 
     resource = _plain(body.get("resource")) or {}
     if resource:
         title = resource.get("title") or "学习内容"
         content = _markdown_value(resource.get("content") or {})
+        audit = _plain(body.get("audit")) or {}
+        reminders = [
+            str(item).removeprefix("实时信息提示：").strip()
+            for item in audit.get("findings", [])
+            if str(item).startswith("实时信息提示：")
+        ]
+        reminder_text = "\n".join(f"提示：{item}" for item in reminders)
         actions = body.get("ui_actions") or []
         action_hint = ""
         if actions:
@@ -182,6 +255,15 @@ def workflow_result_to_markdown(result: Any) -> str:
             ]
             if labels:
                 action_hint = "\n\n你可以点击下方的“" + "”或“".join(labels) + "”继续。"
-        return f"下面是为你整理的「{title}」。\n\n{content}{action_hint}".strip()
+        return "\n\n".join(
+            part
+            for part in (
+                f"下面是为你整理的「{title}」。",
+                content,
+                reminder_text,
+                action_hint.strip(),
+            )
+            if part
+        )
 
     return "本次处理已经完成。你可以继续补充目标或提出下一步需求。"
