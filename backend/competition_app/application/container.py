@@ -82,6 +82,11 @@ from competition_app.repositories.workshop_library import (
 )
 from competition_app.services.account_profile import AccountProfileService
 from competition_app.services.workshop_library import WorkshopLibraryService
+from competition_app.services.textbook_pdf import (
+    InMemoryTextbookPdfAnnotationRepository,
+    SqlTextbookPdfAnnotationRepository,
+    TextbookPdfService,
+)
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -95,6 +100,7 @@ class ApplicationContainer:
     authentication_service: AuthenticationService
     account_profile_service: AccountProfileService
     workshop_library_service: WorkshopLibraryService
+    textbook_pdf_service: TextbookPdfService
     learning_plan_service: LearningPlanService
     daily_task_refresh_service: DailyTaskRefreshService
     daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
@@ -146,6 +152,9 @@ class ApplicationContainer:
             auth_repository = SqlAuthRepository(database_engine)
             account_profile_repository = SqlAccountProfileRepository(database_engine)
             workshop_library_repository = SqlWorkshopLibraryRepository(database_engine)
+            textbook_pdf_annotation_repository = SqlTextbookPdfAnnotationRepository(
+                database_engine
+            )
         else:
             plan_repository = InMemoryLearningPlanRepository()
             run_state_repository = InMemoryRunStateRepository()
@@ -154,6 +163,7 @@ class ApplicationContainer:
             auth_repository = InMemoryAuthRepository()
             account_profile_repository = InMemoryAccountProfileRepository()
             workshop_library_repository = InMemoryWorkshopLibraryRepository()
+            textbook_pdf_annotation_repository = InMemoryTextbookPdfAnnotationRepository()
         review_service = ReviewService(review_repository)
         authentication_service = AuthenticationService(
             auth_repository,
@@ -167,6 +177,11 @@ class ApplicationContainer:
             settings.avatar_dir,
         )
         workshop_library_service = WorkshopLibraryService(workshop_library_repository)
+        textbook_pdf_service = TextbookPdfService(
+            settings.textbook_pdf_root,
+            settings.textbook_pdf_catalog_path,
+            textbook_pdf_annotation_repository,
+        )
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
                 raise ValueError("live mode requires configured model API keys")
@@ -437,6 +452,7 @@ class ApplicationContainer:
             authentication_service=authentication_service,
             account_profile_service=account_profile_service,
             workshop_library_service=workshop_library_service,
+            textbook_pdf_service=textbook_pdf_service,
             learning_plan_service=learning_plan_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,

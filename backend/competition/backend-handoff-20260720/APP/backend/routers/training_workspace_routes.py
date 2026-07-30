@@ -382,6 +382,26 @@ def list_mistakes(
     }
 
 
+@router.get("/question-detail/{question_id}")
+@stable_practice_router.get("/question-detail/{question_id}")
+def get_question_detail(
+    question_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    question = db.query(LearningQuestion).filter_by(question_id=question_id).first()
+    if question is None:
+        raise HTTPException(status_code=404, detail="Question not found")
+    return {
+        "question_id": question.question_id,
+        "question_type": question.question_type,
+        "question_content": question.question_content,
+        "options": json.loads(question.options_json or "[]"),
+        "answer": json.loads(question.answer_json or "[]"),
+        "explanation": question.explanation or "",
+    }
+
+
 @router.get("/mistakes/{mistake_id}")
 @stable_practice_router.get("/mistakes/{mistake_id}")
 def get_mistake(

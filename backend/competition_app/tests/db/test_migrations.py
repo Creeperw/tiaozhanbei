@@ -20,6 +20,18 @@ def test_migrations_are_idempotent_and_checksum_changes_are_rejected(tmp_path: P
         runner.run()
 
 
+def test_migration_checksum_ignores_platform_newlines(tmp_path: Path) -> None:
+    migration = tmp_path / "001_example.sql"
+    migration.write_bytes(b"CREATE TABLE example (id INTEGER);\n")
+    engine = create_engine("sqlite:///:memory:")
+    runner = MigrationRunner(engine, tmp_path)
+
+    runner.run()
+    migration.write_bytes(b"CREATE TABLE example (id INTEGER);\r\n")
+
+    assert runner.run() == []
+
+
 def test_atomic_daily_task_outbox_migration_is_sqlite_compatible_and_idempotent() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:")
     migration_dir = Path(__file__).resolve().parents[2] / "migrations"

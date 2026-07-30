@@ -127,7 +127,7 @@ export default function MistakeVariationPanel({ enabled }) {
     await refreshMistakes();
   });
 
-  if (!enabled) return <p className="mt-5 text-sm leading-6 text-slate-600">错题变式暂未开放。</p>;
+  if (!enabled) return <p className="mt-5 text-[15px] leading-6 text-slate-600">错题变式暂未开放。</p>;
 
   const selected = questions.find((item) => item.question_version_id === selectedQuestion);
   const grading = result?.artifact?.content?.grading?.grading || {};
@@ -136,7 +136,7 @@ export default function MistakeVariationPanel({ enabled }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-950">全部错题记录</h3>
-          <p className="mt-1 text-xs text-slate-500">当前筛选共 {total} 条；所有错误都会保留，满足审核条件的错题可生成变式。</p>
+          <p className="mt-1 text-[15px] text-slate-500">当前筛选共 {total} 条；所有错误都会保留，满足审核条件的错题可生成变式。</p>
         </div>
         <button type="button" onClick={() => run(refreshMistakes)} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700">
           <RefreshCw size={14} />刷新
@@ -186,12 +186,12 @@ export default function MistakeVariationPanel({ enabled }) {
             </button>
           );
         })}
-        {mistakes.length === 0 && <p className="rounded-xl bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-600">当前筛选下暂无错题。完成客观题、案例简答、AI 病患模拟或变式作答后，错误结果会自动记录在这里。</p>}
+        {mistakes.length === 0 && <p className="rounded-xl bg-slate-50 px-4 py-6 text-[15px] leading-6 text-slate-600">当前筛选下暂无错题。完成客观题、案例简答、AI 病患模拟或变式作答后，错误结果会自动记录在这里。</p>}
       </div>
 
       {selectedMistake?.answer_context_required && !selectedMistake.answer_context_completed && (
         <section className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4" aria-label="错题作答情况调研">
-          <div><h4 className="text-sm font-semibold text-amber-950">先回忆当时怎么做的</h4><p className="mt-1 text-xs leading-5 text-amber-800">系统先了解你的把握和判断过程，再分析错因并生成变式。</p></div>
+          <div><h4 className="text-sm font-semibold text-amber-950">先回忆当时怎么做的</h4><p className="mt-1 text-[15px] leading-5 text-amber-800">系统先了解你的把握和判断过程，再分析错因并生成变式。</p></div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs font-medium text-slate-700">当时的把握
               <select value={answerState} onChange={(event) => setAnswerState(event.target.value)} className="mt-1.5 w-full rounded-lg border border-amber-200 bg-white p-2 text-sm">

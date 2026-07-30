@@ -72,10 +72,20 @@ def _load_acupuncture_cases() -> list[dict]:
     if not ACUPUNCTURE_CASE_DATA_PATH.is_file():
         return []
     try:
-        payload = json.loads(ACUPUNCTURE_CASE_DATA_PATH.read_text(encoding="utf-8"))
+        payload = json.loads(ACUPUNCTURE_CASE_DATA_PATH.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return []
-    return payload if isinstance(payload, list) else []
+    if not isinstance(payload, list):
+        return []
+    for case in payload:
+        case.setdefault("positionTolerance3d", {
+            "excellent": 0.005,
+            "pass": 0.01,
+            "unit": "model",
+            "metric": "world_euclidean",
+            "reviewStatus": "approved",
+        })
+    return payload
 
 
 # ── 请求模型 ──────────────────────────────────────────
@@ -96,10 +106,59 @@ class SPRequest(BaseModel):
     limit: int = Field(default=100, ge=1, le=500)
 
 
+class AcupunctureScoreRequest(BaseModel):
+    case_id: str = Field(..., min_length=1, max_length=128)
+    needles: list[dict] = Field(default_factory=list)
+    standard_positions: dict[str, list[float]] = Field(default_factory=dict)
+
+
 def _current_engine() -> SimulatedPatientEngine:
     if _engine is None:
         raise RuntimeError("SimulatedPatientEngine not initialized — call init_engine() first")
     return _engine
+
+
+def _score_acupuncture_case(case_data: dict, needles: list[dict], standard_positions: dict[str, list[float]]) -> dict:
+    standards = case_data.get("standardAcupoints") or []
+    standards = [
+        {**point, "modelPosition": standard_positions.get(point.get("modelNodeName"))}
+        for point in standards
+    ]
+    tolerance = case_data.get("positionTolerance3d") or {}
+    pass_tolerance = tolerance.get("pass")
+    position_configured = (
+        isinstance(pass_tolerance, (int, float))
+        and all(isinstance(point.get("modelPosition"), list) for point in standards)
+    )
+    depth_range = standards[0].get("needleDepth") if standards else None
+    retention_range = standards[0].get("retentionTime") if standards else None
+    depth_configured = isinstance(depth_range, dict) and depth_range.get("unit") in {"寸", "mm"}
+    retention_configured = isinstance(retention_range, dict) and retention_range.get("unit") == "分钟"
+    if not any((position_configured, depth_configured, retention_configured)):
+        return {"available": False, "total": None, "position": None, "depth": None, "retention": None}
+
+    def distance(first: list[float], second: list[float]) -> float:
+        return sum((first[index] - second[index]) ** 2 for index in range(3)) ** 0.5
+
+    position_hits = 0
+    if position_configured:
+        position_hits = sum(
+            any(isinstance(needle.get("point"), list) and len(needle["point"]) == 3
+                and distance(needle["point"], point["modelPosition"]) <= pass_tolerance
+                for needle in needles)
+            for point in standards
+        )
+    position = round(position_hits / len(standards) * 100) if position_configured and standards else None
+    depth = None
+    if depth_configured:
+        hits = sum(depth_range["min"] <= needle.get("depthValue", -1) <= depth_range["max"] for needle in needles)
+        depth = round(hits / len(needles) * 100) if needles else 0
+    retention = None
+    if retention_configured:
+        hits = sum(retention_range["min"] <= needle.get("retentionMinutes", -1) <= retention_range["max"] for needle in needles)
+        retention = round(hits / len(needles) * 100) if needles else 0
+    parts = [value for value in (position, depth, retention) if value is not None]
+    return {"available": True, "total": round(sum(parts) / len(parts)), "position": position, "depth": depth, "retention": retention}
 
 
 # ── 路由 ───────────────────────────────────────────────
@@ -151,6 +210,17 @@ async def get_acupuncture_cases(request: Request):
         "success": True,
         "data": {"cases": _load_acupuncture_cases()},
     }
+
+
+@router.post("/acupuncture-score")
+async def score_acupuncture_case(request: Request, body: AcupunctureScoreRequest):
+    current_user = getattr(request.state, "current_user", None)
+    if not str(getattr(current_user, "user_id", "") or "").strip():
+        return {"success": False, "error": "请先登录后继续", "data": None}
+    case_data = next((item for item in _load_acupuncture_cases() if item.get("caseId") == body.case_id), None)
+    if case_data is None:
+        return {"success": False, "error": "病例不存在", "data": None}
+    return {"success": True, "data": _score_acupuncture_case(case_data, body.needles, body.standard_positions)}
 
 
 @router.get("/stats/{user_id}")

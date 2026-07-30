@@ -96,9 +96,14 @@ class MigrationRunner:
                 for row in connection.execute(text("SELECT version, checksum FROM schema_migrations"))
             }
             for path in sorted(self.migration_dir.glob("*.sql")):
-                checksum = hashlib.sha256(path.read_bytes()).hexdigest()
+                # Git may check SQL files out with CRLF on Windows. Migration
+                # identity is based on SQL content, not the local newline style.
+                raw_migration_bytes = path.read_bytes()
+                migration_bytes = raw_migration_bytes.replace(b"\r\n", b"\n")
+                checksum = hashlib.sha256(migration_bytes).hexdigest()
                 if path.name in applied:
-                    if applied[path.name] != checksum:
+                    legacy_checksum = hashlib.sha256(raw_migration_bytes).hexdigest()
+                    if applied[path.name] not in {checksum, legacy_checksum}:
                         raise MigrationError(f"migration checksum changed: {path.name}")
                     continue
                 sql = path.read_text(encoding="utf-8")

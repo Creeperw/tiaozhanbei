@@ -23,16 +23,36 @@ describe('QuestionFavoritesPanel', () => {
     }] });
   });
 
-  it('loads a collection folder and removes a favorite', async () => {
+  it('opens a page-level confirmation before removing a favorite', async () => {
     api.deleteFavorite.mockResolvedValue(null);
     render(<QuestionFavoritesPanel />);
 
     expect(await screen.findByRole('heading', { name: '方剂重点' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /四君子汤的君药/ }));
-    expect(screen.getByText('人参为君药。')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '取消收藏' }));
+    fireEvent.click(screen.getByRole('button', { name: '删除收藏：四君子汤的君药' }));
+    expect(screen.getByRole('dialog', { name: '删除这条收藏？' })).toBeInTheDocument();
+    expect(api.deleteFavorite).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
 
     await waitFor(() => expect(api.deleteFavorite).toHaveBeenCalledWith('V1'));
+  });
+
+  it('opens a textbook page favorite in teaching resources', async () => {
+    const onNavigate = vi.fn();
+    api.loadFavorites.mockResolvedValue({ items: [{
+      favorite_id: 'PDF1', folder_id: 'F1', resource_type: 'textbook_pdf_page',
+      title: '《方剂学》第 10 页', source: '教学资源', updated_at: '2026-07-29T08:00:00Z',
+      content: { book_title: '方剂学', edition: '十四五', route: 'textbook_14_5', pdf_page: 10 },
+    }] });
+    render(<QuestionFavoritesPanel onNavigate={onNavigate} />);
+
+    fireEvent.click((await screen.findByText('《方剂学》第 10 页')).closest('button'));
+    expect(onNavigate).toHaveBeenCalledWith({
+      page: 'practice',
+      params: {
+        view: 'textbook-chapters', route: 'textbook_14_5', lv1: '方剂学',
+        openPdf: true, pdfPage: 10, source: 'favorite',
+      },
+    });
   });
 
   it('creates a named collection folder', async () => {
@@ -53,7 +73,7 @@ describe('QuestionFavoritesPanel', () => {
     const sidebar = await screen.findByRole('complementary', { name: '收藏题单' });
     expect(sidebar).toHaveClass('question-collection__sidebar');
     expect(screen.getByRole('button', { name: /方剂重点/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /四君子汤的君药/ })).toBeInTheDocument();
+    expect(screen.getByText('四君子汤的君药').closest('button')).toHaveClass('question-collection__item-open');
     expect(screen.getByRole('button', { name: '新建收藏题单' })).toBeInTheDocument();
   });
 
