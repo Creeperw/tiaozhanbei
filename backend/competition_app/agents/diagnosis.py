@@ -36,6 +36,7 @@ from competition_app.llm.schemas import (
     DailyTaskPlanningModelOutput,
     FORBIDDEN_OBJECTIVE_FIELDS,
     DiagnosisStandardOutput,
+    LearnerDataResponseModelOutput,
     LearningAnalysisModelOutput,
     LongTermPlanningModelOutput,
     NaturalLanguageLearningAnalysisModelOutput,
@@ -68,6 +69,7 @@ class DiagnosisResult(BaseModel):
     clarification_fields: list[str] = Field(default_factory=list)
     interrupt_type: str | None = None
     plan_scope: str | None = None
+    learner_data: dict[str, Any] = Field(default_factory=dict)
 
 
 class DiagnosisAgent:
@@ -83,11 +85,38 @@ class DiagnosisAgent:
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[DiagnosisResult]:
         dependency_outputs = context.get("dependency_outputs", {})
+        task_type = str(context.get("task_type", "learning_plan"))
+        if task_type == "learner_data_query":
+            return await self._run_learner_data_query(context)
         knowledge_output = dependency_outputs.get("knowledge")
         knowledge = getattr(knowledge_output, "payload", None)
         knowledge_query = getattr(knowledge, "query", "")
         evidence_items = getattr(knowledge, "evidence_items", [])
         resolved_kp_ids = getattr(knowledge, "resolved_kp_ids", [])
+        if context.get("system_operation") == "due_review_dispatch":
+            state_kp_ids = [
+                str(item.get("kp_id") or "").strip()
+                for item in context.get("user_knowledge_states") or []
+                if isinstance(item, dict) and str(item.get("kp_id") or "").strip()
+            ]
+            weak_kp_ids = list(dict.fromkeys([
+                *[str(item) for item in resolved_kp_ids if str(item).strip()],
+                *state_kp_ids,
+            ]))
+            return envelope(
+                context,
+                "diagnosis_agent",
+                "diagnosis_result",
+                DiagnosisResult(
+                    summary=(
+                        "该知识点已由完成题目的正式记录进入到期复习队列；"
+                        "本次仅生成并绑定复习资源，不重新推断整体学情。"
+                    ),
+                    stage_id="review_due",
+                    weak_kp_ids=weak_kp_ids,
+                    daily_review_policy=DailyReviewPolicy(capacity=1),
+                ),
+            )
         route_output = dependency_outputs.get("route_resolution")
         resolved_route = getattr(route_output, "payload", None)
         plan_scope = context.get("plan_scope")
@@ -97,7 +126,6 @@ class DiagnosisAgent:
         if resolved_route is None:
             resolved_route = self._provisional_route_fallback(context)
         route_context = self._trusted_route_context(resolved_route)
-        task_type = str(context.get("task_type", "learning_plan"))
         prompt_skill = prompt_skill_registry.load("diagnosis_agent", task_type)
         user_profile = context.get("user_profile", {})
         learning_profile = context.get("learning_profile", {})
@@ -392,6 +420,25 @@ class DiagnosisAgent:
             },
             "learning_state": self._model_learning_state(
                 context.get("multi_scale_learning_state")
+            ),
+            "task_load_policy": {
+                key: value
+                for key, value in dict(context.get("task_load_policy") or {}).items()
+                if key
+                in {
+                    "policy_id",
+                    "baseline_minutes",
+                    "recommended_minutes",
+                    "direction",
+                    "allocation",
+                    "evidence",
+                    "reasons",
+                    "constraints",
+                }
+            },
+            "task_load_policy_instruction": (
+                "当 plan_scope=daily_task 时，estimated_minutes 应采用系统给出的 "
+                "task_load_policy.recommended_minutes；自然语言只解释原因，不重新计算指标。"
             ),
             "path_candidates": self._model_path_candidates(
                 context.get("path_candidates")
@@ -723,6 +770,409 @@ class DiagnosisAgent:
             parent_plan_constraints=self._parent_plan_constraints(context, plan_scope),
         )
         return envelope(context, "diagnosis_agent", "diagnosis_result", result)
+
+    async def _run_learner_data_query(
+        self,
+        context: dict[str, Any],
+    ) -> AgentEnvelope[DiagnosisResult]:
+        query_kind = str(context.get("learner_data_query_kind") or "")
+        tools_by_kind = {
+            "recent_learning": ["get_recent_learning_summary"],
+            "next_learning": [
+                "get_current_plan_progress",
+                "get_mastery_snapshot",
+                "get_recent_learning_summary",
+            ],
+            "progress_summary": ["get_learning_progress"],
+            "mastery_status": ["get_mastery_snapshot"],
+            "review_status": ["get_review_status"],
+            "plan_progress": ["get_current_plan_progress"],
+        }
+        if query_kind not in tools_by_kind:
+            query_kind = "progress_summary"
+        request = str(context.get("user_request") or "")
+        window_days = self._learner_query_window(request, query_kind)
+        registry = context.get("tool_registry")
+        if registry is None:
+            evidence: dict[str, Any] = {
+                "evidence_status": "unavailable",
+                "reason": "learner data tools are unavailable",
+            }
+        else:
+            evidence_by_source: dict[str, Any] = {}
+            for tool_name in tools_by_kind[query_kind]:
+                tool_args: dict[str, Any] = {
+                    "external_user_id": str(context.get("learner_id") or ""),
+                }
+                if tool_name in {
+                    "get_recent_learning_summary",
+                    "get_learning_progress",
+                }:
+                    tool_args["days"] = window_days
+                if tool_name == "get_recent_learning_summary":
+                    tool_args["recent_limit"] = 20
+                if tool_name in {"get_mastery_snapshot", "get_review_status"}:
+                    tool_args["history_limit"] = 100
+                evidence_by_source[tool_name] = await registry.invoke(
+                    tool_name,
+                    "diagnosis_agent",
+                    trace_recorder=context.get("trace_recorder"),
+                    safe_input_summary={
+                        "current_learner": True,
+                        "window_days": window_days,
+                    },
+                    safe_output_summary_factory=lambda result: {
+                        "evidence_status": str(
+                            result.get("evidence_status") or "observed"
+                        )
+                        if isinstance(result, dict)
+                        else "unknown",
+                        "record_count": self._learner_record_count(result),
+                    },
+                    **tool_args,
+                )
+            evidence = (
+                {
+                    "evidence_status": "observed",
+                    "sources": evidence_by_source,
+                }
+                if query_kind == "next_learning"
+                else evidence_by_source[tools_by_kind[query_kind][0]]
+            )
+        compact_evidence = self._compact_learner_evidence(query_kind, evidence)
+        prompt_skill = prompt_skill_registry.load(
+            "diagnosis_agent", "learner_data_query"
+        )
+        try:
+            raw = await self.chat_model.complete_json(
+                "diagnosis_agent",
+                build_model_context(
+                    context,
+                    target_agent="diagnosis_agent",
+                    prompt_skill=prompt_skill,
+                    payload={
+                        "user_request": request,
+                        "query_kind": query_kind,
+                        "window_days": window_days,
+                        "learner_evidence": compact_evidence,
+                        "output_schema": (
+                            LearnerDataResponseModelOutput.model_json_schema()
+                        ),
+                    },
+                    permission_note=(
+                        "只可依据系统提供的当前用户只读证据生成自然语言回答；"
+                        "不得调用其他工具、生成资源、修改计划、输出系统ID或推断缺失事实。"
+                    ),
+                ),
+            )
+            answer = LearnerDataResponseModelOutput.model_validate(raw).answer
+        except Exception:
+            answer = self._learner_data_fallback(
+                query_kind,
+                window_days,
+                compact_evidence,
+            )
+        result = DiagnosisResult(
+            summary=answer,
+            stage_id=str(context.get("system_data", {}).get("current_stage_id", "T0")),
+            weak_kp_ids=[],
+            daily_review_policy=DailyReviewPolicy(capacity=1),
+            learner_data={
+                "schema_version": "1.0",
+                "query_kind": query_kind,
+                "window_days": window_days,
+                "evidence_status": compact_evidence.get(
+                    "evidence_status", "observed"
+                ),
+                "source": (
+                    tools_by_kind[query_kind][0]
+                    if len(tools_by_kind[query_kind]) == 1
+                    else "combined_learner_evidence"
+                ),
+                "sources": tools_by_kind[query_kind],
+                "snapshot": compact_evidence,
+            },
+        )
+        return envelope(context, "diagnosis_agent", "learner_data_result", result)
+
+    @staticmethod
+    def _learner_query_window(request: str, query_kind: str) -> int:
+        text = "".join(str(request or "").split())
+        if any(marker in text for marker in ("近三个月", "最近三个月", "90天")):
+            return 90
+        if any(
+            marker in text
+            for marker in ("近一个月", "最近一个月", "近30天", "本月", "这个月")
+        ):
+            return 30
+        if any(marker in text for marker in ("近7天", "最近7天", "本周", "这周")):
+            return 7
+        return 7 if query_kind == "recent_learning" else 30
+
+    @staticmethod
+    def _learner_record_count(value: Any) -> int:
+        if not isinstance(value, dict):
+            return 0
+        for key in (
+            "verified_event_count",
+            "mastery",
+            "review_states",
+            "review_tasks",
+        ):
+            item = value.get(key)
+            if isinstance(item, int):
+                return item
+            if isinstance(item, list):
+                return len(item)
+        current = value.get("current_window")
+        if isinstance(current, dict):
+            return int(current.get("questions_completed") or 0)
+        return 0
+
+    @classmethod
+    def _compact_learner_evidence(
+        cls,
+        query_kind: str,
+        evidence: Any,
+    ) -> dict[str, Any]:
+        if not isinstance(evidence, dict):
+            return {"evidence_status": "unavailable"}
+        if evidence.get("evidence_status") == "unavailable":
+            return {
+                "evidence_status": "unavailable",
+                "reason": str(evidence.get("reason") or ""),
+            }
+        if query_kind == "next_learning":
+            sources = dict(evidence.get("sources") or {})
+            plan = cls._compact_learner_evidence(
+                "plan_progress",
+                sources.get("get_current_plan_progress"),
+            )
+            mastery = cls._compact_learner_evidence(
+                "mastery_status",
+                sources.get("get_mastery_snapshot"),
+            )
+            recent = cls._compact_learner_evidence(
+                "recent_learning",
+                sources.get("get_recent_learning_summary"),
+            )
+            statuses = {
+                plan.get("evidence_status"),
+                mastery.get("evidence_status"),
+                recent.get("evidence_status"),
+            }
+            return {
+                "evidence_status": (
+                    "observed"
+                    if "observed" in statuses
+                    else "no_verified_records"
+                ),
+                "plan_progress": plan,
+                "mastery_and_review": mastery,
+                "recent_learning": recent,
+            }
+        if query_kind == "recent_learning":
+            return {
+                "evidence_status": evidence.get(
+                    "evidence_status", "no_verified_records"
+                ),
+                "verified_event_count": int(
+                    evidence.get("verified_event_count") or 0
+                ),
+                "verified_learning_events": list(
+                    evidence.get("verified_learning_events") or []
+                )[:20],
+                "task_completion": dict(evidence.get("task_completion") or {}),
+                "focus": dict(evidence.get("focus") or {}),
+                "evidence_rule": str(evidence.get("evidence_rule") or ""),
+            }
+        if query_kind == "progress_summary":
+            return {
+                "evidence_status": "observed",
+                "window": dict(evidence.get("window") or {}),
+                "current_window": dict(evidence.get("current_window") or {}),
+                "lifetime": dict(evidence.get("lifetime") or {}),
+            }
+        if query_kind in {"mastery_status", "review_status"}:
+            mastery = list(evidence.get("mastery") or [])
+            mastery.sort(
+                key=lambda item: (
+                    float(item.get("mastery_score") or 0),
+                    str(item.get("kp_name") or ""),
+                )
+            )
+            return {
+                "evidence_status": "observed" if mastery or evidence.get(
+                    "review_states"
+                ) else "no_verified_records",
+                "mastery": mastery[:20],
+                "review_states": list(evidence.get("review_states") or [])[:30],
+                "review_tasks": list(evidence.get("review_tasks") or [])[:30],
+            }
+        long_term = dict(evidence.get("long_term") or {})
+        short_term = dict(evidence.get("short_term") or {})
+        daily_task = dict(evidence.get("daily_task") or {})
+        return {
+            "evidence_status": (
+                "observed"
+                if any((long_term, short_term, daily_task))
+                else "no_verified_records"
+            ),
+            "long_term": {
+                "status": long_term.get("status"),
+                "stage_progress": list(long_term.get("stage_progress") or []),
+            }
+            if long_term
+            else None,
+            "short_term": {
+                "status": short_term.get("status"),
+                "acceptance_gate": short_term.get("acceptance_gate"),
+            }
+            if short_term
+            else None,
+            "daily_task": {
+                "status": daily_task.get("status"),
+                "learning_chapter": daily_task.get("learning_chapter"),
+                "focus_knowledge_points": daily_task.get(
+                    "focus_knowledge_points"
+                ),
+                "acceptance_gate": daily_task.get("acceptance_gate"),
+            }
+            if daily_task
+            else None,
+        }
+
+    @staticmethod
+    def _learner_data_fallback(
+        query_kind: str,
+        window_days: int,
+        evidence: dict[str, Any],
+    ) -> str:
+        if evidence.get("evidence_status") == "unavailable":
+            return "我暂时无法读取你的学习记录，请稍后再试。"
+        if evidence.get("evidence_status") == "no_verified_records":
+            return (
+                f"近{window_days}天还没有查到可确认的学习完成记录。"
+                "推荐过、打开过或仅生成过的资源不会被算作已经学习。"
+            )
+        if query_kind == "recent_learning":
+            events = list(evidence.get("verified_learning_events") or [])
+            labels = []
+            type_labels = {
+                "question_attempt": "题目练习",
+                "paper_submission": "试卷练习",
+                "case_training": "案例训练",
+                "resource_complete": "学习资源",
+                "textbook_section_completed": "教材小节",
+                "training_workspace_task": "训练任务",
+                "practice": "题目练习",
+            }
+            for item in events[:8]:
+                title = str(item.get("title") or "").strip()
+                knowledge_points = [
+                    str(value).strip()
+                    for value in item.get("knowledge_points") or []
+                    if str(value).strip()
+                    and not re.fullmatch(
+                        r"(?:KP[_-]?)?\d{3,}|[A-Z]{2,}[_-][A-Z0-9_-]+",
+                        str(value).strip(),
+                        flags=re.IGNORECASE,
+                    )
+                ]
+                label = title or "、".join(knowledge_points[:3])
+                labels.append(
+                    label or type_labels.get(item.get("activity_type"), "学习任务")
+                )
+            unique_labels = list(dict.fromkeys(labels))
+            return (
+                f"近{window_days}天有{len(events)}条可确认的学习完成记录，"
+                f"主要包括：{'、'.join(unique_labels) if unique_labels else '已完成学习任务'}。"
+            )
+        if query_kind == "next_learning":
+            plan = dict(evidence.get("plan_progress") or {})
+            daily = dict(plan.get("daily_task") or {})
+            if daily and str(daily.get("status") or "") not in {
+                "completed", "done", "passed"
+            }:
+                chapter = str(daily.get("learning_chapter") or "").strip()
+                focus = [
+                    str(value).strip()
+                    for value in daily.get("focus_knowledge_points") or []
+                    if str(value).strip()
+                ]
+                target = chapter or "、".join(focus[:3]) or "当前当日任务"
+                return (
+                    f"接下来优先继续“{target}”，先完成当前任务的验收要求。"
+                    "这是现有计划内尚未完成的内容，系统没有因此新建短期计划。"
+                )
+            mastery = dict(evidence.get("mastery_and_review") or {})
+            review_tasks = [
+                item
+                for item in mastery.get("review_tasks") or []
+                if str(item.get("status") or "") in {"pending", "due", "active"}
+            ]
+            if review_tasks:
+                names = [
+                    str(item.get("kp_name") or item.get("title") or "").strip()
+                    for item in review_tasks[:3]
+                    if str(item.get("kp_name") or item.get("title") or "").strip()
+                ]
+                return (
+                    "接下来优先处理已到期复习"
+                    f"{'：' + '、'.join(names) if names else ''}，完成对应复习题后再推进新内容。"
+                )
+            weak_names = [
+                str(item.get("kp_name") or "").strip()
+                for item in mastery.get("mastery") or []
+                if str(item.get("kp_name") or "").strip()
+            ][:3]
+            if weak_names:
+                return (
+                    f"接下来优先巩固{'、'.join(weak_names)}。"
+                    "这些知识点在已完成题目形成的掌握证据中相对薄弱。"
+                )
+            return (
+                "当前没有足够的已完成任务、复习或掌握度证据来可靠判断下一步重点。"
+                "先完成现有计划中的一个可核验任务，系统再据此给出建议。"
+            )
+        if query_kind == "progress_summary":
+            current = dict(evidence.get("current_window") or {})
+            return (
+                f"近{window_days}天已完成{int(current.get('questions_completed') or 0)}题，"
+                f"其中答对{int(current.get('correct_answers') or 0)}题、"
+                f"答错{int(current.get('incorrect_answers') or 0)}题；"
+                f"记录到的有效专注时长为{int(current.get('focus_minutes') or 0)}分钟。"
+            )
+        if query_kind == "mastery_status":
+            mastery = list(evidence.get("mastery") or [])
+            names = [
+                str(item.get("kp_name") or "").strip()
+                for item in mastery[:5]
+                if str(item.get("kp_name") or "").strip()
+            ]
+            return (
+                "当前有掌握度证据的知识点中，优先需要关注"
+                f"{'、'.join(names)}。具体掌握结论只依据已完成题目的服务端记录。"
+            )
+        if query_kind == "review_status":
+            tasks = list(evidence.get("review_tasks") or [])
+            pending = sum(
+                str(item.get("status") or "") in {"pending", "due", "active"}
+                for item in tasks
+            )
+            return f"当前复习记录中有{pending}项待处理任务。复习队列本身不代表已经完成复习。"
+        long_term = evidence.get("long_term") or {}
+        stages = list(long_term.get("stage_progress") or [])
+        current = next(
+            (item for item in stages if item.get("status") == "in_progress"),
+            None,
+        )
+        if current:
+            return (
+                f"当前长期规划推进到“{current.get('name') or '当前阶段'}”。"
+                "只有阶段通过指标取得服务端核验证据后，系统才会推进下一阶段。"
+            )
+        return "当前已有规划记录，但还没有可确认的阶段推进证据。"
 
     @staticmethod
     def _scoped_output_for_compilation(

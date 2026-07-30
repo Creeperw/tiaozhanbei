@@ -37,8 +37,10 @@ import {
   loadPlanningData,
   loadPracticeAgentContext,
   loadReportsData,
+  loadResourceEffectiveness,
   loadTrainingWorkspaceModules,
   loadTrainingWorkspaceTask,
+  recordResourceRecommendationEvent,
   submitTrainingWorkspaceTask,
 } from './pageDataLoaders.js';
 
@@ -103,6 +105,61 @@ test('loads versioned multiscale state without parsing plan prose', async () => 
 
   assert.equal(result.report.multiscale.schema_version, '1.0');
   assert.equal(result.report.multiscale.macro.current_stage.name, '中医基础与文化语言');
+});
+
+test('resource recommendation feedback uses the server-issued credential and loads effectiveness', async () => {
+  const feedback = {
+    recommendation_view_id: 'recommendation-view:1',
+    resource_id: 'CARD_1',
+    resource_type: 'knowledge_card',
+    kp_ids: ['KP_1'],
+    event_endpoint: '/api/v1/resource-recommendations/events',
+    supported_events: ['impression', 'click', 'complete'],
+  };
+  const requests = [];
+  const fetcher = async (request) => {
+    requests.push(request);
+    if (request.paths[0].startsWith('/v1/resource-effectiveness')) {
+      const data = {
+        window_days: 30,
+        funnel: {
+          displayed_resource_count: 1,
+          clicked_resource_count: 1,
+          completed_resource_count: 0,
+        },
+        learning_outcomes: { status: 'insufficient_evidence' },
+        ranking_feedback: { eligible_for_weight_calibration: false },
+      };
+      assert.equal(request.validator(data), true);
+      return { data, source: request.paths[0] };
+    }
+    const body = JSON.parse(request.options.body);
+    assert.deepEqual(body, {
+      event_type: 'click',
+      recommendation_view_id: 'recommendation-view:1',
+      resource_id: 'CARD_1',
+      resource_type: 'knowledge_card',
+      kp_ids: ['KP_1'],
+    });
+    const data = { event_type: 'click', recorded: true };
+    assert.equal(request.validator(data), true);
+    return { data, source: request.paths[0] };
+  };
+
+  const eventResult = await recordResourceRecommendationEvent({
+    fetcher,
+    feedback,
+    eventType: 'click',
+  });
+  const effectivenessResult = await loadResourceEffectiveness({ fetcher, days: 30 });
+
+  assert.equal(eventResult.error, '');
+  assert.equal(eventResult.event.recorded, true);
+  assert.equal(effectivenessResult.error, '');
+  assert.equal(effectivenessResult.effectiveness.funnel.clicked_resource_count, 1);
+  assert.equal(requests[0].options.method, 'POST');
+  assert.equal(requests[0].paths[0], '/v1/resource-recommendations/events');
+  assert.equal(requests[1].paths[0], '/v1/resource-effectiveness?days=30');
 });
 
 test('preserves unavailable metrics instead of coercing them to zero', async () => {

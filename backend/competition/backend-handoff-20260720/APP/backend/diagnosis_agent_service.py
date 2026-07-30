@@ -10,6 +10,7 @@ UTC = timezone.utc
 
 from sqlalchemy.orm import Session
 
+from APP.backend import learning_statistics_service, system_data_service
 from APP.backend.agent_contracts import DiagnosisReport, LearnerContextBrief
 from APP.backend.deep_training_service import diagnose_learning_state
 from APP.backend.health_memory import get_or_create_profile
@@ -568,63 +569,121 @@ def build_learning_profile(db: Session, user_id: int) -> dict[str, Any]:
     }
 
 
-def _recent_activities(db: Session, user_id: int, start: datetime, end: datetime) -> list[LearningActivityRecord]:
-    return (
-        db.query(LearningActivityRecord)
-        .filter(
-            LearningActivityRecord.user_id == user_id,
-            LearningActivityRecord.created_at >= start,
-            LearningActivityRecord.created_at < end,
-            LearningActivityRecord.activity_type.in_(["question_attempt", "plan_generation"]),
-        )
-        .all()
-    )
+def _relative_change(current: int | float, previous: int | float) -> float:
+    """Return week-over-week change without treating missing history as decline."""
+
+    current_value = max(0.0, float(current or 0))
+    previous_value = max(0.0, float(previous or 0))
+    if previous_value:
+        return round((current_value - previous_value) / previous_value, 4)
+    return 1.0 if current_value else 0.0
 
 
 def build_l3_behavior_window(db: Session, user_id: int) -> dict[str, Any]:
+    """Build T-stage behavior exclusively from the canonical monitoring sources."""
+
     end = _now() + timedelta(seconds=1)
-    start = end - timedelta(days=7)
-    previous_start = start - timedelta(days=7)
-    last_week = _recent_activities(db, user_id, start, end)
-    previous_week = _recent_activities(db, user_id, previous_start, start)
-
-    last_count = len(last_week)
-    prev_count = len(previous_week)
-    completion_rate = round(
-        sum(1 for row in last_week if row.completion_status == "completed") / last_count,
-        4,
-    ) if last_count else 0.0
-    last_focus = sum(row.duration_minutes or 0 for row in last_week)
-    prev_focus = sum(row.duration_minutes or 0 for row in previous_week)
-    login_change = round((last_count - prev_count) / prev_count, 4) if prev_count else (0.0 if last_count else -1.0)
-    focus_change = round((last_focus - prev_focus) / prev_focus, 4) if prev_focus else (0.0 if last_focus else -1.0)
-
-    attempts = (
-        db.query(QuestionAttempt)
-        .filter(QuestionAttempt.user_id == user_id, QuestionAttempt.created_at >= start)
-        .all()
+    previous_end = end - timedelta(days=7)
+    current_metrics = system_data_service.build_learning_window_metrics(
+        db,
+        user_id=user_id,
+        days=7,
+        now=end,
     )
-    counts_by_question: dict[str, int] = {}
-    for row in attempts:
-        counts_by_question[row.question_id] = counts_by_question.get(row.question_id, 0) + 1
-    retry_count = sum(max(0, count - 1) for count in counts_by_question.values())
+    previous_metrics = system_data_service.build_learning_window_metrics(
+        db,
+        user_id=user_id,
+        days=7,
+        now=previous_end,
+    )
+    current_outcomes = learning_statistics_service.build_learning_statistics(
+        db,
+        user_id,
+        days=7,
+        now=end,
+    ).get("current_window", {})
+    previous_outcomes = learning_statistics_service.build_learning_statistics(
+        db,
+        user_id,
+        days=7,
+        now=previous_end,
+    ).get("current_window", {})
+
+    current_counts = current_metrics.get("counts") or {}
+    previous_counts = previous_metrics.get("counts") or {}
+    completion_metric = (
+        current_metrics.get("daily_atomic_task_completion_rate") or {}
+    )
+    completion_available = bool(completion_metric.get("available"))
+    # Missing planned tasks must be neutral: absence of a denominator is not poor execution.
+    completion_rate = (
+        float(completion_metric.get("value"))
+        if completion_available
+        else 1.0
+    )
+    current_login_days = int(current_counts.get("distinct_login_days") or 0)
+    previous_login_days = int(previous_counts.get("distinct_login_days") or 0)
+    current_focus_seconds = int(current_counts.get("focus_seconds") or 0)
+    previous_focus_seconds = int(previous_counts.get("focus_seconds") or 0)
+    audited_attempts = int(
+        current_outcomes.get("audited_question_items_completed") or 0
+    )
+    previous_audited_attempts = int(
+        previous_outcomes.get("audited_question_items_completed") or 0
+    )
+    observed_samples = (
+        int(current_counts.get("tasks") or 0)
+        + int(current_counts.get("focus_sessions") or 0)
+        + current_login_days
+        + audited_attempts
+    )
 
     return {
-        "task_completion_rate": completion_rate,
-        "login_weekly_change": login_change,
-        "focus_time_change": focus_change,
-        "retry_count": retry_count,
+        "task_completion_rate": round(completion_rate, 4),
+        "login_weekly_change": _relative_change(
+            current_login_days, previous_login_days
+        ),
+        "focus_time_change": _relative_change(
+            current_focus_seconds, previous_focus_seconds
+        ),
+        "retry_count": int(current_outcomes.get("retry_count") or 0),
         "path_deviation": 0.0,
         "sample_counts": {
-            "activities_current_window": last_count,
-            "activities_previous_window": prev_count,
-            "question_attempts_current_window": len(attempts),
+            "observed_samples": observed_samples,
+            "activities_current_window": int(
+                current_counts.get("activity_records") or 0
+            ),
+            "activities_previous_window": int(
+                previous_counts.get("activity_records") or 0
+            ),
+            "question_attempts_current_window": audited_attempts,
+            "question_attempts_previous_window": previous_audited_attempts,
+            "daily_task_items_current_window": int(
+                current_counts.get("tasks") or 0
+            ),
+            "focus_sessions_current_window": int(
+                current_counts.get("focus_sessions") or 0
+            ),
+            "distinct_login_days_current_window": current_login_days,
+        },
+        "metric_availability": {
+            "task_completion_rate": completion_available,
+            "login_weekly_change": bool(
+                current_login_days or previous_login_days
+            ),
+            "focus_time_change": bool(
+                current_focus_seconds or previous_focus_seconds
+            ),
+            "retry_count": bool(audited_attempts),
         },
         "evidence_status": (
             "sufficient"
-            if last_count or attempts
+            if observed_samples >= 3
+            else "limited"
+            if observed_samples
             else "insufficient"
         ),
+        "data_source": "canonical_learning_monitoring",
     }
 
 
@@ -666,8 +725,12 @@ def generate_diagnosis_report(
         context_payload = dict(learner_context)
 
     sample_counts = l3_behavior.get("sample_counts") or {}
-    evidence_count = int(sample_counts.get("activities_current_window") or 0) + int(
-        sample_counts.get("question_attempts_current_window") or 0
+    evidence_count = int(
+        sample_counts.get("observed_samples")
+        or (
+            int(sample_counts.get("activities_current_window") or 0)
+            + int(sample_counts.get("question_attempts_current_window") or 0)
+        )
     )
     diagnosis_payload = diagnose_learning_state(
         l0_baseline=l0_baseline,
@@ -675,7 +738,10 @@ def generate_diagnosis_report(
         mistakes=mistakes,
     )
     stage = diagnosis_payload["t_stage"]
-    evidence_insufficient = l3_behavior.get("evidence_status") == "insufficient"
+    evidence_insufficient = l3_behavior.get("evidence_status") in {
+        "insufficient",
+        "limited",
+    }
     if evidence_insufficient:
         stage = {
             "stage_id": "T0",

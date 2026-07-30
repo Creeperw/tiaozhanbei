@@ -75,3 +75,15 @@ async def test_adapter_returns_traceable_deterministic_schedule_envelope() -> No
         "dependency:knowledge",
         "dependency:diagnosis",
     }
+
+
+@pytest.mark.asyncio
+async def test_due_dispatch_preserves_canonical_queue_kp_identifier() -> None:
+    dispatch_context = context()
+    dispatch_context["system_operation"] = "due_review_dispatch"
+    dispatch_context["user_knowledge_states"][0]["kp_id"] = "四君子汤"
+
+    result = await ReviewSchedulerAdapter().run(dispatch_context)
+
+    assert result.payload.selected_task.primary_kp_id == "四君子汤"
+    assert result.payload.candidates[0].state_found is True

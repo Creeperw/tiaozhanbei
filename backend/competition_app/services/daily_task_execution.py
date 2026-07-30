@@ -5,10 +5,12 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import Engine, text
 
 from competition_app.repositories.learning_plan import LearningPlanRepository
+from competition_app.contracts.learning_plan import StageEvidenceRecord
 
 
 @dataclass
@@ -106,6 +108,7 @@ class DailyTaskExecutionCoordinator:
             return False
         task = plans.learning_task
         if task.status == "completed":
+            self._reconcile_plan_progression(learner_id)
             return True
 
         progress = self.load_current_progress(learner_id)
@@ -139,12 +142,298 @@ class DailyTaskExecutionCoordinator:
             expected_task_version=task.version,
         )
         if saved:
+            self._reconcile_plan_progression(learner_id)
             return True
         current = self.plan_repository.get_current(learner_id)
-        return bool(
+        completed = bool(
             current is not None
             and current.learning_task is not None
             and current.learning_task.status == "completed"
+        )
+        if completed:
+            self._reconcile_plan_progression(learner_id)
+        return completed
+
+    def _reconcile_plan_progression(self, learner_id: str) -> dict[str, Any]:
+        """Write completed-task evidence and advance only deterministic gates."""
+
+        plans = self.plan_repository.get_current(learner_id)
+        if (
+            plans is None
+            or plans.learning_task is None
+            or plans.learning_task.status != "completed"
+        ):
+            return {"changed": False}
+        task = plans.learning_task
+        now = datetime.now(timezone.utc)
+        long_plan = plans.long_term_plan
+        short_plan = plans.short_term_plan
+        current_stage = self._current_stage_number(long_plan)
+        stage_requirements = self._stage_requirements(long_plan, current_stage)
+        declared = self._normalize_text(
+            "\n".join(
+                (
+                    task.expected_output,
+                    task.completion_criteria,
+                    task.task_content,
+                )
+            )
+        )
+        evidence = list(long_plan.stage_evidence) if long_plan is not None else []
+        added_requirements: list[str] = []
+        for requirement in stage_requirements:
+            normalized = self._normalize_text(requirement)
+            if not normalized or normalized not in declared:
+                continue
+            if any(
+                item.stage == current_stage
+                and item.requirement == requirement
+                and item.source_id == task.task_id
+                for item in evidence
+            ):
+                continue
+            evidence.append(
+                StageEvidenceRecord(
+                    evidence_id=f"STAGE_EVIDENCE_{uuid4().hex}",
+                    stage=current_stage,
+                    requirement=requirement,
+                    source_type="completed_daily_task",
+                    source_id=task.task_id,
+                    verified_by="daily_task_execution",
+                    verified_at=now,
+                )
+            )
+            added_requirements.append(requirement)
+
+        verified = {
+            item.requirement
+            for item in evidence
+            if item.stage == current_stage
+        }
+        long_passed = bool(stage_requirements) and all(
+            requirement in verified for requirement in stage_requirements
+        )
+        short_passed = self._short_term_gate_passed(
+            learner_id, short_plan, task
+        )
+        updated_short = short_plan
+        if (
+            short_passed
+            and short_plan is not None
+            and short_plan.status != "completed"
+        ):
+            updated_short = short_plan.model_copy(
+                update={
+                    "status": "completed",
+                    "version": short_plan.version + 1,
+                    "updated_at": now,
+                }
+            )
+
+        next_stage: int | None = None
+        long_term_completed = False
+        updated_long = long_plan
+        if long_plan is not None and (added_requirements or long_passed):
+            updates: dict[str, Any] = {
+                "stage_evidence": evidence,
+                "version": long_plan.version + 1,
+                "updated_at": now,
+            }
+            if long_passed:
+                next_selection = self._next_textbook_selection(
+                    long_plan, current_stage
+                )
+                if next_selection is None:
+                    updates["status"] = "completed"
+                    long_term_completed = True
+                else:
+                    updates["textbook_selection"] = next_selection
+                    updates["status"] = "active"
+                    next_stage = current_stage + 1
+            updated_long = long_plan.model_copy(update=updates)
+
+        changed = (
+            bool(added_requirements)
+            or updated_short is not short_plan
+            or updated_long is not long_plan
+        )
+        if not changed:
+            return {"changed": False}
+
+        stage_advanced = next_stage is not None
+        result = plans.model_copy(
+            update={
+                "long_term_plan": updated_long,
+                # A newly selected long-term stage invalidates downstream
+                # plans; the next agent turn will construct them from the new
+                # authoritative stage instead of silently reusing stale work.
+                "short_term_plan": None if stage_advanced else updated_short,
+                "learning_task": None if stage_advanced else task,
+            }
+        )
+        self.plan_repository.save_current(
+            learner_id,
+            result,
+            invalidated_layers=(
+                ["short_term", "daily_task"] if stage_advanced else []
+            ),
+        )
+        progression = {
+            "event_id": (
+                f"PROGRESSION_{task.task_id}_{current_stage}_"
+                f"{int(short_passed)}_{int(long_passed)}"
+            ),
+            "completed_layer": "daily_task",
+            "task_id": task.task_id,
+            "stage": current_stage,
+            "next_stage": next_stage,
+            "short_term_completed": short_passed,
+            "long_term_stage_passed": long_passed,
+            "long_term_completed": long_term_completed,
+            "verified_requirements": added_requirements,
+        }
+        writer = getattr(
+            self.backend_handoff_runtime, "record_plan_progression_event", None
+        )
+        if callable(writer):
+            try:
+                writer(learner_id, progression)
+            except Exception:
+                # Plan state is authoritative; notification delivery is
+                # recoverable and must not roll back a passed gate.
+                pass
+        return {"changed": True, **progression}
+
+    def _short_term_gate_passed(
+        self,
+        learner_id: str,
+        short_plan: Any,
+        current_task: Any,
+    ) -> bool:
+        if short_plan is None or short_plan.short_term_learning_package is None:
+            return False
+        required = {
+            self._normalize_task_content(self._block_content(block))
+            for block in short_plan.short_term_learning_package.task_blocks
+            if self._block_content(block)
+        }
+        if not required:
+            return False
+        completed = {
+            self._normalize_task_content(current_task.task_content)
+        }
+        if self.engine is not None:
+            with self.engine.connect() as connection:
+                payloads = connection.execute(
+                    text(
+                        "SELECT payload_json FROM learning_task_versions "
+                        "WHERE learner_id=:learner_id AND status='completed'"
+                    ),
+                    {"learner_id": learner_id},
+                ).scalars().all()
+            for payload in payloads:
+                if isinstance(payload, (bytes, bytearray)):
+                    payload = payload.decode("utf-8")
+                if isinstance(payload, str):
+                    try:
+                        payload = json.loads(payload)
+                    except (TypeError, ValueError):
+                        continue
+                if (
+                    isinstance(payload, dict)
+                    and payload.get("short_term_plan_id") == short_plan.plan_id
+                    and payload.get("status") == "completed"
+                ):
+                    completed.add(
+                        self._normalize_task_content(
+                            str(payload.get("task_content") or "")
+                        )
+                    )
+        return required.issubset(completed)
+
+    @staticmethod
+    def _block_content(block: Any) -> str:
+        if isinstance(block, str):
+            return block.strip()
+        if isinstance(block, dict):
+            return str(block.get("content") or "").strip()
+        return str(getattr(block, "content", "") or "").strip()
+
+    @classmethod
+    def _normalize_task_content(cls, value: str) -> str:
+        normalized = re.sub(r"^复盘并巩固[:：]\s*", "", str(value or "").strip())
+        return cls._normalize_text(normalized)
+
+    @staticmethod
+    def _normalize_text(value: str) -> str:
+        return re.sub(r"[\s，。；：、,.!！?？（）()《》【】\"'“”‘’]", "", value).casefold()
+
+    @staticmethod
+    def _current_stage_number(plan: Any) -> int:
+        if plan is None or plan.textbook_selection is None or plan.planning_route is None:
+            return 1
+        stage_id = plan.textbook_selection.stage_id
+        textbook_route = plan.planning_route.textbook_route
+        if textbook_route is not None and textbook_route.route is not None:
+            for item in textbook_route.route.stages:
+                if item.stage_id == stage_id:
+                    return int(item.order)
+        for index, phase in enumerate(plan.planning_route.phases, start=1):
+            if phase.phase_id == stage_id:
+                return index
+        return 1
+
+    @staticmethod
+    def _stage_requirements(plan: Any, stage: int) -> list[str]:
+        if plan is None or plan.planning_route is None:
+            return []
+        textbook_route = plan.planning_route.textbook_route
+        if textbook_route is not None and textbook_route.route is not None:
+            for item in textbook_route.route.stages:
+                if int(item.order) == stage:
+                    return [str(value) for value in item.exit_evidence]
+        phases = list(plan.planning_route.phases)
+        if 1 <= stage <= len(phases):
+            return [str(value) for value in phases[stage - 1].exit_evidence]
+        if 1 <= stage <= len(plan.milestones):
+            return [
+                str(value)
+                for value in plan.milestones[stage - 1].evidence_required
+            ]
+        return []
+
+    @staticmethod
+    def _next_textbook_selection(plan: Any, stage: int) -> Any | None:
+        if plan.textbook_selection is None or plan.planning_route is None:
+            return None
+        textbook_route = plan.planning_route.textbook_route
+        if textbook_route is not None and textbook_route.route is not None:
+            stages = list(textbook_route.route.stages)
+            next_item = next(
+                (item for item in stages if int(item.order) == stage + 1),
+                None,
+            )
+            if next_item is None:
+                return None
+            return plan.textbook_selection.model_copy(
+                update={
+                    "stage_id": next_item.stage_id,
+                    "stage_name": next_item.name,
+                    "books": list(next_item.books)[:2],
+                    "reason": "上一阶段全部验收指标已取得服务端核验证据，自动进入下一阶段。",
+                }
+            )
+        phases = list(plan.planning_route.phases)
+        if stage >= len(phases):
+            return None
+        next_phase = phases[stage]
+        return plan.textbook_selection.model_copy(
+            update={
+                "stage_id": next_phase.phase_id,
+                "stage_name": next_phase.name,
+                "books": list(next_phase.books)[:2],
+                "reason": "上一阶段全部验收指标已取得服务端核验证据，自动进入下一阶段。",
+            }
         )
 
     @staticmethod

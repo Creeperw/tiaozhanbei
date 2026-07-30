@@ -309,8 +309,25 @@ class PlanReviewDecisionRequest(BaseModel):
     decision: str = Field(pattern="^(accept|reject)$")
 
 
+class LearningAutomationRequest(BaseModel):
+    days: int = Field(default=30)
+    available_minutes: int = Field(default=15, gt=0, le=24 * 60)
+    push_due_review_resource: bool = True
+
+
+class ResourceRecommendationEventRequest(BaseModel):
+    event_type: str = Field(pattern="^(impression|click|complete)$")
+    recommendation_view_id: str = Field(min_length=1, max_length=180)
+    resource_id: str = Field(min_length=1, max_length=180)
+    resource_type: str = Field(default="", max_length=80)
+    kp_ids: list[str] = Field(default_factory=list, max_length=50)
+
+
 def create_app(container: ApplicationContainer, *, auth_required: bool = True) -> FastAPI:
     backend_handoff = container.backend_handoff_runtime
+    review_push_tasks: set[asyncio.Task] = set()
+    review_push_locks: dict[str, asyncio.Lock] = {}
+    review_push_states: dict[str, dict[str, Any]] = {}
     qualification_papers = QualificationPaperRepository(
         Path(__file__).resolve().parents[1] / "data" / "qualification_papers",
         runtime_root=Path(__file__).resolve().parents[1] / "runtime" / "qualification_papers",
@@ -343,6 +360,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     await workshop_dispatcher
                 except asyncio.CancelledError:
                     pass
+            pending_review_pushes = list(review_push_tasks)
+            for task in pending_review_pushes:
+                task.cancel()
+            if pending_review_pushes:
+                await asyncio.gather(
+                    *pending_review_pushes,
+                    return_exceptions=True,
+                )
             if backend_handoff is not None:
                 await backend_handoff.shutdown()
 
@@ -485,13 +510,23 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     learner_id=current_user.user_id,
                     attempts=behavior.get("question_attempt", []),
                 )
+                review_queue = container.review_service.get_queue(
+                    current_user.user_id,
+                    limit=200,
+                )
                 await asyncio.to_thread(
                     backend_handoff.load_learning_insights,
                     current_user.user_id,
                     days=30,
                     plan_context={},
                     run_automation=True,
+                    review_projection=canonical_review_projection(review_queue),
                 )
+                if int(getattr(review_queue, "awaiting_resource_count", 0) or 0):
+                    schedule_due_review_resource(
+                        current_user.user_id,
+                        available_minutes=15,
+                    )
             except Exception:
                 # The authoritative answer has already been committed. A later
                 # context/queue read retries this idempotent projection.
@@ -533,6 +568,187 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 attempts=behavior.get("question_attempt", []),
             )
         return container.review_service.get_queue(learner_id, limit=limit)
+
+    def canonical_review_projection(queue: Any) -> dict[str, Any]:
+        """Serialize the authoritative queue counters for backend automation."""
+
+        calculated_at = getattr(queue, "calculated_at", None)
+        return {
+            "source": "canonical_review_memory",
+            "total_count": len(getattr(queue, "entries", []) or []),
+            "due_count": int(getattr(queue, "due_count", 0) or 0),
+            "active_task_count": int(
+                getattr(queue, "active_task_count", 0) or 0
+            ),
+            "calculated_at": (
+                calculated_at.isoformat()
+                if hasattr(calculated_at, "isoformat")
+                else None
+            ),
+        }
+
+    async def materialize_due_review_resource(
+        learner_id: str,
+        *,
+        available_minutes: int,
+    ) -> dict[str, Any]:
+        """Publish one missing due-review resource without duplicating bound tasks."""
+
+        lock = review_push_locks.setdefault(learner_id, asyncio.Lock())
+        async with lock:
+            queue = container.review_service.get_queue(learner_id, limit=200)
+            candidates = [
+                item
+                for item in queue.entries
+                if item.is_due and (item.task is None or item.resource is None)
+            ]
+            kp_names: dict[str, str] = {}
+            if (
+                candidates
+                and backend_handoff is not None
+                and hasattr(backend_handoff, "load_review_dashboard")
+            ):
+                try:
+                    dashboard = await asyncio.to_thread(
+                        backend_handoff.load_review_dashboard,
+                        learner_id,
+                        history_limit=1,
+                    )
+                    for collection in ("mastery", "review_states"):
+                        for item in dashboard.get(collection) or []:
+                            kp_id = str(item.get("kp_id") or "").strip()
+                            kp_name = str(item.get("kp_name") or "").strip()
+                            if kp_id and kp_name and kp_name != kp_id:
+                                kp_names[kp_id] = kp_name
+                except Exception:
+                    kp_names = {}
+
+            def dispatch_topic(candidate: Any) -> str:
+                unit = candidate.memory_unit
+                topic = str(unit.prompt_abstract or "").strip()
+                for suffix in ("个性化复习卡", "个性化练习", "复习卡片", "复习卡"):
+                    if topic.endswith(suffix):
+                        topic = topic[:-len(suffix)].strip()
+                if topic in {
+                    "",
+                    "知识点名称待补充",
+                    "待补充知识点",
+                    "知识点待确认",
+                }:
+                    topic = ""
+                if not topic:
+                    topic = kp_names.get(str(unit.kp_id), "")
+                if not topic and re.search(r"[\u4e00-\u9fff]{2,}", str(unit.kp_id)):
+                    topic = str(unit.kp_id).strip()
+                return topic
+
+            entry = next(
+                (item for item in candidates if dispatch_topic(item)),
+                None,
+            )
+            if entry is None:
+                return {
+                    "status": "empty",
+                    "message": (
+                        "当前没有等待资源的到期复习知识点。"
+                        if not candidates
+                        else "到期知识点缺少可解析名称，已跳过自动资源生成。"
+                    ),
+                }
+            unit = entry.memory_unit
+            topic = dispatch_topic(entry)
+            result = await container.review_card_use_case.execute(
+                ReviewCardRequest(
+                    learner_id=learner_id,
+                    user_request=(
+                        "请为以下已到期知识点生成一张可立即学习的复习卡："
+                        f"{topic}"
+                    ),
+                    available_minutes=available_minutes,
+                    system_operation="due_review_dispatch",
+                    user_knowledge_state=[
+                        {
+                            "user_id": learner_id,
+                            "kp_id": unit.kp_id,
+                            "knowledge_mastery": unit.mastery_score / 100,
+                            "answer_accuracy": unit.mastery_score / 100,
+                            "forgetting_coefficient": unit.lambda_per_day,
+                            "kp_review_status": "到期",
+                            "calculated_at": (
+                                unit.source_calculated_at
+                                or unit.last_review_at
+                                or unit.created_at
+                            ),
+                        }
+                    ],
+                )
+            )
+            if getattr(result, "status", None) == "interrupted":
+                raise HTTPException(
+                    status_code=409,
+                    detail="到期资源生成意外进入追问状态",
+                )
+            payload = (
+                result.model_dump(mode="json")
+                if hasattr(result, "model_dump")
+                else result
+            )
+            return {
+                "status": "pushed",
+                "kp_id": unit.kp_id,
+                "review_task_id": entry.task.review_task_id if entry.task else None,
+                "result": payload,
+            }
+
+    def schedule_due_review_resource(
+        learner_id: str,
+        *,
+        available_minutes: int,
+    ) -> None:
+        """Start a bounded push after the current HTTP response can proceed."""
+
+        existing_state = review_push_states.get(learner_id) or {}
+        if existing_state.get("status") == "running":
+            return
+        review_push_states[learner_id] = {
+            "status": "running",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+        }
+        task = asyncio.create_task(
+            materialize_due_review_resource(
+                learner_id,
+                available_minutes=available_minutes,
+            )
+        )
+        review_push_tasks.add(task)
+
+        def consume_result(done: asyncio.Task) -> None:
+            review_push_tasks.discard(done)
+            if done.cancelled():
+                review_push_states[learner_id] = {
+                    **review_push_states.get(learner_id, {}),
+                    "status": "cancelled",
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                }
+                return
+            try:
+                result = done.result()
+                review_push_states[learner_id] = {
+                    **review_push_states.get(learner_id, {}),
+                    "status": str(result.get("status") or "completed"),
+                    "result": result,
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                }
+            except Exception as exc:
+                review_push_states[learner_id] = {
+                    **review_push_states.get(learner_id, {}),
+                    "status": "failed",
+                    "error_type": type(exc).__name__,
+                    "message": str(exc)[:1000],
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+        task.add_done_callback(consume_result)
 
     @app.get("/api/v1/qualification-papers/catalog")
     async def qualification_paper_catalog(
@@ -1631,6 +1847,262 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "review_projection_source": "canonical_review_memory",
         }
 
+    @app.get("/api/v1/learning-metrics/overview")
+    async def learning_metrics_overview(
+        request: Request,
+        days: int = Query(default=30),
+    ) -> dict:
+        """Expose one auditable contract for all learner monitoring counters."""
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学习监测服务未启用")
+        if days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+
+        activity, outcomes, checkin, queue = await asyncio.gather(
+            asyncio.to_thread(
+                backend_handoff.load_learning_activity_summary,
+                user.user_id,
+                days=days,
+                recent_limit=1,
+            ),
+            asyncio.to_thread(
+                backend_handoff.load_learning_statistics,
+                user.user_id,
+                days=days,
+            ),
+            asyncio.to_thread(
+                backend_handoff.get_checkin_status,
+                user.user_id,
+                days=days,
+            ),
+            canonical_review_queue(user.user_id),
+        )
+        system_metrics = dict(activity.get("system_data") or {})
+        counters = dict(activity.get("counters") or {})
+        login = dict(counters.get("login") or {})
+        focus = dict(counters.get("focus_sessions") or {})
+        tasks = dict(counters.get("daily_task_items") or {})
+        current = dict(outcomes.get("current_window") or {})
+        lifetime = dict(outcomes.get("lifetime") or {})
+        task_rate = dict(
+            system_metrics.get("daily_atomic_task_completion_rate") or {}
+        )
+
+        def metric(
+            value: Any,
+            *,
+            unit: str,
+            formula: str,
+            sources: list[str],
+            scope: str = "current_window",
+            available: bool = True,
+            unavailable_reason: str | None = None,
+        ) -> dict:
+            return {
+                "value": value,
+                "unit": unit,
+                "scope": scope,
+                "available": available,
+                "unavailable_reason": unavailable_reason,
+                "formula": formula,
+                "sources": sources,
+            }
+
+        metrics = {
+            "login_events": metric(
+                login.get("events", 0),
+                unit="events",
+                formula="count(learning_activity_records where activity_type = login)",
+                sources=["learning_activity_records"],
+            ),
+            "distinct_login_days": metric(
+                login.get("distinct_login_days", 0),
+                unit="days",
+                formula="count(distinct Asia/Shanghai date of login events)",
+                sources=["learning_activity_records"],
+            ),
+            "active_days": metric(
+                login.get("active_days", 0),
+                unit="days",
+                formula=(
+                    "count(distinct Asia/Shanghai date where a login or daily_checkin "
+                    "event exists)"
+                ),
+                sources=["learning_activity_records"],
+            ),
+            "checkin_streak": metric(
+                int(checkin.get("streak") or 0),
+                unit="days",
+                scope="lifetime_to_today",
+                formula="consecutive checked-in calendar days ending today",
+                sources=["learning_activity_records"],
+            ),
+            "total_checkins": metric(
+                int(checkin.get("total_checkins") or 0),
+                unit="days",
+                scope="lifetime",
+                formula="count(distinct persisted daily_checkin date keys)",
+                sources=["learning_activity_records"],
+            ),
+            "focus_seconds": metric(
+                int(focus.get("active_seconds") or 0),
+                unit="seconds",
+                formula=(
+                    "sum visible heartbeat intervals with interaction age <= 300 seconds, "
+                    "clipped to the requested window"
+                ),
+                sources=["learning_focus_sessions"],
+            ),
+            "focus_minutes": metric(
+                round(int(focus.get("active_seconds") or 0) / 60, 2),
+                unit="minutes",
+                formula="focus_seconds / 60",
+                sources=["learning_focus_sessions"],
+            ),
+            "daily_task_items_planned": metric(
+                int(tasks.get("total") or 0),
+                unit="items",
+                formula="count(non-cancelled atomic items in published daily tasks)",
+                sources=["daily_task_instances", "daily_task_items"],
+            ),
+            "daily_task_items_completed": metric(
+                int(tasks.get("completed") or 0),
+                unit="items",
+                formula=(
+                    "count(items with status = completed among non-cancelled atomic "
+                    "items in published daily tasks)"
+                ),
+                sources=["daily_task_instances", "daily_task_items"],
+            ),
+            "daily_task_completion_rate": metric(
+                task_rate.get("value"),
+                unit="ratio",
+                formula="daily_task_items_completed / daily_task_items_planned",
+                sources=["daily_task_instances", "daily_task_items"],
+                available=bool(task_rate.get("available")),
+                unavailable_reason=task_rate.get("unavailable_reason"),
+            ),
+            "questions_completed": metric(
+                int(current.get("questions_completed") or 0),
+                unit="items",
+                formula=(
+                    "accepted non-paper attempt items + max(accepted paper items, "
+                    "items in latest completed paper submissions)"
+                ),
+                sources=[
+                    "learning_attempt_items",
+                    "grading_result_records",
+                    "audit_result_records",
+                    "paper_submissions",
+                ],
+            ),
+            "questions_completed_lifetime": metric(
+                int(lifetime.get("questions_completed") or 0),
+                unit="items",
+                scope="lifetime",
+                formula=(
+                    "accepted non-paper attempt items + max(accepted paper items, "
+                    "items in latest completed paper submissions)"
+                ),
+                sources=[
+                    "learning_attempt_items",
+                    "grading_result_records",
+                    "audit_result_records",
+                    "paper_submissions",
+                ],
+            ),
+            "unique_questions_completed": metric(
+                int(current.get("unique_questions_completed") or 0),
+                unit="questions",
+                formula="count(distinct base question_id resolved from accepted versions)",
+                sources=["question_version_records"],
+            ),
+            "correct_answers": metric(
+                int(current.get("correct_answers") or 0),
+                unit="items",
+                formula="count(accepted audited items where is_correct = true)",
+                sources=["grading_result_records", "audit_result_records"],
+            ),
+            "incorrect_answers": metric(
+                int(current.get("incorrect_answers") or 0),
+                unit="items",
+                formula="count(accepted audited items where is_correct = false)",
+                sources=["grading_result_records", "audit_result_records"],
+            ),
+            "score_rate": metric(
+                current.get("score_rate"),
+                unit="ratio",
+                formula="sum(accepted score) / sum(accepted max_score)",
+                sources=["grading_result_records", "audit_result_records"],
+                available=current.get("score_rate") is not None,
+                unavailable_reason=(
+                    None
+                    if current.get("score_rate") is not None
+                    else "no_accepted_scored_items"
+                ),
+            ),
+            "paper_attempts_completed": metric(
+                int(current.get("paper_attempts_completed") or 0),
+                unit="papers",
+                formula="count(distinct latest completed paper submissions)",
+                sources=["paper_submissions"],
+            ),
+            "active_mistakes": metric(
+                int(current.get("active_mistakes") or 0),
+                unit="items",
+                formula="count(mistake records with status = active)",
+                sources=["mistake_records"],
+            ),
+            "knowledge_points_assessed": metric(
+                int(lifetime.get("knowledge_points_assessed") or 0),
+                unit="knowledge_points",
+                scope="lifetime",
+                formula="count(persisted learner knowledge mastery states)",
+                sources=["knowledge_mastery_states"],
+            ),
+            "knowledge_points_mastered": metric(
+                int(lifetime.get("knowledge_points_mastered") or 0),
+                unit="knowledge_points",
+                scope="lifetime",
+                formula="count(mastery states where mastery_score >= 80)",
+                sources=["knowledge_mastery_states"],
+            ),
+            "review_queue_total": metric(
+                len(queue.entries),
+                unit="knowledge_points",
+                scope="current",
+                formula="count(active canonical review memory entries)",
+                sources=["canonical_review_memory"],
+            ),
+            "reviews_due": metric(
+                queue.due_count,
+                unit="knowledge_points",
+                scope="current",
+                formula="count(canonical review entries due at calculated_at)",
+                sources=["canonical_review_memory"],
+            ),
+        }
+        return {
+            "schema_version": "1.0",
+            "window": {
+                "days": days,
+                **dict(outcomes.get("window") or {}),
+            },
+            "calculated_at": activity.get("calculated_at"),
+            "metrics": metrics,
+            "source_endpoints": {
+                "behavior": "/api/v1/learning-activity/summary",
+                "outcomes": "/api/v1/learning-statistics/overview",
+                "checkin": "/api/v1/checkin",
+                "review": "/api/v1/review-queue",
+                "monitoring": "/api/v1/learning-monitoring/snapshot",
+            },
+        }
+
     @app.get("/api/v1/learning-context")
     async def learning_context(request: Request) -> dict:
         user = current_user(request)
@@ -1752,7 +2224,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         behavior = (
-            await asyncio.to_thread(backend_handoff.load_learning_context, user.user_id)
+            await asyncio.to_thread(
+                backend_handoff.load_learning_context,
+                user.user_id,
+            )
             if backend_handoff is not None
             else {}
         )
@@ -1871,13 +2346,19 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     @app.get("/api/v1/learning-monitoring/snapshot")
     async def learning_monitoring_snapshot(
         request: Request,
-        days: int = Query(default=7, ge=1, le=90),
+        days: int = Query(default=7),
     ) -> dict:
         user = current_user(request)
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
+        if days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
         behavior = (
-            await asyncio.to_thread(backend_handoff.load_learning_context, user.user_id)
+            await asyncio.to_thread(
+                backend_handoff.load_learning_context,
+                user.user_id,
+                days=days,
+            )
             if backend_handoff is not None
             else {}
         )
@@ -1898,26 +2379,115 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=503, detail="学情洞察服务未启用")
         if days not in {7, 30, 90}:
             raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+        queue = await canonical_review_queue(user.user_id)
         result = await asyncio.to_thread(
             backend_handoff.load_learning_insights,
             user.user_id,
             days=days,
             plan_context=current_plan_context(user.user_id),
             run_automation=run_automation,
+            review_projection=canonical_review_projection(queue),
         )
-        queue = await canonical_review_queue(user.user_id)
         overview = {
             **dict(result.get("overview") or {}),
             "due_review_count": queue.due_count,
             "review_projection_source": "canonical_review_memory",
         }
         data_sources = list(result.get("data_sources") or [])
-        if "canonical_review_memory" not in data_sources:
-            data_sources.append("canonical_review_memory")
+        has_canonical_review_source = any(
+            item == "canonical_review_memory"
+            or (
+                isinstance(item, dict)
+                and item.get("source_id") == "canonical_review_memory"
+            )
+            for item in data_sources
+        )
+        if not has_canonical_review_source:
+            data_sources.append(
+                {
+                    "source_id": "canonical_review_memory",
+                    "table": "review_memory_units",
+                    "status": "authoritative_due_projection",
+                }
+            )
+        if queue.awaiting_resource_count:
+            schedule_due_review_resource(
+                user.user_id,
+                available_minutes=15,
+            )
         return {
             **result,
             "overview": overview,
             "data_sources": data_sources,
+        }
+
+    @app.post("/api/v1/learning-automation/run")
+    async def run_learning_automation(
+        body: LearningAutomationRequest,
+        request: Request,
+    ) -> dict:
+        """Run the feedback loop and materialize one missing due-review resource."""
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if body.days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+        queue_before = await canonical_review_queue(user.user_id)
+        automation: dict[str, Any] = {
+            "status": "unavailable",
+            "message": "学情治理运行时未启用；复习队列仍可独立派发。",
+        }
+        if backend_handoff is not None:
+            insights = await asyncio.to_thread(
+                backend_handoff.load_learning_insights,
+                user.user_id,
+                days=body.days,
+                plan_context=current_plan_context(user.user_id),
+                run_automation=True,
+                review_projection=canonical_review_projection(queue_before),
+            )
+            automation = {
+                "status": "completed",
+                **dict(insights.get("automation") or {}),
+            }
+        review_resource_push = (
+            await materialize_due_review_resource(
+                user.user_id,
+                available_minutes=body.available_minutes,
+            )
+            if body.push_due_review_resource
+            else {
+                "status": "skipped",
+                "message": "本次未请求生成到期复习资源。",
+            }
+        )
+        queue_after = await canonical_review_queue(user.user_id)
+        return {
+            "schema_version": "1.0",
+            "learner_id": user.user_id,
+            "automation": automation,
+            "review_resource_push": review_resource_push,
+            "review_queue": queue_after.model_dump(mode="json"),
+        }
+
+    @app.get("/api/v1/learning-automation/status")
+    async def learning_automation_status(request: Request) -> dict:
+        """Expose the current user's asynchronous review-push lifecycle."""
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        return {
+            "schema_version": "1.0",
+            "learner_id": user.user_id,
+            "review_resource_push": review_push_states.get(
+                user.user_id,
+                {
+                    "status": "idle",
+                    "message": "当前没有正在运行或最近完成的异步复习资源派发。",
+                },
+            ),
         }
 
     @app.get("/api/v1/resource-match-report")
@@ -1935,6 +2505,65 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             user.user_id,
             plan_context=current_plan_context(user.user_id),
             limit=limit,
+        )
+
+    @app.get("/api/v1/task-load-policy")
+    async def task_load_policy(request: Request) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="任务负载策略服务未启用")
+        queue = await canonical_review_queue(user.user_id)
+        return await asyncio.to_thread(
+            backend_handoff.load_task_load_policy,
+            user.user_id,
+            plan_context=current_plan_context(user.user_id),
+            review_projection=canonical_review_projection(queue),
+            days=7,
+        )
+
+    @app.post("/api/v1/resource-recommendations/events")
+    async def resource_recommendation_event(
+        body: ResourceRecommendationEventRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="资源反馈服务未启用")
+        try:
+            return await asyncio.to_thread(
+                backend_handoff.record_resource_recommendation_event,
+                user.user_id,
+                event_type=body.event_type,
+                recommendation_view_id=body.recommendation_view_id,
+                resource_id=body.resource_id,
+                resource_type=body.resource_type,
+                kp_ids=body.kp_ids,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/resource-effectiveness")
+    async def resource_effectiveness(
+        request: Request,
+        days: int = Query(default=30),
+    ) -> dict:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="资源反馈服务未启用")
+        if days not in {7, 30, 90}:
+            raise HTTPException(status_code=422, detail="days 只能是 7、30 或 90")
+        return await asyncio.to_thread(
+            backend_handoff.load_resource_effectiveness_report,
+            user.user_id,
+            days=days,
         )
 
     @app.get("/api/v1/notifications")
@@ -2060,11 +2689,13 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=401, detail="请先登录后继续")
         if backend_handoff is None:
             raise HTTPException(status_code=503, detail="规划复盘服务未启用")
+        queue = await canonical_review_queue(user.user_id)
         return await asyncio.to_thread(
             backend_handoff.run_plan_review,
             user.user_id,
             plan_context=current_plan_context(user.user_id),
             trigger_type="manual",
+            review_projection=canonical_review_projection(queue),
         )
 
     @app.post("/api/v1/plan-reviews/{review_id}/decision")
@@ -3395,38 +4026,13 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         request: Request,
     ):
         require_owner(request, learner_id)
-        entry = container.review_service.next_dispatch_entry(learner_id)
-        if entry is None:
-            return {"status": "empty", "message": "当前没有等待资源的到期复习知识点。"}
-        unit = entry.memory_unit
-        result = await container.review_card_use_case.execute(
-            ReviewCardRequest(
-                learner_id=learner_id,
-                user_request=(
-                    "请为以下已到期知识点生成一张可立即学习的复习卡："
-                    f"{unit.prompt_abstract}"
-                ),
-                available_minutes=dispatch_request.available_minutes,
-                user_knowledge_state=[
-                    {
-                        "user_id": learner_id,
-                        "kp_id": unit.kp_id,
-                        "knowledge_mastery": unit.mastery_score / 100,
-                        "answer_accuracy": unit.mastery_score / 100,
-                        "forgetting_coefficient": unit.lambda_per_day,
-                        "kp_review_status": "到期",
-                        "calculated_at": (
-                            unit.source_calculated_at
-                            or unit.last_review_at
-                            or unit.created_at
-                        ),
-                    }
-                ],
-            )
+        pushed = await materialize_due_review_resource(
+            learner_id,
+            available_minutes=dispatch_request.available_minutes,
         )
-        if getattr(result, "status", None) == "interrupted":
-            raise HTTPException(status_code=409, detail="到期资源生成意外进入追问状态")
-        return result
+        if pushed["status"] == "empty":
+            return pushed
+        return pushed["result"]
 
     def _workflow_stream(
         thread_id: str,

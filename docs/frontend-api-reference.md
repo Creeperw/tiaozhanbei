@@ -326,6 +326,23 @@ Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `
 - 可选值：`long_term`、`short_term`、`daily_task`、`unspecified`；
 - 不要仅凭前端关键词强制设置 `plan_scope`。
 
+规划动作由后端 Planner 统一决定，取值为 `reuse`、`create_or_update` 或
+`clarify`。当用户只说“请结合我的学习状态制定学习计划”且已有有效计划时，
+后端不会再次询问层级，也不会生成新版本：优先返回当前短期计划；没有短期计划时
+返回当前长期规划。明确询问今日任务时复用当天仍有效的任务。只有用户明确说
+“强制修改”“重新制定”“调整”“更新”或表达计划不满意时，才进入对应层级的
+Diagnosis、Compiler、Audit 和发布链路。
+
+复用结果仍使用正式 `learning_plan` 契约，并额外返回：
+
+- `reused_existing=true`：前端应显示“继续执行当前版本”，不要显示“已生成新计划”；
+- `replan_review`：本次按学习监控数据及计划 `recovery_policy.trigger_conditions`
+  完成的规划复盘；数据不足时不会臆测触发；
+- `force_replan_prompt`：提示用户如何明确发起强制修改。
+
+复用不会改变计划 ID、版本和下层状态。若复盘建议调整，系统会同时创建
+`category=plan_review` 的消息中心通知，用户确认后再执行重规划。
+
 规划按钮启用前先读取统一前置状态：
 
 `GET /api/v1/planning/readiness?scope=long_term|short_term|daily_task`
@@ -333,6 +350,35 @@ Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `
 服务端会返回 `status`、`can_generate`、`required_action`、`reason_codes`、需要追问的 `questions`、缺少的画像字段和上层计划状态。状态可能为 `ready`、`needs_profile`、`needs_long_term_plan`、`needs_short_term_plan`、`stale_parent_plan`。长期规划在没有任何有效个人画像时逐项追问目标、基础和可持续时间；短期计划必须有当前长期规划；当日任务必须有当前短期计划。前端提示只用于提前解释，正式执行接口还会再次校验，不能通过绕开按钮跳过。
 
 前端不需要重复拼装用户画像、学习状态、已有计划和系统数据。登录态下服务端会读取可信数据。只有上传内容或用户刚刚明确确认、但尚未持久化的信息才需要随请求提交。
+
+用户询问“最近学了什么”“最近需要学什么/接下来该学什么”“做了多少题”
+“哪些知识点没掌握”“有哪些复习到期”
+或“计划进展到哪一步”时，Planner 返回 `task_type=learner_data_query`，并由
+Diagnosis 调用当前登录用户的只读数据工具。响应中：
+
+- `direct_response` / SSE 的 `assistant_message`：可直接显示的自然语言回答；
+- `learner_data.query_kind`：`recent_learning`、`next_learning`、`progress_summary`、
+  `mastery_status`、`review_status` 或 `plan_progress`；
+- `learner_data.window_days`：本次证据时间窗；
+- `learner_data.evidence_status`：是否存在可确认记录；
+- `learner_data.snapshot`：供后续页面扩展使用的紧凑只读投影。
+
+该链路不会生成知识卡、复习卡或新计划，也不选择 Knowledge、Expert、ReviewScheduler
+和 Audit。推荐曝光、资源点击、登录、签到、仅生成资源和进入复习队列均不算“已学习”；
+近期学习只纳入服务端记录的答题、试卷、案例、教材小节、资源完成和正式训练完成。
+前端不得提交或替换查询使用的用户 ID。
+
+`next_learning` 的 `learner_data.sources` 会列出本次组合使用的只读数据类别，
+`snapshot` 包含 `plan_progress`、`mastery_and_review` 和 `recent_learning`。
+聊天区只渲染 `assistant_message`；不得把它当成新短期计划，也不得刷新规划页面版本。
+若用户同时明确要求“根据薄弱点推荐需要做的题目/学习资源”，Planner 会改走
+`personalized_review_card` 资源链，响应按现有资源卡和跳转动作渲染。
+
+围绕一本教材或一个章节提出“学习要点、阅读重点、怎么学、帮我梳理”等开放式请求时，
+Planner 返回 `task_type=general_learning_support`。它仍使用 Knowledge、Expert、Audit
+保证证据和安全，但正文允许自然语言自由组织，不要求前端解析知识讲解固定栏目，也不会
+写入长期规划、短期计划或当日任务。单个概念、原理和区别的讲解仍归入
+`knowledge_explanation`。
 
 规划生成后统一读取：
 
@@ -354,7 +400,9 @@ Cookie 属性：`HttpOnly`、`SameSite=Lax`、`Path=/`。HTTPS 部署时设置 `
 
 后端会重新核验登录用户、当前计划、阶段原始 `exit_evidence`、任务归属和任务完成状态；
 任意自定义指标、未完成任务或其他用户任务均返回 `422`。短期计划的
-`acceptance_gate` 会展示周期验收标准，但单个今日任务完成不会自动把整个短期计划判为通过。
+`acceptance_gate` 会展示周期验收标准；系统会汇总同一短期计划下的已完成今日任务，
+全部 `task_blocks` 都有完成记录时自动通过。当前长期阶段的全部 `exit_evidence` 通过后，
+系统自动选择下一阶段、失效旧短期计划和今日任务，并向消息中心写入阶段推进通知。
 
 ### 4.2 SSE 帧
 
@@ -502,6 +550,7 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 | `GET` | `/api/v1/learning-routes?status=approved&q=` | 获取非个性化经典路线目录 |
 | `GET` | `/api/v1/learning-routes/{route_id}` | 获取一条经典路线的阶段、教材和来源 |
 | `GET` | `/api/v1/qualification-targets` | 获取注册与规划可选择的五类资格考试及其教材路线映射 |
+| `GET` | `/api/v1/learning-metrics/overview?days=30` | 当前用户统一监测指标；每项附计算公式、来源、单位和可用状态 |
 | `GET` | `/api/v1/learning-activity/summary?days=30&recent_limit=20` | 当前用户行为指标、计数器和最近事件 |
 | `GET` | `/api/v1/learning-activity/trends?days=30` | 当前用户学习趋势 |
 
@@ -745,7 +794,8 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 
 `/api/v1/learning-activity/summary` 只聚合当前登录用户，`days` 仅支持 `7`、`30`、`90`。响应包含：
 
-- `system_data`：完成率、正确率、专注度、资源点击率、掌握度等已计算指标；
+- `system_data`：按本次请求窗口即时计算的活跃天数、专注时长、每日任务完成率和资源点击率；
+- `compatibility_snapshot_30d`：仅供旧客户端迁移的固定 30 日持久化快照；
 - `trends`：按日趋势序列；
 - `counters`：学习任务、专注会话和行为事件的原始计数；
 - `recent_activities`：最近可追溯事件；
@@ -755,17 +805,21 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "window_days": 30,
   "calculated_at": "2026-07-22T09:30:00+08:00",
   "system_data": {
     "time_data": {
-      "login_frequency": {"value": 6, "unit": "days"},
+      "login_frequency": {"value": 6, "unit": "active_days"},
+      "login_event_count": {"value": 9, "unit": "events"},
+      "distinct_login_days": {"value": 5, "unit": "days"},
+      "active_days": {"value": 6, "unit": "days"},
+      "focus_minutes": {"value": 35.0, "unit": "minutes"},
       "focus_time_period": {"value": "20:00-20:59", "unit": "hour_slot"}
     },
-    "task_completion_rate": {"value": 0.75, "unit": "ratio"},
+    "task_completion_rate": {"available": true, "value": 0.75, "unit": "ratio"},
     "resource_click_rate": {"value": 0.4, "unit": "ratio"},
-    "calculation_version": "system-data-v2"
+    "calculation_version": "learning-window-v3-auditable"
   },
   "trends": {
     "days": 30,
@@ -774,7 +828,14 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
     ]
   },
   "counters": {
-    "learning_tasks": {"total": 4, "by_status": {"completed": 3, "pending": 1}},
+    "daily_task_items": {
+      "total": 4,
+      "completed": 3,
+      "incomplete": 1,
+      "pending": 1,
+      "by_status": {"completed": 3, "pending": 1}
+    },
+    "login": {"events": 9, "distinct_login_days": 5, "checkin_days": 2, "active_days": 6},
     "focus_sessions": {"total": 2, "active_seconds": 2100, "by_status": {"completed": 2}},
     "activities": {"total": 8, "by_type": {"question_attempt": 3}}
   },
@@ -791,7 +852,7 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
     }
   ],
   "collection": {
-    "task_completion": "learning_tasks",
+    "task_completion": "published daily_task_instances + daily_task_items",
     "focus_time": "learning_focus_sessions heartbeat",
     "resource_click": "dashboard recommendation view and click",
     "graded_learning": "question, paper and case submission activities"
@@ -803,9 +864,32 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
 
 行为写入仍由兼容层承担：学习任务创建/完成、专注会话心跳/结束、题目与试卷提交、案例训练提交，以及首页推荐曝光和点击。首页只有真实展示推荐后才会产生曝光记录，用户点击后调用 `POST /api/dashboard/recommendations/click`；不能用页面访问代替资源点击。
 
-`task_completion_rate` 的当前统计口径是最近时间窗内全部正式 `LearningTask` 的完成数除以非取消任务数，不只统计今日任务。今日任务、题目练习、试卷与案例任务只要写入正式学习任务，都会进入该口径；按日趋势中的 `task_completion_rate` 则只统计对应日期。前端如需“今日任务完成率”，应使用今日任务接口的任务块状态单独计算，不要把它与本字段混用。
+`task_completion_rate` 与 `daily_atomic_task_completion_rate` 使用同一正式口径：窗口内已发布今日任务的
+非取消原子项中，`status=completed` 的项数除以全部可统计项数。自由练习、自由试卷、案例和泛
+`LearningTask` 不进入分子或分母；没有已发布原子项时返回 `available=false`、`value=null`，
+前端必须显示“暂无计划数据”，不能显示 0%。
 
-`login_frequency` 表示时间窗内发生过登录或签到的去重活跃天数，同一用户同一天多次登录、重复签到只计 1 天。
+登录相关字段必须按含义选择：
+
+- `login_event_count` / `counters.login.events`：登录事件次数，同日多次登录分别计数；
+- `distinct_login_days`：仅登录事件的去重日期数；
+- `checkin_days`：签到日期数；
+- `active_days`：登录日期与签到日期的并集；
+- `login_frequency`：为旧客户端保留，语义等同 `active_days`，不是登录次数。
+
+### 5.4.1 统一监测指标接口
+
+`GET /api/v1/learning-metrics/overview?days=30`
+
+`days` 只支持 `7`、`30`、`90`。这是后续前端读取综合统计数字的首选接口，覆盖登录、签到、
+专注、每日任务、题目、试卷、错题、掌握度和复习队列。每个 `metrics.<key>` 均包含：
+
+- `value`、`unit`、`scope`；
+- `available` 与 `unavailable_reason`；
+- 可直接用于“计算依据”弹层的 `formula` 和 `sources`。
+
+需要行为明细或趋势时仍读取 `/learning-activity/summary`；需要累计/窗口成果完整拆分时读取
+`/learning-statistics/overview`。统一接口不会替代这两个明细接口。
 
 ### 5.5 学习成果统计
 
@@ -1695,6 +1779,7 @@ Markdown、切片和章节映射的确定性完整度，不代表医学内容已
 | `GET` | `/api/v1/review-dashboard?limit=50&history_limit=100` | 当前用户复习队列、知识点掌握度、复习状态和掌握历史的聚合接口 |
 | `GET` | `/api/v1/learners/{learner_id}/review-queue?limit=50` | 当前用户复习队列 |
 | `POST` | `/api/v1/learners/{learner_id}/review-queue/dispatch` | 为下一个到期知识点生成复习资源 |
+| `POST` | `/api/v1/learning-automation/run` | 运行反馈闭环并幂等推送一个尚无资源的到期复习 |
 | `POST` | `/api/v1/review-tasks/{review_task_id}/attempts` | 提交复习结果 |
 
 调度请求：
@@ -1704,6 +1789,27 @@ Markdown、切片和章节映射的确定性完整度，不代表医学内容已
   "available_minutes": 15
 }
 ```
+
+页面登录后、消息中心刷新或定时刷新时，可调用统一自动化接口：
+
+```http
+POST /api/v1/learning-automation/run
+Content-Type: application/json
+
+{"days": 30, "available_minutes": 15, "push_due_review_resource": true}
+```
+
+响应中的 `automation.plan_review` 是本次规划复盘结果，
+`review_resource_push.status` 为 `pushed`、`empty` 或 `skipped`。每次最多推送一个
+等待资源的到期知识点；重复调用不会为已绑定任务重复生成资源。
+读取 `GET /api/v1/learning-insights` 时，后端也会异步触发同一幂等派发，因此学情报告
+打开后无需阻塞等待资源生成；前端随后刷新复习看板即可看到已经绑定的资源。
+`GET /api/v1/learning-automation/status` 返回最近一次异步派发的 `running`、`pushed`、
+`empty`、`failed` 或 `cancelled` 状态；失败时包含受控的 `error_type` 和 `message`，
+前端可显示重试入口，不能把后台失败渲染成“已推送”。
+到期队列已经提供知识点、掌握度和遗忘参数，因此该内部派发不会再次调用 Diagnosis
+重新推断整体现状；它只使用已确认队列状态完成知识检索、资源生成、审核与绑定，避免把
+即时推送阻塞在重复学情分析上。
 
 复习结果：
 
@@ -1739,7 +1845,12 @@ Markdown、切片和章节映射的确定性完整度，不代表医学内容已
 
 `GET /api/v1/learning-monitoring/snapshot?days=7`
 
-这是学情诊断的正式数据依赖，返回 `sample_counts`、可空的 `metrics`、`evidence_status`、`freshness_status`、`calculated_at` 和 `reason_codes`。零样本时 `evidence_status=insufficient`，准确率、完成率等不可观测指标返回 `null`，前端不得显示为 100% 或“状态稳定”。Diagnosis Agent 同样读取这份快照；证据不足时可以结合画像制定起步规划，但必须降低置信度，不能虚构薄弱点。
+`days` 只支持 `7`、`30`、`90`。这是学情诊断的正式数据依赖，返回 `sample_counts`、可空的
+`metrics`、`evidence_status`、`freshness_status`、`calculated_at` 和 `reason_codes`。其中任务完成率
+来自已发布每日原子任务，题目正确率只来自已提交、已批改且审核通过的题项；不能再读取旧活动日志的
+“完成状态”代替这两个指标。零样本时 `evidence_status=insufficient`，准确率、完成率等不可观测指标
+返回 `null`，前端不得显示为 100% 或“状态稳定”。Diagnosis Agent 同样读取这份快照；证据不足时
+可以结合画像制定起步规划，但必须降低置信度，不能虚构薄弱点。
 
 ## 9. 兼容业务接口索引
 
@@ -1866,6 +1977,9 @@ Live 验收不要从 WSL 命令行运行 Live pytest；应在已启动前端运�
 - `automation`：本次幂等检查得到的干预与规划复盘结果。
 
 前端必须展示 `data_quality`。数据不足时不得把空值渲染成确定性诊断。
+`overview.review_projection_source` 在正式集成链路中固定为
+`canonical_review_memory`。该投影在运行自动提醒和规划复盘前注入，因此响应展示值与自动化判定值一致，
+前端不再进行二次合并或使用 `learner_kp_review_states` 覆盖。
 
 每个 `dimensions[]` 同时返回 `source_ids`、`formula`、`evidence_count` 和 `window_days`；
 顶层 `data_sources[]` 与 `methodology` 是正式审计契约。`overview.confidence` 和
@@ -1878,11 +1992,53 @@ Live 验收不要从 WSL 命令行运行 Live pytest；应在已启动前端运�
 
 每个 `matches[]` 包含 `resource_id`、`resource_type`、`title`、`score`、
 `estimated_minutes`、`components`、`reasons` 和白名单 `action`。`components` 当前包含知识点覆盖、
-质量、资源形式、时间和难度匹配。前端用 `action.type` 做受控跳转，不自行拼接外部 URL。
+质量、资源形式和时间匹配；当前没有难度数据，不返回难度分项。前端用 `action.type` 做受控跳转，
+不自行拼接外部 URL。
 
 资源项还包含 `component_sources`、`quality_basis`、`estimated_minutes_basis` 和原始 `source`。
-缺少难度等特征时对应 component 为 `null`，服务端排除该特征并重新归一化权重；前端不得把
-`null` 渲染为 0 分。没有薄弱知识点和今日任务知识点时，服务端返回空 `matches`，禁止前端补默认推荐。
+缺少可选特征时服务端排除该特征并重新归一化权重；前端不得把 `null` 渲染为 0 分。
+没有薄弱知识点和今日任务知识点时，服务端返回空 `matches`，禁止前端补默认推荐。
+
+报告顶层返回 `recommendation_view_id`，每个匹配项返回 `feedback`。前端实际打开资源和确认完成时分别调用：
+
+```http
+POST /api/v1/resource-recommendations/events
+```
+
+```json
+{
+  "event_type": "impression",
+  "recommendation_view_id": "recommendation-view:...",
+  "resource_id": "CARD_1",
+  "resource_type": "knowledge_card",
+  "kp_ids": ["KP_1"]
+}
+```
+
+`event_type` 依次使用 `impression`、`click`、`complete`。GET 报告只生成待展示凭证，
+不计入曝光；推荐列表真正渲染后必须先上报一次 `impression`，之后才能上报点击或完成。
+后端会核验当前用户和该次展示，不接受未展示资源。
+`GET /api/v1/resource-effectiveness?days=7|30|90` 返回展示、点击、完成漏斗，
+以及有证据时的相关知识点后测正确率和掌握度变化。前端应按 `status` 显示“证据积累中”，
+不能把空学习增益显示为 0。
+
+正式前端入口为“个性数据 → 学情报告 → 资源匹配报告”。当前实现约定：
+
+- 首批推荐卡片进入 DOM 后，以第一项的服务端 `feedback` 凭证幂等上报一次 `impression`；
+- “打开资源”先上报 `click`，再按资源类型进入知识卡、视频或知识点训练，且保留“返回学情报告”；
+- “我已学完”是用户显式完成确认，成功后上报 `complete`、禁用重复按钮并刷新效果漏斗；
+- `feedback.event_endpoint` 是后端地址。通用请求器自身会添加 `/api` 前缀，因此若服务端返回
+  `/api/v1/...`，前端接口层会先归一化为 `/v1/...`，禁止形成 `/api/api/v1/...`；
+- 缺少反馈凭证时仍允许用户打开资源，但必须展示上报错误，不能伪造曝光、点击或完成记录。
+
+### 14.2.1 次日任务负载
+
+`GET /api/v1/task-load-policy`
+
+稳定字段为 `baseline_minutes`、`recommended_minutes`、`direction`、`allocation`、
+`evidence`、`evidence_availability`、`reasons` 和 `constraints`。24 小时刷新会自动采用
+`recommended_minutes`；对话生成今日任务也会收到同一系统策略。前端只负责解释和展示，
+不重新计算，也不能把用户可用的 24 小时全部填满。
 
 ### 14.3 通知
 
@@ -1923,7 +2079,18 @@ Live 验收不要从 WSL 命令行运行 Live pytest；应在已启动前端运�
 - `POST /api/v1/plan-reviews/{review_id}/decision`，请求体为 `{"decision":"accept"}` 或 `reject`
 
 `outcome` 可能为 `on_track`、`daily_adjustment_suggested`、`short_replan_suggested` 或
+其他后续扩展值。每条记录还返回 `policy_conditions` 和 `data_quality`：
+`policy_conditions` 来自当前长期/短期计划的 `recovery_policy.trigger_conditions`；
+带“连续两周”等时间条件的自然语言标准只会标记为已对照，不会用单个聚合值冒充满足条件。
+需要调整时会生成 `category=plan_review` 的通知；`on_track` 不产生打扰性通知。
 `long_replan_requires_confirmation`。每日层调整只能处于现有短期计划范围；短期和长期提案需确认后才能写入正式计划。
+
+连续低完成率使用按自然日的正式每日原子任务完成率，不使用资源点击、自由练习或登录次数
+替代。最近连续 3 个“存在正式任务”的自然日均低于 50% 时，复盘返回
+`outcome=short_replan_suggested`、`low_completion_streak_days>=3`，并在
+`proposal.workflow_request` 和消息中心通知的 `action.workflow_request` 中提供可直接交给
+多智能体执行的 `plan_scope=short_term` 请求。该请求必须由用户确认后发送，自动化不得静默
+覆盖现有计划。
 
 ### 14.6 LangGraph 重启恢复
 

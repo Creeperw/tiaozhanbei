@@ -9,7 +9,13 @@ from competition_app.contracts.learning_plan import (
     LearningPlanResult,
     LearningTask,
     LongTermPlan,
+    ShortTermLearningPackage,
     ShortTermPlan,
+    TextbookSelectionContext,
+)
+from competition_app.contracts.default_route import (
+    DefaultRoutePhase,
+    ResolvedPlanningRoute,
 )
 from competition_app.repositories.learning_plan import SqlLearningPlanRepository
 from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
@@ -213,6 +219,99 @@ def test_reconcile_parent_status_marks_completed_only_when_all_items_report_comp
     stored = repository.get_current(learner_id)
     assert stored.learning_task.version == 2
     assert stored.learning_task.status == "completed"
+
+
+def test_completed_daily_task_automatically_passes_single_block_short_plan() -> None:
+    engine = build_engine()
+    repository = SqlLearningPlanRepository(engine)
+    learner_id = "LEARNER_SHORT_GATE"
+    plan = build_plan(learner_id)
+    short = plan.short_term_plan.model_copy(
+        update={
+            "short_term_learning_package": ShortTermLearningPackage(
+                current_goal="完成四君子汤学习",
+                task_blocks=["学习四君子汤"],
+                expected_output="复述",
+                completion_criteria="完成任务",
+            )
+        }
+    )
+    repository.save_current(
+        learner_id, plan.model_copy(update={"short_term_plan": short})
+    )
+    coordinator = DailyTaskExecutionCoordinator(
+        engine, repository, FakeBackendHandoffRuntime()
+    )
+
+    assert coordinator.reconcile_parent_status(learner_id) is True
+
+    stored = repository.get_current(learner_id)
+    assert stored.short_term_plan.status == "completed"
+    assert stored.short_term_plan.version == 2
+    assert stored.learning_task.status == "completed"
+
+
+def test_verified_exit_evidence_advances_long_stage_and_invalidates_children() -> None:
+    engine = build_engine()
+    repository = SqlLearningPlanRepository(engine)
+    learner_id = "LEARNER_LONG_GATE"
+    plan = build_plan(learner_id)
+    phases = [
+        DefaultRoutePhase(
+            phase_id="stage-1",
+            name="基础阶段",
+            objective="完成基础",
+            books=["《中医学基础》"],
+            exit_evidence=["完成任务"],
+        ),
+        DefaultRoutePhase(
+            phase_id="stage-2",
+            name="方剂阶段",
+            objective="学习方剂",
+            books=["《方剂学》"],
+            exit_evidence=["完成方剂测评"],
+        ),
+    ]
+    long_plan = plan.long_term_plan.model_copy(
+        update={
+            "planning_route": ResolvedPlanningRoute(
+                goal_type="credential",
+                goal_name="中医执业医师资格考试",
+                planning_status="approved_route",
+                match_reason="测试路线",
+                route_id="route-1",
+                route_version=1,
+                route_status="approved",
+                phases=phases,
+            ),
+            "textbook_selection": TextbookSelectionContext(
+                route_id="route-1",
+                route_version=1,
+                stage_id="stage-1",
+                stage_name="基础阶段",
+                books=["《中医学基础》"],
+                reason="当前阶段",
+            ),
+        }
+    )
+    repository.save_current(
+        learner_id, plan.model_copy(update={"long_term_plan": long_plan})
+    )
+    runtime = FakeBackendHandoffRuntime()
+    runtime.progression_events = []
+    runtime.record_plan_progression_event = (
+        lambda owner, event: runtime.progression_events.append((owner, event))
+    )
+    coordinator = DailyTaskExecutionCoordinator(engine, repository, runtime)
+
+    assert coordinator.reconcile_parent_status(learner_id) is True
+
+    stored = repository.get_current(learner_id)
+    assert stored.long_term_plan.textbook_selection.stage_id == "stage-2"
+    assert stored.long_term_plan.stage_evidence[0].requirement == "完成任务"
+    assert stored.short_term_plan is None
+    assert stored.learning_task is None
+    assert runtime.progression_events[0][1]["next_stage"] == 2
 
 
 def test_ensure_current_snapshot_redelivers_current_version_idempotently() -> None:
