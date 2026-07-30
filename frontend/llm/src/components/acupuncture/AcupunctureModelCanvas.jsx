@@ -102,7 +102,7 @@ export default function AcupunctureModelCanvas({
         resize();
 
         const loader = new GLTFLoader();
-        loader.load('/blender.yibiaozhu.glb', (gltf) => {
+        loader.load('/acupuncture-models/blender.yibiaozhu.glb', (gltf) => {
             if (disposed) return;
             const model = gltf.scene;
             modelRef.current = model;

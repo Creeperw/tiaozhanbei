@@ -404,6 +404,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "acupuncture"),
             name="frontend_acupuncture",
         )
+    if frontend_root and (frontend_root / "blender.yibiaozhu.glb").is_file():
+        app.mount(
+            "/acupuncture-models",
+            StaticFiles(directory=frontend_root),
+            name="frontend_acupuncture_models",
+        )
     app.mount(
         "/platform-assets",
         StaticFiles(directory=platform_assets_root),
@@ -446,6 +452,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "/textbook-covers/",
                     "/textbook-status-icons/",
                     "/acupuncture/",
+                    "/acupuncture-models/",
                     "/platform-assets/",
                 )
             )
