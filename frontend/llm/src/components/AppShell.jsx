@@ -166,10 +166,10 @@ function LearningTargetNavigationMenu({ menuState, onOpen, onRequestClose, onClo
   }, [mounted, onRequestClose]);
   return (
     <div ref={ref} className="app-shell__nav-group app-shell__target-group" data-has-current-target={enabled && Boolean(currentTargetName)} onMouseEnter={() => onOpen('learning-target')} onMouseLeave={() => onRequestClose('learning-target', NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose('learning-target', 0); }}>
-      <button type="button" aria-label="考试类别" aria-haspopup="menu" aria-expanded={open} onClick={() => { if (!enabled) { onLoginRequested?.(); return; } open ? onRequestClose('learning-target', 0) : onOpen('learning-target'); }}>
-        <span className="app-shell__target-trigger-copy">
+      <button type="button" aria-label="考试类别" aria-haspopup="menu" aria-expanded={open} style={enabled && currentTargetName ? { minHeight: 52, paddingBlock: 6 } : undefined} onClick={() => { if (!enabled) { onLoginRequested?.(); return; } open ? onRequestClose('learning-target', 0) : onOpen('learning-target'); }}>
+        <span className="app-shell__target-trigger-copy" style={enabled && currentTargetName ? { display: 'flex', minWidth: 0, flexDirection: 'column', alignItems: 'flex-start', gap: 2, lineHeight: 1.15 } : undefined}>
           <span>考试类别</span>
-          {enabled && currentTargetName && <small className="app-shell__target-current" title={currentTargetName}>当前 · {currentTargetName}</small>}
+          {enabled && currentTargetName && <small className="app-shell__target-current" style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentTargetName}>当前 · {currentTargetName}</small>}
         </span>
         <ChevronDown aria-hidden="true" size={15} />
       </button>
