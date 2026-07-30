@@ -15,12 +15,7 @@ import {
   MessageCircle,
   MousePointer2,
   Network,
-  Pause,
-  Play,
   Plus,
-  RotateCcw,
-  Send,
-  Sparkles,
   Target,
   Upload,
   UserRound,
@@ -63,7 +58,8 @@ const CERTIFICATES = [
   { icon: BookOpen, label: '执业药师职业资格考试（中药学类）', meta: '聚焦中药学专业知识' },
 ];
 
-const GUIDE_STEPS = [
+/* Legacy scenes retained below only as source material; GUIDE_STEPS is the active flow. */
+const LEGACY_GUIDE_STEPS = [
   {
     key: 'home', label: '平台首页', className: 'home-guide-target--home', pointer: { x: '34.38%', y: '4.87%' },
     scenes: [
@@ -112,11 +108,101 @@ const GUIDE_STEPS = [
   },
 ];
 
+const GUIDE_STEPS = [
+  {
+    key: 'target-overview', label: '学习目标', className: 'home-guide-target--learning-target', sourceTargetClass: 'home-guide-target--exam-category', pointer: { x: '34.2%', y: '4.2%' },
+    title: '一、确定学习目标', description: '选择您的目标证书，以便为您制定可靠的全方位服务',
+    scenes: [
+      { title: '确定学习目标', description: '', details: [], view: 'source' },
+      { title: '选择目标证书', description: '', details: [], view: 'certificates' },
+    ],
+  },
+  {
+    key: 'profile-overview', label: '学习画像', className: 'home-guide-target--learning-path', sourceTargetClass: 'home-guide-target--learning-path-nav', pointer: { x: '40.2%', y: '4.2%' },
+    title: '二、了解当前学情', description: '向系统提供您的具体学习情况，系统将为您制定个性化的长短期学习路径规划和具有针对性的学习资源',
+    scenes: [
+      { title: '进入学习路径', description: '', details: [], view: 'source' },
+      { title: '编辑学习画像', description: '', details: [], view: 'profile-edit' },
+      { title: '查看长期学习规划', description: '', details: [], view: 'long-path' },
+      { title: '查看短期学习路径', description: '', details: [], view: 'short-path' },
+    ],
+  },
+  {
+    key: 'study-overview', label: '学习工坊', className: 'home-guide-target--practice', sourceTargetClass: 'home-guide-target--teaching-resources', pointer: { x: '46.0%', y: '4.2%' },
+    title: '三、开始中医学习', description: '根据系统提供的学习路径或者您的个性化需求，可以在海量学习教材中选择需要学习的内容，并且有相应视频辅助学习',
+    scenes: [
+      { title: '进入学习工坊', description: '', details: [], view: 'source' },
+      { title: '浏览教材学习内容', description: '', details: [], view: 'textbook-scroll' },
+    ],
+  },
+  {
+    key: 'result-overview', label: '训练工坊', className: 'home-guide-target--training', sourceTargetClass: 'home-guide-target--training-nav', pointer: { x: '51.3%', y: '4.2%' },
+    title: '四、检验学习成果', description: '训练工坊中不仅包含知识点专项训练，综合真题，错题集等基础功能，还有错题变式，智能组卷和AI模拟病患等创新性功能，辅助您全面掌握重难点模块',
+    scenes: [
+      { title: '进入训练工坊', description: '', details: [], view: 'source' },
+      { title: '浏览综合套题与历年真题', description: '', details: [], view: 'comprehensive-paper' },
+      { title: '模拟问诊演练', description: '', details: [], view: 'consultation-live' },
+      { title: '使用智能组卷', description: '', details: [], view: 'paper-scroll' },
+    ],
+  },
+  {
+    key: 'problem-overview', label: '学习工坊', className: 'home-guide-target--practice', sourceTargetClass: 'home-guide-target--assistant-button', pointer: { x: '77.2%', y: '4.2%' },
+    title: '五、解决学习问题', description: '基础知识点遗忘，难题解决不了，对于学习感到迷茫等，都可以找时诊智训助教，它将为您答疑解惑',
+    scenes: [
+      { title: '进入学习工坊', description: '', details: [], view: 'source' },
+      { title: '与智能助教动态对话', description: '', details: [], view: 'assistant-new-chat', duration: DESTINATION_DURATION },
+    ],
+  },
+  {
+    key: 'data-overview', label: '个性数据', className: 'home-guide-target--profile', sourceTargetClass: 'home-guide-target--personal-data', pointer: { x: '57.6%', y: '4.2%' },
+    title: '六、个性数据更新', description: '在学习、复习、做题等若干过程中，系统将实时保存您的学习数据，实时更新近期的学习建议，并在“个性数据”页面中为您直观展现',
+    scenes: [
+      { title: '进入个性数据', description: '', details: [], view: 'source' },
+      { title: '查看真实学情图表', description: '', details: [], view: 'profile-insights' },
+    ],
+  },
+];
+
+const DESCRIPTION_HIGHLIGHTS = [
+  ['目标证书'],
+  ['具体学习情况', '个性化', '长短期学习路径规划', '学习资源'],
+  ['学习路径', '个性化需求', '海量学习教材', '视频辅助学习'],
+  ['训练工坊', '综合真题', '错题变式', '智能组卷', 'AI模拟病患'],
+  ['基础知识点遗忘', '难题解决不了', '时诊智训助教'],
+  ['实时保存', '实时更新', '“个性数据”'],
+];
+
+function HighlightedDescription({ text, stepIndex }) {
+  const highlights = DESCRIPTION_HIGHLIGHTS[stepIndex] || [];
+  if (!highlights.length) return text;
+  const ordered = [...highlights].sort((left, right) => right.length - left.length);
+  const parts = [];
+  let cursor = 0;
+  while (cursor < text.length) {
+    const match = ordered.find((item) => text.startsWith(item, cursor));
+    if (match) {
+      parts.push(<strong key={`${match}-${cursor}`} className="home-guide__highlight">{match}</strong>);
+      cursor += match.length;
+      continue;
+    }
+    const next = ordered.reduce((position, item) => {
+      const found = text.indexOf(item, cursor + 1);
+      return found >= 0 && found < position ? found : position;
+    }, text.length);
+    parts.push(text.slice(cursor, next));
+    cursor = next;
+  }
+  return parts;
+}
+
 const PATH_ITEMS = [
   { icon: BookOpen, label: '基础巩固', meta: '已完成 · 100%', selected: true },
   { icon: Map, label: '方剂学专题', meta: '进行中 · 72%' },
   { icon: ClipboardCheck, label: '临床辨证实战', meta: '下一阶段' },
 ];
+
+// Keep the legacy scene data available for reference while the six-step flow is used below.
+void LEGACY_GUIDE_STEPS;
 
 const PRACTICE_ITEMS = [
   { icon: Bot, label: '智能助教', meta: '即时答疑与追问', selected: true },
@@ -149,7 +235,7 @@ const SHORT_PATH_EDGES = SHORT_PATH_NODES.slice(0, -1).map((node, index) => ({
 
 const GUIDE_TEXTBOOKS = [
   { id: 'basic', book: '中医学基础', stage_title: '基础筑基' },
-  { id: 'herbs', book: '中药学', stage_title: '中药方剂' },
+  { id: 'culture', book: '中医文化学', stage_title: '中医文化' },
   { id: 'formulas', book: '方剂学', stage_title: '中药方剂' },
   { id: 'acupuncture', book: '针灸学', stage_title: '临床实践' },
 ];
@@ -237,33 +323,29 @@ function LongPathDemo() {
 
 function AssistantNewChatDemo() {
   return (
-    <div className="home-guide__assistant-demo" data-testid="assistant-new-chat-demo">
-      <aside className="home-guide__assistant-rail" aria-label="演示会话列表">
-        <div className="home-guide__assistant-identity"><span><HeartPulse size={16} /></span><strong>时珍智训智能助教</strong></div>
-        <button type="button" className="home-guide__assistant-new"><Plus size={14} />新对话</button>
-        <small>历史记录</small>
-        <div className="home-guide__assistant-session is-current"><MessageCircle size={13} /><span>方剂配伍复习</span></div>
-        <div className="home-guide__assistant-session"><MessageCircle size={13} /><span>中医诊断学习计划</span></div>
-        <div className="home-guide__assistant-session home-guide__assistant-session--created"><Sparkles size={13} /><span>新对话</span></div>
+    <div className="home-guide__assistant-demo home-guide__assistant-live-demo" data-testid="assistant-new-chat-demo">
+      <aside className="home-guide__assistant-rail" aria-label={'\u6f14\u793a\u4f1a\u8bdd\u5217\u8868'}>
+        <div className="home-guide__assistant-identity"><span><HeartPulse size={16} /></span><strong>{'\u65f6\u73cd\u667a\u8bad\u667a\u80fd\u52a9\u6559'}</strong></div>
+        <button type="button" className="home-guide__assistant-new"><Plus size={14} />{'\u65b0\u5bf9\u8bdd'}</button>
+        <small>{'\u5386\u53f2\u8bb0\u5f55'}</small>
+        <div className="home-guide__assistant-session is-current"><MessageCircle size={13} /><span>{'\u65b9\u5242\u914d\u4f0d\u590d\u4e60'}</span></div>
+        <div className="home-guide__assistant-session"><MessageCircle size={13} /><span>{'\u4e2d\u533b\u8bca\u65ad\u5b66\u4e60\u8ba1\u5212'}</span></div>
+        <div className="home-guide__assistant-session"><MessageCircle size={13} /><span>{'\u4e34\u5e8a\u8fa8\u8bc1\u63d0\u95ee'}</span></div>
       </aside>
       <main className="home-guide__assistant-main">
-        <header>
-          <span className="home-guide__assistant-status" />
-          <strong className="home-guide__assistant-title-before">方剂配伍复习</strong>
-          <strong className="home-guide__assistant-title-after">新对话</strong>
-        </header>
-        <div className="home-guide__assistant-conversation-before">
-          <div className="home-guide__assistant-bubble">请帮我梳理君臣佐使的配伍原则。</div>
-          <div className="home-guide__assistant-bubble is-answer">可以从主治病机、核心功效和配伍关系三个层次理解。</div>
+        <header><span className="home-guide__assistant-status" /><strong>{'\u667a\u80fd\u52a9\u6559 \u00b7 \u65b9\u5242\u914d\u4f0d\u590d\u4e60'}</strong></header>
+        <div className="home-guide__assistant-conversation-before home-guide__assistant-live-track">
+          <div className="home-guide__assistant-bubble">{'\u6211\u603b\u662f\u8bb0\u4e0d\u4f4f\u65b9\u5242\u7684\u541b\u81e3\u4f50\u4f7f\uff0c\u5e94\u8be5\u600e\u6837\u590d\u4e60\uff1f'}</div>
+          <div className="home-guide__assistant-bubble is-answer">{'\u5148\u4ece\u4e3b\u6cbb\u75c5\u673a\u5165\u624b\uff0c\u518d\u6309\u6838\u5fc3\u529f\u6548\u548c\u914d\u4f0d\u5173\u7cfb\u5efa\u7acb\u8bb0\u5fc6\u6846\u67b6\u3002'}</div>
+          <div className="home-guide__assistant-bubble">{'\u80fd\u7ed3\u5408\u6211\u7684\u5b66\u4e60\u753b\u50cf\u7ed9\u4e00\u4e2a\u7ec3\u4e60\u65b9\u6cd5\u5417\uff1f'}</div>
+          <div className="home-guide__assistant-bubble is-answer">{'\u53ef\u4ee5\u3002\u5148\u5b8c\u6210\u57fa\u7840\u8fa8\u6790\u9898\uff0c\u518d\u7528\u9519\u9898\u53d8\u5f0f\u5de9\u56fa\u8584\u5f31\u77e5\u8bc6\u70b9\uff0c\u6211\u4f1a\u6301\u7eed\u8bb0\u5f55\u4f60\u7684\u638c\u63e1\u53d8\u5316\u3002'}</div>
+          <div className="home-guide__assistant-bubble">{'\u5982\u679c\u9047\u5230\u96be\u9898\uff0c\u6211\u8fd8\u53ef\u4ee5\u7ee7\u7eed\u8ffd\u95ee\u5417\uff1f'}</div>
+          <div className="home-guide__assistant-bubble is-answer">{'\u5f53\u7136\u53ef\u4ee5\u3002\u6211\u4f1a\u7ed3\u5408\u6559\u6750\u8bc1\u636e\u62c6\u89e3\u601d\u8def\uff0c\u5e76\u63a8\u8350\u5bf9\u5e94\u7684\u89c6\u9891\u548c\u7ec3\u4e60\u3002'}</div>
+          <div className="home-guide__assistant-live-thinking"><Bot size={15} />{'正在根据学习数据整理建议…'}</div>
         </div>
-        <div className="home-guide__assistant-conversation-after">
-          <span><Bot size={24} /></span>
-          <h3>今天想从哪里开始？</h3>
-          <p>新会话已创建，可以提出新的学习问题。</p>
-          <div><span>输入你的问题</span><button type="button" aria-label="发送演示问题"><Send size={14} /></button></div>
-        </div>
+        <span className="home-guide__assistant-live-scrollbar" aria-hidden="true"><i /></span>
       </main>
-      <AnimatedDemoPointer className="home-guide__destination-pointer--new-chat" />
+      <AnimatedDemoPointer className="home-guide__destination-pointer--assistant-scroll" />
     </div>
   );
 }
@@ -330,6 +412,56 @@ function ProfileInsightsDemo() {
   );
 }
 
+function ProfileEditDemo() {
+  return (
+    <div className="home-guide__profile-demo" data-testid="profile-edit-demo">
+      <DemoPageHeader title="个性数据 · 编辑画像" />
+      <div className="home-guide__profile-viewport">
+        <div className="home-guide__profile-track">
+          <section className="home-guide__profile-heading"><strong>我的学习画像</strong><div><span className="home-guide__profile-completeness">画像完整度 <b>88%</b></span><button type="button">编辑画像</button></div></section>
+          <div className="home-guide__profile-columns">
+            <article><h3>基础信息</h3><p>专业背景 - 中医药相关专业</p><p>当前基础 - 正在学习中医专业</p><p>学习目标 - 中医执业医师资格考试</p></article>
+            <article><h3>学习偏好</h3><p>资源偏好 - 案例训练、章节训练</p><p>当前困难 - 方剂组成混淆</p><p>学习习惯 - 章节训练</p></article>
+          </div>
+        </div>
+        <AnimatedDemoPointer className="home-guide__destination-pointer--profile-edit" />
+      </div>
+    </div>
+  );
+}
+
+function ClinicalChapterDemo() {
+  return (
+    <div className="home-guide__clinical-demo" data-testid="clinical-chapter-demo">
+      <DemoPageHeader title="???? - ?????" />
+      <div className="home-guide__clinical-viewport"><div className="home-guide__clinical-track">
+        <div className="home-guide__clinical-screen"><div className="home-guide__clinical-main"><span>??? - ??????</span><h3>??? - ????</h3><p>?????????????????????????</p></div><aside><strong>????</strong><div className="home-guide__clinical-video">??<small>??????</small></div></aside></div>
+        <div className="home-guide__clinical-screen home-guide__clinical-screen--detail"><div className="home-guide__clinical-main"><span>???????????</span><h3>?????????????</h3><p>??????????????????????????</p></div><aside><strong>????</strong><div className="home-guide__clinical-video">??<small>?????????????</small></div></aside></div>
+      </div></div>
+    </div>
+  );
+}
+
+function ClinicalImageDemo() {
+  return (
+    <div className="home-guide__clinical-demo home-guide__clinical-image-demo" data-testid="clinical-image-demo">
+      <img src="/design-images/home/resource-search.png" alt="临床中医学第一章第一节学习内容" />
+    </div>
+  );
+}
+
+function ComprehensivePaperDemo() {
+  return (
+    <div className="home-guide__comprehensive-demo" data-testid="comprehensive-paper-demo">
+      <DemoPageHeader title="训练工坊 · 综合套题" />
+      <div className="home-guide__comprehensive-viewport"><div className="home-guide__comprehensive-track">
+        <section className="home-guide__paper-selector"><h3>选择职业资格考试</h3><button type="button">中医执业药师职业资格考试</button><button type="button">中医执业医师资格考试</button></section>
+        <section className="home-guide__paper-years"><h3>历年真题</h3><p>按年份查看完整试卷与解析</p>{['2025 年真题','2024 年真题','2023 年真题','2022 年真题'].map((item) => <div key={item}>{item}<span>查看试卷 ��</span></div>)}</section>
+      </div><span className="home-guide__comprehensive-scrollbar" aria-hidden="true"><i /></span><AnimatedDemoPointer className="home-guide__destination-pointer--comprehensive" /></div>
+    </div>
+  );
+}
+
 function getPreview(scene) {
   if (scene.view === 'home-nav') return { eyebrow: '顶部导航', heading: '六大功能模块', summary: '从目标设定到数据复盘，覆盖完整学习流程。', items: TOP_MODULES, layout: 'grid' };
   if (scene.view === 'home-capabilities') return { eyebrow: '平台能力', heading: '四大核心功能', summary: '四项能力相互协同，让每一次学习形成下一步行动。', items: CORE_CAPABILITIES, layout: 'grid' };
@@ -349,6 +481,10 @@ function DestinationPreview({ step, scene, sceneIndex, playing }) {
   if (scene.view === 'consultation-live') return <ConsultationLiveDemo playing={playing} />;
   if (scene.view === 'paper-scroll') return <SmartPaperScrollDemo />;
   if (scene.view === 'profile-insights') return <ProfileInsightsDemo />;
+  if (scene.view === 'profile-edit') return <ProfileEditDemo />;
+  if (scene.view === 'clinical-chapter') return <ClinicalChapterDemo />;
+  if (scene.view === 'clinical-image') return <ClinicalImageDemo />;
+  if (scene.view === 'comprehensive-paper') return <ComprehensivePaperDemo />;
 
   const preview = getPreview(scene);
   const emphasizeSecond = sceneIndex === step.scenes.length - 1 && step.scenes.length > 2;
@@ -384,21 +520,17 @@ function DestinationPreview({ step, scene, sceneIndex, playing }) {
   );
 }
 
-function DemoSurface({ step, scene, sceneIndex, playing, onToggle, onReplay }) {
+function DemoSurface({ step, scene, sceneIndex, playing }) {
   const source = scene.view === 'source';
   return (
     <div className={`home-guide__demo ${playing ? 'is-playing' : 'is-paused'}`} aria-label={`${step.label}自动演示`}>
       <div className={`home-guide__source ${source ? 'is-visible' : ''}`}>
         <img src="/design-images/home/user-homepage.png" alt={`${step.label}首页全貌`} />
-        <div className={`home-guide__target ${step.className}`} aria-hidden="true" />
+        <div className={`home-guide__target ${source ? (step.sourceTargetClass || step.className) : step.className}`} aria-hidden="true" />
         <span className="home-guide__pointer" style={{ '--pointer-x': step.pointer.x, '--pointer-y': step.pointer.y }} aria-hidden="true"><MousePointer2 size={22} fill="currentColor" /></span>
       </div>
       <div className={`home-guide__destination-layer ${source ? '' : 'is-visible'}`} aria-hidden={source}>
         <DestinationPreview step={step} scene={scene} sceneIndex={sceneIndex} playing={playing} />
-      </div>
-      <div className="home-guide__controls">
-        <button type="button" onClick={onToggle} aria-label={playing ? '暂停演示' : '继续演示'} title={playing ? '暂停演示' : '继续演示'}>{playing ? <Pause size={15} /> : <Play size={15} />}</button>
-        <button type="button" onClick={onReplay} aria-label="重新播放当前演示" title="重新播放"><RotateCcw size={15} /></button>
       </div>
     </div>
   );
@@ -418,10 +550,10 @@ export default function HomeOnboardingGuide({ onClose }) {
 
   useEffect(() => {
     if (!playing) return undefined;
-    const duration = scene.view === 'source' ? SOURCE_DURATION : DESTINATION_DURATION;
+    const duration = scene.duration || (scene.view === 'source' ? SOURCE_DURATION : DESTINATION_DURATION);
     const timer = window.setTimeout(() => setSceneIndex((index) => (index + 1) % step.scenes.length), duration);
     return () => window.clearTimeout(timer);
-  }, [playing, scene.view, step.key, step.scenes.length]);
+  }, [playing, scene.view, scene.duration, step.key, step.scenes.length]);
 
   const next = () => {
     if (isLast) return onClose();
@@ -431,25 +563,18 @@ export default function HomeOnboardingGuide({ onClose }) {
     return undefined;
   };
 
-  const replay = () => {
-    setSceneIndex(0);
-    setPlaying(true);
-  };
-
   const dialog = (
-    <div className="home-guide" role="dialog" aria-modal="true" aria-labelledby="home-guide-title">
+    <div className="home-guide" role="dialog" aria-modal="true" aria-labelledby="home-guide-step-title">
       <section className="home-guide__modal">
         <button type="button" className="home-guide__close" onClick={onClose} aria-label="关闭新手引导">×</button>
         <div className="home-guide__kicker">新手引导 · {stepIndex + 1}/{GUIDE_STEPS.length}</div>
-        <DemoSurface step={step} scene={scene} sceneIndex={sceneIndex} playing={playing} onToggle={() => setPlaying((value) => !value)} onReplay={replay} />
+        <h1 id="home-guide-step-title" className="home-guide__step-title">{step.title}</h1>
+        <div key={`${step.key}-${sceneIndex}`} className="home-guide__explanation home-guide__explanation--above" aria-live="polite" aria-atomic="true">
+          <p><HighlightedDescription text={step.description} stepIndex={stepIndex} /></p>
+        </div>
+        <DemoSurface step={step} scene={scene} sceneIndex={sceneIndex} playing={playing} />
         <div className="home-guide__step-progress" aria-label={`第 ${stepIndex + 1} 步，共 ${GUIDE_STEPS.length} 步`}>
           {GUIDE_STEPS.map((item, index) => <span key={item.key} className={index <= stepIndex ? 'is-active' : ''} />)}
-        </div>
-        <div key={`${step.key}-${sceneIndex}`} className="home-guide__explanation" aria-live="polite" aria-atomic="true">
-          <span>演示 {sceneIndex + 1}/{step.scenes.length} · {step.label}</span>
-          <h2 id="home-guide-title">{scene.title}</h2>
-          <p>{scene.description}</p>
-          <ul>{scene.details.map((detail) => <li key={detail}>{detail}</li>)}</ul>
         </div>
         <div className="home-guide__actions">
           <button type="button" className="home-guide__skip" onClick={onClose}>跳过所有</button>
