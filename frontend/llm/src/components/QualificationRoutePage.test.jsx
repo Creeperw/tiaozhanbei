@@ -268,10 +268,8 @@ describe('QualificationRoutePage', () => {
 
     const pathViewButton = screen.getByRole('button', { name: '学习路径' });
     const cardViewButton = screen.getByRole('button', { name: '学习阶段' });
-    expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
-    expect(cardViewButton).toHaveAttribute('aria-pressed', 'false');
-    fireEvent.click(cardViewButton);
     expect(cardViewButton).toHaveAttribute('aria-pressed', 'true');
+    expect(pathViewButton).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(screen.getByRole('button', { name: '学习路径' }));
     expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();

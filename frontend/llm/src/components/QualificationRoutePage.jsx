@@ -327,8 +327,8 @@ function HomeLearningRoute({
   userCacheKey,
   selectedTarget,
 }) {
-  const [routeView, setRouteView] = useState('orbit');
-  const [renderedRouteView, setRenderedRouteView] = useState('orbit');
+  const [routeView, setRouteView] = useState('cards');
+  const [renderedRouteView, setRenderedRouteView] = useState('cards');
   const [routeTransitionPhase, setRouteTransitionPhase] = useState('idle');
   const routeTransitionTimerRef = useRef(null);
   const [routeState, setRouteState] = useState(() => {
@@ -374,8 +374,8 @@ function HomeLearningRoute({
     } else {
       onReadyChange?.('');
     }
-    setRouteView('orbit');
-    setRenderedRouteView('orbit');
+    setRouteView('cards');
+    setRenderedRouteView('cards');
     setRouteTransitionPhase('idle');
     setSelectedNode(null);
     if (!cached?.state) setRouteState((current) => ({ ...current, loading: true, error: '' }));
@@ -532,19 +532,19 @@ function HomeLearningRoute({
           <span className="home-portal__route-switch-indicator" aria-hidden="true" />
           <button
             type="button"
-            className={routeView !== 'cards' ? 'is-active' : ''}
-            aria-pressed={routeView !== 'cards'}
-            onClick={returnToPath}
-          >
-            学习路径
-          </button>
-          <button
-            type="button"
             className={routeView === 'cards' ? 'is-active' : ''}
             aria-pressed={routeView === 'cards'}
             onClick={() => changeRouteView('cards')}
           >
             学习阶段
+          </button>
+          <button
+            type="button"
+            className={routeView !== 'cards' ? 'is-active' : ''}
+            aria-pressed={routeView !== 'cards'}
+            onClick={returnToPath}
+          >
+            学习路径
           </button>
         </div>
       </header>

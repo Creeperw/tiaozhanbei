@@ -4213,7 +4213,7 @@ textarea:focus-visible {
 .practice-overview__featured-action { display: grid; min-width: 126px; justify-items: end; gap: 3px; }
 .practice-overview__featured-action b { display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; background: #0fa866; padding: 10px 14px; color: #fff; font-size: .78rem; }
 .practice-overview__featured-action small { color: #77827d; font-size: .68rem; font-weight: 500; }
-.practice-overview__training-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.practice-overview__training-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 0; }
 .practice-overview__training-card { grid-template-columns: 68px minmax(0, 1fr) 22px; min-height: 142px; gap: 11px; border-color: #e3ebe7; border-radius: 11px; padding: 20px 18px; background: #fff; box-shadow: 4px 4px 14px rgba(0,0,0,.06), 2px 2px 5px rgba(0,0,0,.03); }
 .practice-overview__card-icon { width: 44px; height: 44px; }
 .practice-overview__card-copy strong { color: #24302c; font-size: 1.15rem; }
@@ -7409,6 +7409,10 @@ textarea:focus-visible {
 }
 
 .home-portal__route-switch[data-view="cards"] .home-portal__route-switch-indicator {
+  transform: translateX(0);
+}
+
+.home-portal__route-switch[data-view="orbit"] .home-portal__route-switch-indicator {
   transform: translateX(100%);
 }
 
@@ -11247,7 +11251,7 @@ textarea:focus-visible {
 
   .practice-overview__main {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 
   .practice-overview__training-grid {
@@ -11257,13 +11261,14 @@ textarea:focus-visible {
 
   .practice-overview__training-card {
     height: 100%;
-    min-height: 0;
+    min-height: 112px;
   }
 }
 
 /* Keep the workshop on the same spacious, rounded visual system as learning path. */
 .app-shell__main[data-page="training-workshop"] > .practice-overview {
   width: min(calc(100% - clamp(32px, 5vw, 96px)), 1480px);
+  gap: 14px;
 }
 
 .practice-overview__banner {
@@ -11341,6 +11346,11 @@ textarea:focus-visible {
 .practice-overview__training-card,
 .practice-overview__utility-card {
   border-radius: 20px;
+}
+
+.practice-overview__training-card {
+  min-height: 112px;
+  padding-block: 16px;
 }
 
 .practice-overview__card-copy small,

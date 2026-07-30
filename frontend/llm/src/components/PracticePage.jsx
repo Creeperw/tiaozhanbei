@@ -232,6 +232,8 @@ const featuredTrainingCard = {
   tone: 'cyan',
 };
 
+const overviewTrainingCards = [featuredTrainingCard, ...trainingCards];
+
 const uploadQuestionBankCard = {
   key: 'question_workspace',
   title: '上传题库',
@@ -512,21 +514,8 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
 
       <div className="practice-overview__layout">
         <section className="practice-overview__main" aria-label="训练模块">
-          <button type="button" className="practice-overview__featured-card" onClick={() => onOpenModule(featuredTrainingCard)}>
-            <span className="practice-overview__featured-icon"><Target aria-hidden="true" size={30} /></span>
-            <span className="practice-overview__featured-copy">
-              <span className="practice-overview__featured-title"><strong>{featuredTrainingCard.title}</strong><em>推荐</em></span>
-              <small>覆盖核心知识点，系统巩固基础能力。</small>
-              <span>20 题 <i /> 15 分钟 <i /> 覆盖核心知识点</span>
-            </span>
-            <span className="practice-overview__featured-action">
-              <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
-              <small>上次练习：待接入</small>
-              <small>正确率：{formatPercent(stats.todayAccuracy)}</small>
-            </span>
-          </button>
           <div className="practice-overview__training-grid">
-            {trainingCards.map((card) => {
+            {overviewTrainingCards.map((card) => {
               const Icon = card.icon;
               return (
                 <button
