@@ -1,6 +1,7 @@
 import json
 import asyncio
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -13,6 +14,7 @@ from competition_app.application.personalized_review_card import (
     WorkflowResumeRequest,
 )
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
+from competition_app.contracts.resource import AuditResult
 from competition_app.repositories.runtime import InMemoryRunStateRepository
 from competition_app.runtime.orchestrator import ExecutionResult
 from competition_app.runtime.trace import CommunicationTrace
@@ -125,6 +127,75 @@ def test_second_plan_audit_revision_has_audit_error_code() -> None:
     )
 
     assert PersonalizedReviewCardUseCase._failure_code(error) == "audit_step_failed"
+
+
+def test_waiting_human_review_is_presented_as_a_review_request() -> None:
+    message = workflow_result_to_markdown({
+        "status": "waiting_human_review",
+        "review": {
+            "findings": ["实时信息来源需要人工核验。"],
+        },
+    })
+
+    assert "人工复核" in message
+    assert "实时信息来源需要人工核验。" in message
+    assert "审核未能完成" not in message
+
+
+def test_waiting_human_review_execution_builds_a_normal_review_result() -> None:
+    use_case = object.__new__(PersonalizedReviewCardUseCase)
+    use_case.model_trace_recorder = None
+    audit = AuditResult(
+        audit_result_id="AUDIT_REVIEW",
+        decision="needs_human_review",
+        findings=["实时信息来源需要人工核验。"],
+    )
+    execution = ExecutionResult(
+        status="waiting_human_review",
+        outputs={"audit": SimpleNamespace(payload=audit)},
+    )
+
+    result = use_case._human_review_result(
+        execution_id="EXE_REVIEW",
+        task_type="general_learning_support",
+        execution=execution,
+    )
+
+    assert result.status == "waiting_human_review"
+    assert result.review == audit
+    assert "人工复核" in workflow_result_to_markdown(result)
+
+
+def test_waiting_human_review_after_repair_keeps_original_findings() -> None:
+    use_case = object.__new__(PersonalizedReviewCardUseCase)
+    use_case.model_trace_recorder = None
+    first_audit = AuditResult(
+        audit_result_id="AUDIT_PASS",
+        decision="pass",
+        findings=[],
+    )
+    audit = AuditResult(
+        audit_result_id="AUDIT_REVISE",
+        decision="revise",
+        findings=["事实来源仍需人工核验。"],
+    )
+    execution = ExecutionResult(
+        status="waiting_human_review",
+        outputs={
+            "audit_long": SimpleNamespace(payload=first_audit),
+            "audit_short": SimpleNamespace(payload=audit),
+        },
+        error_type="AuditRevisionNeedsHumanReview",
+    )
+
+    result = use_case._human_review_result(
+        execution_id="EXE_REPAIR_REVIEW",
+        task_type="general_learning_support",
+        execution=execution,
+    )
+
+    assert result.review.decision == "needs_human_review"
+    assert result.review.findings == ["事实来源仍需人工核验。"]
 
 
 @pytest.mark.asyncio
@@ -357,6 +428,28 @@ def test_paper_message_keeps_exam_body_in_workspace() -> None:
     assert "不应出现在对话里" not in message
     assert "开始答题" in message
     assert "通过审核" in message
+
+
+def test_resource_message_adds_nonofficial_current_fact_reminder() -> None:
+    message = workflow_result_to_markdown(
+        {
+            "status": "success",
+            "task_type": "general_learning_support",
+            "resource": {
+                "title": "天气信息",
+                "content": {"回复": "今天有小雨。"},
+            },
+            "audit": {
+                "findings": [
+                    "实时信息提示：信息来自非官方网页，请以官方渠道为准。"
+                ]
+            },
+        }
+    )
+
+    assert "今天有小雨。" in message
+    assert "信息来自非官方网页，请以官方渠道为准。" in message
+    assert "人工复核" not in message
 
 
 def test_resource_message_hides_internal_ids_and_uses_learner_labels() -> None:

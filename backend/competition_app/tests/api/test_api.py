@@ -7,8 +7,10 @@ from fastapi.testclient import TestClient
 
 from competition_app.api.app import create_app
 from competition_app.application.container import ApplicationContainer
+from competition_app.application.personalized_review_card import WorkflowHumanReviewResult
 from competition_app.config import Settings
 from competition_app.contracts.learning_plan import LearningPlanResult, LongTermPlan, LongTermPlanStage
+from competition_app.contracts.resource import AuditResult
 
 
 def test_review_card_api_runs_shared_use_case(tmp_path: Path) -> None:
@@ -652,6 +654,47 @@ def test_stream_api_emits_model_and_system_events_before_final_result(tmp_path: 
         "existing_plans",
         "plan_actions",
     }
+
+
+def test_stream_api_emits_waiting_human_review_as_a_normal_terminal_event(
+    tmp_path: Path,
+) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+
+    async def wait_for_review(_request):
+        return WorkflowHumanReviewResult(
+            execution_id="EXE_REVIEW",
+            task_type="general_learning_support",
+            review=AuditResult(
+                audit_result_id="AUDIT_REVIEW",
+                decision="needs_human_review",
+                findings=["实时信息来源需要人工核验。"],
+            ),
+        )
+
+    container.review_card_use_case.execute = wait_for_review
+    client = TestClient(create_app(container, auth_required=False))
+
+    with client.stream(
+        "POST",
+        "/api/v1/review-cards/stream",
+        json={
+            "learner_id": "REVIEW_VIEW_1",
+            "user_request": "今天天气怎样？",
+            "available_minutes": 15,
+        },
+    ) as response:
+        events = [
+            json.loads(line[6:])
+            for line in response.iter_lines()
+            if line.startswith("data: ")
+        ]
+
+    assert response.status_code == 200
+    assert events[-1]["event"] == "run_waiting_human_review"
+    assert events[-1]["result"]["status"] == "waiting_human_review"
+    assert "人工复核" in events[-1]["assistant_message"]
+    assert "审核未能完成" not in events[-1]["assistant_message"]
 
 
 def test_stream_api_does_not_expose_internal_failure_detail(tmp_path: Path) -> None:

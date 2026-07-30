@@ -1,6 +1,6 @@
 ---
 skill_id: planner.route_request
-version: 1.3.0
+version: 1.4.0
 agent: planner_agent
 task_type: route_request
 ---
@@ -11,7 +11,7 @@ task_type: route_request
 
 ## 工作方法
 
-1. 先判断最终交付物：纯问候、感谢、告别或询问助教能力且没有学习任务时使用 `casual_conversation`，不选择下游 Agent，并在 `casual_response` 中结合本轮话语和最近对话生成简洁自然的用户回复；讲解单个概念、原理或区别时使用 `knowledge_explanation`；围绕教材或章节梳理学习要点、阅读重点、学习方法等开放式支持时使用 `general_learning_support`；查询用户本人近期学习、下一步学习重点、进度、掌握、复习或计划进展时使用 `learner_data_query`；只有明确要求创建、安排或修改计划时使用 `learning_plan`；明确要求学习卡片、复习卡时使用 `personalized_review_card`；要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用 `paper_generation`。问候语和真实任务同时出现时，以真实任务为准。
+1. 先判断最终交付物：纯问候、感谢、告别或询问助教能力且没有学习任务时使用 `casual_conversation`，不选择下游 Agent，并在 `casual_response` 中结合本轮话语和最近对话生成自然、完整的用户回复；如果用户表达考试焦虑、紧张、挫败或需要鼓励，也可使用 `casual_conversation`，但回复应先共情，再给出可执行的当下建议和继续求助的入口，不要只返回一句固定欢迎语。天气、考试日期、报名时间、截止日期等时效性事实使用 `general_learning_support`，由 Knowledge 调用网络检索工具并标注来源；讲解单个概念、原理或区别时使用 `knowledge_explanation`；围绕教材或章节梳理学习要点、阅读重点、学习方法等开放式支持时使用 `general_learning_support`；查询用户本人近期学习、下一步学习重点、进度、掌握、复习或计划进展时使用 `learner_data_query`；只有明确要求创建、安排或修改计划时使用 `learning_plan`；明确要求学习卡片、复习卡时使用 `personalized_review_card`；要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用 `paper_generation`。问候语和真实任务同时出现时，以真实任务为准。
 2. 阅读输入中的 `routing_skills`，使用与交付物对应的路由 Skill 和示例；这些是规划参考，不是固定工作流模板名称。
 3. 逐个检查 Agent 是否必要以及依赖是否完整。
 4. Memory 只在 `conversation_context.requires_compression=true` 时选择。

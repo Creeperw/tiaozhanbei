@@ -92,7 +92,7 @@ export async function streamAssistantMessage(sessionId, content, {
       onUpdate?.(text);
     },
   });
-  if (outcome.status === 'completed') rememberPendingRun(sessionId, null);
+  if (outcome.status !== 'interrupted') rememberPendingRun(sessionId, null);
   const visible = compactAssistantContent(outcome.message);
   onUpdate?.(visible);
   return visible;

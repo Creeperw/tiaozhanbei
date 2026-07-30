@@ -612,6 +612,86 @@ async def test_integrated_long_plan_collects_and_writes_required_profile_fields(
 
 
 @pytest.mark.asyncio
+async def test_beginner_profile_answer_is_available_to_resumed_route_context(tmp_path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+    stored_profile = {
+        "learning_goal": "中医执业医师资格考试",
+        "time_constraints": "每周学习5天，每天2小时",
+    }
+    container.review_card_use_case.behavior_context_loader = lambda _: {
+        "source": "frontend_backend",
+        "user_profile": dict(stored_profile),
+    }
+
+    def write_profile(_learner_id: str, updates: dict, _execution_id: str | None) -> dict:
+        stored_profile.update(updates)
+        return dict(stored_profile)
+
+    container.review_card_use_case.profile_update_writer = write_profile
+    thread_id = "THREAD_BEGINNER_ROUTE_CONTEXT"
+    interrupted = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            thread_id=thread_id,
+            learner_id="LEARNER_BEGINNER_ROUTE_CONTEXT",
+            user_request="请结合我的学习状态，为我制定一份长期学习计划。",
+            plan_scope="long_term",
+        )
+    )
+    resumed = await container.review_card_use_case.resume(
+        thread_id,
+        WorkflowResumeRequest(answer="零基础", plan_scope="long_term"),
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["profile_fields"] == ["learning_background"]
+    assert resumed.status == "success"
+    assert resumed.learning_plan.long_term_plan.planning_route.route_id == (
+        "tcm_physician_standard_degree"
+    )
+
+
+@pytest.mark.asyncio
+async def test_current_fact_request_returns_a_source_bounded_web_answer(tmp_path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="LEARNER_CURRENT_FACT",
+            user_request="距离下次执业医师资格考试还有多久？",
+        )
+    )
+
+    assert result.status == "success"
+    assert result.task_type == "general_learning_support"
+    assert result.resource is not None
+    assert "配套练习" not in result.resource.content
+    assert any("网络搜索服务" in note for note in result.resource.safety_notes)
+
+
+@pytest.mark.asyncio
+async def test_exam_anxiety_returns_actionable_direct_response(tmp_path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="LEARNER_EXAM_ANXIETY",
+            user_request="我明天就要考试了，好焦虑啊。",
+        )
+    )
+
+    assert result.status == "success"
+    assert result.task_type == "casual_conversation"
+    assert "焦虑" in result.direct_response
+    assert "10分钟" in result.direct_response
+
+
+@pytest.mark.asyncio
 async def test_partial_inline_profile_still_collects_and_resumes_missing_goal(
     tmp_path,
 ) -> None:

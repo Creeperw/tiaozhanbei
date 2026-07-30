@@ -103,6 +103,23 @@ def workflow_result_to_markdown(result: Any) -> str:
     """Build the natural-language chat projection; structured data stays in the result."""
 
     body = _plain(result) or {}
+    if body.get("status") == "waiting_human_review":
+        review = _plain(body.get("review")) or {}
+        findings = [
+            str(item).strip()
+            for item in review.get("findings", [])
+            if str(item).strip()
+        ]
+        details = "\n".join(f"- {item}" for item in findings)
+        return "\n\n".join(
+            part
+            for part in (
+                "本次内容已进入人工复核，复核完成前不会发布。",
+                details,
+            )
+            if part
+        )
+
     if body.get("status") == "interrupted":
         interruption = body.get("interrupt") or {}
         questions = [
@@ -221,6 +238,13 @@ def workflow_result_to_markdown(result: Any) -> str:
     if resource:
         title = resource.get("title") or "学习内容"
         content = _markdown_value(resource.get("content") or {})
+        audit = _plain(body.get("audit")) or {}
+        reminders = [
+            str(item).removeprefix("实时信息提示：").strip()
+            for item in audit.get("findings", [])
+            if str(item).startswith("实时信息提示：")
+        ]
+        reminder_text = "\n".join(f"提示：{item}" for item in reminders)
         actions = body.get("ui_actions") or []
         action_hint = ""
         if actions:
@@ -231,6 +255,15 @@ def workflow_result_to_markdown(result: Any) -> str:
             ]
             if labels:
                 action_hint = "\n\n你可以点击下方的“" + "”或“".join(labels) + "”继续。"
-        return f"下面是为你整理的「{title}」。\n\n{content}{action_hint}".strip()
+        return "\n\n".join(
+            part
+            for part in (
+                f"下面是为你整理的「{title}」。",
+                content,
+                reminder_text,
+                action_hint.strip(),
+            )
+            if part
+        )
 
     return "本次处理已经完成。你可以继续补充目标或提出下一步需求。"

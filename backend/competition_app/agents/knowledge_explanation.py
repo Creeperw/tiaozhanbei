@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import re
+from datetime import date
 from typing import Any
 from uuid import uuid4
 
@@ -33,6 +34,29 @@ class KnowledgeExplanationAgent:
         if not evidence_pack.evidence_items:
             raise ValueError("knowledge explanation requires textbook evidence")
         task_type = str(context.get("task_type") or "knowledge_explanation")
+        user_request = str(context.get("user_request") or "")
+        external_information_request = bool(
+            context.get("external_information_request")
+            or any(
+                marker in user_request.lower()
+                for marker in (
+                    "天气", "气温", "降雨", "下雨", "空气质量", "台风",
+                    "距离下次", "考试时间", "考试日期", "什么时候考试",
+                    "报名时间", "截止日期", "日程", "赛程", "最新消息",
+                    "当前时间", "今天几号", "现在几点",
+                )
+            )
+        )
+        question_explanation_request = bool(
+            context.get("question_explanation_request")
+            or any(
+                marker in "".join(user_request.split())
+                for marker in (
+                    "试述", "简述", "论述", "分析题", "这题", "这道题", "题目",
+                    "难", "不会", "不懂", "卡住", "看不懂", "怎么答", "答不出来",
+                )
+            )
+        )
         skill_name = (
             "general_learning_support"
             if task_type == "general_learning_support"
@@ -67,6 +91,8 @@ class KnowledgeExplanationAgent:
                         payload={
                             "phase": skill_name,
                             "user_request": context.get("user_request", ""),
+                            "external_information_request": external_information_request,
+                            "current_date": date.today().isoformat(),
                             "recent_conversation": [
                                 {
                                     "role": str(item.get("role", "")),
@@ -120,6 +146,11 @@ class KnowledgeExplanationAgent:
                 or raw_output.get("body")
                 or retrieval_summary
             )
+            if question_explanation_request:
+                body = (
+                    str(body).rstrip()
+                    + "\n\n这道题你主要卡在哪一步：证候识别、治法选择、代表方对应，还是答题组织？"
+                )
             output = KnowledgeExplanationModelOutput.model_validate(
                 {
                     "title": raw_output.get("title") or (
@@ -149,7 +180,7 @@ class KnowledgeExplanationAgent:
             "学习支持" if flexible_support else "知识讲解":
                 output.explanation_content
         }
-        selected_questions = [
+        selected_questions = [] if external_information_request else [
             item
             for item in evidence_pack._question_details
             if self._is_safe_practice_question(item.question_type)
@@ -168,7 +199,7 @@ class KnowledgeExplanationAgent:
                 }
                 for item in selected_questions
             ]
-        else:
+        elif not external_information_request:
             # A knowledge explanation should still end with an actionable
             # self-check when the formal question index has no usable match.
             content["配套练习"] = [

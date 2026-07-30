@@ -731,3 +731,98 @@ def test_personalized_review_card_uses_mastery_flow_without_plan_service() -> No
     assert "diagnosis_agent" in {step.agent for step in plan.steps}
     assert "review_scheduler" in {step.agent for step in plan.steps}
     assert "default_route_resolver" in {step.agent for step in plan.steps}
+
+
+def test_current_fact_request_routes_to_external_learning_support() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "casual_conversation",
+            "selected_agents": [],
+            "casual_response": "我无法查询当前信息。",
+            "routing_reason": "外部事实",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {"user_request": "距离下次执业医师资格证考试还有多久？"},
+    )
+
+    assert normalized["task_type"] == "general_learning_support"
+    assert normalized["selected_agents"] != []
+
+
+def test_question_difficulty_request_stays_knowledge_explanation() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "learner_data_query",
+            "selected_agents": [],
+            "routing_reason": "解释题目",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {"user_request": "试述感冒暑湿证的主症特点、治法及代表方剂，这题有点难度"},
+    )
+
+    assert normalized["task_type"] == "knowledge_explanation"
+
+
+def test_emotional_support_replaces_generic_completion_fallback() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "casual_conversation",
+            "selected_agents": [],
+            "casual_response": "本次处理已经完成。你可以继续补充目标或提出下一步需求。",
+            "routing_reason": "考试前情绪支持",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {"user_request": "我明天就要考试了，好焦虑啊"},
+    )
+
+    assert normalized["task_type"] == "casual_conversation"
+    assert "焦虑" in normalized["casual_response"]
+    assert "10分钟" in normalized["casual_response"]
+
+
+def test_learning_plan_with_general_difficulty_is_not_question_explanation() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "learning_plan",
+            "selected_agents": [],
+            "routing_reason": "制定学习计划",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {"user_request": "我基础很差，学起来很难，帮我制定学习计划"},
+    )
+
+    assert normalized["task_type"] == "learning_plan"
+
+
+def test_difficult_subject_without_question_stays_a_learning_plan() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "learning_plan",
+            "selected_agents": [],
+            "routing_reason": "制定学习计划",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {"user_request": "我对方剂学习很难，帮我制定学习计划"},
+    )
+
+    assert normalized["task_type"] == "learning_plan"
+
+
+def test_emotional_plan_request_keeps_its_business_route() -> None:
+    normalized = PlannerAgent._normalize_output(
+        {
+            "task_type": "learning_plan",
+            "selected_agents": [],
+            "routing_reason": "制定冲刺计划",
+            "risk_level": "low",
+            "requires_audit": False,
+        },
+        {"user_request": "我明天考试很焦虑，帮我制定冲刺计划"},
+    )
+
+    assert normalized["task_type"] == "learning_plan"
