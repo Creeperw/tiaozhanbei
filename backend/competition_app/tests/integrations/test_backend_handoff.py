@@ -639,6 +639,20 @@ def test_formal_frontend_learning_stage_assets_are_mounted(tmp_path) -> None:
     assert response.content == b"learning-stage-artwork"
 
 
+def test_formal_frontend_acupuncture_models_are_mounted(tmp_path) -> None:
+    (tmp_path / "blender.yibiaozhu.glb").write_bytes(b"acupuncture-model")
+    container = ApplicationContainer.build(
+        Settings(frontend_dist_root=tmp_path),
+        snapshot_root=tmp_path / "snapshots",
+    )
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        response = client.get("/acupuncture-models/blender.yibiaozhu.glb")
+
+    assert response.status_code == 200
+    assert response.content == b"acupuncture-model"
+
+
 def test_formal_frontend_textbook_cover_assets_are_mounted(tmp_path) -> None:
     asset_root = tmp_path / "textbook-covers"
     asset_root.mkdir(parents=True)

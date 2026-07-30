@@ -36,6 +36,10 @@ class ExaVideoRetriever:
     async def search_questions(self, query: str, limit: int = 5) -> list[ExaResourceHit]:
         return await self.search_resources(query, resource_type="question", limit=limit)
 
+    async def search_web(self, query: str, limit: int = 5) -> list[ExaResourceHit]:
+        """Search current external facts without adding a subject-matter suffix."""
+        return await self.search_resources(query, resource_type="web", limit=limit)
+
     async def search_resources(
         self, query: str, *, resource_type: str, limit: int = 5
     ) -> list[ExaResourceHit]:
@@ -45,6 +49,7 @@ class ExaVideoRetriever:
             "video": "中医药 教学 视频 讲解",
             "reference": "中医药 教学 参考资料 原文 论文",
             "question": "中医药 练习题 考试题 题目 解析",
+            "web": "",
         }
         if resource_type not in suffixes:
             raise ValueError(f"unsupported Exa resource type: {resource_type}")

@@ -25,6 +25,9 @@ describe('workflow chat event adapter', () => {
     expect(runtimeEventToTrace({ event: 'run_completed' })).toEqual({
       type: 'workflow_done', text: '处理完成',
     });
+    expect(runtimeEventToTrace({ event: 'run_waiting_human_review' })).toEqual({
+      type: 'human_review_waiting', text: '内容正在等待人工复核',
+    });
     expect(runtimeEventToTrace({
       event: 'graph_compiled',
       nodes: [{ step_id: 'audit', agent: 'audit_agent' }],
@@ -98,6 +101,32 @@ describe('workflow chat event adapter', () => {
     );
     expect(JSON.parse(request.mock.calls[0][1].body)).toEqual({ answer: '每天 2 小时' });
     expect(outcome.status).toBe('interrupted');
+  });
+
+  it('keeps human-review terminal results out of the failure path', async () => {
+    const terminal = {
+      event: 'run_waiting_human_review',
+      result: {
+        status: 'waiting_human_review',
+        review: { findings: ['实时信息来源需要人工核验。'] },
+      },
+      assistant_message: '当前信息已提交人工复核：实时信息来源需要人工核验。',
+    };
+    const request = vi.fn().mockResolvedValue(new Response(
+      `data: ${JSON.stringify(terminal)}\n\n`,
+      { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+    ));
+    vi.stubGlobal('fetch', request);
+
+    await expect(streamWorkflowTurn({
+      conversationId: 'CONV_1',
+      runId: 'THREAD_REVIEW',
+      answer: '今天天气怎样？',
+    })).resolves.toEqual({
+      status: 'waiting_human_review',
+      result: terminal.result,
+      message: terminal.assistant_message,
+    });
   });
 
   it('discards a stale pending run when the backend checkpoint no longer exists', async () => {

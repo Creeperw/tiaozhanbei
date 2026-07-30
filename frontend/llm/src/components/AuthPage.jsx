@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowRight,
   BrainCircuit,
-  Library,
   Loader2,
   Lock,
   Target,
@@ -10,12 +8,6 @@ import {
 } from 'lucide-react';
 import { AUTH_API_BASE, readJsonResponse } from '../utils/api';
 import './AuthPage.css';
-
-const capabilityCards = [
-  { icon: BrainCircuit, title: 'AI 学习规划', description: '结合学习画像与阶段信号，生成清晰、可执行的进阶路径。' },
-  { icon: Library, title: '本草知识溯源', description: '连接经典教材与个人资料，保留每一次学习检索的来源线索。' },
-  { icon: Target, title: '训练反馈闭环', description: '把练习、错因和复盘建议沉淀到后续任务，持续看见进步。' },
-];
 
 const authServiceUnavailableMessage = '认证服务尚未连接，请先启动后端服务后重试。';
 
@@ -108,16 +100,16 @@ const AuthPage = ({ onLogin }) => {
       : '创建账号后将直接登录并进入时珍智训首页。';
 
   return (
-    <div className="auth-page relative min-h-screen overflow-hidden text-slate-900" style={{backgroundImage: 'url(/design-images/home/login-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}}>
+    <div className="auth-page auth-page--single-screen relative min-h-screen overflow-hidden text-slate-900" style={{backgroundImage: 'url(/design-images/home/login-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'}}>
       {/* 白色蒙版遮罩层 */}
       <div className="pointer-events-none absolute inset-0 bg-white/20" />
 
-      <div className="relative z-10">
+      <div className="auth-page__frame relative z-10">
         <div className="auth-page__glow auth-page__glow--top" />
         <div className="auth-page__glow auth-page__glow--bottom" />
 
-        <main className="relative mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
-          <section className="auth-showcase grid min-h-[calc(100vh-76px)] items-center gap-12 py-16 lg:grid-cols-[minmax(0,1.03fr)_minmax(380px,0.97fr)] lg:gap-16 lg:py-24">
+        <main className="relative mx-auto h-full max-w-[1440px] px-5 sm:px-8 lg:px-12">
+          <section className="auth-showcase grid h-full min-h-0 items-center gap-12 py-8 sm:py-10 lg:grid-cols-[minmax(0,1.03fr)_minmax(380px,0.97fr)] lg:gap-16 lg:py-10">
             <div className="auth-showcase__content max-w-3xl text-center lg:text-left">
               <h1 className="text-6xl font-black leading-[1.4] tracking-[-0.055em] text-emerald-950 sm:text-7xl lg:text-8xl">承时珍医脉<br /><span className="auth-title-gradient">启智慧学习</span></h1>
               <p className="mt-10 max-w-2xl text-lg leading-9 text-slate-600 sm:text-xl lg:text-2xl">融合中医药经典智慧与智能学习技术，构建可理解、可追踪、可持续的个性化学习工作台，陪伴每一位学习者循证精进。</p>
@@ -209,19 +201,7 @@ const AuthPage = ({ onLogin }) => {
               </div>
             </div>
           </section>
-
-          <section id="capabilities" className="pb-16 pt-4 lg:pb-24">
-            <div className="mx-auto max-w-3xl text-center"><div className="text-xs font-bold tracking-[0.18em] text-emerald-600">ONE PLATFORM · COMPLETE LEARNING LOOP</div><h2 className="mt-3 text-3xl font-black tracking-tight text-emerald-950 sm:text-4xl">以智能重塑<span className="auth-title-gradient">本草学习</span></h2><p className="mt-4 text-base leading-7 text-slate-600">让经典知识更易理解，让每一次练习都成为下一步成长的依据。</p></div>
-            <div className="mt-10 grid gap-5 md:grid-cols-3">
-              {capabilityCards.map((item) => {
-                const Icon = item.icon;
-                return <article key={item.title} className="auth-capability-card rounded-[2rem] border border-white/90 bg-white/72 p-6 shadow-lg shadow-emerald-100/55 backdrop-blur-sm"><div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600"><Icon size={26} /></div><h2 className="mt-5 text-xl font-bold text-emerald-950">{item.title}</h2><p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p><div className="mt-5 border-t border-emerald-100 pt-4 text-xs font-bold text-emerald-600">探索时珍智训 <ArrowRight size={14} className="ml-1 inline" /></div></article>;
-              })}
-            </div>
-          </section>
         </main>
-
-        <footer className="border-t border-emerald-100 bg-white/45 px-5 py-8 text-center text-xs text-slate-500 sm:px-8 lg:px-12"><div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-3 sm:flex-row"><span>© 2026 时珍智训 · 让经典智慧在每一次学习中焕新</span><span className="font-semibold text-emerald-700">SHIZHEN AI · TCM LEARNING PLATFORM</span></div></footer>
       </div>
     </div>
   );

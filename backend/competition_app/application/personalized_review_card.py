@@ -12,9 +12,16 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from competition_app.agents.common import envelope
 from competition_app.agents.planner import PlannerAgent, PlannerDecision
 from competition_app.contracts.base import AgentEnvelope, WritebackIntent
 from competition_app.contracts.execution import ExecutionPlan
+from competition_app.contracts.learning_plan import (
+    LearningPlanResult,
+    LearningTask,
+    LongTermPlan,
+    ShortTermPlan,
+)
 from competition_app.contracts.resource import (
     AuditResult,
     QuestionConsumptionDecision,
@@ -87,6 +94,7 @@ class ReviewCardRequest(BaseModel):
     plan_change_context: PlanChangeContext | None = None
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     plan_scope_hint: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
+    system_operation: Literal["due_review_dispatch"] | None = None
 
 
 class ReviewCardResult(BaseModel):
@@ -94,6 +102,7 @@ class ReviewCardResult(BaseModel):
     execution_id: str
     task_type: str
     direct_response: str | None = None
+    learner_data: dict[str, Any] = Field(default_factory=dict)
     agent_outputs: list[AgentEnvelope[Any]]
     learning_plan: Any | None = None
     review_schedule: ReviewSchedule | None = None
@@ -132,6 +141,17 @@ class WorkflowInterruptedResult(BaseModel):
     execution_id: str
     task_type: str
     interrupt: dict[str, Any]
+    completed_steps: list[str] = Field(default_factory=list)
+    agent_outputs: list[AgentEnvelope[Any]] = Field(default_factory=list)
+    model_trace: list[ModelCallTrace] = Field(default_factory=list)
+    coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
+
+
+class WorkflowHumanReviewResult(BaseModel):
+    status: Literal["waiting_human_review"] = "waiting_human_review"
+    execution_id: str
+    task_type: str
+    review: AuditResult
     completed_steps: list[str] = Field(default_factory=list)
     agent_outputs: list[AgentEnvelope[Any]] = Field(default_factory=list)
     model_trace: list[ModelCallTrace] = Field(default_factory=list)
@@ -196,7 +216,7 @@ class PersonalizedReviewCardUseCase:
 
     async def execute(
         self, request: ReviewCardRequest
-    ) -> ReviewCardResult | WorkflowInterruptedResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
         conversation_id = request.conversation_id or thread_id
         operation_id = request.operation_id or thread_id
@@ -241,7 +261,7 @@ class PersonalizedReviewCardUseCase:
         conversation_id: str,
         execution_id: str,
         case_id: str,
-    ) -> ReviewCardResult | WorkflowInterruptedResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         existing_messages = self.conversation_repository.get_messages(
             conversation_id, request.learner_id
         )
@@ -429,6 +449,47 @@ class PersonalizedReviewCardUseCase:
                 },
             )
         )
+        task_load_policy: dict[str, Any] = {}
+        load_policy = getattr(
+            self.workshop_runtime, "load_task_load_policy", None
+        )
+        if callable(load_policy):
+            try:
+                queue = (
+                    self.review_service.get_queue(request.learner_id, limit=500)
+                    if self.review_service is not None
+                    else None
+                )
+                task_load_policy = await asyncio.to_thread(
+                    load_policy,
+                    request.learner_id,
+                    plan_context={
+                        key: value
+                        for key, value in {
+                            "long_term_plan": current_long_term_plan,
+                            "short_term_plan": current_short_term_plan,
+                            "learning_task": current_learning_task,
+                        }.items()
+                        if value not in (None, "", [], {})
+                    },
+                    review_projection=(
+                        {
+                            "source": "canonical_review_memory",
+                            "due_count": queue.due_count,
+                            "total_count": len(queue.entries),
+                            "active_task_count": queue.active_task_count,
+                        }
+                        if queue is not None
+                        else None
+                    ),
+                    days=7,
+                )
+            except Exception as exc:
+                emit_runtime_event(
+                    "task_load_policy_unavailable",
+                    error_type=type(exc).__name__,
+                )
+                task_load_policy = {}
         context_messages = [
             {
                 **item,
@@ -456,12 +517,14 @@ class PersonalizedReviewCardUseCase:
                 or effective_goals.get("name")
             ),
             "available_minutes": request.available_minutes,
+            "system_operation": request.system_operation,
             "time_budget": request.available_minutes,
             "source_policy": {
                 "trusted_source_types": [
                     "textbook",
                     "knowledge_base",
                     "official_question_bank",
+                    "web",
                 ],
             },
             "messages": context_messages,
@@ -472,6 +535,7 @@ class PersonalizedReviewCardUseCase:
             "question_attempts": effective_question_attempts,
             "question_learning_stats": effective_question_learning_stats,
             "multi_scale_learning_state": multiscale_state,
+            "task_load_policy": task_load_policy,
             "path_candidates": path_candidates,
             "planner_multiscale_summary": self._planner_multiscale_summary(
                 multiscale_state,
@@ -575,10 +639,99 @@ class PersonalizedReviewCardUseCase:
                 conversation_id, request.learner_id, persisted_messages, result
             )
             return result
+        if (
+            planner_output.payload.task_type == "learning_plan"
+            and planner_output.payload.plan_action == "reuse"
+        ):
+            context["task_type"] = "learning_plan"
+            context["plan_scope"] = planner_output.payload.plan_scope
+            _FAILURE_STEP_CONTEXT.set("plan_reuse")
+            plan_review: dict[str, Any] = {}
+            if self.workshop_runtime is not None and hasattr(
+                self.workshop_runtime, "run_plan_review"
+            ):
+                try:
+                    plan_review = await asyncio.to_thread(
+                        self.workshop_runtime.run_plan_review,
+                        request.learner_id,
+                        plan_context={
+                            "long_term_plan": current_long_term_plan,
+                            "short_term_plan": current_short_term_plan,
+                            "learning_task": current_learning_task,
+                        },
+                        trigger_type="on_demand",
+                    )
+                except Exception as exc:
+                    emit_runtime_event(
+                        "plan_review_unavailable",
+                        error_type=type(exc).__name__,
+                    )
+            learning_plan = self._existing_plan_result(
+                planner_output.payload.plan_scope,
+                current_long_term_plan=current_long_term_plan,
+                current_short_term_plan=current_short_term_plan,
+                current_learning_task=current_learning_task,
+                plan_review=plan_review,
+            )
+            service_context = {
+                **context,
+                "step_id": "learning_plan",
+                "dependency_outputs": {},
+            }
+            service_output = envelope(
+                service_context,
+                "learning_plan_service",
+                "learning_plan_reuse",
+                learning_plan,
+            )
+            emit_runtime_event(
+                "step_completed",
+                step_id="learning_plan",
+                agent="learning_plan_service",
+                status="success",
+            )
+            agent_outputs = [planner_output, service_output]
+            _FAILURE_STEP_CONTEXT.set("snapshot")
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "agent_outputs": agent_outputs,
+                    "learning_plan": learning_plan,
+                    "plan_review": plan_review,
+                    "model_trace": self._model_trace(),
+                },
+            )
+            result = ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type="learning_plan",
+                agent_outputs=agent_outputs,
+                learning_plan=learning_plan,
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+            )
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "completed",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._save_assistant_message(
+                conversation_id, request.learner_id, persisted_messages, result
+            )
+            return result
         _FAILURE_STEP_CONTEXT.set("planner")
         execution_plan = PlannerAgent.build_plan(planner_output.payload)
         context["task_type"] = planner_output.payload.task_type
         context["plan_scope"] = planner_output.payload.plan_scope
+        context["learner_data_query_kind"] = planner_output.payload.query_kind
         context["planner_requires_clarification"] = (
             planner_output.payload.requires_clarification
         )
@@ -639,6 +792,26 @@ class PersonalizedReviewCardUseCase:
                 conversation_id, request.learner_id, persisted_messages, interrupted
             )
             return interrupted
+        if execution.status == "waiting_human_review":
+            result = self._human_review_result(
+                execution_id=execution_id,
+                task_type=planner_output.payload.task_type,
+                execution=execution,
+            )
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "waiting_human_review",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            self._save_assistant_message(
+                conversation_id, request.learner_id, persisted_messages, result
+            )
+            return result
         if execution.status != "success":
             detail = execution.error_message or self._execution_failure_detail(execution)
             if "blocked path candidate" in detail:
@@ -672,7 +845,7 @@ class PersonalizedReviewCardUseCase:
         self,
         thread_id: str,
         request: WorkflowResumeRequest,
-    ) -> ReviewCardResult | WorkflowInterruptedResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         try:
             _FAILURE_STEP_CONTEXT.set("resume_restore")
             return await self._resume_started_run(thread_id, request)
@@ -686,7 +859,7 @@ class PersonalizedReviewCardUseCase:
         self,
         thread_id: str,
         request: WorkflowResumeRequest,
-    ) -> ReviewCardResult | WorkflowInterruptedResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         continuation = self._continuations.get(thread_id)
         if continuation is None:
             continuation = self._restore_continuation(thread_id)
@@ -824,6 +997,30 @@ class PersonalizedReviewCardUseCase:
                 interrupted,
             )
             return interrupted
+        if execution.status == "waiting_human_review":
+            result = self._human_review_result(
+                execution_id=continuation.execution_id,
+                task_type=continuation.planner_output.payload.task_type,
+                execution=execution,
+            )
+            self._continuations.pop(thread_id, None)
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "waiting_human_review",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            self._save_assistant_message(
+                conversation_id,
+                continuation.request.learner_id,
+                persisted_messages,
+                result,
+            )
+            return result
         if execution.status != "success":
             detail = execution.error_message or self._execution_failure_detail(execution)
             raise RuntimeError(f"personalized review card execution failed: {detail}")
@@ -1197,6 +1394,45 @@ class PersonalizedReviewCardUseCase:
         learning_plan = (
             getattr(learning_plan_output, "payload", None) if learning_plan_output else None
         )
+        if planner_output.payload.task_type == "learner_data_query":
+            diagnosis_output = execution.outputs.get("diagnosis")
+            diagnosis = (
+                getattr(diagnosis_output, "payload", None)
+                if diagnosis_output is not None
+                else None
+            )
+            direct_response = str(
+                getattr(diagnosis, "summary", "")
+                or "暂时没有可用于回答的学习记录。"
+            )
+            learner_data = dict(getattr(diagnosis, "learner_data", {}) or {})
+            _FAILURE_STEP_CONTEXT.set("snapshot")
+            snapshot_path = self.snapshot_exporter.export(
+                case_id,
+                execution_id,
+                {
+                    "request": request,
+                    "plan": execution_plan,
+                    "agent_outputs": agent_outputs,
+                    "learner_data": learner_data,
+                    "trace": execution.trace,
+                    "tool_trace": execution.tool_trace,
+                    "communication_trace": execution.communication_trace,
+                    "model_trace": self._model_trace(),
+                },
+            )
+            return ReviewCardResult(
+                status="success",
+                execution_id=execution_id,
+                task_type="learner_data_query",
+                direct_response=direct_response,
+                learner_data=learner_data,
+                agent_outputs=agent_outputs,
+                snapshot_path=snapshot_path,
+                writeback_intents=[],
+                model_trace=self._model_trace(),
+                coordination=self._execution_coordination(execution),
+            )
         if planner_output.payload.task_type == "learning_plan":
             _FAILURE_STEP_CONTEXT.set("snapshot")
             snapshot_path = self.snapshot_exporter.export(
@@ -1235,7 +1471,10 @@ class PersonalizedReviewCardUseCase:
                 planner_output=planner_output,
                 agent_outputs=agent_outputs,
             )
-        if planner_output.payload.task_type == "knowledge_explanation":
+        if planner_output.payload.task_type in {
+            "knowledge_explanation",
+            "general_learning_support",
+        }:
             _FAILURE_STEP_CONTEXT.set("knowledge")
             return self._publish_standalone_resource(
                 request=request,
@@ -1990,6 +2229,53 @@ class PersonalizedReviewCardUseCase:
             else [],
         }
 
+    @staticmethod
+    def _existing_plan_result(
+        plan_scope: str | None,
+        *,
+        current_long_term_plan: dict[str, Any],
+        current_short_term_plan: dict[str, Any],
+        current_learning_task: dict[str, Any],
+        plan_review: dict[str, Any] | None = None,
+    ) -> LearningPlanResult:
+        review = dict(plan_review or {})
+        outcome = str(review.get("outcome") or "on_track")
+        summary = str(review.get("summary") or "").strip()
+        suggested = outcome not in {"", "on_track"}
+        if suggested:
+            force_prompt = (
+                f"{summary} 当前计划暂不自动覆盖；如需采用该建议，请在消息中心确认，"
+                "或明确回复“强制修改”并说明要调整的层级。"
+            )
+        else:
+            force_prompt = (
+                "当前计划仍可继续执行，系统不会重复生成。"
+                "如需修改，请明确回复“强制修改长期规划”“强制修改短期计划”"
+                "或“强制更新今日任务”，并说明变化。"
+            )
+        common = {
+            "generated_scope": plan_scope,
+            "reused_existing": True,
+            "replan_review": review,
+            "force_replan_prompt": force_prompt,
+        }
+        if plan_scope == "daily_task" and current_learning_task:
+            return LearningPlanResult(
+                learning_task=LearningTask.model_validate(current_learning_task),
+                **common,
+            )
+        if plan_scope == "short_term" and current_short_term_plan:
+            return LearningPlanResult(
+                short_term_plan=ShortTermPlan.model_validate(current_short_term_plan),
+                **common,
+            )
+        if plan_scope == "long_term" and current_long_term_plan:
+            return LearningPlanResult(
+                long_term_plan=LongTermPlan.model_validate(current_long_term_plan),
+                **common,
+            )
+        raise ValueError("the requested current learning-plan layer is unavailable")
+
     @classmethod
     def _merge_context_dict(
         cls, request_value: dict[str, Any], server_value: dict[str, Any]
@@ -2093,6 +2379,39 @@ class PersonalizedReviewCardUseCase:
 
     def _model_trace(self) -> list[ModelCallTrace]:
         return self.model_trace_recorder.items if self.model_trace_recorder else []
+
+    def _human_review_result(
+        self,
+        *,
+        execution_id: str,
+        task_type: str,
+        execution,
+    ) -> WorkflowHumanReviewResult:
+        audits = [
+            output.payload
+            for output in execution.outputs.values()
+            if isinstance(getattr(output, "payload", None), AuditResult)
+        ]
+        audit = next(
+            (item for item in reversed(audits) if item.decision != "pass"),
+            audits[-1] if audits else None,
+        )
+        if not isinstance(audit, AuditResult):
+            raise RuntimeError("human review status requires an audit result")
+        review = audit.model_copy(update={"decision": "needs_human_review"})
+        return WorkflowHumanReviewResult(
+            execution_id=execution_id,
+            task_type=task_type,
+            review=review,
+            completed_steps=list(execution.outputs),
+            agent_outputs=[
+                output
+                for output in execution.outputs.values()
+                if isinstance(output, AgentEnvelope)
+            ],
+            model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
+        )
 
     @staticmethod
     def _execution_failure_detail(execution) -> str:

@@ -23,7 +23,9 @@ import { fetchJsonWithAuthFallback } from '../utils/api';
 import QuestionTrainingPanel from './QuestionTrainingPanel';
 import QualificationPaperPanel from './QualificationPaperPanel';
 import SimulatedPatientChat from './SimulatedPatientChat';
+import MistakeRedoPanel from './MistakeRedoPanel';
 import MistakeVariationPanel from './MistakeVariationPanel';
+import TrainingHistoryPanel from './TrainingHistoryPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
@@ -66,7 +68,7 @@ function contentSections(content) {
 }
 
 function EmptyState({ children }) {
-  return <p className="[overflow-wrap:anywhere] py-5 text-sm leading-6 text-slate-500">{children}</p>;
+  return <p className="[overflow-wrap:anywhere] py-5 text-[15px] leading-6 text-slate-500">{children}</p>;
 }
 
 function KnowledgeCardContent({ content }) {
@@ -212,6 +214,13 @@ const trainingCards = [
     icon: HeartPulse,
     tone: 'rose',
   },
+  {
+    key: 'mistake_redo',
+    title: '错题重做',
+    description: '自动收录错题，AI 生成变式，反复巩固直至掌握。',
+    icon: FolderHeart,
+    tone: 'red',
+  },
 ];
 
 const featuredTrainingCard = {
@@ -223,6 +232,8 @@ const featuredTrainingCard = {
   tone: 'cyan',
 };
 
+const overviewTrainingCards = [featuredTrainingCard, ...trainingCards];
+
 const uploadQuestionBankCard = {
   key: 'question_workspace',
   title: '上传题库',
@@ -233,9 +244,9 @@ const uploadQuestionBankCard = {
 
 const utilityCards = [
   {
-    key: 'mistake_variation',
-    title: '错题库',
-    description: '整理错题记录，生成变式并针对性复盘。',
+    key: 'training_history',
+    title: '历史记录',
+    description: '按训练类型查看做过的题目和学习记录。',
     icon: FolderHeart,
     available: true,
   },
@@ -374,6 +385,8 @@ const workspaceTitles = {
   topic_training: '专题训练',
   ai_patient_simulation: '模拟病患',
   mistake_variation: '错题库',
+  mistake_redo: '错题重做',
+  training_history: '历史记录',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
   question_favorites: '收藏夹',
@@ -501,21 +514,8 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
 
       <div className="practice-overview__layout">
         <section className="practice-overview__main" aria-label="训练模块">
-          <button type="button" className="practice-overview__featured-card" onClick={() => onOpenModule(featuredTrainingCard)}>
-            <span className="practice-overview__featured-icon"><Target aria-hidden="true" size={30} /></span>
-            <span className="practice-overview__featured-copy">
-              <span className="practice-overview__featured-title"><strong>{featuredTrainingCard.title}</strong><em>推荐</em></span>
-              <small>覆盖核心知识点，系统巩固基础能力。</small>
-              <span>20 题 <i /> 15 分钟 <i /> 覆盖核心知识点</span>
-            </span>
-            <span className="practice-overview__featured-action">
-              <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
-              <small>上次练习：待接入</small>
-              <small>正确率：{formatPercent(stats.todayAccuracy)}</small>
-            </span>
-          </button>
           <div className="practice-overview__training-grid">
-            {trainingCards.map((card) => {
+            {overviewTrainingCards.map((card) => {
               const Icon = card.icon;
               return (
                 <button
@@ -606,6 +606,8 @@ export default function PracticePage({
   const returnIntent = navigationContext.returnTo;
   const returnLabel = returnIntent?.page === 'assistant'
     ? '返回智能助教'
+    : returnIntent?.page === 'learning-path'
+      ? '返回学习路径'
     : returnIntent?.page === 'qualification-route'
       ? '返回今日学习'
       : returnIntent?.page === 'personalization' && returnIntent?.params?.view === 'reports'
@@ -709,20 +711,23 @@ export default function PracticePage({
   const isSP = activeTaskType === 'ai_patient_simulation';
 
   if (isSP) {
-    return <SimulatedPatientChat onBack={leaveWorkspace} />;
+    return (
+      <div className="practice-workspace practice-workspace--ai_patient_simulation">
+        <SimulatedPatientChat onBack={leaveWorkspace} />
+      </div>
+    );
   }
 
   return (
     <div className={`practice-workspace practice-workspace--${activeTaskType} space-y-5 text-slate-800`}>
-      <div className="flex items-center gap-4 border-b border-slate-200 pb-4">
-        <button type="button" className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50" onClick={leaveWorkspace}>
-          <ArrowLeft aria-hidden="true" size={16} />{returnLabel}
+      <div className={`practice-workspace__heading flex items-center gap-4 border-b border-slate-200 pb-4${activeTaskType === 'training_history' ? ' practice-workspace__heading--history' : ''}`}>
+        <button type="button" className="practice-workspace__back" aria-label={returnLabel} onClick={leaveWorkspace}>
+          <ArrowLeft aria-hidden="true" size={16} />返回
         </button>
         <h1 className="text-2xl font-bold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
       </div>
-
       {selectedKnowledgePoint && (
-        <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" aria-label="当前考纲知识点">
+        <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-[15px] text-emerald-950" aria-label="当前考纲知识点">
           <div className="font-semibold">当前训练上下文：{selectedKnowledgePoint.kpName}</div>
           <p className="mt-2 leading-6 text-emerald-900">
             已按该知识点筛选训练内容，作答结果会写回掌握度与复习记录。
@@ -731,13 +736,21 @@ export default function PracticePage({
       )}
 
       <div className="min-w-0 space-y-5">
-          <section className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
+          <section className={`practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50${activeTaskType === 'paper_workspace' ? ' practice-task-panel--paper' : ''}`}>
             {activeTaskType === 'question_training' && !taskItemId ? (
               <QualificationPaperPanel enabled />
+            ) : activeTaskType === 'mistake_redo' ? (
+              <MistakeRedoPanel />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
+            ) : activeTaskType === 'training_history' ? (
+              <TrainingHistoryPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
-              <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} taskItemId={taskItemId} />
+              <SmartPaperPanel
+                enabled
+                paperId={navigationContext.paperId || navigationContext.paper_id || ''}
+                taskItemId={taskItemId}
+              />
             ) : activeTaskType === 'knowledge_cards' ? (
               <KnowledgeCardLibrary
                 cardId={navigationContext.cardId || navigationContext.card_id || ''}
@@ -748,9 +761,9 @@ export default function PracticePage({
                 directTitle={navigationContext.directTitle || navigationContext.kpName || navigationContext.kp_name || ''}
               />
             ) : activeTaskType === 'question_favorites' ? (
-              <QuestionFavoritesPanel />
+              <QuestionFavoritesPanel onNavigate={onNavigate} />
             ) : activeTaskType === 'study_notes' ? (
-              <StudyNotesPanel />
+              <StudyNotesPanel onNavigate={onNavigate} />
             ) : activeTaskType === 'topic_training' ? (
               <KnowledgePointTrainingHub
                 initialKnowledgePoint={selectedKnowledgePoint}
@@ -766,7 +779,7 @@ export default function PracticePage({
                 taskItemId={taskItemId}
               />
             ) : (
-              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-[15px] leading-6 text-slate-600">
                 此模块正在准备中，暂不支持提交任务。
               </div>
             )}

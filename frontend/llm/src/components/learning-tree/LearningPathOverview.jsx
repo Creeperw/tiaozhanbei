@@ -10,9 +10,9 @@ import {
 import { clampSemanticScale } from './learningTreeModel';
 
 const ORBIT_WIDTH = 1000;
-const ORBIT_HEIGHT = 760;
+const ORBIT_HEIGHT = 640;
 const ORBIT_ASPECT_RATIO = ORBIT_WIDTH / ORBIT_HEIGHT;
-const TARGET_RENDERED_ORBIT_RATIO = 1.35;
+const TARGET_RENDERED_ORBIT_RATIO = 1.25;
 
 const statusMeta = {
   completed: { label: '已完成', Icon: CheckCircle2, tone: 'completed' },
@@ -72,7 +72,7 @@ function orderLearningNodes(nodes, edges) {
 
 function getOrbitMetrics(nodeCount, stageAspectRatio) {
   const compact = nodeCount >= 8;
-  const radiusY = compact ? 276 : nodeCount <= 4 ? 254 : 278;
+  const radiusY = compact ? 240 : nodeCount <= 4 ? 220 : 240;
   const desiredRadiusX = radiusY
     * TARGET_RENDERED_ORBIT_RATIO
     * ORBIT_ASPECT_RATIO
@@ -82,10 +82,10 @@ function getOrbitMetrics(nodeCount, stageAspectRatio) {
     height: ORBIT_HEIGHT,
     centerX: ORBIT_WIDTH / 2,
     centerY: ORBIT_HEIGHT / 2 + 4,
-    radiusX: Math.max(168, Math.min(compact ? 286 : 320, desiredRadiusX)),
+    radiusX: Math.max(150, Math.min(compact ? 260 : 290, desiredRadiusX)),
     radiusY,
-    nodeWidth: compact ? 148 : nodeCount >= 7 ? 164 : 180,
-    nodeHeight: compact ? 70 : 82,
+    nodeWidth: compact ? 140 : nodeCount >= 7 ? 156 : 170,
+    nodeHeight: compact ? 64 : 74,
   };
 }
 
@@ -344,7 +344,6 @@ export default function LearningPathOverview({
         <span><i className="is-progress" />学习中</span>
         <span><i className="is-next" />下一阶段</span>
         <span><i className="is-locked" />待解锁</span>
-        <em>{directDrill ? '按序选择阶段，进入下一层教材' : '单击查看规划 · 双击进入知识星球'}</em>
       </footer>
     </div>
   );

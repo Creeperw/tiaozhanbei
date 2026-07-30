@@ -28,7 +28,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2015",
       "paper_type": "真题",
-      "title": "2015 年 · 中药学专业知识（一） · 真题",
+      "title": "2015 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 78,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-7c6cbd3126.json"
@@ -38,7 +38,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2015",
       "paper_type": "真题",
-      "title": "2015 年 · 中药学专业知识（二） · 真题",
+      "title": "2015 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 84,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-b6736b102c.json"
@@ -48,7 +48,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2015",
       "paper_type": "真题",
-      "title": "2015 年 · 中药学综合知识与技能 · 真题",
+      "title": "2015 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 90,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-092a01d866.json"
@@ -58,7 +58,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2015",
       "paper_type": "真题",
-      "title": "2015 年 · 药事管理与法规 · 真题",
+      "title": "2015 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 84,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-c5de5d13ee.json"
@@ -68,7 +68,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2016",
       "paper_type": "真题",
-      "title": "2016 年 · 中药学专业知识（一） · 真题",
+      "title": "2016 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 76,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-5d0bf39652.json"
@@ -78,7 +78,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2016",
       "paper_type": "真题",
-      "title": "2016 年 · 中药学专业知识（二） · 真题",
+      "title": "2016 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 83,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-8687d9373a.json"
@@ -88,7 +88,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2016",
       "paper_type": "真题",
-      "title": "2016 年 · 中药学综合知识与技能 · 真题",
+      "title": "2016 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 88,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-2594b464c3.json"
@@ -98,7 +98,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2016",
       "paper_type": "真题",
-      "title": "2016 年 · 药事管理与法规 · 真题",
+      "title": "2016 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 82,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-5714f66165.json"
@@ -108,7 +108,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2017",
       "paper_type": "真题",
-      "title": "2017 年 · 中药学专业知识（一） · 真题",
+      "title": "2017 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 71,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-838f0c1841.json"
@@ -118,7 +118,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2017",
       "paper_type": "真题",
-      "title": "2017 年 · 中药学专业知识（二） · 真题",
+      "title": "2017 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 81,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-de6440fff0.json"
@@ -128,7 +128,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2017",
       "paper_type": "真题",
-      "title": "2017 年 · 中药学综合知识与技能 · 真题",
+      "title": "2017 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 81,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-960a8a6c6c.json"
@@ -138,7 +138,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2017",
       "paper_type": "真题",
-      "title": "2017 年 · 药事管理与法规 · 真题",
+      "title": "2017 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 83,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-7d7544613f.json"
@@ -148,7 +148,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2018",
       "paper_type": "真题",
-      "title": "2018 年 · 中药学专业知识（一） · 真题",
+      "title": "2018 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 76,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-f5c8679cd3.json"
@@ -158,7 +158,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2018",
       "paper_type": "真题",
-      "title": "2018 年 · 中药学专业知识（二） · 真题",
+      "title": "2018 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 83,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-23e069ee61.json"
@@ -168,7 +168,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2018",
       "paper_type": "真题",
-      "title": "2018 年 · 中药学综合知识与技能 · 真题",
+      "title": "2018 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 83,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-5b93b050c0.json"
@@ -178,7 +178,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2018",
       "paper_type": "真题",
-      "title": "2018 年 · 药事管理与法规 · 真题",
+      "title": "2018 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 84,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-f85ea661d8.json"
@@ -188,7 +188,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2019",
       "paper_type": "真题",
-      "title": "2019 年 · 中药学专业知识（一） · 真题",
+      "title": "2019 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 75,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-676e0bb499.json"
@@ -198,7 +198,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2019",
       "paper_type": "真题",
-      "title": "2019 年 · 中药学专业知识（二） · 真题",
+      "title": "2019 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 75,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-de64548f31.json"
@@ -208,7 +208,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2019",
       "paper_type": "真题",
-      "title": "2019 年 · 中药学综合知识与技能 · 真题",
+      "title": "2019 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 88,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-6f5778bdb7.json"
@@ -218,7 +218,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2019",
       "paper_type": "真题",
-      "title": "2019 年 · 药事管理与法规 · 真题",
+      "title": "2019 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 84,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-40c8ae25a0.json"
@@ -228,7 +228,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2020",
       "paper_type": "真题",
-      "title": "2020 年 · 中药学专业知识（一） · 真题",
+      "title": "2020 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 77,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-9e7a93c0af.json"
@@ -238,7 +238,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2020",
       "paper_type": "真题",
-      "title": "2020 年 · 中药学专业知识（二） · 真题",
+      "title": "2020 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 80,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-2351793487.json"
@@ -248,7 +248,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2020",
       "paper_type": "真题",
-      "title": "2020 年 · 中药学综合知识与技能 · 真题",
+      "title": "2020 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 84,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-42fbefbfe3.json"
@@ -258,7 +258,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2020",
       "paper_type": "真题",
-      "title": "2020 年 · 药事管理与法规 · 真题",
+      "title": "2020 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 86,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-e0a8df9855.json"
@@ -268,7 +268,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2021",
       "paper_type": "真题",
-      "title": "2021 年 · 中药学专业知识（一） · 真题",
+      "title": "2021 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 113,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-d676646cac.json"
@@ -278,7 +278,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2021",
       "paper_type": "真题",
-      "title": "2021 年 · 中药学专业知识（二） · 真题",
+      "title": "2021 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 119,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-9adc4fdf2d.json"
@@ -288,7 +288,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2021",
       "paper_type": "真题",
-      "title": "2021 年 · 中药学综合知识与技能 · 真题",
+      "title": "2021 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 119,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-c1922d8c70.json"
@@ -298,7 +298,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2021",
       "paper_type": "真题",
-      "title": "2021 年 · 药事管理与法规 · 真题",
+      "title": "2021 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 111,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-56adba1859.json"
@@ -308,7 +308,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2022",
       "paper_type": "真题",
-      "title": "2022 年 · 中药学专业知识（一） · 真题",
+      "title": "2022 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 42,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-13ac0f14dc.json"
@@ -318,7 +318,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2022",
       "paper_type": "真题",
-      "title": "2022 年 · 中药学专业知识（二） · 真题",
+      "title": "2022 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 59,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-7cf808954b.json"
@@ -328,7 +328,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2022",
       "paper_type": "真题",
-      "title": "2022 年 · 中药学综合知识与技能 · 真题",
+      "title": "2022 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 68,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-a67020bdf0.json"
@@ -338,7 +338,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2022",
       "paper_type": "真题",
-      "title": "2022 年 · 药事管理与法规 · 真题",
+      "title": "2022 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 64,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-72afff1d9a.json"
@@ -348,7 +348,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2023",
       "paper_type": "真题",
-      "title": "2023 年 · 中药学专业知识（一） · 真题",
+      "title": "2023 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 56,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-a5c7fe6a9d.json"
@@ -358,7 +358,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2023",
       "paper_type": "真题",
-      "title": "2023 年 · 中药学专业知识（二） · 真题",
+      "title": "2023 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 60,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-ae594a84c9.json"
@@ -368,7 +368,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2023",
       "paper_type": "真题",
-      "title": "2023 年 · 中药学综合知识与技能 · 真题",
+      "title": "2023 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 67,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-dcb4e1688d.json"
@@ -378,7 +378,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2023",
       "paper_type": "真题",
-      "title": "2023 年 · 药事管理与法规 · 真题",
+      "title": "2023 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 66,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-906691019e.json"
@@ -388,7 +388,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2024",
       "paper_type": "真题",
-      "title": "2024 年 · 中药学专业知识（一） · 真题",
+      "title": "2024 年 · 中药学专业知识（一） · 真题（第 1 套）",
       "question_count": 57,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-d2ea9019af.json"
@@ -398,7 +398,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2024",
       "paper_type": "真题",
-      "title": "2024 年 · 中药学专业知识（二） · 真题",
+      "title": "2024 年 · 中药学专业知识（二） · 真题（第 2 套）",
       "question_count": 61,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-808efa6628.json"
@@ -408,7 +408,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2024",
       "paper_type": "真题",
-      "title": "2024 年 · 中药学综合知识与技能 · 真题",
+      "title": "2024 年 · 中药学综合知识与技能 · 真题（第 3 套）",
       "question_count": 67,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-df52d6f09c.json"
@@ -418,7 +418,7 @@
       "exam_id": "5ae6a7bd1b91",
       "year": "2024",
       "paper_type": "真题",
-      "title": "2024 年 · 药事管理与法规 · 真题",
+      "title": "2024 年 · 药事管理与法规 · 真题（第 4 套）",
       "question_count": 58,
       "published": true,
       "data_file": "papers/5ae6a7bd1b91-1f023494f3.json"
@@ -427,8 +427,8 @@
       "template_id": "6581a15b89f4-112646f5ab",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 1 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 1 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/6581a15b89f4-112646f5ab.json"
@@ -437,8 +437,8 @@
       "template_id": "6581a15b89f4-ab7d9793bd",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 2 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 2 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/6581a15b89f4-ab7d9793bd.json"
@@ -447,8 +447,8 @@
       "template_id": "6581a15b89f4-5de402e1f4",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 3 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 3 套）",
       "question_count": 16,
       "published": true,
       "data_file": "papers/6581a15b89f4-5de402e1f4.json"
@@ -457,8 +457,8 @@
       "template_id": "6581a15b89f4-1d5955adf4",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 4 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 4 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/6581a15b89f4-1d5955adf4.json"
@@ -467,8 +467,8 @@
       "template_id": "6581a15b89f4-f15862411b",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 5 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 5 套）",
       "question_count": 11,
       "published": true,
       "data_file": "papers/6581a15b89f4-f15862411b.json"
@@ -477,8 +477,8 @@
       "template_id": "6581a15b89f4-e1072a51ce",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 6 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 6 套）",
       "question_count": 10,
       "published": true,
       "data_file": "papers/6581a15b89f4-e1072a51ce.json"
@@ -487,8 +487,8 @@
       "template_id": "6581a15b89f4-907bf739be",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 8 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 7 套）",
       "question_count": 12,
       "published": true,
       "data_file": "papers/6581a15b89f4-907bf739be.json"
@@ -497,8 +497,8 @@
       "template_id": "6581a15b89f4-3905ea02e2",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 9 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 8 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/6581a15b89f4-3905ea02e2.json"
@@ -507,8 +507,8 @@
       "template_id": "6581a15b89f4-cb5b0c62df",
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 10 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 9 套）",
       "question_count": 14,
       "published": true,
       "data_file": "papers/6581a15b89f4-cb5b0c62df.json"
@@ -518,7 +518,7 @@
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 1 套）",
+      "title": "模拟题（第 10 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/6581a15b89f4-dfb6ad7d6e.json"
@@ -528,7 +528,7 @@
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 2 套）",
+      "title": "模拟题（第 11 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/6581a15b89f4-747303db03.json"
@@ -538,7 +538,7 @@
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 3 套）",
+      "title": "模拟题（第 12 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/6581a15b89f4-a07743b0f0.json"
@@ -548,7 +548,7 @@
       "exam_id": "6581a15b89f4",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 4 套）",
+      "title": "模拟题（第 13 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/6581a15b89f4-6ec6a676c9.json"
@@ -558,7 +558,7 @@
       "exam_id": "868c9dd7d0a9",
       "year": "2018",
       "paper_type": "真题",
-      "title": "2018 年真题",
+      "title": "2018 年真题（第 1 套）",
       "question_count": 57,
       "published": true,
       "data_file": "papers/868c9dd7d0a9-2018.json"
@@ -568,7 +568,7 @@
       "exam_id": "868c9dd7d0a9",
       "year": "2019",
       "paper_type": "真题",
-      "title": "2019 年真题",
+      "title": "2019 年真题（第 1 套）",
       "question_count": 58,
       "published": true,
       "data_file": "papers/868c9dd7d0a9-2019.json"
@@ -578,7 +578,7 @@
       "exam_id": "868c9dd7d0a9",
       "year": "2020",
       "paper_type": "真题",
-      "title": "2020 年真题",
+      "title": "2020 年真题（第 1 套）",
       "question_count": 51,
       "published": true,
       "data_file": "papers/868c9dd7d0a9-2020.json"
@@ -588,7 +588,7 @@
       "exam_id": "868c9dd7d0a9",
       "year": "2022",
       "paper_type": "真题",
-      "title": "2022 年真题",
+      "title": "2022 年真题（第 1 套）",
       "question_count": 56,
       "published": true,
       "data_file": "papers/868c9dd7d0a9-2022.json"
@@ -598,7 +598,7 @@
       "exam_id": "868c9dd7d0a9",
       "year": "2023",
       "paper_type": "真题",
-      "title": "2023 年真题",
+      "title": "2023 年真题（第 1 套）",
       "question_count": 22,
       "published": true,
       "data_file": "papers/868c9dd7d0a9-2023.json"
@@ -608,7 +608,7 @@
       "exam_id": "868c9dd7d0a9",
       "year": "2024",
       "paper_type": "真题",
-      "title": "2024 年真题",
+      "title": "2024 年真题（第 1 套）",
       "question_count": 98,
       "published": true,
       "data_file": "papers/868c9dd7d0a9-2024.json"
@@ -617,8 +617,8 @@
       "template_id": "8a087ba277ab-b254dc0395",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 1 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 1 套）",
       "question_count": 25,
       "published": true,
       "data_file": "papers/8a087ba277ab-b254dc0395.json"
@@ -627,8 +627,8 @@
       "template_id": "8a087ba277ab-3f30beb990",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 2 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 2 套）",
       "question_count": 24,
       "published": true,
       "data_file": "papers/8a087ba277ab-3f30beb990.json"
@@ -637,8 +637,8 @@
       "template_id": "8a087ba277ab-3d4656dd8f",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 3 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 3 套）",
       "question_count": 25,
       "published": true,
       "data_file": "papers/8a087ba277ab-3d4656dd8f.json"
@@ -647,8 +647,8 @@
       "template_id": "8a087ba277ab-f6d34665a7",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 4 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 4 套）",
       "question_count": 18,
       "published": true,
       "data_file": "papers/8a087ba277ab-f6d34665a7.json"
@@ -657,8 +657,8 @@
       "template_id": "8a087ba277ab-7cd62626ce",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 5 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 5 套）",
       "question_count": 20,
       "published": true,
       "data_file": "papers/8a087ba277ab-7cd62626ce.json"
@@ -667,8 +667,8 @@
       "template_id": "8a087ba277ab-e44bfa11b1",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 6 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 6 套）",
       "question_count": 3,
       "published": true,
       "data_file": "papers/8a087ba277ab-e44bfa11b1.json"
@@ -677,8 +677,8 @@
       "template_id": "8a087ba277ab-2830afe9b2",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 7 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 7 套）",
       "question_count": 3,
       "published": true,
       "data_file": "papers/8a087ba277ab-2830afe9b2.json"
@@ -687,8 +687,8 @@
       "template_id": "8a087ba277ab-9110bbcce1",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 8 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 8 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/8a087ba277ab-9110bbcce1.json"
@@ -697,8 +697,8 @@
       "template_id": "8a087ba277ab-961043e461",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 9 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 9 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/8a087ba277ab-961043e461.json"
@@ -707,8 +707,8 @@
       "template_id": "8a087ba277ab-5f37e1dcd3",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 10 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 10 套）",
       "question_count": 14,
       "published": true,
       "data_file": "papers/8a087ba277ab-5f37e1dcd3.json"
@@ -717,8 +717,8 @@
       "template_id": "8a087ba277ab-089bc495f0",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 11 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 11 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/8a087ba277ab-089bc495f0.json"
@@ -727,8 +727,8 @@
       "template_id": "8a087ba277ab-1b9c0852e0",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 12 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 12 套）",
       "question_count": 19,
       "published": true,
       "data_file": "papers/8a087ba277ab-1b9c0852e0.json"
@@ -737,8 +737,8 @@
       "template_id": "8a087ba277ab-f10f5a79c6",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 13 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 13 套）",
       "question_count": 10,
       "published": true,
       "data_file": "papers/8a087ba277ab-f10f5a79c6.json"
@@ -747,8 +747,8 @@
       "template_id": "8a087ba277ab-aeeec54d97",
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
-      "paper_type": "回忆题",
-      "title": "回忆题（第 14 套）",
+      "paper_type": "模拟题",
+      "title": "模拟题（第 14 套）",
       "question_count": 8,
       "published": true,
       "data_file": "papers/8a087ba277ab-aeeec54d97.json"
@@ -758,7 +758,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 1 套）",
+      "title": "模拟题（第 15 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/8a087ba277ab-2488a1e7d5.json"
@@ -768,7 +768,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 2 套）",
+      "title": "模拟题（第 16 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/8a087ba277ab-5953e75b33.json"
@@ -778,7 +778,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 3 套）",
+      "title": "模拟题（第 17 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/8a087ba277ab-61eb2d1a4a.json"
@@ -788,7 +788,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 4 套）",
+      "title": "模拟题（第 18 套）",
       "question_count": 3,
       "published": true,
       "data_file": "papers/8a087ba277ab-39f32139fc.json"
@@ -798,7 +798,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 5 套）",
+      "title": "模拟题（第 19 套）",
       "question_count": 14,
       "published": true,
       "data_file": "papers/8a087ba277ab-b2c78cbe7b.json"
@@ -808,7 +808,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 6 套）",
+      "title": "模拟题（第 20 套）",
       "question_count": 20,
       "published": true,
       "data_file": "papers/8a087ba277ab-295d433f0a.json"
@@ -818,7 +818,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 7 套）",
+      "title": "模拟题（第 21 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/8a087ba277ab-36cb96b296.json"
@@ -828,7 +828,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 8 套）",
+      "title": "模拟题（第 22 套）",
       "question_count": 15,
       "published": true,
       "data_file": "papers/8a087ba277ab-a9db0c9c8a.json"
@@ -838,7 +838,7 @@
       "exam_id": "8a087ba277ab",
       "year": "未标注年份",
       "paper_type": "模拟题",
-      "title": "模拟题（第 9 套）",
+      "title": "模拟题（第 23 套）",
       "question_count": 11,
       "published": true,
       "data_file": "papers/8a087ba277ab-25bc013601.json"
@@ -848,7 +848,7 @@
       "exam_id": "bd4f84f55760",
       "year": "2018",
       "paper_type": "真题",
-      "title": "2018 年真题",
+      "title": "2018 年真题（第 1 套）",
       "question_count": 45,
       "published": true,
       "data_file": "papers/bd4f84f55760-187fe471be.json"
@@ -858,7 +858,7 @@
       "exam_id": "bd4f84f55760",
       "year": "2019",
       "paper_type": "真题",
-      "title": "2019 年真题",
+      "title": "2019 年真题（第 1 套）",
       "question_count": 193,
       "published": true,
       "data_file": "papers/bd4f84f55760-f969f98c5a.json"
@@ -868,7 +868,7 @@
       "exam_id": "bd4f84f55760",
       "year": "2020",
       "paper_type": "真题",
-      "title": "2020 年真题",
+      "title": "2020 年真题（第 1 套）",
       "question_count": 192,
       "published": true,
       "data_file": "papers/bd4f84f55760-477e30fe54.json"
@@ -878,7 +878,7 @@
       "exam_id": "bd4f84f55760",
       "year": "2021",
       "paper_type": "真题",
-      "title": "2021 年真题",
+      "title": "2021 年真题（第 1 套）",
       "question_count": 63,
       "published": true,
       "data_file": "papers/bd4f84f55760-cd404a0602.json"
@@ -888,7 +888,7 @@
       "exam_id": "bd4f84f55760",
       "year": "2022",
       "paper_type": "真题",
-      "title": "2022 年真题",
+      "title": "2022 年真题（第 1 套）",
       "question_count": 188,
       "published": true,
       "data_file": "papers/bd4f84f55760-bfaaf350e6.json"
@@ -898,7 +898,7 @@
       "exam_id": "bd4f84f55760",
       "year": "2023",
       "paper_type": "真题",
-      "title": "2023 年真题",
+      "title": "2023 年真题（第 1 套）",
       "question_count": 87,
       "published": true,
       "data_file": "papers/bd4f84f55760-86fd2af226.json"
@@ -908,7 +908,7 @@
       "exam_id": "bd4f84f55760",
       "year": "2024",
       "paper_type": "真题",
-      "title": "2024 年真题（一试）",
+      "title": "2024 年真题（一试）（第 1 套）",
       "question_count": 85,
       "published": true,
       "data_file": "papers/bd4f84f55760-877578c095.json"

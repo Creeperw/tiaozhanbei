@@ -93,6 +93,47 @@ async def test_resolver_uses_confirmed_direct_learning_goal(
 
 
 @pytest.mark.asyncio
+async def test_beginner_general_study_still_requires_exam_target(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    result = await DefaultRouteResolverAgent(repository, textbook_repository).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "请结合我的学习状态，为我制定一份长期学习计划。我想长期学习中医。",
+            "user_profile": {"learning_background": "零基础"},
+        }
+    )
+
+    assert result.payload.planning_status == "provisional"
+    assert result.payload.route_id is None
+    assert result.payload.unknowns_to_confirm
+    assert any("考试" in item for item in result.payload.unknowns_to_confirm)
+
+
+@pytest.mark.asyncio
+async def test_beginner_resume_answer_does_not_replace_required_exam_target(
+    repository: DefaultRouteRepository,
+    textbook_repository: TextbookRouteRepository,
+) -> None:
+    result = await DefaultRouteResolverAgent(repository, textbook_repository).run(
+        {
+            **agent_context(),
+            "plan_scope": "long_term",
+            "user_request": "请结合我的学习状态，为我制定一份长期学习计划。",
+            "latest_resume_answer": "零基础，目前什么都不会。",
+            "user_profile": {},
+        }
+    )
+
+    assert result.payload.planning_status == "provisional"
+    assert result.payload.route_id is None
+    assert result.payload.unknowns_to_confirm
+    assert any("考试" in item for item in result.payload.unknowns_to_confirm)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("exam_name", "exam_track_id", "textbook_route_id"),
     [

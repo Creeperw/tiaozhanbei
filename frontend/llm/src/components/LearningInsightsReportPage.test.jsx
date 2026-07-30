@@ -1,9 +1,18 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import LearningInsightsReportPage from './LearningInsightsReportPage';
-import { loadReportsData } from '../pageDataLoaders.js';
+import {
+  loadReportsData,
+  loadResourceEffectiveness,
+  recordResourceRecommendationEvent,
+} from '../pageDataLoaders.js';
 
 vi.mock('../pageDataLoaders.js', () => ({
   emptyReport: {
@@ -11,8 +20,11 @@ vi.mock('../pageDataLoaders.js', () => ({
     dimensions: [],
     activity_trends: { series: [] },
     data_quality: {},
+    resource_match_report: { target: {}, summary: {}, matches: [], no_match_reason: '' },
   },
   loadReportsData: vi.fn(),
+  loadResourceEffectiveness: vi.fn(),
+  recordResourceRecommendationEvent: vi.fn(),
 }));
 
 vi.mock('../utils/api', () => ({ fetchJsonWithAuthFallback: vi.fn() }));
@@ -20,6 +32,26 @@ vi.mock('../utils/api', () => ({ fetchJsonWithAuthFallback: vi.fn() }));
 describe('LearningInsightsReportPage', () => {
   it('renders the reference-style report and removes the retired report sections', async () => {
     const onNavigate = vi.fn();
+    loadResourceEffectiveness.mockResolvedValue({
+      error: '',
+      effectiveness: {
+        window_days: 30,
+        funnel: {
+          displayed_resource_count: 1,
+          clicked_resource_count: 0,
+          completed_resource_count: 0,
+        },
+        learning_outcomes: {
+          post_resource_attempt_count: 0,
+          status: 'insufficient_evidence',
+        },
+        ranking_feedback: { eligible_for_weight_calibration: false },
+      },
+    });
+    recordResourceRecommendationEvent.mockResolvedValue({
+      error: '',
+      event: { recorded: true },
+    });
     loadReportsData.mockResolvedValue({
       error: '',
       report: {
@@ -57,6 +89,36 @@ describe('LearningInsightsReportPage', () => {
             activities: { total: 2, by_type: { question_attempt: 2 } },
           },
         },
+        resource_match_report: {
+          recommendation_view_id: 'recommendation-view:1',
+          target: { kp_ids: ['KP_1'] },
+          summary: { coverage: 1 },
+          matches: [{
+            resource_id: 'CARD_1',
+            resource_type: 'knowledge_card',
+            title: '四君子汤知识卡',
+            kp_ids: ['KP_1'],
+            score: 0.9,
+            estimated_minutes: 12,
+            reasons: ['覆盖当前薄弱或计划知识点'],
+            components: { knowledge_fit: 1, quality: 0.8, format_fit: 1, time_fit: 1 },
+            component_sources: {
+              knowledge_fit: 'resource.kp_ids intersect target.kp_ids',
+              quality: 'knowledge_card_bundle',
+              format_fit: 'user_profiles.exercise_preferences/custom_needs',
+              time_fit: 'content_type_default',
+            },
+            feedback: {
+              recommendation_view_id: 'recommendation-view:1',
+              resource_id: 'CARD_1',
+              resource_type: 'knowledge_card',
+              kp_ids: ['KP_1'],
+              event_endpoint: '/api/v1/resource-recommendations/events',
+              supported_events: ['impression', 'click', 'complete'],
+            },
+          }],
+          no_match_reason: '',
+        },
       },
     });
     render(<LearningInsightsReportPage onNavigate={onNavigate} currentUser={{ username: 'alice' }} />);
@@ -89,7 +151,27 @@ describe('LearningInsightsReportPage', () => {
     expect(screen.queryByText('知识点掌握热力图')).not.toBeInTheDocument();
     expect(screen.queryByText('复习队列')).not.toBeInTheDocument();
     expect(screen.queryByText('多尺度学习状态')).not.toBeInTheDocument();
-    expect(screen.queryByText('资源匹配报告')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '资源匹配报告' })).toBeInTheDocument();
+    expect(screen.getByText('四君子汤知识卡')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '资源推荐效果' })).toBeInTheDocument();
+    await waitFor(() => expect(recordResourceRecommendationEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: 'impression',
+    })));
+    fireEvent.click(screen.getByRole('button', { name: '匹配依据' }));
+    expect(screen.getByText('资源知识点与当前薄弱点、计划知识点的交集')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '打开资源' }));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith({
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType: 'knowledge_cards',
+        cardId: 'CARD_1',
+        kpId: 'KP_1',
+        returnTo: { page: 'personalization', params: { view: 'reports' } },
+      },
+    }));
+    fireEvent.click(screen.getByRole('button', { name: '我已学完' }));
+    expect(await screen.findByRole('button', { name: '已完成' })).toBeDisabled();
     expect(screen.queryByText('监测口径、数据来源与参考依据')).not.toBeInTheDocument();
     expect(screen.queryByText('主动干预')).not.toBeInTheDocument();
   });

@@ -38,7 +38,7 @@ const STATUS_LABELS = Object.freeze({
   failed: '执行失败',
   retrying: '正在重试',
   rollingBack: '正在复核',
-  waiting_human_review: '等待补充',
+  waiting_human_review: '等待人工复核',
   interrupted: '等待补充',
   archived: '已重新生成',
   skipped: '本次无需参与',

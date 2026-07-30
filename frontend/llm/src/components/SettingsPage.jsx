@@ -91,7 +91,7 @@ export default function SettingsPage({ embedded = false }) {
       {loading && <div role="status" className="settings-page__loading">正在加载设置…</div>}
       <section aria-busy={loading} className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 sm:p-6">
         <h2 className="text-xl font-semibold text-slate-950">通知与主动提醒</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">控制复习到期、主动干预和规划复盘通知。关闭通知不会停止后台计算。</p>
+        <p className="mt-2 text-[15px] leading-6 text-slate-600">控制复习到期、主动干预和规划复盘通知。关闭通知不会停止后台计算。</p>
         <label className="mt-4 flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-900">
           <span>启用站内通知</span>
           <input type="checkbox" checked={notificationPreferences.in_app_enabled} disabled={loading || saving || !notificationsAvailable} onChange={(event) => setNotificationPreferences((current) => ({ ...current, in_app_enabled: event.target.checked }))} />
@@ -113,7 +113,7 @@ export default function SettingsPage({ embedded = false }) {
           <label className="text-sm text-slate-700">勿扰开始<input type="time" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2" value={notificationPreferences.quiet_hours?.start || '22:00'} disabled={loading || saving || !notificationsAvailable} onChange={(event) => setNotificationPreferences((current) => ({ ...current, quiet_hours: { ...current.quiet_hours, start: event.target.value } }))} /></label>
           <label className="text-sm text-slate-700">勿扰结束<input type="time" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2" value={notificationPreferences.quiet_hours?.end || '07:00'} disabled={loading || saving || !notificationsAvailable} onChange={(event) => setNotificationPreferences((current) => ({ ...current, quiet_hours: { ...current.quiet_hours, end: event.target.value } }))} /></label>
         </div>
-        {!notificationsAvailable && !loading && <p className="mt-3 text-xs text-slate-500">通知偏好接口暂不可用，当前保持默认设置。</p>}
+        {!notificationsAvailable && !loading && <p className="mt-3 text-[15px] text-slate-500">通知偏好接口暂不可用，当前保持默认设置。</p>}
       </section>
       {error && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}{!savedSnapshot && <button type="button" className="ml-3 font-semibold underline" onClick={() => setReloadKey((value) => value + 1)}>重新加载</button>}</div>}
       {message && <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}

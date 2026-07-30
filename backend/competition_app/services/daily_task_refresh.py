@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from threading import RLock
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from competition_app.contracts.learning_plan import LearningTask
@@ -25,10 +25,12 @@ class DailyTaskRefreshService:
         repository: LearningPlanRepository,
         knowledge_point_resolver: KnowledgePointResolver | None = None,
         video_resource_resolver: VideoResourceResolver | None = None,
+        task_load_policy_loader: Callable[..., dict[str, Any]] | None = None,
     ) -> None:
         self.repository = repository
         self.knowledge_point_resolver = knowledge_point_resolver
         self.video_resource_resolver = video_resource_resolver
+        self.task_load_policy_loader = task_load_policy_loader
         self._lock = RLock()
 
     @staticmethod
@@ -74,7 +76,34 @@ class DailyTaskRefreshService:
                     reason="short_term_plan_required",
                 )
 
-            next_task = self._next_task(task, plans.short_term_plan, current_time)
+            task_load_policy: dict[str, Any] = {}
+            if self.task_load_policy_loader is not None:
+                try:
+                    loaded_policy = self.task_load_policy_loader(
+                        learner_id,
+                        plan_context={
+                            "long_term_plan": (
+                                plans.long_term_plan.model_dump(mode="json")
+                                if plans.long_term_plan is not None
+                                else None
+                            ),
+                            "short_term_plan": plans.short_term_plan.model_dump(
+                                mode="json"
+                            ),
+                            "learning_task": task.model_dump(mode="json"),
+                        },
+                    )
+                    if isinstance(loaded_policy, dict):
+                        task_load_policy = loaded_policy
+                except Exception:
+                    # A telemetry outage must not block the 24-hour refresh.
+                    task_load_policy = {}
+            next_task = self._next_task(
+                task,
+                plans.short_term_plan,
+                current_time,
+                recommended_minutes=task_load_policy.get("recommended_minutes"),
+            )
             saved = self.repository.save_current(
                 learner_id,
                 plans.model_copy(update={"learning_task": next_task}),
@@ -96,6 +125,7 @@ class DailyTaskRefreshService:
                 refreshed=True,
                 previous_task_id=task.task_id,
                 reason="refresh_due",
+                task_load_policy=task_load_policy,
             )
 
     @staticmethod
@@ -114,7 +144,14 @@ class DailyTaskRefreshService:
             block,
         )
 
-    def _next_task(self, task: LearningTask, short_plan: Any, now: datetime) -> LearningTask:
+    def _next_task(
+        self,
+        task: LearningTask,
+        short_plan: Any,
+        now: datetime,
+        *,
+        recommended_minutes: Any = None,
+    ) -> LearningTask:
         package = short_plan.short_term_learning_package
         blocks = list(package.task_blocks) if package is not None else []
         usable = [self._block_values(block) for block in blocks]
@@ -145,6 +182,37 @@ class DailyTaskRefreshService:
             expected_output = task.expected_output
             completion_criteria = task.completion_criteria
 
+        target_minutes = (
+            int(recommended_minutes)
+            if isinstance(recommended_minutes, (int, float))
+            and not isinstance(recommended_minutes, bool)
+            and int(recommended_minutes) > 0
+            else int(minutes or task.estimated_minutes)
+        )
+        target_minutes = max(10, min(24 * 60, target_minutes))
+        try:
+            items = materialize_daily_task_items(
+                task_content=content,
+                learning_chapter=task.learning_chapter,
+                estimated_minutes=target_minutes,
+                focus_knowledge_points=list(task.focus_knowledge_points),
+                task_blocks=[selected_block] if selected_block is not None else [],
+                knowledge_point_resolver=self.knowledge_point_resolver,
+                video_resource_resolver=self.video_resource_resolver,
+            )
+        except ValueError:
+            # Preserve the last executable budget if an unusually dense legacy
+            # task cannot fit into the reduced recommendation.
+            target_minutes = max(target_minutes, int(minutes or task.estimated_minutes))
+            items = materialize_daily_task_items(
+                task_content=content,
+                learning_chapter=task.learning_chapter,
+                estimated_minutes=target_minutes,
+                focus_knowledge_points=list(task.focus_knowledge_points),
+                task_blocks=[selected_block] if selected_block is not None else [],
+                knowledge_point_resolver=self.knowledge_point_resolver,
+                video_resource_resolver=self.video_resource_resolver,
+            )
         return LearningTask(
             task_id=f"TASK_{uuid4().hex}",
             learner_id=task.learner_id,
@@ -153,7 +221,7 @@ class DailyTaskRefreshService:
             task_content=content,
             learning_chapter=task.learning_chapter,
             focus_knowledge_points=list(task.focus_knowledge_points),
-            estimated_minutes=int(minutes or task.estimated_minutes),
+            estimated_minutes=target_minutes,
             expected_output=expected_output,
             completion_criteria=completion_criteria,
             version=task.version + 1,
@@ -162,15 +230,7 @@ class DailyTaskRefreshService:
             updated_at=now,
             refresh_started_at=now,
             refresh_due_at=now + DAILY_TASK_REFRESH_INTERVAL,
-            items=materialize_daily_task_items(
-                task_content=content,
-                learning_chapter=task.learning_chapter,
-                estimated_minutes=int(minutes or task.estimated_minutes),
-                focus_knowledge_points=list(task.focus_knowledge_points),
-                task_blocks=[selected_block] if selected_block is not None else [],
-                knowledge_point_resolver=self.knowledge_point_resolver,
-                video_resource_resolver=self.video_resource_resolver,
-            ),
+            items=items,
         )
 
     def _result(
@@ -182,6 +242,7 @@ class DailyTaskRefreshService:
         refreshed: bool = False,
         previous_task_id: str | None = None,
         reason: str = "active",
+        task_load_policy: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         due_at = self._utc(task.refresh_due_at) if task and task.refresh_due_at else None
         remaining = max(0, int((due_at - now).total_seconds())) if due_at else 0
@@ -204,4 +265,5 @@ class DailyTaskRefreshService:
             "previous_task_id": previous_task_id,
             "current_task_id": task.task_id if task else None,
             "reason": reason,
+            "task_load_policy": task_load_policy or None,
         }

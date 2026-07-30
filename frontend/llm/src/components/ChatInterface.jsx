@@ -1453,10 +1453,16 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
         rememberPendingRun(sessionId, null);
         return;
       }
-      if (run.status === 'completed' || run.status === 'interrupted') {
+      if (
+        run.status === 'completed'
+        || run.status === 'interrupted'
+        || run.status === 'waiting_human_review'
+      ) {
         await fetchMessages(sessionId, { force: true });
       }
-      if (run.status === 'completed') rememberPendingRun(sessionId, null);
+      if (run.status === 'completed' || run.status === 'waiting_human_review') {
+        rememberPendingRun(sessionId, null);
+      }
       if (run.status === 'running' && currentSessionIdRef.current === sessionId) {
         window.setTimeout(() => restorePendingRun(sessionId), 2000);
       }

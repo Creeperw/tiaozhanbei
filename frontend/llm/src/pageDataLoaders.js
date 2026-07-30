@@ -251,6 +251,14 @@ export const isResourceMatchReportValid = (data) => (
   && hasItemsArray(data.matches)
 );
 
+export const isResourceEffectivenessValid = (data) => (
+  data && typeof data === 'object'
+  && Number.isInteger(data.window_days)
+  && data.funnel && typeof data.funnel === 'object'
+  && data.learning_outcomes && typeof data.learning_outcomes === 'object'
+  && data.ranking_feedback && typeof data.ranking_feedback === 'object'
+);
+
 export const isMultiscaleStateValid = (data) => (
   data && typeof data === 'object'
   && data.schema_version === '1.0'
@@ -648,6 +656,71 @@ export async function loadReportsData({ fetcher }) {
         source: null,
       };
     }
+  }
+}
+
+export async function loadResourceEffectiveness({ fetcher, days = 30 }) {
+  try {
+    const { data, source } = await fetcher({
+      paths: [`/v1/resource-effectiveness?days=${days}`],
+      fallback: null,
+      validator: isResourceEffectivenessValid,
+    });
+    return { effectiveness: data, error: '', source };
+  } catch (error) {
+    return {
+      effectiveness: null,
+      error: error.message || '资源推荐效果加载失败',
+      source: null,
+    };
+  }
+}
+
+export async function recordResourceRecommendationEvent({
+  fetcher,
+  feedback,
+  eventType,
+}) {
+  const supportedEvents = Array.isArray(feedback?.supported_events)
+    ? feedback.supported_events
+    : [];
+  if (!feedback?.recommendation_view_id || !feedback?.resource_id) {
+    return { event: null, error: '当前资源缺少推荐反馈凭证', source: null };
+  }
+  if (!['impression', 'click', 'complete'].includes(eventType)
+    || (supportedEvents.length > 0 && !supportedEvents.includes(eventType))) {
+    return { event: null, error: '当前资源不支持该反馈事件', source: null };
+  }
+  try {
+    const endpoint = String(
+      feedback.event_endpoint || '/v1/resource-recommendations/events',
+    ).replace(/^\/api(?=\/)/, '');
+    const { data, source } = await fetcher({
+      paths: [endpoint],
+      fallback: null,
+      options: {
+        method: 'POST',
+        body: JSON.stringify({
+          event_type: eventType,
+          recommendation_view_id: feedback.recommendation_view_id,
+          resource_id: feedback.resource_id,
+          resource_type: feedback.resource_type || '',
+          kp_ids: Array.isArray(feedback.kp_ids) ? feedback.kp_ids : [],
+        }),
+      },
+      validator: (value) => (
+        value && typeof value === 'object'
+        && value.event_type === eventType
+        && value.recorded === true
+      ),
+    });
+    return { event: data, error: '', source };
+  } catch (error) {
+    return {
+      event: null,
+      error: error.message || '资源反馈记录失败',
+      source: null,
+    };
   }
 }
 
@@ -1063,7 +1136,7 @@ export async function submitPracticeAnswer({ fetcher, question, answer, taskItem
   }
   try {
     const { data, source } = await fetcher({
-      paths: ['/training/practice/grade', '/v1/workshop/practice/grade'],
+      paths: ['/v1/workshop/practice/grade', '/training/practice/grade'],
       fallback: null,
       options: {
         method: 'POST',
