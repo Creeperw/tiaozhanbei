@@ -32,6 +32,50 @@ export async function loadTextbookProgress(book, { signal } = {}) {
   }
   return payload;
 }
+export async function loadSectionQuestions(kpIds, { signal } = {}) {
+  if (!Array.isArray(kpIds) || kpIds.length === 0) return { items: [], total: 0 };
+  const filtered = kpIds.filter(Boolean);
+  if (!filtered.length) return { items: [], total: 0 };
+
+  // 并行请求数据库和图谱两个数据源
+  const dbPromise = (async () => {
+    try {
+      const dbParams = new URLSearchParams({ kp_ids: filtered.join(','), limit: '200' });
+      const res = await fetchWithAuth(
+        `${API_BASE}/training/workspace/questions-by-kp-ids?${dbParams}`,
+        signal ? { signal } : {},
+      );
+      const payload = await readJsonResponse(res, {});
+      return (res.ok && Array.isArray(payload.items)) ? payload.items : [];
+    } catch (_) { return []; }
+  })();
+
+  const atlasPromise = (async () => {
+    try {
+      const atlasParams = new URLSearchParams({ mode: 'lexical', limit: '100' });
+      for (const kpId of filtered) atlasParams.append('kp_id', kpId);
+      const res = await fetchWithAuth(
+        `${API_BASE}/knowledge/atlas/questions/search?${atlasParams}`,
+        signal ? { signal } : {},
+      );
+      const payload = await readJsonResponse(res, {});
+      return (res.ok && Array.isArray(payload.items)) ? payload.items : [];
+    } catch (_) { return []; }
+  })();
+
+  const [dbItems, atlasItems] = await Promise.all([dbPromise, atlasPromise]);
+
+  // 以数据库题目为主（有 analysis），图谱题目补充数据库没有的
+  const dbIds = new Set(dbItems.map((q) => q.question_id));
+  const merged = [...dbItems];
+  for (const q of atlasItems) {
+    if (!dbIds.has(q.question_id)) {
+      merged.push(q);
+    }
+  }
+  return { items: merged, total: merged.length };
+}
+
 export async function completeTextbookSection(payload, { signal } = {}) {
   const response = await fetchWithAuth(`${API_BASE}/learning-activity/textbook-progress`, {
     method: 'POST',

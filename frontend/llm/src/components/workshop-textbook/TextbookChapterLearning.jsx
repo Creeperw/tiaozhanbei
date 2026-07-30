@@ -18,10 +18,11 @@ import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
 import {
   completeTextbookSection,
   loadSectionLearningDetail,
+  loadSectionQuestions,
   loadTextbookProgress,
 } from './textbookChapterApi';
 import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
-import TextbookPdfReader from './TextbookPdfReader';
+import SectionExamPanel from './SectionExamPanel';
 import './textbookChapterLearning.css';
 
 function formatTime(value) {
@@ -200,15 +201,9 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [catalogQuery, setCatalogQuery] = useState('');
   const [catalogStatus, setCatalogStatus] = useState('all');
   const [searchCatalog, setSearchCatalog] = useState(null);
-  const [courseMode, setCourseMode] = useState('pdf');
-  const [pdfInitialPage, setPdfInitialPage] = useState(navigationContext.pdfPage || 1);
-  const [pageNotesOpen, setPageNotesOpen] = useState(false);
-
-  useEffect(() => {
-    setCourseMode('pdf');
-    setPdfInitialPage(navigationContext.pdfPage || 1);
-    setPageNotesOpen(false);
-  }, [book, navigationContext.openPdf, navigationContext.pdfPage]);
+  const [activeTab, setActiveTab] = useState('content');
+  const [sectionQuestionCounts, setSectionQuestionCounts] = useState({});
+  const [sectionKpIdsMap, setSectionKpIdsMap] = useState({});
 
   useEffect(() => {
     if (!book) {
@@ -401,8 +396,19 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     const querySections = !normalizedCatalogQuery
       ? sections
       : searchMatches?.find(({ chapter }) => chapter.id === selectedChapter?.id)?.sections || [];
-    return querySections.filter(sectionMatchesStatus);
-  }, [catalogStatus, normalizedCatalogQuery, searchMatches, sections, selectedChapter?.id, completedSectionIds]);
+    const filtered = querySections.filter(sectionMatchesStatus);
+    // 作业与考试标签下，将题目数量注入 alias 显示
+    if (activeTab === 'exam') {
+      return filtered.map((section) => {
+        const qCount = sectionQuestionCounts[section.id];
+        const alias = qCount !== undefined && qCount >= 0
+          ? `${qCount} 道题目`
+          : qCount === -1 ? '加载失败' : '加载中…';
+        return { ...section, alias };
+      });
+    }
+    return filtered;
+  }, [catalogStatus, normalizedCatalogQuery, searchMatches, sections, selectedChapter?.id, completedSectionIds, activeTab, sectionQuestionCounts]);
   useEffect(() => {
     if (catalogStatus === 'all' || !filteredChapters.length) return;
     if (!filteredChapters.some((chapter) => chapter.id === selectedChapter?.id)) {
@@ -422,6 +428,76 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       setSelectedSection(null);
     }
   }, [normalizedCatalogQuery, searchMatches, selectedChapter?.id]);
+
+  // 作业与考试标签激活时，通过实际题目接口加载各小节题目数量
+  useEffect(() => {
+    if (activeTab !== 'exam') return;
+    const chapterSections = selectedChapter ? (sectionsByChapter[selectedChapter.id] || []) : [];
+    if (!chapterSections.length) { setSectionQuestionCounts({}); return; }
+    const controller = new AbortController();
+    const loadCounts = async () => {
+      // 第一步：加载所有小节的 KP IDs
+      const sectionKpIds = {};
+      const allKpIds = [];
+      await Promise.all(chapterSections.map(async (section) => {
+        try {
+          const payload = await loadAtlasNodes({
+            level: 4,
+            route,
+            lv1: book,
+            chapter: selectedChapter.name,
+            chapterId: selectedChapter.id,
+            lv2: section.name,
+            sectionId: section.id,
+            signal: controller.signal,
+          });
+          const kps = Array.isArray(payload.nodes) ? payload.nodes : [];
+          // 注意：level 4 节点使用 "id" 字段存储 kp_id
+          const ids = kps.map((kp) => kp.kp_id || kp.id).filter(Boolean);
+          sectionKpIds[section.id] = new Set(ids);
+          allKpIds.push(...ids);
+        } catch (err) {
+          if (err.name !== 'AbortError') sectionKpIds[section.id] = new Set();
+        }
+      }));
+      if (controller.signal.aborted) return;
+      // 第二步：用去重后的全部 KP ID 调一次题目接口
+      const uniqueKpIds = [...new Set(allKpIds)];
+      const counts = {};
+      if (uniqueKpIds.length > 0) {
+        try {
+          const result = await loadSectionQuestions(uniqueKpIds, { signal: controller.signal });
+          const items = Array.isArray(result.items) ? result.items : [];
+          // 统计每道题归属的小节
+          for (const sectionId of Object.keys(sectionKpIds)) {
+            const kpSet = sectionKpIds[sectionId];
+            const matched = items.filter((q) => {
+              const qKps = Array.isArray(q.kp_ids) ? q.kp_ids : [];
+              return qKps.some((id) => kpSet.has(id));
+            });
+            counts[sectionId] = matched.length;
+          }
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            for (const sectionId of Object.keys(sectionKpIds)) counts[sectionId] = -1;
+          }
+        }
+      } else {
+        for (const sectionId of Object.keys(sectionKpIds)) counts[sectionId] = 0;
+      }
+      if (!controller.signal.aborted) {
+        setSectionQuestionCounts(counts);
+        // 同时保存 KP ID 映射供作业与考试面板使用
+        const kpIdsMap = {};
+        for (const [sectionId, kpSet] of Object.entries(sectionKpIds)) {
+          kpIdsMap[sectionId] = [...kpSet];
+        }
+        setSectionKpIdsMap(kpIdsMap);
+      }
+    };
+    loadCounts();
+    return () => controller.abort();
+  }, [activeTab, selectedChapter?.id, sectionsByChapter, book, route]);
   const sectionVideo = exactVideos[0] || null;
   const recommendedVideo = recommendedVideos[0] || null;
   const activeTimestampVideo = videoHistory.at(-1)?.video || null;
@@ -516,26 +592,18 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <button type="button" className={!pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
-            <button type="button" onClick={() => openCourseTool('question_training')}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
-            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}><BookOpen aria-hidden="true" size={18} />笔记本</button>
+            <button type="button" className={activeTab === 'content' ? 'is-active' : ''} onClick={() => setActiveTab('content')}><BookOpen aria-hidden="true" size={18} />课程内容</button>
+            <button type="button" className={activeTab === 'exam' ? 'is-active' : ''} onClick={() => setActiveTab('exam')}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
+            <button type="button" onClick={() => onNavigate?.({
+              page: 'knowledge',
+              params: { view: 'atlas', route, lv1: book, source: 'textbook-chapters' },
+            })}><Layers3 aria-hidden="true" size={18} />知识图谱</button>
+            <button type="button" onClick={() => openCourseTool('study_notes')}><BookOpen aria-hidden="true" size={18} />笔记本</button>
           </aside>
           <div className="textbook-learning-main">
-          {courseMode === 'pdf' ? (
-            <TextbookPdfReader
-              bookTitle={book}
-              initialPage={pdfInitialPage}
-              route={route}
-              notesOpen={pageNotesOpen}
-              onNotesOpenChange={setPageNotesOpen}
-              onClose={() => { setPageNotesOpen(false); setCourseMode('catalog'); }}
-            />
-          ) : (
-          <>
             <div className="textbook-learning-main__toolbar">
-              <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
-              <div className="textbook-learning-filters">
-                <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}><BookOpen aria-hidden="true" size={15} />阅读电子教材</button>
+              {activeTab === 'content' && <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>}
+              {activeTab === 'content' && <div className="textbook-learning-filters">
                 <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
                 {[
                   ['all', '全部'],
@@ -553,7 +621,9 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
                   </button>
                 ))}
               </div>
+              }
             </div>
+          {/* 章节目录 — 课程内容和作业与考试共用 */}
           {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
             <Directory
               title="章节"
@@ -604,7 +674,8 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             />
           </div>}
 
-          {selectedSection && (
+          {/* 课程内容标签：小节详情（视频 + 知识点） */}
+          {activeTab === 'content' && selectedSection && (
           <section className="textbook-section-content" aria-live="polite">
             <header>
               <div className="textbook-section-content__eyebrow">
@@ -683,7 +754,24 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             ) : <p className="textbook-section-content__empty">请先选择一个小节。</p>}
           </section>
           )}
-          </>
+
+          {/* 作业与考试标签 */}
+          {activeTab === 'exam' && (
+            <div style={{padding:'20px 0'}}>
+              {selectedSection ? (
+                  <SectionExamPanel
+                    sectionName={selectedSection.name}
+                    kpIds={sectionKpIdsMap[selectedSection.id] || []}
+                    onBack={() => setSelectedSection(null)}
+                  />
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+                  <Layers3 size={48} className="mx-auto mb-4 text-emerald-600" />
+                  <h2 className="mb-2 text-xl font-semibold text-slate-900">《{book}》作业与考试</h2>
+                  <p className="text-slate-500">请在左侧目录中选择一个章节和小节，题目将按知识点匹配后在此展示。</p>
+                </div>
+              )}
+            </div>
           )}
           </div>
         </div>
