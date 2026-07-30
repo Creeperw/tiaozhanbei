@@ -44,6 +44,7 @@ from competition_app.services.textbook_route import TextbookRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
 from competition_app.services.daily_task_refresh import DailyTaskRefreshService
 from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
+from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.review import ReviewService
 from competition_app.llm.terminal import (
     terminal_agent_finished,
@@ -82,6 +83,11 @@ from competition_app.repositories.workshop_library import (
 )
 from competition_app.services.account_profile import AccountProfileService
 from competition_app.services.workshop_library import WorkshopLibraryService
+from competition_app.services.textbook_pdf import (
+    InMemoryTextbookPdfAnnotationRepository,
+    SqlTextbookPdfAnnotationRepository,
+    TextbookPdfService,
+)
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -95,6 +101,7 @@ class ApplicationContainer:
     authentication_service: AuthenticationService
     account_profile_service: AccountProfileService
     workshop_library_service: WorkshopLibraryService
+    textbook_pdf_service: TextbookPdfService
     learning_plan_service: LearningPlanService
     daily_task_refresh_service: DailyTaskRefreshService
     daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
@@ -146,6 +153,9 @@ class ApplicationContainer:
             auth_repository = SqlAuthRepository(database_engine)
             account_profile_repository = SqlAccountProfileRepository(database_engine)
             workshop_library_repository = SqlWorkshopLibraryRepository(database_engine)
+            textbook_pdf_annotation_repository = SqlTextbookPdfAnnotationRepository(
+                database_engine
+            )
         else:
             plan_repository = InMemoryLearningPlanRepository()
             run_state_repository = InMemoryRunStateRepository()
@@ -154,6 +164,7 @@ class ApplicationContainer:
             auth_repository = InMemoryAuthRepository()
             account_profile_repository = InMemoryAccountProfileRepository()
             workshop_library_repository = InMemoryWorkshopLibraryRepository()
+            textbook_pdf_annotation_repository = InMemoryTextbookPdfAnnotationRepository()
         review_service = ReviewService(review_repository)
         authentication_service = AuthenticationService(
             auth_repository,
@@ -167,6 +178,11 @@ class ApplicationContainer:
             settings.avatar_dir,
         )
         workshop_library_service = WorkshopLibraryService(workshop_library_repository)
+        textbook_pdf_service = TextbookPdfService(
+            settings.textbook_pdf_root,
+            settings.textbook_pdf_catalog_path,
+            textbook_pdf_annotation_repository,
+        )
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
                 raise ValueError("live mode requires configured model API keys")
@@ -254,10 +270,33 @@ class ApplicationContainer:
             knowledge_point_resolver=knowledge_point_resolver,
             video_resource_resolver=video_resource_resolver,
         )
+        task_load_policy_loader = None
+        if backend_handoff_runtime is not None:
+
+            def load_task_load_policy(
+                learner_id: str,
+                *,
+                plan_context: dict,
+            ) -> dict:
+                queue = review_service.get_queue(learner_id, limit=500)
+                return backend_handoff_runtime.load_task_load_policy(
+                    learner_id,
+                    plan_context=plan_context,
+                    review_projection={
+                        "source": "canonical_review_memory",
+                        "due_count": queue.due_count,
+                        "total_count": len(queue.entries),
+                        "active_task_count": queue.active_task_count,
+                    },
+                    days=7,
+                )
+
+            task_load_policy_loader = load_task_load_policy
         daily_task_refresh_service = DailyTaskRefreshService(
             plan_repository,
             knowledge_point_resolver=knowledge_point_resolver,
             video_resource_resolver=video_resource_resolver,
+            task_load_policy_loader=task_load_policy_loader,
         )
         exa_retriever = (
             ExaVideoRetriever(settings.exa_api_key)
@@ -309,6 +348,84 @@ class ApplicationContainer:
             else None
         )
         tool_registry = ToolRegistry()
+
+        def unavailable_learner_data(
+            external_user_id: str,
+            *,
+            days: int = 7,
+            recent_limit: int = 20,
+        ) -> dict:
+            del external_user_id, recent_limit
+            return {
+                "schema_version": "1.0",
+                "window_days": days,
+                "evidence_status": "unavailable",
+                "reason": "learning data runtime is unavailable",
+            }
+
+        recent_learning_handler = unavailable_learner_data
+        learning_progress_handler = (
+            lambda external_user_id, *, days=30: unavailable_learner_data(
+                external_user_id, days=days
+            )
+        )
+        review_status_handler = (
+            lambda external_user_id, *, history_limit=100: unavailable_learner_data(
+                external_user_id, days=30, recent_limit=history_limit
+            )
+        )
+        if backend_handoff_runtime is not None:
+            recent_learning_handler = (
+                backend_handoff_runtime.load_recent_learning_summary
+            )
+            learning_progress_handler = backend_handoff_runtime.load_learning_statistics
+            review_status_handler = backend_handoff_runtime.load_review_dashboard
+
+        def load_current_plan_progress(external_user_id: str) -> dict:
+            plans = plan_repository.get_current(external_user_id)
+            daily_progress = {}
+            if (
+                plans is not None
+                and plans.learning_task is not None
+                and backend_handoff_runtime is not None
+            ):
+                try:
+                    daily_progress = backend_handoff_runtime.load_daily_task_progress(
+                        external_user_id,
+                        plans.learning_task.model_dump(mode="json"),
+                    )
+                except Exception:
+                    daily_progress = {}
+            return build_plan_progress(
+                plans,
+                daily_task_progress=daily_progress,
+            )
+
+        tool_registry.register(
+            "get_recent_learning_summary",
+            recent_learning_handler,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_learning_progress",
+            learning_progress_handler,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_mastery_snapshot",
+            review_status_handler,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_review_status",
+            review_status_handler,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_current_plan_progress",
+            load_current_plan_progress,
+            allowed_agents={"diagnosis_agent"},
+        )
         tool_registry.register(
             "get_kp_with_content",
             knowledge_tool.get_kp_with_content,
@@ -358,6 +475,16 @@ class ApplicationContainer:
         tool_registry.register(
             "search_question_resources",
             knowledge_tool.search_question_resources,
+            allowed_agents={"knowledge_base_agent"},
+        )
+        tool_registry.register(
+            "search_web_resources",
+            knowledge_tool.search_web_resources,
+            allowed_agents={"knowledge_base_agent"},
+        )
+        tool_registry.register(
+            "get_external_fact_evidence",
+            knowledge_tool.build_external_evidence_pack,
             allowed_agents={"knowledge_base_agent"},
         )
         exporter = SnapshotExporter(snapshot_root or package_root / "snapshots")
@@ -437,6 +564,7 @@ class ApplicationContainer:
             authentication_service=authentication_service,
             account_profile_service=account_profile_service,
             workshop_library_service=workshop_library_service,
+            textbook_pdf_service=textbook_pdf_service,
             learning_plan_service=learning_plan_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,

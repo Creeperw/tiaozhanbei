@@ -191,6 +191,20 @@ async def test_expert_publishes_retrieved_practice_when_model_omits_questions() 
 
 
 @pytest.mark.asyncio
+async def test_explicit_question_recommendation_uses_compact_practice_delivery() -> None:
+    context = context_with_candidates()
+    context["user_request"] = "根据我的核心薄弱点，推荐我需要做哪些题目。"
+
+    draft = (await ExpertAgent(CandidateModel(True, ["Q_1"])).run(context)).payload
+
+    assert draft.title == "四君子汤个性化练习"
+    assert draft.content["训练重点"] == ["方剂学"]
+    assert draft.content["练习资源"][0]["question_id"] == "Q_1"
+    assert "知识卡片" not in draft.content
+    assert "视频资源" not in draft.content
+
+
+@pytest.mark.asyncio
 async def test_knowledge_card_uses_model_explanation_without_raw_evidence_copy() -> None:
     draft = (await ExpertAgent(ExplanationWithQuestionModel()).run(context_with_candidates())).payload
 

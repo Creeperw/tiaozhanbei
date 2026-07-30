@@ -21,7 +21,7 @@ import {
 import { fetchJsonWithAuthFallback } from '../utils/api';
 import { generateWorkshopPaperWithAgents, loadPaper, loadPapers, savePaperAnswers, setPaperTimerPaused, submitPaper } from '../pageDataLoaders';
 import { groupPaperItems } from './paperQuestionGroups';
-import { FavoriteQuestionButton, FavoriteQuestionIconButton, NoteQuestionButton } from './WorkshopSaveActions';
+import { FavoriteQuestionButton, NoteQuestionButton } from './WorkshopSaveActions';
 
 const questionTypes = [
   ['single_choice', '单选题'],
@@ -451,23 +451,23 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
     },
   } : null;
 
-  if (!enabled) return <p className="mt-5 text-sm leading-6 text-slate-600">试卷生成暂未开放。</p>;
+  if (!enabled) return <p className="mt-5 text-[15px] leading-6 text-slate-600">试卷生成暂未开放。</p>;
 
   return (
     <div className="mt-5 space-y-5">
       {!paper && <>
         {!boundPaper && paperLibrary.length > 0 && <section className="space-y-3" aria-labelledby="paper-library-title">
-          <div><h3 id="paper-library-title" className="text-sm font-semibold text-slate-900">待作答与历史试卷</h3><p className="mt-1 text-sm leading-6 text-slate-500">智能体审核通过的试卷会出现在这里。</p></div>
+          <div><h3 id="paper-library-title" className="text-sm font-semibold text-slate-900">待作答与历史试卷</h3><p className="mt-1 text-[15px] leading-6 text-slate-500">智能体审核通过的试卷会出现在这里。</p></div>
           <div className="grid gap-2">{paperLibrary.map((item) => <button key={item.paper_id} type="button" onClick={() => openPaper(item.paper_id)} disabled={loading} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-3 text-left text-sm transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-50"><span><strong className="block text-slate-900">{item.title}</strong><span className="mt-1 block text-xs text-slate-500">{item.status === 'published' ? '待作答' : '已提交'} · {item.duration_minutes} 分钟</span></span><span className="text-emerald-700">打开试卷</span></button>)}</div>
         </section>}
-        {!boundPaper && <div className="border-t border-slate-200 pt-5"><h3 className="text-sm font-semibold text-slate-900">直接组卷</h3><p className="mt-1 text-sm leading-6 text-slate-500">也可以在智能问答中描述完整要求，审核通过后会提供“开始答题”按钮。</p></div>}
+        {!boundPaper && <div className="border-t border-slate-200 pt-5"><h3 className="text-sm font-semibold text-slate-900">直接组卷</h3><p className="mt-1 text-[15px] leading-6 text-slate-500">也可以在智能问答中描述完整要求，审核通过后会提供“开始答题”按钮。</p></div>}
         {!boundPaper && <label className="block text-sm font-medium text-slate-700">训练主题
           <textarea value={topic} onChange={(event) => setTopic(event.target.value)} disabled={loading} className="mt-2 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" />
         </label>}
-        {!boundPaper && <p className="text-sm text-slate-600">题量：{questionCount} 题；系统按主题、题型和知识点覆盖情况组卷。</p>}
+        {!boundPaper && <p className="text-[15px] text-slate-600">题量：{questionCount} 题；系统按主题、题型和知识点覆盖情况组卷。</p>}
         {!boundPaper && <fieldset>
           <legend className="text-sm font-medium text-slate-700">题型分布</legend>
-          <p className="mt-1 text-xs leading-5 text-slate-500">可只保留一种题型，也可组合组卷；总题量不超过 50 题。</p>
+          <p className="mt-1 text-[15px] leading-5 text-slate-500">可只保留一种题型，也可组合组卷；总题量不超过 50 题。</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {questionTypes.map(([key, label]) => <label key={key} className="text-sm font-medium text-slate-700">{label}
             <input type="number" min="0" max="50" value={distribution[key]} onChange={(event) => setCount(key, event.target.value)} disabled={loading} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />
@@ -477,7 +477,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
         {!boundPaper && <button type="button" onClick={generate} disabled={loading || !canGenerate} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
           {loading && <Loader2 size={16} className="animate-spin" />}{loading ? '正在组卷并审核…' : '生成试卷'}
         </button>}
-        {boundPaper && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">正在打开今日任务绑定试卷，题目范围和组卷约束由服务端冻结。</p>}
+        {boundPaper && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[15px] text-emerald-900">正在打开今日任务绑定试卷，题目范围和组卷约束由服务端冻结。</p>}
       </>}
       {paper && currentItem && <section className="relative min-h-[620px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 sm:px-5">
@@ -530,26 +530,12 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
         <article className="mx-auto max-w-3xl px-5 py-8 sm:py-10">
           <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold">
             <span className="rounded-md bg-emerald-100 px-2.5 py-1 text-emerald-800">{questionTypeLabel(currentItem.question_type)}</span>
-            {markedPositions.includes(position) && <span className="rounded-md border border-emerald-200 bg-emerald-100 px-2.5 py-1 text-emerald-800">已标记</span>}
+            {markedPositions.includes(position) && <span className="rounded-md border border-amber-200 bg-amber-100 px-2.5 py-1 text-amber-800">已标记</span>}
             {paperSubmitted && currentResult && <span className={`rounded-md px-2.5 py-1 ${currentResult.is_correct ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>{currentResult.is_correct ? '回答正确' : '需要复盘'}</span>}
           </div>
           <div className="flex items-start gap-3 text-lg font-medium leading-8 text-slate-950">
             <span className="mt-0.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-sm font-bold text-emerald-800">{position}</span>
             <span className="min-w-0 flex-1"><PaperQuestionContent content={currentItem.stem} /></span>
-            <FavoriteQuestionIconButton
-              question={{
-                resource_id: currentItem.paper_item_id,
-                title: `智能组卷 · ${String(currentItem.stem || '').slice(0, 80)}`,
-                content: {
-                  question_content: currentItem.stem,
-                  question_type: currentItem.question_type,
-                  options: currentOptions,
-                  standard_answer: currentResult?.standard_answer || [],
-                  explanation: currentResult?.explanation || '',
-                },
-              }}
-              source="智能组卷"
-            />
           </div>
 
           <fieldset className="mt-6" disabled={loading || answerLocked}>
@@ -580,7 +566,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
 
         <footer className="mx-auto flex max-w-3xl flex-wrap items-center gap-3 border-t border-slate-200 px-5 py-4">
           <button type="button" disabled={position === 1} onClick={() => goToPosition(position - 1)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}><ChevronLeft size={16} />上一题</button>
-          {!paperSubmitted && <button type="button" onClick={toggleMarked} className={`${paperButton} ${markedPositions.includes(position) ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'}`}><Bookmark size={16} />{markedPositions.includes(position) ? '取消标记' : '标记本题'}</button>}
+          {!paperSubmitted && <button type="button" onClick={toggleMarked} className={`${paperButton} ${markedPositions.includes(position) ? 'border-amber-300 bg-amber-100 text-amber-800' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'}`}><Bookmark size={16} />{markedPositions.includes(position) ? '取消标记' : '标记本题'}</button>}
           <button type="button" disabled={position === paper.items.length} onClick={() => goToPosition(position + 1)} className={`${paperButton} border-slate-300 bg-white text-slate-700 hover:border-emerald-400 hover:text-emerald-800`}>下一题<ChevronRight size={16} /></button>
           {!paperSubmitted && <button type="button" onClick={() => submit({ allowIncomplete: timeExpired })} disabled={loading || (!timeExpired && !allAnswered)} className={`${paperButton} ml-auto border-slate-900 bg-slate-900 text-white hover:bg-slate-800`}><ClipboardList size={16} />{timeExpired ? '按当前答案交卷' : '提交试卷'}</button>}
         </footer>
@@ -599,11 +585,11 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
                 const color = itemPosition === position
                   ? 'ring-2 ring-emerald-700 ring-offset-2'
                   : result
-                    ? result.is_correct ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                    ? result.is_correct ? 'bg-emerald-200 text-emerald-800' : 'bg-rose-600 text-white'
                     : markedPositions.includes(itemPosition)
-                      ? 'border border-emerald-300 bg-emerald-100 text-emerald-800'
+                      ? 'border border-amber-300 bg-amber-100 text-amber-800'
                       : answeredIds.has(item.paper_item_id)
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-emerald-200 text-emerald-800'
                         : 'border border-slate-300 bg-white text-slate-700';
                 return <button key={item.paper_item_id} type="button" aria-label={`第 ${itemPosition} 题`} onClick={() => goToPosition(itemPosition)} className={`h-9 rounded-full text-xs font-semibold transition hover:scale-105 ${color}`}>{itemPosition}</button>;
               })}</div>

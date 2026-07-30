@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
+  ArrowUpRight,
   Bold,
   Code2,
   Eye,
@@ -35,7 +36,16 @@ import {
 
 const emptyDraft = { title: '', content: '' };
 
-function QuestionContext({ context }) {
+function NoteSourceContext({ context, onOpenSource }) {
+  if (context?.book_id && context?.pdf_page) {
+    return (
+      <aside className="notion-note__question-context notion-note__source-context">
+        <strong>教材页来源</strong>
+        <p>《{context.book_title || '教材'}》第 {context.pdf_page} 页</p>
+        {onOpenSource && <button type="button" onClick={() => onOpenSource(context)}>返回原页 <ArrowUpRight size={14} /></button>}
+      </aside>
+    );
+  }
   if (!context?.question_content) return null;
   const answer = Array.isArray(context.standard_answer)
     ? context.standard_answer.join('、')
@@ -87,7 +97,14 @@ const tools = [
   { label: '链接', icon: Link2, before: '[', after: '](https://)' },
 ];
 
-export default function StudyNotesPanel() {
+export default function StudyNotesPanel({
+  bookContext = null,
+  initialPage = null,
+  autoCreatePageNote = false,
+  onOpenSource = null,
+  onNavigate = null,
+  compact = false,
+}) {
   const [notes, setNotes] = useState([]);
   const [folders, setFolders] = useState([]);
   const [selectedNotebook, setSelectedNotebook] = useState('');
@@ -104,17 +121,29 @@ export default function StudyNotesPanel() {
   const [newNotebookName, setNewNotebookName] = useState('');
   const editorRef = useRef(null);
   const imageInputRef = useRef(null);
+  const autoCreatedRef = useRef(new Set());
 
   const refresh = async ({ keepActive = true } = {}) => {
     setLoading(true);
     setError('');
     try {
       const [notesPayload, folderPayload] = await Promise.all([loadNotes(), loadNoteFolders()]);
-      const nextNotes = notesPayload.items || [];
-      const nextFolders = folderPayload.items || [];
+      const allNotes = notesPayload.items || [];
+      const nextNotes = bookContext?.title
+        ? allNotes.filter((note) => (
+          bookContext.book_id
+            ? note.context?.book_id === bookContext.book_id
+            : note.context?.book_title === bookContext.title
+        ))
+        : allNotes;
+      const nextFolders = bookContext?.title
+        ? (folderPayload.items || []).filter((folder) => folder.name === `${bookContext.title}阅读笔记`)
+        : folderPayload.items || [];
       setNotes(nextNotes);
       setFolders(nextFolders);
-      if (!selectedNotebook) setSelectedNotebook(nextFolders[0]?.name || '默认笔记本');
+      if (!selectedNotebook) setSelectedNotebook(
+        bookContext?.title ? `${bookContext.title}阅读笔记` : nextFolders[0]?.name || '默认笔记本',
+      );
       if (keepActive && activeNoteId) {
         const next = nextNotes.find((note) => note.note_id === activeNoteId);
         if (next) setDraft({ title: next.title, content: next.content });
@@ -128,6 +157,40 @@ export default function StudyNotesPanel() {
 
   useEffect(() => { refresh({ keepActive: false }); }, []);
 
+  useEffect(() => {
+    if (!autoCreatePageNote || loading || !bookContext?.book_id || !initialPage) return;
+    const resourceId = `${bookContext.book_id}:page:${initialPage}`;
+    if (autoCreatedRef.current.has(resourceId)) return;
+    autoCreatedRef.current.add(resourceId);
+    const existing = notes.find((note) => note.resource_type === 'textbook_pdf_page' && note.resource_id === resourceId);
+    if (existing) {
+      setSelectedNotebook(existing.context?.notebook || `${bookContext.title}阅读笔记`);
+      openNote(existing);
+      return;
+    }
+    const notebook = `${bookContext.title}阅读笔记`;
+    createNote({
+      title: `《${bookContext.title}》第 ${initialPage} 页笔记`,
+      content: `> 在《${bookContext.title}》第 ${initialPage} 页做笔记。\n\n`,
+      note_type: '教材页笔记',
+      source: '教学资源',
+      resource_type: 'textbook_pdf_page',
+      resource_id: resourceId,
+      context: {
+        notebook,
+        book_id: bookContext.book_id,
+        book_title: bookContext.title,
+        edition: bookContext.edition,
+        route: bookContext.route,
+        pdf_page: initialPage,
+      },
+    }).then((payload) => {
+      setSelectedNotebook(notebook);
+      setNotes((current) => [payload.note, ...current]);
+      openNote(payload.note);
+    }).catch((reason) => setError(reason.message || '教材页笔记创建失败'));
+  }, [autoCreatePageNote, bookContext, initialPage, loading, notes]);
+
   const notebooks = useMemo(() => {
     const map = new Map(folders.map((folder) => [folder.name, { ...folder, items: [] }]));
     notes.forEach((note) => {
@@ -135,11 +198,14 @@ export default function StudyNotesPanel() {
       if (!map.has(name)) map.set(name, { folder_id: name, name, items: [] });
       map.get(name).items.push(note);
     });
-    if (map.size === 0) {
+    if (bookContext?.title && map.size === 0) {
+      const name = `${bookContext.title}阅读笔记`;
+      map.set(name, { folder_id: name, name, items: [] });
+    } else if (map.size === 0) {
       map.set('默认笔记本', { folder_id: 'default-notebook', name: '默认笔记本', items: [] });
     }
     return [...map.values()];
-  }, [folders, notes]);
+  }, [bookContext?.title, folders, notes]);
 
   const notebookNotes = useMemo(() => notes.filter(
     (note) => String(note.context?.notebook || '默认笔记本') === selectedNotebook,
@@ -181,9 +247,18 @@ export default function StudyNotesPanel() {
         const payload = await createNote({
           title: draft.title.trim(),
           content: draft.content,
-          note_type: '笔记本',
-          source: '训练工坊',
-          context: { notebook: selectedNotebook },
+          note_type: bookContext ? '教材页笔记' : '笔记本',
+          source: bookContext ? '教学资源' : '训练工坊',
+          resource_type: bookContext && initialPage ? 'textbook_pdf_page' : null,
+          resource_id: bookContext && initialPage ? `${bookContext.book_id}:page:${initialPage}` : null,
+          context: bookContext ? {
+            notebook: selectedNotebook,
+            book_id: bookContext.book_id,
+            book_title: bookContext.title,
+            edition: bookContext.edition,
+            route: bookContext.route,
+            pdf_page: initialPage,
+          } : { notebook: selectedNotebook },
         });
         setActiveNoteId(payload.note.note_id);
         setIsNew(false);
@@ -260,8 +335,21 @@ export default function StudyNotesPanel() {
     }
   };
 
+  const openSource = (context) => {
+    if (onOpenSource) { onOpenSource(context); return; }
+    onNavigate?.({
+      page: 'practice',
+      params: {
+        view: 'textbook-chapters',
+        lv1: context.book_title,
+        openPdf: true,
+        pdfPage: context.pdf_page,
+      },
+    });
+  };
+
   return (
-    <section className="notion-notes" aria-labelledby="notes-title">
+    <section className={`notion-notes ${compact ? 'is-compact' : ''}`} aria-labelledby="notes-title">
       <aside className="notion-notes__sidebar">
         <header><NotebookPen size={19} /><strong id="notes-title">笔记本</strong><button type="button" aria-label="新建笔记本" onClick={() => setNewNotebookOpen(true)}><Plus size={16} /></button></header>
         <div className="notion-notes__notebooks">
@@ -299,7 +387,7 @@ export default function StudyNotesPanel() {
             </header>
             <div className="notion-note__document">
               <input className="notion-note__title" aria-label="笔记标题" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength={200} placeholder="无标题" />
-              <QuestionContext context={activeNote?.context} />
+              <NoteSourceContext context={activeNote?.context} onOpenSource={onOpenSource || onNavigate ? openSource : null} />
               {mode === 'edit' ? (
                 <>
                   <div className="notion-note__toolbar" aria-label="Markdown 工具栏">

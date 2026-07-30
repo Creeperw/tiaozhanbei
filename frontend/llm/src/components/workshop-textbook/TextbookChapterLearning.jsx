@@ -21,6 +21,7 @@ import {
   loadTextbookProgress,
 } from './textbookChapterApi';
 import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
+import TextbookPdfReader from './TextbookPdfReader';
 import './textbookChapterLearning.css';
 
 function formatTime(value) {
@@ -199,6 +200,15 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [catalogQuery, setCatalogQuery] = useState('');
   const [catalogStatus, setCatalogStatus] = useState('all');
   const [searchCatalog, setSearchCatalog] = useState(null);
+  const [courseMode, setCourseMode] = useState('pdf');
+  const [pdfInitialPage, setPdfInitialPage] = useState(navigationContext.pdfPage || 1);
+  const [pageNotesOpen, setPageNotesOpen] = useState(false);
+
+  useEffect(() => {
+    setCourseMode('pdf');
+    setPdfInitialPage(navigationContext.pdfPage || 1);
+    setPageNotesOpen(false);
+  }, [book, navigationContext.openPdf, navigationContext.pdfPage]);
 
   useEffect(() => {
     if (!book) {
@@ -506,18 +516,26 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <span className="is-active"><BookOpen aria-hidden="true" size={18} />课程内容</span>
+            <button type="button" className={!pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
             <button type="button" onClick={() => openCourseTool('question_training')}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
-            <button type="button" onClick={() => onNavigate?.({
-              page: 'knowledge',
-              params: { view: 'atlas', route, lv1: book, source: 'textbook-chapters' },
-            })}><Layers3 aria-hidden="true" size={18} />知识图谱</button>
-            <button type="button" onClick={() => openCourseTool('study_notes')}><BookOpen aria-hidden="true" size={18} />笔记本</button>
+            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}><BookOpen aria-hidden="true" size={18} />笔记本</button>
           </aside>
           <div className="textbook-learning-main">
+          {courseMode === 'pdf' ? (
+            <TextbookPdfReader
+              bookTitle={book}
+              initialPage={pdfInitialPage}
+              route={route}
+              notesOpen={pageNotesOpen}
+              onNotesOpenChange={setPageNotesOpen}
+              onClose={() => { setPageNotesOpen(false); setCourseMode('catalog'); }}
+            />
+          ) : (
+          <>
             <div className="textbook-learning-main__toolbar">
               <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
               <div className="textbook-learning-filters">
+                <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}><BookOpen aria-hidden="true" size={15} />阅读电子教材</button>
                 <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
                 {[
                   ['all', '全部'],
@@ -664,6 +682,8 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
               </div>
             ) : <p className="textbook-section-content__empty">请先选择一个小节。</p>}
           </section>
+          )}
+          </>
           )}
           </div>
         </div>

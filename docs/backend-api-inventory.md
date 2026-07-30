@@ -39,18 +39,47 @@
 | 接口 | 定位 | 前端适合展示 |
 |---|---|---|
 | `GET /api/v1/learning-monitoring/snapshot?days=7` | Diagnosis Agent 的正式监测输入 | 样本量、数据新鲜度、可观测指标 |
+| `GET /api/v1/learning-metrics/overview?days=30` | 统一、可审计的监测指标合同 | 登录事件/天数、签到、专注、今日任务、题目、试卷、错题、掌握和复习；每项带公式与来源 |
 | `GET /api/v1/learning-activity/summary?days=30` | 行为事件与任务执行 | 登录、专注、任务完成、资源点击 |
 | `GET /api/v1/learning-activity/trends?days=30` | 按日行为趋势 | 折线图、日历热力图 |
 | `GET /api/v1/learning-statistics/overview?days=30` | 正式学习成果累计与时间窗聚合 | 已完成题目、不同题目数、得分率、试卷、错题、复习、掌握度 |
 | `GET /api/v1/learning-state/multiscale` | 微观/中观/宏观学习状态 | 多尺度学情可视化 |
-| `GET /api/v1/learning-insights` | 可解释学情诊断 | 薄弱点、掌握热图、证据质量 |
+| `GET /api/v1/learning-insights` | 可解释学情诊断 | 薄弱点、掌握热图、证据质量；到期数、通知和规划复盘统一使用 canonical 复习投影 |
 | `GET /api/v1/resource-match-report` | 当前计划的资源匹配 | 匹配分项与数据来源 |
+| `GET /api/v1/task-load-policy` | 次日任务负载策略 | 建议分钟数、复习/补弱/新学分配及证据来源 |
+| `POST /api/v1/resource-recommendations/events` | 资源反馈写入 | 依次记录真实展示、点击和用户确认完成；校验展示凭证与当前用户 |
+| `GET /api/v1/resource-effectiveness?days=30` | 资源效果闭环 | 展示—点击—完成漏斗、后测正确率与掌握度变化 |
 | `GET /api/v1/interventions` | 主动干预 | 干预卡片与反馈 |
 | `GET /api/v1/notifications` | 通知中心 | 未读通知、干预和计划复盘提醒 |
 | `GET /api/v1/plan-reviews` | 自动规划复盘 | 建议、依据与接受/拒绝 |
+| `POST /api/v1/learning-automation/run` | 统一反馈闭环 | 运行监控复盘，并幂等推送一项尚无资源的到期复习 |
+| `GET /api/v1/learning-automation/status` | 异步派发状态 | 当前用户最近一次复习资源推送的运行、成功或失败原因 |
+
+智能助教的泛化规划请求采用“现有计划优先”策略：Planner 返回 `plan_action`，
+已有有效长期规划、短期计划或当日任务且用户未明确要求修改时，由
+LearningPlanService 直接返回正式版本。响应中的 `reused_existing`、
+`replan_review` 和 `force_replan_prompt` 供前端区分“复用”与“新生成”。
+复盘建议通过 `/api/v1/notifications` 和 `/api/v1/plan-reviews` 同步读取。
+
+Planner 按交付目标组合能力，而不是把包含“学习”“最近”等词的输入一律归为规划。
+“最近学了什么”读取已完成记录；“最近需要学什么/接下来该学什么”同时读取当前计划、
+掌握度与复习状态、近期完成记录，返回只读的下一步重点，不创建计划。若用户明确要求
+根据薄弱点推荐题目或资源，则进入学情、知识/题目检索、专家资源和审核链路；只有明确
+要求制定、安排或修改计划时才进入规划发布链路。
+
+“梳理某本教材某一章节的学习要点、阅读重点或学习方法”使用
+`general_learning_support`，由 Knowledge、Expert、Audit 共同处理。该类别允许自然语言
+自由组织，不强制套知识讲解的固定段落，也不会创建或修改学习计划；单个概念、原理和
+辨析问题仍使用 `knowledge_explanation`。
+
+今日任务的全部原子项完成后，执行协调器会自动写入短期任务块进度；同一短期计划的
+全部任务块完成后，短期计划状态自动变为 `completed`。长期阶段只在当前阶段全部
+`exit_evidence` 已取得服务端核验证据时推进；推进后旧短期计划与今日任务失效，
+下一次规划必须基于新的阶段重新生成。阶段推进事件同步写入通知中心。
 
 三个统计入口不能混用：
 
+- `learning-metrics/overview` 是新前端需要一次读取多类数字时的统一入口；
 - `learning-activity/summary` 回答“用户做了什么”；
 - `learning-statistics/overview` 回答“用户完成了多少正式学习成果”；
 - `learning-insights` 回答“这些证据反映了什么学情”。
@@ -99,8 +128,11 @@
 | `GET /api/v1/review-dashboard` | 队列、掌握度、复习状态、任务和历史 |
 | `POST /api/v1/review-tasks/{review_task_id}/attempts` | 提交复习题结果 |
 | `POST /api/v1/learners/{learner_id}/review-queue/dispatch` | 调度下一项复习资源 |
+| `POST /api/v1/learning-automation/run` | 运行反馈闭环并推送一项缺失资源的到期复习 |
 
 只有完成知识点题目且正式批改写回成功，知识点才进入复习队列。
+`canonical_review_memory` 是到期数量的唯一权威来源；学情展示、到期提醒、自动/手动规划复盘不得再读取旧复习状态表的到期计数。
+统一自动化接口每次最多生成一个复习资源；已经绑定资源的复习任务不会再次生成。
 
 ## 六、建议继续补充的只读接口
 

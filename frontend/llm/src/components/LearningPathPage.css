@@ -95,7 +95,7 @@
 
 .learning-path-page__route {
   display: flex;
-  min-height: 620px;
+  min-height: 540px;
   flex-direction: column;
 }
 
@@ -213,7 +213,7 @@
 .learning-path-page__review-rail {
   width: 300px;
   display: flex;
-  min-height: 620px;
+  min-height: 540px;
   flex-direction: column;
   justify-self: end;
   padding: 12px 14px 16px;
@@ -397,6 +397,10 @@
 
   .learning-path-page__review-rail {
     min-height: 380px;
+  }
+
+  .learning-path-page__route {
+    min-height: 480px;
   }
 }
 

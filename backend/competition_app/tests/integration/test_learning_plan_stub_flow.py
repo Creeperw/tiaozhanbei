@@ -183,14 +183,41 @@ async def test_existing_valid_long_and_short_plans_are_reused_verbatim(tmp_path)
     )
 
     assert reused.learning_plan.generated_scope == "daily_task"
+    assert reused.learning_plan.reused_existing is True
     assert reused.learning_plan.long_term_plan is None
     assert reused.learning_plan.short_term_plan is None
-    assert reused.learning_plan.learning_task.version == initial_plan.learning_task.version + 1
+    assert reused.learning_plan.learning_task.version == initial_plan.learning_task.version
     persisted = container.review_card_use_case.plan_repository.get_current(learner_id)
     assert persisted.long_term_plan.content == initial_plan.long_term_plan.content
     assert persisted.short_term_plan.content == initial_plan.short_term_plan.content
     assert persisted.long_term_plan.version == initial_plan.long_term_plan.version
     assert persisted.short_term_plan.version == initial_plan.short_term_plan.version
+
+
+@pytest.mark.asyncio
+async def test_generic_learning_plan_request_reuses_current_short_term_plan(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    learner_id = "LEARNER_GENERIC_PLAN_REUSE"
+    initial = await build_layered_plan(container, learner_id=learner_id)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id=learner_id,
+            user_request="请结合我的学习状态，为我制定一份学习计划。",
+            available_minutes=30,
+        )
+    )
+
+    assert result.status == "success"
+    assert result.learning_plan.generated_scope == "short_term"
+    assert result.learning_plan.reused_existing is True
+    assert result.learning_plan.short_term_plan.plan_id == initial.short_term_plan.plan_id
+    assert result.learning_plan.short_term_plan.version == initial.short_term_plan.version
+    assert "强制修改" in result.learning_plan.force_replan_prompt
+    assert [item.producer for item in result.agent_outputs] == [
+        "planner_agent",
+        "learning_plan_service",
+    ]
 
 
 @pytest.mark.asyncio
@@ -219,6 +246,26 @@ async def test_today_learning_question_is_materialized_as_daily_task(tmp_path) -
     assert result.learning_plan.learning_task.short_term_plan_id == (
         initial.short_term_plan.plan_id
     )
+
+
+@pytest.mark.asyncio
+async def test_inverted_today_task_wording_reuses_current_daily_task(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    learner_id = "LEARNER_TODAY_INVERTED_SCOPE"
+    initial = await build_layered_plan(container, learner_id=learner_id)
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id=learner_id,
+            user_request="今天的任务给我安排一下。",
+            available_minutes=25,
+        )
+    )
+
+    assert result.learning_plan.generated_scope == "daily_task"
+    assert result.learning_plan.reused_existing is True
+    assert result.learning_plan.learning_task.task_id == initial.learning_task.task_id
+    assert result.learning_plan.learning_task.version == initial.learning_task.version
 
 
 @pytest.mark.asyncio
@@ -562,6 +609,86 @@ async def test_integrated_long_plan_collects_and_writes_required_profile_fields(
         {"learning_background": "零基础"},
         {"time_constraints": "每周学习5天，每天2小时"},
     ]
+
+
+@pytest.mark.asyncio
+async def test_beginner_profile_answer_is_available_to_resumed_route_context(tmp_path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+    stored_profile = {
+        "learning_goal": "中医执业医师资格考试",
+        "time_constraints": "每周学习5天，每天2小时",
+    }
+    container.review_card_use_case.behavior_context_loader = lambda _: {
+        "source": "frontend_backend",
+        "user_profile": dict(stored_profile),
+    }
+
+    def write_profile(_learner_id: str, updates: dict, _execution_id: str | None) -> dict:
+        stored_profile.update(updates)
+        return dict(stored_profile)
+
+    container.review_card_use_case.profile_update_writer = write_profile
+    thread_id = "THREAD_BEGINNER_ROUTE_CONTEXT"
+    interrupted = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            thread_id=thread_id,
+            learner_id="LEARNER_BEGINNER_ROUTE_CONTEXT",
+            user_request="请结合我的学习状态，为我制定一份长期学习计划。",
+            plan_scope="long_term",
+        )
+    )
+    resumed = await container.review_card_use_case.resume(
+        thread_id,
+        WorkflowResumeRequest(answer="零基础", plan_scope="long_term"),
+    )
+
+    assert interrupted.status == "interrupted"
+    assert interrupted.interrupt["profile_fields"] == ["learning_background"]
+    assert resumed.status == "success"
+    assert resumed.learning_plan.long_term_plan.planning_route.route_id == (
+        "tcm_physician_standard_degree"
+    )
+
+
+@pytest.mark.asyncio
+async def test_current_fact_request_returns_a_source_bounded_web_answer(tmp_path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="LEARNER_CURRENT_FACT",
+            user_request="距离下次执业医师资格考试还有多久？",
+        )
+    )
+
+    assert result.status == "success"
+    assert result.task_type == "general_learning_support"
+    assert result.resource is not None
+    assert "配套练习" not in result.resource.content
+    assert any("网络搜索服务" in note for note in result.resource.safety_notes)
+
+
+@pytest.mark.asyncio
+async def test_exam_anxiety_returns_actionable_direct_response(tmp_path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"), snapshot_root=tmp_path, include_backend_handoff=False
+    )
+
+    result = await container.review_card_use_case.execute(
+        ReviewCardRequest(
+            learner_id="LEARNER_EXAM_ANXIETY",
+            user_request="我明天就要考试了，好焦虑啊。",
+        )
+    )
+
+    assert result.status == "success"
+    assert result.task_type == "casual_conversation"
+    assert "焦虑" in result.direct_response
+    assert "10分钟" in result.direct_response
 
 
 @pytest.mark.asyncio

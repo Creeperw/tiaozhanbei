@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
+  ArrowLeft,
   Bell,
   ChartNoAxesColumnIncreasing,
   ChevronDown,
@@ -25,11 +26,19 @@ import HomeButton from './HomeButton';
 import LearningTargetSelector from './LearningTargetSelector';
 import UserProfileModal from './UserProfileModal';
 import { useModalFocus } from './ui/useModalFocus';
-import { API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import { API_BASE, MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
+import { loadLearningTarget } from './exam-atlas/examAtlasApi';
 
 const LEARNING_TARGET_CHANGED_EVENT = 'shizhen:learning-target-changed';
 const NAV_MENU_EXIT_MS = 250;
 const NAV_MENU_LEAVE_DELAY_MS = 200;
+const GUEST_QUALIFICATION_TARGETS = [
+  '中医执业医师资格考试',
+  '中医执业助理医师资格考试',
+  '中西医结合执业医师资格考试',
+  '中西医结合执业助理医师资格考试',
+  '执业药师职业资格考试（中药学类）',
+];
 
 const navIconMap = {
   dashboard: Home,
@@ -96,7 +105,7 @@ function MenuItems({ items, onNavigate, onClose, currentIntent }) {
   });
 }
 
-function NavigationMenu({ item, currentPage, navigationContext, onNavigate, menuState, onOpen, onRequestClose, onCloseNow }) {
+function NavigationMenu({ item, currentPage, navigationContext, onNavigate, menuState, onOpen, onRequestClose, onCloseNow, authenticated = true, onLoginRequested }) {
   const open = menuState === 'open';
   const mounted = menuState !== 'closed';
   const ref = useRef(null);
@@ -110,44 +119,75 @@ function NavigationMenu({ item, currentPage, navigationContext, onNavigate, menu
     entries?.[position < 0 ? entries.length - 1 : position]?.focus();
   };
   if (!item.children) {
-    return <div className="app-shell__nav-group"><a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} onClick={(event) => { event.preventDefault(); onNavigate(item.intent); }}>{item.label}</a></div>;
+    return <div className="app-shell__nav-group"><a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} onClick={(event) => { event.preventDefault(); if (!authenticated) { onLoginRequested?.(); return; } onNavigate(item.intent); }}>{item.label}</a></div>;
   }
   return (
     <div ref={ref} className="app-shell__nav-group" onMouseEnter={() => onOpen(item.key)} onMouseLeave={() => onRequestClose(item.key, NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen(item.key)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose(item.key, 0); }}>
-      <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} aria-haspopup="menu" aria-expanded={open} onClick={(event) => { event.preventDefault(); onNavigate(item.intent || { page: item.key, params: {} }); }} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); onOpen(item.key); window.setTimeout(() => focusItem(0), 0); } }}>
+      <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} aria-haspopup="menu" aria-expanded={open} onClick={(event) => { event.preventDefault(); if (!authenticated) { onLoginRequested?.(); return; } onNavigate(item.intent || { page: item.key, params: {} }); }} onKeyDown={(event) => { if (event.key === 'ArrowDown') { event.preventDefault(); onOpen(item.key); window.setTimeout(() => focusItem(0), 0); } }}>
         {item.label}<ChevronDown aria-hidden="true" size={15} />
       </a>
-      {mounted && <div className="app-shell__nav-menu" data-state={menuState} role="menu" aria-label={`${item.label}菜单`}><MenuItems items={item.children} currentIntent={{ page: currentPage, params: navigationContext }} onNavigate={onNavigate} onClose={() => onCloseNow(item.key)} /></div>}
+      {mounted && <div className="app-shell__nav-menu" data-state={menuState} role="menu" aria-label={`${item.label}菜单`}><MenuItems items={item.children} currentIntent={{ page: currentPage, params: navigationContext }} onNavigate={authenticated ? onNavigate : () => onLoginRequested?.()} onClose={() => onCloseNow(item.key)} /></div>}
     </div>
   );
 }
 
-function LearningTargetNavigationMenu({ menuState, onOpen, onRequestClose, onCloseNow, onTargetSelected }) {
+function LearningTargetNavigationMenu({ menuState, onOpen, onRequestClose, onCloseNow, onTargetSelected, enabled = true, onLoginRequested }) {
   const open = menuState === 'open';
   const mounted = menuState !== 'closed';
   const ref = useRef(null);
+  const [currentTargetName, setCurrentTargetName] = useState('');
   const openSelectedPath = (selection) => {
+    setCurrentTargetName(selection?.official_name || '');
     onCloseNow('learning-target');
     onTargetSelected(selection);
   };
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let cancelled = false;
+    Promise.all([
+      fetchWithAuth(`${MAIN_API_BASE}/qualification-targets`).then(async (response) => {
+        const payload = await readJsonResponse(response, { items: [] });
+        if (!response.ok) throw new Error(payload.detail || '资格考试目录加载失败');
+        return Array.isArray(payload.items) ? payload.items : [];
+      }),
+      loadLearningTarget(),
+    ]).then(([options, targetPayload]) => {
+      const target = targetPayload?.target || targetPayload || {};
+      const selected = options.find((item) => item.exam_track_id === target.exam_track_id);
+      if (!cancelled) setCurrentTargetName(selected?.official_name || '');
+    }).catch(() => {
+      if (!cancelled) setCurrentTargetName('');
+    });
+    return () => { cancelled = true; };
+  }, [enabled]);
   useEffect(() => {
     const closeOutside = (event) => { if (mounted && !ref.current?.contains(event.target)) onRequestClose('learning-target', 0); };
     document.addEventListener('mousedown', closeOutside);
     return () => document.removeEventListener('mousedown', closeOutside);
   }, [mounted, onRequestClose]);
   return (
-    <div ref={ref} className="app-shell__nav-group app-shell__target-group" onMouseEnter={() => onOpen('learning-target')} onMouseLeave={() => onRequestClose('learning-target', NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose('learning-target', 0); }}>
-      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => open ? onRequestClose('learning-target', 0) : onOpen('learning-target')}>考试类别<ChevronDown aria-hidden="true" size={15} /></button>
-      {mounted && <div className="app-shell__nav-menu app-shell__target-menu" data-state={menuState} aria-label="选择考试类别"><LearningTargetSelector className="app-shell__target-selector" variant="menu" onSelected={openSelectedPath} /></div>}
+    <div ref={ref} className="app-shell__nav-group app-shell__target-group" data-has-current-target={enabled && Boolean(currentTargetName)} onMouseEnter={() => onOpen('learning-target')} onMouseLeave={() => onRequestClose('learning-target', NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose('learning-target', 0); }}>
+      <button type="button" aria-label="考试类别" aria-haspopup="menu" aria-expanded={open} onClick={() => { if (!enabled) { onLoginRequested?.(); return; } open ? onRequestClose('learning-target', 0) : onOpen('learning-target'); }}>
+        <span className="app-shell__target-trigger-copy">
+          <span>考试类别</span>
+          {enabled && currentTargetName && <small className="app-shell__target-current" title={currentTargetName}>当前 · {currentTargetName}</small>}
+        </span>
+        <ChevronDown aria-hidden="true" size={15} />
+      </button>
+      {mounted && <div className="app-shell__nav-menu app-shell__target-menu" data-state={menuState} aria-label="选择考试类别">{enabled ? <LearningTargetSelector className="app-shell__target-selector" variant="menu" onSelected={openSelectedPath} /> : <div className="learning-target-selector learning-target-selector--menu"><div className="learning-target-selector__options" role="menu" aria-label="资格考试选项">{GUEST_QUALIFICATION_TARGETS.map((name) => <button key={name} type="button" role="menuitemradio" aria-checked="false" onClick={() => { onCloseNow('learning-target'); onLoginRequested?.(); }}>{name}</button>)}</div></div>}</div>}
     </div>
   );
 }
 
-function MobileNavItems({ items, currentPage, navigationContext, onNavigate, onClose, onTargetSelected }) {
+function MobileNavItems({ items, currentPage, navigationContext, onNavigate, onClose, onTargetSelected, authenticated = true, onLoginRequested }) {
   const [expanded, setExpanded] = useState(null);
   const openSelectedPath = (selection) => {
     onTargetSelected(selection);
     onClose();
+  };
+  const requestLogin = () => {
+    onClose();
+    onLoginRequested?.();
   };
   return (
     <nav aria-label="移动平台导航" className="app-shell__drawer-nav">
@@ -155,18 +195,18 @@ function MobileNavItems({ items, currentPage, navigationContext, onNavigate, onC
         if (item.kind === 'learning-target') {
           return (
             <div key={item.key} className="app-shell__drawer-module app-shell__drawer-target">
-              <button type="button" aria-expanded={expanded === item.key} onClick={() => setExpanded(expanded === item.key ? null : item.key)}>{item.label}<ChevronDown aria-hidden="true" size={17} /></button>
-              {expanded === item.key && <LearningTargetSelector className="app-shell__target-selector" onSelected={openSelectedPath} />}
+              <button type="button" aria-expanded={expanded === item.key} onClick={() => { if (!authenticated) { requestLogin(); return; } setExpanded(expanded === item.key ? null : item.key); }}>{item.label}<ChevronDown aria-hidden="true" size={17} /></button>
+              {authenticated && expanded === item.key && <LearningTargetSelector className="app-shell__target-selector" onSelected={openSelectedPath} />}
             </div>
           );
         }
         return (
           <div key={item.key} className="app-shell__drawer-module">
             <div>
-              <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} onClick={(event) => { event.preventDefault(); onNavigate(item.intent || { page: item.key, params: {} }); onClose(); }}>{item.label}</a>
-              {item.children && <button type="button" aria-label={`展开${item.label}`} aria-expanded={expanded === item.key} onClick={() => setExpanded(expanded === item.key ? null : item.key)}><ChevronDown aria-hidden="true" size={17} /></button>}
+              <a href={`#${item.key}`} aria-current={currentPage === item.key ? 'page' : undefined} onClick={(event) => { event.preventDefault(); if (!authenticated) { requestLogin(); return; } onNavigate(item.intent || { page: item.key, params: {} }); onClose(); }}>{item.label}</a>
+              {item.children && <button type="button" aria-label={`展开${item.label}`} aria-expanded={expanded === item.key} onClick={() => { if (!authenticated) { requestLogin(); return; } setExpanded(expanded === item.key ? null : item.key); }}><ChevronDown aria-hidden="true" size={17} /></button>}
             </div>
-            {item.children && expanded === item.key && <div role="menu"><MenuItems items={item.children} currentIntent={{ page: currentPage, params: navigationContext }} onNavigate={onNavigate} onClose={onClose} /></div>}
+            {authenticated && item.children && expanded === item.key && <div role="menu"><MenuItems items={item.children} currentIntent={{ page: currentPage, params: navigationContext }} onNavigate={onNavigate} onClose={onClose} /></div>}
           </div>
         );
       })}
@@ -274,6 +314,7 @@ function NotificationPopover({ open, items, loading, onClose, onSelect, panelRef
 function DesktopTopbar({
   shell, navigationContext, displayName, avatarUrl, avatarInitial, unreadNotifications,
   notificationOpen, onToggleNotifications, onNavigate, onLogout, onOpenProfile, onTargetSelected,
+  currentIntent, authenticated, onLoginRequested,
 }) {
   const [openKey, setOpenKey] = useState(null);
   const [closingKey, setClosingKey] = useState(null);
@@ -366,7 +407,13 @@ function DesktopTopbar({
 
   const navigateFromProfileMenu = (intent) => {
     closeProfileMenu();
-    onNavigate(intent);
+    onNavigate({
+      ...intent,
+      params: {
+        ...intent.params,
+        ...(currentIntent?.page ? { returnTo: currentIntent } : {}),
+      },
+    });
   };
 
   return (
@@ -375,11 +422,11 @@ function DesktopTopbar({
         <ShellIdentity onNavigate={onNavigate} />
         <nav aria-label="平台导航" className="app-shell__desktop-nav">
           {shell.primaryNav.map((item) => item.kind === 'learning-target'
-            ? <LearningTargetNavigationMenu key={item.key} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} onTargetSelected={onTargetSelected} />
-            : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} navigationContext={navigationContext} onNavigate={onNavigate} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} />)}
+            ? <LearningTargetNavigationMenu key={item.key} enabled={authenticated} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} onTargetSelected={onTargetSelected} onLoginRequested={onLoginRequested} />
+            : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} navigationContext={navigationContext} onNavigate={onNavigate} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} authenticated={authenticated} onLoginRequested={onLoginRequested} />)}
         </nav>
         <div className="app-shell__topbar-actions">
-          <button type="button" className="app-shell__assistant-entry" aria-label="AI 智能助教" onClick={() => onNavigate({ page: 'assistant', params: { newConversation: true } })}>
+          <button type="button" className="app-shell__assistant-entry app-shell__assistant-entry--featured" aria-label="AI 智能助教" onClick={() => { if (!authenticated) { onLoginRequested?.(); return; } onNavigate({ page: 'assistant', params: { newConversation: true } }); }}>
             <MessageSquareMore aria-hidden="true" size={18} /><span>AI 智能助教</span>
           </button>
           <button type="button" data-notification-trigger className="app-shell__topbar-icon" aria-label={'通知，' + unreadNotifications + ' 条未读'} aria-haspopup="dialog" aria-expanded={notificationOpen} onClick={() => { closeProfileMenu(); onToggleNotifications(); }}>
@@ -387,12 +434,19 @@ function DesktopTopbar({
             {unreadNotifications > 0 && <span className="app-shell__notification-badge">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>}
           </button>
           <div ref={profileMenuRef} className="app-shell__profile-menu-wrap">
-            <button type="button" className="app-shell__topbar-account" aria-label="打开用户菜单" aria-expanded={profileMenuOpen} aria-haspopup="menu" onClick={toggleProfileMenu}>
-              <span className="app-shell__topbar-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : avatarInitial}</span>
-              <span className="app-shell__topbar-user">{displayName}</span>
-              <ChevronDown aria-hidden="true" size={15} />
-            </button>
-            {profileMenuMounted && (
+            {authenticated ? (
+              <button type="button" className="app-shell__topbar-account" aria-label="打开用户菜单" aria-expanded={profileMenuOpen} aria-haspopup="menu" onClick={toggleProfileMenu}>
+                <span className="app-shell__topbar-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : avatarInitial}</span>
+                <span className="app-shell__topbar-user">{displayName}</span>
+                <ChevronDown aria-hidden="true" size={15} />
+              </button>
+            ) : (
+              <button type="button" className="app-shell__topbar-account app-shell__topbar-account--guest" aria-label="登录" onClick={onLoginRequested}>
+                <span className="app-shell__topbar-avatar">{avatarInitial}</span>
+                <span className="app-shell__topbar-user">{displayName}</span>
+              </button>
+            )}
+            {authenticated && profileMenuMounted && (
               <div className="app-shell__profile-menu" data-state={profileMenuOpen ? 'open' : 'closing'} role="menu" aria-label="个人菜单">
                 <div className="app-shell__profile-menu-identity">
                   <span className="app-shell__profile-menu-avatar" aria-hidden="true">
@@ -434,6 +488,8 @@ function MobileDrawer({
   displayName,
   navigationContext,
   onTargetSelected,
+  authenticated,
+  onLoginRequested,
 }) {
   const dialogRef = useModalFocus(open);
   if (!mounted) return null;
@@ -469,6 +525,8 @@ function MobileDrawer({
           onNavigate={onNavigate}
           onClose={onClose}
           onTargetSelected={onTargetSelected}
+          authenticated={authenticated}
+          onLoginRequested={onLoginRequested}
         />
         {shell.supportNav.length > 0 && (
           <div className="app-shell__support">
@@ -482,16 +540,22 @@ function MobileDrawer({
         )}
         <div className="app-shell__drawer-account">
           <span>{displayName}</span>
-          <button type="button" className="button button--secondary" onClick={onLogout}>
-            <LogOut aria-hidden="true" size={16} />退出登录
-          </button>
+          {authenticated ? (
+            <button type="button" className="button button--secondary" onClick={onLogout}>
+              <LogOut aria-hidden="true" size={16} />退出登录
+            </button>
+          ) : (
+            <button type="button" className="button button--secondary" onClick={() => { onClose(); onLoginRequested(); }}>
+              <UserRound aria-hidden="true" size={16} />登录
+            </button>
+          )}
         </div>
       </aside>
     </div>
   );
 }
 
-export default function AppShell({ currentUser, currentPage, navigationContext = {}, onNavigate, onLogout, onUserUpdated, children }) {
+export default function AppShell({ currentUser, currentPage, currentIntent = null, navigationContext = {}, onNavigate, onLogout, onLoginRequested, onUserUpdated, children }) {
   const shell = getAppShellConfig({ currentUser, currentPage });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMounted, setDrawerMounted] = useState(false);
@@ -503,10 +567,11 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
   const drawerExitTimerRef = useRef(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [accountProfile, setAccountProfile] = useState(null);
-  const displayName = currentUser?.display_name || currentUser?.username || 'User';
-  const avatarUrl = accountProfile?.avatar_url || null;
+  const authenticated = Boolean(currentUser);
+  const displayName = currentUser?.display_name || currentUser?.username || '未登录';
+  const avatarUrl = authenticated ? accountProfile?.avatar_url || null : null;
   const avatarInitial = displayName.trim().slice(0, 1).toUpperCase() || '用';
-  const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice', 'training-workshop'].includes(shell.currentPage);
+  const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice', 'training-workshop', 'capability-detail'].includes(shell.currentPage);
   const shouldShowPageHeader = !['dashboard', 'learning-path'].includes(shell.currentPage)
     && shell.shellMode !== 'workspace'
     && !['personalization', 'settings'].includes(shell.currentPage);
@@ -514,6 +579,7 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
 
   useEffect(() => () => window.clearTimeout(drawerExitTimerRef.current), []);
   useEffect(() => {
+    if (!authenticated) return undefined;
     let cancelled = false;
     const loadUnread = async () => {
       setNotificationsLoading(true);
@@ -535,7 +601,7 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
     };
     loadUnread();
     return () => { cancelled = true; };
-  }, [currentPage]);
+  }, [authenticated, currentPage]);
 
   useEffect(() => {
     if (!notificationOpen) return undefined;
@@ -570,6 +636,7 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
   };
 
   useEffect(() => {
+    if (!authenticated) return undefined;
     let cancelled = false;
     const loadAccountProfile = async () => {
       try {
@@ -582,7 +649,7 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
     };
     loadAccountProfile();
     return () => { cancelled = true; };
-  }, [currentUser?.user_id]);
+  }, [authenticated, currentUser?.user_id]);
 
   const openDrawer = () => {
     window.clearTimeout(drawerExitTimerRef.current);
@@ -622,13 +689,16 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
         displayName={displayName}
         avatarUrl={avatarUrl}
         avatarInitial={avatarInitial}
-        unreadNotifications={unreadNotifications}
+        unreadNotifications={authenticated ? unreadNotifications : 0}
         notificationOpen={notificationOpen}
         onToggleNotifications={(force) => setNotificationOpen((current) => typeof force === 'boolean' ? force : !current)}
         onNavigate={onNavigate}
         onLogout={onLogout}
         onOpenProfile={() => setProfileOpen(true)}
         onTargetSelected={handleTopbarTargetSelected}
+        currentIntent={currentIntent}
+        authenticated={authenticated}
+        onLoginRequested={onLoginRequested}
       />
 
       <div className="app-shell__workspace">
@@ -661,7 +731,19 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
               />}
               <div>
                 <span className="app-shell__section-label">当前模块</span>
-                <h1>{shell.pageTitle}</h1>
+                <div className="app-shell__page-title-row">
+                  <h1>{shell.pageTitle}</h1>
+                  {shell.currentPage === 'capability-detail' && (
+                    <button
+                      type="button"
+                      className="app-shell__capability-home"
+                      onClick={() => onNavigate({ page: 'dashboard', params: {} })}
+                    >
+                      <ArrowLeft aria-hidden="true" size={15} />
+                      返回平台首页
+                    </button>
+                  )}
+                </div>
               </div>
             </header>
           )}
@@ -679,6 +761,8 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
         onNavigate={onNavigate}
         onLogout={onLogout}
         onTargetSelected={handleTopbarTargetSelected}
+        authenticated={authenticated}
+        onLoginRequested={onLoginRequested}
       />
       <UserProfileModal
         open={profileOpen}
@@ -688,8 +772,8 @@ export default function AppShell({ currentUser, currentPage, navigationContext =
       />
       <NotificationPopover
         open={notificationOpen}
-        items={notificationItems}
-        loading={notificationsLoading}
+        items={authenticated ? notificationItems : []}
+        loading={authenticated ? notificationsLoading : false}
         panelRef={notificationPanelRef}
         onClose={() => setNotificationOpen(false)}
         onSelect={openNotificationDestination}

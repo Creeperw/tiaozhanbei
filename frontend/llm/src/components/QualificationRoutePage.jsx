@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   BookOpenText,
   CalendarDays,
@@ -6,13 +8,16 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Clock3,
   Plus,
+  X,
 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
 import LearningStageLanding from './learning-stage/LearningStageLanding';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
+import OnboardingSurveyPanel from './OnboardingSurveyPanel';
 import {
   adaptClassicRouteBooks,
   adaptClassicRouteStage,
@@ -26,6 +31,38 @@ import {
   buildHomePortalState,
 } from '../homePortal';
 import { workshopActionIntent } from '../pageIntent';
+import {
+  readQualificationPageCache,
+  readQualificationRouteCache,
+  updateQualificationPageCache,
+  updateQualificationRouteCache,
+} from './qualificationRoutePageCache';
+
+function normalizePlanningMarkdown(content) {
+  return String(content || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/(【[^】\n]+】)/g, '\n\n$1\n\n')
+    .replace(/([^\n#])(?=#{1,6}\s)/g, '$1\n\n')
+    .trim();
+}
+
+function PlanningParagraph({ children }) {
+  const text = React.Children.toArray(children)
+    .filter((child) => typeof child === 'string')
+    .join('')
+    .trim();
+  return <p className={/^【[^】]+】$/.test(text) ? 'is-section-label' : undefined}>{children}</p>;
+}
+
+function PlanningMarkdown({ content, fallback }) {
+  return (
+    <div className="home-portal__planning-markdown">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: PlanningParagraph }}>
+        {normalizePlanningMarkdown(content || fallback)}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 function formatReviewDate(value) {
   if (!value) return '最近';
@@ -36,6 +73,28 @@ function formatReviewDate(value) {
 
 const DEFAULT_EXAM_DATE = '2026-11-29T23:59:59+08:00';
 const LEARNING_TARGET_CHANGED_EVENT = 'shizhen:learning-target-changed';
+const CONTENT_FADE_DURATION = 480;
+
+function currentUserCacheKey(currentUser) {
+  return String(currentUser?.id || currentUser?.user_id || currentUser?.username || currentUser?.display_name || 'anonymous');
+}
+
+function updatePageCache(key, patch) {
+  updateQualificationPageCache(key, patch);
+}
+
+function routeCacheKey(userKey, routeKey) {
+  return `${userKey}:${routeKey}`;
+}
+
+function samePayload(left, right) {
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch {
+    return false;
+  }
+}
+
 
 function splitHeroTitle(value) {
   const text = String(value || '');
@@ -179,7 +238,45 @@ function CurrentLearningPlan({
 
   return (
     <div className="home-plan" aria-label="当前学习计划">
-      <section className="home-today-card" aria-label="今日任务">
+      <aside className="home-study-calendar" aria-label="学习日历">
+        <header>
+          <h3><CalendarDays aria-hidden="true" size={22} />学习日历</h3>
+          <div>
+            <button type="button" aria-label="上个月" onClick={() => changeMonth(-1)}><ChevronLeft aria-hidden="true" size={17} /></button>
+            <strong>{visibleMonth.getFullYear()}年{visibleMonth.getMonth() + 1}月</strong>
+            <button type="button" aria-label="下个月" onClick={() => changeMonth(1)}><ChevronRight aria-hidden="true" size={17} /></button>
+          </div>
+        </header>
+        <div className="home-study-calendar__weekdays" aria-hidden="true">
+          {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+        </div>
+        <div className="home-study-calendar__grid">
+          {calendarDays.map((date) => {
+            const key = localDateKey(date);
+            const learned = learnedDates.has(key);
+            const isToday = key === today;
+            const outside = date.getMonth() !== visibleMonth.getMonth();
+            const label = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${isToday ? '，今天' : learned ? '，已学习' : ''}`;
+            return (
+              <span
+                key={key}
+                data-learned={String(learned)}
+                data-today={String(isToday)}
+                data-outside={String(outside)}
+                aria-label={label}
+              >
+                {date.getDate()}
+              </span>
+            );
+          })}
+        </div>
+        <footer className="home-study-calendar__legend">
+          <span><i data-state="today" />今天</span>
+          <span><i data-state="learned" />已学习</span>
+        </footer>
+      </aside>
+
+      <section className="home-today-card" aria-label="今日任务" data-task-count={todayItems.length}>
         <header className="home-today-card__header">
           <h3><CalendarCheck2 aria-hidden="true" size={22} />今日任务</h3>
           <div className="home-today-card__progress" aria-label={`今日任务完成 ${completed}/${total}`}>
@@ -222,64 +319,62 @@ function CurrentLearningPlan({
         </button>
         <DailyTaskCountdown timer={timer} onExpire={onExpire} className="home-plan__refresh-timer" />
       </section>
-
-      <aside className="home-study-calendar" aria-label="学习日历">
-        <header>
-          <h3><CalendarDays aria-hidden="true" size={22} />学习日历</h3>
-          <div>
-            <button type="button" aria-label="上个月" onClick={() => changeMonth(-1)}><ChevronLeft aria-hidden="true" size={17} /></button>
-            <strong>{visibleMonth.getFullYear()}年{visibleMonth.getMonth() + 1}月</strong>
-            <button type="button" aria-label="下个月" onClick={() => changeMonth(1)}><ChevronRight aria-hidden="true" size={17} /></button>
-          </div>
-        </header>
-        <div className="home-study-calendar__weekdays" aria-hidden="true">
-          {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
-        </div>
-        <div className="home-study-calendar__grid">
-          {calendarDays.map((date) => {
-            const key = localDateKey(date);
-            const learned = learnedDates.has(key);
-            const isToday = key === today;
-            const outside = date.getMonth() !== visibleMonth.getMonth();
-            const label = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${isToday ? '，今天' : learned ? '，已学习' : ''}`;
-            return (
-              <span
-                key={key}
-                data-learned={String(learned)}
-                data-today={String(isToday)}
-                data-outside={String(outside)}
-                aria-label={label}
-              >
-                {date.getDate()}
-              </span>
-            );
-          })}
-        </div>
-        <footer className="home-study-calendar__legend">
-          <span><i data-state="today" />今天</span>
-          <span><i data-state="learned" />已学习</span>
-        </footer>
-      </aside>
     </div>
   );
+}
+
+function buildLearningRouteState(payload) {
+  const classicRoute = payload?.route && Array.isArray(payload.route.stages) ? payload.route : null;
+  const nodes = classicRoute
+    ? classicRoute.stages.map((stage) => adaptClassicRouteStage(classicRoute, stage))
+    : Array.isArray(payload?.nodes) ? payload.nodes.map(adaptPlannedPathNode) : [];
+  const stages = nodes
+    .filter((node) => node.node_type === 'stage')
+    .map((node) => ({
+      ...node,
+      id: node.node_id,
+      nodeId: node.node_id,
+      level: node.status === 'in_progress' ? '当前阶段' : node.status === 'completed' ? '已完成' : '待学习',
+      title: node.title,
+      duration: node.child_count ? `${node.child_count} 本教材` : '教材待规划',
+      tasks: [node.description || '阶段目标待补充'],
+      resources: [],
+    }));
+  return {
+    loading: false,
+    error: '',
+    nodes,
+    stages,
+    classicRoute,
+    atlasRouteId: payload?.navigation?.atlas_route_id || 'textbook_14_5',
+  };
 }
 
 function HomeLearningRoute({
   onNavigate,
   onCurrentProgress,
+  onReadyChange,
+  contentReady,
+  routeRevision,
+  userCacheKey,
   selectedTarget,
 }) {
-  const [routeView, setRouteView] = useState('orbit');
-  const [renderedRouteView, setRenderedRouteView] = useState('orbit');
+  const [routeMode, setRouteMode] = useState('classic');
+  const [routeView, setRouteView] = useState('cards');
+  const [renderedRouteView, setRenderedRouteView] = useState('cards');
   const [routeTransitionPhase, setRouteTransitionPhase] = useState('idle');
   const routeTransitionTimerRef = useRef(null);
-  const [routeState, setRouteState] = useState({
-    loading: true,
-    error: '',
-    nodes: [],
-    stages: [],
-    classicRoute: null,
-    atlasRouteId: 'textbook_14_5',
+  const [routeState, setRouteState] = useState(() => {
+    const initialRouteKey = selectedTarget?.textbook_route_id || '__planned__';
+    const cached = readQualificationRouteCache(routeCacheKey(userCacheKey, initialRouteKey));
+    return cached?.state || {
+      loading: true,
+      error: '',
+      nodes: [],
+      stages: [],
+      classicRoute: null,
+      atlasRouteId: 'textbook_14_5',
+    };
   });
   const [selectedNode, setSelectedNode] = useState(null);
   const [planningDetails, setPlanningDetails] = useState({
@@ -300,54 +395,49 @@ function HomeLearningRoute({
 
   useEffect(() => {
     let cancelled = false;
-    const routeLoader = selectedTarget?.textbook_route_id
+    const useClassicRoute = routeMode === 'classic' && Boolean(selectedTarget?.textbook_route_id);
+    const routeKey = useClassicRoute ? selectedTarget.textbook_route_id : '__planned__';
+    const cacheKey = routeCacheKey(userCacheKey, routeKey);
+    const cached = readQualificationRouteCache(cacheKey);
+    const routeLoader = useClassicRoute
       ? loadClassicLearningRoute(selectedTarget.textbook_route_id)
       : loadPlannedLearningPath();
-    setRouteView('orbit');
-    setRenderedRouteView('orbit');
+    if (cached?.state) {
+      setRouteState(cached.state);
+      onReadyChange?.(routeKey);
+    } else {
+      onReadyChange?.('');
+    }
+    setRouteView('cards');
+    setRenderedRouteView('cards');
     setRouteTransitionPhase('idle');
     setSelectedNode(null);
-    setRouteState((current) => ({ ...current, loading: true, error: '' }));
+    if (!cached?.state) setRouteState((current) => ({ ...current, loading: true, error: '' }));
     routeLoader
       .then((payload) => {
         if (cancelled) return;
-        const classicRoute = payload?.route && Array.isArray(payload.route.stages) ? payload.route : null;
-        const nodes = classicRoute
-          ? classicRoute.stages.map((stage) => adaptClassicRouteStage(classicRoute, stage))
-          : Array.isArray(payload.nodes) ? payload.nodes.map(adaptPlannedPathNode) : [];
-        const stages = nodes
-          .filter((node) => node.node_type === 'stage')
-          .map((node) => ({
-            ...node,
-            id: node.node_id,
-            nodeId: node.node_id,
-            level: node.status === 'in_progress' ? '当前阶段' : node.status === 'completed' ? '已完成' : '待学习',
-            title: node.title,
-            duration: node.child_count ? `${node.child_count} 本教材` : '教材待规划',
-            tasks: [node.description || '阶段目标待补充'],
-            resources: [],
-          }));
-        setRouteState({
-          loading: false,
-          error: '',
-          nodes,
-          stages,
-          classicRoute,
-          atlasRouteId: payload?.navigation?.atlas_route_id || 'textbook_14_5',
-        });
+        const nextState = buildLearningRouteState(payload);
+        updateQualificationRouteCache(cacheKey, { payload, state: nextState });
+        if (!cached || !samePayload(cached.payload, payload)) setRouteState(nextState);
+        onReadyChange?.(routeKey);
       })
       .catch((error) => {
-        if (!cancelled) setRouteState({
-          loading: false,
-          error: error.message || '学习路径暂时无法读取',
-          nodes: [],
-          stages: [],
-          classicRoute: null,
-          atlasRouteId: 'textbook_14_5',
-        });
+        if (!cancelled) {
+          if (!cached?.state) {
+            setRouteState({
+              loading: false,
+              error: error.message || '学习路径暂时无法读取',
+              nodes: [],
+              stages: [],
+              classicRoute: null,
+              atlasRouteId: 'textbook_14_5',
+            });
+          }
+          onReadyChange?.(routeKey);
+        }
       });
     return () => { cancelled = true; };
-  }, [selectedTarget?.textbook_route_id]);
+  }, [onReadyChange, routeMode, routeRevision, selectedTarget?.textbook_route_id, userCacheKey]);
 
   useEffect(() => () => window.clearTimeout(routeTransitionTimerRef.current), []);
 
@@ -450,14 +540,24 @@ function HomeLearningRoute({
     setSelectedNode(null);
   };
 
+  const selectRouteMode = (nextMode) => {
+    if (nextMode !== routeMode) setRouteMode(nextMode);
+  };
+
   return (
-      <section className="home-portal__route" data-view={routeView} aria-label={`${selectedTarget?.name || '当前考证'}学习路径`}>
+      <section
+        className="home-portal__route"
+        data-view={routeView}
+        data-content-ready={String(contentReady)}
+        aria-busy={!contentReady}
+        aria-label={`${selectedTarget?.name || '当前考证'}学习路径`}
+      >
       <header className="home-portal__route-header">
         <div>
           <div className="home-portal__route-kicker">
             <h2>{selectedTarget?.name || '当前考证'}</h2>
             <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
-              {routeView === 'details' ? '返回' : '了解详情'}
+              {routeView === 'details' ? '返回路径' : '规划详情'}
             </button>
           </div>
         </div>
@@ -470,26 +570,44 @@ function HomeLearningRoute({
           <span className="home-portal__route-switch-indicator" aria-hidden="true" />
           <button
             type="button"
-            className={routeView !== 'cards' ? 'is-active' : ''}
-            aria-pressed={routeView !== 'cards'}
-            onClick={returnToPath}
-          >
-            学习路径
-          </button>
-          <button
-            type="button"
             className={routeView === 'cards' ? 'is-active' : ''}
             aria-pressed={routeView === 'cards'}
             onClick={() => changeRouteView('cards')}
           >
             学习阶段
           </button>
+          <button
+            type="button"
+            className={routeView !== 'cards' ? 'is-active' : ''}
+            aria-pressed={routeView !== 'cards'}
+            onClick={returnToPath}
+          >
+            学习路径
+          </button>
+        </div>
+        <div className="home-portal__route-mode" role="group" aria-label="学习路径类型">
+          <button
+            type="button"
+            className={routeMode === 'classic' ? 'is-active' : ''}
+            aria-pressed={routeMode === 'classic'}
+            onClick={() => selectRouteMode('classic')}
+          >
+            经典路径
+          </button>
+          <button
+            type="button"
+            className={routeMode === 'personalized' ? 'is-active' : ''}
+            aria-pressed={routeMode === 'personalized'}
+            onClick={() => selectRouteMode('personalized')}
+          >
+            个性化路径
+          </button>
         </div>
       </header>
       <div className="home-portal__route-view-content" data-view={renderedRouteView} data-phase={routeTransitionPhase}>
       {renderedRouteView === 'orbit' && (
         <div className="home-portal__route-orbit-layout">
-          {routeState.loading && <div className="home-portal__route-state">正在读取学习路径…</div>}
+          {routeState.loading && <div className="home-portal__route-state" aria-hidden="true" />}
           {!routeState.loading && routeState.error && <div className="home-portal__route-state">{routeState.error}</div>}
           {!routeState.loading && !routeState.error && routeState.stages.length === 0 && <div className="home-portal__route-state">尚未生成学习路径</div>}
           {!routeState.loading && !routeState.error && routeState.stages.length > 0 && (
@@ -507,29 +625,39 @@ function HomeLearningRoute({
           )}
         </div>
       )}
-      {!routeState.loading && !routeState.error && routeState.stages.length > 0 && renderedRouteView === 'cards' && (
-        <LearningStageLanding
-          compact
-          stages={routeState.stages}
-          onStageSelect={() => changeRouteView('orbit')}
-          onCreatePlan={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}
-        />
+      {renderedRouteView === 'cards' && (
+        routeState.loading ? (
+          <div className="home-portal__route-state" aria-live="polite">
+            正在读取{routeMode === 'personalized' ? '个性化' : '经典'}学习路径…
+          </div>
+        ) : routeState.error ? (
+          <div className="home-portal__route-state" role="alert">{routeState.error}</div>
+        ) : routeState.stages.length === 0 ? (
+          <div className="home-portal__route-state">尚未生成学习路径</div>
+        ) : (
+          <LearningStageLanding
+            compact
+            stages={routeState.stages}
+            onStageSelect={() => changeRouteView('orbit')}
+            onCreatePlan={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}
+          />
+        )
       )}
       {renderedRouteView === 'details' && (
         <div className="home-portal__route-details" role="region" aria-label="长期规划和短期规划说明" tabIndex="0">
           {planningDetails.loading && <div className="home-portal__route-details-state" role="status">正在读取规划说明…</div>}
           {!planningDetails.loading && planningDetails.error && <div className="home-portal__route-details-state" role="alert">{planningDetails.error}</div>}
           {!planningDetails.loading && !planningDetails.error && (
-            <div className="home-portal__route-details-grid">
-              <article>
-                <h3>长期规划说明</h3>
-                <div>{planningDetails.longTerm || '尚未制定长期规划。'}</div>
-              </article>
-              <article>
-                <h3>短期规划说明</h3>
-                <div>{planningDetails.shortTerm || '尚未制定短期规划。'}</div>
-              </article>
-            </div>
+            <article className="home-portal__planning-document">
+              <section>
+                <h3>长期规划</h3>
+                <PlanningMarkdown content={planningDetails.longTerm} fallback="尚未制定长期规划。" />
+              </section>
+              <section>
+                <h3>短期规划</h3>
+                <PlanningMarkdown content={planningDetails.shortTerm} fallback="尚未制定短期规划。" />
+              </section>
+            </article>
           )}
         </div>
       )}
@@ -539,17 +667,32 @@ function HomeLearningRoute({
 }
 
 export default function QualificationRoutePage({ currentUser, onNavigate }) {
-  const [payload, setPayload] = useState(EMPTY_HOME_PAYLOAD);
-  const [loading, setLoading] = useState(true);
+  const userCacheKey = currentUserCacheKey(currentUser);
+  const initialPageCacheRef = useRef(readQualificationPageCache(userCacheKey));
+  const initialPageCache = initialPageCacheRef.current;
+  const initialTarget = initialPageCache?.learningTarget || { name: '中医执业医师资格考试', examDate: '' };
+  const initialRouteKey = initialTarget.textbook_route_id || '__planned__';
+  const hasInitialRoute = Boolean(readQualificationRouteCache(routeCacheKey(userCacheKey, initialRouteKey)));
+  const hasSummaryRef = useRef(Boolean(initialPageCache?.payload));
+  const [payload, setPayload] = useState(initialPageCache?.payload || EMPTY_HOME_PAYLOAD);
+  const [loading, setLoading] = useState(!initialPageCache?.payload);
   const [error, setError] = useState('');
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [checkinMessage, setCheckinMessage] = useState('');
-  const [currentProgress, setCurrentProgress] = useState('');
-  const [learningTarget, setLearningTarget] = useState({ name: '中医执业医师资格考试', examDate: '' });
-  const [learningTargetReady, setLearningTargetReady] = useState(false);
+  const [surveyOpen, setSurveyOpen] = useState(false);
+  const [routeRevision, setRouteRevision] = useState(0);
+  const [currentProgress, setCurrentProgress] = useState(initialPageCache?.currentProgress || '');
+  const [learningTarget, setLearningTarget] = useState(initialTarget);
+  const [learningTargetReady, setLearningTargetReady] = useState(Boolean(initialPageCache?.learningTarget));
+  const [readyRouteKey, setReadyRouteKey] = useState(hasInitialRoute ? initialRouteKey : '');
+  const [welcomeRevealReady, setWelcomeRevealReady] = useState(false);
   const [summaryRevision, setSummaryRevision] = useState(0);
   const [, setCountdownTick] = useState(0);
   const homeState = useMemo(() => buildHomePortalState(payload), [payload]);
+  const updateCurrentProgress = useCallback((nextProgress) => {
+    setCurrentProgress(nextProgress);
+    updatePageCache(userCacheKey, { currentProgress: nextProgress });
+  }, [userCacheKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -564,32 +707,38 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       const selected = options.find((item) => item.exam_track_id === target?.exam_track_id)
         || options.find((item) => item.official_name === context?.onboarding?.survey_answers?.target_exam_or_course)
         || options[0];
-      if (selected) setLearningTarget({
-        ...selected,
-        name: selected.official_name,
-        examDate: examDateForTarget(selected),
-        targetId: selected.target_id,
-      });
+      if (selected) {
+        const nextTarget = {
+          ...selected,
+          name: selected.official_name,
+          examDate: examDateForTarget(selected),
+          targetId: selected.target_id,
+        };
+        setLearningTarget((current) => (samePayload(current, nextTarget) ? current : nextTarget));
+        updatePageCache(userCacheKey, { learningTarget: nextTarget });
+      }
     }).catch(() => {}).finally(() => {
       if (!cancelled) setLearningTargetReady(true);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [userCacheKey]);
 
   useEffect(() => {
     const handleTargetChanged = (event) => {
       const selected = event?.detail;
       if (!selected?.target_id) return;
-      setLearningTarget({
+      const nextTarget = {
         ...selected,
         name: selected.official_name,
         examDate: examDateForTarget(selected),
         targetId: selected.target_id,
-      });
+      };
+      setLearningTarget(nextTarget);
+      updatePageCache(userCacheKey, { learningTarget: nextTarget });
     };
     window.addEventListener(LEARNING_TARGET_CHANGED_EVENT, handleTargetChanged);
     return () => window.removeEventListener(LEARNING_TARGET_CHANGED_EVENT, handleTargetChanged);
-  }, []);
+  }, [userCacheKey]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setCountdownTick((value) => value + 1), 60 * 1000);
@@ -600,7 +749,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     let cancelled = false;
 
     const loadSummary = async () => {
-      setLoading(true);
+      if (!hasSummaryRef.current) setLoading(true);
       setError('');
       try {
         const response = await fetchWithAuth(`${MAIN_API_BASE}/dashboard/home`);
@@ -609,9 +758,13 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         if (!result || typeof result !== 'object' || Array.isArray(result)) {
           throw new Error('首页数据暂不可用');
         }
-        if (!cancelled) setPayload(result);
+        if (!cancelled) {
+          hasSummaryRef.current = true;
+          setPayload((current) => (samePayload(current, result) ? current : result));
+          updatePageCache(userCacheKey, { payload: result });
+        }
       } catch (requestError) {
-        if (!cancelled) setError(requestError.message || '首页数据暂不可用');
+        if (!cancelled && !hasSummaryRef.current) setError(requestError.message || '首页数据暂不可用');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -619,7 +772,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
 
     loadSummary();
     return () => { cancelled = true; };
-  }, [summaryRevision]);
+  }, [summaryRevision, userCacheKey]);
 
   const checkinStatus = payload.checkin_status || EMPTY_HOME_PAYLOAD.checkin_status;
   const submitCheckin = async () => {
@@ -630,7 +783,11 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       const response = await fetchWithAuth(`${MAIN_API_BASE}/checkin`, { method: 'POST' });
       const result = await readJsonResponse(response, {});
       if (!response.ok) throw new Error(result.detail || '签到失败');
-      setPayload((current) => ({ ...current, checkin_status: result.status || current.checkin_status }));
+      setPayload((current) => {
+        const nextPayload = { ...current, checkin_status: result.status || current.checkin_status };
+        updatePageCache(userCacheKey, { payload: nextPayload });
+        return nextPayload;
+      });
       setCheckinMessage(result.message || '今日签到成功');
     } catch (requestError) {
       setCheckinMessage(requestError.message || '签到失败');
@@ -737,6 +894,19 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   };
 
   const countdown = examCountdown(learningTarget.examDate);
+  const pageContentReady = !loading
+    && learningTargetReady
+    && Boolean(currentProgress)
+    && Boolean(readyRouteKey);
+  useEffect(() => {
+    if (!pageContentReady) {
+      setWelcomeRevealReady(false);
+      return undefined;
+    }
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => setWelcomeRevealReady(true), reduceMotion ? 0 : CONTENT_FADE_DURATION);
+    return () => window.clearTimeout(timer);
+  }, [pageContentReady]);
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
   const hour = new Date().getHours();
   const greeting = hour >= 5 && hour < 11
@@ -755,36 +925,42 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       <section className="home-portal__learning-area" aria-label="学习路线与学习进度">
         <div className="home-portal__main-column">
           <section className="home-portal__hero" aria-labelledby="home-portal-title">
-            <div className="home-portal__hero-actions">
-              <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
-                <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
-              </button>
+            <div className="home-portal__hero-primary" data-content-ready={String(pageContentReady)}>
+              <div className="home-portal__hero-actions">
+                <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
+                  <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
+                </button>
+                <button type="button" className="home-portal__survey-trigger" onClick={() => setSurveyOpen(true)}>
+                  <ClipboardList aria-hidden="true" size={16} />学情调研
+                </button>
+              </div>
+              <HeroTypewriter
+                title={welcomeRevealReady ? heroTitle : ''}
+                subtitle={learningTargetReady && countdown !== null
+                  ? `距离${learningTarget.name}还有 ${countdown} 天，保持稳定节奏。`
+                  : ''}
+              />
             </div>
-            <HeroTypewriter
-              title={heroTitle}
-              subtitle={`距离${learningTarget.name}还有 ${countdown ?? 126} 天，保持稳定节奏。`}
-            />
+            <div className="home-portal__hero-notices">
+              {error && <div className="home-portal__notice" role="alert">{error}</div>}
+              {checkinMessage && <div className="home-portal__notice" role="status">{checkinMessage}</div>}
+              {!error && homeState.announcements[0] && (
+                <div className="home-portal__notice" role="status">{homeState.announcements[0]}</div>
+              )}
+            </div>
           </section>
 
-          {error && <div className="home-portal__notice" role="alert">{error}</div>}
-          {checkinMessage && <div className="home-portal__notice" role="status">{checkinMessage}</div>}
-          {!error && homeState.announcements[0] && (
-            <div className="home-portal__notice" role="status">{homeState.announcements[0]}</div>
-          )}
-
-          {learningTargetReady ? (
-            <HomeLearningRoute
-              onNavigate={onNavigate}
-              onCurrentProgress={setCurrentProgress}
-              selectedTarget={learningTarget}
-            />
-          ) : (
-            <section className="home-portal__route" aria-label="正在读取学习路径">
-              <div className="home-portal__route-state">正在读取学习路径…</div>
-            </section>
-          )}
+          <HomeLearningRoute
+            onNavigate={onNavigate}
+            onCurrentProgress={updateCurrentProgress}
+            onReadyChange={setReadyRouteKey}
+            contentReady={pageContentReady}
+            routeRevision={routeRevision}
+            userCacheKey={userCacheKey}
+            selectedTarget={learningTarget}
+          />
         </div>
-        <aside className="home-portal__plan-rail" aria-label="今日学习计划">
+        <aside className="home-portal__plan-rail" data-content-ready={String(pageContentReady)} aria-busy={!pageContentReady} aria-label="今日学习计划">
           <CurrentLearningPlan
             currentTask={currentTask}
             items={planItems}
@@ -802,6 +978,23 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
           />
         </aside>
       </section>
+      {surveyOpen && (
+        <div className="home-portal__survey-backdrop">
+          <section className="home-portal__survey-dialog" role="dialog" aria-modal="true" aria-label="学情调研">
+            <button type="button" className="home-portal__survey-close" aria-label="关闭学情调研" onClick={() => setSurveyOpen(false)}>
+              <X aria-hidden="true" size={19} />
+            </button>
+            <OnboardingSurveyPanel
+              exitLabel="退出调研"
+              onExit={() => setSurveyOpen(false)}
+              onSaved={() => {
+                setSurveyOpen(false);
+                setRouteRevision((value) => value + 1);
+              }}
+            />
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -227,6 +227,23 @@ export function reduceLangGraphEvent(state, ev) {
       nodes = finishNode(upsertNode(nodes, target.id, target.name, ev.text, 'running', ts, target.agent), target.id, {}, ts);
       isRollingBack = false;
     }
+  } else if (ev.type === 'human_review_waiting') {
+    const requestedTarget = eventNode(ev, 'feedback', 'audit_agent', NODE_MAP.feedback);
+    const matchingNode = nodes.find((node) => node.agent === requestedTarget.agent);
+    const target = matchingNode
+      ? { ...requestedTarget, id: matchingNode.id }
+      : requestedTarget;
+    nodes = upsertNode(
+      nodes,
+      target.id,
+      target.name,
+      ev.text,
+      'waiting_human_review',
+      ts,
+      target.agent,
+    );
+    currentActiveNodeId = null;
+    isRollingBack = false;
   } else if (ev.type === 'workflow_done') {
     nodes = nodes.map(n => ['running', 'pending'].includes(n.status) ? { ...n, status: 'done', endTime: ts, tools: n.tools.map(t => t.status === 'running' ? { ...t, status: 'done', endTime: ts } : t), intents: (n.intents || []).map(t => t.status === 'running' ? { ...t, status: 'done', endTime: ts } : t) } : n);
     currentActiveNodeId = null;

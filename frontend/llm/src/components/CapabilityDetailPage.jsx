@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, ArrowRight, Check, ChevronRight } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight } from 'lucide-react';
 import { getPlatformCapability } from '../platformCapabilities';
 import './CapabilityDetailPage.css';
 
@@ -9,15 +9,6 @@ export default function CapabilityDetailPage({ capabilityKey, onNavigate }) {
 
   return (
     <main className={`capability-detail capability-detail--${capability.tone}`}>
-      <button
-        type="button"
-        className="capability-detail__back"
-        onClick={() => onNavigate?.({ page: 'dashboard', params: {} })}
-      >
-        <ArrowLeft aria-hidden="true" size={17} />
-        返回平台首页
-      </button>
-
       <section className="capability-detail__hero" aria-labelledby="capability-detail-title">
         <div className="capability-detail__hero-copy">
           <p className="capability-detail__eyebrow">

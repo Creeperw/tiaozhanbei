@@ -272,6 +272,16 @@ class ExpertAgent:
             for question_id in model_output.selected_question_ids
             if question_id in candidate_ids and question_id in safe_review_ids
         ]
+        question_recommendation = (
+            not paper_generation
+            and self._asks_for_question_recommendations(
+                str(context.get("user_request") or "")
+            )
+        )
+        if question_recommendation:
+            selected_ids = list(
+                dict.fromkeys([*selected_ids, *safe_review_ids])
+            )[:3]
         if not paper_generation and not selected_ids and safe_review_ids:
             selected_ids = safe_review_ids[:3]
         if not paper_generation:
@@ -323,6 +333,14 @@ class ExpertAgent:
             for item in question_details
             if item.question_id in selected_ids
         ]
+        training_focus = list(
+            dict.fromkeys(
+                str(tag).strip()
+                for item in selected_questions
+                for tag in item.get("tags") or []
+                if str(tag).strip()
+            )
+        )[:6]
         video_resources = [
             {
                 "title": item.source_id,
@@ -343,13 +361,22 @@ class ExpertAgent:
             content: dict[str, object] = {
                 "试卷蓝图": model_output.blueprint_content,
             }
+        elif question_recommendation:
+            content = {
+                "训练重点": training_focus or [topic],
+                "推荐说明": (
+                    "以下题目依据当前学习状态、优先巩固主题与正式题库候选匹配；"
+                    "完成作答后，系统才会把结果计入掌握度与复习调度。"
+                ),
+                "练习资源": [],
+            }
         else:
             # Evidence is an internal grounding source, not learner-facing
             # copy. The Expert's learning tip is the card content; provenance
             # remains in claims/audit/snapshot boundaries.
             learning_prompt = (
                 f"【本次目标】围绕{topic}完成主动回忆。\n"
-                "【执行步骤】先闭卷写出组成/结构、功用、适用条件和一个易错点；"
+                "【执行步骤】先闭卷写出核心定义、关键关系、判断依据和一个易错点；"
                 "再对照知识卡片自查，记录遗漏或不确定内容；最后完成练习资源并提交反馈。"
             )
             content = {
@@ -379,7 +406,13 @@ class ExpertAgent:
             content["练习资源"] = selected_questions
         draft = ResourceDraft(
             resource_draft_id=f"DRAFT_{uuid4().hex}",
-            title=f"{topic}试卷蓝图" if paper_generation else f"{topic}个性化复习卡",
+            title=(
+                f"{topic}试卷蓝图"
+                if paper_generation
+                else f"{topic}个性化练习"
+                if question_recommendation
+                else f"{topic}个性化复习卡"
+            ),
             content=content,
             estimated_minutes=int(context.get("available_minutes", 15)),
             claims=[
@@ -399,6 +432,17 @@ class ExpertAgent:
             ),
         )
         return envelope(context, "expert_agent", "resource_draft", draft)
+
+    @staticmethod
+    def _asks_for_question_recommendations(request: str) -> bool:
+        text = "".join(str(request or "").split())
+        return any(
+            marker in text
+            for marker in (
+                "做哪些题", "该做什么题", "该做哪些题", "需要做什么题",
+                "需要做哪些题", "推荐题目", "推荐练习", "练习题",
+            )
+        )
 
     @staticmethod
     def _build_knowledge_card(topic: str, evidence_items: list[Any], learning_tip: str) -> str:

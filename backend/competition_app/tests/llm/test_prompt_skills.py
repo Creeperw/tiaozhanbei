@@ -23,6 +23,22 @@ def test_review_card_skills_allow_labeled_consensus_extensions() -> None:
     assert "明确事实错误" in audit.instructions
 
 
+def test_general_learning_support_prompts_cover_current_fact_queries() -> None:
+    expert = prompt_skill_registry.load("expert_agent", "general_learning_support")
+    audit = prompt_skill_registry.load("audit_agent", "general_learning_support")
+
+    assert "external_information_request" in expert.instructions
+    assert "网络证据" in expert.instructions
+    assert "external_information_request" in audit.instructions
+
+
+def test_knowledge_explanation_prompt_covers_current_facts_and_question_sticking_points() -> None:
+    expert = prompt_skill_registry.load("expert_agent", "knowledge_explanation")
+
+    assert "external_information_request" in expert.instructions
+    assert "卡在哪一步" in expert.instructions
+
+
 def test_prompt_skill_registry_rejects_unregistered_or_traversal_paths(tmp_path) -> None:
     registry = PromptSkillRegistry(tmp_path)
 

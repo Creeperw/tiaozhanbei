@@ -6,18 +6,24 @@ import { EMPTY_ACUPUNCTURE_CASE, getAcupunctureCaseDisplayTitle, normalizeAcupun
 import { scoreAcupunctureAttempt } from './acupunctureScoring';
 
 describe('AcupuncturePractice', () => {
-    it('follows the consent, region and body-image steps', () => {
+    it('follows consent directly into the 3D model and needling steps', () => {
         render(<AcupuncturePractice onBack={vi.fn()} />);
 
         expect(screen.getByText('确认患者配合意愿')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: '愿意配合' }));
-        fireEvent.click(screen.getByRole('button', { name: '进入部位选择' }));
-        expect(screen.getByRole('button', { name: '足部' })).not.toHaveClass('is-selected');
-        fireEvent.click(screen.getByRole('button', { name: /背部/ }));
-        fireEvent.click(screen.getByRole('button', { name: '查看对应部位' }));
-
-        expect(screen.getByText('对应部位示意')).toBeInTheDocument();
-        expect(screen.getByRole('img', { name: 'back部位示意图' })).toHaveAttribute('src', '/acupuncture/back.png');
+        fireEvent.click(screen.getByRole('button', { name: '进入 3D 模型' }));
+        expect(screen.getByText('观察 3D 人体模型')).toBeInTheDocument();
+        expect(screen.queryByText('选择针灸部位')).not.toBeInTheDocument();
+        expect(screen.queryByText('对应部位示意')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: '开始下针' }));
+        expect(screen.getByText('点击人体表面完成施针定位；提交前可撤销上一针并重新选择位置。')).toBeInTheDocument();
+        expect(screen.queryByText('本案例施针标准')).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: '选择进针类型' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '直刺' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '斜刺' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '平刺' })).toBeInTheDocument();
+        expect(screen.getByText('进针深度')).toBeInTheDocument();
+        expect(screen.getByText('留针时间')).toBeInTheDocument();
     });
 
     it('does not fabricate a score while standard data is empty', () => {
@@ -33,6 +39,7 @@ describe('AcupuncturePractice', () => {
                 region: 'feet',
                 coordinates: { x: 0, y: 0, unit: 'px' },
                 needleDepth: { min: 0.5, max: 0.8, unit: '寸' },
+                needleAngle: '直刺0.5-0.8寸',
                 retentionTime: { min: 15, max: 25, unit: '分钟' },
             }],
             positionTolerance: { value: 15, unit: 'px' },
@@ -67,6 +74,7 @@ describe('AcupuncturePractice', () => {
                 region: 'feet',
                 coordinates: { x: 0, y: 0, unit: 'px' },
                 needleDepth: { min: 0.5, max: 0.8, unit: '寸' },
+                needleAngle: '直刺0.5-0.8寸',
                 retentionTime: { min: 15, max: 25, unit: '分钟' },
             }],
             positionTolerance: { value: 15, unit: 'px' },
@@ -75,6 +83,7 @@ describe('AcupuncturePractice', () => {
         expect(normalized.applicableRegions).toEqual(['feet']);
         expect(normalized.standardPoints[0]).toMatchObject({ name: '太溪', code: 'KI3', regionId: 'feet' });
         expect(normalized.scoring.positionTolerancePercent).toBeNull();
+        expect(normalized.standardPoints[0].needleAngle).toBe('直刺0.5-0.8寸');
     });
 
     it('keeps the consent question focused on reassurance instead of point selection', () => {

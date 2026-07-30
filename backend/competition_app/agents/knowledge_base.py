@@ -43,6 +43,15 @@ class KnowledgeBaseAgent:
         user_request = str(context.get("user_request") or context.get("topic") or "").strip()
         if not user_request:
             raise ValueError("knowledge base agent requires user_request")
+        external_request = bool(context.get("external_information_request")) or any(
+            marker in user_request.lower()
+            for marker in (
+                "天气", "气温", "降雨", "下雨", "空气质量", "台风",
+                "距离下次", "考试时间", "考试日期", "什么时候考试",
+                "报名时间", "截止日期", "日程", "赛程", "最新消息",
+                "当前时间", "今天几号", "现在几点",
+            )
+        )
         prompt_skill = prompt_skill_registry.load("knowledge_base_agent", "vector_retrieval")
         memory_output = context.get("dependency_outputs", {}).get("memory")
         memory_payload = getattr(memory_output, "payload", None)
@@ -51,7 +60,14 @@ class KnowledgeBaseAgent:
         conversation_messages = list(context.get("messages", []))
         recent_messages = conversation_messages[-1:] if compressed_summary else conversation_messages[-8:]
         try:
-            raw_plan = await self.chat_model.complete_json(
+            raw_plan = (
+                {
+                    "kp_query": user_request,
+                    "question_query": user_request,
+                    "retrieval_reason": "用户请求的是时效性外部事实，直接检索网络参考来源。",
+                }
+                if external_request
+                else await self.chat_model.complete_json(
                     "knowledge_base_agent",
                     build_model_context(
                         context,
@@ -91,6 +107,7 @@ class KnowledgeBaseAgent:
                         ),
                     ),
                 )
+            )
             if not isinstance(raw_plan, dict):
                 raw_plan = {}
             retrieval_plan = KnowledgeRetrievalPlanModelOutput.model_validate(
@@ -107,8 +124,36 @@ class KnowledgeBaseAgent:
                 )
             raise ValueError("knowledge retrieval plan validation failed") from exc
         try:
-            pack = await self._build_evidence_pack(retrieval_plan.kp_query, context)
+            if external_request:
+                location = str(
+                    context.get("user_profile", {}).get("location")
+                    or context.get("user_profile", {}).get("user_area")
+                    or context.get("user_profile", {}).get("city")
+                    or ""
+                )
+                registry = context.get("tool_registry")
+                if registry is not None:
+                    pack = await registry.invoke(
+                        "get_external_fact_evidence",
+                        "knowledge_base_agent",
+                        trace_recorder=context.get("trace_recorder"),
+                        safe_input_summary={"query_length": len(user_request)},
+                        safe_output_summary_factory=lambda value: {
+                            "evidence_count": len(value.evidence_items)
+                        },
+                        query=user_request,
+                        location=location,
+                    )
+                else:
+                    pack = await self.retrieval_tool.build_external_evidence_pack(
+                        user_request,
+                        location=location,
+                    )
+            else:
+                pack = await self._build_evidence_pack(retrieval_plan.kp_query, context)
         except LookupError:
+            if external_request:
+                raise
             # The retrieval planner occasionally replaces a concrete learner
             # topic (for example, “感冒”) with a generic label such as
             # “中医药基础知识点”.  That label cannot resolve to a catalog KP,
@@ -128,10 +173,20 @@ class KnowledgeBaseAgent:
                 }
             )
         query = pack.query
-        question_result = await self._search_question_candidates(
-            retrieval_plan.question_query,
-            pack.resolved_kp_ids,
-            context,
+        question_result = (
+            QuestionSearchResult(
+                query=retrieval_plan.question_query,
+                resolved_kp_ids=[],
+                embedding_model="not_applicable",
+                vector_index_path="",
+                items=[],
+            )
+            if external_request
+            else await self._search_question_candidates(
+                retrieval_plan.question_query,
+                pack.resolved_kp_ids,
+                context,
+            )
         )
         if not pack.resolved_kp_ids:
             bridge_kp_ids = list(

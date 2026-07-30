@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bookmark, BookMarked, Check, Loader2, NotebookPen, Plus, X } from 'lucide-react';
+import { Bookmark, BookMarked, Loader2, NotebookPen, Plus, Star, X } from 'lucide-react';
 import {
   createFavoriteFolder,
   createNote,
@@ -17,6 +17,17 @@ export function FavoriteQuestionButton({ question, source = '训练工坊' }) {
   const [newFolderName, setNewFolderName] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!question?.resource_id) return;
+    loadFavoriteFolders().then((payload) => {
+      // Check if already favorited in any folder
+      for (const f of (payload.items || [])) {
+        if (f.resource_id === question.resource_id) { setSaved(true); return; }
+      }
+    }).catch(() => {});
+  }, [question?.resource_id]);
 
   useEffect(() => {
     if (!open) return;
@@ -63,6 +74,7 @@ export function FavoriteQuestionButton({ question, source = '训练工坊' }) {
         source,
         content: question.content,
       });
+      setSaved(true);
       setStatus('已加入收藏');
     } catch (reason) {
       setStatus(reason.message || '收藏失败');
@@ -72,7 +84,12 @@ export function FavoriteQuestionButton({ question, source = '训练工坊' }) {
   };
 
   return <>
-    <button type="button" className="workshop-save-action" onClick={() => setOpen(true)}><BookMarked size={15} />加入收藏</button>
+    <button type="button" className="workshop-save-action" onClick={() => {
+      if (saved) { setSaved(false); setStatus('已取消收藏'); }
+      else { setOpen(true); }
+    }} style={{borderColor:'#f0d78c',color:saved?'#a16207':'#c4940a',background:saved?'#fef9c3':'#fff',borderWidth:1,borderStyle:'solid'}}>
+      <Star size={15} fill={saved ? 'currentColor' : 'none'} />{saved ? '已收藏' : '加入收藏'}
+    </button>
     {open && <div className="workshop-save-dialog" role="dialog" aria-modal="true" aria-labelledby="favorite-dialog-title">
       <div>
         <header><h3 id="favorite-dialog-title">加入收藏夹</h3><button type="button" aria-label="关闭收藏窗口" onClick={() => setOpen(false)}><X size={18} /></button></header>
@@ -89,7 +106,22 @@ export function FavoriteQuestionIconButton({ question, source = '训练工坊' }
   const [favoriteId, setFavoriteId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [checked, setChecked] = useState(false);
   const saved = Boolean(favoriteId);
+
+  useEffect(() => {
+    if (checked || !question?.resource_id) return;
+    setChecked(true);
+    loadFavoriteFolders().then((payload) => {
+      for (const folder of (payload.items || [])) {
+        // Quick check: if this question is already in any folder
+        if (folder.resource_id === question.resource_id || folder.question_id === question.resource_id) {
+          setFavoriteId(folder.favorite_id || '1');
+          return;
+        }
+      }
+    }).catch(() => {});
+  }, [question?.resource_id]);
 
   const toggleFavorite = async () => {
     if (loading || !question?.resource_id) return;
@@ -130,13 +162,14 @@ export function FavoriteQuestionIconButton({ question, source = '训练工坊' }
     <span className="question-favorite-control">
       <button
         type="button"
-        className={saved ? 'is-saved' : ''}
+        className={saved ? 'text-amber-500' : 'text-amber-400 hover:text-amber-500'}
         aria-label={saved ? '取消收藏本题' : '收藏本题'}
         title={saved ? '取消收藏本题' : '收藏本题'}
         disabled={loading}
         onClick={toggleFavorite}
+        style={{background:'transparent',border:'none',cursor:'pointer',padding:2}}
       >
-        {saved ? <Check size={17} aria-hidden="true" /> : <Bookmark size={17} aria-hidden="true" />}
+        {saved ? <Star size={17} aria-hidden="true" fill="currentColor" /> : <Star size={17} aria-hidden="true" />}
       </button>
       {error && <small role="alert">{error}</small>}
     </span>
