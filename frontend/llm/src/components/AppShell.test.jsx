@@ -1,4 +1,7 @@
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { cwd } from 'node:process';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -14,6 +17,14 @@ describe('AppShell', () => {
     renderShell();
 
     expect(screen.getByRole('button', { name: 'AI 智能助教' })).toHaveClass('app-shell__assistant-entry--featured');
+  });
+
+  it('keeps the compact featured topbar layout from the home-login navigation branch', () => {
+    renderShell();
+
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
+    expect(stylesheet).toMatch(/\.app-shell__topbar-inner\s*\{[^}]*min-height:\s*76px;/s);
+    expect(stylesheet).toMatch(/\.app-shell__assistant-entry--featured\s*\{[^}]*background:\s*linear-gradient\(/s);
   });
 
   it('shows a login entry instead of the profile menu for visitors', async () => {
@@ -120,6 +131,33 @@ describe('AppShell', () => {
     await user.click(screen.getByRole('button', { name: '返回' }));
 
     expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} });
+  });
+
+  it('places the platform-home return beside the capability module title', async () => {
+    const onNavigate = vi.fn();
+    const user = userEvent.setup();
+    renderShell({ currentPage: 'capability-detail', onNavigate });
+
+    const pageHeader = document.querySelector('.app-shell__page-header');
+    const platformHome = within(pageHeader).getByRole('button', { name: '返回平台首页' });
+
+    expect(within(pageHeader).getByRole('heading', { level: 1, name: '平台核心能力' })).toBeInTheDocument();
+    expect(within(pageHeader).queryByRole('button', { name: '返回主页' })).not.toBeInTheDocument();
+    expect(platformHome).toBeInTheDocument();
+
+    await user.click(platformHome);
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'dashboard', params: {} });
+  });
+
+  it('aligns the capability title group with the detail content edge', () => {
+    const css = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
+
+    expect(css).toMatch(
+      /\.app-shell__main\[data-page="capability-detail"\] > \.app-shell__page-header > div\s*\{[^}]*margin-left:\s*max\(\s*clamp\(20px, 4vw, 58px\),\s*calc\(\(100% - 1360px\) \/ 2 \+ clamp\(20px, 4vw, 58px\)\)\s*\);/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 700px\)[\s\S]*?\.app-shell__main\[data-page="capability-detail"\] > \.app-shell__page-header > div\s*\{[^}]*margin-left:\s*16px;/,
+    );
   });
 
   it('opens teaching resources directly without a dropdown', async () => {

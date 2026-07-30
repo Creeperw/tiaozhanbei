@@ -1,4 +1,7 @@
 import React from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { cwd } from 'node:process';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -39,12 +42,16 @@ describe('CapabilityDetailPage', () => {
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(6);
   });
 
-  it('returns to the platform homepage', () => {
-    const onNavigate = vi.fn();
-    render(<CapabilityDetailPage capabilityKey="knowledge-graph" onNavigate={onNavigate} />);
+  it('leaves the platform-home return to the shared module header', () => {
+    render(<CapabilityDetailPage capabilityKey="knowledge-graph" onNavigate={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '返回平台首页' }));
+    expect(screen.queryByRole('button', { name: '返回平台首页' })).not.toBeInTheDocument();
+  });
 
-    expect(onNavigate).toHaveBeenCalledWith({ page: 'dashboard', params: {} });
+  it('uses one green theme for every capability detail page', () => {
+    const css = readFileSync(resolve(cwd(), 'src/components/CapabilityDetailPage.css'), 'utf8');
+
+    expect(css).toContain('--capability-accent: #079669;');
+    expect(css).not.toMatch(/\.capability-detail--(blue|violet|orange)\s*\{/);
   });
 });

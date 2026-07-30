@@ -275,6 +275,26 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
   });
 
+  it('restores classic and personalized route choices with the learner survey entry', async () => {
+    const fetchMock = installHomeFetch({});
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    const routeSource = await screen.findByRole('group', { name: '学习路径类型' });
+    const classicButton = within(routeSource).getByRole('button', { name: '经典路径' });
+    const personalizedButton = within(routeSource).getByRole('button', { name: '个性化路径' });
+    expect(classicButton).toHaveAttribute('aria-pressed', 'true');
+    expect(personalizedButton).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(personalizedButton);
+    expect(personalizedButton).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/learning-path'))).toBe(true));
+
+    fireEvent.click(screen.getByRole('button', { name: '学情调研' }));
+    expect(screen.getByRole('dialog', { name: '学情调研' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '关闭学情调研' }));
+    expect(screen.queryByRole('dialog', { name: '学情调研' })).not.toBeInTheDocument();
+  });
+
   it('opens the assistant with the current learning context when adding a task', async () => {
     const onNavigate = vi.fn();
     installHomeFetch({ current_learning_task: null });

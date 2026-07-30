@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   BookOpen,
+  ArrowLeft,
   Bell,
   ChartNoAxesColumnIncreasing,
   ChevronDown,
@@ -166,10 +167,10 @@ function LearningTargetNavigationMenu({ menuState, onOpen, onRequestClose, onClo
   }, [mounted, onRequestClose]);
   return (
     <div ref={ref} className="app-shell__nav-group app-shell__target-group" data-has-current-target={enabled && Boolean(currentTargetName)} onMouseEnter={() => onOpen('learning-target')} onMouseLeave={() => onRequestClose('learning-target', NAV_MENU_LEAVE_DELAY_MS)} onFocus={() => onOpen('learning-target')} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) onRequestClose('learning-target', 0); }}>
-      <button type="button" aria-label="考试类别" aria-haspopup="menu" aria-expanded={open} style={enabled && currentTargetName ? { minHeight: 52, paddingBlock: 6 } : undefined} onClick={() => { if (!enabled) { onLoginRequested?.(); return; } open ? onRequestClose('learning-target', 0) : onOpen('learning-target'); }}>
-        <span className="app-shell__target-trigger-copy" style={enabled && currentTargetName ? { display: 'flex', minWidth: 0, flexDirection: 'column', alignItems: 'flex-start', gap: 2, lineHeight: 1.15 } : undefined}>
+      <button type="button" aria-label="考试类别" aria-haspopup="menu" aria-expanded={open} onClick={() => { if (!enabled) { onLoginRequested?.(); return; } open ? onRequestClose('learning-target', 0) : onOpen('learning-target'); }}>
+        <span className="app-shell__target-trigger-copy">
           <span>考试类别</span>
-          {enabled && currentTargetName && <small className="app-shell__target-current" style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={currentTargetName}>当前 · {currentTargetName}</small>}
+          {enabled && currentTargetName && <small className="app-shell__target-current" title={currentTargetName}>当前 · {currentTargetName}</small>}
         </span>
         <ChevronDown aria-hidden="true" size={15} />
       </button>
@@ -570,7 +571,7 @@ export default function AppShell({ currentUser, currentPage, currentIntent = nul
   const displayName = currentUser?.display_name || currentUser?.username || '未登录';
   const avatarUrl = authenticated ? accountProfile?.avatar_url || null : null;
   const avatarInitial = displayName.trim().slice(0, 1).toUpperCase() || '用';
-  const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice', 'training-workshop'].includes(shell.currentPage);
+  const shouldShowHomeButton = shell.homeAction && !['settings', 'personalization', 'practice', 'training-workshop', 'capability-detail'].includes(shell.currentPage);
   const shouldShowPageHeader = !['dashboard', 'learning-path'].includes(shell.currentPage)
     && shell.shellMode !== 'workspace'
     && !['personalization', 'settings'].includes(shell.currentPage);
@@ -730,7 +731,19 @@ export default function AppShell({ currentUser, currentPage, currentIntent = nul
               />}
               <div>
                 <span className="app-shell__section-label">当前模块</span>
-                <h1>{shell.pageTitle}</h1>
+                <div className="app-shell__page-title-row">
+                  <h1>{shell.pageTitle}</h1>
+                  {shell.currentPage === 'capability-detail' && (
+                    <button
+                      type="button"
+                      className="app-shell__capability-home"
+                      onClick={() => onNavigate({ page: 'dashboard', params: {} })}
+                    >
+                      <ArrowLeft aria-hidden="true" size={15} />
+                      返回平台首页
+                    </button>
+                  )}
+                </div>
               </div>
             </header>
           )}

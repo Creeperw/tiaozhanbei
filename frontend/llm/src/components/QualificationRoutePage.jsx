@@ -6,13 +6,16 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Clock3,
   Plus,
+  X,
 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
 import LearningStageLanding from './learning-stage/LearningStageLanding';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
+import OnboardingSurveyPanel from './OnboardingSurveyPanel';
 import {
   adaptClassicRouteBooks,
   adaptClassicRouteStage,
@@ -324,9 +327,11 @@ function HomeLearningRoute({
   onCurrentProgress,
   onReadyChange,
   contentReady,
+  routeRevision,
   userCacheKey,
   selectedTarget,
 }) {
+  const [routeMode, setRouteMode] = useState('classic');
   const [routeView, setRouteView] = useState('cards');
   const [renderedRouteView, setRenderedRouteView] = useState('cards');
   const [routeTransitionPhase, setRouteTransitionPhase] = useState('idle');
@@ -362,10 +367,11 @@ function HomeLearningRoute({
 
   useEffect(() => {
     let cancelled = false;
-    const routeKey = selectedTarget?.textbook_route_id || '__planned__';
+    const useClassicRoute = routeMode === 'classic' && Boolean(selectedTarget?.textbook_route_id);
+    const routeKey = useClassicRoute ? selectedTarget.textbook_route_id : '__planned__';
     const cacheKey = routeCacheKey(userCacheKey, routeKey);
     const cached = readQualificationRouteCache(cacheKey);
-    const routeLoader = selectedTarget?.textbook_route_id
+    const routeLoader = useClassicRoute
       ? loadClassicLearningRoute(selectedTarget.textbook_route_id)
       : loadPlannedLearningPath();
     if (cached?.state) {
@@ -403,7 +409,7 @@ function HomeLearningRoute({
         }
       });
     return () => { cancelled = true; };
-  }, [onReadyChange, selectedTarget?.textbook_route_id, userCacheKey]);
+  }, [onReadyChange, routeMode, routeRevision, selectedTarget?.textbook_route_id, userCacheKey]);
 
   useEffect(() => () => window.clearTimeout(routeTransitionTimerRef.current), []);
 
@@ -506,6 +512,10 @@ function HomeLearningRoute({
     setSelectedNode(null);
   };
 
+  const selectRouteMode = (nextMode) => {
+    if (nextMode !== routeMode) setRouteMode(nextMode);
+  };
+
   return (
       <section
         className="home-portal__route"
@@ -545,6 +555,24 @@ function HomeLearningRoute({
             onClick={returnToPath}
           >
             学习路径
+          </button>
+        </div>
+        <div className="home-portal__route-mode" role="group" aria-label="学习路径类型">
+          <button
+            type="button"
+            className={routeMode === 'classic' ? 'is-active' : ''}
+            aria-pressed={routeMode === 'classic'}
+            onClick={() => selectRouteMode('classic')}
+          >
+            经典路径
+          </button>
+          <button
+            type="button"
+            className={routeMode === 'personalized' ? 'is-active' : ''}
+            aria-pressed={routeMode === 'personalized'}
+            onClick={() => selectRouteMode('personalized')}
+          >
+            个性化路径
           </button>
         </div>
       </header>
@@ -613,6 +641,8 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const [error, setError] = useState('');
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [checkinMessage, setCheckinMessage] = useState('');
+  const [surveyOpen, setSurveyOpen] = useState(false);
+  const [routeRevision, setRouteRevision] = useState(0);
   const [currentProgress, setCurrentProgress] = useState(initialPageCache?.currentProgress || '');
   const [learningTarget, setLearningTarget] = useState(initialTarget);
   const [learningTargetReady, setLearningTargetReady] = useState(Boolean(initialPageCache?.learningTarget));
@@ -863,6 +893,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
                 <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
                   <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
                 </button>
+                <button type="button" className="home-portal__survey-trigger" onClick={() => setSurveyOpen(true)}>
+                  <ClipboardList aria-hidden="true" size={16} />学情调研
+                </button>
               </div>
               <HeroTypewriter
                 title={welcomeRevealReady ? heroTitle : ''}
@@ -885,6 +918,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             onCurrentProgress={updateCurrentProgress}
             onReadyChange={setReadyRouteKey}
             contentReady={pageContentReady}
+            routeRevision={routeRevision}
             userCacheKey={userCacheKey}
             selectedTarget={learningTarget}
           />
@@ -907,6 +941,23 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
           />
         </aside>
       </section>
+      {surveyOpen && (
+        <div className="home-portal__survey-backdrop">
+          <section className="home-portal__survey-dialog" role="dialog" aria-modal="true" aria-label="学情调研">
+            <button type="button" className="home-portal__survey-close" aria-label="关闭学情调研" onClick={() => setSurveyOpen(false)}>
+              <X aria-hidden="true" size={19} />
+            </button>
+            <OnboardingSurveyPanel
+              exitLabel="退出调研"
+              onExit={() => setSurveyOpen(false)}
+              onSaved={() => {
+                setSurveyOpen(false);
+                setRouteRevision((value) => value + 1);
+              }}
+            />
+          </section>
+        </div>
+      )}
     </div>
   );
 }

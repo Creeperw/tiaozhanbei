@@ -80,6 +80,133 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* Retained learning-path controls from the qualification route. */
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__survey-trigger {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #d7e8e0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .92);
+  padding: 0 12px;
+  color: #41695c;
+  font-size: .78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__survey-trigger:hover,
+.app-shell__main[data-page="learning-path"] .home-portal__hero-actions .home-portal__survey-trigger:focus-visible {
+  border-color: #b9ddcd;
+  background: #eef9f4;
+  color: #167e5e;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header > div:first-child {
+  flex: 1 1 260px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-mode {
+  display: grid;
+  width: 220px;
+  flex: 0 0 220px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  border: 1px solid #d6e6df;
+  border-radius: 999px;
+  background: #fff;
+  padding: 3px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-mode button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 8px;
+  color: #6d817a;
+  font-size: .74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-mode button.is-active {
+  background: #e8f6ef;
+  color: #146f53;
+}
+
+.home-portal__survey-backdrop {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(20, 48, 39, .48);
+  backdrop-filter: blur(8px);
+}
+
+.home-portal__survey-dialog {
+  position: relative;
+  width: min(1080px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border-radius: 28px;
+  background: #f7fbf8;
+  box-shadow: 0 30px 90px rgba(17, 61, 47, .28);
+}
+
+.home-portal__survey-close {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #d4e5dd;
+  border-radius: 50%;
+  background: #fff;
+  color: #45635a;
+  cursor: pointer;
+}
+
+.home-portal__survey-dialog .registration-journey {
+  min-height: auto;
+  border-radius: inherit;
+}
+
+.home-portal__survey-dialog .registration-journey__header {
+  padding-right: 68px;
+}
+
+@media (max-width: 980px) {
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header {
+    flex-wrap: wrap;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-switch,
+  .app-shell__main[data-page="learning-path"] .home-portal__route-mode {
+    flex: 1 1 220px;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-portal__survey-backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .home-portal__survey-dialog {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -463,6 +590,59 @@ textarea:focus-visible {
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-title);
   letter-spacing: 0;
+}
+
+.app-shell__page-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.app-shell__capability-home {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-accent);
+  border-radius: 999px;
+  background: var(--color-surface-accent);
+  color: #087454;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+
+.app-shell__capability-home:hover {
+  border-color: #6ee7b7;
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.app-shell__capability-home:focus-visible {
+  outline: 3px solid rgba(7, 150, 105, 0.28);
+  outline-offset: 3px;
+}
+
+.app-shell__main[data-page="capability-detail"] > .app-shell__page-header {
+  margin-bottom: var(--space-2);
+}
+
+.app-shell__main[data-page="capability-detail"] > .app-shell__page-header > div {
+  margin-left: max(
+    clamp(20px, 4vw, 58px),
+    calc((100% - 1360px) / 2 + clamp(20px, 4vw, 58px))
+  );
+}
+
+@media (max-width: 700px) {
+  .app-shell__main[data-page="capability-detail"] > .app-shell__page-header > div {
+    margin-left: 16px;
+  }
 }
 
 .icon-button,
@@ -12696,5 +12876,77 @@ textarea:focus-visible {
   .app-shell__main[data-page="learning-path"] .home-today-card__list::-webkit-scrollbar-thumb {
     border-radius: 999px;
     background: rgba(79, 137, 87, .3);
+  }
+}
+
+/* Restore the compact desktop navigation treatment from fxz/2026-07-29-home-login-navigation. */
+@media (min-width: 900px) {
+  .app-shell__topbar-inner {
+    min-height: 76px;
+  }
+
+  .app-shell__topbar .app-shell__identity strong {
+    font-size: 1rem;
+  }
+
+  .app-shell__topbar .app-shell__identity span {
+    font-size: .66rem;
+  }
+
+  .app-shell__target-group > button {
+    position: relative;
+  }
+
+  .app-shell__target-group[data-has-current-target="true"] {
+    z-index: 2;
+  }
+
+  .app-shell__target-trigger-copy {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+  }
+
+  .app-shell__target-current {
+    position: absolute;
+    top: calc(100% - 5px);
+    left: 50%;
+    width: max-content;
+    max-width: none;
+    overflow: hidden;
+    pointer-events: none;
+    color: #71867e;
+    font-size: clamp(.54rem, .6vw, .66rem);
+    font-weight: 500;
+    line-height: 1.25;
+    text-overflow: clip;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  .app-shell__nav-group > button:hover .app-shell__target-current,
+  .app-shell__nav-group > button[aria-expanded="true"] .app-shell__target-current {
+    color: #478471;
+  }
+
+  .app-shell__assistant-entry--featured {
+    border-color: rgba(204, 255, 229, .45);
+    background: linear-gradient(135deg, #0d8b62 0%, #139a6c 52%, #087657 100%);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(7, 108, 75, .2), inset 0 1px 0 rgba(255, 255, 255, .2);
+    transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .app-shell__assistant-entry--featured:hover {
+    border-color: rgba(224, 255, 238, .68);
+    background: linear-gradient(135deg, #119a6e 0%, #16a878 52%, #0b8762 100%);
+    color: #fff;
+    box-shadow: 0 11px 22px rgba(7, 108, 75, .26), inset 0 1px 0 rgba(255, 255, 255, .24);
+  }
+
+  .app-shell__assistant-entry--featured:focus-visible {
+    outline: 3px solid rgba(31, 164, 116, .3);
+    outline-offset: 3px;
   }
 }
