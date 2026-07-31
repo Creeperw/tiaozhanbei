@@ -1,5 +1,6 @@
 {
   "catalog_version": "1.0.0",
+  "default_category": "中医药",
   "books": [
     {
       "book_id": "TBPDF_6be58f7175be92ed",

@@ -11,6 +11,7 @@ import {
 import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import TextbookLibrary from './workshop-textbook/TextbookLibrary';
+import { loadTextbookPdfCatalog } from './workshop-textbook/textbookPdfApi';
 import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
 import {
@@ -120,6 +121,7 @@ export default function DashboardPage({
   const [, setClassicBooks] = useState([]);
   const [classicError, setClassicError] = useState('');
   const [allTextbooks, setAllTextbooks] = useState([]);
+  const [uploadedTextbooks, setUploadedTextbooks] = useState([]);
   const [textbookError, setTextbookError] = useState('');
   const [textbooksLoading, setTextbooksLoading] = useState(true);
   const [currentLearningTask, setCurrentLearningTask] = useState(null);
@@ -140,6 +142,25 @@ export default function DashboardPage({
         if (!cancelled) setCurrentLearningTask(null);
       });
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadTextbookPdfCatalog({ signal: controller.signal })
+      .then((payload) => {
+        const items = (payload.items || []).filter((item) => item.origin === 'user_upload');
+        setUploadedTextbooks(items.map((item) => ({
+          ...item,
+          id: item.book_id,
+          book: item.title,
+          node_type: 'book',
+          title: `《${item.title}》`,
+          stage_title: item.category || '用户教材',
+          navigation: { book: item.title, book_id: item.book_id, route_id: 'user_textbooks' },
+        })));
+      })
+      .catch(() => {});
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -317,12 +338,16 @@ export default function DashboardPage({
     || null
   ), [plannedBooks, taskBookName]);
   const planBookNames = useMemo(() => new Set(plannedBooks.map(normalizedBookName)), [plannedBooks]);
+  const libraryTextbooks = useMemo(() => {
+    const uploadedNames = new Set(uploadedTextbooks.map(normalizedBookName));
+    return [...uploadedTextbooks, ...allTextbooks.filter((book) => !uploadedNames.has(normalizedBookName(book)))];
+  }, [allTextbooks, uploadedTextbooks]);
   const remainingTextbooks = useMemo(() => (
-    allTextbooks.filter((book) => !planBookNames.has(normalizedBookName(book)))
-  ), [allTextbooks, planBookNames]);
+    libraryTextbooks.filter((book) => !planBookNames.has(normalizedBookName(book)))
+  ), [libraryTextbooks, planBookNames]);
   const visibleTextbooks = useMemo(() => visibleWorkshopTextbooks({
-    allTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks,
-  }), [allTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks]);
+    allTextbooks: libraryTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks,
+  }), [libraryTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks]);
   const currentBookName = taskBookName || normalizedBookName(currentPlanBook);
   const currentChapter = currentLearningTask?.learning_chapter?.title || '';
   const currentBookProgress = Number(currentPlanBook?.progress || 0);
@@ -384,6 +409,8 @@ export default function DashboardPage({
         // 学习工坊教材目录来自全量教材路线，不能沿用考试路线的筛选 route。
         route: 'textbook_14_5',
         lv1: name,
+        bookId: node.book_id || node.navigation?.book_id || '',
+        uploaded: node.origin === 'user_upload',
         source: 'textbook-library',
       },
     });
@@ -421,7 +448,7 @@ export default function DashboardPage({
                 <div className="workshop-library-page__loading" role="status" aria-label="正在加载教材目录">
                   <span aria-hidden="true" />
                 </div>
-              ) : allTextbooks.length > 0 ? (
+              ) : libraryTextbooks.length > 0 ? (
                 <>
                   {!hidePlan && <section className="workshop-plan" aria-label="当前学习计划">
                     <div className="workshop-plan__summary">
@@ -464,6 +491,19 @@ export default function DashboardPage({
                     onOpen={openTextbook}
                     remainingCount={plannedBooks.length > 0 && !showAllTextbooks ? remainingTextbooks.length : 0}
                     onExpandAll={() => setShowAllTextbooks(true)}
+                    onUploaded={(bookItem) => {
+                      if (!bookItem) return;
+                      setUploadedTextbooks((current) => [{
+                        ...bookItem,
+                        id: bookItem.book_id,
+                        book: bookItem.title,
+                        node_type: 'book',
+                        title: `《${bookItem.title}》`,
+                        stage_title: bookItem.category || '用户教材',
+                        navigation: { book: bookItem.title, book_id: bookItem.book_id, route_id: 'user_textbooks' },
+                      }, ...current.filter((item) => item.book_id !== bookItem.book_id)]);
+                      setShowAllTextbooks(true);
+                    }}
                   />
                 </>
               ) : textbookError ? (

@@ -91,5 +91,12 @@ class QuestionStateResponse(ContractModel):
     vector_index: dict[str, Any] | None = None
 
 
+class QuestionBulkConfirmResponse(ContractModel):
+    job_id: str
+    confirmed_count: int = Field(ge=0)
+    items: list[QuestionWorkspaceItem] = Field(default_factory=list)
+    vector_index: dict[str, Any] | None = None
+
+
 class QuestionIndexResponse(ContractModel):
     vector_index: dict[str, Any]

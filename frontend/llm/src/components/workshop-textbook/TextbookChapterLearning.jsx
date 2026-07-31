@@ -24,6 +24,7 @@ import {
 import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
 import SectionExamPanel from './SectionExamPanel';
 import TextbookPdfReader from './TextbookPdfReader';
+import { loadTextbookPdfMetadata } from './textbookPdfApi';
 import './textbookChapterLearning.css';
 
 function formatTime(value) {
@@ -184,6 +185,8 @@ function Directory({ title, icon, items, selectedId, onSelect, emptyText, unitLa
 export default function TextbookChapterLearning({ navigationContext = {}, onNavigate }) {
   const route = navigationContext.route || 'textbook_14_5';
   const book = navigationContext.lv1 || navigationContext.book || '';
+  const bookId = navigationContext.bookId || '';
+  const [uploadedBook, setUploadedBook] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [sections, setSections] = useState([]);
   const [sectionsByChapter, setSectionsByChapter] = useState({});
@@ -226,6 +229,35 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     setLoading(true); setProgressLoading(true); setError('');
     setChapters([]); setSections([]); setSectionsByChapter({}); setSelectedChapter(null); setSelectedSection(null);
     setCompletedSectionIds(new Set()); setLastSectionId('');
+    if (bookId) {
+      loadTextbookPdfMetadata(bookId, { signal: controller.signal })
+        .then((payload) => {
+          const item = payload.book || null;
+          setUploadedBook(item);
+          const chapterItems = (item?.toc?.chapters || []).map((chapter, chapterIndex) => ({
+            ...chapter,
+            id: chapter.id || `upload-chapter-${chapterIndex + 1}`,
+            name: chapter.title,
+            children_count: (chapter.sections || []).length,
+          }));
+          const nextSections = Object.fromEntries(chapterItems.map((chapter) => [
+            chapter.id,
+            (chapter.sections || []).map((section, sectionIndex) => ({
+              ...section,
+              id: section.id || `${chapter.id}-section-${sectionIndex + 1}`,
+              name: section.title,
+              count: 0,
+            })),
+          ]));
+          setChapters(chapterItems);
+          setSectionsByChapter(nextSections);
+          setSelectedChapter(chapterItems[0] || null);
+        })
+        .catch((loadError) => { if (loadError.name !== 'AbortError') setError(loadError.message || '上传教材目录加载失败。'); })
+        .finally(() => { if (!controller.signal.aborted) { setLoading(false); setProgressLoading(false); } });
+      return () => controller.abort();
+    }
+    setUploadedBook(null);
     const chapterPromise = loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal }).then(async (payload) => {
       const next = sortByHeadingNumber(Array.isArray(payload.nodes) ? payload.nodes : [], '章');
       setChapters(next); setSelectedChapter((current) => next.find((item) => item.id === current?.id) || next[0] || null);
@@ -241,7 +273,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     }).catch((loadError) => { if (loadError.name !== 'AbortError') setError((current) => current || loadError.message || '教材学习进度加载失败。'); });
     Promise.allSettled([chapterPromise, progressPromise]).then(() => { if (!controller.signal.aborted) { setLoading(false); setProgressLoading(false); } });
     return () => controller.abort();
-  }, [book, route]);
+  }, [book, bookId, route]);
 
   useEffect(() => {
     if (!selectedChapter) { setSections([]); setSelectedSection(null); return; }
@@ -553,12 +585,12 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     <main className="textbook-chapter-learning">
       <header className="textbook-chapter-learning__hero">
         <div className="textbook-chapter-learning__cover">
-          <img src={textbookCoverUrl(book)} alt={`《${book}》教材封面`} />
+          <img src={uploadedBook?.cover_url || textbookCoverUrl(book)} alt={`《${book}》教材封面`} />
         </div>
         <div className="textbook-chapter-learning__intro">
           <span>学习工坊 · 教材章节学习</span>
           <h1>《{book || '教材章节'}》</h1>
-          <p>{textbookIntroduction(book)}</p>
+          <p>{uploadedBook?.description || textbookIntroduction(book)}</p>
           <div className="textbook-chapter-learning__stats">
             <span><BookOpen aria-hidden="true" size={14} />{chapters.length} 个章节</span>
             <span><Film aria-hidden="true" size={14} />章节视频与知识点片段</span>
@@ -593,6 +625,8 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
           {courseMode === 'pdf' ? (
             <TextbookPdfReader
               bookTitle={book}
+              bookId={bookId}
+              toc={uploadedBook?.toc?.chapters || []}
               initialPage={pdfInitialPage}
               route={route}
               notesOpen={pageNotesOpen}
