@@ -34,6 +34,7 @@ import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
 import QuestionFavoritesPanel from './QuestionFavoritesPanel';
 import StudyNotesPanel from './StudyNotesPanel';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
+import { focusMinutesFromStatistics } from './learningPlanDashboard';
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -232,7 +233,13 @@ const featuredTrainingCard = {
   tone: 'cyan',
 };
 
-const overviewTrainingCards = [featuredTrainingCard, ...trainingCards];
+const overviewTrainingCards = [
+  featuredTrainingCard,
+  trainingCards[0],
+  trainingCards[2],
+  trainingCards[1],
+  ...trainingCards.slice(3),
+];
 
 const uploadQuestionBankCard = {
   key: 'question_workspace',
@@ -354,7 +361,7 @@ const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, check
     ? activitySummary.recent_activities
     : [];
   const latestResumableActivity = recentActivities.find(recentTaskKeyFromActivity);
-  const focusMinutes = nonNegativeNumberOrNull(lifetime.focus_minutes);
+  const focusMinutes = focusMinutesFromStatistics(statistics);
 
   // Today accuracy — filter activities from today only
   const todayStr = String(activitySummary?.calculated_at || new Date().toISOString()).slice(0, 10);
@@ -559,6 +566,7 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
         </section>
 
         <aside className="practice-overview__utilities" aria-label="学习工具">
+          <h2 className="practice-overview__utilities-title">功能入口</h2>
           <div className="practice-overview__utility-list">
             {utilityCards.filter((card) => card.available).map((card) => {
               const Icon = card.icon;

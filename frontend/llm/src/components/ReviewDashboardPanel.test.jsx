@@ -38,13 +38,13 @@ describe('ReviewDashboardPanel', () => {
     expect((await screen.findAllByText('四君子汤')).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('已到期')).toBeInTheDocument();
     expect(screen.getByText('平均掌握度')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '知识点掌握热力图' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '知识点掌握情况' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '知识点掌握度' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '最近复习与掌握变化' })).toBeInTheDocument();
     expect(screen.getAllByText(/76/).length).toBeGreaterThan(0);
 
     const summary = screen.getByText('复习与掌握').closest('section');
-    const heatmap = screen.getByRole('region', { name: '知识点掌握热力图' });
+    const heatmap = screen.getByRole('region', { name: '知识点掌握情况' });
     const mastery = screen.getByRole('region', { name: '知识点掌握度' });
     const history = screen.getByRole('region', { name: '最近复习与掌握变化' });
     expect(summary.compareDocumentPosition(heatmap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
