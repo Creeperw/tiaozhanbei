@@ -107,6 +107,8 @@ describe('DashboardPage replacement learning workshop', () => {
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
       params: {
+        bookId: '',
+        uploaded: false,
         view: 'textbook-chapters',
         route: 'textbook_14_5',
         lv1: '中医学基础',
