@@ -15,7 +15,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import PdfWorker from '../../lib/pdfWorkerEntry.js?worker';
 import TextbookPageNotePopover from './TextbookPageNotePopover';
 import {
   createFavoriteFolder,
@@ -33,7 +33,7 @@ import {
 } from './textbookPdfApi';
 import './textbookPdfReader.css';
 
-GlobalWorkerOptions.workerSrc = pdfWorker;
+GlobalWorkerOptions.workerPort = new PdfWorker();
 
 const PAGE_FAVORITES = '教材页收藏';
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));

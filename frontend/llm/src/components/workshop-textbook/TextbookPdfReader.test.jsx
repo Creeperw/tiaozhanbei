@@ -9,6 +9,7 @@ vi.mock('pdfjs-dist', () => ({
   getDocument: vi.fn(),
 }));
 vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({ default: '/pdf-worker.mjs' }));
+vi.mock('../../lib/pdfWorkerEntry.js?worker', () => ({ default: class { constructor() {} postMessage() {} terminate() {} } }));
 vi.mock('./TextbookPageNotePopover', () => ({ default: () => null }));
 vi.mock('../workshopLibraryApi', () => ({
   createFavoriteFolder: vi.fn(),

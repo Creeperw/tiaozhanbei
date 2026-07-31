@@ -16,10 +16,15 @@ function optionsFor(question) {
   if (isTrueFalse(question.question_type)) {
     return [{ key: '正确', text: '正确' }, { key: '错误', text: '错误' }];
   }
-  return (question.options || []).map((option, index) => ({
-    key: LABELS[index] || String(index),
-    text: String(option),
-  }));
+  return (question.options || []).map((option, index) => {
+    if (option && typeof option === 'object') {
+      const text = String(option.content ?? option.value ?? option.text ?? option.label ?? '').replace(/^[A-ZＡ-Ｚ][.、]\s*/, '').trim();
+      const key = String(option.key ?? option.option_id ?? option.id ?? LABELS[index] ?? index);
+      return { key, text: text || String(key) };
+    }
+    const raw = String(option).replace(/^[A-ZＡ-Ｚ][.、]\s*/, '').trim();
+    return { key: LABELS[index] || String(index), text: raw };
+  });
 }
 
 function normalized(value) {

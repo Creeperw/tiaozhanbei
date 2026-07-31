@@ -533,6 +533,8 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     });
   };
 
+  const navActive = pageNotesOpen ? 'notes' : sectionExamMode ? 'exam' : 'content';
+
   const textbookReturnIntent = {
     page: 'practice',
     params: { ...navigationContext, view: 'textbook-chapters' },
@@ -583,9 +585,9 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <button type="button" className={!pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); setSectionExamMode(false); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
-            <button type="button" onClick={() => { setPageNotesOpen(false); setCourseMode('catalog'); setSectionExamMode(true); }}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
-            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}><BookOpen aria-hidden="true" size={18} />笔记本</button>
+            <button type="button" className={navActive === 'content' ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); setSectionExamMode(false); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
+            <button type="button" className={navActive === 'exam' ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('catalog'); setSectionExamMode(true); }}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
+            <button type="button" className={navActive === 'notes' ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}><BookOpen aria-hidden="true" size={18} />笔记本</button>
           </aside>
           <div className="textbook-learning-main">
           {courseMode === 'pdf' ? (
