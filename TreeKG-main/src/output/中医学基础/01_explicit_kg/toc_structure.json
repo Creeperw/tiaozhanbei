@@ -1,0 +1,4364 @@
+[
+  {
+    "level": 1,
+    "id": "绪论",
+    "title": "绪论",
+    "children": [
+      {
+        "level": 2,
+        "id": "绪论.1",
+        "title": "一 中医学理论体系的形成和发展概况",
+        "children": [
+          {
+            "level": 3,
+            "id": "绪论.1.1",
+            "title": "（一）中医学理论体系的形成",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "绪论.1.2",
+            "title": "（二）中医学理论体系的发展阶段",
+            "children": []
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "绪论.2",
+        "title": "二 中医学理论体系的基本特点",
+        "children": [
+          {
+            "level": 3,
+            "id": "绪论.2.1",
+            "title": "（一）整体观念",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "绪论.2.2",
+            "title": "（二）辨证论治",
+            "children": []
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "绪论.3",
+        "title": "三 中医学的主要思维方法",
+        "children": [
+          {
+            "level": 3,
+            "id": "绪论.3.1",
+            "title": "（二）类比",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "绪论.3.2",
+            "title": "（三）演绎",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "绪论.3.3",
+            "title": "（四）以表知里",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "绪论.3.4",
+            "title": "（五）试探和反证",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "1章",
+    "title": "第一章 中医学的哲学基础",
+    "children": [
+      {
+        "level": 2,
+        "id": "1.1",
+        "title": "第一节 阴阳学说",
+        "children": [
+          {
+            "level": 3,
+            "id": "1.1.1",
+            "title": "一 阴阳学说的基本概念",
+            "children": [
+              {
+                "level": 4,
+                "id": "1.1.1.1",
+                "title": "（一）阴阳概念的形成",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.1.2",
+                "title": "（二）阴阳概念的基本内涵",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.1.3",
+                "title": "（三）阴阳的特性",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "1.1.2",
+            "title": "二 阴阳学说的基本内容",
+            "children": [
+              {
+                "level": 4,
+                "id": "1.1.2.1",
+                "title": "（一）对立制约",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.2.2",
+                "title": "（二）互根互用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.2.3",
+                "title": "（三）消长平衡",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.2.4",
+                "title": "（四）相互转化",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "1.1.3",
+            "title": "三 阴阳学说在中医学中的应用",
+            "children": [
+              {
+                "level": 4,
+                "id": "1.1.3.1",
+                "title": "（一）说明人体的组织结构",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.3.2",
+                "title": "（二）解释人体的生理活动",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.3.3",
+                "title": "（三）解释人体的病理变化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.3.4",
+                "title": "（四）指导疾病的诊断",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.3.5",
+                "title": "（五）指导疾病的防治",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.1.3.6",
+                "title": "（六）归纳药物的性能",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "1.2",
+        "title": "第二节 五行学说",
+        "children": [
+          {
+            "level": 3,
+            "id": "1.2.1",
+            "title": "一 五行的基本概念",
+            "children": [
+              {
+                "level": 4,
+                "id": "1.2.1.1",
+                "title": "（一）五行的概念",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.2.1.2",
+                "title": "（二）五行的特性",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.2.1.3",
+                "title": "（三）五行的归类",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "1.2.2",
+            "title": "二 五行学说的基本内容",
+            "children": [
+              {
+                "level": 4,
+                "id": "1.2.2.1",
+                "title": "（一）五行相生、相克与制化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.2.2.2",
+                "title": "（二）五行母子相及与五行相乘、相侮",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "1.2.3",
+            "title": "三 五行学说在中医学中的应用",
+            "children": [
+              {
+                "level": 4,
+                "id": "1.2.3.1",
+                "title": "（一）说明脏腑的生理及相互关系",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.2.3.2",
+                "title": "（二）说明人体的病理变化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.2.3.3",
+                "title": "（三）指导五脏系统疾病的诊断",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "1.2.3.4",
+                "title": "（四）指导疾病的防治",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "2章",
+    "title": "第二章 藏象",
+    "children": [
+      {
+        "level": 2,
+        "id": "2.1",
+        "title": "第一节 藏象概述",
+        "children": [
+          {
+            "level": 3,
+            "id": "2.1.1",
+            "title": "二 脏腑的分类与区别",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "2.1.2",
+            "title": "三 藏象学说的形成与特点",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.1.2.1",
+                "title": "（一）藏象学说的形成",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.1.2.2",
+                "title": "（二）藏象学说的基本特点",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "2.2",
+        "title": "第二节 五脏",
+        "children": [
+          {
+            "level": 3,
+            "id": "2.2.1",
+            "title": "一 心",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.2.1.1",
+                "title": "（一）心的主要生理功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.1.2",
+                "title": "（二）心与体、华、窍、液、志、时的关系",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.1.3",
+                "title": "［附］心包络",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.2.2",
+            "title": "二 肺",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.2.2.1",
+                "title": "（一）肺的主要生理功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.2.2",
+                "title": "（二）肺与体、华、窍、液、志、时的关系",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.2.3",
+                "title": "［附］咽",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.2.3",
+            "title": "三 脾",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.2.3.1",
+                "title": "（一）脾的主要生理功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.3.2",
+                "title": "（二）脾与体、华、窍、液、志、时的关系",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.3.3",
+                "title": "［附］胰",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.2.4",
+            "title": "四 肝",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.2.4.1",
+                "title": "（一）肝的主要生理功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.4.2",
+                "title": "（二）肝与体、华、窍、液、志、时的关系",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.2.5",
+            "title": "五 肾",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.2.5.1",
+                "title": "（一）肾的主要生理功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.5.2",
+                "title": "（二）肾与体、华、窍、液、志、时的关系",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.5.3",
+                "title": "［附］命门",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.5.4",
+                "title": "（一）命门的部位与形态",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.2.5.5",
+                "title": "（二）命门的功能",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "2.3",
+        "title": "第二节 五脏",
+        "children": [
+          {
+            "level": 3,
+            "id": "2.3.1",
+            "title": "一 心",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.3.1.1",
+                "title": "（一）心的主要生理功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.3.1.2",
+                "title": "（二）心与体、华、窍、液、志、时的关系",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.3.1.3",
+                "title": "［附］心包络",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.3.2",
+            "title": "二 肺",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.3.2.1",
+                "title": "（一）肺的主要生理功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.3.2.2",
+                "title": "（二）肺与体、华、窍、液、志、时的关系",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.3.2.3",
+                "title": "［附］咽",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.3.3",
+            "title": "三 脾",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.3.3.1",
+                "title": "（一）脾的主要生理功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.3.3.2",
+                "title": "（二）脾与体、华、窍、液、志、时的关系",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "2.4",
+        "title": "第三节 六腑",
+        "children": [
+          {
+            "level": 3,
+            "id": "2.4.1",
+            "title": "一 胆",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "2.4.2",
+            "title": "二 胃",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "2.4.3",
+            "title": "三 小肠",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "2.4.4",
+            "title": "四 大肠",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "2.4.5",
+            "title": "五 膀胱",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "2.4.6",
+            "title": "六 三焦",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.4.6.1",
+                "title": "（一）六腑三焦的主要功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.4.6.2",
+                "title": "（二）部位三焦的划分及功能特点",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "2.5",
+        "title": "第四节 奇恒之腑",
+        "children": [
+          {
+            "level": 3,
+            "id": "2.5.1",
+            "title": "一 脑",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.5.1.1",
+                "title": "（一）脑的主要功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.5.1.2",
+                "title": "（二）脑与五脏的关系",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.5.2",
+            "title": "二 女子胞",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.5.2.1",
+                "title": "（一）女子胞的主要功能",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.5.2.2",
+                "title": "（二）女子胞与脏腑经络的关系",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "2.6",
+        "title": "第五节 脏腑之间的关系",
+        "children": [
+          {
+            "level": 3,
+            "id": "2.6.1",
+            "title": "一 脏与脏之间的关系",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.6.1.1",
+                "title": "（一）心与肺",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.1.2",
+                "title": "（二）心与脾",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.1.3",
+                "title": "（三）心与肝",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.1.4",
+                "title": "（四）心与肾",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.1.5",
+                "title": "（六）肺与肝",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.1.6",
+                "title": "（七）肺与肾",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.1.7",
+                "title": "（八）肝与脾",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.1.8",
+                "title": "（九）肝与肾",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.1.9",
+                "title": "（十）脾与肾",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.6.2",
+            "title": "二 脏与腑之间的关系",
+            "children": [
+              {
+                "level": 4,
+                "id": "2.6.2.1",
+                "title": "（一）心与小肠",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.2.2",
+                "title": "（二）肺与大肠",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.2.3",
+                "title": "（三）脾与胃",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.2.4",
+                "title": "（四）肝与胆",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "2.6.2.5",
+                "title": "（五）肾与膀胱",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "2.6.3",
+            "title": "三 腑与腑之间的关系",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "3章",
+    "title": "第三章 气血津液",
+    "children": [
+      {
+        "level": 2,
+        "id": "3.1",
+        "title": "第一节 气",
+        "children": [
+          {
+            "level": 3,
+            "id": "3.1.1",
+            "title": "一 气的概念",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "3.1.2",
+            "title": "二 气的运动",
+            "children": [
+              {
+                "level": 4,
+                "id": "3.1.2.1",
+                "title": "（一）气机的含义",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.2.2",
+                "title": "（二）气运动的基本形式",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.2.3",
+                "title": "（三）气的运动与脏腑关系",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "3.1.3",
+            "title": "三 气的生成",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "3.1.4",
+            "title": "四 气的功能",
+            "children": [
+              {
+                "level": 4,
+                "id": "3.1.4.1",
+                "title": "（一）推动作用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.4.2",
+                "title": "（二）温煦作用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.4.3",
+                "title": "（三）防御作用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.4.4",
+                "title": "（四）固摄作用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.4.5",
+                "title": "（五）气化作用",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "3.1.5",
+            "title": "五 气的分类",
+            "children": [
+              {
+                "level": 4,
+                "id": "3.1.5.1",
+                "title": "（一）元气",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.5.2",
+                "title": "（二）宗气",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.5.3",
+                "title": "（三）营气",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.1.5.4",
+                "title": "（四）卫气",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "3.2",
+        "title": "第二节 血",
+        "children": [
+          {
+            "level": 3,
+            "id": "3.2.1",
+            "title": "一 血的概念",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "3.2.2",
+            "title": "二 血的生成",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "3.2.3",
+            "title": "三 血的运行",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "3.2.4",
+            "title": "四 血的功能",
+            "children": [
+              {
+                "level": 4,
+                "id": "3.2.4.1",
+                "title": "（一）濡养作用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.2.4.2",
+                "title": "（二）化神作用",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "3.3",
+        "title": "第三节 津液",
+        "children": [
+          {
+            "level": 3,
+            "id": "3.3.1",
+            "title": "一 津液的概念",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "3.3.2",
+            "title": "二 津液的代谢",
+            "children": [
+              {
+                "level": 4,
+                "id": "3.3.2.1",
+                "title": "（一）津液的生成",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.3.2.2",
+                "title": "（二）津液的输布",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.3.2.3",
+                "title": "（三）津液的排泄",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "3.3.3",
+            "title": "三 津液的功能",
+            "children": [
+              {
+                "level": 4,
+                "id": "3.3.3.1",
+                "title": "（一）滋润濡养作用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.3.3.2",
+                "title": "（二）化生血液",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.3.3.3",
+                "title": "（三）运载作用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.3.3.4",
+                "title": "（四）调节阴阳",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "3.4",
+        "title": "第四节 气血津液的关系",
+        "children": [
+          {
+            "level": 3,
+            "id": "3.4.1",
+            "title": "一 气与血的关系",
+            "children": [
+              {
+                "level": 4,
+                "id": "3.4.1.1",
+                "title": "（一）气为血之帅",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.4.1.2",
+                "title": "（二）血为气之母",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "3.4.2",
+            "title": "二 气与津液的关系",
+            "children": [
+              {
+                "level": 4,
+                "id": "3.4.2.1",
+                "title": "（一）气对津液的作用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "3.4.2.2",
+                "title": "（二）津液对气的作用",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "3.4.3",
+            "title": "三 血与津液的关系",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "4章",
+    "title": "第四章 经络",
+    "children": [
+      {
+        "level": 2,
+        "id": "4.1",
+        "title": "第一节 经络系统的概述",
+        "children": [
+          {
+            "level": 3,
+            "id": "4.1.1",
+            "title": "一 经络的概念",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "4.1.2",
+            "title": "二 经络系统的组成",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.1.2.1",
+                "title": "（一）经脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.1.2.2",
+                "title": "（二）络脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.1.2.3",
+                "title": "（三）连属部分",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "4.1.3",
+            "title": "三 经络的生理功能",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.1.3.1",
+                "title": "（一）联络脏腑肢节，沟通表里上下",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.1.3.2",
+                "title": "（二）运行气血，濡养脏腑",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.1.3.3",
+                "title": "（三）感应与传导",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.1.3.4",
+                "title": "（四）调节功能平衡",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "4.2",
+        "title": "第二节 十二经脉",
+        "children": [
+          {
+            "level": 3,
+            "id": "4.2.1",
+            "title": "一 十二经脉的名称",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "4.2.2",
+            "title": "二 十二经脉的走向、交接规律",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.2.2.1",
+                "title": "（一）十二经脉的走向规律",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.2.2",
+                "title": "（二）十二经脉的交接规律",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "4.2.3",
+            "title": "三 十二经脉的分布规律",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.2.3.1",
+                "title": "（一）头面部",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.3.2",
+                "title": "（二）躯干部",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.3.3",
+                "title": "（三）四肢部",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "4.2.4",
+            "title": "四 十二经脉的表里关系",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "4.2.5",
+            "title": "五 十二经脉气血的流注次序",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "4.2.6",
+            "title": "六 十二经脉的循行",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.2.6.1",
+                "title": "（一）手太阴肺经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.2",
+                "title": "（二）手阳明大肠经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.3",
+                "title": "（三）足阳明胃经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.4",
+                "title": "（四）足太阴脾经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.5",
+                "title": "（五）手少阴心经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.6",
+                "title": "（六）手太阳小肠经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.7",
+                "title": "（七）足太阳膀胱经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.8",
+                "title": "（八）足少阴肾经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.9",
+                "title": "（九）手厥阴心包经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.10",
+                "title": "（十）手少阳三焦经",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.2.6.11",
+                "title": "（十一）足少阳胆经",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "4.3",
+        "title": "第三节 奇经八脉",
+        "children": [
+          {
+            "level": 3,
+            "id": "4.3.1",
+            "title": "一 奇经八脉的概念",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "4.3.2",
+            "title": "二 督脉、任脉、冲脉、带脉的循行及生理功能",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.3.2.1",
+                "title": "（一）督脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.3.2.2",
+                "title": "（二）任脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.3.2.3",
+                "title": "（四）带脉",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "4.4",
+        "title": "第四节 经络学说的应用",
+        "children": [
+          {
+            "level": 3,
+            "id": "4.4.1",
+            "title": "一 阐释疾病病理变化",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.4.1.1",
+                "title": "（二）内脏病变，形见于外",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.4.1.2",
+                "title": "（三）脏腑病变相互影响",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "4.4.2",
+            "title": "二 指导疾病的诊断",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.4.2.1",
+                "title": "（一）循经诊断",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.4.2.2",
+                "title": "（二）腧穴诊断",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.4.2.3",
+                "title": "（三）分经诊断",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "4.4.3",
+            "title": "三 指导疾病的治疗",
+            "children": [
+              {
+                "level": 4,
+                "id": "4.4.3.1",
+                "title": "（一）指导临床用药",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "4.4.3.2",
+                "title": "（二）指导针灸、推拿、气功治疗",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "4.4.4",
+            "title": "四 指导养生、预防和康复",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "5章",
+    "title": "第五章 体质",
+    "children": [
+      {
+        "level": 2,
+        "id": "5.1",
+        "title": "第一节 体质学说的基本内容",
+        "children": [
+          {
+            "level": 3,
+            "id": "5.1.1",
+            "title": "一 体质的概念",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "5.1.2",
+            "title": "二 体质的特点",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "5.1.3",
+            "title": "三 体质的构成要素",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "5.1.4",
+            "title": "四 影响体质的因素",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "5.1.5",
+            "title": "五 体质的分类",
+            "children": [
+              {
+                "level": 4,
+                "id": "5.1.5.1",
+                "title": "（一）体质的分类方法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "5.1.5.2",
+                "title": "（二）常见体质的类型及其特征",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "5.2",
+        "title": "第二节 体质学说的应用",
+        "children": [
+          {
+            "level": 3,
+            "id": "5.2.1",
+            "title": "一 说明对某些病邪的易感性",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "5.2.2",
+            "title": "二 阐释发病原理",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "5.2.3",
+            "title": "三 解释病理变化",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "5.2.4",
+            "title": "四 指导辨证",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "5.2.5",
+            "title": "五 指导治疗",
+            "children": [
+              {
+                "level": 4,
+                "id": "5.2.5.1",
+                "title": "（一）区别体质特征而施治",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "5.2.5.2",
+                "title": "（二）根据体质特征注意针药宜忌",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "5.2.6",
+            "title": "六 指导养生",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "6章",
+    "title": "第六章 病因",
+    "children": [
+      {
+        "level": 2,
+        "id": "6.1",
+        "title": "第一节 外感病因",
+        "children": [
+          {
+            "level": 3,
+            "id": "6.1.1",
+            "title": "一 六淫",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.1.1.1",
+                "title": "（一）风邪",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.2",
+                "title": "2.风邪的性质及致病特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.3",
+                "title": "（二）寒邪",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.4",
+                "title": "2.寒邪的性质及致病特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.5",
+                "title": "（三）暑邪",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.6",
+                "title": "2.暑邪的性质及致病特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.7",
+                "title": "（四）湿邪",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.8",
+                "title": "2.湿邪的性质及致病特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.9",
+                "title": "（五）燥邪",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.10",
+                "title": "2.燥邪的性质及致病特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.11",
+                "title": "（六）热（火）邪",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.1.12",
+                "title": "2.热（火）邪的性质及致病特点",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "6.1.2",
+            "title": "二 疫气",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.1.2.1",
+                "title": "（一）疫气的性质及致病特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.1.2.2",
+                "title": "（二）疫气发生和疫病流行的原因",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "6.2",
+        "title": "第二节 内伤病因",
+        "children": [
+          {
+            "level": 3,
+            "id": "6.2.1",
+            "title": "一 七情内伤",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.2.1.1",
+                "title": "（一）七情内伤的概念及其形成因素",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.2.1.2",
+                "title": "（二）七情内伤的致病特点",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "6.2.2",
+            "title": "二 饮食失宜",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.2.2.1",
+                "title": "（一）饮食不节",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.2.2.2",
+                "title": "（二）饮食不洁",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.2.2.3",
+                "title": "（三）饮食偏嗜",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "6.2.3",
+            "title": "三 劳逸过度",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.2.3.1",
+                "title": "（二）过逸",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "6.3",
+        "title": "第三节 病理产物性病因",
+        "children": [
+          {
+            "level": 3,
+            "id": "6.3.1",
+            "title": "一 痰饮",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.3.1.1",
+                "title": "（一）痰饮的形成",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.3.1.2",
+                "title": "（二）痰饮的致病特点",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "6.3.2",
+            "title": "二 瘀血",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.3.2.1",
+                "title": "（一）瘀血的形成",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.3.2.2",
+                "title": "（二）瘀血的致病特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.3.2.3",
+                "title": "1.瘀血致病的病机特征",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.3.2.4",
+                "title": "2.瘀血致病的症状特征",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "6.3.3",
+            "title": "三 结石",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.3.3.1",
+                "title": "（一）结石的形成因素",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.3.3.2",
+                "title": "（二）结石的致病特点",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "6.4",
+        "title": "第四节 其他病因",
+        "children": [
+          {
+            "level": 3,
+            "id": "6.4.1",
+            "title": "一 外伤",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "6.4.2",
+            "title": "二 寄生虫感染",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "6.4.3",
+            "title": "三 医过",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.4.3.1",
+                "title": "（一）医过的形成",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.4.3.2",
+                "title": "（二）医过的致病特点",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "6.4.4",
+            "title": "四 药邪",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.4.4.1",
+                "title": "（一）药邪的形成",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.4.4.2",
+                "title": "（二）药邪的致病特点",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "6.4.5",
+            "title": "五 先天因素",
+            "children": [
+              {
+                "level": 4,
+                "id": "6.4.5.1",
+                "title": "（一）遗传因素",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "6.4.5.2",
+                "title": "（二）胎传因素",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "7章",
+    "title": "第七章 病机",
+    "children": [
+      {
+        "level": 2,
+        "id": "7.1",
+        "title": "第一节 发病原理",
+        "children": [
+          {
+            "level": 3,
+            "id": "7.1.1",
+            "title": "一 发病的基本原理",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.1.1.1",
+                "title": "（一）正气不足是疾病发生的内在根据",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.1.2",
+                "title": "（二）邪气是疾病发生的重要条件",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.1.3",
+                "title": "（三）正邪斗争的胜负决定发病与否",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "7.1.2",
+            "title": "二 影响发病的因素",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.1.2.1",
+                "title": "（一）气候变化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.2.2",
+                "title": "（二）地域特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.2.3",
+                "title": "（三）生活、工作条件",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.2.4",
+                "title": "（四）体质特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.2.5",
+                "title": "（五）精神状态",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "7.1.3",
+            "title": "三 发病形式",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.1.3.1",
+                "title": "（一）感而即发",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.3.2",
+                "title": "（二）伏而后发",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.3.3",
+                "title": "（三）徐发",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.3.4",
+                "title": "（四）继发",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.1.3.5",
+                "title": "（五）复发",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "7.2",
+        "title": "第二节 基本病机",
+        "children": [
+          {
+            "level": 3,
+            "id": "7.2.1",
+            "title": "一 邪正盛衰",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.2.1.1",
+                "title": "（一）邪正盛衰与病机的虚实变化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.1.2",
+                "title": "（二）邪正盛衰与疾病转归",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "7.2.2",
+            "title": "二 阴阳失调",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.2.2.1",
+                "title": "（一）阴阳偏盛",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.2.2",
+                "title": "（二）阴阳偏衰",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.2.3",
+                "title": "（三）阴阳互损",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.2.4",
+                "title": "（四）阴阳格拒",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.2.5",
+                "title": "（五）阴阳亡失",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "7.2.3",
+            "title": "三 气血津液失常",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.2.3.1",
+                "title": "（一）气的失常",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.3.2",
+                "title": "（二）血的失常",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.3.3",
+                "title": "（三）津液的失常",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.3.4",
+                "title": "（四）气、血、津液关系失常",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.3.5",
+                "title": "1.气与血的关系失常",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.3.6",
+                "title": "2.气与津液的关系失常",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.3.7",
+                "title": "3.血与津液的关系失常",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "7.2.4",
+            "title": "四 “内生五邪”病机",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.2.4.1",
+                "title": "（一）风气内动",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.4.2",
+                "title": "（二）寒从中生",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.4.3",
+                "title": "（三）湿浊内生",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.2.4.4",
+                "title": "（四）津伤化燥",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "7.3",
+        "title": "第二节 基本病机",
+        "children": [
+          {
+            "level": 3,
+            "id": "7.3.1",
+            "title": "一 邪正盛衰",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.3.1.1",
+                "title": "（一）邪正盛衰与病机的虚实变化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.3.1.2",
+                "title": "（二）邪正盛衰与疾病转归",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "7.3.2",
+            "title": "二 阴阳失调",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.3.2.1",
+                "title": "（一）阴阳偏盛",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.3.2.2",
+                "title": "（二）阴阳偏衰",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.3.2.3",
+                "title": "（三）阴阳互损",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.3.2.4",
+                "title": "（四）阴阳格拒",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "7.3.2.5",
+                "title": "（五）阴阳亡失",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "7.3.3",
+            "title": "三 气血津液失常",
+            "children": [
+              {
+                "level": 4,
+                "id": "7.3.3.1",
+                "title": "（一）气的失常",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "8章",
+    "title": "第八章 诊法",
+    "children": [
+      {
+        "level": 2,
+        "id": "8.1",
+        "title": "第一节 望诊",
+        "children": [
+          {
+            "level": 3,
+            "id": "8.1.1",
+            "title": "一 望神",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.1.1.1",
+                "title": "（一）望神要点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.1.2",
+                "title": "（二）神的判断分类",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.1.2",
+            "title": "二 望色",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.1.2.1",
+                "title": "（一）望面色原理",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.2.2",
+                "title": "（二）色与泽",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.2.3",
+                "title": "（三）常色与病色",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.2.4",
+                "title": "（四）面部分候脏腑",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.2.5",
+                "title": "（五）五色主病",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.1.3",
+            "title": "三 望形态",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.1.3.1",
+                "title": "（一）望形体",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.3.2",
+                "title": "（二）望姿态",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.1.4",
+            "title": "四 望头颈五官",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.1.4.1",
+                "title": "（一）望头面",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.4.2",
+                "title": "5.面部",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.4.3",
+                "title": "（三）望五官",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.1.5",
+            "title": "五 望皮肤",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.1.5.1",
+                "title": "（一）斑疹",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.5.2",
+                "title": "（三）疮疡",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.1.6",
+            "title": "六 望二阴",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.1.6.1",
+                "title": "（一）望前阴",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.6.2",
+                "title": "（二）望后阴",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.1.7",
+            "title": "七 望舌",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.1.7.1",
+                "title": "（一）舌诊的原理",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.7.2",
+                "title": "（二）脏腑在舌面上的分部",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.7.3",
+                "title": "（三）望舌方法与注意事项",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.7.4",
+                "title": "（四）舌诊的内容",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.1.8",
+            "title": "八 望排出物",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.1.8.1",
+                "title": "（一）望痰、涎、涕、唾",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.8.2",
+                "title": "（二）望呕吐物",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.1.8.3",
+                "title": "（三）望二便",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "8.2",
+        "title": "第一节 望诊",
+        "children": [
+          {
+            "level": 3,
+            "id": "8.2.1",
+            "title": "一 望神",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.2.1.1",
+                "title": "（一）望神要点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.2.1.2",
+                "title": "（二）神的判断分类",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.2.2",
+            "title": "二 望色",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.2.2.1",
+                "title": "（一）望面色原理",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.2.2.2",
+                "title": "（二）色与泽",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.2.2.3",
+                "title": "（三）常色与病色",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.2.2.4",
+                "title": "（四）面部分候脏腑",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.2.2.5",
+                "title": "（五）五色主病",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.2.3",
+            "title": "三 望形态",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.2.3.1",
+                "title": "（一）望形体",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.2.3.2",
+                "title": "（二）望姿态",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.2.4",
+            "title": "四 望头颈五官",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.2.4.1",
+                "title": "（一）望头面",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.2.4.2",
+                "title": "5.面部",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.2.4.3",
+                "title": "（二）望颈项",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.2.5",
+            "title": "五 望皮肤",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.2.5.1",
+                "title": "（二）水疱",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "8.3",
+        "title": "第二节 闻诊",
+        "children": [
+          {
+            "level": 3,
+            "id": "8.3.1",
+            "title": "一 听声音",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.3.1.1",
+                "title": "（一）正常声音",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.2",
+                "title": "（二）语声",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.3",
+                "title": "（四）呼吸",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.4",
+                "title": "（五）咳嗽",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.5",
+                "title": "（六）呕吐",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.6",
+                "title": "（七）呃逆",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.7",
+                "title": "（八）嗳气",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.8",
+                "title": "（九）太息",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.9",
+                "title": "（十）喷嚏",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.3.1.10",
+                "title": "（十一）肠鸣",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.3.2",
+            "title": "二 嗅气味",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.3.2.1",
+                "title": "（一）病体气味",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "8.4",
+        "title": "第三节 问诊",
+        "children": [
+          {
+            "level": 3,
+            "id": "8.4.1",
+            "title": "一 问诊的内容",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.4.1.1",
+                "title": "（一）一般情况",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.1.2",
+                "title": "（二）主诉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.1.3",
+                "title": "（三）现病史",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.1.4",
+                "title": "（四）既往史",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.1.5",
+                "title": "（五）个人生活史",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.1.6",
+                "title": "（六）家族史",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.4.2",
+            "title": "二 问现在症",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.4.2.1",
+                "title": "（一）问寒热",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.2",
+                "title": "（二）问汗",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.3",
+                "title": "1.汗出有无",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.4",
+                "title": "2.汗出特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.5",
+                "title": "3.汗出部位",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.6",
+                "title": "（三）问疼痛",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.7",
+                "title": "1.疼痛部位",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.8",
+                "title": "2.疼痛性质",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.9",
+                "title": "（四）问耳目",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.10",
+                "title": "1.问耳",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.11",
+                "title": "2.问目",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.12",
+                "title": "（七）问饮食及口味",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.13",
+                "title": "1.口渴与饮水",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.14",
+                "title": "（八）问二便",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.4.2.15",
+                "title": "（九）问妇人经带",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "8.5",
+        "title": "第三节 问诊",
+        "children": [
+          {
+            "level": 3,
+            "id": "8.5.1",
+            "title": "一 问诊的内容",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.5.1.1",
+                "title": "（一）一般情况",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.1.2",
+                "title": "（二）主诉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.1.3",
+                "title": "（三）现病史",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.1.4",
+                "title": "（四）既往史",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.1.5",
+                "title": "（五）个人生活史",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.1.6",
+                "title": "（六）家族史",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.5.2",
+            "title": "二 问现在症",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.5.2.1",
+                "title": "（一）问寒热",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.2",
+                "title": "（二）问汗",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.3",
+                "title": "1.汗出有无",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.4",
+                "title": "2.汗出特点",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.5",
+                "title": "3.汗出部位",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.6",
+                "title": "（三）问疼痛",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.7",
+                "title": "1.疼痛部位",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.8",
+                "title": "2.疼痛性质",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.9",
+                "title": "（四）问耳目",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.10",
+                "title": "1.问耳",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.11",
+                "title": "2.问目",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.12",
+                "title": "（七）问饮食及口味",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.13",
+                "title": "1.口渴与饮水",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.5.2.14",
+                "title": "（八）问二便",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "8.6",
+        "title": "第四节 切诊",
+        "children": [
+          {
+            "level": 3,
+            "id": "8.6.1",
+            "title": "一 脉诊",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.6.1.1",
+                "title": "（一）切脉部位",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.2",
+                "title": "（二）切脉方法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.3",
+                "title": "（三）正常脉象",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.4",
+                "title": "（四）常见病脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.5",
+                "title": "1.浮脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.6",
+                "title": "2.沉脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.7",
+                "title": "3.迟脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.8",
+                "title": "4.数脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.9",
+                "title": "5.虚脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.10",
+                "title": "6.实脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.11",
+                "title": "7.滑脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.12",
+                "title": "8.涩脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.13",
+                "title": "9.洪脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.14",
+                "title": "10.细脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.15",
+                "title": "11.弦脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.16",
+                "title": "12.结脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.17",
+                "title": "13.代脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.18",
+                "title": "14.促脉",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.1.19",
+                "title": "（五）相兼脉的主病规律",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "8.6.2",
+            "title": "二 按诊",
+            "children": [
+              {
+                "level": 4,
+                "id": "8.6.2.1",
+                "title": "（一）按肌肤",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.2.2",
+                "title": "（二）按手足",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "8.6.2.3",
+                "title": "（三）按脘腹",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "9章",
+    "title": "第九章 辨证",
+    "children": [
+      {
+        "level": 2,
+        "id": "9.1",
+        "title": "第一节 八纲辨证",
+        "children": [
+          {
+            "level": 3,
+            "id": "9.1.1",
+            "title": "一 八纲基本证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.1.1.1",
+                "title": "（一）表里辨证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.1.2",
+                "title": "（二）寒热辨证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.1.3",
+                "title": "3.寒证与热证鉴别",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.1.4",
+                "title": "（三）虚实辨证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.1.5",
+                "title": "3.虚证与实证鉴别",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.1.6",
+                "title": "（四）阴阳辨证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.1.2",
+            "title": "二 八纲证之间的关系",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.1.2.1",
+                "title": "（一）证的相兼",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.2.2",
+                "title": "（二）证的错杂",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.2.3",
+                "title": "（三）证的转化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.2.4",
+                "title": "1.表里出入",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.2.5",
+                "title": "2.寒热转化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.1.2.6",
+                "title": "3.虚实转化",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "9.2",
+        "title": "第一节 八纲辨证",
+        "children": [
+          {
+            "level": 3,
+            "id": "9.2.1",
+            "title": "一 八纲基本证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.2.1.1",
+                "title": "（二）寒热辨证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.1.2",
+                "title": "3.寒证与热证鉴别",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.1.3",
+                "title": "（三）虚实辨证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.1.4",
+                "title": "3.虚证与实证鉴别",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.1.5",
+                "title": "（四）阴阳辨证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.2.2",
+            "title": "二 八纲证之间的关系",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.2.2.1",
+                "title": "（一）证的相兼",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.2.2",
+                "title": "（二）证的错杂",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.2.3",
+                "title": "（三）证的转化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.2.4",
+                "title": "1.表里出入",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.2.5",
+                "title": "2.寒热转化",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.2.2.6",
+                "title": "3.虚实转化",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "9.3",
+        "title": "第二节 气血津液辨证",
+        "children": [
+          {
+            "level": 3,
+            "id": "9.3.1",
+            "title": "一 气病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.3.1.1",
+                "title": "（一）气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.1.2",
+                "title": "（二）气陷证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.1.3",
+                "title": "（三）气滞证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.1.4",
+                "title": "（四）气逆证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.3.2",
+            "title": "二 血病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.3.2.1",
+                "title": "（一）血虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.2.2",
+                "title": "（二）血瘀证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.2.3",
+                "title": "（三）血热证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.2.4",
+                "title": "（四）血寒证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.3.3",
+            "title": "三 气血同病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.3.3.1",
+                "title": "（一）气滞血瘀证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.3.2",
+                "title": "（二）气虚血瘀证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.3.3",
+                "title": "（三）气血两虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.3.4",
+                "title": "（四）气不摄血证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.3.5",
+                "title": "（五）气随血脱证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.3.4",
+            "title": "四 津液病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.3.4.1",
+                "title": "（一）津液不足证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.4.2",
+                "title": "（二）水停证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.3.4.3",
+                "title": "（四）饮证",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "9.4",
+        "title": "第三节 脏腑辨证",
+        "children": [
+          {
+            "level": 3,
+            "id": "9.4.1",
+            "title": "一 心与小肠病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.4.1.1",
+                "title": "（一）心气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.2",
+                "title": "（二）心阳虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.3",
+                "title": "（三）心阳暴脱证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.4",
+                "title": "（四）心血虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.5",
+                "title": "（五）心阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.6",
+                "title": "（六）心火亢盛证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.7",
+                "title": "（七）心脉痹阻证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.8",
+                "title": "（八）痰蒙心神证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.9",
+                "title": "（九）痰火扰神证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.1.10",
+                "title": "（十）小肠实热证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.4.2",
+            "title": "二 肺与大肠病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.4.2.1",
+                "title": "（一）肺气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.2",
+                "title": "（二）肺阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.3",
+                "title": "（三）风寒束肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.4",
+                "title": "（四）风热犯肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.5",
+                "title": "（五）燥邪犯肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.6",
+                "title": "（六）肺热炽盛证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.7",
+                "title": "（七）寒痰阻肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.8",
+                "title": "（八）痰热壅肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.9",
+                "title": "（九）风水相搏证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.10",
+                "title": "（十）大肠湿热证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.11",
+                "title": "（十一）大肠津亏证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.12",
+                "title": "（十二）肠热腑实证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.2.13",
+                "title": "（十三）虫积肠道证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.4.3",
+            "title": "三 脾胃病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.4.3.1",
+                "title": "（一）脾气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.2",
+                "title": "（二）脾气下陷证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.3",
+                "title": "（三）脾不统血证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.4",
+                "title": "（四）脾阳虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.5",
+                "title": "（五）寒湿困脾证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.6",
+                "title": "（六）湿热蕴脾证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.7",
+                "title": "（七）胃气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.8",
+                "title": "（八）胃阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.9",
+                "title": "（九）胃阳虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.10",
+                "title": "（十）胃火炽盛证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.11",
+                "title": "（十一）寒滞胃脘证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.3.12",
+                "title": "（十二）食滞胃脘证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.4.4",
+            "title": "四 肝胆病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.4.4.1",
+                "title": "（一）肝气郁结证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.4.2",
+                "title": "（二）肝火上炎证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.4.3",
+                "title": "（三）肝血虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.4.4",
+                "title": "（四）肝阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.4.5",
+                "title": "（五）肝阳上亢证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.4.6",
+                "title": "（七）寒滞肝脉证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.4.7",
+                "title": "（八）胆郁痰扰证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.4.5",
+            "title": "五 肾与膀胱病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.4.5.1",
+                "title": "（一）肾精不足证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.5.2",
+                "title": "（二）肾阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.5.3",
+                "title": "（三）肾阳虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.5.4",
+                "title": "（四）肾虚水泛证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.5.5",
+                "title": "（五）肾气不固证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.5.6",
+                "title": "（六）膀胱湿热证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.4.6",
+            "title": "六 脏腑兼病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.4.6.1",
+                "title": "（一）心肺气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.2",
+                "title": "（二）心脾两虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.3",
+                "title": "（三）心肝血虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.4",
+                "title": "（四）心肾不交证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.5",
+                "title": "（五）心肾阳虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.6",
+                "title": "（六）肺脾气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.7",
+                "title": "（七）肝火犯肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.8",
+                "title": "（八）肺肾阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.9",
+                "title": "（九）肺肾气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.10",
+                "title": "（十）肝脾不调证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.11",
+                "title": "（十一）肝胃不和证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.12",
+                "title": "（十二）肝胆湿热证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.13",
+                "title": "（十三）肝肾阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.4.6.14",
+                "title": "（十四）脾肾阳虚证",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "9.5",
+        "title": "第三节 脏腑辨证",
+        "children": [
+          {
+            "level": 3,
+            "id": "9.5.1",
+            "title": "一 心与小肠病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.5.1.1",
+                "title": "（一）心气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.2",
+                "title": "（二）心阳虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.3",
+                "title": "（三）心阳暴脱证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.4",
+                "title": "（四）心血虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.5",
+                "title": "（五）心阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.6",
+                "title": "（六）心火亢盛证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.7",
+                "title": "（七）心脉痹阻证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.8",
+                "title": "（八）痰蒙心神证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.9",
+                "title": "（九）痰火扰神证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.1.10",
+                "title": "（十）小肠实热证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.5.2",
+            "title": "二 肺与大肠病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.5.2.1",
+                "title": "（一）肺气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.2",
+                "title": "（二）肺阴虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.3",
+                "title": "（三）风寒束肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.4",
+                "title": "（四）风热犯肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.5",
+                "title": "（五）燥邪犯肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.6",
+                "title": "（六）肺热炽盛证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.7",
+                "title": "（七）寒痰阻肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.8",
+                "title": "（八）痰热壅肺证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.9",
+                "title": "（九）风水相搏证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.10",
+                "title": "（十）大肠湿热证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.11",
+                "title": "（十一）大肠津亏证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.12",
+                "title": "（十二）肠热腑实证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.2.13",
+                "title": "（十三）虫积肠道证",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.5.3",
+            "title": "三 脾胃病辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.5.3.1",
+                "title": "（一）脾气虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.3.2",
+                "title": "（二）脾气下陷证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.3.3",
+                "title": "（三）脾不统血证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.3.4",
+                "title": "（四）脾阳虚证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.3.5",
+                "title": "（五）寒湿困脾证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.5.3.6",
+                "title": "（六）湿热蕴脾证",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "9.6",
+        "title": "第四节 外感病辨证",
+        "children": [
+          {
+            "level": 3,
+            "id": "9.6.1",
+            "title": "一 六经辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.6.1.1",
+                "title": "（一）常见病证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.6.1.2",
+                "title": "（二）传变规律",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.6.2",
+            "title": "二 卫气营血辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.6.2.1",
+                "title": "（一）常见病证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.6.2.2",
+                "title": "（二）病传规律",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "9.6.3",
+            "title": "三 三焦辨证",
+            "children": [
+              {
+                "level": 4,
+                "id": "9.6.3.1",
+                "title": "（一）常见病证",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "9.6.3.2",
+                "title": "（二）病传规律",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "id": "10章",
+    "title": "第十章 预防、治则、养生、康复",
+    "children": [
+      {
+        "level": 2,
+        "id": "10.1",
+        "title": "第一节 预防",
+        "children": [
+          {
+            "level": 3,
+            "id": "10.1.1",
+            "title": "一 未病先防",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.1.1.1",
+                "title": "（一）调养正气，提高抗病能力",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.1.1.2",
+                "title": "（二）外避病邪，防止邪气侵害",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.1.2",
+            "title": "二 既病防变",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.1.2.1",
+                "title": "（一）早期诊治",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.1.2.2",
+                "title": "（二）控制病传",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.1.3",
+            "title": "三 愈后防复",
+            "children": []
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "10.2",
+        "title": "第二节 治则",
+        "children": [
+          {
+            "level": 3,
+            "id": "10.2.1",
+            "title": "一 扶正祛邪",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.2.1.1",
+                "title": "（一）扶正与祛邪单独使用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.1.2",
+                "title": "（二）扶正与祛邪兼用",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.1.3",
+                "title": "（三）扶正与祛邪先后使用",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.2.2",
+            "title": "二 标本先后",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.2.2.1",
+                "title": "（一）急则治标",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.2.2",
+                "title": "（二）缓则治本",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.2.3",
+                "title": "（三）标本兼治",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.2.3",
+            "title": "三 正治反治",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.2.3.1",
+                "title": "（一）正治",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.3.2",
+                "title": "（二）反治",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.2.4",
+            "title": "四 调整阴阳",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.2.4.1",
+                "title": "（一）损其有余",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.4.2",
+                "title": "（二）补其不足",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.4.3",
+                "title": "1.阴阳互制之调补阴阳",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.2.5",
+            "title": "五 三因制宜",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.2.5.1",
+                "title": "（一）因人制宜",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.5.2",
+                "title": "（二）因时制宜",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.2.5.3",
+                "title": "（三）因地制宜",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.2.6",
+            "title": "六 调和脏腑",
+            "children": []
+          },
+          {
+            "level": 3,
+            "id": "10.2.7",
+            "title": "七 调理气血津液",
+            "children": []
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "10.3",
+        "title": "第三节 养生",
+        "children": [
+          {
+            "level": 3,
+            "id": "10.3.1",
+            "title": "一 养生的基本原则",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.3.1.1",
+                "title": "（一）顺应自然",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.3.1.2",
+                "title": "（二）形神兼养",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.3.1.3",
+                "title": "（三）动静结合",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.3.1.4",
+                "title": "（四）调养脾肾",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.3.2",
+            "title": "二 养生的重要意义",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.3.2.1",
+                "title": "（一）增强体质",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.3.2.2",
+                "title": "（二）预防疾病",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.3.2.3",
+                "title": "（三）延缓衰老",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "id": "10.4",
+        "title": "第四节 康复",
+        "children": [
+          {
+            "level": 3,
+            "id": "10.4.1",
+            "title": "一 中医康复学的基本观点",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.4.1.1",
+                "title": "（一）整体康复观",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.1.2",
+                "title": "（二）辨证康复观",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.1.3",
+                "title": "（三）功能康复观",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.4.2",
+            "title": "二 中医康复学的基本原则",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.4.2.1",
+                "title": "（一）形神结合",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.2.2",
+                "title": "（二）内外结合",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.2.3",
+                "title": "（三）药食结合",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.2.4",
+                "title": "（四）自然康复与治疗康复结合",
+                "children": []
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "id": "10.4.3",
+            "title": "三 常用的康复方法",
+            "children": [
+              {
+                "level": 4,
+                "id": "10.4.3.1",
+                "title": "（一）饮食康复法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.3.2",
+                "title": "（二）药物康复法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.3.3",
+                "title": "（三）针灸推拿康复法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.3.4",
+                "title": "（四）气功康复法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.3.5",
+                "title": "（五）怡情康复法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.3.6",
+                "title": "（六）娱乐康复法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.3.7",
+                "title": "（七）运动康复法",
+                "children": []
+              },
+              {
+                "level": 4,
+                "id": "10.4.3.8",
+                "title": "（八）自然康复法",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

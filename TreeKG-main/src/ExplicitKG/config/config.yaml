@@ -1,0 +1,16 @@
+# config/config.yaml
+PROJECT_ROOT: "D:/tree-KG"
+SRC_DIR: "D:/tree-KG/src"
+EXPLICIT_KG_DIR: "D:/tree-KG/src/ExplicitKG"
+OUTPUT_DIR: "D:/tree-KG/src/ExplicitKG/output"
+
+APIConfig:
+  API_BASE: "https://api.deepseek.com/v1"
+  API_KEY: "sk-918105a8410e478585eec227254e7747"
+  MODEL_NAME: "deepseek-chat"
+  TIMEOUT_SECS: 120
+
+include_files:
+  - "extraction.yaml"
+  - "text.yaml"
+  - "summarize.yaml"

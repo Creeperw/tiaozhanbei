@@ -1,0 +1,69 @@
+TextSegConfig:
+  # —— 输入格式选择 ——
+  INPUT_FORMAT: "md"                # "docx" | "md"
+
+  # ==================== MD 模式配置 ====================
+  # —— I/O ——
+  MD_NAME: "中医文化学.md"          # md 文件名（放在 output 目录）
+
+  # —— md 标题层级正则（按优先级从高到低匹配） ——
+  # Level 1：第X章 / 绪论
+  MD_CHAPTER_PATTERN: '^\s*第\s*[一二三四五六七八九十百零〇0-9]+\s*章\b|^\s*绪论\s*$'
+  # Level 2：第X节 / 中文数字开头（一、二、三...）
+  MD_SECTION_PATTERN: '^\s*第\s*[一二三四五六七八九十]+\s*节\b'
+  # Level 3：中文数字+空格（一 二 三...），上下文决定层级
+  MD_CHINESE_NUM_PATTERN: '^\s*[一二三四五六七八九十]+\s+\S'
+  # Level 4：括号中文数字（（一）（二）...）
+  MD_PAREN_NUM_PATTERN: '^\s*（[一二三四五六七八九十]+）'
+  # 数字点号（如 1.xxx 2.xxx）—— 叶子级知识点
+  MD_POINT_PATTERN: '^\s*\d+[\.\、]'
+  # 附录/附篇
+  MD_APPENDIX_PATTERN: '^\s*［附］'
+
+  # —— 通用设置 ——
+  TOC_NAME: "toc_structure.json"
+  WARN_NAME: "toc_warnings.log"
+  ENCODING: "utf-8"
+  MAX_LEVEL: 4                      # 最大层级（1=章,2=节,3=小节,4=知识点）
+  WARNINGS_PRINT_TOP: 10
+  SAVE_WARNINGS_FILE: true
+
+  # —— 标题清洗 ——
+  NORMALIZE_SPACES: true
+  REMOVE_TRAILING_PAGE_NO: true
+  STRIP_COLONS: true
+  SPACE_SUBSTITUTIONS:
+    - " "
+    - " "
+    - "　"
+
+  # ==================== DOCX 模式配置（保留） ====================
+  # DOCX_NAME: "MATLAB完全自学一本通.docx"
+  #
+  # USE_STYLE_FIRST: true             # 样式优先
+  # ENABLE_REGEX_FALLBACK: true       # 样式失效时回退正则
+  #
+  # # —— 段落样式映射（大小写不敏感）——
+  # HEADING_MAP:
+  #   "heading 1": 1
+  #   "heading1": 1
+  #   "标题 1": 1
+  #   "标题1": 1
+  #   "heading 2": 2
+  #   "heading2": 2
+  #   "标题 2": 2
+  #   "标题2": 2
+  #   "heading 3": 3
+  #   "heading3": 3
+  #   "标题 3": 3
+  #   "标题3": 3
+  #   "heading 4": 4
+  #   "heading4": 4
+  #   "标题 4": 4
+  #   "标题4": 4
+  #
+  # # —— 正则（仅段首匹配）——
+  # CHAPTER_PATTERN: "^\\s*第\\s*([一二三四五六七八九十百零〇0-9]+)\\s*章[：:\\s　]+(.+?)\\s*$"
+  # SECTION_PATTERN: "^\\s*((\\d{1,2})\\.(\\d{1,2}))\\s*[：:\\s　]+(.+?)\\s*$"
+  # SUBSECTION_PATTERN: "^\\s*((\\d{1,2})\\.(\\d{1,2})\\.(\\d{1,2}))\\s*[：:\\s　]+(.+?)\\s*$"
+  # POINT_PATTERN: "^\\s*((\\d{1,2})\\.(\\d{1,2})\\.(\\d{1,2})\\.(\\d{1,2}))\\s*[：:\\s　]+(.+?)\\s*$"

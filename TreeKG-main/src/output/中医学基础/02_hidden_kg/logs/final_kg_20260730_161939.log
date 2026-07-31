@@ -1,0 +1,16 @@
+2026-07-30 16:19:39,950 [INFO] final_kg:74 - FinalKG assemble started. dedup=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\dedup_result.json, pred=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\pred_result.json, toc=D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\toc_graph.json, output=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\final_kg.json
+2026-07-30 16:19:39,952 [DEBUG] final_kg:33 - Reading json: D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\dedup_result.json
+2026-07-30 16:19:40,362 [DEBUG] final_kg:33 - Reading json: D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\toc_graph.json
+2026-07-30 16:19:40,376 [DEBUG] final_kg:33 - Reading json: D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\pred_result.json
+2026-07-30 16:19:40,379 [INFO] final_kg:89 - Loaded inputs. entities=5405, toc_nodes=210, toc_edges=199, pred_edges=590
+2026-07-30 16:19:40,549 [INFO] final_kg:194 - FinalKG saved. nodes=5615, edges=4435, output=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\final_kg.json
+2026-07-30 16:19:40,555 [INFO] final_kg:206 - Edge type count. type=toc->toc, count=175
+2026-07-30 16:19:40,555 [INFO] final_kg:206 - Edge type count. type=toc->core, count=568
+2026-07-30 16:19:40,555 [INFO] final_kg:206 - Edge type count. type=related, count=2311
+2026-07-30 16:19:40,556 [INFO] final_kg:206 - Edge type count. type=applies-to, count=326
+2026-07-30 16:19:40,556 [INFO] final_kg:206 - Edge type count. type=part-of, count=308
+2026-07-30 16:19:40,556 [INFO] final_kg:206 - Edge type count. type=example-of, count=609
+2026-07-30 16:19:40,556 [INFO] final_kg:206 - Edge type count. type=contrasts-with, count=97
+2026-07-30 16:19:40,556 [INFO] final_kg:206 - Edge type count. type=prerequisite, count=8
+2026-07-30 16:19:40,557 [INFO] final_kg:206 - Edge type count. type=synonym, count=33
+2026-07-30 16:19:40,557 [INFO] final_kg:207 - FinalKG log: D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\logs\final_kg_20260730_161939.log

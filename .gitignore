@@ -1,0 +1,27 @@
+# BERT 模型文件（太大）
+TreeKG-main/src/HiddenKG/model/
+
+# 生成的 HTML 可视化
+*.html
+
+# 大型中间处理文件（可重新生成）
+*dedup_result.json
+*aggr_entities.json
+*conv_entities.json
+*final_knowledge_points_merged.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# Claude
+.claude/
+
+# 系统文件
+Thumbs.db
+.DS_Store

@@ -1,0 +1,11 @@
+2026-07-30 18:18:38,148 [INFO] summarize:332 - Summarize started. format=md, input=D:\tree-KG\TreeKG-main\src\ExplicitKG\output\中医文化学.md, toc=D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_structure.json, out=D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_with_summaries.json
+2026-07-30 18:18:38,159 [INFO] summarize:341 - Loaded TOC roots=9
+2026-07-30 18:18:38,176 [INFO] summarize:352 - Loaded paragraphs=4699 (format=md)
+2026-07-30 18:18:38,455 [INFO] summarize:357 - Computed TOC max_depth=4
+2026-07-30 18:18:38,481 [INFO] summarize:376 - Summarizing depth=4, nodes=315
+2026-07-30 18:20:58,900 [INFO] summarize:376 - Summarizing depth=3, nodes=147
+2026-07-30 18:21:55,915 [INFO] summarize:376 - Summarizing depth=2, nodes=41
+2026-07-30 18:22:11,681 [INFO] summarize:376 - Summarizing depth=1, nodes=9
+2026-07-30 18:22:17,457 [INFO] summarize:389 - ✅ 已写出：D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_with_summaries.json
+2026-07-30 18:22:17,457 [INFO] summarize:390 - 每个节点包含：id/title/children/para_start/para_end/summary
+2026-07-30 18:22:17,457 [INFO] summarize:391 - Summarize log: D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\logs\summarize_20260730_181838.log
