@@ -34,7 +34,7 @@ import {
 } from './textbookPdfApi';
 import './textbookPdfReader.css';
 
-GlobalWorkerOptions.workerPort = new PdfWorker();
+if (typeof Worker !== 'undefined') GlobalWorkerOptions.workerPort = new PdfWorker();
 
 const PAGE_FAVORITES = '教材页收藏';
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));

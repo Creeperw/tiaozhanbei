@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowRight,
@@ -15,7 +15,9 @@ import {
   MessageCircle,
   MousePointer2,
   Network,
+  Pause,
   Plus,
+  RotateCcw,
   Target,
   Upload,
   UserRound,
@@ -171,6 +173,26 @@ const DESCRIPTION_HIGHLIGHTS = [
   ['基础知识点遗忘', '难题解决不了', '时诊智训助教'],
   ['实时保存', '实时更新', '“个性数据”'],
 ];
+
+// The second phase points at the real navigation controls below the portal.
+const SPOTLIGHT_TARGET_SELECTORS = {
+  'target-overview': '.app-shell__target-group',
+  'profile-overview': 'a[href="#learning-path"]',
+  'study-overview': 'a[href="#practice"]',
+  'result-overview': 'a[href="#training-workshop"]',
+  'problem-overview': '.app-shell__assistant-entry--featured',
+  'data-overview': 'a[href="#personalization"]',
+};
+
+const SPOTLIGHT_FALLBACKS = {
+  // Include the current-exam label rendered beneath the category button.
+  'target-overview': { left: 31.8, top: 0.7, width: 8.2, height: 11.8 },
+  'profile-overview': { left: 39.3, top: 0.7, width: 6.2, height: 8.4 },
+  'study-overview': { left: 44.4, top: 1.6, width: 5.4, height: 6.5 },
+  'result-overview': { left: 50.4, top: 1.6, width: 5.2, height: 6.5 },
+  'problem-overview': { left: 76.8, top: 0.7, width: 7, height: 8.4 },
+  'data-overview': { left: 56.8, top: 0.7, width: 6.8, height: 8.4 },
+};
 
 function HighlightedDescription({ text, stepIndex }) {
   const highlights = DESCRIPTION_HIGHLIGHTS[stepIndex] || [];
@@ -520,7 +542,7 @@ function DestinationPreview({ step, scene, sceneIndex, playing }) {
   );
 }
 
-function DemoSurface({ step, scene, sceneIndex, playing }) {
+function DemoSurface({ step, scene, sceneIndex, playing, onPause, onReplay }) {
   const source = scene.view === 'source';
   return (
     <div className={`home-guide__demo ${playing ? 'is-playing' : 'is-paused'}`} aria-label={`${step.label}自动演示`}>
@@ -532,6 +554,88 @@ function DemoSurface({ step, scene, sceneIndex, playing }) {
       <div className={`home-guide__destination-layer ${source ? '' : 'is-visible'}`} aria-hidden={source}>
         <DestinationPreview step={step} scene={scene} sceneIndex={sceneIndex} playing={playing} />
       </div>
+      <div className="home-guide__controls" aria-label="演示控制">
+        <button type="button" onClick={onPause} aria-label={playing ? '暂停演示' : '继续演示'}>{playing ? <Pause size={14} aria-hidden="true" /> : <ArrowRight size={14} aria-hidden="true" />}</button>
+        <button type="button" onClick={onReplay} aria-label="回放演示"><RotateCcw size={14} aria-hidden="true" /></button>
+      </div>
+    </div>
+  );
+}
+
+function HomepageSpotlight({ step, stepIndex, onClose, onNext }) {
+  const [rect, setRect] = useState(null);
+  const selector = SPOTLIGHT_TARGET_SELECTORS[step.key];
+  const updateRect = useCallback(() => {
+    const element = selector ? document.querySelector(selector) : null;
+    if (element) {
+      const next = element.getBoundingClientRect();
+      const expanded = step.key === 'target-overview'
+        ? { left: next.left - 20, top: next.top, width: next.width + 40, height: next.height + 18 }
+        : { left: next.left, top: next.top, width: next.width, height: next.height };
+      setRect(expanded);
+      return;
+    }
+    const fallback = SPOTLIGHT_FALLBACKS[step.key];
+    if (fallback) {
+      setRect({
+        left: window.innerWidth * fallback.left / 100,
+        top: window.innerHeight * fallback.top / 100,
+        width: window.innerWidth * fallback.width / 100,
+        height: window.innerHeight * fallback.height / 100,
+      });
+    }
+  }, [selector, step.key]);
+
+  useLayoutEffect(() => {
+    const frame = window.requestAnimationFrame(updateRect);
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [updateRect]);
+
+  const style = rect ? {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  } : undefined;
+  const cardWidth = typeof window === 'undefined' ? 460 : Math.min(460, window.innerWidth - 32);
+  const cardStyle = rect ? {
+    left: Math.min(Math.max(rect.left, 16), window.innerWidth - cardWidth - 16),
+    top: Math.min(rect.top + rect.height + 18, Math.max(16, window.innerHeight - 210)),
+  } : { left: 16, top: 120 };
+
+  const next = () => {
+    if (stepIndex >= GUIDE_STEPS.length - 1) return onClose();
+    onNext();
+    return undefined;
+  };
+
+  return (
+    <div className="home-guide__spotlight" role="dialog" aria-modal="true" aria-labelledby="home-guide-spotlight-title">
+      {rect && <svg className="home-guide__spotlight-shade" aria-hidden="true" width="100%" height="100%" preserveAspectRatio="none">
+        <defs>
+          <mask id="home-guide-spotlight-mask">
+            <rect width="100%" height="100%" fill="white" />
+            <rect x={rect.left} y={rect.top} width={rect.width} height={rect.height} rx="12" fill="black" />
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill="rgba(0,0,0,.57)" mask="url(#home-guide-spotlight-mask)" />
+      </svg>}
+      <div className="home-guide__spotlight-ring" style={style} aria-hidden="true" />
+      <section className="home-guide__spotlight-card" style={cardStyle}>
+        <div className="home-guide__kicker">首页引导 · {stepIndex + 1}/{GUIDE_STEPS.length}</div>
+        <h2 id="home-guide-spotlight-title">{step.title}</h2>
+        <p><HighlightedDescription text={step.description} stepIndex={stepIndex} /></p>
+        <div className="home-guide__actions">
+          <button type="button" className="home-guide__skip" onClick={onClose}>跳过所有</button>
+          <button type="button" className="home-guide__next" onClick={next}>{stepIndex >= GUIDE_STEPS.length - 1 ? '开始使用' : '下一步'}<ArrowRight size={16} aria-hidden="true" /></button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -544,6 +648,7 @@ export default function HomeOnboardingGuide({ onClose }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [sceneIndex, setSceneIndex] = useState(0);
   const [playing, setPlaying] = useState(() => !prefersReducedMotion());
+  const [phase, setPhase] = useState('window');
   const step = GUIDE_STEPS[stepIndex];
   const scene = step.scenes[sceneIndex];
   const isLast = stepIndex === GUIDE_STEPS.length - 1;
@@ -551,28 +656,41 @@ export default function HomeOnboardingGuide({ onClose }) {
   useEffect(() => {
     if (!playing) return undefined;
     const duration = scene.duration || (scene.view === 'source' ? SOURCE_DURATION : DESTINATION_DURATION);
-    const timer = window.setTimeout(() => setSceneIndex((index) => (index + 1) % step.scenes.length), duration);
+    const timer = window.setTimeout(() => {
+      if (sceneIndex < step.scenes.length - 1) setSceneIndex((index) => index + 1);
+      else if (stepIndex < GUIDE_STEPS.length - 1) { setStepIndex((index) => index + 1); setSceneIndex(0); }
+      else setPlaying(false);
+    }, duration);
     return () => window.clearTimeout(timer);
-  }, [playing, scene.view, scene.duration, step.key, step.scenes.length]);
+  }, [playing, scene.view, scene.duration, sceneIndex, step.key, step.scenes.length, stepIndex]);
 
   const next = () => {
-    if (isLast) return onClose();
-    setSceneIndex(0);
-    setPlaying(!prefersReducedMotion());
-    setStepIndex((index) => index + 1);
+    setPhase('spotlight'); setStepIndex(0); setSceneIndex(0); setPlaying(false);
     return undefined;
   };
 
+  const replay = () => { setStepIndex(0); setSceneIndex(0); setPlaying(true); };
+
+  const nextSpotlight = () => setStepIndex((index) => index + 1);
+
+  if (phase === 'spotlight') {
+    return typeof document === 'undefined'
+      ? null
+      : createPortal(
+        <HomepageSpotlight step={step} stepIndex={stepIndex} onClose={onClose} onNext={nextSpotlight} />,
+        document.body,
+      );
+  }
+
   const dialog = (
-    <div className="home-guide" role="dialog" aria-modal="true" aria-labelledby="home-guide-step-title">
-      <section className="home-guide__modal">
-        <button type="button" className="home-guide__close" onClick={onClose} aria-label="关闭新手引导">×</button>
+    <div className="home-guide" role="dialog" aria-modal="true" aria-label="新手引导演示">
+      <section className="home-guide__modal home-guide__modal--demo-only">
         <div className="home-guide__kicker">新手引导 · {stepIndex + 1}/{GUIDE_STEPS.length}</div>
         <h1 id="home-guide-step-title" className="home-guide__step-title">{step.title}</h1>
         <div key={`${step.key}-${sceneIndex}`} className="home-guide__explanation home-guide__explanation--above" aria-live="polite" aria-atomic="true">
           <p><HighlightedDescription text={step.description} stepIndex={stepIndex} /></p>
         </div>
-        <DemoSurface step={step} scene={scene} sceneIndex={sceneIndex} playing={playing} />
+        <DemoSurface step={step} scene={scene} sceneIndex={sceneIndex} playing={playing} onPause={() => setPlaying((value) => !value)} onReplay={replay} />
         <div className="home-guide__step-progress" aria-label={`第 ${stepIndex + 1} 步，共 ${GUIDE_STEPS.length} 步`}>
           {GUIDE_STEPS.map((item, index) => <span key={item.key} className={index <= stepIndex ? 'is-active' : ''} />)}
         </div>
