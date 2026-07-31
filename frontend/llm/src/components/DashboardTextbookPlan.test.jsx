@@ -105,6 +105,7 @@ describe('DashboardPage textbook plan library', () => {
     await waitFor(() => expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
       params: {
+        bookId: '', uploaded: false,
         view: 'textbook-chapters', route: 'textbook_14_5', lv1: '方剂学', source: 'textbook-library',
       },
     }));
