@@ -6,7 +6,7 @@ import {
   Paperclip, FileText, Loader2, FileJson, FileType, FileCode, UploadCloud,
   LogOut, Square, Globe, Search, BrainCircuit, Mic, MicOff, ArrowDown,
   Database, BookOpen, ChevronRight, Library, ExternalLink, Layout, ArrowLeft,
-  ImageIcon, Film, Lightbulb, ThumbsUp, ThumbsDown, HeartPulse, RefreshCw, ShieldCheck,
+  ImageIcon, Film, Lightbulb, ThumbsUp, ThumbsDown, HeartPulse, RefreshCw, ShieldCheck, Share2,
   CalendarRange
 } from 'lucide-react';
 import { API_BASE, MAIN_API_BASE, fetchWithAuth } from '../utils/api';
@@ -27,6 +27,7 @@ import {
   createWorkflowRunId,
   getResumableWorkflowRunId,
   getWorkflowRun,
+  runtimeEventToTrace,
   streamWorkflowTurn,
 } from '../workflowChatClient';
 import { formatMessageTime } from '../chatTime';
@@ -227,16 +228,18 @@ const MarkdownRenderer = React.memo(({ content, className }) => {
   );
 });
 
-const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, messageId, feedbackStatus, branch, actions, onAction, onInspectRefs, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
+const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, messageId, feedbackStatus, branch, actions, traceEvents: persistedTraceEvents, onAction, onInspectRefs, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
   const isUser = role === 'user';
   const [isCopied, setIsCopied] = useState(false);
   
   let rawContent = content;
   let references = [];
   let videos = [];
-  let traceEvents = [];
-  traceEvents = extractTraceEventsFromContent(rawContent);
-  if (traceEvents.length > 0) {
+  const inlineTraceEvents = extractTraceEventsFromContent(rawContent);
+  const traceEvents = inlineTraceEvents.length > 0
+    ? inlineTraceEvents
+    : (Array.isArray(persistedTraceEvents) ? persistedTraceEvents : []);
+  if (inlineTraceEvents.length > 0) {
     rawContent = rawContent.replace(/<<EV:(.*?)>>/gs, '').trim();
   }
   const refMatch = rawContent.match(/<<REFS:(.*?)>>/);
@@ -260,14 +263,14 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
   const traceNodes = traceEvents.length > 0 ? buildTraceFromEvents(traceEvents, { historical: !isGenerating }) : [];
   const traceRoles = traceNodes.length > 0 ? buildAgentPresentation(traceNodes) : [];
   const participatingTraceRoles = traceRoles.filter((role) => role.nodes?.length > 0);
-  const collaborationSignals = [
-    participatingTraceRoles.some((role) => role.key === 'memory') ? '记忆承接' : null,
-    participatingTraceRoles.some((role) => role.key === 'knowledge') ? '证据检索' : null,
-    participatingTraceRoles.some((role) => role.key === 'audit') ? '审核门禁' : null,
-    traceEvents.some((event) => String(event?.event || '').startsWith('repair_')) ? '局部修复' : null,
-  ].filter(Boolean);
+  const participatingAgentCount = participatingTraceRoles.length;
   const hasRunningTraceNode = traceNodes.some(n => n.status === 'running' || n.status === 'rollingBack');
   const traceStatus = traceNodes.some(n => n.status === 'error' || n.status === 'rollingBack') ? 'failed' : (hasRunningTraceNode ? 'running' : (traceNodes.length ? 'success' : (isGenerating ? 'running' : 'idle')));
+  const collaborationReceiptLabel = traceStatus === 'running'
+    ? `${participatingAgentCount} 个智能体正在协作`
+    : traceStatus === 'failed'
+      ? `${participatingAgentCount} 个智能体已参与协作`
+      : `${participatingAgentCount} 个智能体已协作完成`;
   const currentTraceStep = traceRoles.find(role => role.status === 'running' || role.status === 'rollingBack')?.label || '协作处理';
   const traceButtonLabel = isReviewing
     ? '回答已完成，审核中'
@@ -339,7 +342,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
       </div>
 
       <div className={`relative max-w-[90%] sm:max-w-[80%] min-w-0 flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-        <div className={`flex items-center gap-2 mb-1 text-xs text-gray-400 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+        <div className={`assistant-message__meta flex items-center gap-2 mb-1 text-xs text-gray-400 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
           <span className="font-medium opacity-80">{isUser ? '我' : '智能助教'}</span>
           <span>{formatMessageTime(timestamp)}</span>
         </div>
@@ -366,31 +369,24 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
 
         {!isUser && traceNodes.length > 0 && (
           <button
+            type="button"
             onClick={() => onOpenTrace?.({ nodes: traceNodes, refs: references, title: '执行进度', live: isGenerating })}
             className="agent-collaboration-receipt group mb-3"
-            aria-label={`${traceButtonLabel}，查看多智能体协作过程`}
+            aria-label={`${collaborationReceiptLabel}，${traceButtonLabel}，查看多智能体协作过程`}
           >
             <span className="agent-collaboration-receipt__head">
-              <span>
-                <BrainCircuit size={15} aria-hidden="true" />
-                多智能体协作
+              <span className="agent-collaboration-receipt__title">
+                <span className="agent-collaboration-receipt__icon" aria-hidden="true">
+                  <Share2 size={14} />
+                </span>
+                <strong data-status={traceStatus}>
+                  <i aria-hidden="true" />
+                  {collaborationReceiptLabel}
+                </strong>
               </span>
-              <strong data-status={traceStatus}>
-                <i aria-hidden="true" />
-                {traceButtonLabel}
-              </strong>
-            </span>
-            <span className="agent-collaboration-receipt__roles" aria-label="本次参与角色">
-              {participatingTraceRoles.map((role) => (
-                <span key={role.key} data-status={role.status}>{role.label}</span>
-              ))}
-            </span>
-            <span className="agent-collaboration-receipt__foot">
-              <span>
-                按需参与 {participatingTraceRoles.length}/6
-                {collaborationSignals.length > 0 ? ` · ${collaborationSignals.join(' · ')}` : ''}
+              <span className="agent-collaboration-receipt__action">
+                查看过程<ChevronRight size={13} aria-hidden="true" />
               </span>
-              <span>查看过程<ChevronRight size={13} aria-hidden="true" /></span>
             </span>
           </button>
         )}
@@ -403,7 +399,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
           {isUser ? (
             <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
           ) : (
-            <div className="flex w-full min-w-0 max-w-full flex-col gap-2">
+            <div className="assistant-message__body flex w-full min-w-0 max-w-full flex-col gap-2">
                {main ? (
                  <MarkdownRenderer content={main} />
                ) : isGenerating ? (
@@ -446,7 +442,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
                )}
                <VideoLinks videos={videos} />
                {Array.isArray(actions) && actions.length > 0 && (
-                 <div className="mt-3 flex flex-wrap gap-2 border-t border-emerald-100 pt-3">
+                 <div className="assistant-message__actions mt-3 flex flex-wrap gap-2 border-t border-emerald-100 pt-3">
                    {actions.map((action, index) => (
                      <button key={`${action.destination || 'action'}-${index}`} type="button" onClick={() => onAction?.(action)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
                        {action.label || '继续'}
@@ -544,6 +540,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
     prevProps.onAction === nextProps.onAction &&
     JSON.stringify(prevProps.branch) === JSON.stringify(nextProps.branch) &&
     JSON.stringify(prevProps.actions) === JSON.stringify(nextProps.actions) &&
+    JSON.stringify(prevProps.traceEvents) === JSON.stringify(nextProps.traceEvents) &&
     JSON.stringify(prevProps.files) === JSON.stringify(nextProps.files)
   );
 });
@@ -707,7 +704,6 @@ const readPendingRuns = () => {
 
 const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBackHome, onOpenKnowledge, onOpenPersonalization, onOpenAdminFeedback, onNavigate, preferredSessionId = null, initialContext = '', embedded = false, forceNewConversation = false }) => {
   const shellConfig = getAppShellConfig({
-    currentUser: currentUser ? { username: currentUser, role: currentUserRole } : { role: currentUserRole },
     currentPage: 'assistant',
     selectedSessionId: preferredSessionId,
   });
@@ -744,7 +740,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   const [isDragging, setIsDragging] = useState(false);
 
   // --- Tool Calling State ---
-  const [isToolsEnabled, setIsToolsEnabled] = useState(() => localStorage.getItem(CHAT_STORAGE_KEYS.toolsEnabled) === 'true');
+  const [isToolsEnabled] = useState(() => localStorage.getItem(CHAT_STORAGE_KEYS.toolsEnabled) === 'true');
   const isWebSearchEnabled = isToolsEnabled;
   const isRagEnabled = isToolsEnabled;
   const [feedbackDialog, setFeedbackDialog] = useState({ isOpen: false, type: '', answer: '', messageId: null, reason: '', status: 'idle' });
@@ -1001,7 +997,10 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       const enrichedData = data.map(msg => ({
         ...msg,
         timestamp: msg.timestamp || getCurrentTime(),
-        searchQuery: null 
+        searchQuery: null,
+        traceEvents: Array.isArray(msg.trace_events)
+          ? msg.trace_events.map(runtimeEventToTrace).filter(Boolean)
+          : [],
       }));
       sessionMessageCacheRef.current[id] = enrichedData;
       if (currentSessionIdRef.current === id) {
@@ -2047,7 +2046,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
         {currentSessionId ? (
           <>
             {/* Chat Header */}
-            <header className="assistant-chat-header sticky top-0 z-10 grid h-11 min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-emerald-100 bg-white/75 px-3 shadow-sm shadow-emerald-50 backdrop-blur-xl sm:px-4">
+            <header className="assistant-chat-header sticky top-0 z-10 grid h-11 min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-b border-emerald-100 bg-white/75 px-3 shadow-sm shadow-emerald-50 backdrop-blur-xl sm:px-5">
               <div className="flex min-w-0 items-center gap-2">
                  {!isSidebarOpen && (
                   <button onClick={() => setIsSidebarOpen(true)} aria-label="展开侧边栏" className="group rounded-xl border border-emerald-100 bg-white/90 p-1.5 text-emerald-600 shadow-sm shadow-emerald-100 transition-[color,background-color,border-color,box-shadow] hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-md hover:shadow-emerald-200/70" title="展开侧边栏"><ChevronsRight size={18} className="transition-transform group-hover:translate-x-0.5" /></button>
@@ -2079,9 +2078,9 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
               ref={scrollContainerRef}
               onScroll={handleScroll}
               data-scroll-region="messages"
-              className="assistant-messages flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar scroll-smooth relative"
+              className="assistant-messages flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 custom-scrollbar scroll-smooth relative"
             >
-              <div className="max-w-4xl mx-auto pb-4">
+              <div className="assistant-messages__content mx-auto w-full max-w-5xl pb-6">
                 {messages.length === 0 && (
                    <div className="assistant-starters mx-auto mt-14 flex max-w-2xl flex-col items-center text-center animate-fade-in-up sm:mt-24">
                       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 text-emerald-600 shadow-sm shadow-emerald-100"><HeartPulse size={32} /></div>
@@ -2121,6 +2120,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                             messageId={msg.id}
                             feedbackStatus={msg.feedback_status || msg.feedbackStatus}
                             actions={msg.actions}
+                            traceEvents={msg.traceEvents}
                           branch={msg.branch || messageBranches[msg.id]}
                             onInspectRefs={handleInspectRefs} 
                             onFeedback={handleFeedback}
@@ -2151,7 +2151,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
 
             {/* Input Area */}
             <div className="assistant-composer border-t-0 p-3 sm:p-4">
-              <div className="max-w-4xl mx-auto relative group">
+              <div className="assistant-composer__inner mx-auto w-full max-w-5xl relative group">
                 <div 
                   ref={inputContainerRef}
                   className={`
@@ -2208,13 +2208,6 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                         </button>
                         {isToolMenuOpen && (
                           <div className="absolute bottom-full left-0 mb-2 w-64 rounded-2xl border border-emerald-100 bg-white shadow-xl shadow-emerald-100/60 p-2 z-30 animate-in fade-in zoom-in-95 duration-150">
-                            <div className="px-3 py-2 text-[11px] font-bold text-emerald-500 uppercase tracking-wider">工具调用</div>
-                            <button onClick={() => setIsToolsEnabled(v => !v)} disabled={isCurrentSessionLoading} className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-sm transition-colors">
-                              <span className="flex items-center gap-2 text-slate-700"><Globe size={16} className={isToolsEnabled ? 'text-emerald-600' : 'text-gray-400'} />启用工具调用</span>
-                              <span className={`rounded-full border px-2 py-0.5 text-[10px] ${isToolsEnabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>{isToolsEnabled ? '已开启' : '关闭'}</span>
-                            </button>
-                            <div className="px-3 pt-1 pb-2 text-[11px] leading-relaxed text-slate-400">开启后，系统会在需要时调用已授权工具查找资料或处理文件。</div>
-                            <div className="my-2 h-px bg-emerald-50" />
                             <div className="px-3 py-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">文件上传</div>
                             <button onClick={() => { fileInputRef.current?.click(); setIsToolMenuOpen(false); }} disabled={isUploading || isCurrentSessionLoading} className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-sm transition-colors">
                               <span className="flex items-center gap-2 text-slate-700"><Paperclip size={16} className="text-emerald-500" />上传文件/图片</span>
