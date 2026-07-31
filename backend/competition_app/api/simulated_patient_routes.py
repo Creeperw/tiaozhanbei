@@ -202,10 +202,6 @@ async def simulated_patient_entry(request: Request, body: SPRequest):
 
 @router.get("/acupuncture-cases")
 async def get_acupuncture_cases(request: Request):
-    current_user = getattr(request.state, "current_user", None)
-    user_id = str(getattr(current_user, "user_id", "") or "").strip()
-    if not user_id:
-        return {"success": False, "error": "请先登录后继续", "data": {"cases": []}}
     return {
         "success": True,
         "data": {"cases": _load_acupuncture_cases()},

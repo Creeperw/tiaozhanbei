@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../../utils/api';
 import {
+    BUILTIN_ACUPUNCTURE_CASES,
     EMPTY_ACUPUNCTURE_CASE,
     getAcupunctureCaseDisplayTitle,
     normalizeAcupunctureCase,
@@ -16,8 +17,8 @@ import './acupuncturePractice.css';
 const STEPS = ['配合意愿', '3D模型', '施针', '正确答案', '开始评分'];
 
 export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE, onBack }) {
-    const [cases, setCases] = useState([]);
-    const [selectedCaseId, setSelectedCaseId] = useState(caseData.caseId || '');
+    const [cases, setCases] = useState(() => BUILTIN_ACUPUNCTURE_CASES.map(normalizeAcupunctureCase));
+    const [selectedCaseId, setSelectedCaseId] = useState(caseData.caseId || BUILTIN_ACUPUNCTURE_CASES[0]?.caseId || '');
     const [casesLoading, setCasesLoading] = useState(true);
     const [step, setStep] = useState(1);
     const [consent, setConsent] = useState(null);
@@ -39,15 +40,21 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
             .then((response) => readJsonResponse(response, {}))
             .then((payload) => {
                 if (!mounted) return;
-                const loaded = Array.isArray(payload?.data?.cases)
-                    ? payload.data.cases.map(normalizeAcupunctureCase)
-                    : [];
+                const remoteCases = Array.isArray(payload?.data?.cases) ? payload.data.cases : [];
+                const loaded = (remoteCases.length ? remoteCases : BUILTIN_ACUPUNCTURE_CASES)
+                    .map(normalizeAcupunctureCase);
                 setCases(loaded);
                 if (loaded[0]) {
                     setSelectedCaseId((current) => current || loaded[0].caseId);
                 }
             })
-            .catch(() => { })
+            .catch(() => {
+                if (mounted) {
+                    const fallback = BUILTIN_ACUPUNCTURE_CASES.map(normalizeAcupunctureCase);
+                    setCases(fallback);
+                    setSelectedCaseId((current) => current || fallback[0]?.caseId || '');
+                }
+            })
             .finally(() => { if (mounted) setCasesLoading(false); });
         return () => { mounted = false; };
     }, []);
@@ -229,11 +236,24 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
                 <p>下面显示本病例的标准穴位。确认后进入评分，本次施针操作将不再修改。</p>
                 <AcupunctureModelCanvas expanded fullScreen standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} showMarkers={showModelMarkers} revealStandardPoints onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
                 <button className="acupuncture-secondary acupuncture-card--fullscreen-exit" onClick={onBack}><ArrowLeft size={16} /> 退出训练</button>
-                <div className="acupuncture-case-parameters">
-                    <strong>本案例施针标准</strong>
-                    <span>角度：{primaryStandardPoint?.needleAngle || '未配置'}</span>
-                    <span>深度：{caseDepthRange ? `${caseDepthRange.min}–${caseDepthRange.max} ${depthUnit}` : '未配置'}</span>
-                    <span>留针：{caseRetentionRange ? `${caseRetentionRange.min}–${caseRetentionRange.max} ${caseRetentionRange.unit}` : '未配置'}</span>
+                <div className="acupuncture-case-parameters acupuncture-my-answer">
+                    <strong>我的答案（共 {needles.length} 针）</strong>
+                    {needles.map((needle, index) => (
+                        <div className="acupuncture-my-answer-entry" key={needle.id || index}>
+                            <b>第 {index + 1} 针</b>
+                            <span>进针类型：{needle.insertionType === 'oblique' ? '斜刺' : needle.insertionType === 'transverse' ? '平刺' : '直刺'}</span>
+                            <span>进针深度：{needle.depthValue ?? '未记录'} 寸</span>
+                            <span>留针时间：{needle.retentionMinutes ?? '未记录'} 分钟</span>
+                        </div>
+                    ))}
+                </div>
+                <div className="acupuncture-case-parameters acupuncture-correct-answer">
+                    <strong>正确答案 · {primaryStandardPoint?.name || '标准穴位'} {primaryStandardPoint?.code ? `（${primaryStandardPoint.code}）` : ''}</strong>
+                    <span>定位：{primaryStandardPoint?.locationDescription || '未配置'}</span>
+                    <span>进针类型：{primaryStandardPoint?.insertionType === 'oblique' ? '斜刺' : primaryStandardPoint?.insertionType === 'transverse' ? '平刺' : '直刺'}</span>
+                    <span>进针深度：{caseDepthRange ? `${caseDepthRange.min}–${caseDepthRange.max} ${depthUnit}` : '未配置'}</span>
+                    <span>进针角度：{primaryStandardPoint?.needleAngle || '未配置'}</span>
+                    <span>留针时间：{caseRetentionRange ? `${caseRetentionRange.min}–${caseRetentionRange.max} ${caseRetentionRange.unit}` : '未配置'}</span>
                 </div>
                 {activeCase.standardPoints.length
                     ? <div className="acupuncture-standard-list">{activeCase.standardPoints.map((point) => <span key={point.id || point.name}>{point.name}（{point.code}）<small>{point.locationDescription}</small></span>)}</div>
@@ -267,7 +287,7 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
                 <button onClick={onBack}><ArrowLeft size={17} /> 返回模式选择</button>
                 <div><span>模拟病患 · 针灸专练</span><h1>{getAcupunctureCaseDisplayTitle(activeCase.title || '针灸操作训练')}</h1></div>
             </header>
-            <div className="acupuncture-case-picker"><label htmlFor="acupuncture-case">选择训练病例</label><select id="acupuncture-case" value={selectedCaseId} onChange={chooseCase} disabled={casesLoading || !cases.length}><option value="">{casesLoading ? '正在加载病例…' : '暂无病例'}</option>{cases.map((item) => <option key={item.caseId} value={item.caseId}>{item.caseId} · {getAcupunctureCaseDisplayTitle(item.title)}</option>)}</select></div>
+            <div className="acupuncture-case-picker"><label htmlFor="acupuncture-case">选择训练病例</label><select id="acupuncture-case" value={selectedCaseId} onChange={chooseCase} disabled={!cases.length}><option value="">{casesLoading ? '正在加载病例…' : '请选择病例'}</option>{cases.map((item) => <option key={item.caseId} value={item.caseId}>{item.caseId} · {getAcupunctureCaseDisplayTitle(item.title)}</option>)}</select></div>
             <nav className="acupuncture-steps" aria-label="针灸训练流程">{STEPS.map((label, index) => <span key={label} className={step === index + 1 ? 'is-current' : step > index + 1 ? 'is-complete' : ''}><b>{index + 1}</b>{label}</span>)}</nav>
             <main>{renderStep()}</main>
         </div>

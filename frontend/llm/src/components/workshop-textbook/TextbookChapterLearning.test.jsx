@@ -180,6 +180,22 @@ describe('TextbookChapterLearning', () => {
     expect(screen.getByText('电子教材阅读器')).toBeInTheDocument();
   });
 
+  it('opens the embedded Tree-KG graph from chapter navigation', async () => {
+    prepare();
+    render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
+    await screen.findByText('电子教材阅读器');
+
+    fireEvent.click(screen.getByRole('button', { name: '知识图谱' }));
+
+    expect(screen.getByRole('heading', { name: '中医知识图谱' })).toBeInTheDocument();
+    expect(screen.getByTitle('中医学基础知识图谱')).toHaveAttribute(
+      'src',
+      '/knowledge-graph/zhongyixue-jichu-final-kg.html',
+    );
+    expect(screen.getByRole('button', { name: '退出全屏' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '中医知识图谱' })).toHaveClass('textbook-knowledge-graph');
+  });
+
   it('filters partially completed chapters by section progress', async () => {
     const testSections = [
       { id: 'SEC_1', name: '第一节 一', count: 1 },

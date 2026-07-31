@@ -10,6 +10,7 @@ import {
   Film,
   Layers3,
   LoaderCircle,
+  Network,
   PlayCircle,
   Search,
   Undo2,
@@ -21,7 +22,7 @@ import {
   loadSectionQuestions,
   loadTextbookProgress,
 } from './textbookChapterApi';
-import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
+import { textbookCoverUrl, textbookIntroduction, textbookKnowledgeGraphUrl } from './textbookMetadata';
 import SectionExamPanel from './SectionExamPanel';
 import TextbookPdfReader from './TextbookPdfReader';
 import './textbookChapterLearning.css';
@@ -184,6 +185,7 @@ function Directory({ title, icon, items, selectedId, onSelect, emptyText, unitLa
 export default function TextbookChapterLearning({ navigationContext = {}, onNavigate }) {
   const route = navigationContext.route || 'textbook_14_5';
   const book = navigationContext.lv1 || navigationContext.book || '';
+  const knowledgeGraphUrl = textbookKnowledgeGraphUrl(book);
   const [chapters, setChapters] = useState([]);
   const [sections, setSections] = useState([]);
   const [sectionsByChapter, setSectionsByChapter] = useState({});
@@ -586,178 +588,191 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             <button type="button" className={!pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); setSectionExamMode(false); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
             <button type="button" onClick={() => { setPageNotesOpen(false); setCourseMode('catalog'); setSectionExamMode(true); }}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
             <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}><BookOpen aria-hidden="true" size={18} />笔记本</button>
+            <button type="button" className={!pageNotesOpen && courseMode === 'graph' ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('graph'); setSectionExamMode(false); }}><Network aria-hidden="true" size={18} />知识图谱</button>
           </aside>
           <div className="textbook-learning-main">
-          {courseMode === 'pdf' ? (
-            <TextbookPdfReader
-              bookTitle={book}
-              initialPage={pdfInitialPage}
-              route={route}
-              notesOpen={pageNotesOpen}
-              onNotesOpenChange={setPageNotesOpen}
-              onClose={() => { setPageNotesOpen(false); setCourseMode('catalog'); }}
-            />
-          ) : (
-          <>
-            <div className="textbook-learning-main__toolbar">
-              <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
-              <div className="textbook-learning-filters">
-                <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}><BookOpen aria-hidden="true" size={15} />阅读电子教材</button>
-                <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
-                {[
-                  ['all', '全部'],
-                  ['pending', '未完成'],
-                  ['completed', '已完成'],
-                ].map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={catalogStatus === value ? 'is-active' : ''}
-                    aria-pressed={catalogStatus === value}
-                    onClick={() => setCatalogStatus(value)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
-            <Directory
-              title="章节"
-              icon={BookOpen}
-              className="textbook-directory--chapters"
-              items={filteredChapters}
-              selectedId={selectedChapter?.id}
-              onSelect={(chapter) => {
-                if (!chapter) {
-                  setSelectedChapter(null);
-                  setSelectedSection(null);
-                  setDetail(null);
-                  setVideoHistory([]);
-                  return;
-                }
-                setSelectedChapter(chapter);
-                setSelectedSection(null);
-                setDetail(null);
-                setVideoHistory([]);
-              }}
-              emptyText={
-                normalizedCatalogQuery
-                  ? '没有找到匹配的章节或小节。'
-                  : catalogStatus !== 'all'
-                    ? '当前筛选条件下没有章节。'
-                    : '该教材暂无章节数据。'
-              }
-              unitLabel="个小节"
-              showCompletion
-              getItemStatus={getChapterCompletionStatus}
-              selectedExtra={selectedChapter ? (
-                <Directory
-                  title=""
-                  icon={Layers3}
-                  className="textbook-directory--sections"
-                  items={filteredSections}
-                  selectedId={selectedSection?.id}
-                  onSelect={(section) => {
-                    if (!section) { setSelectedSection(null); setDetail(null); setVideoHistory([]); return; }
-                    openSection(section, selectedChapter);
-                  }}
-                  emptyText={normalizedCatalogQuery ? '没有找到匹配的小节。' : '该章节暂无小节数据。'}
-                  unitLabel="个知识点"
-                  showCompletion
-                  getItemStatus={(section) => (isSectionCompleted(section) ? 'completed' : 'pending')}
-                />
-              ) : null}
-            />
-          </div>}
-
-          {selectedSection && sectionExamMode ? (
-            <SectionExamPanel
-              sectionName={selectedSection.name}
-              kpIds={sectionKpIdsBySection[selectedSection.id] || sectionKpIds}
-              onBack={() => setSelectedSection(null)}
-            />
-          ) : selectedSection && (
-          <section className="textbook-section-content" aria-live="polite">
-            <header>
-              <div className="textbook-section-content__eyebrow">
-                <span>{selectedChapter?.name || '请选择章节'}</span>
-                <button type="button" onClick={() => setSelectedSection(null)}>
-                  <ArrowLeft aria-hidden="true" size={14} />返回小节目录
-                </button>
-              </div>
-              <h2>{selectedSection?.name || '请选择小节'}</h2>
-              {detail?.section && <p>{detail.section.book} / {detail.section.chapter} / {detail.section.name}</p>}
-            </header>
-
-            {detailLoading ? (
-              <div className="textbook-section-content__loading" role="status">
-                <LoaderCircle aria-hidden="true" size={20} />正在加载小节学习内容…
-              </div>
-            ) : selectedSection && detail ? (
-              <div className="textbook-section-workspace">
-                <section className="textbook-section-content__kps">
-                  <div className="textbook-section-content__heading">
-                    <Layers3 aria-hidden="true" size={18} />
-                    <h2>本节知识点</h2>
-                    <span>{knowledgePoints.length}</span>
+            {courseMode === 'pdf' ? (
+              <TextbookPdfReader
+                bookTitle={book}
+                initialPage={pdfInitialPage}
+                route={route}
+                notesOpen={pageNotesOpen}
+                onNotesOpenChange={setPageNotesOpen}
+                onClose={() => { setPageNotesOpen(false); setCourseMode('catalog'); }}
+              />
+            ) : courseMode === 'graph' ? (
+              <section className="textbook-knowledge-graph" aria-label="中医知识图谱">
+                <div className="textbook-learning-main__toolbar">
+                  <div><h2>中医知识图谱</h2><p>Tree-KG · 中医学基础</p></div>
+                  <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}><BookOpen aria-hidden="true" size={15} />退出全屏</button>
+                </div>
+                {knowledgeGraphUrl ? (
+                  <iframe className="textbook-knowledge-graph__frame" title={`${book}知识图谱`} src={knowledgeGraphUrl} />
+                ) : (
+                  <div className="textbook-knowledge-graph__empty" role="status">《{book || '本教材'}》的专用知识图谱正在配置中。</div>
+                )}
+              </section>
+            ) : (
+              <>
+                <div className="textbook-learning-main__toolbar">
+                  <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
+                  <div className="textbook-learning-filters">
+                    <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}><BookOpen aria-hidden="true" size={15} />阅读电子教材</button>
+                    <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
+                    {[
+                      ['all', '全部'],
+                      ['pending', '未完成'],
+                      ['completed', '已完成'],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={catalogStatus === value ? 'is-active' : ''}
+                        aria-pressed={catalogStatus === value}
+                        onClick={() => setCatalogStatus(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
-                  {knowledgePoints.length ? (
-                    <>
-                      <div className="textbook-knowledge-points-grid">
-                        {visibleKnowledgePoints.map((kp) => {
-                          const playable = Boolean(kp.timestamp_video);
-                          const active = activeKnowledgePoint?.kp_id === kp.kp_id;
-                          return (
-                            <button type="button" key={kp.kp_id} className={`${active ? 'is-active' : ''} ${playable ? 'has-timestamp' : ''}`.trim()} aria-disabled={!playable} onClick={playable ? () => playKnowledgePoint(kp) : undefined}>
-                              <strong>{kp.name || kp.kp_id}</strong>
-                              {kp.alias && <small>{kp.alias}</small>}
-                              {playable && <em><PlayCircle aria-hidden="true" size={12} />播放时间戳视频</em>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {hasFoldedKnowledgePoints && plainKnowledgePoints.length > 0 && (
-                        <button type="button" className="textbook-kp-fold-toggle" onClick={() => setKnowledgePointsExpanded((current) => !current)} aria-expanded={knowledgePointsExpanded}>
-                          <span>{knowledgePointsExpanded ? '收起' : `展开其余 ${plainKnowledgePoints.length} 个知识点`}</span>
-                          {knowledgePointsExpanded ? <ChevronUp aria-hidden="true" size={15} /> : <ChevronDown aria-hidden="true" size={15} />}
+                </div>
+                {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
+                  <Directory
+                    title="章节"
+                    icon={BookOpen}
+                    className="textbook-directory--chapters"
+                    items={filteredChapters}
+                    selectedId={selectedChapter?.id}
+                    onSelect={(chapter) => {
+                      if (!chapter) {
+                        setSelectedChapter(null);
+                        setSelectedSection(null);
+                        setDetail(null);
+                        setVideoHistory([]);
+                        return;
+                      }
+                      setSelectedChapter(chapter);
+                      setSelectedSection(null);
+                      setDetail(null);
+                      setVideoHistory([]);
+                    }}
+                    emptyText={
+                      normalizedCatalogQuery
+                        ? '没有找到匹配的章节或小节。'
+                        : catalogStatus !== 'all'
+                          ? '当前筛选条件下没有章节。'
+                          : '该教材暂无章节数据。'
+                    }
+                    unitLabel="个小节"
+                    showCompletion
+                    getItemStatus={getChapterCompletionStatus}
+                    selectedExtra={selectedChapter ? (
+                      <Directory
+                        title=""
+                        icon={Layers3}
+                        className="textbook-directory--sections"
+                        items={filteredSections}
+                        selectedId={selectedSection?.id}
+                        onSelect={(section) => {
+                          if (!section) { setSelectedSection(null); setDetail(null); setVideoHistory([]); return; }
+                          openSection(section, selectedChapter);
+                        }}
+                        emptyText={normalizedCatalogQuery ? '没有找到匹配的小节。' : '该章节暂无小节数据。'}
+                        unitLabel="个知识点"
+                        showCompletion
+                        getItemStatus={(section) => (isSectionCompleted(section) ? 'completed' : 'pending')}
+                      />
+                    ) : null}
+                  />
+                </div>}
+
+                {selectedSection && sectionExamMode ? (
+                  <SectionExamPanel
+                    sectionName={selectedSection.name}
+                    kpIds={sectionKpIdsBySection[selectedSection.id] || sectionKpIds}
+                    onBack={() => setSelectedSection(null)}
+                  />
+                ) : selectedSection && (
+                  <section className="textbook-section-content" aria-live="polite">
+                    <header>
+                      <div className="textbook-section-content__eyebrow">
+                        <span>{selectedChapter?.name || '请选择章节'}</span>
+                        <button type="button" onClick={() => setSelectedSection(null)}>
+                          <ArrowLeft aria-hidden="true" size={14} />返回小节目录
                         </button>
-                      )}
-                    </>
-                  ) : <p className="textbook-section-content__empty">该小节暂无知识点数据。</p>}
-                </section>
+                      </div>
+                      <h2>{selectedSection?.name || '请选择小节'}</h2>
+                      {detail?.section && <p>{detail.section.book} / {detail.section.chapter} / {detail.section.name}</p>}
+                    </header>
 
-                <section className="textbook-section-content__videos">
-                  <div className="textbook-section-content__heading">
-                    <Film aria-hidden="true" size={18} />
-                    <h2>{activeTimestampVideo ? `${activeTimestampName} · 知识点视频` : sectionVideo ? '小节视频' : '推荐视频'}</h2>
-                    <button type="button" className="textbook-return-video" onClick={returnPreviousVideo} disabled={videoBackDisabled}>
-                      <Undo2 aria-hidden="true" size={14} />返回上一个视频
-                    </button>
-                  </div>
-                  {activeTimestampVideo ? (
-                    <div className="textbook-video-grid">
-                      <VideoCard video={activeTimestampVideo} mode="timestamp" />
-                    </div>
-                  ) : sectionVideo ? (
-                    <div className="textbook-video-grid">
-                      <VideoCard video={sectionVideo} mode="section" displayTitle={`小节完整视频：${detail.section.name}`} />
-                    </div>
-                  ) : recommendedVideo ? (
-                    <div className="textbook-video-grid">
-                      <p className="textbook-section-content__recommendation-title">该小节暂无完整视频，当前展示推荐内容</p>
-                      <VideoCard video={recommendedVideo} mode="recommended" />
-                    </div>
-                  ) : (
-                    <p className="textbook-section-content__empty">该小节暂无可播放的视频内容。</p>
-                  )}
-                </section>
-              </div>
-            ) : <p className="textbook-section-content__empty">请先选择一个小节。</p>}
-          </section>
-          )}
-          </>
-          )}
+                    {detailLoading ? (
+                      <div className="textbook-section-content__loading" role="status">
+                        <LoaderCircle aria-hidden="true" size={20} />正在加载小节学习内容…
+                      </div>
+                    ) : selectedSection && detail ? (
+                      <div className="textbook-section-workspace">
+                        <section className="textbook-section-content__kps">
+                          <div className="textbook-section-content__heading">
+                            <Layers3 aria-hidden="true" size={18} />
+                            <h2>本节知识点</h2>
+                            <span>{knowledgePoints.length}</span>
+                          </div>
+                          {knowledgePoints.length ? (
+                            <>
+                              <div className="textbook-knowledge-points-grid">
+                                {visibleKnowledgePoints.map((kp) => {
+                                  const playable = Boolean(kp.timestamp_video);
+                                  const active = activeKnowledgePoint?.kp_id === kp.kp_id;
+                                  return (
+                                    <button type="button" key={kp.kp_id} className={`${active ? 'is-active' : ''} ${playable ? 'has-timestamp' : ''}`.trim()} aria-disabled={!playable} onClick={playable ? () => playKnowledgePoint(kp) : undefined}>
+                                      <strong>{kp.name || kp.kp_id}</strong>
+                                      {kp.alias && <small>{kp.alias}</small>}
+                                      {playable && <em><PlayCircle aria-hidden="true" size={12} />播放时间戳视频</em>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {hasFoldedKnowledgePoints && plainKnowledgePoints.length > 0 && (
+                                <button type="button" className="textbook-kp-fold-toggle" onClick={() => setKnowledgePointsExpanded((current) => !current)} aria-expanded={knowledgePointsExpanded}>
+                                  <span>{knowledgePointsExpanded ? '收起' : `展开其余 ${plainKnowledgePoints.length} 个知识点`}</span>
+                                  {knowledgePointsExpanded ? <ChevronUp aria-hidden="true" size={15} /> : <ChevronDown aria-hidden="true" size={15} />}
+                                </button>
+                              )}
+                            </>
+                          ) : <p className="textbook-section-content__empty">该小节暂无知识点数据。</p>}
+                        </section>
+
+                        <section className="textbook-section-content__videos">
+                          <div className="textbook-section-content__heading">
+                            <Film aria-hidden="true" size={18} />
+                            <h2>{activeTimestampVideo ? `${activeTimestampName} · 知识点视频` : sectionVideo ? '小节视频' : '推荐视频'}</h2>
+                            <button type="button" className="textbook-return-video" onClick={returnPreviousVideo} disabled={videoBackDisabled}>
+                              <Undo2 aria-hidden="true" size={14} />返回上一个视频
+                            </button>
+                          </div>
+                          {activeTimestampVideo ? (
+                            <div className="textbook-video-grid">
+                              <VideoCard video={activeTimestampVideo} mode="timestamp" />
+                            </div>
+                          ) : sectionVideo ? (
+                            <div className="textbook-video-grid">
+                              <VideoCard video={sectionVideo} mode="section" displayTitle={`小节完整视频：${detail.section.name}`} />
+                            </div>
+                          ) : recommendedVideo ? (
+                            <div className="textbook-video-grid">
+                              <p className="textbook-section-content__recommendation-title">该小节暂无完整视频，当前展示推荐内容</p>
+                              <VideoCard video={recommendedVideo} mode="recommended" />
+                            </div>
+                          ) : (
+                            <p className="textbook-section-content__empty">该小节暂无可播放的视频内容。</p>
+                          )}
+                        </section>
+                      </div>
+                    ) : <p className="textbook-section-content__empty">请先选择一个小节。</p>}
+                  </section>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
