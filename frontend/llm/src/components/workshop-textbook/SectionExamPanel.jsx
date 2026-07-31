@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -122,24 +122,33 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack }) {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  // Per-question state: { [questionId]: { answer: string, revealed: boolean, selectedOptions: string[] } }
   const [questionState, setQuestionState] = useState({});
+  const fetchGenerationRef = useRef(0);
 
   useEffect(() => {
     if (!uniqueKpIds.length) {
       setQuestions([]);
       return;
     }
+    const generation = fetchGenerationRef.current + 1;
+    fetchGenerationRef.current = generation;
     const controller = new AbortController();
     setLoading(true);
     setError('');
     setQuestionState({});
     loadSectionQuestions(uniqueKpIds, { signal: controller.signal })
-      .then((result) => setQuestions(result.items))
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(err.message || '题目加载失败');
+      .then((result) => {
+        if (generation === fetchGenerationRef.current) {
+          setQuestions(result.items);
+          setLoading(false);
+        }
       })
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (generation === fetchGenerationRef.current && err.name !== 'AbortError') {
+          setError(err.message || '题目加载失败');
+          setLoading(false);
+        }
+      });
     return () => controller.abort();
   }, [uniqueKpIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 

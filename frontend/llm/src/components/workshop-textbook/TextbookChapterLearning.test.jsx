@@ -9,7 +9,11 @@ vi.mock('../knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn()
 vi.mock('./textbookChapterApi', () => ({
   completeTextbookSection: vi.fn().mockResolvedValue({ ok: true }),
   loadSectionLearningDetail: vi.fn(),
+  loadSectionQuestions: vi.fn().mockResolvedValue({ items: [], total: 0 }),
   loadTextbookProgress: vi.fn().mockResolvedValue({ completed_section_ids: [], last_section_id: '' }),
+}));
+vi.mock('./TextbookPdfReader', () => ({
+  default: () => null,
 }));
 
 const chapter = { id: 'CH_1', name: '第一章 绪论', children_count: 2 };
