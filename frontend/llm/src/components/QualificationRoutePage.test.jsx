@@ -292,7 +292,7 @@ describe('QualificationRoutePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '学情调研' }));
     expect(screen.getByRole('dialog', { name: '学情调研' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '关闭学情调研' }));
+    fireEvent.click(screen.getByRole('button', { name: '退出调研' }));
     expect(screen.queryByRole('dialog', { name: '学情调研' })).not.toBeInTheDocument();
   });
 
