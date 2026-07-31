@@ -263,8 +263,11 @@
 .home-guide__explanation p { margin: 0; color: #5a6c65; font-size: 14px; line-height: 1.55; }
 .home-guide__highlight { color: #079669; font-weight: 800; }
 .home-guide__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.home-guide__step-actions { display: flex; align-items: center; gap: 8px; }
 .home-guide__actions button { min-height: 40px; border: 0; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .home-guide__skip { padding: 0 8px; background: transparent; color: #71827b; }
+.home-guide__previous { padding: 0 14px; border: 1px solid #c6e5d8 !important; background: #f4fbf7; color: #177656; }
+.home-guide__previous:hover { border-color: #8fcdb6 !important; background: #e7f6ee; }
 .home-guide__next { display: inline-flex; align-items: center; gap: 7px; padding: 0 17px; background: #079669; color: #fff; }
 .home-guide__next:hover { background: #087454; }
 .home-guide__spotlight { position: fixed; inset: 0; z-index: 10000; color: #20332c; }

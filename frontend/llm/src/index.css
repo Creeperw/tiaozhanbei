@@ -7722,7 +7722,8 @@ textarea:focus-visible {
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-header h2 {
-  font-size: clamp(1.35rem, 2vw, 1.65rem);
+  font-size: clamp(1rem, 1.5vw, 1.5rem);
+  line-height: 1.24;
   white-space: nowrap;
 }
 
@@ -12942,14 +12943,34 @@ textarea:focus-visible {
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-kicker h2 {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-kicker .home-portal__route-detail-toggle {
-  width: 58px;
-  flex: 0 0 58px;
-  text-align: center;
+  display: inline-flex;
+  min-width: 0;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c7e5d8;
+  border-radius: 999px;
+  background: #f5fbf8;
+  padding: 0 13px;
+  color: #176d52;
+  font-size: .78rem;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route-kicker .home-portal__route-detail-toggle:hover,
+.app-shell__main[data-page="learning-path"] .home-portal__route-kicker .home-portal__route-detail-toggle:focus-visible {
+  border-color: #8dc8b0;
+  background: #e9f7f0;
+  color: #11533f;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-switch {
@@ -13003,76 +13024,68 @@ textarea:focus-visible {
 /* Desktop learning path: final single-viewport override. */
 @media (min-width: 981px) {
   .app-shell__main[data-page="learning-path"] {
-    height: auto;
-    min-height: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
     padding: 10px 16px 14px;
-    scroll-behavior: smooth;
-    scrollbar-gutter: stable;
-    overscroll-behavior-y: contain;
   }
 
   .app-shell__main[data-page="learning-path"] > .home-portal,
   .app-shell__main[data-page="learning-path"] .home-portal__learning-area,
   .app-shell__main[data-page="learning-path"] .home-portal__main-column,
   .app-shell__main[data-page="learning-path"] .home-portal__plan-rail {
-    height: auto;
+    height: 100%;
     min-height: 0;
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__learning-area {
     align-items: stretch;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__main-column {
-    grid-template-rows: auto auto;
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 10px;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__hero {
     box-sizing: border-box;
     display: flex;
-    height: 190px;
-    min-height: 190px;
-    max-height: 190px;
+    height: auto;
+    min-height: 0;
+    max-height: none;
     flex-direction: column;
-    padding: 18px 20px;
+    padding: 16px 20px;
     overflow: visible;
     overflow-anchor: none;
     contain: layout;
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__hero-copy {
-    flex: 0 0 118px;
-    min-height: 118px;
+    flex: none;
+    min-height: 0;
     justify-content: flex-start;
     overflow: visible;
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__hero-title,
   .app-shell__main[data-page="learning-path"] .home-portal__hero-copy .home-portal__hero-title {
-    padding-block: 2px 4px;
-    font-size: clamp(1.7rem, 2.35vw, 2.3rem);
-    line-height: 1.12;
+    min-height: 0;
+    padding-block: 0 3px;
+    font-size: clamp(1.55rem, 2vw, 2.05rem);
+    line-height: 1.1;
     overflow: visible;
-  }
-
-  .app-shell__main[data-page="learning-path"] .home-portal__hero-title,
-  .app-shell__main[data-page="learning-path"] .home-portal__hero-copy .home-portal__hero-title {
-    min-height: 82px;
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__hero-desc,
   .app-shell__main[data-page="learning-path"] .home-portal__hero-copy .home-portal__hero-desc {
-    min-height: 1.4em;
+    min-height: 0;
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__route {
-    height: clamp(560px, 64dvh, 640px);
-    min-height: 560px;
+    height: 100%;
+    min-height: 0;
     align-self: stretch;
     overflow: hidden;
     overflow-anchor: none;
@@ -13082,6 +13095,38 @@ textarea:focus-visible {
   .app-shell__main[data-page="learning-path"] .home-portal__route-header {
     flex: none;
     padding: 12px 16px 0;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header > div:first-child {
+    flex: 1 1 240px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-switch,
+  .app-shell__main[data-page="learning-path"] .home-portal__route-mode {
+    height: 36px;
+    flex-basis: 220px;
+    padding: 3px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-switch button,
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-mode button {
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: .76rem;
+  }
+
+  @media (max-width: 1180px) {
+    .app-shell__main[data-page="learning-path"] .home-portal__route-header {
+      flex-wrap: wrap;
+    }
+
+    .app-shell__main[data-page="learning-path"] .home-portal__route-header > div:first-child {
+      flex: 1 0 100%;
+    }
+
+    .app-shell__main[data-page="learning-path"] .home-portal__route-switch {
+      margin-left: 0;
+    }
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__route-orbit-layout,

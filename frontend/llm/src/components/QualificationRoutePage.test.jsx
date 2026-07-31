@@ -140,7 +140,8 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByLabelText('中医类别执业医师资格考试学习路径')).toBe(routeFrame);
 
     const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
-    expect(stylesheet).toMatch(/data-page="learning-path"[^}]+\.home-portal__hero\s*\{[^}]*height:\s*190px;/s);
+    expect(stylesheet).toMatch(/@media \(min-width: 981px\) \{[\s\S]*?\.app-shell__main\[data-page="learning-path"\] \{[\s\S]*?height:\s*100%;/);
+    expect(stylesheet).toMatch(/@media \(min-width: 981px\) \{[\s\S]*?\.home-portal__hero \{[\s\S]*?height:\s*auto;/);
     expect(stylesheet).toMatch(/data-page="learning-path"[^}]+\.home-portal__route\s*\{[^}]*contain:\s*layout paint;/s);
     expect(stylesheet).toMatch(/data-page="learning-path"[^}]+\.learning-path-orbit__legend\s*\{[^}]*margin:\s*-3px 18px 8px;/s);
     expect(stylesheet).toMatch(/home-portal__plan-rail \.home-study-calendar > \*[\s\S]*transition:\s*opacity 480ms ease;/);
@@ -193,6 +194,26 @@ describe('QualificationRoutePage', () => {
     expect(noticeRule).toContain('overflow: visible;');
     expect(noticeRule).toContain('white-space: normal;');
     expect(noticeRule).not.toContain('text-overflow: ellipsis;');
+  });
+
+  it('keeps a long qualification title fully available in the route header', async () => {
+    const officialName = '中西医结合执业助理医师资格考试（中医药基础与临床能力综合方向）';
+    installHomeFetch({}, {
+      qualificationTarget: {
+        target_id: 'target-long-name',
+        exam_track_id: 'track-long-name',
+        official_name: officialName,
+        textbook_route_id: 'textbook-integrated',
+      },
+    });
+    render(<QualificationRoutePage currentUser={{ username: 'long-name-user' }} onNavigate={vi.fn()} />);
+
+    expect(await screen.findByRole('heading', { name: officialName })).toBeInTheDocument();
+    const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
+    const titleRule = stylesheet.match(/data-page="learning-path"[^}]+\.home-portal__route-kicker h2\s*\{([^}]+)\}/s)?.[1] || '';
+    expect(titleRule).toContain('white-space: nowrap;');
+    expect(titleRule).not.toContain('text-overflow: ellipsis;');
+    expect(stylesheet).toMatch(/@media \(max-width: 1180px\) \{[\s\S]*?\.home-portal__route-header > div:first-child\s*\{[\s\S]*?flex:\s*1 0 100%;/);
   });
 
   it('renders the learning path by default with the current plan on the right', async () => {

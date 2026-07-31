@@ -562,7 +562,7 @@ function DemoSurface({ step, scene, sceneIndex, playing, onPause, onReplay }) {
   );
 }
 
-function HomepageSpotlight({ step, stepIndex, onClose, onNext }) {
+function HomepageSpotlight({ step, stepIndex, onClose, onNext, onPrevious }) {
   const [rect, setRect] = useState(null);
   const selector = SPOTLIGHT_TARGET_SELECTORS[step.key];
   const updateRect = useCallback(() => {
@@ -633,7 +633,10 @@ function HomepageSpotlight({ step, stepIndex, onClose, onNext }) {
         <p><HighlightedDescription text={step.description} stepIndex={stepIndex} /></p>
         <div className="home-guide__actions">
           <button type="button" className="home-guide__skip" onClick={onClose}>跳过所有</button>
-          <button type="button" className="home-guide__next" onClick={next}>{stepIndex >= GUIDE_STEPS.length - 1 ? '开始使用' : '下一步'}<ArrowRight size={16} aria-hidden="true" /></button>
+          <div className="home-guide__step-actions">
+            {stepIndex > 0 && <button type="button" className="home-guide__previous" onClick={onPrevious}>上一步</button>}
+            <button type="button" className="home-guide__next" onClick={next}>{stepIndex >= GUIDE_STEPS.length - 1 ? '开始使用' : '下一步'}<ArrowRight size={16} aria-hidden="true" /></button>
+          </div>
         </div>
       </section>
     </div>
@@ -671,13 +674,14 @@ export default function HomeOnboardingGuide({ onClose }) {
 
   const replay = () => { setStepIndex(0); setSceneIndex(0); setPlaying(true); };
 
-  const nextSpotlight = () => setStepIndex((index) => index + 1);
+  const nextSpotlight = () => setStepIndex((index) => Math.min(index + 1, GUIDE_STEPS.length - 1));
+  const previousSpotlight = () => setStepIndex((index) => Math.max(index - 1, 0));
 
   if (phase === 'spotlight') {
     return typeof document === 'undefined'
       ? null
       : createPortal(
-        <HomepageSpotlight step={step} stepIndex={stepIndex} onClose={onClose} onNext={nextSpotlight} />,
+        <HomepageSpotlight step={step} stepIndex={stepIndex} onClose={onClose} onNext={nextSpotlight} onPrevious={previousSpotlight} />,
         document.body,
       );
   }

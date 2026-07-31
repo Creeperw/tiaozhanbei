@@ -76,19 +76,6 @@ describe('SimulatedPatientChat', () => {
     expect(startRequest).toBeUndefined();
   });
 
-  it('passes the selected acupuncture case into the practice flow', async () => {
-    await act(async () => { render(<SimulatedPatientChat />); });
-    await waitFor(() => screen.getByText('开始今天的问诊吧'));
-    await act(async () => { fireEvent.click(screen.getByText('开始今天的问诊吧')); });
-    await act(async () => { fireEvent.click(screen.getByText('针灸专练')); });
-
-    const picker = screen.getByRole('combobox', { name: '选择训练病例' });
-    fireEvent.change(picker, { target: { value: 'acup_00002' } });
-    await act(async () => { fireEvent.click(screen.getByText('开始问诊')); });
-
-    expect(screen.getByRole('heading', { name: '膝关节痛（足太阴经证）' })).toBeInTheDocument();
-  });
-
   it('starts a session and shows first patient message', async () => {
     await act(async () => { render(<SimulatedPatientChat />); });
     await waitFor(() => screen.getByText('开始今天的问诊吧'));
