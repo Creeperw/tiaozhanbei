@@ -5,6 +5,7 @@ import pytest
 from competition_app.embeddings.stub import StubEmbeddingModel
 from competition_app.tools.knowledge_assets import KnowledgeAssetPaths, KnowledgeAssetRepository
 from competition_app.tools.knowledge_retrieval import KnowledgeRetrievalTool
+from competition_app.tools.exa_retrieval import ExaVideoRetriever
 from competition_app.contracts.knowledge import EvidenceItem, EvidencePack
 
 
@@ -172,3 +173,69 @@ async def test_get_kp_with_content_reserves_space_for_external_resources() -> No
         "textbook", "video", "reference", "question"
     }
     assert len(pack.evidence_items) == 5
+
+
+@pytest.mark.asyncio
+async def test_external_evidence_pack_does_not_require_knowledge_point_mapping() -> None:
+    class FakeExa:
+        async def search(self, query, **kwargs):
+            return {
+                "results": [
+                    {
+                        "title": "上海天气",
+                        "url": "https://example.test/weather",
+                        "highlights": ["今日天气晴"],
+                        "score": 0.8,
+                    }
+                ]
+            }
+
+    tool = KnowledgeRetrievalTool(
+        build_repository(),
+        StubEmbeddingModel(),
+        exa_retriever=ExaVideoRetriever("exa-test-key", client=FakeExa()),
+    )
+    pack = await tool.build_external_evidence_pack("今天天气如何", location="上海")
+
+    assert pack.resolved_kp_ids == []
+    assert pack.evidence_items[0].resource_type == "web"
+
+
+@pytest.mark.asyncio
+async def test_external_evidence_pack_degrades_when_web_search_is_empty() -> None:
+    class EmptyExa:
+        async def search(self, query, **kwargs):
+            return {"results": []}
+
+    tool = KnowledgeRetrievalTool(
+        build_repository(),
+        StubEmbeddingModel(),
+        exa_retriever=ExaVideoRetriever("exa-test-key", client=EmptyExa()),
+    )
+
+    pack = await tool.build_external_evidence_pack("距离下次执业医师资格考试还有多久")
+
+    assert pack.evidence_items[0].authority_level == "system_notice"
+    assert "不能把实时信息写成确定结论" in pack.risk_notes[0]
+
+
+@pytest.mark.asyncio
+async def test_non_local_current_fact_does_not_send_profile_location_to_search() -> None:
+    class RecordingExa:
+        def __init__(self) -> None:
+            self.query = ""
+
+        async def search(self, query, **kwargs):
+            self.query = query
+            return {"results": []}
+
+    client = RecordingExa()
+    tool = KnowledgeRetrievalTool(
+        build_repository(),
+        StubEmbeddingModel(),
+        exa_retriever=ExaVideoRetriever("exa-test-key", client=client),
+    )
+
+    await tool.build_external_evidence_pack("距离下次执业医师资格考试还有多久", location="上海")
+
+    assert "上海" not in client.query

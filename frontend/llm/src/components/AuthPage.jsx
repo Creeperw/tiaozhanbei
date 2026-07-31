@@ -11,7 +11,7 @@ import './AuthPage.css';
 
 const authServiceUnavailableMessage = '认证服务尚未连接，请先启动后端服务后重试。';
 
-const AuthPage = ({ onLogin }) => {
+const AuthPage = ({ onLogin, onBack }) => {
   const [mode, setMode] = useState('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -109,6 +109,15 @@ const AuthPage = ({ onLogin }) => {
         <div className="auth-page__glow auth-page__glow--bottom" />
 
         <main className="relative mx-auto h-full max-w-[1440px] px-5 sm:px-8 lg:px-12">
+          {onBack && (
+            <button
+              type="button"
+              className="absolute left-5 top-5 z-20 rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm transition hover:bg-white sm:left-8 sm:top-8 lg:left-12 lg:top-10"
+              onClick={onBack}
+            >
+              返回首页
+            </button>
+          )}
           <section className="auth-showcase grid h-full min-h-0 items-center gap-12 py-8 sm:py-10 lg:grid-cols-[minmax(0,1.03fr)_minmax(380px,0.97fr)] lg:gap-16 lg:py-10">
             <div className="auth-showcase__content max-w-3xl text-center lg:text-left">
               <h1 className="text-6xl font-black leading-[1.4] tracking-[-0.055em] text-emerald-950 sm:text-7xl lg:text-8xl">承时珍医脉<br /><span className="auth-title-gradient">启智慧学习</span></h1>

@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   BookOpenText,
   CalendarDays,
@@ -35,6 +37,32 @@ import {
   updateQualificationPageCache,
   updateQualificationRouteCache,
 } from './qualificationRoutePageCache';
+
+function normalizePlanningMarkdown(content) {
+  return String(content || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/(【[^】\n]+】)/g, '\n\n$1\n\n')
+    .replace(/([^\n#])(?=#{1,6}\s)/g, '$1\n\n')
+    .trim();
+}
+
+function PlanningParagraph({ children }) {
+  const text = React.Children.toArray(children)
+    .filter((child) => typeof child === 'string')
+    .join('')
+    .trim();
+  return <p className={/^【[^】]+】$/.test(text) ? 'is-section-label' : undefined}>{children}</p>;
+}
+
+function PlanningMarkdown({ content, fallback }) {
+  return (
+    <div className="home-portal__planning-markdown">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: PlanningParagraph }}>
+        {normalizePlanningMarkdown(content || fallback)}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 function formatReviewDate(value) {
   if (!value) return '最近';
@@ -529,7 +557,7 @@ function HomeLearningRoute({
           <div className="home-portal__route-kicker">
             <h2>{selectedTarget?.name || '当前考证'}</h2>
             <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
-              {routeView === 'details' ? '返回' : '了解详情'}
+              {routeView === 'details' ? '返回路径' : '规划详情'}
             </button>
           </div>
         </div>
@@ -597,29 +625,39 @@ function HomeLearningRoute({
           )}
         </div>
       )}
-      {!routeState.loading && !routeState.error && routeState.stages.length > 0 && renderedRouteView === 'cards' && (
-        <LearningStageLanding
-          compact
-          stages={routeState.stages}
-          onStageSelect={() => changeRouteView('orbit')}
-          onCreatePlan={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}
-        />
+      {renderedRouteView === 'cards' && (
+        routeState.loading ? (
+          <div className="home-portal__route-state" aria-live="polite">
+            正在读取{routeMode === 'personalized' ? '个性化' : '经典'}学习路径…
+          </div>
+        ) : routeState.error ? (
+          <div className="home-portal__route-state" role="alert">{routeState.error}</div>
+        ) : routeState.stages.length === 0 ? (
+          <div className="home-portal__route-state">尚未生成学习路径</div>
+        ) : (
+          <LearningStageLanding
+            compact
+            stages={routeState.stages}
+            onStageSelect={() => changeRouteView('orbit')}
+            onCreatePlan={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}
+          />
+        )
       )}
       {renderedRouteView === 'details' && (
         <div className="home-portal__route-details" role="region" aria-label="长期规划和短期规划说明" tabIndex="0">
           {planningDetails.loading && <div className="home-portal__route-details-state" role="status">正在读取规划说明…</div>}
           {!planningDetails.loading && planningDetails.error && <div className="home-portal__route-details-state" role="alert">{planningDetails.error}</div>}
           {!planningDetails.loading && !planningDetails.error && (
-            <div className="home-portal__route-details-grid">
-              <article>
-                <h3>长期规划说明</h3>
-                <div>{planningDetails.longTerm || '尚未制定长期规划。'}</div>
-              </article>
-              <article>
-                <h3>短期规划说明</h3>
-                <div>{planningDetails.shortTerm || '尚未制定短期规划。'}</div>
-              </article>
-            </div>
+            <article className="home-portal__planning-document">
+              <section>
+                <h3>长期规划</h3>
+                <PlanningMarkdown content={planningDetails.longTerm} fallback="尚未制定长期规划。" />
+              </section>
+              <section>
+                <h3>短期规划</h3>
+                <PlanningMarkdown content={planningDetails.shortTerm} fallback="尚未制定短期规划。" />
+              </section>
+            </article>
           )}
         </div>
       )}
@@ -856,11 +894,10 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   };
 
   const countdown = examCountdown(learningTarget.examDate);
-  const learningRouteKey = learningTarget.textbook_route_id || '__planned__';
   const pageContentReady = !loading
     && learningTargetReady
     && Boolean(currentProgress)
-    && readyRouteKey === learningRouteKey;
+    && Boolean(readyRouteKey);
   useEffect(() => {
     if (!pageContentReady) {
       setWelcomeRevealReady(false);

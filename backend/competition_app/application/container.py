@@ -477,6 +477,16 @@ class ApplicationContainer:
             knowledge_tool.search_question_resources,
             allowed_agents={"knowledge_base_agent"},
         )
+        tool_registry.register(
+            "search_web_resources",
+            knowledge_tool.search_web_resources,
+            allowed_agents={"knowledge_base_agent"},
+        )
+        tool_registry.register(
+            "get_external_fact_evidence",
+            knowledge_tool.build_external_evidence_pack,
+            allowed_agents={"knowledge_base_agent"},
+        )
         exporter = SnapshotExporter(snapshot_root or package_root / "snapshots")
         writeback_executor = (
             WritebackExecutor(database_engine) if database_engine is not None else None

@@ -11,6 +11,7 @@ vi.mock('./workshopLibraryApi', () => ({
   createFavoriteFolder: vi.fn(),
   deleteFavoriteFolder: vi.fn(),
   deleteFavorite: vi.fn(),
+  saveFavorite: vi.fn(),
 }));
 
 describe('QuestionFavoritesPanel', () => {
@@ -21,6 +22,25 @@ describe('QuestionFavoritesPanel', () => {
       favorite_id: 'V1', folder_id: 'F1', title: '四君子汤的君药', source: '智能组卷', updated_at: '2026-07-25T08:00:00Z',
       content: { question_content: '四君子汤的君药是？', standard_answer: ['A'], explanation: '人参为君药。' },
     }] });
+  });
+
+  it('moves a favorite only after saving it in the target collection', async () => {
+    api.loadFavoriteFolders.mockResolvedValue({ items: [
+      { folder_id: 'F1', name: '方剂重点', favorite_count: 1 },
+      { folder_id: 'F2', name: '错题复盘', favorite_count: 0 },
+    ] });
+    api.saveFavorite.mockResolvedValue({});
+    api.deleteFavorite.mockResolvedValue(null);
+    render(<QuestionFavoritesPanel />);
+
+    await screen.findByRole('heading', { name: '方剂重点' });
+    fireEvent.click(screen.getByRole('button', { name: '移动收藏：四君子汤的君药' }));
+    fireEvent.click(screen.getByRole('button', { name: '错题复盘' }));
+
+    await waitFor(() => expect(api.saveFavorite).toHaveBeenCalledWith(expect.objectContaining({
+      folder_id: 'F2', resource_id: 'V1', title: '四君子汤的君药',
+    })));
+    expect(api.deleteFavorite).toHaveBeenCalledWith('V1');
   });
 
   it('opens a page-level confirmation before removing a favorite', async () => {

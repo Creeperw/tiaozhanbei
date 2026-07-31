@@ -89,3 +89,25 @@ async def test_exa_retriever_supports_reference_and_question_resources() -> None
 
     assert references[0].resource_type == "reference"
     assert questions[0].resource_type == "question"
+
+
+@pytest.mark.asyncio
+async def test_exa_retriever_supports_current_web_fact_search() -> None:
+    class FakeAsyncExa:
+        async def search(self, query, **kwargs):
+            return {
+                "results": [
+                    {
+                        "title": "官方考试时间",
+                        "url": "https://example.test/exam",
+                        "highlights": ["考试时间以官方公告为准"],
+                        "score": 0.91,
+                    }
+                ]
+            }
+
+    retriever = ExaVideoRetriever("exa-test-key", client=FakeAsyncExa())
+    hits = await retriever.search_web("距离下次执业医师资格考试还有多久")
+
+    assert hits[0].resource_type == "web"
+    assert hits[0].url.endswith("/exam")

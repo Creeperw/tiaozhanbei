@@ -293,6 +293,19 @@ class PlannerAgent:
         personalized_resource_request = PlannerAgent._requests_personalized_resource(
             request
         )
+        if PlannerAgent._is_external_information_request(request):
+            context["external_information_request"] = True
+            task_type = "general_learning_support"
+        if (
+            PlannerAgent._is_question_explanation_request(request)
+            and not personalized_resource_request
+        ):
+            context["question_explanation_request"] = True
+        if (
+            PlannerAgent._is_emotional_support_request(request)
+            and not PlannerAgent._has_explicit_business_delivery_request(request)
+        ):
+            context["emotional_support_request"] = True
         query_kind = (
             None
             if personalized_resource_request
@@ -322,6 +335,16 @@ class PlannerAgent:
         )
         if scoped_planning_request:
             task_type = "learning_plan"
+            query_kind = None
+        elif context.get("question_explanation_request") and task_type in {
+            "", "learner_data_query", "learning_plan", "personalized_review_card"
+        }:
+            task_type = "knowledge_explanation"
+            query_kind = None
+        elif context.get("emotional_support_request") and task_type in {
+            "", "learner_data_query", "learning_plan", "personalized_review_card"
+        }:
+            task_type = "casual_conversation"
             query_kind = None
         elif (
             PlannerAgent._is_general_learning_support_request(request)
@@ -440,6 +463,23 @@ class PlannerAgent:
         requires_clarification = bool(raw.get("requires_clarification"))
         clarification_question = str(raw.get("clarification_question") or "").strip() or None
         casual_response = str(raw.get("casual_response") or "").strip() or None
+        if (
+            task_type == "casual_conversation"
+            and context.get("emotional_support_request")
+            and (
+                not casual_response
+                or casual_response in {
+                    "本次处理已经完成。你可以继续补充目标或提出下一步需求。",
+                    "本次处理已经完成。",
+                }
+            )
+        ):
+            casual_response = (
+                "我能理解你明天就要考试时的焦虑，紧张并不等于准备得不好。现在先不要试图把所有内容重学一遍："
+                "先用10分钟列出最不稳的3个知识点，接着做一轮闭卷回忆或错题复盘，"
+                "把每个点只补到‘能说出核心结论和辨析依据’；然后留出时间吃饭、休息并准备考试用品。"
+                "如果愿意，把考试科目或最担心的题型告诉我，我可以继续帮你把剩余时间拆成更具体的冲刺安排。"
+            )
         if (
             task_type == "learning_plan"
             and (plan_scope == "unspecified" or plan_action == "clarify")
@@ -667,6 +707,55 @@ class PlannerAgent:
             for marker in ("章节", "教材", "课本", "单元", "这一章", "这部分")
         )
         return open_support and learning_object
+
+    @staticmethod
+    def _is_external_information_request(request: str) -> bool:
+        text = str(request or "").strip().lower()
+        return any(
+            marker in text
+            for marker in (
+                "天气", "气温", "降雨", "下雨", "空气质量", "台风",
+                "距离下次", "考试时间", "考试日期", "什么时候考试",
+                "报名时间", "截止日期", "日程", "赛程", "最新消息",
+                "当前时间", "今天几号", "现在几点",
+            )
+        )
+
+    @staticmethod
+    def _is_question_explanation_request(request: str) -> bool:
+        text = "".join(str(request or "").split())
+        asks_to_explain = any(
+            marker in text
+            for marker in ("试述", "简述", "论述", "分析题", "这题", "这道题")
+        )
+        asks_for_difficulty_help = any(
+            marker in text
+            for marker in ("难", "不会", "不懂", "卡住", "看不懂", "怎么答", "答不出来")
+        )
+        has_question_context = any(
+            marker in text
+            for marker in ("题", "怎么答", "答不出来")
+        )
+        return asks_to_explain or (asks_for_difficulty_help and has_question_context)
+
+    @staticmethod
+    def _has_explicit_business_delivery_request(request: str) -> bool:
+        text = "".join(str(request or "").split())
+        return any(
+            marker in text
+            for marker in (
+                "制定", "计划", "规划", "安排", "生成", "组卷", "试卷",
+                "讲解", "解释", "复习卡", "学习卡", "学习资源",
+            )
+        )
+
+    @staticmethod
+    def _is_emotional_support_request(request: str) -> bool:
+        text = "".join(str(request or "").split())
+        return any(
+            marker in text
+            for marker in ("焦虑", "紧张", "害怕", "慌", "压力大", "崩溃", "没信心", "来不及")
+        )
 
     @staticmethod
     def _learner_query_kind(request: str, model_value: Any = None) -> str | None:

@@ -147,6 +147,17 @@ class WorkflowInterruptedResult(BaseModel):
     coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
 
 
+class WorkflowHumanReviewResult(BaseModel):
+    status: Literal["waiting_human_review"] = "waiting_human_review"
+    execution_id: str
+    task_type: str
+    review: AuditResult
+    completed_steps: list[str] = Field(default_factory=list)
+    agent_outputs: list[AgentEnvelope[Any]] = Field(default_factory=list)
+    model_trace: list[ModelCallTrace] = Field(default_factory=list)
+    coordination: CoordinationSummary = Field(default_factory=lambda: CoordinationSummary())
+
+
 @dataclass
 class _WorkflowContinuation:
     request: ReviewCardRequest
@@ -205,7 +216,7 @@ class PersonalizedReviewCardUseCase:
 
     async def execute(
         self, request: ReviewCardRequest
-    ) -> ReviewCardResult | WorkflowInterruptedResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         thread_id = request.thread_id or f"THREAD_{uuid4().hex}"
         conversation_id = request.conversation_id or thread_id
         operation_id = request.operation_id or thread_id
@@ -250,7 +261,7 @@ class PersonalizedReviewCardUseCase:
         conversation_id: str,
         execution_id: str,
         case_id: str,
-    ) -> ReviewCardResult | WorkflowInterruptedResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         existing_messages = self.conversation_repository.get_messages(
             conversation_id, request.learner_id
         )
@@ -513,6 +524,7 @@ class PersonalizedReviewCardUseCase:
                     "textbook",
                     "knowledge_base",
                     "official_question_bank",
+                    "web",
                 ],
             },
             "messages": context_messages,
@@ -780,6 +792,26 @@ class PersonalizedReviewCardUseCase:
                 conversation_id, request.learner_id, persisted_messages, interrupted
             )
             return interrupted
+        if execution.status == "waiting_human_review":
+            result = self._human_review_result(
+                execution_id=execution_id,
+                task_type=planner_output.payload.task_type,
+                execution=execution,
+            )
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "waiting_human_review",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            self._save_assistant_message(
+                conversation_id, request.learner_id, persisted_messages, result
+            )
+            return result
         if execution.status != "success":
             detail = execution.error_message or self._execution_failure_detail(execution)
             if "blocked path candidate" in detail:
@@ -813,7 +845,7 @@ class PersonalizedReviewCardUseCase:
         self,
         thread_id: str,
         request: WorkflowResumeRequest,
-    ) -> ReviewCardResult | WorkflowInterruptedResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         try:
             _FAILURE_STEP_CONTEXT.set("resume_restore")
             return await self._resume_started_run(thread_id, request)
@@ -827,7 +859,7 @@ class PersonalizedReviewCardUseCase:
         self,
         thread_id: str,
         request: WorkflowResumeRequest,
-    ) -> ReviewCardResult | WorkflowInterruptedResult:
+    ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
         continuation = self._continuations.get(thread_id)
         if continuation is None:
             continuation = self._restore_continuation(thread_id)
@@ -965,6 +997,30 @@ class PersonalizedReviewCardUseCase:
                 interrupted,
             )
             return interrupted
+        if execution.status == "waiting_human_review":
+            result = self._human_review_result(
+                execution_id=continuation.execution_id,
+                task_type=continuation.planner_output.payload.task_type,
+                execution=execution,
+            )
+            self._continuations.pop(thread_id, None)
+            _FAILURE_STEP_CONTEXT.set("persistence")
+            self._remember_run(
+                thread_id,
+                {
+                    "status": "waiting_human_review",
+                    "thread_id": thread_id,
+                    "result": result,
+                    "continuation": None,
+                },
+            )
+            self._save_assistant_message(
+                conversation_id,
+                continuation.request.learner_id,
+                persisted_messages,
+                result,
+            )
+            return result
         if execution.status != "success":
             detail = execution.error_message or self._execution_failure_detail(execution)
             raise RuntimeError(f"personalized review card execution failed: {detail}")
@@ -2323,6 +2379,39 @@ class PersonalizedReviewCardUseCase:
 
     def _model_trace(self) -> list[ModelCallTrace]:
         return self.model_trace_recorder.items if self.model_trace_recorder else []
+
+    def _human_review_result(
+        self,
+        *,
+        execution_id: str,
+        task_type: str,
+        execution,
+    ) -> WorkflowHumanReviewResult:
+        audits = [
+            output.payload
+            for output in execution.outputs.values()
+            if isinstance(getattr(output, "payload", None), AuditResult)
+        ]
+        audit = next(
+            (item for item in reversed(audits) if item.decision != "pass"),
+            audits[-1] if audits else None,
+        )
+        if not isinstance(audit, AuditResult):
+            raise RuntimeError("human review status requires an audit result")
+        review = audit.model_copy(update={"decision": "needs_human_review"})
+        return WorkflowHumanReviewResult(
+            execution_id=execution_id,
+            task_type=task_type,
+            review=review,
+            completed_steps=list(execution.outputs),
+            agent_outputs=[
+                output
+                for output in execution.outputs.values()
+                if isinstance(output, AgentEnvelope)
+            ],
+            model_trace=self._model_trace(),
+            coordination=self._execution_coordination(execution),
+        )
 
     @staticmethod
     def _execution_failure_detail(execution) -> str:

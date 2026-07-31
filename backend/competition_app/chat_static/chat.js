@@ -85,7 +85,14 @@ function normalizeExecutionTrace(value) {
     graph: value.graph && typeof value.graph === 'object' ? value.graph : null,
     nodeStates: value.nodeStates && typeof value.nodeStates === 'object' ? value.nodeStates : {},
     events: Array.isArray(value.events) ? value.events.slice(0, 8) : [],
-    status: ['idle', 'running', 'interrupted', 'completed', 'failed'].includes(value.status)
+    status: [
+      'idle',
+      'running',
+      'interrupted',
+      'waiting_human_review',
+      'completed',
+      'failed',
+    ].includes(value.status)
       ? value.status : 'idle',
     retryCount: Number(value.retryCount) || 0,
     revisionCount: Number(value.revisionCount) || 0,
@@ -790,6 +797,13 @@ function handleExecutionEvent(event) {
   } else if (event.event === 'audit_revision_completed') {
     markExecutionNode(event.audit_step_id || 'audit', event.status === 'pass' ? 'completed' : 'failed', event.status === 'pass' ? '返修复审通过' : '等待人工复核');
     addExecutionEvent(event.status === 'pass' ? '返修完成，复审通过' : '返修后转人工复核', event.status === 'pass' ? 'success' : 'warning');
+  } else if (event.event === 'run_waiting_human_review') {
+    trace.status = 'waiting_human_review';
+    elements.executionStatus.textContent = '等待人工复核';
+    elements.executionEngine.textContent = '复核终态';
+    elements.executionToggle.className = 'execution-toggle';
+    addExecutionEvent('内容已转人工复核，复核前不会发布', 'warning');
+    stopExecutionClock();
   } else if (event.event === 'run_completed') {
     trace.status = 'completed';
     elements.executionStatus.textContent = '已完成';
@@ -1123,6 +1137,21 @@ function textFromSections(sections) {
 }
 
 function buildAssistantPresentation(body) {
+  if (body?.status === 'waiting_human_review') {
+    const findings = Array.isArray(body.review?.findings)
+      ? body.review.findings.map(item => String(item || '').trim()).filter(Boolean)
+      : [];
+    const intro = '本次内容已进入人工复核，复核完成前不会发布。';
+    const sections = findings.length
+      ? [{ title: '复核说明', content: findings }]
+      : [];
+    return {
+      intro,
+      sections,
+      questions: [],
+      plainText: [intro, ...findings.map(item => `- ${item}`)].join('\n\n'),
+    };
+  }
   if (body?.status === 'interrupted') {
     const interruption = body.interrupt || {};
     const questions = Array.isArray(interruption.questions)
@@ -1183,6 +1212,11 @@ function buildAssistantPresentation(body) {
     const intro = intros[plan.generated_scope]
       || '我已经结合你的目标和当前信息整理好了安排。你可以继续告诉我哪里不合适，我会据此调整。';
     return { intro, sections, questions: [], plainText: `${intro}\n\n${textFromSections(sections)}` };
+  }
+
+  if (typeof body?.direct_response === 'string' && body.direct_response.trim()) {
+    const text = body.direct_response.trim();
+    return { intro: text, sections: [], questions: [], plainText: text };
   }
 
   if (body?.resource) {
@@ -1353,6 +1387,7 @@ async function consumeEventStream(response, loadingNode) {
         throw error;
       }
       if (event.event === 'run_interrupted') return event.result;
+      if (event.event === 'run_waiting_human_review') return event.result;
       if (event.event === 'run_completed') return event.result;
     }
   }
@@ -1375,7 +1410,9 @@ function applyRecoveredCompletedRun(run) {
   if (!run?.result || !state.pendingRequest) return false;
   const body = run.result;
   const requestText = state.pendingRequest;
-  state.executionTrace.status = 'completed';
+  state.executionTrace.status = body.status === 'waiting_human_review'
+    ? 'waiting_human_review'
+    : 'completed';
   stopExecutionClock();
   renderExecutionMonitor();
   const presentation = buildAssistantPresentation(body);
@@ -1396,7 +1433,10 @@ function applyRecoveredCompletedRun(run) {
   state.lastError = null;
   persistState();
   renderAssistantMessage(presentation);
-  setConnectionStatus('已恢复并完成', 'online');
+  setConnectionStatus(
+    body.status === 'waiting_human_review' ? '等待人工复核' : '已恢复并完成',
+    'online',
+  );
   return true;
 }
 
@@ -1445,7 +1485,9 @@ async function reconcileDisconnectedRun(threadId) {
     const response = await fetch(`/api/v1/review-cards/runs/${encodeURIComponent(threadId)}`);
     if (!response.ok) return false;
     const run = await response.json();
-    if (run.status === 'completed') return applyRecoveredCompletedRun(run);
+    if (run.status === 'completed' || run.status === 'waiting_human_review') {
+      return applyRecoveredCompletedRun(run);
+    }
     if (run.status === 'interrupted') return applyRecoveredInterruptedRun(run);
     if (run.status === 'failed') return applyRecoveredFailedRun(run);
     if (run.status === 'running') {
@@ -1556,7 +1598,10 @@ async function sendMessage(rawText, options = {}) {
     loadingNode.remove();
     renderAssistantMessage(presentation);
     persistState();
-    setConnectionStatus('服务正常', 'online');
+    setConnectionStatus(
+      body?.status === 'waiting_human_review' ? '等待人工复核' : '服务正常',
+      'online',
+    );
   } catch (error) {
     loadingNode.remove();
     if (error.name !== 'AbortError') {
@@ -1609,7 +1654,10 @@ async function restoreLangGraphRun() {
       applyRecoveredInterruptedRun(run);
       return;
     }
-    if (run.status === 'completed' && applyRecoveredCompletedRun(run)) return;
+    if (
+      (run.status === 'completed' || run.status === 'waiting_human_review')
+      && applyRecoveredCompletedRun(run)
+    ) return;
     if (run.status === 'failed') {
       applyRecoveredFailedRun(run);
     }

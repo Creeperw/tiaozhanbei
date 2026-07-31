@@ -157,6 +157,35 @@ async def test_general_learning_support_keeps_free_form_natural_language() -> No
 
 
 @pytest.mark.asyncio
+async def test_current_fact_answer_does_not_add_a_practice_question() -> None:
+    model = CapturingExplanationModel()
+    context = _context()
+    context.update(
+        {
+            "task_type": "general_learning_support",
+            "user_request": "距离下次执业医师资格考试还有多久？",
+            "external_information_request": True,
+        }
+    )
+
+    result = await KnowledgeExplanationAgent(model).run(context)
+
+    assert model.payload["payload"]["external_information_request"] is True
+    assert model.payload["payload"]["current_date"]
+    assert "配套练习" not in result.payload.content
+
+
+@pytest.mark.asyncio
+async def test_question_explanation_invites_the_learner_to_identify_the_sticking_point() -> None:
+    context = _context()
+    context["user_request"] = "这道题我不会，应该怎么答？"
+
+    result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(context)
+
+    assert "这道题你主要卡在哪一步" in result.payload.content["知识讲解"]
+
+
+@pytest.mark.asyncio
 async def test_knowledge_explanation_drops_generic_uncertainty_placeholders() -> None:
     class PlaceholderModel:
         async def complete_json(self, role, payload, on_delta=None):

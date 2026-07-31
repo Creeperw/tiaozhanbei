@@ -4230,9 +4230,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     }
                 )
                 result = await operation()
+                result_status = getattr(result, "status", None)
                 event_name = (
                     "run_interrupted"
-                    if getattr(result, "status", None) == "interrupted"
+                    if result_status == "interrupted"
+                    else "run_waiting_human_review"
+                    if result_status == "waiting_human_review"
                     else "run_completed"
                 )
                 await queue.put(

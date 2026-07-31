@@ -27,6 +27,9 @@ export function runtimeEventToTrace(event) {
     type: 'feedback_done', approved: event.status === 'pass', text: '修订复核已完成',
   };
   if (name === 'run_completed') return { type: 'workflow_done', text: '处理完成' };
+  if (name === 'run_waiting_human_review') {
+    return { type: 'human_review_waiting', text: '内容正在等待人工复核' };
+  }
   if (name === 'run_interrupted' || name === 'graph_interrupted') {
     return { type: 'execution_done', text: '等待用户补充信息' };
   }
@@ -109,12 +112,20 @@ export async function streamWorkflowTurn({
       const event = JSON.parse(data.slice(6));
       onEvent?.(event, runtimeEventToTrace(event));
       if (event.event === 'run_failed') throw new Error(event.message || '执行失败');
-      if (event.event === 'run_completed' || event.event === 'run_interrupted') terminal = event;
+      if (
+        event.event === 'run_completed'
+        || event.event === 'run_interrupted'
+        || event.event === 'run_waiting_human_review'
+      ) terminal = event;
     }
   }
   if (!terminal) throw new Error('连接已结束，但没有收到完整结果');
+  const terminalStatuses = {
+    run_interrupted: 'interrupted',
+    run_waiting_human_review: 'waiting_human_review',
+  };
   return {
-    status: terminal.event === 'run_interrupted' ? 'interrupted' : 'completed',
+    status: terminalStatuses[terminal.event] || 'completed',
     result: terminal.result,
     message: terminal.assistant_message || '本次处理已完成。',
   };

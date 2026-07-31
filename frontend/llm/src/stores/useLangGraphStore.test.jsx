@@ -50,6 +50,18 @@ describe('LangGraph six-agent trace state', () => {
     expect(state.nodes[0].agent).toBe('knowledge_base_agent');
   });
 
+  it('keeps the audit node waiting for human review without a rollback', () => {
+    let state = reduceLangGraphEvent(emptyState, {
+      type: 'feedback_start', agent: 'audit_agent', stepId: 'audit', text: '审核内容', ts: 10,
+    });
+    state = reduceLangGraphEvent(state, {
+      type: 'human_review_waiting', text: '内容正在等待人工复核', ts: 20,
+    });
+
+    expect(state.nodes.find((node) => node.id === 'audit')?.status).toBe('waiting_human_review');
+    expect(state.isRollingBack).toBe(false);
+  });
+
   it('keeps every compiled agent visible before its step starts', () => {
     let state = reduceLangGraphEvent(emptyState, {
       type: 'planning_start', agent: 'planner_agent', stepId: 'planner', text: '开始规划', ts: 10,
