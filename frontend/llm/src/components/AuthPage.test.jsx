@@ -73,6 +73,15 @@ describe('AuthPage main-backend cookie contract', () => {
     });
   });
 
+  it('renders a homepage return action only when a return callback is provided', () => {
+    stubHealthyBackend();
+    const onBack = vi.fn();
+    render(<AuthPage onLogin={vi.fn()} onBack={onBack} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '返回首页' }));
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
   it('renders the login form directly without a modal dialog', () => {
     stubHealthyBackend();
     const { container } = render(<AuthPage onLogin={vi.fn()} />);

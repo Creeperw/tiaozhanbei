@@ -580,11 +580,24 @@
     border-radius: 0;
 }
 
-.acupuncture-card--fullscreen>.acupuncture-primary {
+.acupuncture-card--fullscreen>.acupuncture-primary,
+.acupuncture-card--fullscreen .acupuncture-card--fullscreen-exit {
     position: absolute;
     z-index: 3;
-    right: 24px;
     bottom: 24px;
+}
+
+.acupuncture-card--fullscreen>.acupuncture-primary {
+    right: 24px;
+}
+
+.acupuncture-card--fullscreen .acupuncture-card--fullscreen-exit {
+    position: absolute;
+    z-index: 4;
+    top: 20px;
+    right: 24px;
+    bottom: auto;
+    left: auto;
 }
 
 .acupuncture-card--fullscreen .acupuncture-needling-layout {
@@ -611,7 +624,8 @@
 }
 
 .acupuncture-card--fullscreen .acupuncture-summary-list,
-.acupuncture-card--fullscreen .acupuncture-case-parameters {
+.acupuncture-card--fullscreen .acupuncture-case-parameters,
+.acupuncture-card--fullscreen .acupuncture-standard-list {
     position: absolute;
     z-index: 3;
     left: 24px;
@@ -628,6 +642,17 @@
     background: rgba(8, 34, 28, .86);
 }
 
+.acupuncture-card--fullscreen .acupuncture-standard-list {
+    right: 24px;
+    bottom: 88px;
+    max-height: min(38vh, 280px);
+    overflow-y: auto;
+    padding: 14px;
+    background: rgba(8, 34, 28, .86);
+    border: 1px solid rgba(157, 236, 210, .3);
+    border-radius: 14px;
+}
+
 @media (max-width: 760px) {
     .acupuncture-card--fullscreen .acupuncture-controls {
         right: 12px;
@@ -641,6 +666,19 @@
     .acupuncture-card--fullscreen .acupuncture-summary-list,
     .acupuncture-card--fullscreen .acupuncture-case-parameters {
         left: 12px;
+    }
+
+    .acupuncture-card--fullscreen .acupuncture-card--fullscreen-exit {
+        top: 12px;
+        right: 12px;
+        left: auto;
+    }
+
+    .acupuncture-card--fullscreen .acupuncture-standard-list {
+        right: 12px;
+        left: auto;
+        bottom: 88px;
+        width: calc(100vw - 24px);
     }
 
     .acupuncture-card--fullscreen .acupuncture-model__markers-button {

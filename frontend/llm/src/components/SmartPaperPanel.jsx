@@ -39,12 +39,12 @@ function buildTopicRecommendations(report) {
   return [...new Set([...weakPointNames, ...fallbackTopicRecommendations])].slice(0, 4);
 }
 
-export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
+export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDemo = false }) {
   const [papers, setPapers] = useState([]);
   const [topicRecommendations, setTopicRecommendations] = useState(fallbackTopicRecommendations);
   const [recommendationsLoading, setRecommendationsLoading] = useState(true);
   const [kind, setKind] = useState('special');
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(guideDemo ? '脾胃气虚证的辨证要点与常用方剂' : '');
   const [distribution, setDistribution] = useState({
     single_choice: 5,
     multiple_choice: 0,
@@ -60,12 +60,13 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '' }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (guideDemo) return undefined;
     let active = true;
     loadPapers({ fetcher: fetchJsonWithAuthFallback }).then((result) => {
       if (active && !result.error) setPapers(result.papers.items);
     });
     return () => { active = false; };
-  }, []);
+  }, [guideDemo]);
 
   useEffect(() => {
     let active = true;

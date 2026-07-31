@@ -231,7 +231,14 @@ export default function AcupunctureModelCanvas({
         if (!camera) return;
         raycasterRef.current.setFromCamera(pointerRef.current, camera);
         const hit = raycasterRef.current.intersectObject(modelRef.current, true).find((item) => item.object.isMesh);
-        if (hit) onSurfacePick({ point: hit.point.toArray(), normal: hit.face?.normal?.toArray() || null });
+        if (!hit) return;
+        const normal = hit.face?.normal?.clone();
+        if (normal) {
+            normal.applyMatrix3(
+                new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld),
+            ).normalize();
+        }
+        onSurfacePick({ point: hit.point.toArray(), normal: normal?.toArray() || null });
     };
 
     return (

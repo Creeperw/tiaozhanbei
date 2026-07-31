@@ -93,6 +93,14 @@ const normalizeConsentOptions = (options) => {
     });
 };
 
+const insertionTypeFromAngle = (angle) => {
+    const text = String(angle || '');
+    if (text.includes('直刺')) return 'direct';
+    if (text.includes('斜刺')) return 'oblique';
+    if (text.includes('平刺') || text.includes('横刺')) return 'transverse';
+    return undefined;
+};
+
 export const normalizeAcupunctureCase = (source) => {
     const standardPoints = Array.isArray(source?.standardAcupoints)
         ? source.standardAcupoints.map((point) => ({
@@ -103,6 +111,7 @@ export const normalizeAcupunctureCase = (source) => {
             y: point.coordinates?.y || null,
             depthRange: point.needleDepth,
             needleAngle: point.needleAngle || '',
+            insertionType: insertionTypeFromAngle(point.needleAngle),
             retentionRange: point.retentionTime,
         }))
         : [];

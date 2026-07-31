@@ -13,6 +13,15 @@ const STORAGE_SESSION = 'sp-session-id';
 const STORAGE_SESSIONS = 'sp-completed-sessions'; // 完整接诊记录
 const STORAGE_COLLECTIONS = 'sp-collections';
 
+const GUIDE_PATIENT = { gender: '女', age_range: '35-40 岁', body_type: '偏瘦' };
+const GUIDE_CONSULTATION = [
+  { role: 'patient', content: '医生您好，我这几天总觉得胃脘胀满，吃饭后更明显。' },
+  { role: 'doctor', content: '这种不适持续多久了？有没有反酸、嗳气或食欲下降？' },
+  { role: 'patient', content: '大约一周，嗳气比较多，胃口也差了一些。' },
+  { role: 'doctor', content: '大便情况如何？平时是否容易疲倦，舌苔有什么变化？' },
+  { role: 'patient', content: '大便偏稀，容易乏力，舌苔看起来白腻。' },
+];
+
 // ── Helpers ───────────────────────────────────────────────
 const getSessions = () => { try { return JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]'); } catch { return []; } };
 const setSessions = (v) => localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(v));
@@ -36,12 +45,12 @@ const barClass = (score, max) => {
 };
 
 // ── Component ─────────────────────────────────────────────
-export default function SimulatedPatientChat({ showBack = true, onBack }) {
+export default function SimulatedPatientChat({ showBack = true, onBack, guideDemo = false, guidePlaying = true }) {
   // Core state
-  const [view, setView] = useState('welcome'); // welcome | practice_select | consultation | report
-  const [sessionId, setSessionId] = useState(() => sessionStorage.getItem(STORAGE_SESSION) || '');
-  const [messages, setMessages] = useState([]);
-  const [patient, setPatient] = useState(null);
+  const [view, setView] = useState(guideDemo ? 'consultation' : 'welcome'); // welcome | practice_select | consultation | report
+  const [sessionId, setSessionId] = useState(() => guideDemo ? 'guide-demo-session' : sessionStorage.getItem(STORAGE_SESSION) || '');
+  const [messages, setMessages] = useState(() => guideDemo ? GUIDE_CONSULTATION.slice(0, 1) : []);
+  const [patient, setPatient] = useState(guideDemo ? GUIDE_PATIENT : null);
   const [turnCount, setTurnCount] = useState(0);
   const [helpAvailable, setHelpAvailable] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -115,27 +124,43 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
 
   // ── Initialization ─────────────────────────────────────
   useEffect(() => {
+    if (guideDemo) return;
     loadSidebarData();
     loadStats();
     fetchWithAuth('/api/v1/auth/me', {}).then(r => readJsonResponse(r, {})).then(d => {
       const u = d?.user;
       if (u?.username) setCurrentUserName(u.display_name || u.username);
     }).catch(() => { });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [guideDemo]);
 
   useEffect(() => {
+    if (guideDemo) return;
     loadStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completedSessions]);
+  }, [completedSessions, guideDemo]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!guideDemo || !guidePlaying) return undefined;
+    setMessages(GUIDE_CONSULTATION.slice(0, 1));
+    setTurnCount(0);
+    setInput('');
+    const timers = [
+      window.setTimeout(() => setInput(GUIDE_CONSULTATION[1].content), 360),
+      window.setTimeout(() => { setInput(''); setMessages(GUIDE_CONSULTATION.slice(0, 2)); setTurnCount(1); }, 720),
+      window.setTimeout(() => setMessages(GUIDE_CONSULTATION.slice(0, 3)), 1_180),
+      window.setTimeout(() => { setMessages(GUIDE_CONSULTATION.slice(0, 4)); setTurnCount(2); }, 1_720),
+      window.setTimeout(() => setMessages(GUIDE_CONSULTATION), 2_180),
+    ];
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [guideDemo, guidePlaying]);
+
+  useEffect(() => {
+    if (guideDemo) return;
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
+  }, [messages, guideDemo]);
 
   // Auto-save messages to localStorage so dialogue survives page exits
   useEffect(() => {
-    if (!sessionId || messages.length === 0) return;
+    if (guideDemo || !sessionId || messages.length === 0) return;
     const sessions = getSessions();
     const idx = sessions.findIndex(s => s.session_id === sessionId);
     if (idx >= 0 && sessions[idx].status === 'active') {
@@ -146,7 +171,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
       refreshSessions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, turnCount, helpAvailable]);
+  }, [messages, turnCount, helpAvailable, guideDemo]);
 
   const loadStats = async () => {
     const sessions = getSessions();
@@ -982,7 +1007,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack }) {
             {showBack && (
               <button className="sp-sidebar-back" onClick={onBack || (() => window.history.back())}>
                 <ArrowLeft className="sp-sidebar-back__icon" />
-                返回
+                返回训练工坊
               </button>
             )}
             {viewingHistory && (

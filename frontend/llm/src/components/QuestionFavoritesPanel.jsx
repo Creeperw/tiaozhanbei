@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookMarked, FolderPlus, Loader2, Play, Plus, Search, Star, Trash2, X } from 'lucide-react';
+import { BookMarked, FolderPlus, Loader2, MoveRight, Play, Plus, Search, Star, Trash2, X } from 'lucide-react';
 import {
   createFavoriteFolder,
   deleteFavorite,
   deleteFavoriteFolder,
   loadFavoriteFolders,
   loadFavorites,
+  saveFavorite,
 } from './workshopLibraryApi';
 
 export default function QuestionFavoritesPanel({ onNavigate }) {
@@ -13,6 +14,7 @@ export default function QuestionFavoritesPanel({ onNavigate }) {
   const [favorites, setFavorites] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState('');
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingMove, setPendingMove] = useState(null);
   const [folderName, setFolderName] = useState('');
   const [folderComposerOpen, setFolderComposerOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -79,6 +81,25 @@ export default function QuestionFavoritesPanel({ onNavigate }) {
       setPendingDelete(null);
     } catch (reason) {
       setError(reason.message || '取消收藏失败');
+    }
+  };
+
+  const moveFavorite = async (item, targetFolderId) => {
+    setError('');
+    try {
+      await saveFavorite({
+        folder_id: targetFolderId,
+        resource_type: item.resource_type || 'question',
+        resource_id: item.resource_id || item.favorite_id,
+        title: item.title,
+        content: item.content || {},
+        source: item.source || '训练工坊',
+      });
+      await deleteFavorite(item.favorite_id);
+      setPendingMove(null);
+      await refresh(selectedFolderId);
+    } catch (reason) {
+      setError(reason.message || '移动收藏失败');
     }
   };
 
@@ -165,6 +186,7 @@ export default function QuestionFavoritesPanel({ onNavigate }) {
                   <span className="question-collection__position">{index + 1}</span>
                   <span><strong>{item.title}</strong><small>{item.source} · {String(item.updated_at || '').slice(0, 10)}</small></span>
                 </button>
+                <button type="button" className="question-collection__item-delete" aria-label={`移动收藏：${item.title}`} onClick={() => setPendingMove(item)}><MoveRight size={15} /></button>
                 <button type="button" className="question-collection__item-delete" aria-label={`删除收藏：${item.title}`} onClick={() => setPendingDelete(item)}><Trash2 size={15} /></button>
               </article>
             ))}
@@ -180,6 +202,19 @@ export default function QuestionFavoritesPanel({ onNavigate }) {
           <input id="favorite-folder-name" value={folderName} onChange={(event) => setFolderName(event.target.value)} maxLength={80} placeholder="例如：方剂重点" />
           <footer><button type="button" onClick={() => setFolderComposerOpen(false)}>取消</button><button type="submit" disabled={!folderName.trim()}><FolderPlus size={16} />新建</button></footer>
         </form>
+      </div>
+    </div>}
+    {pendingMove && <div className="workshop-save-dialog" role="dialog" aria-modal="true" aria-labelledby="favorite-move-title">
+      <div>
+        <header><h3 id="favorite-move-title">移动收藏</h3><button type="button" aria-label="关闭移动收藏窗口" onClick={() => setPendingMove(null)}><X size={18} /></button></header>
+        <p>选择要移动到的收藏簿。</p>
+        <div className="question-collection__move-targets">
+          {folders.filter((folder) => folder.folder_id !== selectedFolderId).map((folder) => (
+            <button key={folder.folder_id} type="button" onClick={() => moveFavorite(pendingMove, folder.folder_id)}>{folder.name}</button>
+          ))}
+          {folders.length < 2 && <span>请先新建另一个收藏簿。</span>}
+        </div>
+        <footer><button type="button" onClick={() => setPendingMove(null)}>取消</button></footer>
       </div>
     </div>}
     {pendingDelete && <div className="question-collection__confirm-backdrop" role="dialog" aria-modal="true" aria-labelledby="favorite-delete-title" onMouseDown={(event) => event.target === event.currentTarget && setPendingDelete(null)}>

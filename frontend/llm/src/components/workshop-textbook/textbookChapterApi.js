@@ -32,6 +32,21 @@ export async function loadTextbookProgress(book, { signal } = {}) {
   }
   return payload;
 }
+export async function loadSectionQuestions(kpIds, { signal } = {}) {
+  const normalizedIds = [...new Set((kpIds || []).filter(Boolean))];
+  if (!normalizedIds.length) return { items: [] };
+  const params = new URLSearchParams({ q: '', limit: '100', mode: 'lexical' });
+  normalizedIds.forEach((kpId) => params.append('kp_id', kpId));
+  const response = await fetchWithAuth(`${API_BASE}/knowledge/atlas/questions/search?${params}`, {
+    ...(signal ? { signal } : {}),
+  });
+  const payload = await readJsonResponse(response, {});
+  if (!response.ok) {
+    throw new Error(responseMessage(payload, `小节题目加载失败 (${response.status || 'unknown'})`));
+  }
+  return { items: Array.isArray(payload.items) ? payload.items : [] };
+}
+
 export async function completeTextbookSection(payload, { signal } = {}) {
   const response = await fetchWithAuth(`${API_BASE}/learning-activity/textbook-progress`, {
     method: 'POST',

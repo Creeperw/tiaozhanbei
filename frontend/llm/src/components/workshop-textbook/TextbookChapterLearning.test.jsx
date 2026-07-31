@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TextbookChapterLearning from './TextbookChapterLearning';
 import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
-import { completeTextbookSection, loadSectionLearningDetail, loadTextbookProgress } from './textbookChapterApi';
+import { completeTextbookSection, loadSectionLearningDetail, loadSectionQuestions, loadTextbookProgress } from './textbookChapterApi';
 
 vi.mock('../knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn() }));
 vi.mock('./TextbookPdfReader', () => ({
@@ -12,6 +12,7 @@ vi.mock('./TextbookPdfReader', () => ({
 vi.mock('./textbookChapterApi', () => ({
   completeTextbookSection: vi.fn().mockResolvedValue({ ok: true }),
   loadSectionLearningDetail: vi.fn(),
+  loadSectionQuestions: vi.fn().mockResolvedValue({ items: [] }),
   loadTextbookProgress: vi.fn().mockResolvedValue({ completed_section_ids: [], last_section_id: '' }),
 }));
 
@@ -21,7 +22,9 @@ const baseVideo = { bvid: 'BV_BASE', page: 1, start_seconds: 0, video_title: '�
 const timestampVideo = { bvid: 'BV_KP', page: 1, start_seconds: 18, end_seconds: 48, video_title: '知识点视频' };
 
 function prepare({ withSectionVideo = true } = {}) {
-  loadAtlasNodes.mockImplementation(({ level }) => Promise.resolve({ nodes: level === 2 ? [chapter] : [section] }));
+  loadAtlasNodes.mockImplementation(({ level }) => Promise.resolve({
+    nodes: level === 2 ? [chapter] : level === 3 ? [section] : [{ id: 'KP_1' }, { id: 'KP_2' }],
+  }));
   loadSectionLearningDetail.mockResolvedValue({
     section: { name: section.name, book: '中医学基础', chapter: chapter.name },
     section_videos: withSectionVideo ? [baseVideo] : [],
@@ -40,6 +43,7 @@ async function openCatalog() {
 describe('TextbookChapterLearning', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadSectionQuestions.mockResolvedValue({ items: [] });
     loadTextbookProgress.mockResolvedValue({ completed_section_ids: [], last_section_id: '' });
     completeTextbookSection.mockResolvedValue({ ok: true });
   });
@@ -130,6 +134,29 @@ describe('TextbookChapterLearning', () => {
     expect(screen.getByTitle('阴阳概念')).toBeInTheDocument();
   });
 
+  it('shows question counts beside sections in the assignment catalogue', async () => {
+    loadAtlasNodes.mockImplementation(({ level }) => Promise.resolve({
+      nodes: level === 2
+        ? [chapter]
+        : level === 3
+          ? [section]
+          : [{ id: 'KP_1' }, { id: 'KP_2' }],
+    }));
+    loadSectionQuestions.mockResolvedValue({
+      items: [
+        { question_id: 'Q_1', kp_ids: ['KP_1'] },
+        { question_id: 'Q_2', kp_ids: ['KP_2'] },
+      ],
+    });
+    render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '作业与考试' }));
+
+    expect(await screen.findByText('2 道题目')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /第一节 基础概念/ }));
+    await waitFor(() => expect(loadSectionQuestions).toHaveBeenCalledWith(['KP_1', 'KP_2'], expect.any(Object)));
+  });
+
   it('keeps the notebook and PDF reader inside the textbook page', async () => {
     const onNavigate = vi.fn();
     prepare();
@@ -142,25 +169,14 @@ describe('TextbookChapterLearning', () => {
     expect(await screen.findByText('电子教材阅读器')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '作业与考试' }));
-    expect(onNavigate).toHaveBeenLastCalledWith({
-      page: 'practice',
-      params: {
-        view: 'workspace',
-        taskType: 'question_training',
-        returnTo: {
-          page: 'practice',
-          params: { route: 'textbook_14_5', lv1: '中医学基础', view: 'textbook-chapters' },
-        },
-      },
-    });
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(await screen.findByRole('button', { name: /第一节 基础概念/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /第一节 基础概念/ }));
 
-    expect(screen.queryByRole('button', { name: '知识图谱' })).not.toBeInTheDocument();
+    await waitFor(() => expect(loadSectionQuestions).toHaveBeenCalledWith(['KP_1', 'KP_2'], expect.any(Object)));
+    expect(screen.getByText('该小节暂未匹配到题目。')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '笔记本' }));
-    expect(screen.getByText('简约页笔记')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '课程目录' }));
-    fireEvent.click(screen.getByRole('button', { name: '阅读电子教材' }));
+    fireEvent.click(screen.getByRole('button', { name: '课程内容' }));
     expect(screen.getByText('电子教材阅读器')).toBeInTheDocument();
   });
 

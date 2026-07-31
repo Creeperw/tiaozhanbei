@@ -1,9 +1,9 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from './App';
-import { readJsonResponse } from './utils/api';
+import { fetchWithAuth, readJsonResponse } from './utils/api';
 
 vi.mock('./utils/api', () => ({
   AUTH_API_BASE: 'http://api.test/api/v1/auth',
@@ -12,12 +12,16 @@ vi.mock('./utils/api', () => ({
 }));
 
 vi.mock('./components/AuthPage', () => ({
-  default: ({ onLogin }) => (
+  default: ({ onLogin, onBack }) => (
     <div>
       Auth
+      <button type="button" onClick={onBack}>返回首页</button>
       <button type="button" onClick={() => onLogin({ username: 'visitor', role: 'user' })}>Complete login</button>
     </div>
   ),
+}));
+vi.mock('./components/HomeOnboardingGuide', () => ({
+  default: ({ onClose }) => <button type="button" onClick={onClose}>Close onboarding guide</button>,
 }));
 vi.mock('./components/HomePage', () => ({ default: () => <div>Home portal</div> }));
 vi.mock('./components/DashboardPage', () => ({
@@ -142,15 +146,75 @@ describe('authenticated application shell', () => {
     expect(screen.queryByText('Auth')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '登录' }));
-    expect(screen.getByRole('dialog', { name: '账号登录' })).toBeInTheDocument();
     expect(screen.getByText('Auth')).toBeInTheDocument();
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(screen.queryByText('Home portal')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('authenticated-shell')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete login' }));
-    expect(screen.queryByRole('dialog', { name: '账号登录' })).not.toBeInTheDocument();
-    expect(document.body.style.overflow).toBe('');
     expect(screen.getByText('visitor')).toBeInTheDocument();
     expect(screen.getByText('Home portal')).toBeInTheDocument();
+  });
+
+  it('does not restore a stale authenticated session after an authorization reset', async () => {
+    let resolveSession;
+    vi.mocked(fetchWithAuth).mockReturnValueOnce(new Promise((resolve) => {
+      resolveSession = resolve;
+    }));
+
+    render(<App />);
+    window.dispatchEvent(new CustomEvent('competition:unauthorized'));
+    resolveSession({ ok: true });
+    vi.mocked(readJsonResponse).mockResolvedValueOnce({ user: { username: 'stale-user', role: 'user' } });
+
+    await waitFor(() => expect(screen.getByText('未登录')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Close onboarding guide' })).not.toBeInTheDocument();
+  });
+
+  it('returns to the visitor homepage from the standalone login page', async () => {
+    vi.mocked(readJsonResponse).mockResolvedValueOnce({ user: null });
+
+    render(<App />);
+
+    await screen.findByText('Home portal');
+    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+    fireEvent.click(screen.getByRole('button', { name: '返回首页' }));
+
+    expect(screen.getByText('Home portal')).toBeInTheDocument();
+    expect(screen.queryByText('Auth')).not.toBeInTheDocument();
+  });
+
+  it('returns to the visitor homepage if authentication expires on the login page', async () => {
+    vi.mocked(readJsonResponse).mockResolvedValueOnce({ user: null });
+
+    render(<App />);
+
+    await screen.findByText('Home portal');
+    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+    expect(screen.getByText('Auth')).toBeInTheDocument();
+
+    window.dispatchEvent(new CustomEvent('competition:unauthorized'));
+
+    await waitFor(() => expect(screen.getByText('Home portal')).toBeInTheDocument());
+    expect(screen.queryByText('Auth')).not.toBeInTheDocument();
+  });
+
+  it('opens the homepage guide after the login session is verified', async () => {
+    render(<App />);
+
+    const guide = await screen.findByRole('button', { name: 'Close onboarding guide' });
+    expect(guide).toBeInTheDocument();
+    fireEvent.click(guide);
+    expect(screen.queryByRole('button', { name: 'Close onboarding guide' })).not.toBeInTheDocument();
+  });
+
+  it('closes the homepage guide when the authenticated session expires', async () => {
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: 'Close onboarding guide' })).toBeInTheDocument();
+    window.dispatchEvent(new CustomEvent('competition:unauthorized'));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Close onboarding guide' })).not.toBeInTheDocument());
+    expect(screen.getByText('未登录')).toBeInTheDocument();
   });
 
   it('consumes a one-time external navigation intent for an audited paper', async () => {

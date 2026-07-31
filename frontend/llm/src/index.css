@@ -9785,6 +9785,11 @@ textarea:focus-visible {
   background: #fff3f4;
 }
 
+.question-collection__move-targets { display:grid; gap:8px; margin-top:14px; }
+.question-collection__move-targets button { width:100%; border:1px solid #dce9e2; border-radius:8px; padding:9px 12px; color:#315c4b; background:#f8fcf9; text-align:left; cursor:pointer; }
+.question-collection__move-targets button:hover { border-color:#83b79b; background:#eaf6ef; }
+.question-collection__move-targets span { color:#71877d; font-size:.85rem; }
+
 .question-collection__position {
   display: grid;
   width: 34px;
@@ -19642,7 +19647,7 @@ textarea:focus-visible {
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-switch button {
   min-height: 38px;
-  font-size: .82rem;
+  font-size: .94rem;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-orbit-layout {
@@ -19683,6 +19688,19 @@ textarea:focus-visible {
   border-color: rgba(255, 255, 255, .45);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(32, 62, 52, .14);
+}
+
+/* Learning-path typography remains legible without changing the compact top navigation. */
+.app-shell__main[data-page="learning-path"] .learning-stage-card h3,
+.app-shell__main[data-page="learning-path"] .learning-stage-card[data-current="true"] h3 {
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+
+.app-shell__main[data-page="learning-path"] .learning-stage-card p,
+.app-shell__main[data-page="learning-path"] .learning-stage-card small {
+  font-size: .88rem;
+  line-height: 1.55;
 }
 
 @media (max-width: 980px) {
@@ -20020,4 +20038,85 @@ textarea:focus-visible {
     outline: 3px solid rgba(31, 164, 116, .3);
     outline-offset: 3px;
   }
+}
+
+/* Assistant workspace uses independent session and conversation panels on desktop. */
+.app-shell__main[data-page="assistant"] {
+  display: flex;
+  min-height: 0;
+  padding: clamp(10px, 1.35vw, 22px);
+  background: #fff;
+  overflow: visible !important;
+}
+
+.app-shell__main[data-page="assistant"] .assistant-workspace {
+  width: auto;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 0;
+  gap: clamp(9px, 1vw, 16px);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible !important;
+}
+
+.app-shell__main[data-page="assistant"] .assistant-session-rail {
+  width: clamp(208px, 17vw, 238px) !important;
+  flex: 0 0 clamp(208px, 17vw, 238px) !important;
+  border: 1px solid rgba(198, 228, 213, .95);
+  border-radius: clamp(16px, 1.5vw, 22px);
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(31, 108, 81, .07);
+}
+
+.app-shell__main[data-page="assistant"] .assistant-session-rail[data-open="false"] {
+  width: 0 !important;
+  flex-basis: 0 !important;
+  border-width: 0;
+  box-shadow: none;
+}
+
+.app-shell__main[data-page="assistant"] .assistant-session-rail__header {
+  min-height: 70px;
+  padding: 10px 13px 8px;
+  border-bottom: 1px solid rgba(211, 235, 222, .78);
+}
+
+.app-shell__main[data-page="assistant"] .assistant-session-rail__new { padding: 12px 13px 10px; }
+.app-shell__main[data-page="assistant"] .assistant-session-rail__new button {
+  min-height: 42px;
+  border-radius: 13px;
+  font-size: .9rem;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(5, 150, 105, .17);
+}
+.app-shell__main[data-page="assistant"] .assistant-session-list { padding: 9px 10px 14px; }
+
+.app-shell__main[data-page="assistant"] .assistant-chat-pane {
+  width: auto !important;
+  flex: 1 1 0 !important;
+  overflow: hidden;
+  border: 1px solid rgba(204, 230, 219, .9);
+  border-radius: clamp(16px, 1.5vw, 22px);
+  background: rgba(255, 255, 255, .74);
+  box-shadow: 0 10px 28px rgba(31, 108, 81, .065);
+}
+
+.app-shell__main[data-page="assistant"] .assistant-chat-header {
+  min-height: 52px;
+  padding-inline: clamp(14px, 1.4vw, 22px);
+  background: rgba(255, 255, 255, .88);
+}
+.app-shell__main[data-page="assistant"] .assistant-messages { padding: clamp(18px, 3vw, 42px); }
+.app-shell__main[data-page="assistant"] .assistant-composer { padding: 14px clamp(16px, 3vw, 42px) 16px; }
+
+@media (max-width: 767px) {
+  .app-shell__main[data-page="assistant"] { padding: 0; }
+  .app-shell__main[data-page="assistant"] .assistant-workspace { padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+  .app-shell__main[data-page="assistant"] .assistant-session-rail { width: min(88vw, 320px) !important; border-radius: 0 20px 20px 0; }
+  .app-shell__main[data-page="assistant"] .assistant-chat-pane { border: 0; border-radius: 0; box-shadow: none; }
 }

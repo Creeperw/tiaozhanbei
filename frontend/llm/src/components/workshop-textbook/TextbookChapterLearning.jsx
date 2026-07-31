@@ -18,9 +18,11 @@ import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
 import {
   completeTextbookSection,
   loadSectionLearningDetail,
+  loadSectionQuestions,
   loadTextbookProgress,
 } from './textbookChapterApi';
 import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
+import SectionExamPanel from './SectionExamPanel';
 import TextbookPdfReader from './TextbookPdfReader';
 import './textbookChapterLearning.css';
 
@@ -201,6 +203,9 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [catalogStatus, setCatalogStatus] = useState('all');
   const [searchCatalog, setSearchCatalog] = useState(null);
   const [courseMode, setCourseMode] = useState('pdf');
+  const [sectionExamMode, setSectionExamMode] = useState(false);
+  const [sectionQuestionCounts, setSectionQuestionCounts] = useState({});
+  const [sectionKpIdsBySection, setSectionKpIdsBySection] = useState({});
   const [pdfInitialPage, setPdfInitialPage] = useState(navigationContext.pdfPage || 1);
   const [pageNotesOpen, setPageNotesOpen] = useState(false);
 
@@ -264,6 +269,56 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     return () => controller.abort();
   }, [selectedSection]);
 
+  useEffect(() => {
+    if (!sectionExamMode || !selectedChapter) return undefined;
+    const chapterSections = sectionsByChapter[selectedChapter.id] || [];
+    if (!chapterSections.length) {
+      setSectionQuestionCounts({});
+      setSectionKpIdsBySection({});
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    Promise.all(chapterSections.map(async (section) => {
+      try {
+        const result = await loadAtlasNodes({
+          level: 4,
+          route,
+          lv1: book,
+          chapter: selectedChapter.name,
+          chapterId: selectedChapter.id,
+          lv2: section.name,
+          sectionId: section.id,
+          signal: controller.signal,
+        });
+        return [section.id, (result.nodes || []).map((item) => item.kp_id || item.id).filter(Boolean)];
+      } catch (reason) {
+        if (reason.name === 'AbortError') throw reason;
+        return [section.id, []];
+      }
+    })).then(async (entries) => {
+      if (controller.signal.aborted) return;
+      const nextKpIds = Object.fromEntries(entries);
+      setSectionKpIdsBySection(nextKpIds);
+      const nextCounts = await Promise.all(entries.map(async ([sectionId, kpIds]) => {
+        try {
+          const result = await loadSectionQuestions(kpIds, { signal: controller.signal });
+          return [sectionId, (result.items || []).length];
+        } catch (reason) {
+          if (reason.name === 'AbortError') throw reason;
+          return [sectionId, null];
+        }
+      }));
+      if (!controller.signal.aborted) setSectionQuestionCounts(Object.fromEntries(nextCounts));
+    }).catch((reason) => {
+      if (reason.name !== 'AbortError') {
+        setSectionQuestionCounts(Object.fromEntries(chapterSections.map((section) => [section.id, null])));
+      }
+    });
+
+    return () => controller.abort();
+  }, [book, route, sectionExamMode, sectionsByChapter, selectedChapter]);
+
   const exactVideos = useMemo(
     () => (Array.isArray(detail?.section_videos) ? detail.section_videos : []),
     [detail],
@@ -290,6 +345,10 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ? [...timestampKnowledgePoints, ...plainKnowledgePoints]
       : timestampKnowledgePoints)
     : knowledgePoints;
+  const sectionKpIds = useMemo(
+    () => knowledgePoints.map((item) => item.kp_id).filter(Boolean),
+    [knowledgePoints],
+  );
   const normalizedCatalogQuery = searchableText(catalogQuery);
   const allSections = useMemo(() => Object.values(sectionsByChapter).flat(), [sectionsByChapter]);
   const progress = allSections.length ? Math.round((completedSectionIds.size / allSections.length) * 100) : 0;
@@ -401,8 +460,16 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     const querySections = !normalizedCatalogQuery
       ? sections
       : searchMatches?.find(({ chapter }) => chapter.id === selectedChapter?.id)?.sections || [];
-    return querySections.filter(sectionMatchesStatus);
-  }, [catalogStatus, normalizedCatalogQuery, searchMatches, sections, selectedChapter?.id, completedSectionIds]);
+    const matchingSections = querySections.filter(sectionMatchesStatus);
+    if (!sectionExamMode) return matchingSections;
+    return matchingSections.map((section) => {
+      const count = sectionQuestionCounts[section.id];
+      return {
+        ...section,
+        alias: Number.isFinite(count) ? `${count} 道题目` : count === null ? '题目加载失败' : '正在匹配题目…',
+      };
+    });
+  }, [catalogStatus, normalizedCatalogQuery, searchMatches, sections, selectedChapter?.id, completedSectionIds, sectionExamMode, sectionQuestionCounts]);
   useEffect(() => {
     if (catalogStatus === 'all' || !filteredChapters.length) return;
     if (!filteredChapters.some((chapter) => chapter.id === selectedChapter?.id)) {
@@ -516,8 +583,8 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <button type="button" className={!pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
-            <button type="button" onClick={() => openCourseTool('question_training')}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
+            <button type="button" className={!pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); setSectionExamMode(false); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
+            <button type="button" onClick={() => { setPageNotesOpen(false); setCourseMode('catalog'); setSectionExamMode(true); }}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
             <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}><BookOpen aria-hidden="true" size={18} />笔记本</button>
           </aside>
           <div className="textbook-learning-main">
@@ -604,7 +671,13 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             />
           </div>}
 
-          {selectedSection && (
+          {selectedSection && sectionExamMode ? (
+            <SectionExamPanel
+              sectionName={selectedSection.name}
+              kpIds={sectionKpIdsBySection[selectedSection.id] || sectionKpIds}
+              onBack={() => setSelectedSection(null)}
+            />
+          ) : selectedSection && (
           <section className="textbook-section-content" aria-live="polite">
             <header>
               <div className="textbook-section-content__eyebrow">
