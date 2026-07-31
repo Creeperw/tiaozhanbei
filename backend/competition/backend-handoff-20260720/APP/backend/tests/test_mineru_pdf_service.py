@@ -49,6 +49,26 @@ class MinerUPdfParserTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "密钥"):
                 parser.validate()
 
+    def test_keeps_import_time_settings_for_request_time_instances(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pipeline = root / "pipeline"
+            pipeline.mkdir()
+            (pipeline / "parse_question_pdf.py").write_text("# test", encoding="utf-8")
+            (pipeline / "pipeline_config.json").write_text("{}", encoding="utf-8")
+            with patch.dict("os.environ", {}, clear=True), patch(
+                "APP.backend.mineru_pdf_service._IMPORTED_PIPELINE_ROOT",
+                str(pipeline),
+            ), patch(
+                "APP.backend.mineru_pdf_service._IMPORTED_MINERU_TOKEN",
+                "imported-token",
+            ):
+                parser = MinerUPdfParser(runtime_root=root / "runtime")
+
+            self.assertEqual(parser.pipeline_root, pipeline)
+            self.assertEqual(parser.token, "imported-token")
+            parser.validate()
+
 
 if __name__ == "__main__":
     unittest.main()

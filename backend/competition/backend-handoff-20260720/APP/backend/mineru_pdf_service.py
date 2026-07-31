@@ -7,6 +7,13 @@ from pathlib import Path
 from uuid import uuid4
 
 
+# The integrated host projects its settings only while importing this package.
+# Keep those validated values available for request-time parser instances.
+_IMPORTED_PIPELINE_ROOT = os.environ.get("KNOWLEDGE_UPLOAD_PIPELINE_ROOT", "")
+_IMPORTED_MINERU_TOKEN = os.environ.get("MINERU_TOKEN") or os.environ.get("MINERU_API_KEY") or ""
+_IMPORTED_RUNTIME_ROOT = os.environ.get("BACKEND_RUNTIME_ROOT", "")
+
+
 class MinerUPdfParser:
     """Run the delivered MinerU precision pipeline and return normalized Markdown."""
 
@@ -19,16 +26,19 @@ class MinerUPdfParser:
         self.pipeline_root = Path(
             pipeline_root
             or os.environ.get("KNOWLEDGE_UPLOAD_PIPELINE_ROOT", "")
+            or _IMPORTED_PIPELINE_ROOT
         ).expanduser()
         self.token = str(
             token
             or os.environ.get("MINERU_TOKEN")
             or os.environ.get("MINERU_API_KEY")
+            or _IMPORTED_MINERU_TOKEN
             or ""
         ).strip()
         self.runtime_root = Path(
             runtime_root
             or os.environ.get("BACKEND_RUNTIME_ROOT")
+            or _IMPORTED_RUNTIME_ROOT
             or self.pipeline_root / "runtime"
         ).expanduser()
 
