@@ -161,3 +161,54 @@ export const normalizeAcupunctureCase = (source) => {
         source: source?.source || {},
     };
 };
+
+export const BUILTIN_ACUPUNCTURE_CASES = [
+    {
+        caseId: 'acup_00001',
+        title: '腕关节挫伤 — 太溪穴上病下取',
+        patientInfo: {
+            chiefComplaint: '右腕关节扭伤后疼痛10天，活动受限',
+            historySummary: '右手着地致腕关节挫伤，X线片示无骨折，局部广泛压痛。',
+        },
+        cooperationWillingness: {
+            patientLine: '医生，我这个手腕疼了十来天了，针灸真的能治好吗？',
+            candidateOptions: [],
+        },
+        applicableRegions: ['feet'],
+        regionImages: { feet: '脚部.png' },
+        standardAcupoints: [{
+            name: '太溪', code: 'KI3', pinyin: 'taixi', modelNodeName: 'taixi',
+            procedureType: 'needling', insertionType: 'direct', region: 'feet', imagePath: '脚部.png',
+            coordinates: { x: 0, y: 0, unit: 'px' },
+            locationDescription: '足内侧，内踝后方，内踝尖与跟腱之间的凹陷处',
+            needleDepth: { min: 0.5, max: 0.8, unit: '寸' },
+            needleAngle: '直刺0.5-0.8寸', retentionTime: { min: 15, max: 25, unit: '分钟' },
+        }],
+    },
+    ...[
+        ['acup_00002', '膝关节痛（足太阴经证）— 隐白穴通经止痛', '隐白', 'SP1', '0.1-0.2'],
+        ['acup_00003', '定时肩痛（卯时发作）— 三间穴子午流注针法', '三间', 'LI3', '0.3-0.5'],
+        ['acup_00004', '急性腰扭伤（咳则加重）— 鱼际穴宣肺理气', '鱼际', 'LU10', '0.5-0.8'],
+        ['acup_00005', '胸胁屏伤（咳引胸痛）— 鱼际穴宣肺通络', '鱼际', 'LU10', '0.5-0.8'],
+        ['acup_00006', '急性荨麻疹 — 间使穴清热凉血', '间使', 'PC5', '0.8-1.2'],
+        ['acup_00007', '颈性眩晕 — 涌泉穴引邪下行', '涌泉', 'KI1', '0.5-1.0'],
+        ['acup_00008', '双小腿发凉（下肢寒痹）— 承山穴+委中刺络拔罐', '承山', 'BL57', '1.0-2.0'],
+        ['acup_00009', '产后鸡爪风 — 液门+外关补气益阳', '液门', 'SJ2', '0.3-0.5'],
+        ['acup_00010', '牙痛（上牙痛）— 液门穴清热止痛', '液门', 'SJ2', '0.5-1.0'],
+    ].map(([caseId, title, name, code, depth]) => ({
+        caseId,
+        title,
+        patientInfo: { chiefComplaint: title.split('—')[0] },
+        cooperationWillingness: { patientLine: '医生，我愿意配合针灸训练。', candidateOptions: [] },
+        applicableRegions: ['arms'],
+        regionImages: { arms: '胳膊.png' },
+        standardAcupoints: [{
+            name, code, modelNodeName: name, region: 'arms', imagePath: '胳膊.png',
+            coordinates: { x: 0, y: 0, unit: 'px' },
+            locationDescription: '请根据体表标志完成定位',
+            needleDepth: { min: Number(depth.split('-')[0]), max: Number(depth.split('-')[1]), unit: '寸' },
+            needleAngle: '直刺',
+            retentionTime: { min: 15, max: 30, unit: '分钟' },
+        }],
+    })),
+];

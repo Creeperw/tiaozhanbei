@@ -7,6 +7,11 @@ import {
 } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
 import AcupuncturePractice from './acupuncture/AcupuncturePractice';
+import {
+  BUILTIN_ACUPUNCTURE_CASES,
+  getAcupunctureCaseDisplayTitle,
+  normalizeAcupunctureCase,
+} from './acupuncture/acupuncturePracticeData';
 
 // ── localStorage keys ────────────────────────────────────
 const STORAGE_SESSION = 'sp-session-id';
@@ -69,6 +74,10 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
 
   // Practice mode
   const [practiceMode, setPracticeMode] = useState(null);
+  const [acupunctureCases] = useState(() => BUILTIN_ACUPUNCTURE_CASES.map(normalizeAcupunctureCase));
+  const [selectedAcupunctureCaseId, setSelectedAcupunctureCaseId] = useState(
+    () => BUILTIN_ACUPUNCTURE_CASES[0]?.caseId || '',
+  );
   const [specialtyInput, setSpecialtyInput] = useState('');
 
   // Consultation
@@ -476,13 +485,13 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
             setReport(record.grading_report || (item.score !== undefined ? { score: item.score, diagnosis_correct: item.diagnosis_correct } : null));
             setPatient({ gender: item.gender || '', age_range: item.age_range || '', body_type: item.body_type || '' });
             setTurnCount(record.turn_count || item.turn_count || 0);
-            setViewingHistory({...item, ...record});
+            setViewingHistory({ ...item, ...record });
             setViewingReportExpanded(false);
             setView('consultation');
             if (record.session_id) { setSessionId(record.session_id); sessionStorage.setItem(STORAGE_SESSION, record.session_id); }
             return;
           }
-        } catch {}
+        } catch { }
         setLoading(false);
       }
       // Fallback: show basic info
@@ -644,6 +653,22 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
               onChange={e => setSpecialtyInput(e.target.value)}
             />
           )}
+          {practiceMode === 'acupuncture' && (
+            <label className="sp-welcome__specialty-input" htmlFor="acupuncture-entry-case">
+              <span>选择训练病例</span>
+              <select
+                id="acupuncture-entry-case"
+                value={selectedAcupunctureCaseId}
+                onChange={(event) => setSelectedAcupunctureCaseId(event.target.value)}
+              >
+                {acupunctureCases.map((item) => (
+                  <option key={item.caseId} value={item.caseId}>
+                    {item.caseId} · {getAcupunctureCaseDisplayTitle(item.title)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {practiceMode && (
             <button className="sp-welcome__start-btn" onClick={handleStartSession} disabled={loading}>
               {loading ? <><div className="sp-loading__spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /></> : '开始问诊'}
@@ -712,7 +737,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
                   })}
                 </div>
               ) : (
-                <div style={{color:'#94a3b8',fontSize:'.85rem',padding:'4px 0'}}>详细评分暂不可用</div>
+                <div style={{ color: '#94a3b8', fontSize: '.85rem', padding: '4px 0' }}>详细评分暂不可用</div>
               )}
             </div>
 
@@ -991,6 +1016,17 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
   };
 
   // ── Main Render ─────────────────────────────────────────
+  if (view === 'acupuncture') {
+    return (
+      <div className="simulated-patient-acupuncture-layer">
+        <AcupuncturePractice
+          caseData={acupunctureCases.find((item) => item.caseId === selectedAcupunctureCaseId)}
+          onBack={() => setView('practice_select')}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="sp-chat">
       <div className={`sp-chat__sidebar${sidebarOpen ? '' : ' is-collapsed'}`}>
@@ -1057,9 +1093,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
       </button>
 
       <div className="sp-chat__main">
-        {view === 'acupuncture' ? (
-          <AcupuncturePractice onBack={() => setView('practice_select')} />
-        ) : view === 'report' ? renderReport() :
+        {view === 'report' ? renderReport() :
           view === 'consultation' ? (
             <>
               {renderConsultation()}
