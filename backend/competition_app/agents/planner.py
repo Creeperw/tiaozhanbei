@@ -121,6 +121,9 @@ class PlannerAgent:
                     "plan_scope_hint": context.get("plan_scope_hint"),
                     "continued_plan_scope": context.get("continued_plan_scope"),
                     "available_minutes": context.get("available_minutes"),
+                    "user_syllabus": context.get("user_syllabus"),
+                    "syllabus_requirements": context.get("syllabus_requirements", []),
+                    "syllabus_knowledge_points": context.get("syllabus_knowledge_points", []),
                     "existing_plan_state": {
                         "has_long_term_plan": bool(
                             context.get("current_long_term_plan", {}).get("content")

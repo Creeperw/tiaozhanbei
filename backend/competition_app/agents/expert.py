@@ -124,6 +124,9 @@ class ExpertAgent:
                                 for item in candidate_catalog
                                 if self._is_review_question_type(item["question_type"])
                             ][:8],
+                            "user_syllabus": context.get("user_syllabus"),
+                            "syllabus_requirements": context.get("syllabus_requirements", []),
+                            "syllabus_knowledge_points": context.get("syllabus_knowledge_points", []),
                             "task": {
                                 "available_minutes": context.get("available_minutes", 15),
                                 "diagnosis": learning_profile["summary"],
@@ -142,6 +145,9 @@ class ExpertAgent:
                             "phase": "paper_blueprint",
                             "paper_generation": {"enabled": True},
                             "paper_blueprint": context.get("exam_constraints", {}),
+                            "user_syllabus": context.get("user_syllabus"),
+                            "syllabus_requirements": context.get("syllabus_requirements", []),
+                            "syllabus_knowledge_points": context.get("syllabus_knowledge_points", []),
                             "candidate_questions": candidate_catalog,
                             "question_candidate_catalog": candidate_catalog,
                             "output_schema": ExpertModelOutput.model_json_schema(),

@@ -89,6 +89,7 @@ from competition_app.services.textbook_pdf import (
     TextbookPdfService,
 )
 from competition_app.services.textbook_import import TextbookImportService
+from competition_app.services.user_syllabus import UserSyllabusService
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -104,6 +105,7 @@ class ApplicationContainer:
     workshop_library_service: WorkshopLibraryService
     textbook_pdf_service: TextbookPdfService
     textbook_import_service: TextbookImportService
+    user_syllabus_service: UserSyllabusService
     learning_plan_service: LearningPlanService
     daily_task_refresh_service: DailyTaskRefreshService
     daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
@@ -254,6 +256,14 @@ class ApplicationContainer:
             question_retriever = StubQuestionRetriever()
             textbook_retriever = None
             knowledge_backend = None
+        user_syllabus_service = UserSyllabusService(
+            settings.runtime_root,
+            chat_base_url=settings.chat_base_url,
+            chat_model=settings.chat_model,
+            chat_api_key=chat_api_key,
+            timeout_seconds=settings.llm_timeout_seconds,
+            knowledge_resolver=(knowledge_backend.map if knowledge_backend is not None else repository),
+        )
         backend_handoff_runtime = (
             load_backend_handoff(settings) if include_backend_handoff else None
         )
@@ -580,6 +590,7 @@ class ApplicationContainer:
                 ),
                 profile_memory_extractor=None,
                 workshop_runtime=backend_handoff_runtime,
+                syllabus_context_loader=user_syllabus_service.load_context,
             ),
             review_service=review_service,
             authentication_service=authentication_service,
@@ -587,6 +598,7 @@ class ApplicationContainer:
             workshop_library_service=workshop_library_service,
             textbook_pdf_service=textbook_pdf_service,
             textbook_import_service=textbook_import_service,
+            user_syllabus_service=user_syllabus_service,
             learning_plan_service=learning_plan_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,

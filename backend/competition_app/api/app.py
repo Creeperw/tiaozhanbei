@@ -41,6 +41,10 @@ from competition_app.services.textbook_import import (
     TextbookImportError,
     TextbookTocNotFound,
 )
+from competition_app.services.user_syllabus import (
+    USER_SYLLABUS_NOT_FOUND,
+    UserSyllabusError,
+)
 from competition_app.services.qualification_papers import QualificationPaperRepository
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 from competition_app.api.simulated_patient_routes import router as sp_router, init_engine as sp_init_engine
@@ -1357,6 +1361,74 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         user = current_user(request)
         if not container.workshop_library_service.delete_note(user.user_id, note_id):
             raise HTTPException(status_code=404, detail="笔记不存在")
+        return Response(status_code=204)
+
+    def syllabus_owner(request: Request) -> str:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        return user.user_id
+
+    def raise_syllabus_error(exc: UserSyllabusError) -> None:
+        status = 404 if exc.code == USER_SYLLABUS_NOT_FOUND else 422
+        raise HTTPException(status_code=status, detail={"code": exc.code, "message": exc.message}) from exc
+
+    @app.post("/api/v1/user-syllabi", status_code=201)
+    async def upload_user_syllabus(request: Request, file: UploadFile = File(...),
+                                   title: str = Form(""), subject: str = Form(""),
+                                   exam_type: str = Form("")) -> dict:
+        try:
+            return await container.user_syllabus_service.import_file(
+                syllabus_owner(request), file.filename or "syllabus", await file.read(),
+                title=title, subject=subject, exam_type=exam_type)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.get("/api/v1/user-syllabi")
+    async def list_user_syllabi(request: Request) -> dict:
+        return {"items": container.user_syllabus_service.list(syllabus_owner(request))}
+
+    @app.get("/api/v1/user-syllabi/{syllabus_id}/requirements")
+    async def get_user_syllabus_requirements(syllabus_id: str, request: Request) -> dict:
+        try:
+            return {"items": container.user_syllabus_service.requirements(syllabus_owner(request), syllabus_id)}
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.get("/api/v1/user-syllabi/{syllabus_id}/mappings")
+    async def get_user_syllabus_mappings(syllabus_id: str, request: Request) -> dict:
+        try:
+            return {"items": container.user_syllabus_service.mappings(syllabus_owner(request), syllabus_id)}
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.get("/api/v1/user-syllabi/{syllabus_id}")
+    async def get_user_syllabus(syllabus_id: str, request: Request) -> dict:
+        try:
+            return container.user_syllabus_service.get(syllabus_owner(request), syllabus_id)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.put("/api/v1/user-syllabi/{syllabus_id}/activate")
+    async def activate_user_syllabus(syllabus_id: str, request: Request) -> dict:
+        try:
+            return container.user_syllabus_service.activate(syllabus_owner(request), syllabus_id)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.post("/api/v1/user-syllabi/{syllabus_id}/reprocess")
+    async def reprocess_user_syllabus(syllabus_id: str, request: Request) -> dict:
+        try:
+            return await container.user_syllabus_service.reprocess(syllabus_owner(request), syllabus_id)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.delete("/api/v1/user-syllabi/{syllabus_id}", status_code=204)
+    async def delete_user_syllabus(syllabus_id: str, request: Request) -> Response:
+        try:
+            container.user_syllabus_service.delete(syllabus_owner(request), syllabus_id)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
         return Response(status_code=204)
 
     @app.get("/api/v1/textbooks/pdfs/catalog")

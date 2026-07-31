@@ -90,6 +90,9 @@ class KnowledgeBaseAgent:
                                 "current_long_term_plan": context.get("current_long_term_plan", {}).get("content", ""),
                                 "current_short_term_plan": context.get("current_short_term_plan", {}).get("content", ""),
                                 "user_knowledge_state": context.get("user_knowledge_states", []),
+                                "user_syllabus": context.get("user_syllabus"),
+                                "syllabus_requirements": context.get("syllabus_requirements", []),
+                                "syllabus_knowledge_points": context.get("syllabus_knowledge_points", []),
                             },
                             "task_type": str(context.get("task_type", "personalized_review_card")),
                             "available_tools": {
@@ -123,6 +126,15 @@ class KnowledgeBaseAgent:
                     "knowledge_base_agent", valid=False, detail="KnowledgeRetrievalPlanModelOutput"
                 )
             raise ValueError("knowledge retrieval plan validation failed") from exc
+        syllabus_kp_names = [
+            str(item.get("kp_name") or "").strip()
+            for item in context.get("syllabus_knowledge_points", [])
+            if isinstance(item, dict) and str(item.get("kp_name") or "").strip()
+        ]
+        if syllabus_kp_names:
+            retrieval_plan = retrieval_plan.model_copy(update={
+                "kp_query": "\uFF1B".join([retrieval_plan.kp_query, *syllabus_kp_names[:8]]),
+            })
         try:
             if external_request:
                 location = str(
@@ -252,6 +264,9 @@ class KnowledgeBaseAgent:
                         "user_request": user_request,
                         "evidence": semantic_facts,
                         "retrieval_plan": retrieval_plan.model_dump(mode="json"),
+                        "user_syllabus": context.get("user_syllabus"),
+                        "syllabus_requirements": context.get("syllabus_requirements", []),
+                        "syllabus_knowledge_points": context.get("syllabus_knowledge_points", []),
                         "task_type": str(context.get("task_type", "personalized_review_card")),
                         "expected_uncertainty": [],
                         "output_schema": KnowledgeModelOutput.model_json_schema(),
