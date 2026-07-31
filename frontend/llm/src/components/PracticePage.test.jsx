@@ -156,6 +156,7 @@ describe('PracticePage training modules', () => {
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
     ).toEqual(['历史记录', '收藏夹', '笔记本', '上传题库']);
+    expect(within(learningTools).getByText('支持 PDF / 图片 / Markdown / TXT · 智能解析')).toBeInTheDocument();
   });
 
   it('renders the local overview statistics contract without replacing main workshop modules', () => {

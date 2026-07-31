@@ -27,6 +27,7 @@ import {
 import {
   loadPdfAnnotations,
   loadPdfReadingState,
+  loadTextbookPdfMetadata,
   resolveTextbookPdf,
   savePdfAnnotations,
   savePdfReadingState,
@@ -125,7 +126,7 @@ function AnnotationLayer({ annotations, tool, onChange }) {
   );
 }
 
-export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, notesOpen = false, onNotesOpenChange, onClose }) {
+export default function TextbookPdfReader({ bookTitle, bookId = '', toc = [], initialPage = 1, route, notesOpen = false, onNotesOpenChange, onClose }) {
   const hostRef = useRef(null);
   const canvasRef = useRef(null);
   const annotationSaveTimer = useRef(null);
@@ -157,7 +158,10 @@ export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, n
     const controller = new AbortController();
     let documentTask;
     setLoading(true); setError(''); setBook(null); setPdf(null);
-    resolveTextbookPdf(bookTitle, { signal: controller.signal }).then(async (payload) => {
+    const metadataRequest = bookId
+      ? loadTextbookPdfMetadata(bookId, { signal: controller.signal }).then((payload) => ({ available: Boolean(payload.book?.available), book: payload.book }))
+      : resolveTextbookPdf(bookTitle, { signal: controller.signal });
+    metadataRequest.then(async (payload) => {
       if (!payload.available || !payload.book) { setLoading(false); return; }
       setBook(payload.book);
       const state = await loadPdfReadingState(payload.book.book_id, { signal: controller.signal });
@@ -178,7 +182,7 @@ export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, n
       if (reason.name !== 'AbortError') setError(reason.message || '电子教材加载失败');
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); documentTask?.destroy?.(); };
-  }, [bookTitle, initialPage]);
+  }, [bookId, bookTitle, initialPage]);
 
   useEffect(() => {
     if (!pdf || !canvasRef.current) return undefined;
@@ -300,7 +304,7 @@ export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, n
           <button type="button" disabled={favoritePending} className={favorite ? 'is-active' : ''} onClick={toggleFavorite}><Bookmark size={16} fill={favorite ? 'currentColor' : 'none'} />{favorite ? '已收藏' : '收藏本页'}</button>
         </div>
       </header>
-      <div className="textbook-pdf__workspace">
+      <div className={`textbook-pdf__workspace${toc.length ? ' has-toc' : ''}`}>
         <aside className="textbook-pdf__draw-tools" aria-label="批注工具">
           {tools.map(([value, label, Icon]) => <button key={value} type="button" title={label} aria-label={label} className={tool === value ? 'is-active' : ''} onClick={() => setTool(value)}><Icon size={17} /></button>)}
           <span />
@@ -308,6 +312,25 @@ export default function TextbookPdfReader({ bookTitle, initialPage = 1, route, n
           <button type="button" aria-label="重做" disabled={historyIndex >= history.length - 1} onClick={redo}><Redo2 size={17} /></button>
           <button type="button" aria-label="适合宽度" onClick={() => setZoom(1)}><Maximize2 size={17} /></button>
         </aside>
+        {toc.length > 0 && (
+          <aside className="textbook-pdf__toc" aria-label="教材目录">
+            <header><strong>教材目录</strong><span>{toc.length} 章</span></header>
+            <div>
+              {toc.map((chapter) => (
+                <section key={chapter.id || chapter.title}>
+                  <button type="button" onClick={() => setPageNumber(clamp(Number(chapter.pdf_page) || 1, 1, pageCount))}>
+                    <strong>{chapter.title}</strong><span>{chapter.printed_page || chapter.pdf_page || ''}</span>
+                  </button>
+                  {(chapter.sections || []).map((section) => (
+                    <button key={section.id || section.title} type="button" className="is-section" onClick={() => setPageNumber(clamp(Number(section.pdf_page) || 1, 1, pageCount))}>
+                      <span>{section.title}</span><small>{section.printed_page || section.pdf_page || ''}</small>
+                    </button>
+                  ))}
+                </section>
+              ))}
+            </div>
+          </aside>
+        )}
         <div ref={hostRef} className="textbook-pdf__viewport">
           {rendering && <LoaderCircle className="textbook-pdf__rendering is-spinning" aria-label="正在渲染页面" />}
           <div className="textbook-pdf__page">

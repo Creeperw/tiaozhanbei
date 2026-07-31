@@ -88,6 +88,7 @@ from competition_app.services.textbook_pdf import (
     SqlTextbookPdfAnnotationRepository,
     TextbookPdfService,
 )
+from competition_app.services.textbook_import import TextbookImportService
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -102,6 +103,7 @@ class ApplicationContainer:
     account_profile_service: AccountProfileService
     workshop_library_service: WorkshopLibraryService
     textbook_pdf_service: TextbookPdfService
+    textbook_import_service: TextbookImportService
     learning_plan_service: LearningPlanService
     daily_task_refresh_service: DailyTaskRefreshService
     daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
@@ -182,6 +184,25 @@ class ApplicationContainer:
             settings.textbook_pdf_root,
             settings.textbook_pdf_catalog_path,
             textbook_pdf_annotation_repository,
+            settings.runtime_root / "textbook_uploads",
+        )
+        chat_api_key = (
+            settings.siliconflow_api_key
+            if "siliconflow.cn" in settings.chat_base_url.lower()
+            else settings.dashscope_api_key
+        )
+        textbook_import_service = TextbookImportService(
+            runtime_root=settings.runtime_root,
+            chat_base_url=settings.chat_base_url,
+            chat_model=settings.chat_model,
+            chat_api_key=chat_api_key,
+            mineru_token=settings.mineru_token,
+            mineru_pipeline_root=(
+                settings.knowledge_handoff_root
+                / "知识库管理组件"
+                / "knowledge_upload_pipeline"
+            ),
+            timeout_seconds=settings.llm_timeout_seconds,
         )
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
@@ -190,7 +211,7 @@ class ApplicationContainer:
                 [
                     OpenAICompatibleChatModel(
                         settings.chat_base_url,
-                        settings.dashscope_api_key,
+                        chat_api_key,
                         model_name,
                         timeout_seconds=settings.llm_timeout_seconds,
                     )
@@ -214,7 +235,7 @@ class ApplicationContainer:
                 embedding_api_key=settings.siliconflow_api_key,
                 chat_base_url=settings.chat_base_url,
                 chat_model=settings.chat_model,
-                chat_api_key=settings.dashscope_api_key,
+                chat_api_key=chat_api_key,
                 mineru_token=settings.mineru_token,
             )
             repository = knowledge_backend.map
@@ -555,6 +576,7 @@ class ApplicationContainer:
             account_profile_service=account_profile_service,
             workshop_library_service=workshop_library_service,
             textbook_pdf_service=textbook_pdf_service,
+            textbook_import_service=textbook_import_service,
             learning_plan_service=learning_plan_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,

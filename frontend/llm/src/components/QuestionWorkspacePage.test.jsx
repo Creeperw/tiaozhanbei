@@ -64,6 +64,51 @@ describe('QuestionWorkspacePage', () => {
     expect(screen.getByText('题目已激活；个人索引将在服务可用后重建。')).toBeInTheDocument();
   });
 
+  it('confirms all preview-ready questions with one request', async () => {
+    const secondItem = { ...previewItem, question_id: 'UQ_2', stem: '第二题' };
+    const fetchMock = vi.fn((url, options = {}) => {
+      if (url.endsWith('/question-workspace/questions')) return response({ items: [] });
+      if (url.endsWith('/question-workspace/imports') && !options.method) {
+        return response({ total: 0, items: [] });
+      }
+      if (url.endsWith('/question-workspace/imports') && options.method === 'POST') {
+        return response({
+          job_id: 'UQJ_BULK',
+          status: 'preview_ready',
+          item_count: 2,
+          items: [previewItem, secondItem],
+        }, true, 201);
+      }
+      if (url.endsWith('/question-workspace/imports/UQJ_BULK/confirm')) {
+        return response({
+          job_id: 'UQJ_BULK',
+          confirmed_count: 2,
+          items: [
+            { ...previewItem, status: 'active' },
+            { ...secondItem, status: 'active' },
+          ],
+          vector_index: { ok: true },
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<QuestionWorkspacePage />);
+
+    const file = new File(['## questions'], 'questions.md', { type: 'text/markdown' });
+    fireEvent.change(screen.getByLabelText('选择题目文件'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: '解析并预览' }));
+
+    const preview = await screen.findByRole('region', { name: '待确认题目' });
+    expect(within(preview).getByText('2 题')).toBeInTheDocument();
+    fireEvent.click(within(preview).getByRole('button', { name: '全部确认导入' }));
+    await waitFor(() => expect(within(preview).getAllByText('已激活')).toHaveLength(4));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/question-workspace/imports/UQJ_BULK/confirm'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
   it('revises a human-review item into preview-ready state', async () => {
     const reviewItem = {
       ...previewItem,
@@ -186,7 +231,7 @@ describe('QuestionWorkspacePage', () => {
     fireEvent.change(screen.getByLabelText('选择题目文件'), { target: { files: [file] } });
     fireEvent.click(screen.getByRole('button', { name: '解析并预览' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('仅支持 PDF、Markdown 和 TXT 文件');
+    expect(await screen.findByRole('alert')).toHaveTextContent('仅支持 PDF、图片、Markdown 和 TXT 文件');
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from APP.backend.auth import get_current_user
 from APP.backend.contracts.common import page_meta
 from APP.backend.contracts.question import (
+    QuestionBulkConfirmResponse,
     QuestionImportCollection,
     QuestionImportCreated,
     QuestionImportDetail,
@@ -20,6 +21,7 @@ from APP.backend.database import UserModel, get_db
 from APP.backend.question_workspace_service import (
     QuestionWorkspaceError,
     confirm_item,
+    confirm_import_items,
     create_import,
     deactivate_item,
     get_import,
@@ -184,6 +186,42 @@ def confirm_question(
     return {
         "question_id": item.question_id,
         "status": item.status,
+        "vector_index": vector_index,
+    }
+
+
+@router.post(
+    "/imports/{job_id}/confirm",
+    response_model=QuestionBulkConfirmResponse,
+)
+def confirm_import(
+    job_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        items = confirm_import_items(
+            db,
+            owner_user_id=current_user.id,
+            job_id=job_id,
+        )
+    except QuestionWorkspaceError as exc:
+        _raise_workspace_error(exc)
+    if items is None:
+        raise HTTPException(status_code=404, detail="question import was not found")
+    try:
+        vector_index = question_index_sync(db, owner_user_id=current_user.id)
+    except Exception as exc:
+        vector_index = {
+            "ok": False,
+            "owner_user_id": current_user.id,
+            "error_type": type(exc).__name__,
+            "rebuild_required": True,
+        }
+    return {
+        "job_id": job_id,
+        "confirmed_count": len(items),
+        "items": items,
         "vector_index": vector_index,
     }
 

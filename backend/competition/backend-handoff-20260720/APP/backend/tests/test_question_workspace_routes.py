@@ -173,6 +173,29 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
             404,
         )
 
+    def test_bulk_confirmation_activates_import_and_rebuilds_index_once(self):
+        from APP.backend.routers import question_workspace_routes
+
+        uploaded = self.upload_markdown()
+        self.assertEqual(uploaded.status_code, 201)
+        job_id = uploaded.json()["job_id"]
+
+        with patch.object(
+            question_workspace_routes,
+            "question_index_sync",
+            return_value={"ok": True, "owner_user_id": 1},
+        ) as sync_mock:
+            confirmed = self.client.post(
+                f"/question-workspace/imports/{job_id}/confirm"
+            )
+
+        self.assertEqual(confirmed.status_code, 200)
+        self.assertEqual(confirmed.json()["confirmed_count"], 1)
+        self.assertEqual(confirmed.json()["items"][0]["status"], "active")
+        sync_mock.assert_called_once()
+        active = self.client.get("/question-workspace/questions").json()["items"]
+        self.assertEqual(len(active), 1)
+
     def test_duplicate_content_is_rejected_per_owner_without_public_side_effects(self):
         first = self.upload_markdown()
         second = self.upload_markdown()
@@ -247,6 +270,42 @@ class QuestionWorkspaceRoutesTests(unittest.TestCase):
             self.assertNotIn(str(Path(self.temp_dir.name)), job.error_message)
             self.assertFalse(Path(job.stored_path).exists())
             self.assertEqual(db.query(database.UserQuestionItem).count(), 0)
+
+    def test_pdf_runs_mineru_then_model_completes_only_missing_answer(self):
+        from APP.backend import question_workspace_service
+
+        mineru = Mock()
+        mineru.parse.return_value = """## 题目 1
+- 题型：简答题
+- 题干：请说明阴阳的含义。
+- 答案：
+- 解析：
+"""
+        reviewer = Mock()
+        reviewer.chat.return_value = '{"items":[{"index":0,"answer":"阴阳是对立统一的两个方面。","analysis":"阴阳相互制约并相互依存。"}]}'
+        with patch.object(
+            question_workspace_service,
+            "MinerUPdfParser",
+            return_value=mineru,
+        ), patch.object(
+            question_workspace_service,
+            "build_llm_client",
+            return_value=reviewer,
+        ), patch(
+            "APP.backend.config.LLM_API_KEY",
+            "test-key",
+        ):
+            response = self.client.post(
+                "/question-workspace/imports",
+                files={"file": ("questions.pdf", b"%PDF-test", "application/pdf")},
+            )
+
+        self.assertEqual(response.status_code, 201)
+        item = response.json()["items"][0]
+        self.assertEqual(item["answer"], "阴阳是对立统一的两个方面。")
+        self.assertEqual(item["explanation"], "阴阳相互制约并相互依存。")
+        self.assertEqual(item["status"], "preview_ready")
+        mineru.parse.assert_called_once()
 
     def test_empty_personal_index_rebuild_removes_stale_index_directory(self):
         from APP.backend import question_workspace_service

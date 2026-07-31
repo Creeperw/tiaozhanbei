@@ -3,6 +3,10 @@
 .textbook-library__heading span { color:#16805b; font-size:10px; font-weight:900; letter-spacing:.16em; text-transform:uppercase; }
 .textbook-library__heading h2 { margin:3px 0 0; color:#173e30; font-size:25px; }
 .textbook-library__heading p { margin:0; color:#70877d; font-size:15px; }
+.textbook-library__heading-action { display:flex; min-width:0; align-items:center; justify-content:flex-end; gap:16px; }
+.textbook-library__heading-action p { flex:1; }
+.textbook-library__heading-action>button { display:inline-flex; min-width:94px; min-height:42px; align-items:center; justify-content:center; gap:7px; border:0; border-radius:12px; padding:0 17px; color:#fff; background:#17825d; font-size:14px; font-weight:850; box-shadow:0 8px 18px rgba(22,116,81,.16); cursor:pointer; transition:transform .18s ease,box-shadow .18s ease,background .18s ease; }
+.textbook-library__heading-action>button:hover { background:#116e4e; box-shadow:0 11px 24px rgba(22,116,81,.24); transform:translateY(-1px); }
 .textbook-library__search { display:flex; align-items:center; gap:9px; width:100%; margin:0; border:1px solid #cfe1d7; border-radius:999px; padding:9px 14px; color:#6e8a7d; background:#fff; box-shadow:0 4px 12px rgba(30,82,58,.05); }
 .textbook-library__search input { width:100%; border:0; outline:0; color:#29483b; background:transparent; font-size:13px; }
 .textbook-library__list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
@@ -21,6 +25,37 @@
 .textbook-library__expand button { min-width:180px; border:1px solid #78b294; border-radius:999px; padding:11px 24px; color:#176443; background:#fff; font-size:14px; font-weight:850; box-shadow:0 8px 20px rgba(32,105,74,.1); cursor:pointer; }
 .textbook-library__expand button:hover { border-color:#37865f; background:#eaf7ef; }
 .textbook-library__expand span { color:#789087; font-size:11px; }
+.textbook-upload-dialog { position:fixed; z-index:120; inset:0; display:grid; place-items:center; padding:24px; }
+.textbook-upload-dialog__backdrop { position:absolute; inset:0; border:0; background:rgba(13,43,31,.38); backdrop-filter:blur(5px); cursor:default; }
+.textbook-upload-dialog__panel { position:relative; z-index:1; width:min(680px,calc(100vw - 32px)); max-height:calc(100vh - 48px); overflow:auto; border:1px solid #d0e3d8; border-radius:22px; background:#fff; box-shadow:0 28px 80px rgba(15,56,39,.28); animation:textbook-upload-in .2s ease-out both; }
+.textbook-upload-dialog__panel>header { display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid #e2ece6; padding:20px 22px; }
+.textbook-upload-dialog__panel>header>div { display:flex; align-items:center; gap:12px; }
+.textbook-upload-dialog__panel>header>div>span { display:grid; width:42px; height:42px; place-items:center; border-radius:12px; color:#16805b; background:#e8f7ef; }
+.textbook-upload-dialog__panel h2,.textbook-upload-dialog__panel p { margin:0; }
+.textbook-upload-dialog__panel h2 { color:#173e30; font-size:21px; }
+.textbook-upload-dialog__panel header p { margin-top:3px; color:#7b8e85; font-size:12px; }
+.textbook-upload-dialog__panel>header>button { display:grid; width:36px; height:36px; place-items:center; border:0; border-radius:10px; color:#637a70; background:#f3f7f5; cursor:pointer; }
+.textbook-upload-dialog__fields { display:grid; gap:14px; padding:20px 22px 12px; }
+.textbook-upload-dialog__fields label { display:grid; gap:7px; color:#345748; font-size:13px; font-weight:750; }
+.textbook-upload-dialog__fields input,.textbook-upload-dialog__fields select,.textbook-upload-dialog__fields textarea { width:100%; box-sizing:border-box; border:1px solid #d5e4dc; border-radius:11px; outline:0; padding:11px 12px; color:#254739; background:#fbfdfc; font:inherit; font-weight:500; }
+.textbook-upload-dialog__fields input:focus,.textbook-upload-dialog__fields select:focus,.textbook-upload-dialog__fields textarea:focus { border-color:#6aae8d; box-shadow:0 0 0 3px rgba(42,147,102,.09); }
+.textbook-upload-dialog__fields textarea { min-height:84px; resize:vertical; }
+.textbook-upload-dialog__row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.textbook-upload-dialog__file { display:flex!important; min-height:78px; align-items:center; gap:13px; border:1px dashed #8fc5aa; border-radius:14px; padding:12px 16px; color:#197553!important; background:#f2fbf6; cursor:pointer; }
+.textbook-upload-dialog__file span { display:flex; min-width:0; flex-direction:column; gap:3px; }
+.textbook-upload-dialog__file strong { overflow:hidden; color:#234d3b; text-overflow:ellipsis; white-space:nowrap; }
+.textbook-upload-dialog__file small { color:#779087; font-weight:500; }
+.textbook-upload-dialog__file input,.textbook-upload-dialog__cover input { display:none; }
+.textbook-upload-dialog__category { justify-self:start; margin-top:-7px; border:0; padding:2px 0; color:#187654; background:transparent; font-size:12px; font-weight:800; cursor:pointer; }
+.textbook-upload-dialog__cover { display:flex!important; align-items:center; gap:8px; border:1px solid #d8e6df; border-radius:11px; padding:11px 13px; color:#527064!important; background:#fafcfb; cursor:pointer; }
+.textbook-upload-dialog__error { margin:0 22px; border-radius:10px; padding:10px 12px; color:#93412c; background:#fff1ec; font-size:12px; }
+.textbook-upload-dialog__progress { display:flex; align-items:center; gap:8px; margin:0 22px; border-radius:10px; padding:10px 12px; color:#29634c; background:#eef8f2; font-size:12px; }
+.textbook-upload-dialog__progress svg { width:17px; }
+.textbook-upload-dialog__panel>footer { display:flex; justify-content:flex-end; gap:10px; padding:18px 22px 20px; }
+.textbook-upload-dialog__panel>footer button { display:inline-flex; min-height:40px; align-items:center; justify-content:center; gap:7px; border:1px solid #d2e2da; border-radius:11px; padding:0 18px; color:#49665a; background:#fff; font-size:13px; font-weight:800; cursor:pointer; }
+.textbook-upload-dialog__panel>footer button:last-child { min-width:124px; border-color:#17825d; color:#fff; background:#17825d; }
+.textbook-upload-dialog__panel button:disabled { cursor:not-allowed; opacity:.55; }
+@keyframes textbook-upload-in { from{opacity:0;transform:translateY(10px) scale(.985)} to{opacity:1;transform:none} }
 .workshop-library-page { height:100%; min-height:0; overflow-y:auto; background:linear-gradient(180deg,#eef8f3 0%,#f7fbf9 100%); scrollbar-color:#b8d6c5 transparent; scrollbar-width:thin; }
 .workshop-library-page .textbook-library { height:auto; overflow:visible; }
 .workshop-plan { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(360px,.8fr); gap:18px; margin:10px 26px 2px; padding:16px 20px; border:1px solid #d6e8de; border-radius:22px; background:linear-gradient(120deg,#fff 0%,#f5fbf7 58%,#e4f5eb 100%); box-shadow:0 10px 24px rgba(34,95,67,.08); }
@@ -50,4 +85,4 @@
 @keyframes workshop-library-spin { to{transform:rotate(360deg)} }
 @media (max-width:980px) { .workshop-plan{grid-template-columns:1fr}.workshop-plan__focus{min-height:180px} }
 @media (max-width:1180px) { .textbook-library__list{grid-template-columns:1fr} }
-@media (max-width:680px) { .textbook-library{padding:12px}.textbook-library__heading{display:flex;align-items:flex-start;flex-direction:column;gap:8px}.textbook-library__search{width:100%}.textbook-library-card{grid-template-columns:76px 1fr;gap:13px;min-height:124px;padding:11px}.textbook-library-card__cover{width:76px}.textbook-library-card__body>strong{font-size:19px}.textbook-library-card__body>span{-webkit-line-clamp:2} }
+@media (max-width:680px) { .textbook-library{padding:12px}.textbook-library__heading{display:flex;align-items:flex-start;flex-direction:column;gap:8px}.textbook-library__heading-action{width:100%}.textbook-library__search{width:100%}.textbook-library-card{grid-template-columns:76px 1fr;gap:13px;min-height:124px;padding:11px}.textbook-library-card__cover{width:76px}.textbook-library-card__body>strong{font-size:19px}.textbook-library-card__body>span{-webkit-line-clamp:2}.textbook-upload-dialog__row{grid-template-columns:1fr} }

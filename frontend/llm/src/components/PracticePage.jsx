@@ -581,7 +581,7 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
               onClick={() => onOpenModule(uploadQuestionBankCard)}
             >
               <span className="practice-overview__utility-icon"><UploadCloud aria-hidden="true" size={22} /></span>
-              <span><strong>上传题库</strong><small>上传学习资料，沉淀个人专属题库。</small><em>支持 Word / Excel / TXT · 智能解析</em></span>
+              <span><strong>上传题库</strong><small>上传学习资料，沉淀个人专属题库。</small><em>支持 PDF / 图片 / Markdown / TXT · 智能解析</em></span>
               <ChevronRight aria-hidden="true" size={18} />
             </button>
           </div>
@@ -697,11 +697,12 @@ export default function PracticePage({
 
   if (activeTaskType === 'question_workspace') {
     return (
-      <div className="space-y-5 text-slate-800">
-        <div className="practice-workspace__toolbar">
+      <div className="question-workspace-shell space-y-5 text-slate-800">
+        <div className="practice-workspace__heading question-workspace-shell__toolbar flex items-center gap-4 border-b border-slate-200 pb-4">
           <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}>
-            <ArrowLeft aria-hidden="true" size={18} />{returnLabel}
+            <ArrowLeft aria-hidden="true" size={16} />返回
           </button>
+          <h1 className="text-2xl font-bold text-slate-950">上传题库</h1>
         </div>
         <QuestionWorkspacePage />
       </div>
