@@ -134,11 +134,13 @@ describe('PracticePage training modules', () => {
     expect(trainingButtons.map((button) => button.querySelector('strong')?.textContent)).toEqual([
       '专项训练',
       '专题训练',
-      '智能组卷',
       '综合套题',
+      '智能组卷',
       '模拟病患',
       '错题重做',
     ]);
+    expect(trainingButtons.every((button) => Boolean(button.querySelector('small')?.textContent?.trim()))).toBe(true);
+    expect(screen.getByRole('heading', { name: '功能入口' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /历史记录/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /收藏夹/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /笔记本/ })).toBeInTheDocument();
