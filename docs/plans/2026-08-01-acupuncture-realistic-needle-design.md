@@ -18,6 +18,12 @@
 - 透明图片作为随针轴朝向的 3D 贴图平面，保留真实的握柄、针身与高光细节，且不会以矩形背景遮挡人体模型。
 - 原 GLB 针素材不再作为运行时外观资源；其删除与替代资源会在同一次变更中明确追踪。
 
+## 空间针体与 PNG 风格合并（2026-08-02）
+
+- 保留 GLB 的真实空间网格与皮肤法线对齐：直刺针轴垂直于皮肤，斜刺、平刺在该法线基础上偏转。
+- 不再将 PNG 作为始终面向相机的 Sprite；那会破坏空间针轴和正确的深度关系。
+- 将两张 PNG 的视觉风格应用于 3D 针体材质：环柄、螺纹握柄和过渡套采用暖金铜金属，针身与针尖保持偏冷银色。
+
 ## 实现范围
 
 新增 `frontend/llm/public/acupuncture-models/realistic-acupuncture-needle.glb`，并修改 `frontend/llm/src/components/acupuncture/AcupunctureModelCanvas.jsx` 及其对应样式。不改变落针坐标、进针角度、深度、撤销、评分接口或病例数据结构。
