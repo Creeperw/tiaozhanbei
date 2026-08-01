@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "KG_JOB_DEMO_001",
+  "user_id": "demo-user",
+  "book": {
+    "book_id": "UTB_demo_tcm",
+    "title": "中医基础示例",
+    "category": "中医药"
+  },
+  "source": {
+    "chunks_path": "chunks.jsonl",
+    "format": "textbook_pipeline_jsonl"
+  },
+  "metadata": {
+    "source": "textbook-upload-pipeline"
+  }
+}

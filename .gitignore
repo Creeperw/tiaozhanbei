@@ -27,3 +27,6 @@ __pycache__/
 # 系统文件
 Thumbs.db
 .DS_Store
+
+# TreeKG 流水线接入运行目录
+TreeKG-main/integration/runtime/
