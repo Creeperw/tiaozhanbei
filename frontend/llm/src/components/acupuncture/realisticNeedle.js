@@ -6,12 +6,19 @@ const NEEDLE_IMAGE_URLS = {
 };
 const NEEDLE_INSERTION_TILTS = { direct: 0, oblique: 45, transverse: 75 };
 const NEEDLE_AXIS = new THREE.Vector3(0, 1, 0);
-const NEEDLE_METAL_MATERIAL = new THREE.MeshPhysicalMaterial({
+const NEEDLE_SHAFT_MATERIAL = new THREE.MeshPhysicalMaterial({
     color: '#d9dee2',
     metalness: 0.96,
     roughness: 0.2,
     clearcoat: 0.35,
     clearcoatRoughness: 0.16,
+});
+const NEEDLE_GRIP_MATERIAL = new THREE.MeshPhysicalMaterial({
+    color: '#c7834e',
+    metalness: 0.9,
+    roughness: 0.24,
+    clearcoat: 0.28,
+    clearcoatRoughness: 0.2,
 });
 const CONTACT_GLOW_GEOMETRY = new THREE.SphereGeometry(0.014, 16, 12);
 const CONTACT_GLOW_MATERIAL = new THREE.MeshBasicMaterial({
@@ -20,6 +27,21 @@ const CONTACT_GLOW_MATERIAL = new THREE.MeshBasicMaterial({
 
 let fallbackNeedleTemplate = null;
 let realisticNeedleTemplate = null;
+
+function isWarmGripPart(name) {
+    return name === 'needle-handle'
+        || name === 'needle-grip-ring'
+        || name === 'needle-loop';
+}
+
+function applyReferenceNeedleMaterials(root) {
+    root.traverse((object) => {
+        if (!object.isMesh) return;
+        object.material = isWarmGripPart(object.name)
+            ? NEEDLE_GRIP_MATERIAL
+            : NEEDLE_SHAFT_MATERIAL;
+    });
+}
 
 export function getNeedleImageUrl(insertionType) {
     return insertionType === 'direct' ? NEEDLE_IMAGE_URLS.direct : NEEDLE_IMAGE_URLS.oblique;
@@ -43,30 +65,30 @@ export function getNeedleDirection(normal, tiltDeg = 0, directionDeg = 0) {
 
 function createFallbackNeedleTemplate() {
     const needle = new THREE.Group();
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.24, 12), NEEDLE_METAL_MATERIAL);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.24, 12), NEEDLE_SHAFT_MATERIAL);
     shaft.name = 'needle-shaft';
     shaft.position.y = 0.12;
     needle.add(shaft);
 
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.003, 0.012, 12), NEEDLE_METAL_MATERIAL);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.003, 0.012, 12), NEEDLE_SHAFT_MATERIAL);
     tip.name = 'needle-tip';
     tip.position.y = -0.006;
     needle.add(tip);
 
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.072, 18), NEEDLE_METAL_MATERIAL);
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.072, 18), NEEDLE_GRIP_MATERIAL);
     handle.name = 'needle-handle';
     handle.position.y = 0.276;
     needle.add(handle);
 
     for (let index = 0; index < 10; index += 1) {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0157, 0.00155, 6, 18), NEEDLE_METAL_MATERIAL);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0157, 0.00155, 6, 18), NEEDLE_GRIP_MATERIAL);
         ring.name = 'needle-grip-ring';
         ring.rotation.x = Math.PI / 2;
         ring.position.y = 0.245 + index * 0.0069;
         needle.add(ring);
     }
 
-    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.0018, 8, 20), NEEDLE_METAL_MATERIAL);
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.0018, 8, 20), NEEDLE_GRIP_MATERIAL);
     loop.name = 'needle-loop';
     loop.rotation.y = Math.PI / 2;
     loop.scale.y = 1.35;
@@ -84,6 +106,7 @@ export function cacheRealisticNeedleTemplate(scene) {
     realisticNeedleTemplate.traverse((object) => {
         if (/^needle-grip-ring(?:_\d+)?$/.test(object.name)) object.name = 'needle-grip-ring';
     });
+    applyReferenceNeedleMaterials(realisticNeedleTemplate);
     return true;
 }
 

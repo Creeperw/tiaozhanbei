@@ -46,6 +46,21 @@ describe('image acupuncture needle', () => {
         expect(model.children.find((child) => child.name === 'needle-shaft')).toBeTruthy();
     });
 
+    it('uses the PNG reference warm copper material for the 3D grip while retaining a silver shaft', () => {
+        const model = createRealisticNeedle({
+            id: 'reference-material-needle',
+            point: [0, 0, 0],
+            normal: [0, 1, 0],
+            insertionType: 'direct',
+        });
+        const shaft = model.children.find((child) => child.name === 'needle-shaft');
+        const handle = model.children.find((child) => child.name === 'needle-handle');
+
+        expect(shaft.material.color.getHexString()).toBe('d9dee2');
+        expect(handle.material.color.getHexString()).toBe('c7834e');
+        expect(handle.material).not.toBe(shaft.material);
+    });
+
     it('records an angled insertion direction while anchoring the 3D needle and glow at its point', () => {
         const needle = {
             id: 'needle-oblique',
