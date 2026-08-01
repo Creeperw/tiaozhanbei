@@ -34,7 +34,11 @@ from competition_app.runtime.orchestrator import Orchestrator
 from competition_app.runtime.trace import CommunicationTrace, RepairTrace
 from competition_app.runtime.snapshot import SnapshotExporter
 from competition_app.runtime.model_trace import ModelCallTrace, ModelTraceRecorder
-from competition_app.runtime.event_stream import emit_runtime_event
+from competition_app.runtime.event_stream import (
+    bind_recording_sink,
+    drain_recording_sink,
+    emit_runtime_event,
+)
 from competition_app.runtime.data_permissions import AgentDataPermissionGateway
 from competition_app.repositories.learning_plan import (
     InMemoryLearningPlanRepository,
@@ -60,6 +64,15 @@ _FAILURE_STEP_CONTEXT: ContextVar[str | None] = ContextVar(
     "personalized_review_card_failure_step",
     default=None,
 )
+
+# 事件量大的模型调用/系统内部事件不随消息持久化，避免消息元数据膨胀。
+_NON_TRACE_EVENT_TYPES = {
+    "model_delta",
+    "model_input",
+    "model_output",
+    "model_transport",
+    "system_output",
+}
 
 
 class PlanChangeContext(BaseModel):
@@ -1170,6 +1183,9 @@ class PersonalizedReviewCardUseCase:
         assistant_message: dict[str, Any] = {"role": "assistant", "content": content}
         if actions:
             assistant_message["actions"] = actions
+        trace_events = drain_recording_sink()
+        if trace_events:
+            assistant_message["trace_events"] = trace_events
         self.conversation_repository.save_messages(
             conversation_id,
             learner_id,

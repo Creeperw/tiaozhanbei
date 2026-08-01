@@ -427,12 +427,12 @@ class KnowledgeBaseAgent:
                             ]
                         })
                         warnings.append("首轮候选不足，已执行一次扩展题目/网络参考检索。")
-                    except (LookupError, RuntimeError, TimeoutError, ValueError) as exc:
+                    except (LookupError, FileNotFoundError, OSError, RuntimeError, TimeoutError, ValueError) as exc:
                         warnings.append(
                             "扩展题目/网络参考检索暂不可用："
                             f"{type(exc).__name__}；已保留首轮正式题库候选继续组卷。"
                         )
-            except (LookupError, RuntimeError, TimeoutError, ValueError) as exc:
+            except (LookupError, FileNotFoundError, OSError, RuntimeError, TimeoutError, ValueError) as exc:
                 warnings.append(
                     f"{unit.knowledge_module}检索失败：{type(exc).__name__}；待补充检索。"
                 )

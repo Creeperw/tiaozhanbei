@@ -20,7 +20,7 @@ from competition_app.application.personalized_review_card import (
     ReviewCardRequest,
     WorkflowResumeRequest,
 )
-from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
+from competition_app.runtime.event_stream import bind_recording_sink, reset_event_sink
 from competition_app.runtime.snapshot import _sanitize
 from competition_app.contracts.review import ReviewAttemptSubmission
 from competition_app.contracts.auth import (
@@ -56,6 +56,15 @@ QUALIFICATION_TARGET_CATALOG = (
 WORKSHOP_NOTE_IMAGE_ROOT = (
     Path(__file__).resolve().parents[1] / "data" / "workshop_note_images"
 )
+
+# 高音量模型调用/系统内部事件不随消息持久化，只进 SSE 流。
+_NON_TRACE_EVENT_TYPES = frozenset({
+    "model_delta",
+    "model_input",
+    "model_output",
+    "model_transport",
+    "system_output",
+})
 
 _PRACTICE_TYPE_ALIASES = {
     "单项选择题": "single_choice",
@@ -1631,6 +1640,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "content": row.get("content"),
                 "timestamp": row.get("created_at"),
             }
+            if isinstance(row.get("trace_events"), list):
+                message["trace_events"] = row["trace_events"]
             if isinstance(row.get("actions"), list):
                 message["actions"] = row["actions"]
             elif str(row.get("content") or "").startswith(
@@ -4206,6 +4217,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     ) -> StreamingResponse:
         queue: asyncio.Queue[dict[str, object] | None] = asyncio.Queue()
 
+        # 高音量模型调用/系统内部事件不随消息持久化，只进 SSE 流。
+        def publish(event: dict[str, object]) -> None:
+            queue.put_nowait(event)
+
         def failure_event(exc: Exception) -> dict[str, object]:
             run_state = container.review_card_use_case.get_run_state(thread_id) or {}
             execution_id = run_state.get("execution_id")
@@ -4293,7 +4308,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             queue.put_nowait(event)
 
         async def run_workflow() -> None:
-            token = bind_event_sink(publish)
+            token = bind_recording_sink(publish, _NON_TRACE_EVENT_TYPES)
             try:
                 await queue.put(
                     {

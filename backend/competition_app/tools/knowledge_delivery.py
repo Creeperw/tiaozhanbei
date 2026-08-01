@@ -920,17 +920,37 @@ class KnowledgeDeliveryBackend:
     ) -> QuestionSearchResult:
         module = self._module("retrieval.hybrid_question_retrieval")
         embedder = self._sync_embedder()
-        raw = module.search(
-            query,
-            kp_ids,
-            self.paths.public_data,
-            self.paths.question_runtime,
-            limit,
-            self.paths.public_vector_store if embedder else None,
-            embedder,
-            owner_id,
-            scope,
-        )
+        try:
+            raw = module.search(
+                query,
+                kp_ids,
+                self.paths.public_data,
+                self.paths.question_runtime,
+                limit,
+                self.paths.public_vector_store if embedder else None,
+                embedder,
+                owner_id,
+                scope,
+            )
+        except (FileNotFoundError, OSError, RuntimeError) as exc:
+            # 向量索引缺失/不可读或 embedder 失败时降级为 BM25/Bridge 检索，
+            # 让组卷链路继续；结果仍只来自正式题库候选。
+            if embedder is None:
+                raise
+            raw = module.search(
+                query,
+                kp_ids,
+                self.paths.public_data,
+                self.paths.question_runtime,
+                limit,
+                None,
+                None,
+                owner_id,
+                scope,
+            )
+            raw["embedding_model"] = None
+            raw["vector_degraded"] = True
+            raw["vector_error"] = str(exc)[:300]
         if owner_id:
             runtime_rows = {
                 str(row.get("question_id") or ""): row
