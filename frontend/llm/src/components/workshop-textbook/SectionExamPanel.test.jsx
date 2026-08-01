@@ -20,7 +20,7 @@ describe('SectionExamPanel', () => {
         question_type: 'single_choice',
         stem: '阴阳学说的核心是？',
         options: ['对立制约', '脏腑辨证'],
-        reference_answer: 'A',
+        answer: 'A',
         analysis: '阴阳对立制约是基础关系。',
       }],
     });
@@ -46,7 +46,7 @@ describe('SectionExamPanel', () => {
           question_type: 'single_choice',
           stem: '新小节题目',
           options: ['选项'],
-          reference_answer: 'A',
+          answer: 'A',
         }],
       });
     const { rerender } = render(<SectionExamPanel sectionName="第一节" kpIds={['KP_1']} onBack={vi.fn()} />);
@@ -60,7 +60,7 @@ describe('SectionExamPanel', () => {
         question_type: 'single_choice',
         stem: '旧小节题目',
         options: ['选项'],
-        reference_answer: 'A',
+        answer: 'A',
       }],
     });
 

@@ -46,6 +46,7 @@ describe('StudyNotesPanel', () => {
     expect(screen.getByText('人参')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '删除' }));
+    fireEvent.click(await screen.findByRole('button', { name: '确认删除' }));
     await waitFor(() => expect(api.deleteNote).toHaveBeenCalledWith('N1'));
   });
 

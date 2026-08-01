@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bookmark,
+  BookOpenText,
   ChevronLeft,
   ChevronRight,
   Eraser,
   Highlighter,
+  List,
   LoaderCircle,
   Maximize2,
   PenLine,
@@ -17,6 +19,7 @@ import {
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import PdfWorker from '../../lib/pdfWorkerEntry.js?worker';
 import TextbookPageNotePopover from './TextbookPageNotePopover';
+import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
 import {
   createFavoriteFolder,
   deleteFavorite,
@@ -27,7 +30,6 @@ import {
 import {
   loadPdfAnnotations,
   loadPdfReadingState,
-  loadTextbookPdfMetadata,
   resolveTextbookPdf,
   savePdfAnnotations,
   savePdfReadingState,
@@ -147,6 +149,11 @@ export default function TextbookPdfReader({ bookTitle, bookId = '', toc = [], in
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState('');
+  const [outline, setOutline] = useState([]);          // 统一目录：[{id, title, page, children}]
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [outlineLoading, setOutlineLoading] = useState(false);
+  const [outlineSource, setOutlineSource] = useState(''); // 'pdf' | 'atlas'
+  const [expandedChapters, setExpandedChapters] = useState(new Set());
 
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) => setHostWidth(entry.contentRect.width));
@@ -158,10 +165,8 @@ export default function TextbookPdfReader({ bookTitle, bookId = '', toc = [], in
     const controller = new AbortController();
     let documentTask;
     setLoading(true); setError(''); setBook(null); setPdf(null);
-const metadataRequest = bookId
-      ? loadTextbookPdfMetadata(bookId, { signal: controller.signal }).then((payload) => ({ available: Boolean(payload.book?.available), book: payload.book }))
-      : resolveTextbookPdf(bookTitle, { signal: controller.signal });
-    metadataRequest.then(async (payload) => {
+    setOutline([]); setOutlineSource(''); setOutlineLoading(false); setExpandedChapters(new Set());
+    resolveTextbookPdf(bookTitle, { signal: controller.signal }).then(async (payload) => {
       if (!payload.book) { setLoading(false); return; }
       setBook(payload.book);
       if (!payload.available) return;
@@ -172,6 +177,46 @@ const metadataRequest = bookId
       const document = await documentTask.promise;
       if (controller.signal.aborted) return;
       setPdf(document); setPageCount(document.numPages); setPageNumber((current) => clamp(current, 1, document.numPages));
+      // 优先提取 PDF 内嵌书签作为目录
+      try {
+        const rawOutline = await document.getOutline();
+        if (!controller.signal.aborted && Array.isArray(rawOutline) && rawOutline.length > 0) {
+          const resolvePage = async (item) => {
+            try {
+              if (!item.dest) return null;
+              // dest 可能是字符串、数组 [ref, {name}, left, top] 或数字
+              let ref = item.dest;
+              if (Array.isArray(item.dest)) ref = item.dest[0]; // 提取 page ref
+              if (typeof ref === 'number') return ref + 1;
+              if (ref && typeof ref === 'object') {
+                const idx = await document.getPageIndex(ref);
+                return idx + 1;
+              }
+              if (typeof ref === 'string') {
+                const idx = await document.getPageIndex(ref);
+                return idx + 1;
+              }
+            } catch { /* 页码解析失败按无页码处理 */ }
+            return null;
+          };
+          const tree = [];
+          for (const item of rawOutline) {
+            const page = await resolvePage(item);
+            const node = { id: `pdf_${tree.length}`, title: item.title || '', page };
+            if (Array.isArray(item.items) && item.items.length > 0) {
+              node.children = [];
+              for (const sub of item.items) {
+                const subPage = await resolvePage(sub);
+                node.children.push({ id: `pdf_${tree.length}_${node.children.length}`, title: sub.title || '', page: subPage });
+              }
+            }
+            tree.push(node);
+          }
+          if (!controller.signal.aborted) {
+            setOutline(tree); setOutlineSource('pdf'); setOutlineLoading(false);
+          }
+        }
+      } catch { /* no PDF outline */ }
 
       const [foldersPayload, favoritesPayload] = await Promise.all([loadFavoriteFolders(), loadFavorites()]);
       const resourceId = `${payload.book.book_id}:page:${Math.max(1, Number(initialPage) || Number(state.page_number) || 1)}`;
@@ -184,6 +229,62 @@ const metadataRequest = bookId
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); documentTask?.destroy?.(); };
   }, [bookId, bookTitle, initialPage]);
+
+  // 加载 Atlas 章节目录（仅当 PDF 无内嵌书签时作为回退）
+  useEffect(() => {
+    if (!bookTitle) return;
+    if (outlineSource === 'pdf') return; // PDF 已有书签，不需要 Atlas
+    const controller = new AbortController();
+    setOutlineLoading(true);
+    setOutline([]);
+    const load = async () => {
+      try {
+        const chPayload = await loadAtlasNodes({
+          level: 2, route: 'textbook_14_5', lv1: bookTitle, signal: controller.signal,
+        });
+        const chapters = Array.isArray(chPayload.nodes) ? chPayload.nodes : [];
+        const totalChapters = chapters.length;
+        const tree = [];
+        for (let ci = 0; ci < totalChapters; ci++) {
+          const chapter = chapters[ci];
+          const sections = [];
+          try {
+            const secPayload = await loadAtlasNodes({
+              level: 3, route: 'textbook_14_5', lv1: bookTitle,
+              chapter: chapter.name, chapterId: chapter.id, signal: controller.signal,
+            });
+            const secNodes = Array.isArray(secPayload.nodes) ? secPayload.nodes : [];
+            sections.push(...secNodes.map((s) => ({ id: s.id, title: s.name })));
+          } catch { /* 小节目录加载失败时仅保留章节条目 */ }
+          // 按章节序号均匀估算页码（精确页码需要 PDF 内嵌书签）
+          const page = pdf ? Math.max(1, Math.round((ci / Math.max(1, totalChapters)) * pdf.numPages) + 1) : null;
+          const node = { id: chapter.id, title: chapter.name, page };
+          if (sections.length > 0) {
+            const chPageStart = page || 1;
+            const chNext = ci + 1 < totalChapters
+              ? Math.max(1, Math.round(((ci + 1) / Math.max(1, totalChapters)) * (pdf?.numPages || 100)) + 1)
+              : (pdf?.numPages || 100);
+            const span = Math.max(1, chNext - chPageStart);
+            node.children = sections.map((s, si) => ({
+              id: s.id,
+              title: s.title,
+              page: chPageStart + Math.round((si / Math.max(1, sections.length)) * span),
+            }));
+          }
+          tree.push(node);
+        }
+        if (!controller.signal.aborted) {
+          setOutline(tree);
+          setOutlineSource('atlas');
+          setOutlineLoading(false);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') setOutlineLoading(false);
+      }
+    };
+    load();
+    return () => controller.abort();
+  }, [bookTitle, outlineSource, pdf]);
 
   useEffect(() => {
     if (!pdf || !canvasRef.current) return undefined;
@@ -304,15 +405,84 @@ const metadataRequest = bookId
           <span>{Math.round(zoom * 100)}%</span>
           <button type="button" aria-label="放大" onClick={() => setZoom((current) => clamp(current + 0.1, 0.5, 2.5))}><ZoomIn size={16} /></button>
           <button type="button" disabled={favoritePending} className={favorite ? 'is-active' : ''} onClick={toggleFavorite}><Bookmark size={16} fill={favorite ? 'currentColor' : 'none'} />{favorite ? '已收藏' : '收藏本页'}</button>
+          <button type="button" className={outlineOpen ? 'is-active' : ''} onClick={() => setOutlineOpen((v) => !v)} title="章节目录"><List size={16} />目录</button>
         </div>
       </header>
-      <div className={`textbook-pdf__workspace${toc.length ? ' has-toc' : ''}`}>
-        <aside className="textbook-pdf__draw-tools" aria-label="批注工具">
-          {tools.map(([value, label, Icon]) => <button key={value} type="button" title={label} aria-label={label} className={tool === value ? 'is-active' : ''} onClick={() => setTool(value)}><Icon size={17} /></button>)}
-          <span />
-          <button type="button" aria-label="撤销" disabled={historyIndex <= 0} onClick={undo}><Undo2 size={17} /></button>
-          <button type="button" aria-label="重做" disabled={historyIndex >= history.length - 1} onClick={redo}><Redo2 size={17} /></button>
-          <button type="button" aria-label="适合宽度" onClick={() => setZoom(1)}><Maximize2 size={17} /></button>
+      <div className="textbook-pdf__workspace">
+        <aside className={`textbook-pdf__sidebar${outlineOpen ? ' has-outline' : ''}`} aria-label="工具与目录">
+          <div className="textbook-pdf__draw-tools">
+            {tools.map(([value, label, Icon]) => <button key={value} type="button" title={label} aria-label={label} className={tool === value ? 'is-active' : ''} onClick={() => setTool(value)}><Icon aria-hidden="true" size={17} /></button>)}
+            <span />
+            <button type="button" aria-label="撤销" disabled={historyIndex <= 0} onClick={undo}><Undo2 size={17} /></button>
+            <button type="button" aria-label="重做" disabled={historyIndex >= history.length - 1} onClick={redo}><Redo2 size={17} /></button>
+            <button type="button" aria-label="适合宽度" onClick={() => setZoom(1)}><Maximize2 size={17} /></button>
+          </div>
+          <div className="textbook-pdf__outline-section">
+            <button
+              type="button"
+              className="textbook-pdf__outline-toggle"
+              onClick={() => setOutlineOpen((v) => !v)}
+              aria-expanded={outlineOpen}
+              title={outlineSource === 'pdf' ? '目录来源：PDF 书签（精确页码）' : '目录来源：教材章节目录（估算页码）'}
+            >
+              <BookOpenText size={14} aria-hidden="true" />
+              <span>目录</span>
+              {outlineSource === 'pdf' && <small>书签</small>}
+            </button>
+            {outlineOpen && (
+              <div className="textbook-pdf__outline-list">
+                {outlineLoading ? (
+                  <p className="textbook-pdf__outline-loading"><LoaderCircle className="is-spinning" size={14} />加载章节目录…</p>
+                ) : outline.length > 0 ? (
+                  outline.map((chapter) => {
+                    const hasChildren = Array.isArray(chapter.children) && chapter.children.length > 0;
+                    const isExpanded = expandedChapters.has(chapter.id);
+                    const chPage = chapter.page;
+                    const canJump = chPage != null;
+                    return (
+                      <div key={chapter.id}>
+                        <button
+                          type="button"
+                          className="textbook-pdf__outline-item textbook-pdf__outline-chapter"
+                          onClick={() => {
+                            if (canJump && !hasChildren) { setPageNumber(chPage); return; }
+                            if (canJump) setPageNumber(chPage);
+                            setExpandedChapters((prev) => {
+                              const next = new Set(prev);
+                              next.has(chapter.id) ? next.delete(chapter.id) : next.add(chapter.id);
+                              return next;
+                            });
+                          }}
+                          title={canJump ? `跳转到第 ${chPage} 页` : '点击展开小节'}
+                        >
+                          <span>{chapter.title}</span>
+                          {canJump ? <em>第{chPage}页</em> : hasChildren && <em>{chapter.children.length} 节</em>}
+                        </button>
+                        {isExpanded && hasChildren && chapter.children.map((sub) => {
+                          const subPage = sub.page;
+                          return (
+                            <button
+                              key={sub.id}
+                              type="button"
+                              className={`textbook-pdf__outline-item is-indented${subPage === pageNumber ? ' is-current' : ''}`}
+                              onClick={() => subPage != null && setPageNumber(subPage)}
+                              disabled={subPage == null}
+                              title={subPage != null ? `跳转到第 ${subPage} 页` : sub.title}
+                            >
+                              <span>{sub.title}</span>
+                              {subPage != null && <em>{subPage}</em>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="textbook-pdf__outline-empty">暂无章节目录</p>
+                )}
+              </div>
+            )}
+          </div>
         </aside>
         {toc.length > 0 && (
           <aside className="textbook-pdf__toc" aria-label="教材目录">

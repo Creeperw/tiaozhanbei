@@ -382,6 +382,37 @@ def list_mistakes(
     }
 
 
+@router.get("/questions-by-kp-ids")
+@stable_practice_router.get("/questions-by-kp-ids")
+def get_questions_by_kp_ids(
+    kp_ids: str = Query(default="", max_length=2000),
+    limit: int = Query(default=200, ge=1, le=500),
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    ids = [k.strip() for k in kp_ids.split(",") if k.strip()]
+    if not ids:
+        return {"items": [], "total": 0}
+    results = []
+    for q in db.query(QuestionBankItem).filter(QuestionBankItem.status == "active").all():
+        q_kps = json.loads(q.kp_ids_json or "[]")
+        if any(kp in q_kps for kp in ids):
+            detail = db.query(LearningQuestion).filter_by(question_id=q.question_id).first()
+            results.append({
+                "question_id": q.question_id,
+                "stem": q.stem,
+                "question_type": q.question_type,
+                "answer": q.answer,
+                "analysis": q.analysis,
+                "kp_ids": q_kps,
+                "options": json.loads(detail.options_json or "[]") if detail else [],
+                "explanation": detail.explanation or "" if detail else "",
+                "difficulty": q.difficulty,
+            })
+            if len(results) >= limit:
+                break
+    return {"items": results, "total": len(results)}
+
 @router.get("/question-detail/{question_id}")
 @stable_practice_router.get("/question-detail/{question_id}")
 def get_question_detail(
@@ -400,7 +431,6 @@ def get_question_detail(
         "answer": json.loads(question.answer_json or "[]"),
         "explanation": question.explanation or "",
     }
-
 
 @router.get("/mistakes/{mistake_id}")
 @stable_practice_router.get("/mistakes/{mistake_id}")

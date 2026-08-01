@@ -174,10 +174,10 @@ describe('TextbookChapterLearning', () => {
     fireEvent.click(screen.getByRole('button', { name: /第一节 基础概念/ }));
 
     await waitFor(() => expect(loadSectionQuestions).toHaveBeenCalledWith(['KP_1', 'KP_2'], expect.any(Object)));
-    expect(screen.getByText('该小节暂未匹配到题目。')).toBeInTheDocument();
+    expect(screen.getByText('该小节知识点暂未匹配到题目，题库补充后会在此展示。')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '课程内容' }));
-    expect(screen.getByText('电子教材阅读器')).toBeInTheDocument();
+    expect((await screen.findAllByText('小节完整视频')).length).toBeGreaterThan(0);
   });
 
   it('filters partially completed chapters by section progress', async () => {

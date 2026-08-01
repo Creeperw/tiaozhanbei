@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BookOpen,
@@ -205,12 +205,15 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [catalogQuery, setCatalogQuery] = useState('');
   const [catalogStatus, setCatalogStatus] = useState('all');
   const [searchCatalog, setSearchCatalog] = useState(null);
-  const [courseMode, setCourseMode] = useState('pdf');
+  // PDF / 目录 / 作业与考试 模式
+  const [courseMode, setCourseMode] = useState('catalog');
   const [sectionExamMode, setSectionExamMode] = useState(false);
-  const [sectionQuestionCounts, setSectionQuestionCounts] = useState({});
-  const [sectionKpIdsBySection, setSectionKpIdsBySection] = useState({});
   const [pdfInitialPage, setPdfInitialPage] = useState(navigationContext.pdfPage || 1);
   const [pageNotesOpen, setPageNotesOpen] = useState(false);
+  // 作业与考试独立数据
+  const [sectionQuestionCounts, setSectionQuestionCounts] = useState({});
+  const [sectionKpIdsMap, setSectionKpIdsMap] = useState({});
+  const [examSections, setExamSections] = useState([]);
 
   useEffect(() => {
     setCourseMode('pdf');
@@ -301,55 +304,77 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     return () => controller.abort();
   }, [selectedSection]);
 
+  // 作业与考试独立数据加载（不依赖 sectionsByChapter）
+  const examLoadGenerationRef = useRef(0);
   useEffect(() => {
-    if (!sectionExamMode || !selectedChapter) return undefined;
-    const chapterSections = sectionsByChapter[selectedChapter.id] || [];
-    if (!chapterSections.length) {
-      setSectionQuestionCounts({});
-      setSectionKpIdsBySection({});
+    if (!sectionExamMode || !selectedChapter?.id || !book) {
+      setExamSections([]);
       return undefined;
     }
-
+    const generation = examLoadGenerationRef.current + 1;
+    examLoadGenerationRef.current = generation;
     const controller = new AbortController();
-    Promise.all(chapterSections.map(async (section) => {
+    const load = async () => {
+      let chapterSections = [];
       try {
-        const result = await loadAtlasNodes({
-          level: 4,
-          route,
-          lv1: book,
-          chapter: selectedChapter.name,
-          chapterId: selectedChapter.id,
-          lv2: section.name,
-          sectionId: section.id,
+        const payload = await loadAtlasNodes({
+          level: 3, route, lv1: book,
+          chapter: selectedChapter.name, chapterId: selectedChapter.id,
           signal: controller.signal,
         });
-        return [section.id, (result.nodes || []).map((item) => item.kp_id || item.id).filter(Boolean)];
-      } catch (reason) {
-        if (reason.name === 'AbortError') throw reason;
-        return [section.id, []];
-      }
-    })).then(async (entries) => {
-      if (controller.signal.aborted) return;
-      const nextKpIds = Object.fromEntries(entries);
-      setSectionKpIdsBySection(nextKpIds);
-      const nextCounts = await Promise.all(entries.map(async ([sectionId, kpIds]) => {
-        try {
-          const result = await loadSectionQuestions(kpIds, { signal: controller.signal });
-          return [sectionId, (result.items || []).length];
-        } catch (reason) {
-          if (reason.name === 'AbortError') throw reason;
-          return [sectionId, null];
+        chapterSections = sortByHeadingNumber(
+          Array.isArray(payload.nodes) ? payload.nodes : [], '节',
+        );
+      } catch (err) {
+        if (err.name !== 'AbortError' && generation === examLoadGenerationRef.current) {
+          setExamSections([]); setSectionQuestionCounts({});
         }
-      }));
-      if (!controller.signal.aborted) setSectionQuestionCounts(Object.fromEntries(nextCounts));
-    }).catch((reason) => {
-      if (reason.name !== 'AbortError') {
-        setSectionQuestionCounts(Object.fromEntries(chapterSections.map((section) => [section.id, null])));
+        return;
       }
-    });
-
+      if (controller.signal.aborted || generation !== examLoadGenerationRef.current) return;
+      setExamSections(chapterSections);
+      if (!chapterSections.length) { setSectionQuestionCounts({}); return; }
+      const sectionKpIds = {};
+      const allKpIds = [];
+      await Promise.all(chapterSections.map(async (section) => {
+        try {
+          const kpPayload = await loadAtlasNodes({
+            level: 4, route, lv1: book,
+            chapter: selectedChapter.name, chapterId: selectedChapter.id,
+            lv2: section.name, sectionId: section.id, signal: controller.signal,
+          });
+          const kps = Array.isArray(kpPayload.nodes) ? kpPayload.nodes : [];
+          const ids = kps.map((kp) => kp.kp_id || kp.id).filter(Boolean);
+          sectionKpIds[section.id] = new Set(ids);
+          allKpIds.push(...ids);
+        } catch (err) { if (err.name !== 'AbortError') sectionKpIds[section.id] = new Set(); }
+      }));
+      if (controller.signal.aborted || generation !== examLoadGenerationRef.current) return;
+      const uniqueKpIds = [...new Set(allKpIds)];
+      const counts = {};
+      if (uniqueKpIds.length > 0) {
+        try {
+          const result = await loadSectionQuestions(uniqueKpIds, { signal: controller.signal });
+          const items = Array.isArray(result.items) ? result.items : [];
+          for (const sectionId of Object.keys(sectionKpIds)) {
+            const kpSet = sectionKpIds[sectionId];
+            counts[sectionId] = items.filter((q) => {
+              const qKps = Array.isArray(q.kp_ids) ? q.kp_ids : [];
+              return qKps.some((id) => kpSet.has(id));
+            }).length;
+          }
+        } catch (err) { if (err.name !== 'AbortError') { for (const sId of Object.keys(sectionKpIds)) counts[sId] = -1; } }
+      } else { for (const sId of Object.keys(sectionKpIds)) counts[sId] = 0; }
+      if (!controller.signal.aborted && generation === examLoadGenerationRef.current) {
+        setSectionQuestionCounts(counts);
+        const kpIdsMap = {};
+        for (const [sId, kpSet] of Object.entries(sectionKpIds)) kpIdsMap[sId] = [...kpSet];
+        setSectionKpIdsMap(kpIdsMap);
+      }
+    };
+    load();
     return () => controller.abort();
-  }, [book, route, sectionExamMode, sectionsByChapter, selectedChapter]);
+  }, [sectionExamMode, selectedChapter?.id, book, route]);
 
   const exactVideos = useMemo(
     () => (Array.isArray(detail?.section_videos) ? detail.section_videos : []),
@@ -377,16 +402,11 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ? [...timestampKnowledgePoints, ...plainKnowledgePoints]
       : timestampKnowledgePoints)
     : knowledgePoints;
-  const sectionKpIds = useMemo(
-    () => knowledgePoints.map((item) => item.kp_id).filter(Boolean),
-    [knowledgePoints],
-  );
   const normalizedCatalogQuery = searchableText(catalogQuery);
   const allSections = useMemo(() => Object.values(sectionsByChapter).flat(), [sectionsByChapter]);
   const progress = allSections.length ? Math.round((completedSectionIds.size / allSections.length) * 100) : 0;
   const getChapterCompletionStatus = (chapter) => {
     const list = sectionsByChapter[chapter.id] || [];
-    // 有后端章节状态时，先作为小节进度尚未返回时的初始兜底。
     if (completedSectionIds.size === 0) {
       const status = String(chapter.status || chapter.learning_status || '').toLowerCase();
       const progressValue = Number(chapter.progress ?? chapter.progress_rate ?? 0);
@@ -410,43 +430,21 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     const loadSearchCatalog = async () => {
       const chapterResults = await Promise.allSettled(chapters.map(async (chapter) => {
         const sectionPayload = await loadAtlasNodes({
-          level: 3,
-          route,
-          lv1: book,
-          chapter: chapter.name,
-          chapterId: chapter.id,
-          signal: controller.signal,
+          level: 3, route, lv1: book, chapter: chapter.name, chapterId: chapter.id, signal: controller.signal,
         });
         const chapterSections = Array.isArray(sectionPayload.nodes) ? sectionPayload.nodes : [];
         const pointResults = await Promise.allSettled(chapterSections.map(async (section) => {
           const pointPayload = await loadAtlasNodes({
-            level: 4,
-            route,
-            lv1: book,
-            chapter: chapter.name,
-            chapterId: chapter.id,
-            lv2: section.name,
-            sectionId: section.id,
-            signal: controller.signal,
+            level: 4, route, lv1: book, chapter: chapter.name, chapterId: chapter.id,
+            lv2: section.name, sectionId: section.id, signal: controller.signal,
           });
           return { section, points: Array.isArray(pointPayload.nodes) ? pointPayload.nodes : [] };
         }));
-        return {
-          chapter,
-          sectionsWithPoints: pointResults
-            .filter((result) => result.status === 'fulfilled')
-            .map((result) => result.value),
-        };
+        return { chapter, sectionsWithPoints: pointResults.filter((r) => r.status === 'fulfilled').map((r) => r.value) };
       }));
-      setSearchCatalog(
-        chapterResults
-          .filter((result) => result.status === 'fulfilled')
-          .map((result) => result.value),
-      );
+      setSearchCatalog(chapterResults.filter((r) => r.status === 'fulfilled').map((r) => r.value));
     };
-    loadSearchCatalog().catch((loadError) => {
-      if (loadError.name !== 'AbortError') setSearchCatalog([]);
-    });
+    loadSearchCatalog().catch((loadError) => { if (loadError.name !== 'AbortError') setSearchCatalog([]); });
     return () => controller.abort();
   }, [book, chapters, normalizedCatalogQuery, route]);
 
@@ -474,23 +472,19 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const filteredChapters = useMemo(() => {
     const queryMatches = !normalizedCatalogQuery
       ? chapters
-      : searchMatches
-        ? searchMatches.map(({ chapter }) => chapter)
-        : [];
+      : searchMatches ? searchMatches.map(({ chapter }) => chapter) : [];
     if (catalogStatus === 'all') return queryMatches;
     return queryMatches.filter((chapter) => {
       const status = getChapterCompletionStatus(chapter);
-      if (catalogStatus === 'completed') {
-        // 已完成筛选包含整章完成和部分完成的章节。
-        return status === 'completed' || status === 'partial';
-      }
-      // 未完成筛选包含未开始和部分完成的章节。
+      if (catalogStatus === 'completed') return status === 'completed' || status === 'partial';
       return status === 'pending' || status === 'partial';
     });
   }, [catalogStatus, chapters, completedSectionIds, normalizedCatalogQuery, searchMatches, sectionsByChapter]);
+
   const filteredSections = useMemo(() => {
+    const sourceSections = sectionExamMode ? examSections : sections;
     const querySections = !normalizedCatalogQuery
-      ? sections
+      ? sourceSections
       : searchMatches?.find(({ chapter }) => chapter.id === selectedChapter?.id)?.sections || [];
     const matchingSections = querySections.filter(sectionMatchesStatus);
     if (!sectionExamMode) return matchingSections;
@@ -498,10 +492,11 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       const count = sectionQuestionCounts[section.id];
       return {
         ...section,
-        alias: Number.isFinite(count) ? `${count} 道题目` : count === null ? '题目加载失败' : '正在匹配题目…',
+        alias: Number.isFinite(count) ? `${count} 道题目` : count === -1 ? '题目加载失败' : '正在匹配题目…',
       };
     });
-  }, [catalogStatus, normalizedCatalogQuery, searchMatches, sections, selectedChapter?.id, completedSectionIds, sectionExamMode, sectionQuestionCounts]);
+  }, [catalogStatus, normalizedCatalogQuery, searchMatches, sections, examSections, selectedChapter?.id, completedSectionIds, sectionExamMode, sectionQuestionCounts]);
+
   useEffect(() => {
     if (catalogStatus === 'all' || !filteredChapters.length) return;
     if (!filteredChapters.some((chapter) => chapter.id === selectedChapter?.id)) {
@@ -511,6 +506,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       setVideoHistory([]);
     }
   }, [catalogStatus, filteredChapters, selectedChapter?.id]);
+
   useEffect(() => {
     if (!normalizedCatalogQuery || !searchMatches?.length) return;
     const matchingChapter = searchMatches.find(({ chapter }) => (
@@ -521,6 +517,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       setSelectedSection(null);
     }
   }, [normalizedCatalogQuery, searchMatches, selectedChapter?.id]);
+
   const sectionVideo = exactVideos[0] || null;
   const recommendedVideo = recommendedVideos[0] || null;
   const activeTimestampVideo = videoHistory.at(-1)?.video || null;
@@ -565,22 +562,6 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     });
   };
 
-  const navActive = pageNotesOpen ? 'notes' : sectionExamMode ? 'exam' : 'content';
-
-  const textbookReturnIntent = {
-    page: 'practice',
-    params: { ...navigationContext, view: 'textbook-chapters' },
-  };
-
-  const openCourseTool = (taskType) => onNavigate?.({
-    page: 'practice',
-    params: {
-      view: 'workspace',
-      taskType,
-      returnTo: textbookReturnIntent,
-    },
-  });
-
   return (
     <main className="textbook-chapter-learning">
       <header className="textbook-chapter-learning__hero">
@@ -617,12 +598,18 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <button type="button" className={navActive === 'content' ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); setSectionExamMode(false); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
-            <button type="button" className={navActive === 'exam' ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('catalog'); setSectionExamMode(true); }}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
-            <button type="button" className={navActive === 'notes' ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}><BookOpen aria-hidden="true" size={18} />笔记本</button>
+            <button type="button" className={!sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(false); setCourseMode('catalog'); setPageNotesOpen(false); }}>
+              <BookOpen aria-hidden="true" size={18} />课程内容
+            </button>
+            <button type="button" className={sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(true); setCourseMode('catalog'); setPageNotesOpen(false); }}>
+              <Layers3 aria-hidden="true" size={18} />作业与考试
+            </button>
+            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}>
+              <BookOpen aria-hidden="true" size={18} />笔记本
+            </button>
           </aside>
           <div className="textbook-learning-main">
-          {courseMode === 'pdf' ? (
+          {!sectionExamMode && courseMode === 'pdf' ? (
             <TextbookPdfReader
               bookTitle={book}
               bookId={bookId}
@@ -635,28 +622,26 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             />
           ) : (
           <>
+            {!sectionExamMode && (
             <div className="textbook-learning-main__toolbar">
               <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
               <div className="textbook-learning-filters">
-                <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}><BookOpen aria-hidden="true" size={15} />阅读电子教材</button>
+                <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}>
+                  <BookOpen aria-hidden="true" size={15} />阅读电子教材
+                </button>
                 <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
                 {[
                   ['all', '全部'],
                   ['pending', '未完成'],
                   ['completed', '已完成'],
                 ].map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={catalogStatus === value ? 'is-active' : ''}
-                    aria-pressed={catalogStatus === value}
-                    onClick={() => setCatalogStatus(value)}
-                  >
+                  <button key={value} type="button" className={catalogStatus === value ? 'is-active' : ''} aria-pressed={catalogStatus === value} onClick={() => setCatalogStatus(value)}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>
+            )}
           {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
             <Directory
               title="章节"
@@ -665,25 +650,10 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
               items={filteredChapters}
               selectedId={selectedChapter?.id}
               onSelect={(chapter) => {
-                if (!chapter) {
-                  setSelectedChapter(null);
-                  setSelectedSection(null);
-                  setDetail(null);
-                  setVideoHistory([]);
-                  return;
-                }
-                setSelectedChapter(chapter);
-                setSelectedSection(null);
-                setDetail(null);
-                setVideoHistory([]);
+                if (!chapter) { setSelectedChapter(null); setSelectedSection(null); setDetail(null); setVideoHistory([]); return; }
+                setSelectedChapter(chapter); setSelectedSection(null); setDetail(null); setVideoHistory([]);
               }}
-              emptyText={
-                normalizedCatalogQuery
-                  ? '没有找到匹配的章节或小节。'
-                  : catalogStatus !== 'all'
-                    ? '当前筛选条件下没有章节。'
-                    : '该教材暂无章节数据。'
-              }
+              emptyText={normalizedCatalogQuery ? '没有找到匹配的章节或小节。' : catalogStatus !== 'all' ? '当前筛选条件下没有章节。' : '该教材暂无章节数据。'}
               unitLabel="个小节"
               showCompletion
               getItemStatus={getChapterCompletionStatus}
@@ -708,12 +678,14 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
           </div>}
 
           {selectedSection && sectionExamMode ? (
-            <SectionExamPanel
-              sectionName={selectedSection.name}
-              kpIds={sectionKpIdsBySection[selectedSection.id] || sectionKpIds}
-              onBack={() => setSelectedSection(null)}
-            />
-          ) : selectedSection && (
+            <div style={{padding:'20px 0'}}>
+              <SectionExamPanel
+                sectionName={selectedSection.name}
+                kpIds={sectionKpIdsMap[selectedSection.id] || []}
+                onBack={() => setSelectedSection(null)}
+              />
+            </div>
+          ) : selectedSection && !sectionExamMode && (
           <section className="textbook-section-content" aria-live="polite">
             <header>
               <div className="textbook-section-content__eyebrow">

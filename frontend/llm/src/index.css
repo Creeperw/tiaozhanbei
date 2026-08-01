@@ -5623,7 +5623,7 @@ textarea:focus-visible {
 .workshop-save-dialog footer { justify-content: flex-end; margin-top: 18px; }
 .workshop-save-dialog footer button { border: 1px solid #d2ddd5; padding: 9px 14px; color: #526159; }
 .workshop-save-dialog footer button:last-child { border-color: #287b4b; background: #287b4b; color: #fff; }
-.workshop-save-dialog > div > p { margin: 12px 0 0; color: #287b4b; font-size: .8rem; }
+.workshop-save-dialog > div > p { margin: 12px 0 0; color: #1a1a1a; font-size: .95rem; font-weight: 500; }
 
 @media (max-width: 760px) {
   .workshop-library__header { align-items: stretch; flex-direction: column; }
