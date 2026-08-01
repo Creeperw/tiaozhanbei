@@ -1,12 +1,17 @@
 ﻿from __future__ import annotations
 
+import asyncio
 import base64
+from concurrent.futures import ThreadPoolExecutor
 import json
+import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import textwrap
+import time
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -33,6 +38,22 @@ class UserSyllabusError(RuntimeError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code, self.message = code, message
+
+
+def _split_text(text: str, size: int) -> list[str]:
+    if len(text) <= size:
+        return [text]
+    chunks: list[str] = []
+    current = text
+    while len(current) > size:
+        cut = current.rfind("\n", 0, size)
+        if cut <= 0:
+            cut = size
+        chunks.append(current[:cut].strip())
+        current = current[cut:].strip()
+    if current:
+        chunks.append(current)
+    return chunks
 
 
 def _now() -> str:
@@ -65,7 +86,10 @@ def _json_object(raw: Any) -> dict[str, Any]:
         try:
             value = json.loads(text[start : end + 1])
         except json.JSONDecodeError as exc:
-            raise UserSyllabusError(USER_SYLLABUS_INVALID_STRUCTURE, "多模态模型返回的 JSON 无法解析") from exc
+            snippet = text[start : end + 1].replace("\n", " ")[:200]
+            raise UserSyllabusError(
+                USER_SYLLABUS_INVALID_STRUCTURE,
+                f"多模态模型返回的 JSON 无法解析（片段：{snippet}）") from exc
     if not isinstance(value, dict):
         raise UserSyllabusError(USER_SYLLABUS_INVALID_STRUCTURE, "考纲结构必须是 JSON 对象")
     return value
@@ -77,14 +101,22 @@ class UserSyllabusService:
 
     def __init__(self, runtime_root: Path, *, chat_base_url: str, chat_model: str,
                  chat_api_key: str, timeout_seconds: float = 120.0,
-                 knowledge_resolver: Any | None = None) -> None:
+                 mineru_token: str | None = None,
+                 mineru_pipeline_root: Path | None = None,
+                 knowledge_resolver: Any | None = None,
+                 vector_matcher: Any | None = None) -> None:
         self.root = Path(runtime_root) / "user_syllabi"
         self.root.mkdir(parents=True, exist_ok=True)
         self.chat_base_url = str(chat_base_url).rstrip("/")
         self.chat_model = str(chat_model).strip()
         self.chat_api_key = str(chat_api_key).strip()
         self.timeout_seconds = float(timeout_seconds)
+        self.mineru_token = str(mineru_token or "").strip()
+        self.mineru_pipeline_root = (
+            Path(mineru_pipeline_root).resolve() if mineru_pipeline_root else None
+        )
         self.knowledge_resolver = knowledge_resolver
+        self.vector_matcher = vector_matcher
 
     async def import_file(self, owner_id: str, filename: str, content: bytes, *,
                           title: str = "", subject: str = "", exam_type: str = "",
@@ -116,22 +148,39 @@ class UserSyllabusService:
         }
         self._write_json(run_dir / "manifest.json", manifest)
         try:
-            pages = self._render_input(source, run_dir / "rendered_pages")
-            if not pages:
-                raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "考纲没有可识别内容")
-            fragments = [
-                await self._extract_batch(pages[offset:offset + self.image_batch_size])
-                for offset in range(0, len(pages), self.image_batch_size)
-            ]
+            fragments: list[dict[str, Any]] = []
+            pages: list[tuple[int, Path]] = []
+            parser_label = "multimodal_model_only"
+            if suffix == ".pdf" and self.mineru_token and self.mineru_pipeline_root:
+                try:
+                    markdown = await asyncio.to_thread(
+                        self._mineru_markdown, source, run_dir / "mineru"
+                    )
+                    fragments = await self._extract_markdown_batches(markdown)
+                    parser_label = "mineru"
+                except UserSyllabusError:
+                    fragments = []
+            if not fragments:
+                pages = self._render_input(source, run_dir / "rendered_pages")
+                if not pages:
+                    raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "考纲没有可识别内容")
+                fragments = [
+                    await self._extract_batch(pages[offset:offset + self.image_batch_size])
+                    for offset in range(0, len(pages), self.image_batch_size)
+                ]
             raw = await self._merge_fragments(fragments)
             structured, requirements = self._normalize_structure(
                 raw, current_id, manifest["title"], manifest["subject"], manifest["exam_type"]
             )
-            mappings = self._map_requirements(requirements, structured)
+            mappings = await self._map_requirements(requirements, structured)
             manifest.update({
                 "title": structured["title"], "subject": structured["subject"],
                 "exam_type": structured["exam_type"], "processing_status": "success",
-                "page_count": len(pages), "section_count": len(structured["sections"]),
+                "page_count": len(pages) or max(
+                    (page for row in requirements for page in row.get("source_pages") or []),
+                    default=0,
+                ),
+                "section_count": len(structured["sections"]),
                 "requirement_count": len(requirements),
                 "matched_requirement_count": sum(row["match_status"] == "matched" for row in mappings),
                 "updated_at": _now(), "error": None,
@@ -140,7 +189,7 @@ class UserSyllabusService:
             self._write_jsonl(run_dir / "requirements.jsonl", requirements)
             self._write_jsonl(run_dir / "mappings.jsonl", mappings)
             self._write_json(run_dir / "extraction_report.json", {
-                "model": self.chat_model, "semantic_parser": "multimodal_model_only",
+                "model": self.chat_model, "semantic_parser": parser_label,
                 "rendered_page_count": len(pages), "fragment_count": len(fragments), "completed_at": _now(),
             })
             self._write_json(run_dir / "manifest.json", manifest)
@@ -152,7 +201,9 @@ class UserSyllabusService:
             self._write_json(run_dir / "manifest.json", manifest)
             raise
         except Exception as exc:
-            error = UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, f"考纲处理失败：{exc}")
+            error = UserSyllabusError(
+                USER_SYLLABUS_EXTRACTION_FAILED, f"考纲处理失败：{type(exc).__name__}: {exc}"
+            )
             manifest.update({"processing_status": "failed", "updated_at": _now(),
                              "error": {"code": error.code, "message": error.message}})
             self._write_json(run_dir / "manifest.json", manifest)
@@ -182,7 +233,11 @@ class UserSyllabusService:
     def get(self, owner_id: str, syllabus_id: str) -> dict[str, Any]:
         run_dir = self._require_dir(_safe_owner(owner_id), syllabus_id)
         structured = self._read_json(run_dir / "structured.json", None)
-        return {"manifest": self._read_json(run_dir / "manifest.json", {}), "structured": structured}
+        return {
+            "manifest": self._read_json(run_dir / "manifest.json", {}),
+            "structured": structured,
+            "mappings": self._read_jsonl(run_dir / "mappings.jsonl"),
+        }
 
     def requirements(self, owner_id: str, syllabus_id: str) -> list[dict[str, Any]]:
         return self._read_jsonl(self._require_dir(_safe_owner(owner_id), syllabus_id) / "requirements.jsonl")
@@ -277,37 +332,154 @@ class UserSyllabusService:
     async def _merge_fragments(self, fragments: list[dict[str, Any]]) -> dict[str, Any]:
         if not fragments:
             raise UserSyllabusError(USER_SYLLABUS_INVALID_STRUCTURE, "未提取到考纲结构")
-        current = fragments
-        while len(current) > 1:
-            merged = []
-            for offset in range(0, len(current), 6):
-                group = current[offset:offset + 6]
-                merged.append(await self._vision_json([{"type": "text", "text":
-                    "你仍是同一个多模态考纲模型。合并以下同一考纲的分批识别 JSON，去重并保持原顺序和 source_pages，"
-                    "不得新增原数据没有的内容，返回相同字段的严格 JSON。\n" + json.dumps(group, ensure_ascii=False)}], 10000))
-            current = merged
-        return current[0]
+        merged = dict(fragments[0])
+        sections: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for fragment in fragments:
+            for section in fragment.get("sections") or []:
+                key = str(section.get("title") or "").strip()
+                if key and key in seen:
+                    continue
+                if key:
+                    seen.add(key)
+                sections.append(section)
+        merged["sections"] = sections
+        return merged
+
+    def _mineru_markdown(self, pdf_path: Path, output_dir: Path) -> Path:
+        if not self.mineru_token:
+            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 服务端密钥未配置")
+        if not self.mineru_pipeline_root:
+            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 处理管线未配置")
+        script = self.mineru_pipeline_root / "parse_question_pdf.py"
+        config = self.mineru_pipeline_root / "pipeline_config.json"
+        if not script.is_file() or not config.is_file():
+            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 处理管线不完整")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        env = os.environ.copy()
+        env["MINERU_TOKEN"] = self.mineru_token
+        command = [
+            sys.executable, str(script),
+            "--config", str(config), "--output-dir", str(output_dir),
+            "--pdf", str(pdf_path),
+        ]
+        completed = None
+        for attempt in range(3):
+            completed = subprocess.run(
+                command, cwd=self.mineru_pipeline_root, env=env,
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=24 * 60 * 60, check=False,
+            )
+            if completed.returncode == 0:
+                break
+            detail = (completed.stderr or completed.stdout or "").lower()
+            if "download failed after retries" not in detail or attempt >= 2:
+                break
+            time.sleep(4 * (attempt + 1))
+        assert completed is not None
+        if completed.returncode != 0:
+            detail = (completed.stderr or completed.stdout or "MinerU 解析失败").strip()
+            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, detail[-1500:] or "MinerU 解析失败")
+        markdown_files = sorted(output_dir.rglob("*_clean.md")) or sorted(output_dir.rglob("*.md"))
+        if not markdown_files:
+            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 未生成考纲 Markdown")
+        combined = output_dir / "syllabus_full_clean.md"
+        combined.write_text(
+            "\n\n".join(path.read_text(encoding="utf-8-sig") for path in markdown_files),
+            encoding="utf-8",
+        )
+        return combined
+
+    async def _extract_markdown_batches(self, markdown: Path) -> list[dict[str, Any]]:
+        text = markdown.read_text(encoding="utf-8", errors="replace").strip()
+        if not text:
+            raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, "MinerU 未生成考纲内容")
+        chunks = _split_text(text, 3000)
+        semaphore = asyncio.Semaphore(6)
+
+        async def extract(chunk: str) -> dict[str, Any]:
+            async with semaphore:
+                return await self._extract_markdown_chunk(chunk)
+
+        results = await asyncio.gather(*(extract(chunk) for chunk in chunks), return_exceptions=True)
+        fragments = [value for value in results if isinstance(value, dict)]
+        if not fragments:
+            failure = next((value for value in results if isinstance(value, Exception)), None)
+            raise UserSyllabusError(
+                USER_SYLLABUS_EXTRACTION_FAILED,
+                f"考纲文本结构化失败：{type(failure).__name__}: {failure}" if failure else "考纲文本结构化失败"
+            )
+        return fragments
+
+    async def _extract_markdown_chunk(self, text: str) -> dict[str, Any]:
+        return await self._vision_json([{
+            "type": "text",
+            "text": (
+                "你是考试考纲结构化解析器。以下内容是同一份考纲的 Markdown 文本，"
+                "已标注源文件页码（如 第3页 或 <!-- page 3 -->）。"
+                "只根据文本内容识别，不得补写文本中不存在的要求。返回严格 JSON："
+                "{\"document_title\":\"\",\"subject\":\"\",\"exam_type\":\"\","
+                "\"sections\":[{\"title\":\"章节/模块名\",\"requirements\":["
+                "{\"title\":\"具体考核要求\",\"mastery_level\":\"掌握/熟悉/了解/未注明\","
+                "\"details\":\"原文要点\",\"source_pages\":[1],\"confidence\":0.0}]}]}。"
+                "source_pages 必须填写文本中标注的页码。目录、说明、题型、分值、范围都应保留为结构化要求。\n\n"
+                + text
+            ),
+        }], 8000)
 
     async def _vision_json(self, user_content: list[dict[str, Any]], max_tokens: int) -> dict[str, Any]:
-        payload = {"model": self.chat_model, "messages": [
+        payload: dict[str, Any] = {"model": self.chat_model, "messages": [
             {"role": "system", "content": "你只负责识别和结构化用户考纲，输出有效 JSON，不输出 Markdown。"},
             {"role": "user", "content": user_content}],
-            "response_format": {"type": "json_object"}, "temperature": 0, "max_tokens": max_tokens}
+            "response_format": {"type": "json_object"}, "temperature": 0, "max_tokens": max_tokens,
+            "reasoning_effort": "none"}
         timeout = httpx.Timeout(max(self.timeout_seconds, 600.0), connect=30.0)
         async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(f"{self.chat_base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.chat_api_key}"}, json=payload)
-            if response.status_code == 400 and "response_format" in response.text:
-                payload.pop("response_format", None)
-                response = await client.post(f"{self.chat_base_url}/chat/completions",
-                    headers={"Authorization": f"Bearer {self.chat_api_key}"}, json=payload)
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
-                raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED,
-                                        f"多模态模型调用失败（HTTP {response.status_code}）") from exc
-            raw = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            return _json_object(raw)
+            for attempt in range(3):
+                try:
+                    response = await client.post(f"{self.chat_base_url}/chat/completions",
+                        headers={"Authorization": f"Bearer {self.chat_api_key}"}, json=payload)
+                    if response.status_code == 400:
+                        lowered = response.text.lower()
+                        if "response_format" in lowered:
+                            payload.pop("response_format", None)
+                            response = await client.post(f"{self.chat_base_url}/chat/completions",
+                                headers={"Authorization": f"Bearer {self.chat_api_key}"}, json=payload)
+                        elif "reasoning_effort" in lowered:
+                            payload.pop("reasoning_effort", None)
+                            response = await client.post(f"{self.chat_base_url}/chat/completions",
+                                headers={"Authorization": f"Bearer {self.chat_api_key}"}, json=payload)
+                    if response.status_code in (408, 429, 500, 502, 503, 504):
+                        if attempt < 2:
+                            await asyncio.sleep(2 * (attempt + 1))
+                            continue
+                        raise UserSyllabusError(
+                            USER_SYLLABUS_EXTRACTION_FAILED,
+                            f"多模态模型调用失败（HTTP {response.status_code}）")
+                    response.raise_for_status()
+                    raw = response.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if not str(raw or "").strip():
+                        if attempt < 2:
+                            await asyncio.sleep(2 * (attempt + 1))
+                            continue
+                        raise UserSyllabusError(
+                            USER_SYLLABUS_EXTRACTION_FAILED, "多模态模型未返回内容（推理过长或参数被忽略）")
+                    try:
+                        return _json_object(raw)
+                    except UserSyllabusError:
+                        if attempt < 2:
+                            await asyncio.sleep(2 * (attempt + 1))
+                            continue
+                        raise
+                except UserSyllabusError:
+                    raise
+                except (httpx.HTTPStatusError, httpx.TransportError) as exc:
+                    if attempt < 2:
+                        await asyncio.sleep(2 * (attempt + 1))
+                        continue
+                    raise UserSyllabusError(
+                        USER_SYLLABUS_EXTRACTION_FAILED,
+                        f"多模态模型调用失败：{type(exc).__name__}: {exc}") from exc
 
     @staticmethod
     def _image_part(content: bytes) -> dict[str, Any]:
@@ -365,13 +537,15 @@ class UserSyllabusService:
         for page in range(1, count + 1):
             prefix = output_dir / f"render_{page:04d}"
             completed = subprocess.run(["pdftoppm", "-f", str(page), "-l", str(page),
-                "-jpeg", "-r", "150", str(source), str(prefix)], capture_output=True,
+                "-png", "-r", "150", str(source), str(prefix)], capture_output=True,
                 timeout=180, check=False)
-            candidates = sorted(output_dir.glob(f"{prefix.name}-*.jpg"))
+            candidates = sorted(output_dir.glob(f"{prefix.name}-*.png"))
             if completed.returncode or not candidates:
                 raise UserSyllabusError(USER_SYLLABUS_EXTRACTION_FAILED, f"PDF 第 {page} 页渲染失败")
             target = output_dir / f"page_{page:04d}.jpg"
-            candidates[0].replace(target)
+            with Image.open(candidates[0]) as rendered:
+                rendered.convert("RGB").save(target, "JPEG", quality=90)
+            candidates[0].unlink(missing_ok=True)
             pages.append((page, target))
         return pages
 
@@ -506,35 +680,62 @@ class UserSyllabusService:
         }
         return structured, requirements
 
-    def _map_requirements(self, requirements: list[dict[str, Any]],
-                          structured: dict[str, Any]) -> list[dict[str, Any]]:
+    def _match_requirement(self, resolver: Any, requirement: dict[str, Any],
+                           structured: dict[str, Any]) -> dict[str, Any]:
+        query = "；".join(filter(None, [structured.get("subject"), requirement.get("section_title"),
+                                         requirement.get("title"), requirement.get("details")]))
+        candidates = []
+        try:
+            raw_candidates = resolver(query, limit=3)
+        except Exception:
+            raw_candidates = []
+        for candidate in raw_candidates or []:
+            if hasattr(candidate, "model_dump"):
+                candidate = candidate.model_dump(mode="json")
+            if isinstance(candidate, dict):
+                candidates.append({"kp_id": str(candidate.get("kp_id") or ""),
+                    "kp_name": str(candidate.get("name") or candidate.get("kp_name") or ""),
+                    "confidence": float(candidate.get("score") or candidate.get("confidence") or 0)})
+        best = candidates[0] if candidates and candidates[0]["confidence"] >= 0.55 else None
+        return {"requirement_id": requirement["requirement_id"],
+            "match_status": "matched" if best else "unmatched",
+            "kp_id": best["kp_id"] if best else None,
+            "kp_name": best["kp_name"] if best else None,
+            "confidence": best["confidence"] if best else 0.0,
+            "match_source": "public_kp_retrieval" if best else None,
+            "candidates": candidates}
+
+    async def _map_requirements(self, requirements: list[dict[str, Any]],
+                                structured: dict[str, Any]) -> list[dict[str, Any]]:
+        if self.vector_matcher is not None:
+            try:
+                return await self.vector_matcher.match(requirements, structured)
+            except Exception as exc:
+                self.vector_matcher = None
+                if getattr(self, "_vector_match_error", None) is None:
+                    self._vector_match_error = f"{type(exc).__name__}: {exc}"
+        return self._map_requirements_lexical(requirements, structured)
+
+    def _map_requirements_lexical(self, requirements: list[dict[str, Any]],
+                                  structured: dict[str, Any]) -> list[dict[str, Any]]:
         resolver = getattr(self.knowledge_resolver, "resolve_topic", None)
-        output = []
-        for requirement in requirements:
-            query = "；".join(filter(None, [structured.get("subject"), requirement.get("section_title"),
-                                             requirement.get("title"), requirement.get("details")]))
-            candidates = []
-            if resolver:
-                try:
-                    raw_candidates = resolver(query, limit=3)
-                except Exception:
-                    raw_candidates = []
-                for candidate in raw_candidates or []:
-                    if hasattr(candidate, "model_dump"):
-                        candidate = candidate.model_dump(mode="json")
-                    if isinstance(candidate, dict):
-                        candidates.append({"kp_id": str(candidate.get("kp_id") or ""),
-                            "kp_name": str(candidate.get("name") or candidate.get("kp_name") or ""),
-                            "confidence": float(candidate.get("score") or candidate.get("confidence") or 0)})
-            best = candidates[0] if candidates and candidates[0]["confidence"] >= 0.55 else None
-            output.append({"requirement_id": requirement["requirement_id"],
-                "match_status": "matched" if best else "unmatched",
-                "kp_id": best["kp_id"] if best else None,
-                "kp_name": best["kp_name"] if best else None,
-                "confidence": best["confidence"] if best else 0.0,
-                "match_source": "public_kp_retrieval" if best else None,
-                "candidates": candidates})
-        return output
+        if not resolver:
+            return [self._match_requirement(None, requirement, structured)
+                    for requirement in requirements]
+        owner = getattr(resolver, "__self__", None)
+        if owner is not None:
+            for name in ("ensure_hierarchy", "_kp_search_entries"):
+                warmup = getattr(owner, name, None)
+                if callable(warmup):
+                    try:
+                        warmup()
+                    except Exception:
+                        pass
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            return list(pool.map(
+                lambda requirement: self._match_requirement(resolver, requirement, structured),
+                requirements,
+            ))
 
     def _syllabus_dir(self, owner: str, syllabus_id: str) -> Path:
         if not re.fullmatch(r"USY_[A-Za-z0-9_-]{8,80}", str(syllabus_id or "")):

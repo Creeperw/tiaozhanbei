@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import ast
@@ -123,6 +123,7 @@ class DeliveryKnowledgeMapStore:
         self._videos_ready = False
         self.kps: dict[str, dict[str, Any]] = {}
         self.tree: dict[str, dict[str, list[dict[str, Any]]]] = {}
+        self._kp_search_entries_cache: list[tuple[dict[str, Any], str, list[str], set[str]]] | None = None
         self.questions_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.chunk_offsets: dict[str, int] = {}
         self.videos_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -302,6 +303,25 @@ class DeliveryKnowledgeMapStore:
             ],
         }
 
+    def _kp_search_entries(self) -> list[tuple[dict[str, Any], str, list[str], set[str]]]:
+        self.ensure_hierarchy()
+        if self._kp_search_entries_cache is None:
+            entries: list[tuple[dict[str, Any], str, list[str], set[str]]] = []
+            for kp in self.kps.values():
+                fields = [kp.get("kp_lv3"), kp.get("other_name"), kp.get("kp_lv2"), kp.get("kp_lv1")]
+                text = re.sub(r"\s+", "", " ".join(str(value or "") for value in fields)).lower()
+                if not text:
+                    continue
+                normalized_fields = [
+                    re.sub(r"\s+", "", str(value or "")).lower()
+                    for value in fields
+                    if str(value or "").strip()
+                ]
+                terms = set(re.findall(r"[\u4e00-\u9fff]{2,}|[a-z0-9_]{2,}", text))
+                entries.append((kp, text, normalized_fields, terms))
+            self._kp_search_entries_cache = entries
+        return self._kp_search_entries_cache
+
     def resolve_topic(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         self.ensure_hierarchy()
         compact = re.sub(r"\s+", "", query).lower()
@@ -314,16 +334,7 @@ class DeliveryKnowledgeMapStore:
         }
         query_terms = set(re.findall(r"[\u4e00-\u9fff]{2,}|[a-z0-9_]{2,}", compact))
         ranked: list[tuple[float, dict[str, Any]]] = []
-        for kp in self.kps.values():
-            fields = [kp.get("kp_lv3"), kp.get("other_name"), kp.get("kp_lv2"), kp.get("kp_lv1")]
-            text = re.sub(r"\s+", "", " ".join(str(value or "") for value in fields)).lower()
-            if not text:
-                continue
-            normalized_fields = [
-                re.sub(r"\s+", "", str(value or "")).lower()
-                for value in fields
-                if str(value or "").strip()
-            ]
+        for kp, text, normalized_fields, terms in self._kp_search_entries():
             exact = 1.0 if compact in text else 0.0
             # A model query commonly contains several entities plus qualifiers,
             # e.g. “四君子汤……理中丸……核心区别”. Resolve every named KP instead

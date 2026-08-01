@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 import asyncio
@@ -1378,9 +1378,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                                    title: str = Form(""), subject: str = Form(""),
                                    exam_type: str = Form("")) -> dict:
         try:
-            return await container.user_syllabus_service.import_file(
+            return await asyncio.shield(container.user_syllabus_service.import_file(
                 syllabus_owner(request), file.filename or "syllabus", await file.read(),
-                title=title, subject=subject, exam_type=exam_type)
+                title=title, subject=subject, exam_type=exam_type))
         except UserSyllabusError as exc:
             raise_syllabus_error(exc)
 

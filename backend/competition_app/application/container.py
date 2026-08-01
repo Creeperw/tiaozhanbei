@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import json
@@ -256,13 +256,30 @@ class ApplicationContainer:
             question_retriever = StubQuestionRetriever()
             textbook_retriever = None
             knowledge_backend = None
+        from competition_app.tools.syllabus_matching import SyllabusVectorMatcher
+
         user_syllabus_service = UserSyllabusService(
             settings.runtime_root,
             chat_base_url=settings.chat_base_url,
             chat_model=settings.chat_model,
             chat_api_key=chat_api_key,
             timeout_seconds=settings.llm_timeout_seconds,
+            mineru_token=settings.mineru_token,
+            mineru_pipeline_root=(
+                settings.knowledge_handoff_root
+                / "知识库管理组件"
+                / "knowledge_upload_pipeline"
+            ),
             knowledge_resolver=(knowledge_backend.map if knowledge_backend is not None else repository),
+            vector_matcher=(
+                SyllabusVectorMatcher(
+                    embedding_model,
+                    embedding_model_name=settings.embedding_model,
+                    vector_store_root=settings.question_vector_store_root,
+                )
+                if embedding_model is not None
+                else None
+            ),
         )
         backend_handoff_runtime = (
             load_backend_handoff(settings) if include_backend_handoff else None

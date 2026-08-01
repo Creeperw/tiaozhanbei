@@ -57,7 +57,7 @@ export default function UserSyllabusPage() {
       if (!response.ok) throw new Error(responseError(response, payload, '考纲列表加载失败'));
       setItems(Array.isArray(payload.items) ? payload.items : []);
     } catch (loadError) {
-      setError(loadError.message || '考纲列表加载失败');
+      setError(loadError instanceof TypeError ? '网络连接失败，请确认后端服务已启动' : (loadError.message || '考纲列表加载失败'));
     } finally {
       setLoading(false);
     }
@@ -144,6 +144,27 @@ export default function UserSyllabusPage() {
     }
   };
 
+  const mappingsById = new Map(
+    (selected?.mappings || []).map((row) => [row.requirement_id, row])
+  );
+  const matchStats = (() => {
+    const sections = selected?.structured?.sections || [];
+    let total = 0;
+    let matched = 0;
+    let weak = 0;
+    let questions = 0;
+    for (const section of sections) {
+      for (const requirement of section.requirements || []) {
+        total += 1;
+        const mapping = mappingsById.get(requirement.requirement_id);
+        if (mapping?.match_status === 'matched') matched += 1;
+        if (mapping?.match_grade === 'weak') weak += 1;
+        questions += mapping?.question_count || 0;
+      }
+    }
+    return { total, matched, weak, questions };
+  })();
+
   return (
     <section className="question-workspace__section user-syllabus-page" aria-label="上传考纲">
       <header className="user-syllabus-page__header">
@@ -153,7 +174,7 @@ export default function UserSyllabusPage() {
           <p>上传文件后，系统会识别章节、考试要求和重点知识，并用于后续练题与讲解。</p>
         </div>
         <Button className="user-syllabus-page__refresh" variant="secondary" onClick={load} disabled={loading}>
-          <RefreshCw aria-hidden="true" size={16} />刷新记录
+          <RefreshCw aria-hidden="true" size={18} />刷新记录
         </Button>
       </header>
 
@@ -215,17 +236,17 @@ export default function UserSyllabusPage() {
 
         <div className="user-syllabus-page__action-row">
           <div>
-            <strong>由 kimi-k2.6 自动结构化</strong>
+            <strong>确认上传后将由多智能体自动完成结构化处理</strong>
             <span>匹配不到的公共知识点会保留为“未匹配”，不会阻断考纲使用。</span>
           </div>
           <Button className="user-syllabus-page__submit" variant="primary" aria-label="上传考纲" loading={uploading} disabled={!file} onClick={upload}>
-            <UploadCloud aria-hidden="true" size={18} />上传并开始解析
+            <UploadCloud aria-hidden="true" size={18} />上传并解析
           </Button>
         </div>
 
         {(error || notice) && (
           <div className="user-syllabus-page__messages">
-            {error && <InlineError message={error} onRetry={error.includes('服务未加载') ? load : undefined} />}
+            {error && <InlineError message={error} onRetry={(error.includes('服务未加载') || error.includes('网络连接失败')) ? load : undefined} />}
             {notice && <p role="status" className="user-syllabus-page__success"><CheckCircle2 aria-hidden="true" size={18} />{notice}</p>}
           </div>
         )}
@@ -265,23 +286,88 @@ export default function UserSyllabusPage() {
         {selected?.structured && (
           <section className="user-syllabus-page__detail" aria-label="考纲结构">
             <div className="user-syllabus-page__detail-heading">
-              <span>结构化结果</span>
-              <h4>{selected.structured.title}</h4>
+              <div className="user-syllabus-page__detail-title">
+                <span>结构化结果</span>
+                <h4>{selected.structured.title}</h4>
+              </div>
+              {matchStats.total > 0 && (
+                <div className="user-syllabus-page__match-summary" role="status">
+                  <span className="user-syllabus-page__match-chip is-matched">{matchStats.matched}/{matchStats.total} 条已匹配</span>
+                  {matchStats.weak > 0 && <span className="user-syllabus-page__match-chip is-weak">{matchStats.weak} 条弱匹配</span>}
+                  <span className="user-syllabus-page__match-chip">{matchStats.questions} 道相关题</span>
+                </div>
+              )}
             </div>
             <div className="user-syllabus-page__sections">
-              {selected.structured.sections?.map((section) => (
-                <article key={section.section_id}>
-                  <strong>{section.title}</strong>
-                  <ul>
-                    {section.requirements?.map((requirement) => (
-                      <li key={requirement.requirement_id}>
-                        <span>{requirement.title}</span>
-                        <small>{requirement.mastery_level} · 第{requirement.source_pages?.join('、') || '?'}页</small>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
+              {selected.structured.sections?.map((section, sectionIndex) => {
+                const sectionMatched = (section.requirements || []).filter(
+                  (requirement) => mappingsById.get(requirement.requirement_id)?.match_status === 'matched'
+                ).length;
+                return (
+                  <details key={section.section_id} className="user-syllabus-page__section" open={sectionIndex < 2}>
+                    <summary>
+                      <span className="user-syllabus-page__chevron" aria-hidden="true">▸</span>
+                      <strong>{section.title}</strong>
+                      <small>{section.requirements?.length || 0} 条</small>
+                      {section.requirements?.length > 0 && (
+                        <span className={sectionMatched === section.requirements.length ? 'user-syllabus-page__section-match is-all' : 'user-syllabus-page__section-match'}>
+                          {sectionMatched}/{section.requirements.length}
+                        </span>
+                      )}
+                    </summary>
+                    <ul className="user-syllabus-page__requirement-list">
+                      {section.requirements?.map((requirement) => {
+                        const mapping = mappingsById.get(requirement.requirement_id) || {};
+                        const matched = mapping.match_status === 'matched';
+                        const grade = mapping.match_grade || (matched ? 'medium' : 'unmatched');
+                        const gradeLabel = { strong: '强匹配', medium: '已匹配', weak: '弱匹配', unmatched: '未匹配' }[grade] || '未匹配';
+                        const gradeClass = { strong: 'is-strong', medium: 'is-matched', weak: 'is-weak', unmatched: '' }[grade] || '';
+                        return (
+                          <li key={requirement.requirement_id} className="user-syllabus-page__requirement">
+                            <span className={'user-syllabus-page__req-dot' + (matched ? ' is-matched' : grade === 'weak' ? ' is-weak' : '')} aria-hidden="true" />
+                            <div className="user-syllabus-page__req-copy">
+                              <strong>{requirement.title}</strong>
+                              <div className="user-syllabus-page__req-meta">
+                                {requirement.mastery_level && requirement.mastery_level !== '未注明' && (
+                                  <span className="user-syllabus-page__req-badge">{requirement.mastery_level}</span>
+                                )}
+                                <span className={'user-syllabus-page__req-badge' + (gradeClass ? ' ' + gradeClass : '')}>
+                                  {gradeLabel}{matched && mapping.confidence ? ` ${Math.round(mapping.confidence * 100)}%` : ''}
+                                </span>
+                                {mapping.kp_name && <span className="user-syllabus-page__req-badge is-kp">{mapping.kp_name}</span>}
+                                {mapping.question_count > 0 && (
+                                  <span className="user-syllabus-page__req-badge is-question">{mapping.question_count} 道相关题</span>
+                                )}
+                              </div>
+                              {(mapping.textbook_evidence?.length > 0 || mapping.question_evidence?.length > 0) && (
+                                <details className="user-syllabus-page__evidence">
+                                  <summary>查看匹配证据</summary>
+                                  <div className="user-syllabus-page__evidence-body">
+                                    {(mapping.textbook_evidence || []).map((hit, hitIndex) => (
+                                      <div key={hitIndex} className="user-syllabus-page__evidence-item is-textbook">
+                                        <strong>{hit.book}{hit.heading ? ' · ' + hit.heading : ''}</strong>
+                                        <p>{hit.snippet}</p>
+                                        <small>相似度 {Math.round(hit.score * 100)}%</small>
+                                      </div>
+                                    ))}
+                                    {(mapping.question_evidence || []).map((hit, hitIndex) => (
+                                      <div key={hitIndex} className="user-syllabus-page__evidence-item is-question">
+                                        <strong>{hit.source}{hit.type ? ' · ' + hit.type : ''}</strong>
+                                        <p>{hit.stem}</p>
+                                        <small>相似度 {Math.round(hit.score * 100)}%</small>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </details>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </details>
+                );
+              })}
             </div>
           </section>
         )}
