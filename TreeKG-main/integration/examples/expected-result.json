@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "job_id": "KG_JOB_DEMO_001",
+  "graph_id": "KG_<stable-hash>",
+  "user_id": "demo-user",
+  "book_id": "UTB_demo_tcm",
+  "owner_scope": "user",
+  "status": "ready",
+  "counts": {
+    "chunks": 4,
+    "nodes": 1,
+    "edges": 0
+  },
+  "artifacts": {
+    "final_kg": "artifacts/final_kg.json",
+    "nodes": "artifacts/nodes.jsonl",
+    "edges": "artifacts/edges.jsonl",
+    "viewer_root": "viewer",
+    "viewer_meta": "viewer/meta.json"
+  },
+  "error": null
+}

@@ -1,0 +1,22 @@
+2026-07-30 16:11:51,641 [INFO] dedup:140 - Dedup started. entities_aggr=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\aggr_entities.json, entities_conv=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\conv_entities.json, selected=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\aggr_entities.json, embeddings=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\node_embeddings.pkl, output=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\dedup_result.json
+2026-07-30 16:11:51,642 [INFO] dedup:144 - 📘 [1/5] 加载实体与嵌入文件...
+2026-07-30 16:11:52,297 [INFO] root:64 - 载入实体 5609 个：aggr_entities.json
+2026-07-30 16:11:52,451 [INFO] root:73 - 载入嵌入 5609 x 768：node_embeddings.pkl
+2026-07-30 16:11:52,476 [INFO] dedup:157 - ✅ 对齐后参与去重的实体数：5609
+2026-07-30 16:11:52,477 [INFO] dedup:160 - 📘 [2/5] 开始近邻检索（FAISS/Sklearn）...
+2026-07-30 16:11:58,777 [INFO] dedup:185 - 📘 [3/5] 候选对过滤（距离阈值 + 角色 + 名称Jaccard + 互近邻 + 排名/配额）...
+2026-07-30 16:11:59,013 [INFO] dedup:232 - 📌 候选对（通过初筛）：577 / 原始对数：30978
+2026-07-30 16:11:59,013 [INFO] dedup:233 - [诊断] 过滤统计: 距离=6 角色=10538 名称Jaccard=19784 互近邻=73 配额=0
+2026-07-30 16:11:59,018 [INFO] dedup:237 - [诊断] 初筛距离分位数 p5..p95: [0.1025 0.1114 0.1306 0.1541 0.1714 0.185  0.1935]
+2026-07-30 16:11:59,018 [INFO] dedup:260 - 📘 [3.5] 跳过快速通道；进入 LLM 的对数：577
+2026-07-30 16:11:59,018 [INFO] dedup:263 - 📘 [4/5] LLM 并行判定（并发=10；按距离升序）...
+2026-07-30 16:13:10,885 [INFO] dedup:295 - 📘 [5/5] 构建等价类、合并并写出结果...
+2026-07-30 16:13:13,178 [INFO] dedup:420 - 
+—— 去重任务摘要 ——
+2026-07-30 16:13:13,178 [INFO] dedup:421 - 候选对原始数量：30978
+2026-07-30 16:13:13,179 [INFO] dedup:422 - 进入 LLM 判定的数量：577（已并行处理）
+2026-07-30 16:13:13,179 [INFO] dedup:423 - 成功合并的实体对：204
+2026-07-30 16:13:13,179 [INFO] dedup:424 - 实体数量变化：5609 -> 5405
+2026-07-30 16:13:13,179 [INFO] dedup:425 - 总耗时：79.59 秒
+2026-07-30 16:13:13,180 [INFO] dedup:426 - 结果文件：D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\dedup_result.json
+2026-07-30 16:13:13,180 [INFO] dedup:427 - Dedup log: D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\logs\dedup_20260730_161151.log

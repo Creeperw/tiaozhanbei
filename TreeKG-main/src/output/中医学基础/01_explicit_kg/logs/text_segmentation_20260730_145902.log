@@ -1,0 +1,13 @@
+2026-07-30 14:59:02,371 [INFO] text_segmentation:575 - Start parsing. format=md, input=D:\tree-KG\TreeKG-main\src\ExplicitKG\output\中医学基础.md
+2026-07-30 14:59:02,382 [INFO] text_segmentation:586 - Parsed TOC roots=11, warnings=7
+2026-07-30 14:59:02,397 [INFO] text_segmentation:593 - ✅ 完成文本分割：D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\toc_structure.json
+2026-07-30 14:59:02,397 [INFO] text_segmentation:595 - 首章：绪论  绪论
+2026-07-30 14:59:02,398 [WARNING] text_segmentation:598 - 共有 7 条格式告警（非致命）
+2026-07-30 14:59:02,398 [WARNING] text_segmentation:600 -   - [无法分类] 行4072: （1）便次异常
+2026-07-30 14:59:02,399 [WARNING] text_segmentation:600 -   - [无法分类] 行4094: （2）便质异常
+2026-07-30 14:59:02,399 [WARNING] text_segmentation:600 -   - [无法分类] 行4106: （3）排便感异常
+2026-07-30 14:59:02,399 [WARNING] text_segmentation:600 -   - [无法分类] 行4120: （1）尿量异常
+2026-07-30 14:59:02,399 [WARNING] text_segmentation:600 -   - [无法分类] 行4126: （2）尿次异常
+2026-07-30 14:59:02,399 [WARNING] text_segmentation:600 -   - [无法分类] 行4132: （3）排尿感异常
+2026-07-30 14:59:02,399 [WARNING] text_segmentation:600 -   - [无法分类] 行4733: 续表
+2026-07-30 14:59:02,399 [INFO] text_segmentation:603 - Text segmentation log: D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\logs\text_segmentation_20260730_145902.log

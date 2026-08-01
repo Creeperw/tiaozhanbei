@@ -1,0 +1,14 @@
+2026-07-30 19:00:32,454 [INFO] hidden_main:83 - HiddenKG pipeline started. cwd=D:\tree-KG\TreeKG-main\src, python=C:\Users\lizhe\.conda\envs\tcm\python.exe
+2026-07-30 19:00:32,455 [INFO] hidden_main:32 - Starting script: HiddenKG/Conv.py
+2026-07-30 19:24:35,108 [INFO] hidden_main:64 - Finished script: HiddenKG/Conv.py
+2026-07-30 19:24:35,110 [INFO] hidden_main:32 - Starting script: HiddenKG/Aggr.py
+2026-07-30 19:32:43,698 [INFO] hidden_main:64 - Finished script: HiddenKG/Aggr.py
+2026-07-30 19:32:43,699 [INFO] hidden_main:32 - Starting script: HiddenKG/Embedding.py
+2026-07-30 19:39:12,785 [INFO] hidden_main:64 - Finished script: HiddenKG/Embedding.py
+2026-07-30 19:39:12,787 [INFO] hidden_main:32 - Starting script: HiddenKG/Dedup.py
+2026-07-30 19:40:14,819 [INFO] hidden_main:64 - Finished script: HiddenKG/Dedup.py
+2026-07-30 19:40:14,820 [INFO] hidden_main:32 - Starting script: HiddenKG/Pred.py
+2026-07-30 19:44:07,950 [INFO] hidden_main:64 - Finished script: HiddenKG/Pred.py
+2026-07-30 19:44:07,952 [INFO] hidden_main:32 - Starting script: HiddenKG/FinalKG.py
+2026-07-30 19:44:08,619 [INFO] hidden_main:64 - Finished script: HiddenKG/FinalKG.py
+2026-07-30 19:44:08,620 [INFO] hidden_main:87 - HiddenKG pipeline finished. log=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\logs\hidden_main_20260730_190032.log

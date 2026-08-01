@@ -1,0 +1,13 @@
+2026-07-30 15:18:42,369 [INFO] hidden_main:82 - HiddenKG pipeline started. cwd=D:\tree-KG\TreeKG-main\src, python=C:\Users\lizhe\.conda\envs\tcm\python.exe
+2026-07-30 15:18:42,370 [INFO] hidden_main:31 - Starting script: HiddenKG/Conv.py
+2026-07-30 15:48:15,335 [INFO] hidden_main:63 - Finished script: HiddenKG/Conv.py
+2026-07-30 15:48:15,336 [INFO] hidden_main:31 - Starting script: HiddenKG/Aggr.py
+2026-07-30 16:02:28,858 [INFO] hidden_main:63 - Finished script: HiddenKG/Aggr.py
+2026-07-30 16:02:28,862 [INFO] hidden_main:31 - Starting script: HiddenKG/Embedding.py
+2026-07-30 16:11:48,886 [INFO] hidden_main:63 - Finished script: HiddenKG/Embedding.py
+2026-07-30 16:11:48,887 [INFO] hidden_main:31 - Starting script: HiddenKG/Dedup.py
+2026-07-30 16:13:13,362 [INFO] hidden_main:63 - Finished script: HiddenKG/Dedup.py
+2026-07-30 16:13:13,363 [INFO] hidden_main:31 - Starting script: HiddenKG/Pred.py
+2026-07-30 16:18:39,280 [INFO] hidden_main:63 - Finished script: HiddenKG/Pred.py
+2026-07-30 16:18:39,282 [INFO] hidden_main:31 - Starting script: HiddenKG/FinalKG.py
+2026-07-30 16:18:39,439 [ERROR] hidden_main:59 - Script failed: HiddenKG/FinalKG.py, returncode=1

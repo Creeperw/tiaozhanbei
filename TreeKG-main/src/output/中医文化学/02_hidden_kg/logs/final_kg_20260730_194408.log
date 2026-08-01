@@ -1,0 +1,16 @@
+2026-07-30 19:44:08,187 [INFO] final_kg:73 - FinalKG assemble started. dedup=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\dedup_result.json, pred=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\pred_result.json, toc=D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_graph.json, output=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\final_kg.json
+2026-07-30 19:44:08,188 [DEBUG] final_kg:32 - Reading json: D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\dedup_result.json
+2026-07-30 19:44:08,445 [DEBUG] final_kg:32 - Reading json: D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_graph.json
+2026-07-30 19:44:08,456 [DEBUG] final_kg:32 - Reading json: D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\pred_result.json
+2026-07-30 19:44:08,467 [INFO] final_kg:88 - Loaded inputs. entities=4028, toc_nodes=197, toc_edges=188, pred_edges=656
+2026-07-30 19:44:08,586 [INFO] final_kg:193 - FinalKG saved. nodes=4225, edges=2698, output=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\final_kg.json
+2026-07-30 19:44:08,590 [INFO] final_kg:205 - Edge type count. type=toc->toc, count=136
+2026-07-30 19:44:08,590 [INFO] final_kg:205 - Edge type count. type=toc->core, count=523
+2026-07-30 19:44:08,590 [INFO] final_kg:205 - Edge type count. type=related, count=1230
+2026-07-30 19:44:08,590 [INFO] final_kg:205 - Edge type count. type=example-of, count=400
+2026-07-30 19:44:08,590 [INFO] final_kg:205 - Edge type count. type=contrasts-with, count=34
+2026-07-30 19:44:08,590 [INFO] final_kg:205 - Edge type count. type=part-of, count=260
+2026-07-30 19:44:08,590 [INFO] final_kg:205 - Edge type count. type=applies-to, count=71
+2026-07-30 19:44:08,590 [INFO] final_kg:205 - Edge type count. type=prerequisite, count=3
+2026-07-30 19:44:08,591 [INFO] final_kg:205 - Edge type count. type=synonym, count=41
+2026-07-30 19:44:08,591 [INFO] final_kg:206 - FinalKG log: D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\logs\final_kg_20260730_194408.log

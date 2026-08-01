@@ -1,0 +1,9 @@
+2026-07-30 16:18:39,420 [INFO] final_kg:74 - FinalKG assemble started. dedup=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\04_dedup_result.json, pred=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\05_pred_result.json, toc=D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\04_toc_graph.json, output=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\06_final_kg.json
+2026-07-30 16:18:39,422 [ERROR] final_kg:78 - Missing dedup file: D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\04_dedup_result.json
+2026-07-30 16:18:39,422 [ERROR] final_kg:213 - FinalKG assemble failed.
+Traceback (most recent call last):
+  File "D:\tree-KG\TreeKG-main\src\HiddenKG\FinalKG.py", line 211, in <module>
+    assemble()
+  File "D:\tree-KG\TreeKG-main\src\HiddenKG\FinalKG.py", line 79, in assemble
+    raise FileNotFoundError(f"missing {DEDUP_FILE}")
+FileNotFoundError: missing D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\04_dedup_result.json

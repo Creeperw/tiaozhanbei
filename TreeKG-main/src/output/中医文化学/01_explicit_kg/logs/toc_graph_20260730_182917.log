@@ -1,0 +1,4 @@
+2026-07-30 18:29:17,352 [INFO] toc_graph:15 - TOC graph started. input=D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_with_entities_and_relations.json, output=D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_graph.json
+2026-07-30 18:29:17,396 [INFO] toc_graph:19 - Loaded TOC roots=9
+2026-07-30 18:29:17,403 [INFO] toc_graph:54 - TOC graph saved. nodes=197, edges=188, output=D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_graph.json
+2026-07-30 18:29:17,403 [INFO] toc_graph:55 - TOC graph log: D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\logs\toc_graph_20260730_182917.log

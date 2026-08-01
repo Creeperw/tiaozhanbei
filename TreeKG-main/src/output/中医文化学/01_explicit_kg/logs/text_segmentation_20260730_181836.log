@@ -1,0 +1,17 @@
+2026-07-30 18:18:36,955 [INFO] text_segmentation:576 - Start parsing. format=md, input=D:\tree-KG\TreeKG-main\src\ExplicitKG\output\中医文化学.md
+2026-07-30 18:18:36,966 [INFO] text_segmentation:587 - Parsed TOC roots=9, warnings=14
+2026-07-30 18:18:36,977 [INFO] text_segmentation:594 - ✅ 完成文本分割：D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\toc_structure.json
+2026-07-30 18:18:36,977 [INFO] text_segmentation:596 - 首章：绪论  第一章 绪论
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:599 - 共有 14 条格式告警（非致命）
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行160: 【复习思考题】
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行688: 【复习思考题】
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行1094: 图3-4 六气图
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行1096: 图3-5 九宫八风图
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行1575: 【复习思考题】
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行1603: 图3-7 唐代青瓷脉枕（绍兴博物馆收藏）
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行1625: 图3-14 艾卷
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行1665: 图3-21 北京同仁堂
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行1669: 图3-22 胡庆余堂
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:601 -   - [无法分类] 行2124: 【复习思考题】
+2026-07-30 18:18:36,978 [WARNING] text_segmentation:603 -   ...（其余已省略；完整内容见文件：toc_warnings.log）
+2026-07-30 18:18:36,978 [INFO] text_segmentation:604 - Text segmentation log: D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\logs\text_segmentation_20260730_181836.log

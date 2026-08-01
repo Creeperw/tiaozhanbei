@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <title>TreeKG 知识图谱</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    /* ── 工具栏 ── */
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    #search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 360px;
+    }
+
+    #search {
+      width: 100%;
+      height: 34px;
+      padding: 0 36px 0 12px;
+      border-radius: 8px;
+      border: 1px solid #d0d0d0;
+      background: #f5f5f5;
+      color: #333;
+      font-size: 14px;
+      outline: none;
+    }
+
+    #search:focus {
+      border-color: #3C7BE6;
+      background: #fff;
+    }
+
+    #search-icon {
+      position: absolute;
+      right: 10px;
+      top: 8px;
+      color: #999;
+      pointer-events: none;
+    }
+
+    #search-dropdown {
+      display: none;
+      position: absolute;
+      top: 40px;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      max-height: 320px;
+      overflow-y: auto;
+      z-index: 40;
+    }
+
+    #search-dropdown .item {
+      padding: 8px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #search-dropdown .item:hover {
+      background: #f0f4ff;
+    }
+
+    #search-dropdown .item .name {
+      color: #333;
+    }
+
+    #search-dropdown .item .type {
+      color: #999;
+      font-size: 11px;
+    }
+
+    #search-dropdown .no-result {
+      padding: 12px 14px;
+      color: #999;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    #textbook-select {
+      height: 34px;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid #d0d0d0;
+      background: #f5f5f5;
+      font-size: 13px;
+      color: #333;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #stats {
+      color: #999;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    /* ── 图例与操作提示 ── */
+    #legend {
+      position: fixed;
+      right: 18px;
+      top: 62px;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 10px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid #e3e3e3;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      color: #555;
+      font-size: 12px;
+    }
+
+    #legend .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    #legend .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    #legend .toc {
+      background: #3C7BE6;
+    }
+
+    #legend .core {
+      background: #e6a817;
+    }
+
+    #legend .noncore {
+      background: #2BB673;
+    }
+
+    #legend .line {
+      width: 19px;
+      height: 0;
+      border-top: 2px solid #3C7BE6;
+      display: inline-block;
+    }
+
+    #legend .semantic-line {
+      width: 19px;
+      height: 0;
+      border-top: 2px solid #999;
+      display: inline-block;
+    }
+
+    #help {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 25;
+      padding: 8px 11px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid #e3e3e3;
+      border-radius: 8px;
+      color: #777;
+      font-size: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    /* ── 左侧目录 ── */
+    #sidebar {
+      position: fixed;
+      top: 48px;
+      left: 0;
+      bottom: 0;
+      width: 260px;
+      background: #fafafa;
+      border-right: 1px solid #e8e8e8;
+      overflow-y: auto;
+      z-index: 20;
+      padding: 8px 0;
+    }
+
+    #sidebar .tree-item {
+      padding: 5px 12px 5px 8px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #555;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+
+    #sidebar .tree-item:hover {
+      background: #e8ecf4;
+      color: #333;
+    }
+
+    #sidebar .tree-item.active {
+      background: #dce4f8;
+      color: #1a3a6e;
+      font-weight: 600;
+    }
+
+    #sidebar .tree-item .arrow {
+      width: 16px;
+      text-align: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      color: #aaa;
+      transition: transform 0.15s;
+    }
+
+    #sidebar .tree-item .arrow.open {
+      transform: rotate(90deg);
+    }
+
+    #sidebar .tree-item .label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #sidebar .tree-item .badge {
+      margin-left: auto;
+      font-size: 10px;
+      background: #e0e0e0;
+      color: #888;
+      padding: 1px 6px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    #sidebar .loading {
+      padding: 16px;
+      text-align: center;
+      color: #aaa;
+      font-size: 13px;
+    }
+
+    /* ── 主画布 ── */
+    #canvas-wrap {
+      position: fixed;
+      top: 48px;
+      left: 260px;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+    }
+
+    #mynetwork {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── 提示 ── */
+    #toast {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      background: rgba(0, 0, 0, 0.78);
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    #loading-indicator {
+      display: none;
+      position: fixed;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      background: rgba(0, 0, 0, 0.72);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 工具栏 -->
+  <div id="toolbar">
+    <select id="textbook-select"></select>
+    <div id="search-wrap">
+      <input id="search" type="text" placeholder="搜索实体..." autocomplete="off" />
+      <span id="search-icon">🔍</span>
+      <div id="search-dropdown"></div>
+    </div>
+    <span id="stats">就绪</span>
+  </div>
+
+  <!-- 左侧目录树 -->
+  <div id="sidebar">
+    <div class="loading">加载中...</div>
+  </div>
+
+  <!-- 主画布 -->
+  <div id="canvas-wrap">
+    <div id="mynetwork"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+  <div id="loading-indicator">加载中...</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
+  <script>
+    // ===================== 全局状态 =====================
+    var API = '';                          // 当前教材 API 前缀
+    var network = null;                    // vis-network 实例
+    var allData = { nodes: new vis.DataSet([]), edges: new vis.DataSet([]) };
+    var loadedChunks = {};                 // 已加载的 chunk 缓存 { tocName: {nodes, edges} }
+    var tocNameToId = {};                  // TOC name → node index (展开用)
+    var entityCache = {};                  // 已展开的实体 { entityName: true }
+
+    var TOC_COLOR = '#3C7BE6';
+    var CORE_COLOR = '#e6a817';
+    var NONCORE_COLOR = '#2BB673';
+
+    // ===================== 工具函数 =====================
+    function $(id) { return document.getElementById(id); }
+
+    function showLoading() { $('loading-indicator').style.display = 'block'; }
+    function hideLoading() { $('loading-indicator').style.display = 'none'; }
+
+    function toast(msg) {
+      var t = $('toast');
+      t.textContent = msg; t.style.display = 'block';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function () { t.style.display = 'none'; }, 2000);
+    }
+
+    function nodeStyle(n) {
+      var level = n.level || 'noncore';
+      if (level === 'toc') return { color: TOC_COLOR, size: 22, group: 'toc', shape: 'dot' };
+      if (level === 'core') return { color: CORE_COLOR, size: 18, group: 'core', shape: 'dot' };
+      return { color: NONCORE_COLOR, size: 12, group: 'noncore', shape: 'dot' };
+    }
+
+    function makeNode(n) {
+      var s = nodeStyle(n);
+      return {
+        id: n.name, label: n.name,
+        title: (n.description || '').substring(0, 300),
+        color: s.color, size: s.size, group: s.group, shape: s.shape
+      };
+    }
+
+    function makeEdge(e, idx) {
+      return {
+        id: (e.source + '|' + e.target + '|' + (e.type || '') + '|' + idx),
+        from: e.source, to: e.target,
+        title: (e.type || '') + (e.description ? ' | ' + e.description : ''),
+        length: (e.type === 'toc->toc' ? 65 : e.type === 'toc->core' ? 60 : 40),
+        arrows: (e.type === 'toc->core' || e.type === 'toc->toc' ? 'to' : ''),
+        color: { color: '#aaa', opacity: 0.35 },
+        width: 0.5,
+        font: { size: 9, align: 'middle', color: '#888' }
+      };
+    }
+
+    // ===================== vis-network 初始化 =====================
+    var container = $('mynetwork');
+    var options = {
+      interaction: {
+        hover: true, tooltipDelay: 80,
+        zoomView: true, dragView: true,
+        navigationButtons: true, keyboard: true,
+        multiselect: true
+      },
+      physics: {
+        enabled: true,
+        stabilization: { iterations: 150, updateInterval: 15 },
+        barnesHut: {
+          gravitationalConstant: -25000, centralGravity: 0.08,
+          springLength: 120, springConstant: 0.03, damping: 0.14
+        }
+      },
+      edges: {
+        smooth: true,
+        color: { color: '#aaa', opacity: 0.35 },
+        width: 0.5, selectionWidth: 1.5, hoverWidth: 1,
+        font: { size: 9, align: 'middle', color: '#888' }
+      },
+      nodes: {
+        font: { size: 12, color: '#333', strokeWidth: 1, strokeColor: '#fff' }
+      }
+    };
+    network = new vis.Network(container, allData, options);
+
+    // ===================== 数据加载 =====================
+    function updateStats() {
+      var ns = allData.nodes.length;
+      var es = allData.edges.length;
+      var chunks = Object.keys(loadedChunks).length;
+      $('stats').textContent = '节点 ' + ns + ' | 边 ' + es + ' | 已加载 ' + chunks + ' 章';
+    }
+
+    // 加载教材列表
+    function loadTextbooks() {
+      fetch('/api/textbooks')
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          var sel = $('textbook-select');
+          sel.innerHTML = '';
+          list.forEach(function (tb) {
+            var opt = document.createElement('option');
+            opt.value = tb.id;
+            opt.textContent = tb.name + ' (' + (tb.meta.totalNodes || 0) + ' 节点)';
+            sel.appendChild(opt);
+          });
+          if (list.length > 0) {
+            API = '/api/' + encodeURIComponent(list[0].id);
+            loadTOC();
+            sel.onchange = function () {
+              API = '/api/' + encodeURIComponent(this.value);
+              resetAll();
+              loadTOC();
+            };
+          }
+        })
+        .catch(function (e) {
+          console.error(e);
+          $('sidebar').innerHTML = '<div class="loading" style="color:#e04040">❌ 无法连接服务器</div>';
+        });
+    }
+
+    // 重置画布
+    function resetAll() {
+      allData.nodes.clear();
+      allData.edges.clear();
+      loadedChunks = {};
+      tocNameToId = {};
+      entityCache = {};
+      $('sidebar').innerHTML = '<div class="loading">加载中...</div>';
+    }
+
+    // 加载 TOC 树
+    function loadTOC() {
+      $('sidebar').innerHTML = '<div class="loading">加载中...</div>';
+      fetch(API + '/toc')
+        .then(function (r) { return r.json(); })
+        .then(function (tree) {
+          renderSidebar(tree);
+          renderTOCGraph(tree);
+        })
+        .catch(function (e) {
+          console.error(e);
+          toast('加载 TOC 失败');
+        });
+    }
+
+    // ===================== 目录树渲染 =====================
+    function renderSidebar(tree) {
+      var html = '';
+      function walk(nodes, depth) {
+        nodes.forEach(function (n) {
+          var hasChildren = n.children && n.children.length > 0;
+          var ec = n.entityCount || 0;
+          var indent = depth * 18;
+          html += '<div class="tree-item" data-name="' + escAttr(n.name) + '" style="padding-left:' + (8 + indent) + 'px" onclick="focusNode(\'' + escJS(n.name) + '\')">';
+          html += '<span class="arrow' + (hasChildren ? ' open' : '') + '">' + (hasChildren ? '▶' : '') + '</span>';
+          html += '<span class="label">' + escHtml(n.name) + '</span>';
+          if (ec > 0) html += '<span class="badge">' + ec + '</span>';
+          html += '</div>';
+          if (hasChildren) walk(n.children, depth + 1);
+        });
+      }
+      walk(tree, 0);
+      $('sidebar').innerHTML = html;
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function escAttr(s) {
+      return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function escJS(s) {
+      return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    }
+
+    // 点击目录项 → 聚焦节点
+    function focusNode(name) {
+      // 高亮当前项
+      var items = document.querySelectorAll('#sidebar .tree-item');
+      items.forEach(function (el) { el.classList.remove('active'); });
+      var target = document.querySelector('#sidebar .tree-item[data-name="' + escAttr(name) + '"]');
+      if (target) target.classList.add('active');
+
+      // 聚焦画布
+      var nodeExists = allData.nodes.get(name);
+      if (nodeExists) {
+        network.selectNodes([name], false);
+        network.focus(name, { scale: 1.4, animation: true, offset: { x: 0, y: 0 } });
+      }
+    }
+
+    // ===================== TOC 图渲染 =====================
+    function renderTOCGraph(tree) {
+      var nodes = [];
+      var edges = [];
+      var idx = 0;
+
+      function walk(treeNodes, parentName) {
+        treeNodes.forEach(function (n) {
+          nodes.push(makeNode({
+            name: n.name, type: 'toc', level: 'toc',
+            description: n.description || n.name
+          }));
+          tocNameToId[n.name] = n.name;
+          if (parentName) {
+            edges.push(makeEdge({ source: parentName, target: n.name, type: 'toc->toc' }, idx++));
+          }
+          if (n.children && n.children.length > 0) {
+            walk(n.children, n.name);
+          }
+        });
+      }
+      walk(tree, null);
+
+      allData.nodes.clear();
+      allData.edges.clear();
+      allData.nodes.add(nodes);
+      allData.edges.add(edges);
+
+      updateStats();
+      network.fit({ animation: true });
+      toast('已加载 ' + nodes.length + ' 个章节节点');
+
+      // 设置自动展开：双击 TOC 节点加载章节实体
+      network.off('doubleClick');
+      network.on('doubleClick', function (params) {
+        if (params.nodes.length === 1) {
+          var nodeId = params.nodes[0];
+          if (loadedChunks[nodeId]) {
+            toast('章节已加载，展开中...');
+            return;
+          }
+          expandSection(nodeId);
+        }
+      });
+
+      // 右键展开实体
+      network.off('oncontext');
+      network.on('oncontext', function (params) {
+        if (params.nodes.length === 1) {
+          var nodeId = params.nodes[0];
+          var node = allData.nodes.get(nodeId);
+          if (node && node.group !== 'toc' && !entityCache[nodeId]) {
+            expandEntity(nodeId);
+          }
+        }
+      });
+    }
+
+    // ===================== 展开章节 =====================
+    function expandSection(tocName) {
+      showLoading();
+      var url = API + '/section/' + encodeURIComponent(tocName);
+      fetch(url)
+        .then(function (r) {
+          if (!r.ok) throw new Error('章节不存在或无数据');
+          return r.json();
+        })
+        .then(function (chunk) {
+          loadedChunks[tocName] = true;
+
+          var newNodes = [];
+          var newEdges = [];
+          var idx = Object.keys(allData.edges.get()).length;
+
+          (chunk.nodes || []).forEach(function (n) {
+            var existing = allData.nodes.get(n.name);
+            if (!existing) {
+              newNodes.push(makeNode(n));
+            }
+          });
+
+          (chunk.edges || []).forEach(function (e, i) {
+            var eid = e.source + '|' + e.target + '|' + (e.type || '') + '|' + (idx + i);
+            var existing = allData.edges.get(eid);
+            if (!existing) {
+              newEdges.push(makeEdge(e, idx + i));
+            }
+          });
+
+          if (newNodes.length > 0) allData.nodes.add(newNodes);
+          if (newEdges.length > 0) allData.edges.add(newEdges);
+
+          updateStats();
+          hideLoading();
+          toast('加载了 ' + newNodes.length + ' 个实体, ' + newEdges.length + ' 条边');
+
+          // 聚焦到该 TOC 节点
+          network.focus(tocName, { scale: 1.2, animation: true, offset: { x: 0, y: 0 } });
+        })
+        .catch(function (e) {
+          hideLoading();
+          toast('⚠ ' + e.message);
+        });
+    }
+
+    // ===================== 展开实体邻居 =====================
+    function expandEntity(entityName) {
+      entityCache[entityName] = true;
+      showLoading();
+      var url = API + '/expand/' + encodeURIComponent(entityName);
+      fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var newNodes = [];
+          var newEdges = [];
+          var idx = Object.keys(allData.edges.get()).length;
+
+          (data.nodes || []).forEach(function (n) {
+            var existing = allData.nodes.get(n.name);
+            if (!existing) newNodes.push(makeNode(n));
+          });
+
+          (data.edges || []).forEach(function (e, i) {
+            newEdges.push(makeEdge(e, idx + i));
+          });
+
+          if (newNodes.length > 0) allData.nodes.add(newNodes);
+          if (newEdges.length > 0) allData.edges.add(newEdges);
+
+          updateStats();
+          hideLoading();
+          toast('展开 ' + (newNodes.length) + ' 个关联实体');
+
+          if (newNodes.length > 0) {
+            network.focus(entityName, { scale: 1.3, animation: true, offset: { x: 0, y: 0 } });
+          }
+        })
+        .catch(function (e) {
+          entityCache[entityName] = false;
+          hideLoading();
+          toast('⚠ ' + e.message);
+        });
+    }
+
+    // ===================== 搜索 =====================
+    var searchInput = $('search');
+    var searchDropdown = $('search-dropdown');
+    var searchTimer = null;
+
+    searchInput.addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      var q = this.value.trim();
+      if (!q) {
+        searchDropdown.style.display = 'none';
+        return;
+      }
+      searchTimer = setTimeout(function () {
+        fetch(API + '/search?q=' + encodeURIComponent(q) + '&limit=15')
+          .then(function (r) { return r.json(); })
+          .then(function (results) {
+            if (results.length === 0) {
+              searchDropdown.innerHTML = '<div class="no-result">未找到匹配实体</div>';
+            } else {
+              searchDropdown.innerHTML = results.map(function (r) {
+                var levelBadge = r.level === 'core' ? '⭐' : '🔹';
+                return '<div class="item" onclick="searchSelect(\'' + escJS(r.name) + '\')">' +
+                  '<span class="name">' + levelBadge + ' ' + escHtml(r.name) + '</span>' +
+                  '<span class="type">' + escHtml(r.type) + '</span>' +
+                  '</div>';
+              }).join('');
+            }
+            searchDropdown.style.display = 'block';
+          });
+      }, 250);
+    });
+
+    searchInput.addEventListener('blur', function () {
+      setTimeout(function () { searchDropdown.style.display = 'none'; }, 200);
+    });
+
+    searchInput.addEventListener('focus', function () {
+      if (this.value.trim() && searchDropdown.children.length > 0) {
+        searchDropdown.style.display = 'block';
+      }
+    });
+
+    function searchSelect(name) {
+      searchInput.value = name;
+      searchDropdown.style.display = 'none';
+
+      // 检查节点是否已在画布上
+      var node = allData.nodes.get(name);
+      if (node) {
+        network.selectNodes([name], false);
+        network.focus(name, { scale: 1.5, animation: true, offset: { x: 0, y: 0 } });
+        return;
+      }
+
+      // 不在画布上 → 尝试展开（作为实体）
+      showLoading();
+      expandEntity(name);
+    }
+
+    // ===================== 快捷键 =====================
+    document.addEventListener('keydown', function (e) {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+      }
+      if (e.key === 'Escape') {
+        searchDropdown.style.display = 'none';
+        network.fit({ animation: true });
+      }
+      // R 键：重置视图
+      if (e.key === 'r' && !e.ctrlKey && document.activeElement !== searchInput) {
+        network.fit({ animation: true });
+      }
+    });
+
+    // ===================== 启动 =====================
+    loadTextbooks();
+    updateStats();
+  </script>
+</body>
+
+</html>
