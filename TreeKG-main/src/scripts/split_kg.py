@@ -47,17 +47,21 @@ def build_toc_tree(nodes: list, edges: list) -> dict:
     # 根节点 = TOC 中未被任何节点作为子节点引用的
     roots = [n for n in toc_nodes if n not in all_children]
 
+    seen = set()
     def build_subtree(name: str) -> dict:
+        if name in seen:  # 防止循环引用
+            return {"id": name, "name": name, "description": name, "children": []}
+        seen.add(name)
         node = toc_nodes.get(name, {"name": name, "type": "toc", "description": name})
         children = children_map.get(name, [])
         return {
             "id": name,
             "name": name,
             "description": node.get("description", name),
-            "children": [build_subtree(c) for c in children],
+            "children": [build_subtree(c) for c in children if c not in seen],
         }
 
-    tree = [build_subtree(r) for r in roots]
+    tree = [build_subtree(r) for r in roots if r not in seen]
 
     # 如果所有节点都是孤立的（没有 toc->toc 边），直接全部作为根
     if not tree:

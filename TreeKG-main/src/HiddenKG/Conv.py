@@ -272,7 +272,7 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
     if bool(C("DRY_RUN", False)):
         return ""
 
-    api_base = APIConfig.get("API_BASE", "")
+    api_base = re.sub(r'/messages$', '', (APIConfig.get("API_BASE", "") or "").rstrip("/"))
     if not api_base:
         logger.warning("API_BASE 为空，跳过 LLM 调用。")
         return ""
@@ -280,21 +280,19 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
     headers = {"Content-Type": "application/json"}
     api_key = APIConfig.get("API_KEY")
     if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
+        headers["x-api-key"] = api_key
+        headers["anthropic-version"] = "2023-06-01"
 
     payload = {
         "model": APIConfig.get("MODEL_NAME", ""),
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": float(C("TEMPERATURE", 0.2)),
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
         "max_tokens": int(C("MAX_TOKENS", 1000))
     }
 
     timeout = int(C("API_TIMEOUT", 120))
     retries = int(C("RETRIES", 3))
-    path = C("CHAT_COMPLETIONS_PATH", "/chat/completions")
+    path = C("CHAT_COMPLETIONS_PATH", "/messages")
     extra_sleep = float(C("EXTRA_THROTTLE_SEC", 0.0))
     backoff = float(C("RETRY_BACKOFF_BASE", 1.8))
 
@@ -312,8 +310,11 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
                 timeout=timeout
             )
             resp.raise_for_status()
-            text = resp.json()["choices"][0]["message"]["content"].strip()
-            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+            data = resp.json()
+            text = "".join(b.get("text", "") for b in data.get("content", []) if isinstance(b, dict) and b.get("type") == "text")
+            text = re.sub(r"<\|end\|>", "", text)
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+            text = text.strip()
             return text
         except Exception as e:
             last_err = e

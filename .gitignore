@@ -1,8 +1,10 @@
 # BERT 模型文件（太大）
 TreeKG-main/src/HiddenKG/model/
 
-# 生成的 HTML 可视化
-*.html
+# 生成的 HTML 可视化（output 目录下的）
+**/output/**/*.html
+# data 目录下的 HTML
+**/data/**/*.html
 
 # 大型中间处理文件（可重新生成）
 *dedup_result.json

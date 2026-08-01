@@ -105,7 +105,7 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
     if bool(_DCFG.get("DRY_RUN", False)):
         return '{"is_same": false, "reason": "dry_run_mode"}'
 
-    api_base = (_API.get("API_BASE") or "").strip()
+    api_base = re.sub(r'/messages$', '', (_API.get("API_BASE") or "").strip().rstrip("/"))
     if not api_base:
         print("[WARNING] API_BASE 为空，跳过 LLM 调用")
         return '{"is_same": false, "reason": "api_base_empty"}'
@@ -113,15 +113,13 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
     headers = {"Content-Type": "application/json"}
     api_key = (_API.get("API_KEY") or "").strip()
     if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
+        headers["x-api-key"] = api_key
+        headers["anthropic-version"] = "2023-06-01"
 
     payload = {
         "model": _API.get("MODEL_NAME", ""),
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "temperature": float(_DCFG.get("TEMPERATURE", 0.0)),
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
         "max_tokens": int(_DCFG.get("MAX_TOKENS", 128)),
     }
 
@@ -129,7 +127,7 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
     timeout = int(_DCFG.get("API_TIMEOUT", 120))
     throttle = float(_DCFG.get("EXTRA_THROTTLE_SEC", 0.0))
     backoff_base = float(_DCFG.get("RETRY_BACKOFF_BASE", 1.8))
-    path = _DCFG.get("CHAT_COMPLETIONS_PATH", "/chat/completions")
+    path = _DCFG.get("CHAT_COMPLETIONS_PATH", "/messages")
 
     last_err: Optional[Exception] = None
     for k in range(retries):
@@ -145,7 +143,13 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
                 timeout=timeout,
             )
             resp.raise_for_status()
-            text = resp.json()["choices"][0]["message"]["content"].strip()
+            data = resp.json()
+            # Anthropic 协议响应格式
+            text = "".join(
+                b.get("text", "") for b in data.get("content", [])
+                if isinstance(b, dict) and b.get("type") == "text"
+            )
+            text = re.sub(r"<\|end\|>", "", text)
             text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
             text = text.strip()
             return text

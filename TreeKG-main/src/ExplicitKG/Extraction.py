@@ -7,7 +7,6 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import yaml
-import openai
 from typing import Dict, List, Any, Optional
 from tqdm import tqdm
 from log_utils import setup_stage_logger
@@ -50,12 +49,8 @@ config = load_yaml(config_file)
 additional_config = load_additional_configs(config.get('include_files', []), base_dir=config_dir)
 config.update(additional_config)
 
-# ===== OpenAI 配置 =====
-openai.api_base = config['APIConfig']['API_BASE']
-openai.api_key = config['APIConfig']['API_KEY']
-MODEL_NAME = config['APIConfig']['MODEL_NAME']
-
-# ===== 速率限制（可选）=====
+# API 配置已迁移至 api_client.py
+# 速率限制（可选）
 _rate_lock = threading.Lock()
 _last_ts = 0.0
 _min_interval = (1.0 / config['ExtractionConfig']['RATE_LIMIT_QPS']) if config['ExtractionConfig']['RATE_LIMIT_QPS'] > 0 else 0.0
@@ -98,22 +93,12 @@ def safe_json_loads(content: str) -> Dict:
         return {}
 
 def _chat_once(prompt: str) -> str:
-    _rate_limit_block()  # QPS 控制（可关）
-    if config['ExtractionConfig']['EXTRA_THROTTLE_SEC'] > 0:  # 额外固定节流（可关）
+    """调用 LLM（Anthropic 协议）"""
+    _rate_limit_block()
+    if config['ExtractionConfig']['EXTRA_THROTTLE_SEC'] > 0:
         time.sleep(config['ExtractionConfig']['EXTRA_THROTTLE_SEC'])
-    logger.debug("Calling LLM for extraction. prompt_chars=%s, model=%s", len(prompt), MODEL_NAME)
-    resp = openai.ChatCompletion.create(
-        model=MODEL_NAME,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=config['ExtractionConfig']['TEMPERATURE'],
-        timeout=config['ExtractionConfig']['REQUEST_TIMEOUT'],
-    )
-    text = resp["choices"][0]["message"]["content"].strip()
-    # ✅ 去除 <think> ... </think> 的部分
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    cleaned = text.strip()
-    logger.debug("Extraction LLM response received. response_chars=%s", len(cleaned))
-    return cleaned
+    from api_client import chat as llm_chat
+    return llm_chat(prompt, max_tokens=4096)
 
 def chat_with_retry(prompt: str) -> str:
     last_err: Optional[Exception] = None

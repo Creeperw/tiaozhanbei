@@ -71,7 +71,7 @@ ENCODING = PRED.get("ENCODING", "utf-8")
 
 # LLM/会话配置
 SESSION = requests.Session()
-API_BASE = API.get("API_BASE", "")
+API_BASE = re.sub(r'/messages$', '', (API.get("API_BASE", "") or "").rstrip("/"))
 API_KEY = (API.get("API_KEY") or "").strip()
 MODEL_NAME = API.get("MODEL_NAME", "")
 
@@ -303,24 +303,22 @@ def llm_score_relation(
         v_name=v_ent.name, v_desc=get_entity_text(v_ent),
         cos_val=cos_val, aa_val=aa_val, ca_val=ca_val
     )
-    _dbg(f"[LLM] URL={API_BASE}{PRED.get('CHAT_COMPLETIONS_PATH','/chat/completions')} model={MODEL_NAME}")
+    _dbg(f"[LLM] URL={API_BASE}{PRED.get('CHAT_COMPLETIONS_PATH','/messages')} model={MODEL_NAME}")
 
     payload = {
         "model": MODEL_NAME,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": float(PRED.get("TEMPERATURE", 0.2)),
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
         "max_tokens": int(PRED.get("MAX_TOKENS", 256))
     }
     headers = {"Content-Type": "application/json"}
     if API_KEY:
-        headers["Authorization"] = f"Bearer {API_KEY}"
+        headers["x-api-key"] = API_KEY
+        headers["anthropic-version"] = "2023-06-01"
 
     api_timeout = int(PRED.get("API_TIMEOUT", 120))
     api_retries = int(PRED.get("API_RETRIES", 3))
-    chat_path = PRED.get("CHAT_COMPLETIONS_PATH", "/chat/completions")
+    chat_path = PRED.get("CHAT_COMPLETIONS_PATH", "/messages")
     api_url = f"{API_BASE}{chat_path}"
     last_error = ""
 
@@ -330,10 +328,10 @@ def llm_score_relation(
             status = resp.status_code
             resp.raise_for_status()
             resp_json = resp.json()
-            raw_content = (resp_json.get("choices", [{}])[0]
-                           .get("message", {})
-                           .get("content", "")).strip()
-            raw_content = re.sub(r"<think>.*?</think>", "", raw_content, flags=re.DOTALL).strip()
+            raw_content = "".join(b.get("text", "") for b in resp_json.get("content", []) if isinstance(b, dict) and b.get("type") == "text")
+            raw_content = re.sub(r"<\|end\|>", "", raw_content)
+            raw_content = re.sub(r"<think>.*?</think>", "", raw_content, flags=re.DOTALL)
+            raw_content = raw_content.strip()
 
             result = safe_json_loads(raw_content)
             if not result:

@@ -88,7 +88,7 @@ TEMPERATURE = float(AggrCfg.get("TEMPERATURE", 0.0))
 MAX_TOKENS  = int(AggrCfg.get("MAX_TOKENS", 1000))
 API_TIMEOUT = int(AggrCfg.get("API_TIMEOUT", 120))
 RETRIES     = int(AggrCfg.get("RETRIES", 3))
-CHAT_COMPLETIONS_PATH = AggrCfg.get("CHAT_COMPLETIONS_PATH", "/chat/completions")
+CHAT_COMPLETIONS_PATH = AggrCfg.get("CHAT_COMPLETIONS_PATH", "/messages")
 DRY_RUN     = bool(int(AggrCfg.get("DRY_RUN", 0)))
 
 LIMIT = int(AggrCfg.get("LIMIT", 0))
@@ -97,7 +97,7 @@ PROGRESS_NCOLS = int(AggrCfg.get("PROGRESS_NCOLS", 100))
 WORKERS = int(AggrCfg.get("WORKERS", os.cpu_count() or 6))
 ENCODING = AggrCfg.get("ENCODING", "utf-8")
 
-API_BASE = APIConfig.get("API_BASE", "")
+API_BASE = re.sub(r'/messages$', '', (APIConfig.get("API_BASE", "") or "").rstrip("/"))
 API_KEY  = APIConfig.get("API_KEY", "")
 MODEL    = APIConfig.get("MODEL_NAME", "")
 
@@ -218,19 +218,14 @@ def call_llm(system_prompt: str, user_prompt: str) -> Tuple[str, bool, str, int,
 
     headers = {"Content-Type": "application/json"}
     if API_KEY:
-        headers["Authorization"] = f"Bearer {API_KEY}"
+        headers["x-api-key"] = API_KEY
+        headers["anthropic-version"] = "2023-06-01"
 
     payload = {
         "model": MODEL,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "temperature": TEMPERATURE,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
         "max_tokens": MAX_TOKENS,
-        "top_p": 1,
-        "frequency_penalty": 0,
-        "presence_penalty": 0,
     }
 
     last_err = ""
@@ -243,8 +238,11 @@ def call_llm(system_prompt: str, user_prompt: str) -> Tuple[str, bool, str, int,
                 timeout=API_TIMEOUT,
             )
             resp.raise_for_status()
-            content = resp.json()["choices"][0]["message"]["content"].strip()
-            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+            data = resp.json()
+            content = "".join(b.get("text", "") for b in data.get("content", []) if isinstance(b, dict) and b.get("type") == "text")
+            content = re.sub(r"<\|end\|>", "", content)
+            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL)
+            content = content.strip()
             if content:
                 return content, True, "", attempt, False
             last_err = "empty_content"

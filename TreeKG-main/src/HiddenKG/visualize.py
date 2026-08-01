@@ -264,7 +264,8 @@ def main():
     ap.add_argument("--toc_size", type=int, default=22)
     ap.add_argument("--core_size", type=int, default=18)
     ap.add_argument("--noncore_size", type=int, default=12)
-    ap.add_argument("--max_nodes", type=int, default=3000)
+    ap.add_argument("--max_nodes", type=int, default=0,
+            help="最多保留节点数；0 表示使用 final_kg.json 中的全部节点")
     args = ap.parse_args()
 
     kg = load_final_kg(Path(args.kg))

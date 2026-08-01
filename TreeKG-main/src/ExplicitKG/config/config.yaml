@@ -1,13 +1,8 @@
 # config/config.yaml
-PROJECT_ROOT: "D:/tree-KG"
-SRC_DIR: "D:/tree-KG/src"
-EXPLICIT_KG_DIR: "D:/tree-KG/src/ExplicitKG"
-OUTPUT_DIR: "D:/tree-KG/src/ExplicitKG/output"
-
 APIConfig:
-  API_BASE: "https://api.deepseek.com/v1"
-  API_KEY: "sk-918105a8410e478585eec227254e7747"
-  MODEL_NAME: "deepseek-chat"
+  API_BASE: "https://ark.cn-beijing.volces.com/api/plan/v1/messages"
+  API_KEY: ""                              # 推荐用 TREEKG_API_KEY 环境变量
+  MODEL_NAME: "deepseek-v4-flash"
   TIMEOUT_SECS: 120
 
 include_files:
