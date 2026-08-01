@@ -114,7 +114,7 @@ function forceLayout(nodes, edges, nameToIndex) {
   return pos;
 }
 
-export default function KnowledgeGraphPanel() {
+export default function KnowledgeGraphPanel({ initialBookId = '' }) {
   const [books, setBooks] = useState([]);
   const [selected, setSelected] = useState('');
   const [graph, setGraph] = useState(null);
@@ -130,8 +130,9 @@ export default function KnowledgeGraphPanel() {
         const items = payload.items || [];
         setBooks(items);
         if (!items.length) return null;
-        setSelected(items[0].book_id);
-        return loadKnowledgeGraph(items[0].book_id);
+        const preferred = items.find((item) => item.book_id === initialBookId) || items[0];
+        setSelected(preferred.book_id);
+        return loadKnowledgeGraph(preferred.book_id);
       })
       .then((payload) => { if (alive && payload) setGraph(payload); })
       .catch((reason) => { if (alive) setError(reason.message || '加载知识图谱失败'); })
