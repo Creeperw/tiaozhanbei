@@ -1526,6 +1526,19 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return {"task_id": task_id, "status": "running",
                 "step": state["step"], "step_label": state["step_label"]}
 
+    @app.get("/api/v1/textbooks/knowledge-graphs")
+    async def list_textbook_knowledge_graphs(request: Request) -> dict:
+        user = current_user(request)
+        return {"items": container.textbook_import_service.list_knowledge_graphs(user.user_id)}
+
+    @app.get("/api/v1/textbooks/knowledge-graphs/{book_id}")
+    async def get_textbook_knowledge_graph(book_id: str, request: Request) -> dict:
+        user = current_user(request)
+        item = container.textbook_import_service.get_knowledge_graph(user.user_id, book_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="未找到该教材的知识图谱")
+        return item
+
     @app.get("/api/v1/textbooks/import/{task_id}")
     async def textbook_import_status(task_id: str) -> dict:
         state = textbook_import_tasks.get(task_id)

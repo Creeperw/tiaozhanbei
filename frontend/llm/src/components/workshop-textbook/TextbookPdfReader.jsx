@@ -291,7 +291,7 @@ export default function TextbookPdfReader({ bookTitle, bookId = '', toc = [], in
     <section className="textbook-pdf" aria-label={`${book.title}电子教材`}>
       <header className="textbook-pdf__toolbar">
         <div className="textbook-pdf__toolbar-group">
-          <button type="button" onClick={onClose}><ChevronLeft size={16} />课程目录</button>
+          <button type="button" onClick={onClose} disabled={book.origin === 'user_upload'} title={book.origin === 'user_upload' ? '上传教材不支持返回课程目录' : undefined}><ChevronLeft size={16} />课程目录</button>
           <strong>《{book.title}》</strong><span>{book.edition}</span>
         </div>
         <div className="textbook-pdf__toolbar-group textbook-pdf__paging">

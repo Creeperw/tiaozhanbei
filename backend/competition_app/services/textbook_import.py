@@ -348,6 +348,78 @@ class TextbookImportService:
                 text = ""
             output[index + 1] = re.sub(r"[ \t\u3000]+", " ", text).strip()
         return output
+    def list_knowledge_graphs(self, owner_id: str) -> list[dict[str, Any]]:
+        owner = _safe_owner(owner_id)
+        owner_root = self.runtime_root / owner
+        items: list[dict[str, Any]] = []
+        if not owner_root.is_dir():
+            return items
+        for book_dir in sorted(owner_root.iterdir()):
+            if not book_dir.is_dir():
+                continue
+            kg_manifest = book_dir / "treekg" / "manifest.json"
+            if not kg_manifest.is_file():
+                continue
+            try:
+                payload = json.loads(kg_manifest.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if payload.get("status") != "ready":
+                continue
+            book_manifest = {}
+            manifest_path = book_dir / "manifest.json"
+            if manifest_path.is_file():
+                try:
+                    book_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    pass
+            counts = payload.get("counts") or {}
+            items.append({
+                "book_id": book_dir.name,
+                "title": str(book_manifest.get("title") or book_dir.name),
+                "graph_id": payload.get("graph_id"),
+                "node_count": int(counts.get("nodes", 0) or 0),
+                "edge_count": int(counts.get("edges", 0) or 0),
+            })
+        items.sort(key=lambda item: str(item["title"]))
+        return items
+
+    def get_knowledge_graph(self, owner_id: str, book_id: str) -> dict[str, Any] | None:
+        owner = _safe_owner(owner_id)
+        book_dir = self.runtime_root / owner / str(book_id)
+        final_kg = book_dir / "treekg" / "artifacts" / "final_kg.json"
+        kg_manifest = book_dir / "treekg" / "manifest.json"
+        if not final_kg.is_file():
+            return None
+        try:
+            data = json.loads(final_kg.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        kg = {}
+        if kg_manifest.is_file():
+            try:
+                kg = json.loads(kg_manifest.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                kg = {}
+        book_manifest = {}
+        manifest_path = book_dir / "manifest.json"
+        if manifest_path.is_file():
+            try:
+                book_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                pass
+        nodes = data.get("nodes") or []
+        edges = data.get("edges") or []
+        return {
+            "book_id": book_dir.name,
+            "book_title": str(book_manifest.get("title") or book_dir.name),
+            "graph_id": kg.get("graph_id"),
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "nodes": nodes,
+            "edges": edges,
+        }
+
     def _run_treekg(self, book_dir: Path, title: str, book_id: str,
                     progress: Callable[[str, str], None] | None = None) -> dict[str, Any]:
         script = self.treekg_root / "integration" / "build_graph.py"

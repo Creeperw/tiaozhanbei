@@ -12,6 +12,7 @@ import {
   Files,
   FolderHeart,
   HeartPulse,
+  Network,
   NotebookPen,
   Stethoscope,
   Target,
@@ -34,6 +35,7 @@ import KnowledgeCardLibrary from './KnowledgeCardLibrary';
 import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
 import QuestionFavoritesPanel from './QuestionFavoritesPanel';
 import StudyNotesPanel from './StudyNotesPanel';
+import KnowledgeGraphPanel from './KnowledgeGraphPanel';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -259,6 +261,13 @@ const utilityCards = [
     available: true,
   },
   {
+    key: 'knowledge_graph',
+    title: '知识图谱',
+    description: '查看上传教材自动构建的知识图谱。',
+    icon: Network,
+    available: true,
+  },
+  {
     key: 'study_notes',
     title: '笔记本',
     description: '按笔记本整理心得，沉淀学习思考。',
@@ -391,6 +400,7 @@ const workspaceTitles = {
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
   question_favorites: '收藏夹',
+  knowledge_graph: '知识图谱',
   study_notes: '笔记本',
   resource_upload: '上传资源',
 };
@@ -807,6 +817,8 @@ export default function PracticePage({
               />
             ) : activeTaskType === 'question_favorites' ? (
               <QuestionFavoritesPanel onNavigate={onNavigate} />
+            ) : activeTaskType === 'knowledge_graph' ? (
+              <KnowledgeGraphPanel />
             ) : activeTaskType === 'study_notes' ? (
               <StudyNotesPanel onNavigate={onNavigate} />
             ) : activeTaskType === 'topic_training' ? (
