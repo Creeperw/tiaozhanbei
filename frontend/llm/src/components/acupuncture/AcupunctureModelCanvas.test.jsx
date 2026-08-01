@@ -61,6 +61,23 @@ describe('image acupuncture needle', () => {
         expect(handle.material).not.toBe(shaft.material);
     });
 
+    it('keeps the insertion point while making the 3D needle smaller and its front section thinner', () => {
+        const point = [4, 5, 6];
+        const model = createRealisticNeedle({
+            id: 'smaller-fine-needle',
+            point,
+            normal: [0, 1, 0],
+            insertionType: 'direct',
+        });
+        const shaft = model.children.find((child) => child.name === 'needle-shaft');
+        const tip = model.children.find((child) => child.name === 'needle-tip');
+
+        expect(model.position.toArray()).toEqual(point);
+        expect(model.scale.toArray()).toEqual([0.75, 0.75, 0.75]);
+        expect(shaft.scale.toArray()).toEqual([0.5, 1, 0.5]);
+        expect(tip.scale.toArray()).toEqual([0.5, 1, 0.5]);
+    });
+
     it('records an angled insertion direction while anchoring the 3D needle and glow at its point', () => {
         const needle = {
             id: 'needle-oblique',

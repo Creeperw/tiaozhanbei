@@ -6,6 +6,8 @@ const NEEDLE_IMAGE_URLS = {
 };
 const NEEDLE_INSERTION_TILTS = { direct: 0, oblique: 45, transverse: 75 };
 const NEEDLE_AXIS = new THREE.Vector3(0, 1, 0);
+const NEEDLE_MODEL_SCALE = 0.75;
+const NEEDLE_FRONT_RADIUS_SCALE = 0.5;
 const NEEDLE_SHAFT_MATERIAL = new THREE.MeshPhysicalMaterial({
     color: '#d9dee2',
     metalness: 0.96,
@@ -40,6 +42,15 @@ function applyReferenceNeedleMaterials(root) {
         object.material = isWarmGripPart(object.name)
             ? NEEDLE_GRIP_MATERIAL
             : NEEDLE_SHAFT_MATERIAL;
+    });
+}
+
+function applyNeedleDimensions(model) {
+    model.scale.multiplyScalar(NEEDLE_MODEL_SCALE);
+    model.traverse((object) => {
+        if (object.name !== 'needle-shaft' && object.name !== 'needle-tip') return;
+        object.scale.x *= NEEDLE_FRONT_RADIUS_SCALE;
+        object.scale.z *= NEEDLE_FRONT_RADIUS_SCALE;
     });
 }
 
@@ -139,6 +150,7 @@ export function createRealisticNeedle(needle, index = 0) {
     contactGlow.name = 'needle-contact-glow';
     contactGlow.renderOrder = 1;
     model.add(contactGlow);
+    applyNeedleDimensions(model);
     model.position.copy(point);
     model.quaternion.setFromUnitVectors(NEEDLE_AXIS, direction);
     model.userData.needleId = needle.id || `needle-${index + 1}`;
