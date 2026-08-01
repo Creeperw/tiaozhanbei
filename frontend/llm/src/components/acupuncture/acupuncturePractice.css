@@ -452,13 +452,18 @@
     overflow: hidden;
     border: 1px solid #24594b;
     border-radius: 16px;
-    background: #333333;
+    background: linear-gradient(135deg, #071512 0%, #0c211e 48%, #050a0a 100%);
 }
 
 .acupuncture-model__viewport {
     position: absolute;
     inset: 0;
+    overflow: hidden;
     touch-action: none;
+    background:
+        radial-gradient(circle at 72% 24%, rgba(255, 226, 177, .16), transparent 31%),
+        radial-gradient(circle at 24% 84%, rgba(31, 105, 96, .18), transparent 38%),
+        linear-gradient(135deg, #071512 0%, #0c211e 48%, #050a0a 100%);
 }
 
 .acupuncture-model__viewport canvas {

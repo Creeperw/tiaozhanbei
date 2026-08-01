@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import {
+    cacheRealisticNeedleTemplate,
+    createRealisticNeedle,
+    disposeNeedleScene,
+} from './realisticNeedle';
 
 const EXCLUDED_NODE_NAMES = new Set([
     'huantiao.032',
@@ -50,6 +55,7 @@ export default function AcupunctureModelCanvas({
     const [modelStats, setModelStats] = useState({ markers: 0 });
     const [showPointNames, setShowPointNames] = useState(false);
     const [hoveredPoint, setHoveredPoint] = useState(null);
+    const [needleTemplateVersion, setNeedleTemplateVersion] = useState(0);
     const pendingPickRef = useRef(null);
     const pointerGestureRef = useRef(null);
     const markerVisibilityRef = useRef({ showMarkers, revealStandardPoints });
@@ -90,14 +96,13 @@ export default function AcupunctureModelCanvas({
         const host = hostRef.current;
         if (!host) return undefined;
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color('#333333');
         sceneRef.current = scene;
 
         const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 1000);
         host.__acupunctureCamera = camera;
         let renderer;
         try {
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         } catch {
             queueMicrotask(() => setStatus('当前环境不支持 WebGL，请使用支持 3D 加速的浏览器'));
             return () => {
@@ -107,15 +112,19 @@ export default function AcupunctureModelCanvas({
         }
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.setClearColor(0x000000, 0);
         host.replaceChildren(renderer.domElement);
 
-        scene.add(new THREE.HemisphereLight('#d8fff2', '#193c35', 2.4));
+        scene.add(new THREE.HemisphereLight('#f6f3eb', '#15201e', 2.4));
         const keyLight = new THREE.DirectionalLight('#ffffff', 3.2);
         keyLight.position.set(4, 7, 5);
         scene.add(keyLight);
-        const fillLight = new THREE.DirectionalLight('#6ee7c2', 1.5);
+        const fillLight = new THREE.DirectionalLight('#b8d2cd', 1.15);
         fillLight.position.set(-5, 2, -4);
         scene.add(fillLight);
+        const rimLight = new THREE.DirectionalLight('#ffe0b2', 2.15);
+        rimLight.position.set(-4, 5, -6);
+        scene.add(rimLight);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
@@ -151,6 +160,15 @@ export default function AcupunctureModelCanvas({
         resize();
 
         const loader = new GLTFLoader();
+        loader.load('/acupuncture-models/realistic-acupuncture-needle.glb', (gltf) => {
+            if (disposed) {
+                disposeNeedleScene(gltf.scene);
+                return;
+            }
+            if (cacheRealisticNeedleTemplate(gltf.scene)) {
+                setNeedleTemplateVersion((version) => version + 1);
+            }
+        }, undefined, () => { });
         loader.load('/acupuncture-models/blender.yibiaozhu.glb', (gltf) => {
             if (disposed) return;
             const model = gltf.scene;
@@ -236,32 +254,9 @@ export default function AcupunctureModelCanvas({
         group.clear();
         needles.forEach((needle, index) => {
             if (!Array.isArray(needle.point) || needle.point.length !== 3) return;
-            const point = new THREE.Vector3(...needle.point);
-            const normal = new THREE.Vector3(...(needle.normal || [0, 1, 0])).normalize();
-            const reference = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
-            const tangent = new THREE.Vector3().crossVectors(reference, normal).normalize();
-            const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
-            const insertionTilts = { direct: 0, oblique: 45, transverse: 75 };
-            const tiltDeg = Number.isFinite(Number(needle.tiltAngle))
-                ? Number(needle.tiltAngle)
-                : insertionTilts[needle.insertionType];
-            const tilt = THREE.MathUtils.degToRad(tiltDeg ?? 0);
-            const azimuth = THREE.MathUtils.degToRad(Number(needle.directionAngle || 0));
-            const direction = normal.clone().multiplyScalar(Math.cos(tilt))
-                .add(tangent.multiplyScalar(Math.sin(tilt) * Math.cos(azimuth)))
-                .add(bitangent.multiplyScalar(Math.sin(tilt) * Math.sin(azimuth)))
-                .normalize();
-            const length = 0.22;
-            const shaft = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.012, 0.012, length, 10),
-                new THREE.MeshStandardMaterial({ color: '#22c55e', emissive: '#166534', emissiveIntensity: 0.65 }),
-            );
-            shaft.position.copy(point).addScaledVector(direction, length * 0.5);
-            shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-            shaft.userData.needleId = needle.id || `needle-${index + 1}`;
-            group.add(shaft);
+            group.add(createRealisticNeedle(needle, index));
         });
-    }, [needles]);
+    }, [needles, needleTemplateVersion]);
 
     const handlePointerDown = (event) => {
         if (!interactive || !modelRef.current || !onSurfacePick) return;
