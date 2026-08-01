@@ -1,50 +1,66 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { HUMAN_MODEL_URL } from './AcupunctureModelCanvas';
 import {
     createRealisticNeedle,
+    disposePlacedNeedles,
     getNeedleDirection,
+    getNeedleImageUrl,
 } from './realisticNeedle';
 
-describe('realistic acupuncture needle', () => {
-    it('builds a silver needle group with all reference features', () => {
-        const needle = createRealisticNeedle({
-            id: 'needle-1',
-            point: [1, 2, 3],
-            normal: [0, 1, 0],
-            insertionType: 'direct',
-        });
-
-        expect(needle).toBeInstanceOf(THREE.Group);
-        expect(needle.userData.needleId).toBe('needle-1');
-        expect(needle.children.find((child) => child.name === 'needle-shaft')).toBeTruthy();
-        expect(needle.children.find((child) => child.name === 'needle-tip')).toBeTruthy();
-        expect(needle.children.find((child) => child.name === 'needle-handle')).toBeTruthy();
-        expect(needle.children.find((child) => child.name === 'needle-loop')).toBeTruthy();
-        expect(needle.children.find((child) => child.name === 'needle-contact-glow')).toBeTruthy();
-        expect(needle.children.filter((child) => child.name === 'needle-grip-ring')).toHaveLength(10);
+describe('image acupuncture needle', () => {
+    it('loads the human model from its public Vite path', () => {
+        expect(HUMAN_MODEL_URL).toBe('/blender.yibiaozhu.glb');
     });
 
-    it('keeps 0, 45, and 75 degree tilts at their intended angle to the surface normal', () => {
+    it('selects the direct reference image for direct insertion', () => {
+        expect(getNeedleImageUrl('direct')).toBe('/acupuncture/needles/needle-direct.png');
+    });
+
+    it('selects the oblique reference image for oblique, transverse, and unknown insertion', () => {
+        expect(getNeedleImageUrl('oblique')).toBe('/acupuncture/needles/needle-oblique.png');
+        expect(getNeedleImageUrl('transverse')).toBe('/acupuncture/needles/needle-oblique.png');
+        expect(getNeedleImageUrl('unknown')).toBe('/acupuncture/needles/needle-oblique.png');
+    });
+
+    it('keeps a 45 degree tilt at its intended angle to the surface normal regardless of azimuth', () => {
         const normal = new THREE.Vector3(0, 1, 0);
 
-        expect(getNeedleDirection(normal, 0, 0).angleTo(normal)).toBeCloseTo(0);
         expect(getNeedleDirection(normal, 45, 0).angleTo(normal)).toBeCloseTo(Math.PI / 4);
-        expect(getNeedleDirection(normal, 75, 0).angleTo(normal))
-            .toBeCloseTo(THREE.MathUtils.degToRad(75));
+        expect(getNeedleDirection(normal, 45, 90).angleTo(normal)).toBeCloseTo(Math.PI / 4);
     });
 
-    it('reuses the fallback silver model and contact-glow resources across placements', () => {
-        const firstNeedle = createRealisticNeedle({ id: 'needle-1', point: [0, 0, 0] });
-        const secondNeedle = createRealisticNeedle({ id: 'needle-2', point: [1, 0, 0] });
-        const firstShaft = firstNeedle.children.find((child) => child.name === 'needle-shaft');
-        const secondShaft = secondNeedle.children.find((child) => child.name === 'needle-shaft');
-        const firstGlow = firstNeedle.children.find((child) => child.name === 'needle-contact-glow');
-        const secondGlow = secondNeedle.children.find((child) => child.name === 'needle-contact-glow');
+    it('records an angled insertion direction while anchoring the image needle and glow at its point', () => {
+        const needle = {
+            id: 'needle-oblique',
+            point: [1, 2, 3],
+            normal: [0, 1, 0],
+            insertionType: 'oblique',
+            tiltAngle: 45,
+            directionAngle: 90,
+        };
 
-        expect(firstShaft.geometry).toBe(secondShaft.geometry);
-        expect(firstShaft.material).toBe(secondShaft.material);
-        expect(firstGlow.geometry).toBe(secondGlow.geometry);
-        expect(firstGlow.material).toBe(secondGlow.material);
+        const model = createRealisticNeedle(needle);
+        const expectedDirection = getNeedleDirection(new THREE.Vector3(...needle.normal), 45, 90);
+
+        expect(model.position.toArray()).toEqual(needle.point);
+        expect(model.userData.direction).toEqual(expectedDirection.toArray());
+        expect(model.children.find((child) => child.name === 'needle-image').position.toArray()).toEqual([0, 0, 0]);
+        expect(model.children.find((child) => child.name === 'needle-contact-glow').position.toArray()).toEqual([0, 0, 0]);
+    });
+
+    it('disposes each placed needle sprite material before clearing its group', () => {
+        const group = new THREE.Group();
+        const material = new THREE.SpriteMaterial();
+        const dispose = vi.spyOn(material, 'dispose');
+        const needleSprite = new THREE.Sprite(material);
+        needleSprite.name = 'needle-image';
+        group.add(needleSprite);
+
+        disposePlacedNeedles(group);
+
+        expect(dispose).toHaveBeenCalledTimes(1);
+        expect(group.children).toHaveLength(0);
     });
 });
