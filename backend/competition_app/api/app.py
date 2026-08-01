@@ -1443,7 +1443,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         items = container.textbook_import_service.categories()
         return {"items": items, "total": len(items)}
 
-    @app.post("/api/v1/textbooks/import", status_code=201)
+    textbook_import_tasks: dict[str, dict[str, Any]] = {}
+
+    @app.post("/api/v1/textbooks/import", status_code=202)
     async def import_textbook(
         request: Request,
         file: UploadFile = File(...),
@@ -1452,36 +1454,84 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         category: str = Form("中医药"),
         new_category: str = Form(""),
         cover: UploadFile | None = File(None),
+        match_local: bool = Form(False),
+        allow_large: bool = Form(False),
     ) -> dict:
         user = current_user(request)
         content = await file.read()
-        cover_content = await cover.read() if cover is not None else None
-        try:
-            item = await container.textbook_import_service.import_pdf(
-                owner_id=user.user_id,
-                filename=file.filename or "textbook.pdf",
-                content=content,
-                title=title,
-                description=description,
-                category=category,
-                new_category=new_category,
-                cover_content=cover_content,
-                cover_media_type=(cover.content_type or "") if cover is not None else "",
+        if len(content) > 200 * 1024 * 1024 and not allow_large:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "TEXTBOOK_TOO_LARGE", "message": "当前教材超过大小限制（200MB），解析质量可能下降"},
             )
-        except TextbookTocNotFound as exc:
-            raise HTTPException(
-                status_code=422,
-                detail={"code": exc.code, "message": str(exc)},
-            ) from exc
-        except TextbookImportError as exc:
-            raise HTTPException(
-                status_code=422,
-                detail={"code": exc.code, "message": str(exc)},
-            ) from exc
-        public_item = container.textbook_pdf_service.by_id(
-            str(item["book_id"]), user.user_id
-        )
-        return {"ok": True, "book": public_item}
+        cover_content = await cover.read() if cover is not None else None
+        # 清理已结束的旧任务，防止字典无限膨胀
+        if len(textbook_import_tasks) > 200:
+            stale = [key for key, value in textbook_import_tasks.items()
+                     if value.get("status") in {"done", "failed"}]
+            for key in stale[: len(stale) - 50]:
+                textbook_import_tasks.pop(key, None)
+        task_id = f"TBI_{uuid4().hex}"
+        state: dict[str, Any] = {
+            "task_id": task_id,
+            "status": "running",
+            "step": "upload",
+            "step_label": "已接收文件，准备处理",
+            "error": None,
+            "book": None,
+        }
+        textbook_import_tasks[task_id] = state
+
+        def report(step: str, label: str) -> None:
+            state["step"] = step
+            state["step_label"] = label
+
+        async def run() -> None:
+            try:
+                item = await container.textbook_import_service.import_pdf(
+                    owner_id=user.user_id,
+                    filename=file.filename or "textbook.pdf",
+                    content=content,
+                    title=title,
+                    description=description,
+                    category=category,
+                    new_category=new_category,
+                    cover_content=cover_content,
+                    cover_media_type=(cover.content_type or "") if cover is not None else "",
+                    match_local=match_local,
+                    allow_large=allow_large,
+                    progress=report,
+                )
+                public_item = container.textbook_pdf_service.by_id(
+                    str(item["book_id"]), user.user_id
+                )
+                state.update({
+                    "status": "done",
+                    "step": "done",
+                    "step_label": "教材处理完成",
+                    "book": public_item,
+                })
+            except TextbookTocNotFound as exc:
+                state.update({"status": "failed", "step": "toc",
+                              "error": {"code": exc.code, "message": str(exc)}})
+            except TextbookImportError as exc:
+                state.update({"status": "failed",
+                              "error": {"code": exc.code, "message": str(exc)}})
+            except Exception as exc:
+                state.update({"status": "failed", "step": "failed",
+                              "error": {"code": "TEXTBOOK_IMPORT_FAILED",
+                                        "message": f"教材处理失败：{type(exc).__name__}: {exc}"}})
+
+        asyncio.create_task(run())
+        return {"task_id": task_id, "status": "running",
+                "step": state["step"], "step_label": state["step_label"]}
+
+    @app.get("/api/v1/textbooks/import/{task_id}")
+    async def textbook_import_status(task_id: str) -> dict:
+        state = textbook_import_tasks.get(task_id)
+        if state is None:
+            raise HTTPException(status_code=404, detail="导入任务不存在")
+        return state
 
     @app.get("/api/v1/textbooks/pdfs/resolve")
     async def resolve_textbook_pdf(book: str, request: Request) -> dict:

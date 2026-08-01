@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
@@ -253,7 +253,7 @@ class Settings:
     markitdown_extract_timeout_seconds: int = 120
     max_text_length: int = 3000
     vision_api_base_url: str = ""
-    vision_api_model: str = "qwen3-vl-flash"
+    vision_api_model: str = "Qwen/Qwen3-VL-8B-Instruct"
     vision_api_timeout_seconds: int = 30
     mail_username: str = ""
     mail_from: str = "noreply@example.com"
@@ -472,7 +472,7 @@ class Settings:
             ),
             max_text_length=_parse_int(values, "MAX_TEXT_LENGTH", 3000, minimum=1),
             vision_api_base_url=values.get("VISION_API_BASE_URL", ""),
-            vision_api_model=values.get("VISION_API_MODEL", "qwen3-vl-flash"),
+            vision_api_model=values.get("VISION_API_MODEL", "Qwen/Qwen3-VL-8B-Instruct"),
             vision_api_timeout_seconds=_parse_int(
                 values, "VISION_API_TIMEOUT_SECONDS", 30, minimum=1
             ),

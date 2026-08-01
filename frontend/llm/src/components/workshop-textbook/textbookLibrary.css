@@ -86,3 +86,131 @@
 @media (max-width:980px) { .workshop-plan{grid-template-columns:1fr}.workshop-plan__focus{min-height:180px} }
 @media (max-width:1180px) { .textbook-library__list{grid-template-columns:1fr} }
 @media (max-width:680px) { .textbook-library{padding:12px}.textbook-library__heading{display:flex;align-items:flex-start;flex-direction:column;gap:8px}.textbook-library__heading-action{width:100%}.textbook-library__search{width:100%}.textbook-library-card{grid-template-columns:76px 1fr;gap:13px;min-height:124px;padding:11px}.textbook-library-card__cover{width:76px}.textbook-library-card__body>strong{font-size:19px}.textbook-library-card__body>span{-webkit-line-clamp:2}.textbook-upload-dialog__row{grid-template-columns:1fr} }
+
+.textbook-upload-dialog__match {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 2px;
+  border: 1px solid #e0ebe6;
+  border-radius: 12px;
+  background: #fbfdfc;
+  padding: 11px 12px;
+  cursor: pointer;
+}
+
+.textbook-upload-dialog__match input {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  accent-color: #1f9d73;
+}
+
+.textbook-upload-dialog__match span {
+  display: grid;
+  gap: 3px;
+}
+
+.textbook-upload-dialog__match strong {
+  color: #1d3e32;
+  font-size: .84rem;
+}
+
+.textbook-upload-dialog__match small {
+  color: #789087;
+  font-size: .74rem;
+  line-height: 1.5;
+}
+
+.textbook-upload-dialog__confirm {
+  border: 1px solid #e8c98a;
+  border-radius: 12px;
+  background: #fffaf0;
+  padding: 13px 15px;
+}
+
+.textbook-upload-dialog__confirm strong {
+  color: #7a5310;
+  font-size: .86rem;
+}
+
+.textbook-upload-dialog__confirm p {
+  margin: 5px 0 0;
+  color: #9a7b3d;
+  font-size: .76rem;
+}
+
+.textbook-upload-dialog__confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.textbook-upload-dialog__confirm-actions button {
+  min-height: 34px;
+  border: 1px solid #d8cba8;
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 14px;
+  color: #5f5228;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.textbook-upload-dialog__confirm-actions button:last-child {
+  border-color: #1f9d73;
+  background: #1f9d73;
+  color: #fff;
+}
+
+.textbook-upload-dialog__steps {
+  border: 1px solid #dceae4;
+  border-radius: 12px;
+  background: #f7fbf9;
+  padding: 12px 14px;
+}
+
+.textbook-upload-dialog__steps-label {
+  margin: 0 0 9px;
+  color: #28775a;
+  font-size: .8rem;
+  font-weight: 750;
+}
+
+.textbook-upload-dialog__steps ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.textbook-upload-dialog__steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #93a69d;
+  font-size: .76rem;
+  font-weight: 650;
+}
+
+.textbook-upload-dialog__steps li.is-done {
+  color: #2c8a66;
+}
+
+.textbook-upload-dialog__steps li.is-current {
+  color: #176b4f;
+  font-weight: 800;
+}
+
+.textbook-upload-dialog__step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c9d8d1;
+  margin-left: 3px;
+}

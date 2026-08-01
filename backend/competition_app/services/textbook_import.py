@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import base64
@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from io import BytesIO
@@ -23,8 +24,15 @@ import httpx
 from PIL import Image, ImageDraw
 from pypdf import PdfReader, PdfWriter
 
+from competition_app.tools.textbook_chunking import (
+    build_chunk_index,
+    chunk_book_by_toc,
+    match_chunks,
+)
+
 
 TOC_EXTRACTION_FAILED = "TEXTBOOK_TOC_EXTRACTION_FAILED"
+MAX_MARKITDOWN_SIZE = 200 * 1024 * 1024
 
 
 class TextbookImportError(RuntimeError):
@@ -33,6 +41,10 @@ class TextbookImportError(RuntimeError):
 
 class TextbookTocNotFound(TextbookImportError):
     code = TOC_EXTRACTION_FAILED
+
+
+class TextbookTooLargeError(TextbookImportError):
+    code = "TEXTBOOK_TOO_LARGE"
 
 
 def _json_object(value: str) -> dict[str, Any]:
@@ -82,6 +94,12 @@ class TextbookImportService:
         mineru_token: str | None,
         mineru_pipeline_root: Path,
         timeout_seconds: float = 180.0,
+        embedding_model: Any | None = None,
+        vector_store_root: Path | None = None,
+        knowledge_resolver: Any | None = None,
+        vision_base_url: str = "",
+        vision_model: str = "",
+        vision_api_key: str = "",
     ) -> None:
         self.runtime_root = (runtime_root / "textbook_uploads").resolve()
         self.chat_base_url = str(chat_base_url).rstrip("/")
@@ -90,6 +108,12 @@ class TextbookImportService:
         self.mineru_token = str(mineru_token or "").strip()
         self.mineru_pipeline_root = mineru_pipeline_root.resolve()
         self.timeout_seconds = max(float(timeout_seconds), 60.0)
+        self.embedding_model = embedding_model
+        self.vector_store_root = vector_store_root
+        self.knowledge_resolver = knowledge_resolver
+        self.vision_base_url = str(vision_base_url or "").rstrip("/")
+        self.vision_model = str(vision_model or "").strip()
+        self.vision_api_key = str(vision_api_key or "").strip()
 
     def categories(self) -> list[str]:
         values = {"中医药"}
@@ -116,6 +140,9 @@ class TextbookImportService:
         new_category: str = "",
         cover_content: bytes | None = None,
         cover_media_type: str = "",
+        match_local: bool = False,
+        allow_large: bool = False,
+        progress: Callable[[str, str], None] | None = None,
     ) -> dict[str, Any]:
         if not self.chat_api_key or not self.chat_model:
             raise TextbookImportError("多模态模型未配置")
@@ -127,6 +154,8 @@ class TextbookImportService:
             raise TextbookImportError("教材文件为空")
         if len(content) > 512 * 1024 * 1024:
             raise TextbookImportError("教材 PDF 不能超过 512 MB")
+        if len(content) > MAX_MARKITDOWN_SIZE and not allow_large:
+            raise TextbookTooLargeError("当前教材超过大小限制（200MB），解析质量可能下降")
 
         owner = _safe_owner(owner_id)
         digest = hashlib.sha256(content).hexdigest()
@@ -159,6 +188,7 @@ class TextbookImportService:
             document = PdfReader(str(pdf_path))
             if len(document.pages) < 1:
                 raise TextbookImportError("PDF 没有可读取页面")
+            self._report(progress, "toc", "正在定位并识别目录…")
             locator, extracted = await self._recognize_toc(
                 pdf_path, document, digest
             )
@@ -173,10 +203,25 @@ class TextbookImportService:
                 raise TextbookTocNotFound("未能从教材中提取目录")
             generated_title = str(extracted.get("book_title") or "").strip()
             generated_summary = str(extracted.get("summary") or "").strip()
-            mineru_dir = book_dir / "mineru"
-            mineru_markdown, page_text = await asyncio.to_thread(
-                self._run_mineru, pdf_path, mineru_dir
-            )
+
+            text_layer = self._has_text_layer(pdf_path, document)
+            if text_layer:
+                content_parser = "markitdown"
+                self._report(progress, "extract", "正在解析正文（markitdown，本地处理）…")
+                markdown_path = await asyncio.to_thread(
+                    self._run_markitdown, pdf_path, book_dir / "markitdown"
+                )
+                page_text = self._page_text_pypdf(pdf_path, document)
+            else:
+                if len(content) > MAX_MARKITDOWN_SIZE:
+                    raise TextbookImportError("当前教材为扫描版且超过 200MB，markitdown 无法提取文字")
+                content_parser = "mineru"
+                self._report(progress, "extract", "正在解析正文（MinerU，云端 OCR）…")
+                mineru_dir = book_dir / "mineru"
+                mineru_markdown, page_text = await asyncio.to_thread(
+                    self._run_mineru, pdf_path, mineru_dir
+                )
+            self._report(progress, "toc", "正在映射目录页码…")
             mapped_toc = self._map_toc_pages(
                 chapters,
                 page_text,
@@ -193,6 +238,44 @@ class TextbookImportService:
             cover_name = self._save_cover(
                 pdf_path, book_dir, cover_content, cover_media_type
             )
+
+            chunk_stats: dict[str, Any] = {"match_local": match_local}
+            if match_local:
+                self._report(progress, "chunk", "正在按目录章节切片…")
+                sections, chunks = await asyncio.to_thread(
+                    chunk_book_by_toc,
+                    page_text,
+                    mapped_toc,
+                    book_title=final_title,
+                    page_count=self._page_count(pdf_path),
+                    marker_prefix=book_id,
+                )
+                if chunks and self.embedding_model is not None:
+                    self._report(progress, "embed", "正在向量化切片…")
+                    await build_chunk_index(
+                        chunks, self.embedding_model, book_dir / "chunks"
+                    )
+                    self._report(progress, "match", "正在匹配题库与知识点…")
+                    stats = await match_chunks(
+                        chunks,
+                        sections,
+                        embedding_model=self.embedding_model,
+                        vector_store_root=(
+                            self.vector_store_root if self.vector_store_root is not None else Path("")
+                        ),
+                        kp_resolver=self.knowledge_resolver,
+                        out_path=book_dir / "chunk_matches.jsonl",
+                    )
+                    chunk_stats.update({
+                        "chunk_count": stats["chunk_count"],
+                        "chunk_matched_kp": stats["matched_kp"],
+                        "chunk_matched_question": stats["matched_question"],
+                        "chunk_index_relative_path": "chunks/index.faiss",
+                        "chunk_matches_relative_path": "chunk_matches.jsonl",
+                    })
+                else:
+                    chunk_stats.update({"chunk_count": len(chunks), "chunk_index_relative_path": None})
+
             manifest = {
                 "book_id": book_id,
                 "title": final_title,
@@ -207,23 +290,68 @@ class TextbookImportService:
                 "page_count": self._page_count(pdf_path),
                 "toc": {"chapters": mapped_toc, "source_pdf_pages": toc_pages},
                 "toc_status": "extracted",
-                "content_parser": "mineru",
+                "content_parser": content_parser,
                 "toc_parser": "multimodal_llm",
-                "mineru_markdown_relative_path": str(mineru_markdown.relative_to(book_dir)).replace("\\", "/"),
+                "text_parser_source": "pypdf" if text_layer else "mineru",
                 "owner_id": owner_id,
                 "origin": "user_upload",
                 "created_at": datetime.now(timezone.utc).isoformat(),
+                **chunk_stats,
             }
+            if content_parser == "mineru":
+                manifest["mineru_markdown_relative_path"] = str(
+                    mineru_markdown.relative_to(book_dir)
+                ).replace("\\", "/")
+            else:
+                manifest["markitdown_markdown_relative_path"] = str(
+                    markdown_path.relative_to(book_dir)
+                ).replace("\\", "/")
             (book_dir / "manifest.json").write_text(
                 json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
             )
             (book_dir / "toc.json").write_text(
                 json.dumps(manifest["toc"], ensure_ascii=False, indent=2), encoding="utf-8"
             )
+            self._report(progress, "done", "教材处理完成")
             return manifest
         except Exception:
             # Keep failed runs for diagnosis, but never expose model credentials.
             raise
+
+    @staticmethod
+    def _report(progress: Callable[[str, str], None] | None, step: str, label: str) -> None:
+        if progress:
+            progress(step, label)
+
+    def _has_text_layer(self, pdf_path: Path, document: Any) -> bool:
+        total = 0
+        for index in range(min(8, len(document.pages))):
+            try:
+                total += len((document.pages[index].extract_text() or "").strip())
+            except Exception:
+                continue
+        return total >= 40
+
+    def _page_text_pypdf(self, pdf_path: Path, document: Any) -> dict[int, str]:
+        output: dict[int, str] = {}
+        for index in range(len(document.pages)):
+            try:
+                text = document.pages[index].extract_text() or ""
+            except Exception:
+                text = ""
+            output[index + 1] = re.sub(r"[ \t\u3000]+", " ", text).strip()
+        return output
+
+    def _run_markitdown(self, pdf_path: Path, output_dir: Path) -> Path:
+        from markitdown import MarkItDown
+        output_dir.mkdir(parents=True, exist_ok=True)
+        result = MarkItDown().convert(str(pdf_path))
+        content = str(result.text_content or "").strip()
+        if not content:
+            raise TextbookImportError("markitdown 未能从 PDF 提取文本（可能是扫描版）")
+        target = output_dir / "textbook_full_clean.md"
+        target.write_text(content, encoding="utf-8")
+        return target
 
     async def _recognize_toc(
         self, pdf_path: Path, document: PdfReader, digest: str
@@ -355,8 +483,12 @@ class TextbookImportService:
         return await self._vision_json(content, max_tokens=8000)
 
     async def _vision_json(self, user_content: list[dict[str, Any]], max_tokens: int) -> dict[str, Any]:
+        # 目录识别必须看图：优先使用专用视觉模型，未配置时回退聊天模型。
+        base_url = self.vision_base_url or self.chat_base_url
+        model = self.vision_model or self.chat_model
+        api_key = self.vision_api_key or self.chat_api_key
         request = {
-            "model": self.chat_model,
+            "model": model,
             "messages": [
                 {"role": "system", "content": "你只负责从教材页面图像识别目录并输出有效 JSON，不输出 Markdown。"},
                 {"role": "user", "content": user_content},
@@ -368,8 +500,8 @@ class TextbookImportService:
         timeout = httpx.Timeout(max(self.timeout_seconds, 600.0), connect=30.0)
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(
-                f"{self.chat_base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.chat_api_key}"},
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
                 json=request,
             )
             if response.status_code == 400 and "response_format" in response.text:

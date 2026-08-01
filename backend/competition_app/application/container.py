@@ -193,19 +193,6 @@ class ApplicationContainer:
             if "siliconflow.cn" in settings.chat_base_url.lower()
             else settings.dashscope_api_key
         )
-        textbook_import_service = TextbookImportService(
-            runtime_root=settings.runtime_root,
-            chat_base_url=settings.chat_base_url,
-            chat_model=settings.chat_model,
-            chat_api_key=chat_api_key,
-            mineru_token=settings.mineru_token,
-            mineru_pipeline_root=(
-                settings.knowledge_handoff_root
-                / "知识库管理组件"
-                / "knowledge_upload_pipeline"
-            ),
-            timeout_seconds=settings.llm_timeout_seconds,
-        )
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
                 raise ValueError("live mode requires configured model API keys")
@@ -243,6 +230,25 @@ class ApplicationContainer:
             repository = knowledge_backend.map
             question_retriever = None
             textbook_retriever = None
+            textbook_import_service = TextbookImportService(
+                runtime_root=settings.runtime_root,
+                chat_base_url=settings.chat_base_url,
+                chat_model=settings.chat_model,
+                chat_api_key=chat_api_key,
+                mineru_token=settings.mineru_token,
+                mineru_pipeline_root=(
+                    settings.knowledge_handoff_root
+                    / "知识库管理组件"
+                    / "knowledge_upload_pipeline"
+                ),
+                timeout_seconds=settings.llm_timeout_seconds,
+                embedding_model=embedding_model,
+                vector_store_root=settings.question_vector_store_root,
+                knowledge_resolver=knowledge_backend.map,
+                vision_base_url=settings.vision_api_base_url,
+                vision_model=settings.vision_api_model,
+                vision_api_key=settings.vision_api_key,
+            )
         else:
             chat_model = StubChatModel()
             embedding_model = StubEmbeddingModel()
