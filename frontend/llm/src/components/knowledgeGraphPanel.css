@@ -199,3 +199,40 @@
   font-size: .68rem;
   font-weight: 700;
 }
+.kg-panel__canvas svg {
+  cursor: grab;
+  touch-action: none;
+}
+
+.kg-panel__canvas svg.is-dragging {
+  cursor: grabbing;
+}
+
+.kg-panel__meta-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #8ba096;
+  font-weight: 600;
+}
+
+.kg-panel__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  border: 1px solid #d5e4dc;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0 9px;
+  color: #547467;
+  font-size: .7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kg-panel__reset:hover {
+  border-color: #8abca3;
+  color: #176e50;
+  background: #e8f5ed;
+}

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { LoaderCircle, Network, RotateCcw } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { LoaderCircle, Move, Network, RotateCcw } from 'lucide-react';
 import { listKnowledgeGraphs, loadKnowledgeGraph } from './workshop-textbook/textbookPdfApi';
 import './knowledgeGraphPanel.css';
 
@@ -131,6 +131,8 @@ export default function KnowledgeGraphPanel({ initialBookId = '' }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [hover, setHover] = useState(null);
+  const [viewTransform, setViewTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const dragState = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -183,6 +185,40 @@ export default function KnowledgeGraphPanel({ initialBookId = '' }) {
     return [...types].slice(0, 8);
   }, [graph]);
 
+  const onPointerDown = (event) => {
+    dragState.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: viewTransform.x,
+      originY: viewTransform.y,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const onPointerMove = (event) => {
+    if (!dragState.current) return;
+    const dx = event.clientX - dragState.current.startX;
+    const dy = event.clientY - dragState.current.startY;
+    setViewTransform((current) => ({
+      ...current,
+      x: dragState.current.originX + dx,
+      y: dragState.current.originY + dy,
+    }));
+  };
+
+  const onPointerUp = () => { dragState.current = null; };
+
+  const onWheel = (event) => {
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.12 : 0.89;
+    setViewTransform((current) => {
+      const scale = Math.min(4, Math.max(0.2, current.scale * factor));
+      return { ...current, scale };
+    });
+  };
+
+  const resetView = () => setViewTransform({ x: 0, y: 0, scale: 1 });
+
   if (loading) {
     return <section className="kg-panel" aria-label="知识图谱"><div className="kg-panel__state"><LoaderCircle className="is-spinning" />正在加载知识图谱…</div></section>;
   }
@@ -216,11 +252,24 @@ export default function KnowledgeGraphPanel({ initialBookId = '' }) {
           <span>{graph.node_count} 节点</span>
           <span>{graph.edge_count} 条关系</span>
           {layout.shownNodes < layout.totalNodes && <span className="kg-panel__meta-warn">图谱较大，仅展示核心 {layout.shownNodes} 节点</span>}
+          <span className="kg-panel__meta-hint"><Move aria-hidden="true" size={13} />拖动平移 · 滚轮缩放</span>
+          <button type="button" className="kg-panel__reset" onClick={resetView}><RotateCcw aria-hidden="true" size={12} />复位</button>
         </div>
       )}
       <div className="kg-panel__canvas">
         {layout ? (
-          <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} role="img" aria-label={`${graph.book_title}知识图谱`}>
+          <svg
+            viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+            role="img"
+            aria-label={`${graph.book_title}知识图谱`}
+            className={dragState.current ? 'is-dragging' : ''}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onWheel={onWheel}
+          >
+            <g transform={`translate(${viewTransform.x}, ${viewTransform.y}) scale(${viewTransform.scale})`}>
             {layout.edges.map((edge, index) => {
               const a = layout.positions[layout.nameToIndex.get(String(edge.source))];
               const b = layout.positions[layout.nameToIndex.get(String(edge.target))];
@@ -248,6 +297,7 @@ export default function KnowledgeGraphPanel({ initialBookId = '' }) {
                 </g>
               );
             })}
+            </g>
           </svg>
         ) : <div className="kg-panel__state"><h3>图谱数据为空</h3></div>}
         {hover && (
