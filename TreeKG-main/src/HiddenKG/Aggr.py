@@ -88,7 +88,7 @@ TEMPERATURE = float(AggrCfg.get("TEMPERATURE", 0.0))
 MAX_TOKENS  = int(AggrCfg.get("MAX_TOKENS", 1000))
 API_TIMEOUT = int(AggrCfg.get("API_TIMEOUT", 120))
 RETRIES     = int(AggrCfg.get("RETRIES", 3))
-CHAT_COMPLETIONS_PATH = AggrCfg.get("CHAT_COMPLETIONS_PATH", "/messages")
+CHAT_COMPLETIONS_PATH = AggrCfg.get("CHAT_COMPLETIONS_PATH", "/chat/completions")
 DRY_RUN     = bool(int(AggrCfg.get("DRY_RUN", 0)))
 
 LIMIT = int(AggrCfg.get("LIMIT", 0))
@@ -218,14 +218,16 @@ def call_llm(system_prompt: str, user_prompt: str) -> Tuple[str, bool, str, int,
 
     headers = {"Content-Type": "application/json"}
     if API_KEY:
-        headers["x-api-key"] = API_KEY
-        headers["anthropic-version"] = "2023-06-01"
+        headers["Authorization"] = f"Bearer {API_KEY}"
 
     payload = {
         "model": MODEL,
-        "system": system_prompt,
-        "messages": [{"role": "user", "content": user_prompt}],
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
         "max_tokens": MAX_TOKENS,
+        "reasoning_effort": "none",
     }
 
     last_err = ""
@@ -239,7 +241,7 @@ def call_llm(system_prompt: str, user_prompt: str) -> Tuple[str, bool, str, int,
             )
             resp.raise_for_status()
             data = resp.json()
-            content = "".join(b.get("text", "") for b in data.get("content", []) if isinstance(b, dict) and b.get("type") == "text")
+            content = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
             content = re.sub(r"<\|end\|>", "", content)
             content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL)
             content = content.strip()

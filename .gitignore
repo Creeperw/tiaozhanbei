@@ -258,7 +258,8 @@ backend/competition_app/data/workshop_note_images/
 
 # ===== TreeKG 知识图谱流水线 =====
 # BERT 模型文件（太大）
-TreeKG-main/src/HiddenKG/model/
+TreeKG-main/src/HiddenKG/model/*
+!TreeKG-main/src/HiddenKG/model/main.py
 # 生成的 HTML 可视化（output 目录下的）
 **/output/**/*.html
 **/data/**/*.html

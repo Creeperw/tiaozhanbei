@@ -11,7 +11,7 @@ AggrConfig:
   API_TIMEOUT: 120
   RETRIES: 3
   WORKERS: 10
-  CHAT_COMPLETIONS_PATH: "/messages"
+  CHAT_COMPLETIONS_PATH: "/chat/completions"
   DRY_RUN: 0
 
   # —— 调试/运行控制 —— #
