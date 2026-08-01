@@ -32,6 +32,7 @@ import {
 } from '../workflowChatClient';
 import { formatMessageTime } from '../chatTime';
 import { workshopActionIntent } from '../pageIntent';
+import { resolveAssistantSessionId } from '../assistantDockModel';
 
 const CodeHighlighter = lazy(() => import('./CodeHighlighter'));
 
@@ -44,6 +45,57 @@ const preprocessLaTeX = (content) => {
 };
 
 const getCurrentTime = () => formatMessageTime(new Date());
+
+const copyTextSafely = async (value) => {
+  const text = String(value ?? '');
+  if (!text) return false;
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Clipboard access is commonly denied in embedded/system browsers. Fall
+    // back to the synchronous browser command instead of leaking an event
+    // error that can leave the React surface blank.
+  }
+
+  if (typeof document === 'undefined' || typeof document.execCommand !== 'function') return false;
+  const activeElement = document.activeElement;
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.setAttribute('aria-hidden', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.inset = '0 auto auto 0';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } catch {
+    copied = false;
+  } finally {
+    textarea.remove();
+    try {
+      activeElement?.focus?.({ preventScroll: true });
+    } catch {
+      activeElement?.focus?.();
+    }
+  }
+  return copied;
+};
+
+const keepNativeCopyShortcut = (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
+    // Copy remains a native browser action, but it must not leak to shell-level
+    // shortcuts that could replace the assistant route.
+    event.stopPropagation();
+  }
+};
 
 const isImageFile = (filename) => {
   const ext = filename?.split('.').pop().toLowerCase() || '';
@@ -119,10 +171,10 @@ function MarkdownCode({ inline, className, children, ...props }) {
   const codeString = String(children).replace(/\n$/, '');
   const [copied, setCopied] = useState(false);
 
-  const handleCodeCopy = () => {
-    navigator.clipboard.writeText(codeString);
+  const handleCodeCopy = async () => {
+    if (!(await copyTextSafely(codeString))) return;
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    window.setTimeout(() => setCopied(false), 2000);
   };
 
   if (!inline && match) {
@@ -136,6 +188,7 @@ function MarkdownCode({ inline, className, children, ...props }) {
             <span className="ml-2 text-gray-300 font-medium uppercase tracking-wider">{match[1]}</span>
           </div>
           <button
+            type="button"
             onClick={handleCodeCopy}
             className={`flex items-center gap-1.5 cursor-pointer transition-[color,opacity] ${copied ? 'text-green-400 opacity-100' : 'hover:text-white opacity-0 group-hover/code:opacity-100'}`}
           >
@@ -322,10 +375,10 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
 
   const isDecisionPhase = !isUser && (!main || main.trim() === '');
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(main || think); 
+  const handleCopy = async () => {
+    if (!(await copyTextSafely(main || think))) return;
     setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000); 
+    window.setTimeout(() => setIsCopied(false), 2000);
   };
 
   return (
@@ -511,6 +564,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
               </>
             )}
             <button 
+              type="button"
               onClick={handleCopy}
               className={`inline-flex h-6 items-center gap-1 text-xs transition-colors ${
                 isCopied 
@@ -711,6 +765,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [pendingRuns, setPendingRuns] = useState(readPendingRuns);
+  const [activeSessionRuns, setActiveSessionRuns] = useState({});
   const [input, setInput] = useState(() => localStorage.getItem(CHAT_STORAGE_KEYS.draftInput) || initialContext || '');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState(null);
@@ -755,6 +810,15 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   const appendGraphAnswer = useLangGraphStore(s => s.appendAnswer);
   const setGraphReferences = useLangGraphStore(s => s.setReferences);
   const markNetworkInterrupted = useLangGraphStore(s => s.markNetworkInterrupted);
+
+  const resetSessionScopedView = () => {
+    setIsRightSidebarOpen(false);
+    setRightSidebarContent({ refs: [], query: '' });
+    setTraceSidebar({ isOpen: false, nodes: [], refs: [], title: '执行轨迹', live: false });
+    setMessageBranches({});
+    setFeedbackDialog({ isOpen: false, type: '', answer: '', messageId: null, reason: '', status: 'idle' });
+    resetWorkflow();
+  };
   
   const dragCounter = useRef(0);
   const fileInputRef = useRef(null);
@@ -764,11 +828,13 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   const userMenuRef = useRef(null);
   const toolMenuRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const workflowControllersRef = useRef({});
   const inputContainerRef = useRef(null);
   const currentSessionIdRef = useRef(currentSessionId);
   const liveSessionCacheRef = useRef({});
   const sessionMessageCacheRef = useRef({});
-  const isCurrentSessionLoading = isLoading && loadingSessionId === currentSessionId;
+  const isCurrentSessionLoading = Boolean(currentSessionId && activeSessionRuns[currentSessionId])
+    || (isLoading && loadingSessionId === currentSessionId);
   const currentAssistantMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       if (messages[i]?.role === 'assistant') return messages[i];
@@ -895,14 +961,11 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       if (skipRestore) return data;
       
       // 🔥 Restore last session if exists
-      const preferredId = preferredSessionId;
-      if (preferredId && data.some(s => s.id === preferredId) && currentSessionId !== preferredId) {
-          setCurrentSessionId(preferredId);
-          return data;
-      }
       const savedId = localStorage.getItem('lastSessionId');
-      if (savedId && data.some(s => s.id === savedId) && !currentSessionId) {
-          setCurrentSessionId(savedId);
+      const restoredId = resolveAssistantSessionId(data, preferredSessionId, savedId);
+      if (restoredId && currentSessionIdRef.current !== restoredId) {
+          resetSessionScopedView();
+          setCurrentSessionId(restoredId);
       }
       return data;
     } catch (e) { console.error(e); }
@@ -929,6 +992,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       });
       const newSession = await res.json();
       setSessions(prev => [newSession, ...prev]);
+      resetSessionScopedView();
       setCurrentSessionId(newSession.id);
       setMessages([]);
       setUploadedFiles([]);
@@ -945,6 +1009,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       if (!res.ok) throw new Error('删除失败');
       setSessions(prev => prev.filter(s => s.id !== id));
       if (currentSessionId === id) { 
+          resetSessionScopedView();
           setCurrentSessionId(null); 
           setMessages([]); 
           setUploadedFiles([]); 
@@ -1026,6 +1091,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     if (!session || session.id === currentSessionId) return;
     const cachedMessages = liveSessionCacheRef.current[session.id]?.messages || sessionMessageCacheRef.current[session.id];
     if (cachedMessages) setMessages(cachedMessages);
+    resetSessionScopedView();
     setCurrentSessionId(session.id);
     if (window.innerWidth < 640) setIsSidebarOpen(false);
   };
@@ -1158,11 +1224,14 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   };
 
   const handleStop = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort(); 
-      abortControllerRef.current = null;
-      setIsLoading(false); 
-      setLoadingSessionId(null);
+    const controller = workflowControllersRef.current[currentSessionId]
+      || abortControllerRef.current;
+    if (controller) {
+      controller.abort();
+      delete workflowControllersRef.current[currentSessionId];
+      // This only disconnects the live subscriber. The server-owned workflow
+      // intentionally continues, and restorePendingRun will pick up its result.
+      void restorePendingRun(currentSessionId);
     }
   };
 
@@ -1256,7 +1325,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   };
 
   const handleRegenerate = async (messageId) => {
-    if (!currentSessionId || !messageId || isLoading) return;
+    if (!currentSessionId || !messageId || isCurrentSessionLoading) return;
     if (import.meta.env.VITE_USE_LEGACY_CHAT !== 'true') {
       const question = getTurnQuestionForAssistant(messageId);
       if (question) await handleMainWorkflowSend(question);
@@ -1439,6 +1508,17 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       const next = { ...prev };
       if (runId) next[sessionId] = runId;
       else delete next[sessionId];
+      localStorage.setItem(PENDING_RUNS_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const markSessionRunActive = (sessionId, runId) => {
+    if (!sessionId) return;
+    setActiveSessionRuns(prev => {
+      const next = { ...prev };
+      if (runId) next[sessionId] = runId;
+      else delete next[sessionId];
       return next;
     });
   };
@@ -1450,6 +1530,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       const run = await getWorkflowRun(runId);
       if (!run || run.status === 'failed') {
         rememberPendingRun(sessionId, null);
+        markSessionRunActive(sessionId, null);
         return;
       }
       if (
@@ -1461,9 +1542,15 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       }
       if (run.status === 'completed' || run.status === 'waiting_human_review') {
         rememberPendingRun(sessionId, null);
+        markSessionRunActive(sessionId, null);
+      } else if (run.status === 'interrupted') {
+        markSessionRunActive(sessionId, null);
       }
-      if (run.status === 'running' && currentSessionIdRef.current === sessionId) {
-        window.setTimeout(() => restorePendingRun(sessionId), 2000);
+      if (run.status === 'running') {
+        markSessionRunActive(sessionId, runId);
+        if (currentSessionIdRef.current === sessionId) {
+          window.setTimeout(() => restorePendingRun(sessionId), 2000);
+        }
       }
     } catch (error) {
       console.error('restore workflow run failed', error);
@@ -1482,7 +1569,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
 
   const handleMainWorkflowSend = async (answerOverride = null) => {
     const answer = String(answerOverride ?? input).trim();
-    if ((!answer && uploadedFiles.length === 0) || isLoading) return;
+    if ((!answer && uploadedFiles.length === 0) || isCurrentSessionLoading) return;
     let sessionId = currentSessionId;
     if (!sessionId) sessionId = await createSession();
     if (!sessionId) return;
@@ -1491,16 +1578,28 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     let resumeRunId = null;
     if (storedRunId) {
       try {
-        resumeRunId = await getResumableWorkflowRunId(storedRunId);
+        const storedRun = await getWorkflowRun(storedRunId);
+        if (storedRun?.status === 'running') {
+          markSessionRunActive(sessionId, storedRunId);
+          void restorePendingRun(sessionId);
+          return;
+        }
+        resumeRunId = storedRun?.status === 'interrupted'
+          ? await getResumableWorkflowRunId(storedRunId)
+          : null;
       } catch (error) {
         console.error('validate pending workflow run failed', error);
+        markSessionRunActive(sessionId, storedRunId);
+        void restorePendingRun(sessionId);
+        return;
       }
       if (!resumeRunId) rememberPendingRun(sessionId, null);
     }
     const runId = resumeRunId || createWorkflowRunId();
     rememberPendingRun(sessionId, runId);
-    abortControllerRef.current = new AbortController();
-    setLoadingSessionId(sessionId);
+    const workflowController = new AbortController();
+    workflowControllersRef.current[sessionId] = workflowController;
+    markSessionRunActive(sessionId, runId);
 
     const filesMetadata = uploadedFiles.map(file => ({ id: file.id, name: file.name }));
     const requestText = filesMetadata.length
@@ -1531,7 +1630,6 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
     if (currentSessionIdRef.current === sessionId) setMessages(baseMessages);
     setInput('');
     setUploadedFiles([]);
-    setIsLoading(true);
     setAutoScroll(true);
     setTraceSidebar(prev => (
       prev.isOpen
@@ -1544,7 +1642,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
           }
         : prev
     ));
-    resetWorkflow();
+    if (currentSessionIdRef.current === sessionId) resetWorkflow();
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
     const traceTags = [];
@@ -1560,17 +1658,18 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       return updated;
     };
 
+    let terminalReceived = false;
     try {
       const outcome = await streamWorkflowTurn({
         conversationId: sessionId,
         runId,
         answer: requestText,
         messages: baseMessages.filter(message => !message.isPlaceholder),
-        signal: abortControllerRef.current.signal,
+        signal: workflowController.signal,
         resume: Boolean(resumeRunId),
         onEvent: (_event, traceEvent) => {
           if (!traceEvent) return;
-          dispatchGraphEvent(traceEvent);
+          if (currentSessionIdRef.current === sessionId) dispatchGraphEvent(traceEvent);
           const tag = `<<EV:${JSON.stringify(traceEvent)}>>`;
           traceTags.push(tag);
           updateAssistant(traceTags.join(''), true);
@@ -1579,12 +1678,15 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       const finalContent = `${traceTags.join('')}\n${outcome.message}`.trim();
       const finalMessages = updateAssistant(finalContent, false, outcome.result?.ui_actions || []);
       sessionMessageCacheRef.current[sessionId] = finalMessages;
-      if (outcome.status === 'completed') rememberPendingRun(sessionId, null);
+      if (outcome.status !== 'interrupted') rememberPendingRun(sessionId, null);
+      terminalReceived = true;
+      markSessionRunActive(sessionId, null);
       fetchSessions();
       void refreshSessionTitleUntilSettled(sessionId, { maxAttempts: 3, initialDelay: 150 });
     } catch (error) {
       if (error.name === 'AbortError') {
         updateAssistant(`${traceTags.join('')}\n\n*（连接已中断，后台任务状态将在重连后恢复）*`, false);
+        void restorePendingRun(sessionId);
       } else {
         console.error(error);
         markNetworkInterrupted(error.message);
@@ -1592,9 +1694,10 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
         void restorePendingRun(sessionId);
       }
     } finally {
-      setIsLoading(false);
-      setLoadingSessionId(null);
-      abortControllerRef.current = null;
+      if (workflowControllersRef.current[sessionId] === workflowController) {
+        delete workflowControllersRef.current[sessionId];
+      }
+      if (terminalReceived) markSessionRunActive(sessionId, null);
     }
   };
 
@@ -1885,7 +1988,10 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
   };
 
   return (
-    <div className={`assistant-workspace flex min-h-0 bg-[radial-gradient(circle_at_top_left,#dcfce7_0,#f0fdfa_32%,#f8fafc_72%)] text-slate-800 font-sans overflow-hidden ${embedded ? 'h-full' : 'h-screen'}`}>
+    <div
+      className={`assistant-workspace flex min-h-0 bg-[radial-gradient(circle_at_top_left,#dcfce7_0,#f0fdfa_32%,#f8fafc_72%)] text-slate-800 font-sans overflow-hidden ${embedded ? 'h-full' : 'h-screen'}`}
+      onKeyDownCapture={keepNativeCopyShortcut}
+    >
       
       <style>{`
         @keyframes fade-in-up {
@@ -2236,7 +2342,7 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
                       <button 
                         aria-label={isReviewingCurrentSession ? '回答已完成，正在审核' : isAnswerStreamingCurrentSession ? '停止生成' : '发送消息'}
                         onClick={isAnswerStreamingCurrentSession ? handleStop : handleSend}
-                        disabled={isReviewingCurrentSession || (!isAnswerStreamingCurrentSession && ((!input.trim() && uploadedFiles.length === 0) || isLoading))} 
+                        disabled={isReviewingCurrentSession || (!isAnswerStreamingCurrentSession && ((!input.trim() && uploadedFiles.length === 0) || isCurrentSessionLoading))}
                         className={`
                           p-2.5 rounded-full transition-[color,background-color,box-shadow,transform] duration-200 flex items-center justify-center
                           ${isReviewingCurrentSession

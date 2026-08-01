@@ -55,7 +55,13 @@ vi.mock('./components/learning-stage/StagePageTransition', () => ({
     </div>
   ) : null,
 }));
-vi.mock('./components/ChatInterface', () => ({ default: ({ embedded }) => <div>Assistant page {String(embedded)}</div> }));
+vi.mock('./components/ChatInterface', () => ({
+  default: ({ embedded, forceNewConversation }) => (
+    <div data-testid="assistant-page" data-force-new={String(forceNewConversation)}>
+      Assistant page {String(embedded)}
+    </div>
+  ),
+}));
 vi.mock('./components/CompactAssistant', () => ({
   default: ({ onOpenFull }) => (
     <button type="button" aria-label="全局悬浮智能助教" onClick={() => onOpenFull('session-floating')}>
@@ -229,6 +235,22 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('practice-page')).toHaveAttribute('data-task-type', 'paper_workspace');
     expect(screen.getByTestId('practice-page')).toHaveAttribute('data-paper-id', 'PAPER_1');
     expect(sessionStorage.getItem('competition.pending-navigation')).toBeNull();
+  });
+
+  it('restores the assistant page on refresh without replaying new-conversation', async () => {
+    sessionStorage.setItem('competition.current-page-intent', JSON.stringify({
+      page: 'assistant',
+      params: { sessionId: 'session-existing', newConversation: true },
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByText('Assistant page true')).toBeInTheDocument();
+    expect(screen.getByTestId('assistant-page')).toHaveAttribute('data-force-new', 'false');
+    expect(JSON.parse(sessionStorage.getItem('competition.current-page-intent'))).toEqual({
+      page: 'assistant',
+      params: { sessionId: 'session-existing' },
+    });
   });
 
   it('keeps the learning workshop and training workshop as separate AppShell pages', async () => {

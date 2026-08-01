@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+from contextlib import contextmanager
 from threading import RLock
 from typing import Protocol
 from uuid import uuid4
@@ -10,10 +12,45 @@ from sqlalchemy import Engine, text
 from competition_app.contracts.learning_plan import LearningPlanResult
 
 
+class PlanWriteConflictError(RuntimeError):
+    """Raised when a plan write was prepared from a stale learner-plan head."""
+
+
+def plan_head_versions(value: LearningPlanResult | None) -> dict[str, dict[str, object] | None]:
+    """Return the immutable identity/version tuple for every mutable plan layer."""
+
+    heads: dict[str, dict[str, object] | None] = {}
+    for layer, id_field in (
+        ("long_term_plan", "plan_id"),
+        ("short_term_plan", "plan_id"),
+        ("learning_task", "task_id"),
+    ):
+        item = getattr(value, layer, None) if value is not None else None
+        heads[layer] = (
+            {
+                "id": getattr(item, id_field),
+                "version": int(item.version),
+            }
+            if item is not None
+            else None
+        )
+    return heads
+
+
+def _heads_match(
+    current: LearningPlanResult | None,
+    expected: dict[str, dict[str, object] | None],
+) -> bool:
+    current_heads = plan_head_versions(current)
+    return all(current_heads.get(layer) == head for layer, head in expected.items())
+
+
 class LearningPlanRepository(Protocol):
     """Persistence boundary for the learner's current plan and immutable versions."""
 
     def get_current(self, learner_id: str) -> LearningPlanResult | None: ...
+
+    def mutation_lock(self, learner_id: str): ...
 
     def save_current(
         self,
@@ -24,6 +61,7 @@ class LearningPlanRepository(Protocol):
         sync_event_type: str = "publish",
         expected_task_id: str | None = None,
         expected_task_version: int | None = None,
+        expected_heads: dict[str, dict[str, object] | None] | None = None,
     ) -> bool: ...
 
 
@@ -38,6 +76,13 @@ class InMemoryLearningPlanRepository:
             value = self._current.get(learner_id)
             return value.model_copy(deep=True) if value is not None else None
 
+    @contextmanager
+    def mutation_lock(self, learner_id: str):
+        """Exclusive counterpart to ordinary snapshot reads."""
+
+        with self._lock:
+            yield
+
     def save_current(
         self,
         learner_id: str,
@@ -47,11 +92,16 @@ class InMemoryLearningPlanRepository:
         sync_event_type: str = "publish",
         expected_task_id: str | None = None,
         expected_task_version: int | None = None,
+        expected_heads: dict[str, dict[str, object] | None] | None = None,
     ) -> bool:
         if not learner_id:
             raise ValueError("learner_id is required")
         self._validate_owner(learner_id, value)
         with self._lock:
+            if expected_heads is not None and not _heads_match(
+                self._current.get(learner_id), expected_heads
+            ):
+                return False
             if expected_task_id is not None or expected_task_version is not None:
                 current_task = self._current.get(learner_id)
                 current_task = current_task.learning_task if current_task else None
@@ -102,6 +152,34 @@ class SqlLearningPlanRepository:
             payload = json.loads(payload)
         return LearningPlanResult.model_validate(payload)
 
+    @contextmanager
+    def mutation_lock(self, learner_id: str):
+        """Cross-process advisory X-lock for one learner's plan hierarchy."""
+
+        if self.engine.dialect.name != "mysql":
+            # SQLite test/runtime writes are already serialized by the engine;
+            # expected_heads below still provides stale-snapshot protection.
+            yield
+            return
+        digest = hashlib.sha256(learner_id.encode("utf-8")).hexdigest()[:40]
+        lock_name = f"competition:plan:{digest}"
+        with self.engine.connect() as connection:
+            acquired = connection.execute(
+                text("SELECT GET_LOCK(:lock_name, 0)"),
+                {"lock_name": lock_name},
+            ).scalar_one()
+            if acquired != 1:
+                raise PlanWriteConflictError(
+                    "另一个会话正在修改当前学习计划；本次未执行并发覆盖。"
+                )
+            try:
+                yield
+            finally:
+                connection.execute(
+                    text("SELECT RELEASE_LOCK(:lock_name)"),
+                    {"lock_name": lock_name},
+                )
+
     def save_current(
         self,
         learner_id: str,
@@ -111,6 +189,7 @@ class SqlLearningPlanRepository:
         sync_event_type: str = "publish",
         expected_task_id: str | None = None,
         expected_task_version: int | None = None,
+        expected_heads: dict[str, dict[str, object] | None] | None = None,
     ) -> bool:
         if not learner_id:
             raise ValueError("learner_id is required")
@@ -119,6 +198,28 @@ class SqlLearningPlanRepository:
         InMemoryLearningPlanRepository._validate_owner(learner_id, value)
         serialized = value.model_dump_json()
         with self.engine.begin() as connection:
+            head_query = (
+                "SELECT payload_json FROM learner_plan_states "
+                "WHERE learner_id=:learner_id"
+            )
+            if self.engine.dialect.name == "mysql":
+                # InnoDB row-level X lock: readers can keep using their MVCC
+                # snapshot, while competing publishers serialize here.
+                head_query += " FOR UPDATE"
+            current_payload = connection.execute(
+                text(head_query), {"learner_id": learner_id}
+            ).scalar_one_or_none()
+            if isinstance(current_payload, (bytes, bytearray)):
+                current_payload = current_payload.decode("utf-8")
+            if isinstance(current_payload, str):
+                current_payload = json.loads(current_payload)
+            current = (
+                LearningPlanResult.model_validate(current_payload)
+                if current_payload
+                else None
+            )
+            if expected_heads is not None and not _heads_match(current, expected_heads):
+                return False
             if expected_task_id is not None or expected_task_version is not None:
                 if not expected_task_id or expected_task_version is None:
                     raise ValueError("refresh CAS requires task ID and version")
@@ -131,14 +232,7 @@ class SqlLearningPlanRepository:
                 ):
                     return False
             task_version_created = self._save_versions(connection, value)
-            exists = connection.execute(
-                text(
-                    "SELECT learner_id FROM learner_plan_states "
-                    "WHERE learner_id=:learner_id"
-                ),
-                {"learner_id": learner_id},
-            ).first()
-            if exists:
+            if current_payload is not None:
                 connection.execute(
                     text(
                         "UPDATE learner_plan_states SET payload_json=:payload_json, "

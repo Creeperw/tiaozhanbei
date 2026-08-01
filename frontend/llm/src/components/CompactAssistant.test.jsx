@@ -36,8 +36,11 @@ describe('CompactAssistant', () => {
     });
   });
 
-  it('defaults to a new conversation with a contextual greeting and four window controls', async () => {
+  it('restores the newest conversation by default and keeps four window controls', async () => {
     listAssistantSessions.mockResolvedValue([{ id: 'session-saved', title: '方剂学复习' }]);
+    loadAssistantMessages.mockResolvedValue([
+      { id: 1, role: 'assistant', content: '继续上一次方剂学复习。' },
+    ]);
     const onOpenFull = vi.fn();
     render(
       <CompactAssistant
@@ -48,8 +51,8 @@ describe('CompactAssistant', () => {
       />,
     );
 
-    expect(await screen.findByText('你好，admin！今天的学习目标是完成方剂学第3章，重点掌握方剂证型。有什么问题可以随时问我。')).toBeInTheDocument();
-    expect(loadAssistantMessages).not.toHaveBeenCalled();
+    expect(await screen.findByText('继续上一次方剂学复习。')).toBeInTheDocument();
+    expect(loadAssistantMessages).toHaveBeenCalledWith('session-saved');
     expect(screen.getByRole('button', { name: '查看历史对话' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '新建对话' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '折叠智能助教' })).toBeInTheDocument();
@@ -58,7 +61,7 @@ describe('CompactAssistant', () => {
     expect(screen.getByLabelText('多智能体协作能力')).toHaveTextContent('按任务自动组队');
     expect(screen.getByLabelText('多智能体协作能力')).toHaveTextContent('需要时检索与审核');
     fireEvent.click(screen.getByRole('button', { name: '打开完整智能助教' }));
-    expect(onOpenFull).toHaveBeenCalledWith(null);
+    expect(onOpenFull).toHaveBeenCalledWith('session-saved');
   });
 
   it('renders the collapsed assistant as one framed control instead of nested frames', () => {
@@ -227,7 +230,7 @@ describe('CompactAssistant', () => {
     const onOpenFull = vi.fn();
     render(<CompactAssistant currentUser="admin" onOpenFull={onOpenFull} />);
 
-    await screen.findByText(/今天可以继续完成你的学习计划/);
+    expect(await screen.findByText('继续学习方剂学。')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '查看历史对话' }));
     fireEvent.click(await screen.findByRole('button', { name: /方剂学复习/ }));
 
@@ -447,6 +450,43 @@ describe('CompactAssistant', () => {
     await waitFor(() => expect(localStorage.getItem('lastSessionId')).toBe('session-new'));
     fireEvent.click(screen.getByRole('button', { name: '打开完整智能助教' }));
     expect(onOpenFull).toHaveBeenCalledWith('session-new');
+  });
+
+  it('reads a fresh sanitized page snapshot for each sent turn', async () => {
+    const readPageContext = vi.fn()
+      .mockReturnValueOnce({ page_type: 'knowledge', visible_text: '阴阳学说' })
+      .mockReturnValueOnce({ page_type: 'practice', visible_text: '第 3 题' });
+    render(
+      <CompactAssistant
+        currentUser="admin"
+        readPageContext={readPageContext}
+        onOpenFull={vi.fn()}
+      />,
+    );
+
+    const input = await screen.findByRole('textbox', { name: '向智能助教提问' });
+    fireEvent.change(input, { target: { value: '解释当前内容' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送问题' }));
+    await waitFor(() => expect(streamAssistantMessage).toHaveBeenCalledTimes(1));
+    expect(streamAssistantMessage).toHaveBeenLastCalledWith(
+      'session-new',
+      '解释当前内容',
+      expect.objectContaining({
+        currentPage: { page_type: 'knowledge', visible_text: '阴阳学说' },
+      }),
+    );
+
+    fireEvent.change(input, { target: { value: '现在这道题呢' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送问题' }));
+    await waitFor(() => expect(streamAssistantMessage).toHaveBeenCalledTimes(2));
+    expect(streamAssistantMessage).toHaveBeenLastCalledWith(
+      'session-new',
+      '现在这道题呢',
+      expect.objectContaining({
+        currentPage: { page_type: 'practice', visible_text: '第 3 题' },
+      }),
+    );
+    expect(readPageContext).toHaveBeenCalledTimes(2);
   });
 
   it('clears the pending placeholder when streaming fails', async () => {

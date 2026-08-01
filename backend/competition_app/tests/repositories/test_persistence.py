@@ -12,7 +12,10 @@ from competition_app.contracts.learning_plan import (
     ShortTermPlan,
 )
 from competition_app.db.bootstrap import DatabaseBootstrap
-from competition_app.repositories.learning_plan import SqlLearningPlanRepository
+from competition_app.repositories.learning_plan import (
+    SqlLearningPlanRepository,
+    plan_head_versions,
+)
 from competition_app.repositories.runtime import (
     InMemoryConversationRepository,
     SqlConversationRepository,
@@ -207,6 +210,40 @@ def test_sql_refresh_cas_publishes_only_one_replacement_for_same_prior_task() ->
             "SELECT task_id FROM learning_task_sync_outbox WHERE event_type='replace'"
         )))
     assert replacements == [("TASK_A",)]
+
+
+def test_plan_head_x_lock_rejects_a_second_write_from_the_same_stale_snapshot() -> None:
+    engine = build_engine()
+    first_repository = SqlLearningPlanRepository(engine)
+    second_repository = SqlLearningPlanRepository(engine)
+    original = plan_result()
+    first_repository.save_current("L1", original)
+    shared_snapshot = plan_head_versions(original)
+    replacement_a = original.model_copy(
+        update={
+            "short_term_plan": original.short_term_plan.model_copy(
+                update={"content": "会话 A 的短期计划", "version": 2}
+            )
+        }
+    )
+    replacement_b = original.model_copy(
+        update={
+            "short_term_plan": original.short_term_plan.model_copy(
+                update={"content": "会话 B 的短期计划", "version": 2}
+            )
+        }
+    )
+
+    assert first_repository.save_current(
+        "L1", replacement_a, expected_heads=shared_snapshot
+    ) is True
+    assert second_repository.save_current(
+        "L1", replacement_b, expected_heads=shared_snapshot
+    ) is False
+    assert (
+        first_repository.get_current("L1").short_term_plan.content
+        == "会话 A 的短期计划"
+    )
 
 
 def test_plan_repository_retains_history_and_records_lower_layer_invalidation() -> None:

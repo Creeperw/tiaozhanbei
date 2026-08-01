@@ -11,10 +11,15 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react';
-import { buildAssistantGreeting, createNewAssistantState } from '../assistantDockModel';
+import {
+  buildAssistantGreeting,
+  createNewAssistantState,
+  resolveAssistantSessionId,
+} from '../assistantDockModel';
 import {
   compactAssistantContent,
   createAssistantSession,
+  getAssistantPendingRun,
   listAssistantSessions,
   loadAssistantMessages,
   streamAssistantMessage,
@@ -71,6 +76,7 @@ export default function CompactAssistant({
   onOpenFull,
   characterHint = '点击问我',
   executionEvents = [],
+  readPageContext = null,
   className = '',
 }) {
   const [sessionId, setSessionId] = useState(null);
@@ -111,13 +117,15 @@ export default function CompactAssistant({
         const nextSessions = Array.isArray(items) ? items : [];
         if (cancelled) return;
         setSessions(nextSessions);
-        const preferred = preferredSessionId
-          ? nextSessions.find((session) => session.id === preferredSessionId)
-          : null;
-        if (preferred) {
-          setSessionId(preferred.id);
-          localStorage.setItem('lastSessionId', preferred.id);
-          const history = await loadAssistantMessages(preferred.id);
+        const restoredId = resolveAssistantSessionId(
+          nextSessions,
+          preferredSessionId,
+          localStorage.getItem('lastSessionId'),
+        );
+        if (restoredId) {
+          setSessionId(restoredId);
+          localStorage.setItem('lastSessionId', restoredId);
+          const history = await loadAssistantMessages(restoredId);
           if (!cancelled) setMessages(Array.isArray(history) ? history : []);
         } else {
           const fresh = createNewAssistantState();
@@ -137,9 +145,44 @@ export default function CompactAssistant({
     };
   }, [preferredSessionId]);
 
+  useEffect(() => {
+    if (!sessionId) return undefined;
+    let cancelled = false;
+    let timer = null;
+    const syncBackgroundRun = async () => {
+      try {
+        const pending = await getAssistantPendingRun(sessionId);
+        if (cancelled || !pending) return;
+        if (pending.status === 'running') {
+          setSending(true);
+          setError('当前会话任务正在后台运行，切换页面不会中断。');
+          timer = window.setTimeout(syncBackgroundRun, 2000);
+          return;
+        }
+        setSending(false);
+        if (['completed', 'interrupted', 'waiting_human_review'].includes(pending.status)) {
+          const history = await loadAssistantMessages(sessionId);
+          if (!cancelled) {
+            setMessages(Array.isArray(history) ? history : []);
+            setError('');
+          }
+        }
+      } catch (runError) {
+        if (!cancelled) setError(runError.message || '后台任务状态恢复失败');
+      }
+    };
+    void syncBackgroundRun();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [sessionId]);
+
   const startNewConversation = () => {
     sessionGenerationRef.current += 1;
     abortRef.current?.abort();
+    abortRef.current = null;
+    setSending(false);
     const fresh = createNewAssistantState();
     setSessionId(fresh.sessionId);
     setMessages(fresh.messages);
@@ -149,6 +192,9 @@ export default function CompactAssistant({
   };
 
   const selectSession = async (nextSessionId) => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setSending(false);
     const generation = sessionGenerationRef.current + 1;
     sessionGenerationRef.current = generation;
     setLoading(true);
@@ -452,8 +498,15 @@ export default function CompactAssistant({
       }]);
       setInput('');
       abortRef.current = new AbortController();
+      let currentPage = null;
+      try {
+        currentPage = typeof readPageContext === 'function' ? readPageContext() : null;
+      } catch {
+        currentPage = null;
+      }
       await streamAssistantMessage(activeSessionId, content, {
         signal: abortRef.current.signal,
+        currentPage,
         onUpdate: (answer) => {
           setMessages((current) => current.map((message) => (
             message.id === assistantId

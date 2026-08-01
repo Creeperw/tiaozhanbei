@@ -10,6 +10,7 @@ from competition_app.contracts.learning_plan import (
 )
 from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
+from competition_app.repositories.learning_plan import PlanWriteConflictError
 from competition_app.services.plan_audit import plan_audit_subject_digest
 
 
@@ -29,6 +30,24 @@ class LearningPlanServiceAdapter:
         self, context: dict[str, Any]
     ) -> AgentEnvelope[LearningPlanResult | LearningPlanClarificationResult]:
         dependencies = context["dependency_outputs"]
+
+        def concurrent_change_result(detail: str) -> AgentEnvelope:
+            result = LearningPlanClarificationResult(
+                clarification_questions=[
+                    "另一会话刚刚更新了同一层学习计划。是否读取最新版本后重新制定？"
+                ],
+                reason=(
+                    f"{detail} 系统已阻止旧版本覆盖新版本；其他对话任务不受影响。"
+                ),
+                requested_scope=context.get("requested_plan_scope"),
+            )
+            return envelope(
+                context,
+                "learning_plan_service",
+                "learning_plan_concurrency_conflict",
+                result,
+            )
+
         if context.get("step_id") == "learning_plan" and {
             "diagnosis_long", "audit_long", "diagnosis_short", "audit_short"
         }.issubset(dependencies):
@@ -90,17 +109,22 @@ class LearningPlanServiceAdapter:
                     )
             if short_audit.parent_subject_digest != long_audit.subject_digest:
                 raise RuntimeError("short-term audit is not bound to the approved long-term plan")
-            long_result = self.service.materialize_long_term(
-                learner_id=str(context["learner_id"]),
-                proposal=long_diagnosis.learning_plan_proposal,
-                now=context.get("now"),
-            )
-            short_result = self.service.materialize_short_term(
-                learner_id=str(context["learner_id"]),
-                proposal=short_diagnosis.learning_plan_proposal,
-                now=context.get("now"),
-                current_long_term_plan=long_result.long_term_plan.model_dump(mode="json"),
-            )
+            learner_id = str(context["learner_id"])
+            try:
+                with self.service.mutation_lock(learner_id):
+                    long_result = self.service.materialize_long_term(
+                        learner_id=learner_id,
+                        proposal=long_diagnosis.learning_plan_proposal,
+                        now=context.get("now"),
+                    )
+                    self.service.materialize_short_term(
+                        learner_id=learner_id,
+                        proposal=short_diagnosis.learning_plan_proposal,
+                        now=context.get("now"),
+                        current_long_term_plan=long_result.long_term_plan.model_dump(mode="json"),
+                    )
+            except PlanWriteConflictError as exc:
+                return concurrent_change_result(str(exc))
             result = self.service.get_current(str(context["learner_id"]))
             if result is None:
                 raise RuntimeError("combined plan publication did not persist")
@@ -160,72 +184,87 @@ class LearningPlanServiceAdapter:
             )
             if audit.subject_digest != expected_digest:
                 raise RuntimeError("plan audit approval does not match current proposal")
-        parent_kind = (
-            "long"
-            if plan_scope == "short_term"
-            else "short"
-            if plan_scope == "daily_task"
-            else None
-        )
-        if parent_kind is not None:
-            parent_plan = (
-                context.get("current_long_term_plan")
-                if parent_kind == "long"
-                else context.get("current_short_term_plan")
-            ) or {}
-            if not self.service.is_current_parent(
-                str(context["learner_id"]), parent_plan, parent_kind
-            ):
-                parent_label = "长期规划" if parent_kind == "long" else "短期计划"
-                clarification = LearningPlanClarificationResult(
-                    clarification_questions=[
-                        f"当前{parent_label}已失效或不是最新版本，是否先重新制定{parent_label}？"
-                    ],
-                    reason=f"本层计划必须基于当前有效且已独立审核的{parent_label}制定。",
-                    requested_scope=plan_scope,
-                )
-                return envelope(
-                    context,
-                    "learning_plan_service",
-                    "learning_plan_clarification",
-                    clarification,
-                )
-        if plan_scope == "long_term":
-            result = self.service.materialize_long_term(
-                learner_id=str(context["learner_id"]),
-                proposal=diagnosis.learning_plan_proposal,
-                now=context.get("now"),
-            )
-        elif plan_scope == "short_term":
-            result = self.service.materialize_short_term(
-                learner_id=str(context["learner_id"]),
-                proposal=diagnosis.learning_plan_proposal,
-                now=context.get("now"),
-                current_long_term_plan=context.get("current_long_term_plan") or {},
-            )
-        elif plan_scope == "daily_task":
-            result = self.service.materialize_daily_task(
-                learner_id=str(context["learner_id"]),
-                proposal=diagnosis.learning_plan_proposal,
-                now=context.get("now"),
-                current_short_term_plan=context.get("current_short_term_plan") or {},
-                current_long_term_plan=context.get("current_long_term_plan"),
-                current_learning_task=context.get("current_learning_task"),
-                recommended_minutes=(
-                    context.get("task_load_policy", {}).get("recommended_minutes")
-                    if isinstance(context.get("task_load_policy"), dict)
+        learner_id = str(context["learner_id"])
+        try:
+            with self.service.mutation_lock(learner_id):
+                target_layer = {
+                    "long_term": ("long_term_plan", context.get("current_long_term_plan")),
+                    "short_term": ("short_term_plan", context.get("current_short_term_plan")),
+                    "daily_task": ("learning_task", context.get("current_learning_task")),
+                }.get(plan_scope)
+                if target_layer and not self.service.is_current_layer_snapshot(
+                    learner_id, target_layer[1], target_layer[0]
+                ):
+                    return concurrent_change_result("目标计划在本次生成期间已经变化。")
+
+                parent_kind = (
+                    "long"
+                    if plan_scope == "short_term"
+                    else "short"
+                    if plan_scope == "daily_task"
                     else None
-                ),
-            )
-        else:
-            result = self.service.materialize(
-                learner_id=str(context["learner_id"]),
-                proposal=diagnosis.learning_plan_proposal,
-                now=context.get("now"),
-                current_long_term_plan=context.get("current_long_term_plan"),
-                current_short_term_plan=context.get("current_short_term_plan"),
-                available_minutes=context.get("available_minutes"),
-            )
+                )
+                if parent_kind is not None:
+                    parent_plan = (
+                        context.get("current_long_term_plan")
+                        if parent_kind == "long"
+                        else context.get("current_short_term_plan")
+                    ) or {}
+                    if not self.service.is_current_parent(
+                        learner_id, parent_plan, parent_kind
+                    ):
+                        parent_label = "长期规划" if parent_kind == "long" else "短期计划"
+                        clarification = LearningPlanClarificationResult(
+                            clarification_questions=[
+                                f"当前{parent_label}已失效或不是最新版本，是否先重新制定{parent_label}？"
+                            ],
+                            reason=f"本层计划必须基于当前有效且已独立审核的{parent_label}制定。",
+                            requested_scope=plan_scope,
+                        )
+                        return envelope(
+                            context,
+                            "learning_plan_service",
+                            "learning_plan_clarification",
+                            clarification,
+                        )
+                if plan_scope == "long_term":
+                    result = self.service.materialize_long_term(
+                        learner_id=learner_id,
+                        proposal=diagnosis.learning_plan_proposal,
+                        now=context.get("now"),
+                    )
+                elif plan_scope == "short_term":
+                    result = self.service.materialize_short_term(
+                        learner_id=learner_id,
+                        proposal=diagnosis.learning_plan_proposal,
+                        now=context.get("now"),
+                        current_long_term_plan=context.get("current_long_term_plan") or {},
+                    )
+                elif plan_scope == "daily_task":
+                    result = self.service.materialize_daily_task(
+                        learner_id=learner_id,
+                        proposal=diagnosis.learning_plan_proposal,
+                        now=context.get("now"),
+                        current_short_term_plan=context.get("current_short_term_plan") or {},
+                        current_long_term_plan=context.get("current_long_term_plan"),
+                        current_learning_task=context.get("current_learning_task"),
+                        recommended_minutes=(
+                            context.get("task_load_policy", {}).get("recommended_minutes")
+                            if isinstance(context.get("task_load_policy"), dict)
+                            else None
+                        ),
+                    )
+                else:
+                    result = self.service.materialize(
+                        learner_id=learner_id,
+                        proposal=diagnosis.learning_plan_proposal,
+                        now=context.get("now"),
+                        current_long_term_plan=context.get("current_long_term_plan"),
+                        current_short_term_plan=context.get("current_short_term_plan"),
+                        available_minutes=context.get("available_minutes"),
+                    )
+        except PlanWriteConflictError as exc:
+            return concurrent_change_result(str(exc))
         return envelope(context, "learning_plan_service", "learning_plan_result", result)
 
     @staticmethod

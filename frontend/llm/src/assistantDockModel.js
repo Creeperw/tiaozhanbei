@@ -19,3 +19,9 @@ export function createNewAssistantState() {
     mode: 'new',
   };
 }
+
+export function resolveAssistantSessionId(sessions, preferredId, savedId) {
+  if (preferredId && sessions.some((session) => session.id === preferredId)) return preferredId;
+  if (savedId && sessions.some((session) => session.id === savedId)) return savedId;
+  return sessions[0]?.id || null;
+}

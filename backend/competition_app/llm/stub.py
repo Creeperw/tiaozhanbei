@@ -32,6 +32,34 @@ class StubChatModel:
         on_delta: Callable[[str], None] | None = None,
     ) -> str:
         """Offline compatibility path for business-agent prose calls."""
+        business_payload = payload.get("payload", payload)
+        if (
+            role == "planner_agent"
+            and payload.get("prompt_skill_id") == "planner.read_current_page"
+        ):
+            page = business_payload.get("current_page") or {}
+            request = str(business_payload.get("user_request") or "")
+            visible_lines = [
+                line.strip()
+                for line in str(page.get("visible_text") or "").splitlines()
+                if line.strip()
+            ]
+            if "标题" in request and page.get("page_title"):
+                text = str(page["page_title"])
+            elif "选中" in request and page.get("selected_items"):
+                text = str(page["selected_items"][0])
+            elif "第一个" in request and "平台核心能力" in visible_lines:
+                index = visible_lines.index("平台核心能力")
+                text = (
+                    visible_lines[index + 1]
+                    if index + 1 < len(visible_lines)
+                    else "当前页面快照中未找到该能力名称。"
+                )
+            else:
+                text = visible_lines[0] if visible_lines else "当前页面快照中未找到相关内容。"
+            if on_delta and text:
+                on_delta(text)
+            return text
         result = await self.complete_json(role, payload, on_delta=None)
         if role == "diagnosis_agent" and isinstance(result, dict):
             text = self._diagnosis_plan_document(result)

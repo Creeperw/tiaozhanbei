@@ -43,6 +43,34 @@ class AdvisoryPlanRevisionModel:
         }
 
 
+class RejectThenPassPlanModel:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete_json(self, role, payload, on_delta=None):
+        self.calls += 1
+        if self.calls == 1:
+            return {
+                "decision": "reject",
+                "findings": ["当前推进节点与学习目标衔接不够清楚。"],
+                "audit_report": "建议重新生成推进节点。",
+            }
+        return {
+            "decision": "pass",
+            "findings": [],
+            "audit_report": "修订后可执行。",
+        }
+
+
+class RepairedPlanStillRejectedModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        return {
+            "decision": "reject",
+            "findings": ["还可以进一步优化学习节奏。"],
+            "audit_report": "仍有可优化空间。",
+        }
+
+
 def _resource_context() -> dict:
     evidence = EvidencePack(
         evidence_pack_id="EVIDENCE_PACK_1",
@@ -84,6 +112,61 @@ def _resource_context() -> dict:
         "dependency_outputs": {
             "knowledge": SimpleNamespace(payload=evidence),
             "expert": SimpleNamespace(payload=expert),
+        },
+    }
+
+
+def _short_plan_context(*, audit_feedback=None) -> dict:
+    content = "【当前主目标】学习《方剂学》。【具体任务块】分两步推进。"
+    contract = CompiledShortTermContract(
+        scope="short_term",
+        short_term_plan_content=content,
+        duration_days=7,
+        progression_nodes=["阅读《方剂学》", "完成《方剂学》自测"],
+        expected_output="一份学习记录",
+        completion_criteria="完成两个节点并通过自测",
+        selected_stage_id="stage-1",
+        selected_books=["《方剂学》"],
+        field_anchors={
+            "/short_term_plan_content": [
+                {
+                    "source_field": "short_term_plan_content",
+                    "source_quote": content,
+                }
+            ]
+        },
+    )
+    compilation = PlanCompilationEnvelope(
+        result=CompiledPlanContractResult(status="compiled", contract=contract),
+        source_digest="a" * 64,
+    )
+    proposal = SimpleNamespace(
+        model_dump=lambda mode="json": {"short_term_plan_content": content}
+    )
+    return {
+        "case_id": "CASE_SHORT",
+        "trace_id": "TRACE_SHORT",
+        "request_id": "REQUEST_SHORT",
+        "execution_id": "EXECUTION_SHORT",
+        "step_id": "audit",
+        "learner_id": "LEARNER_SHORT",
+        "task_type": "learning_plan",
+        "plan_scope": "short_term",
+        "audit_feedback": audit_feedback,
+        "dependency_outputs": {
+            "diagnosis": SimpleNamespace(
+                payload=SimpleNamespace(
+                    plan_scope="short_term",
+                    requires_clarification=False,
+                    learning_plan_proposal=proposal,
+                    compiled_plan_contract=compilation,
+                    trusted_plan_route={},
+                    parent_plan_constraints={
+                        "current_stage_id": "stage-1",
+                        "current_stage_duration_days": 30,
+                    },
+                )
+            )
         },
     }
 
@@ -141,60 +224,35 @@ async def test_daily_task_audit_is_a_defensive_noop_without_resource_dependencie
 
 @pytest.mark.asyncio
 async def test_repaired_short_plan_converges_when_deterministic_contract_passes() -> None:
-    content = "【当前主目标】学习《方剂学》。【具体任务块】分两步推进。"
-    contract = CompiledShortTermContract(
-        scope="short_term",
-        short_term_plan_content=content,
-        duration_days=7,
-        progression_nodes=["阅读《方剂学》", "完成《方剂学》自测"],
-        expected_output="一份学习记录",
-        completion_criteria="完成两个节点并通过自测",
-        selected_stage_id="stage-1",
-        selected_books=["《方剂学》"],
-        field_anchors={
-            "/short_term_plan_content": [
-                {
-                    "source_field": "short_term_plan_content",
-                    "source_quote": content,
-                }
-            ]
-        },
+    context = _short_plan_context(
+        audit_feedback=SimpleNamespace(findings=["上一轮建议"])
     )
-    compilation = PlanCompilationEnvelope(
-        result=CompiledPlanContractResult(status="compiled", contract=contract),
-        source_digest="a" * 64,
-    )
-    proposal = SimpleNamespace(
-        model_dump=lambda mode="json": {"short_term_plan_content": content}
-    )
-    context = {
-        "case_id": "CASE_SHORT",
-        "trace_id": "TRACE_SHORT",
-        "request_id": "REQUEST_SHORT",
-        "execution_id": "EXECUTION_SHORT",
-        "step_id": "audit",
-        "learner_id": "LEARNER_SHORT",
-        "task_type": "learning_plan",
-        "plan_scope": "short_term",
-        "audit_feedback": SimpleNamespace(findings=["上一轮建议"]),
-        "dependency_outputs": {
-            "diagnosis": SimpleNamespace(
-                payload=SimpleNamespace(
-                    plan_scope="short_term",
-                    requires_clarification=False,
-                    learning_plan_proposal=proposal,
-                    compiled_plan_contract=compilation,
-                    trusted_plan_route={},
-                    parent_plan_constraints={
-                        "current_stage_id": "stage-1",
-                        "current_stage_duration_days": 30,
-                    },
-                )
-            )
-        },
-    }
 
     result = await AuditAgent(AdvisoryPlanRevisionModel()).run(context)
+
+    assert result.payload.decision == "pass"
+    assert result.payload.structured_findings == []
+    assert any("非阻断建议" in item for item in result.payload.findings)
+
+
+@pytest.mark.asyncio
+async def test_initial_plan_rejection_is_routed_back_as_revision() -> None:
+    context = _short_plan_context(audit_feedback=None)
+
+    result = await AuditAgent(RejectThenPassPlanModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert result.payload.structured_findings
+    assert result.payload.structured_findings[0].owner_step_id == "diagnosis"
+
+
+@pytest.mark.asyncio
+async def test_repaired_plan_model_rejection_becomes_non_blocking_advice() -> None:
+    context = _short_plan_context(
+        audit_feedback=SimpleNamespace(findings=["上一轮审核要求重做"])
+    )
+
+    result = await AuditAgent(RepairedPlanStillRejectedModel()).run(context)
 
     assert result.payload.decision == "pass"
     assert result.payload.structured_findings == []

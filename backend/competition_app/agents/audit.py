@@ -388,15 +388,30 @@ class AuditAgent:
         ):
             decision = "pass"
         if (
-            context.get("audit_feedback") is not None
-            and decision == "revise"
-            and not deterministic_findings
+            not deterministic_findings
+            and context.get("audit_feedback") is None
+            and decision in {"reject", "needs_human_review"}
         ):
-            # One bounded Diagnosis repair has already completed and the
-            # executable contract now passes every deterministic route,
-            # hierarchy and source check.  A second model-only revision would
+            # A planning proposal is generated content. If its route/contract
+            # gates are sound, a model-level rejection is actionable feedback
+            # for Diagnosis rather than a terminal workflow state. Route it
+            # through the existing bounded local-repair loop.
+            decision = "revise"
+            if not model_output.findings:
+                model_output = model_output.model_copy(update={
+                    "findings": [
+                        "当前规划未达到发布要求，请依据可信路线、父计划约束和用户条件重新生成。"
+                    ]
+                })
+        if (
+            context.get("audit_feedback") is not None
+            and not deterministic_findings
+            and decision != "pass"
+        ):
+            # One bounded Diagnosis repair has already completed and every
+            # executable gate passes. A second model-only reject/revision would
             # create a non-converging loop over wording preferences, so retain
-            # those comments as advisory findings and allow publication.
+            # the comments as advisory findings and allow publication.
             decision = "pass"
             model_output = model_output.model_copy(
                 update={

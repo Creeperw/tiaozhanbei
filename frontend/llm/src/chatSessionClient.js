@@ -1,9 +1,11 @@
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import {
   createWorkflowRunId,
+  getWorkflowRun,
   getResumableWorkflowRunId,
   streamWorkflowTurn,
 } from './workflowChatClient';
+export { resolveAssistantSessionId } from './assistantDockModel';
 
 const PENDING_RUNS_STORAGE_KEY = 'assistantPendingWorkflowRuns';
 
@@ -41,12 +43,6 @@ export function compactAssistantContent(content = '') {
   return text.trim();
 }
 
-export function resolveAssistantSessionId(sessions, preferredId, savedId) {
-  if (preferredId && sessions.some((session) => session.id === preferredId)) return preferredId;
-  if (savedId && sessions.some((session) => session.id === savedId)) return savedId;
-  return sessions[0]?.id || null;
-}
-
 export function listAssistantSessions() {
   return jsonRequest('/conversations');
 }
@@ -62,19 +58,36 @@ export function loadAssistantMessages(sessionId) {
   return jsonRequest(`/conversations/${encodeURIComponent(sessionId)}/messages`);
 }
 
+export async function getAssistantPendingRun(sessionId) {
+  const runId = readPendingRuns()[sessionId] || null;
+  if (!runId) return null;
+  const run = await getWorkflowRun(runId);
+  if (!run || ['completed', 'failed', 'waiting_human_review'].includes(run.status)) {
+    rememberPendingRun(sessionId, null);
+  }
+  return run ? { ...run, runId } : null;
+}
+
 export async function streamAssistantMessage(sessionId, content, {
   onUpdate,
   signal,
+  currentPage = null,
 } = {}) {
   const storedRunId = readPendingRuns()[sessionId] || null;
   let pending = null;
   if (storedRunId) {
-    try {
-      pending = await getResumableWorkflowRunId(storedRunId);
-    } catch {
-      pending = null;
+    const run = await getWorkflowRun(storedRunId);
+    if (run?.status === 'running') {
+      const error = new Error('当前会话已有任务在后台运行，请等待完成后再发送。');
+      error.code = 'workflow_running';
+      throw error;
     }
-    if (!pending) rememberPendingRun(sessionId, null);
+    pending = run?.status === 'interrupted'
+      ? await getResumableWorkflowRunId(storedRunId)
+      : null;
+    if (!pending) {
+      rememberPendingRun(sessionId, null);
+    }
   }
   const runId = pending || createWorkflowRunId();
   rememberPendingRun(sessionId, runId);
@@ -83,6 +96,7 @@ export async function streamAssistantMessage(sessionId, content, {
     conversationId: sessionId,
     runId,
     answer: content,
+    currentPage,
     signal,
     resume: Boolean(pending),
     onEvent: (_event, traceEvent) => {

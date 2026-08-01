@@ -68,6 +68,7 @@ export async function streamWorkflowTurn({
   answer,
   messages = [],
   availableMinutes = 60,
+  currentPage = null,
   signal,
   onEvent,
   resume = false,
@@ -76,13 +77,14 @@ export async function streamWorkflowTurn({
     ? `${MAIN_API_BASE}/review-cards/runs/${encodeURIComponent(runId)}/resume/stream`
     : `${MAIN_API_BASE}/review-cards/stream`;
   const body = resume
-    ? { answer }
+    ? { answer, ...(currentPage ? { current_page: currentPage } : {}) }
     : {
         thread_id: runId,
         conversation_id: conversationId,
         learner_id: 'authenticated-user',
         user_request: answer,
         available_minutes: availableMinutes,
+        ...(currentPage ? { current_page: currentPage } : {}),
         messages: messages.map(({ id, role, content }) => ({
           message_id: id || undefined,
           role,

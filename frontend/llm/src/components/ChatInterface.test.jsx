@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ChatInterface from './ChatInterface';
@@ -13,7 +13,11 @@ vi.mock('../utils/api', () => ({
   readJsonResponse: vi.fn(),
 }));
 
-vi.mock('./AgentTimeline', () => ({ default: () => null }));
+vi.mock('./AgentTimeline', () => ({
+  default: ({ isOpen, title }) => (isOpen
+    ? <aside aria-label="执行进度">{title}</aside>
+    : null),
+}));
 
 vi.mock('../stores/useLangGraphStore', () => {
   const state = {
@@ -24,7 +28,7 @@ vi.mock('../stores/useLangGraphStore', () => {
     markNetworkInterrupted: vi.fn(),
   };
   return {
-    buildTraceFromEvents: vi.fn(() => []),
+    buildTraceFromEvents: vi.fn((events = []) => events),
     useLangGraphStore: (selector) => selector(state),
   };
 });
@@ -44,6 +48,7 @@ describe('ChatInterface session workspace', () => {
     vi.clearAllMocks();
     localStorage.clear();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    document.execCommand = vi.fn(() => true);
   });
 
   it('restores a cached session immediately without a forced full-screen transition', async () => {
@@ -83,6 +88,60 @@ describe('ChatInterface session workspace', () => {
     expect(await screen.findByText('A 的刷新回答')).toBeInTheDocument();
   });
 
+  it('allows another conversation to start while the first conversation keeps running', async () => {
+    const streams = [];
+    fetchWithAuth.mockImplementation((url, options = {}) => {
+      if (url.endsWith('/conversations')) {
+        return Promise.resolve(jsonResponse([
+          { id: 'session-a', title: '会话 A' },
+          { id: 'session-b', title: '会话 B' },
+        ]));
+      }
+      if (url.endsWith('/conversations/session-a/messages')
+        || url.endsWith('/conversations/session-b/messages')) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.endsWith('/review-cards/stream') && options.method === 'POST') {
+        const channel = new TransformStream();
+        const writer = channel.writable.getWriter();
+        streams.push(writer);
+        void writer.write(new TextEncoder().encode(
+          `data: ${JSON.stringify({ event: 'run_started' })}\n\n`,
+        ));
+        return Promise.resolve(new Response(channel.readable, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }));
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    render(<ChatInterface currentUser="alice" preferredSessionId="session-a" embedded />);
+    const composer = await screen.findByRole('textbox', { name: '向智能助教提问' });
+    fireEvent.change(composer, { target: { value: '会话 A 的任务' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送消息' }));
+    await waitFor(() => expect(streams).toHaveLength(1));
+
+    fireEvent.click(screen.getAllByText('会话 B')[0]);
+    await screen.findByRole('heading', { name: '从这里开始' });
+    fireEvent.change(screen.getByRole('textbox', { name: '向智能助教提问' }), {
+      target: { value: '会话 B 的任务' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '发送消息' }));
+    await waitFor(() => expect(streams).toHaveLength(2));
+
+    await Promise.all(streams.map(async (writer, index) => {
+      await writer.write(new TextEncoder().encode(
+        `data: ${JSON.stringify({
+          event: 'run_completed',
+          result: { status: 'success' },
+          assistant_message: `会话 ${index + 1} 已完成`,
+        })}\n\n`,
+      ));
+      await writer.close();
+    }));
+  });
+
   it('presents useful starter actions and a clearly labelled composer', async () => {
     fetchWithAuth.mockImplementation((url) => {
       if (url.endsWith('/conversations')) {
@@ -113,6 +172,28 @@ describe('ChatInterface session workspace', () => {
     expect(composer).toHaveValue('请结合教材证据讲解一个知识点，并给我一道练习题。');
   });
 
+  it('restores the newest existing session when no preferred or saved session exists', async () => {
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.endsWith('/conversations')) {
+        return Promise.resolve(jsonResponse([
+          { id: 'session-newest', title: '最近对话' },
+          { id: 'session-older', title: '较早对话' },
+        ]));
+      }
+      if (url.endsWith('/conversations/session-newest/messages')) {
+        return Promise.resolve(jsonResponse([
+          { id: 11, role: 'assistant', content: '恢复最近一次回答' },
+        ]));
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    render(<ChatInterface currentUser="alice" embedded />);
+
+    expect(await screen.findByText('恢复最近一次回答')).toBeInTheDocument();
+    expect(localStorage.getItem('lastSessionId')).toBe('session-newest');
+  });
+
   it('renders assistant messages as readable articles with Chinese speaker labels', async () => {
     fetchWithAuth.mockImplementation((url) => {
       if (url.endsWith('/conversations')) {
@@ -131,6 +212,100 @@ describe('ChatInterface session workspace', () => {
     expect(await screen.findByRole('article', { name: '智能助教回复' })).toHaveTextContent('这是正式回答。');
     expect(screen.getByText('智能助教')).toBeInTheDocument();
     expect(screen.queryByText('You')).not.toBeInTheDocument();
+  });
+
+  it('keeps the assistant visible when system-browser clipboard access is denied', async () => {
+    const writeText = vi.fn().mockRejectedValue(new DOMException('denied', 'NotAllowedError'));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.endsWith('/conversations')) {
+        return Promise.resolve(jsonResponse([{ id: 'session-copy', title: '复制测试' }]));
+      }
+      if (url.endsWith('/conversations/session-copy/messages')) {
+        return Promise.resolve(jsonResponse([
+          { id: 17, role: 'assistant', content: '需要安全复制的回答。' },
+        ]));
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    render(<ChatInterface currentUser="alice" preferredSessionId="session-copy" embedded />);
+
+    const article = await screen.findByRole('article', { name: '智能助教回复' });
+    fireEvent.click(within(article).getByRole('button', { name: '复制' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('需要安全复制的回答。'));
+    expect(document.execCommand).toHaveBeenCalledWith('copy');
+    expect(article).toBeInTheDocument();
+    expect(within(article).getByRole('button', { name: '已复制' })).toBeInTheDocument();
+  });
+
+  it('keeps Ctrl+C native to the assistant instead of leaking it to shell shortcuts', async () => {
+    const shellKeyDown = vi.fn();
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.endsWith('/conversations')) {
+        return Promise.resolve(jsonResponse([{ id: 'session-shortcut', title: '快捷键测试' }]));
+      }
+      if (url.endsWith('/conversations/session-shortcut/messages')) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    render(
+      <div onKeyDown={shellKeyDown}>
+        <ChatInterface currentUser="alice" preferredSessionId="session-shortcut" embedded />
+      </div>,
+    );
+    const composer = await screen.findByRole('textbox', { name: '向智能助教提问' });
+    fireEvent.change(composer, { target: { value: '保留当前页面' } });
+    fireEvent.keyDown(composer, { key: 'c', ctrlKey: true });
+
+    expect(shellKeyDown).not.toHaveBeenCalled();
+    expect(composer).toHaveValue('保留当前页面');
+    expect(screen.getByRole('heading', { name: '从这里开始' })).toBeInTheDocument();
+  });
+
+  it('closes session-owned detail sidebars when switching conversations', async () => {
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.endsWith('/conversations')) {
+        return Promise.resolve(jsonResponse([
+          { id: 'session-a', title: '会话 A' },
+          { id: 'session-b', title: '会话 B' },
+        ]));
+      }
+      if (url.endsWith('/conversations/session-a/messages')) {
+        return Promise.resolve(jsonResponse([{
+          id: 21,
+          role: 'assistant',
+          content: 'A 的回答<<REFS:[{"title":"A 的旧引用","content":"只属于 A","type":"rag"}]>>',
+          trace_events: [{ event: 'step_completed', agent: 'planner_agent' }],
+        }]));
+      }
+      if (url.endsWith('/conversations/session-b/messages')) {
+        return Promise.resolve(jsonResponse([{ id: 22, role: 'assistant', content: 'B 的回答' }]));
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    render(<ChatInterface currentUser="alice" preferredSessionId="session-a" embedded />);
+
+    fireEvent.click(await screen.findByTitle('点击查看检索详情'));
+    const retrievalSidebar = screen.getByText('检索详情').closest('.fixed');
+    expect(retrievalSidebar).not.toHaveAttribute('aria-hidden');
+    expect(screen.getByText('A 的旧引用')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /查看多智能体协作过程/ }));
+    expect(screen.getByRole('complementary', { name: '执行进度' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByText('会话 B')[0]);
+    expect(await screen.findByText('B 的回答')).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: '执行进度' })).not.toBeInTheDocument();
+    expect(retrievalSidebar).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByText('A 的旧引用')).not.toBeInTheDocument();
   });
 
   it('restores persisted workflow actions and keeps them navigable after reopening a session', async () => {

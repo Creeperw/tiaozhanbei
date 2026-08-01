@@ -349,6 +349,9 @@ class ResourceRecommendationEventRequest(BaseModel):
 def create_app(container: ApplicationContainer, *, auth_required: bool = True) -> FastAPI:
     backend_handoff = container.backend_handoff_runtime
     review_push_tasks: set[asyncio.Task] = set()
+    # A browser SSE connection is only a subscriber. Keeping strong references
+    # here makes the workflow itself independent from page/session navigation.
+    workflow_tasks: set[asyncio.Task] = set()
     review_push_locks: dict[str, asyncio.Lock] = {}
     review_push_states: dict[str, dict[str, Any]] = {}
     qualification_papers = QualificationPaperRepository(
@@ -391,6 +394,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     *pending_review_pushes,
                     return_exceptions=True,
                 )
+            pending_workflows = list(workflow_tasks)
+            for task in pending_workflows:
+                task.cancel()
+            if pending_workflows:
+                await asyncio.gather(*pending_workflows, return_exceptions=True)
             if backend_handoff is not None:
                 await backend_handoff.shutdown()
 
@@ -4380,6 +4388,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
         async def event_source():
             task = asyncio.create_task(run_workflow())
+            workflow_tasks.add(task)
+            task.add_done_callback(workflow_tasks.discard)
             try:
                 while True:
                     event = await queue.get()

@@ -18,6 +18,8 @@ from competition_app.contracts.learning_plan import (
 from competition_app.repositories.learning_plan import (
     InMemoryLearningPlanRepository,
     LearningPlanRepository,
+    PlanWriteConflictError,
+    plan_head_versions,
 )
 from competition_app.services.default_route import DefaultRouteRepository
 
@@ -534,6 +536,32 @@ class LearningPlanService:
         self.knowledge_point_resolver = knowledge_point_resolver
         self.video_resource_resolver = video_resource_resolver
 
+    def mutation_lock(self, learner_id: str):
+        """Serialize plan publications without locking unrelated AI conversations."""
+
+        return self.plan_repository.mutation_lock(learner_id)
+
+    def is_current_layer_snapshot(
+        self,
+        learner_id: str,
+        supplied: dict[str, Any] | None,
+        layer: str,
+    ) -> bool:
+        """Check the S-read snapshot captured when a workflow started."""
+
+        current = self.plan_repository.get_current(learner_id)
+        current_item = getattr(current, layer, None) if current is not None else None
+        supplied = supplied or {}
+        id_field = "task_id" if layer == "learning_task" else "plan_id"
+        supplied_id = self._field(supplied, id_field)
+        supplied_version = self._field(supplied, "version")
+        if current_item is None:
+            return not supplied_id and supplied_version in (None, 0)
+        return (
+            supplied_id == getattr(current_item, id_field)
+            and supplied_version == current_item.version
+        )
+
     def ensure_executable_daily_resources(
         self,
         learner_id: str,
@@ -898,8 +926,31 @@ class LearningPlanService:
                 ),
             ),
         )
-        self.plan_repository.save_current(learner_id, result)
+        self._save_current_from_snapshot(learner_id, result, previous)
         return result
+
+    def _save_current_from_snapshot(
+        self,
+        learner_id: str,
+        value: LearningPlanResult,
+        previous: LearningPlanResult | None,
+        *,
+        invalidated_layers: list[str] | None = None,
+        sync_event_type: str = "publish",
+    ) -> None:
+        """Publish under an X-lock and reject a stale shared read snapshot."""
+
+        saved = self.plan_repository.save_current(
+            learner_id,
+            value,
+            invalidated_layers=invalidated_layers,
+            sync_event_type=sync_event_type,
+            expected_heads=plan_head_versions(previous),
+        )
+        if not saved:
+            raise PlanWriteConflictError(
+                "学习计划已被另一个会话更新；当前结果基于旧版本，已阻止覆盖。"
+            )
 
     @staticmethod
     def _field(value: Any, name: str) -> Any:
@@ -997,8 +1048,10 @@ class LearningPlanService:
             unknowns_to_confirm=proposal.unknowns_to_confirm,
             textbook_selection=proposal.textbook_selection,
         )
-        self.plan_repository.save_current(
-            learner_id, LearningPlanResult(long_term_plan=plan)
+        self._save_current_from_snapshot(
+            learner_id,
+            LearningPlanResult(long_term_plan=plan),
+            None,
         )
         return plan
 
@@ -1046,9 +1099,10 @@ class LearningPlanService:
             textbook_selection=proposal.textbook_selection,
         )
         stored = LearningPlanResult(long_term_plan=plan)
-        self.plan_repository.save_current(
+        self._save_current_from_snapshot(
             learner_id,
             stored,
+            previous,
             invalidated_layers=["short_term", "daily_task"],
         )
         return LearningPlanResult(
@@ -1123,8 +1177,11 @@ class LearningPlanService:
             textbook_selection=proposal.textbook_selection,
         )
         stored = LearningPlanResult(long_term_plan=long_plan, short_term_plan=plan)
-        self.plan_repository.save_current(
-            learner_id, stored, invalidated_layers=["daily_task"]
+        self._save_current_from_snapshot(
+            learner_id,
+            stored,
+            previous,
+            invalidated_layers=["daily_task"],
         )
         return LearningPlanResult(
             short_term_plan=plan,
@@ -1307,7 +1364,7 @@ class LearningPlanService:
                 short_term_plan=short_plan,
                 learning_task=task,
             )
-        self.plan_repository.save_current(learner_id, stored)
+        self._save_current_from_snapshot(learner_id, stored, previous)
         normalized_task = self.ensure_executable_daily_resources(
             learner_id,
             now=timestamp,
@@ -1384,7 +1441,7 @@ class LearningPlanService:
             update={"stage_evidence": records, "updated_at": now or datetime.now(timezone.utc)}
         )
         updated = current.model_copy(update={"long_term_plan": long_term_plan})
-        self.plan_repository.save_current(learner_id, updated)
+        self._save_current_from_snapshot(learner_id, updated, current)
         return updated
 
     @classmethod

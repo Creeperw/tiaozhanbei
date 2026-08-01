@@ -14,9 +14,13 @@ function renderShell(props = {}) {
 
 describe('AppShell', () => {
   it('marks the desktop AI assistant entry as the featured action', () => {
-    renderShell();
+    const onNavigate = vi.fn();
+    renderShell({ onNavigate });
 
-    expect(screen.getByRole('button', { name: 'AI 智能助教' })).toHaveClass('app-shell__assistant-entry--featured');
+    const entry = screen.getByRole('button', { name: 'AI 智能助教' });
+    expect(entry).toHaveClass('app-shell__assistant-entry--featured');
+    fireEvent.click(entry);
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'assistant', params: {} });
   });
 
   it('keeps the compact featured topbar layout from the home-login navigation branch', () => {

@@ -21,8 +21,10 @@ import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
 import { legacyPersonalizationSettingsView } from './settingsNavigation';
+import { readCurrentPage } from './pageContext';
 
 const pendingNavigationKey = 'competition.pending-navigation';
+const persistedPageIntentKey = 'competition.current-page-intent';
 
 const normalizeInitialIntent = (intent) => {
   const nextIntent = createPageIntent(intent);
@@ -37,13 +39,32 @@ const normalizeInitialIntent = (intent) => {
 const initialPageIntent = () => {
   try {
     const stored = sessionStorage.getItem(pendingNavigationKey);
-    if (!stored) return createPageIntent('dashboard');
-    sessionStorage.removeItem(pendingNavigationKey);
-    return normalizeInitialIntent(JSON.parse(stored));
+    if (stored) {
+      sessionStorage.removeItem(pendingNavigationKey);
+      return normalizeInitialIntent(JSON.parse(stored));
+    }
+    const persisted = sessionStorage.getItem(persistedPageIntentKey);
+    if (persisted) {
+      const restored = JSON.parse(persisted);
+      const params = { ...(restored?.params || {}) };
+      // This is a one-shot command, not durable navigation state. Replaying
+      // it on refresh would create another empty conversation.
+      delete params.newConversation;
+      return normalizeInitialIntent({ ...restored, params });
+    }
+    return createPageIntent('dashboard');
   } catch {
     sessionStorage.removeItem(pendingNavigationKey);
+    sessionStorage.removeItem(persistedPageIntentKey);
     return createPageIntent('dashboard');
   }
+};
+
+const pageIntentForPersistence = (intent) => {
+  const normalized = createPageIntent(intent);
+  const params = { ...normalized.params };
+  delete params.newConversation;
+  return createPageIntent(normalized.page, params);
 };
 
 export default function App() {
@@ -62,6 +83,18 @@ export default function App() {
     ? 'training-workshop'
     : currentPage;
   const selectedSessionId = pageIntent.params.sessionId || null;
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        persistedPageIntentKey,
+        JSON.stringify(pageIntentForPersistence(pageIntent)),
+      );
+    } catch {
+      // Session navigation persistence is a convenience and must never block
+      // the application when browser storage is unavailable.
+    }
+  }, [pageIntent]);
 
   useEffect(() => {
     let active = true;
@@ -112,10 +145,15 @@ export default function App() {
       setKnowledgeNavigationContext(null);
       setPageIntent(createPageIntent('dashboard'));
       setShowHomeGuide(false);
+      sessionStorage.removeItem(persistedPageIntentKey);
     }
   };
 
   const shellConfig = getAppShellConfig({ currentUser, currentPage: shellPage, selectedSessionId });
+  const readAssistantPageContext = useCallback(() => readCurrentPage({
+    pageType: shellConfig.currentPage,
+    pageTitle: shellConfig.pageTitle,
+  }), [shellConfig.currentPage, shellConfig.pageTitle]);
 
   const navigateToPage = (destination, context = null) => {
     if (typeof destination === 'object') {
@@ -348,6 +386,7 @@ export default function App() {
           contextLabel={shellConfig.pageTitle}
           initiallyCollapsed
           characterHint="多智能体助教"
+          readPageContext={readAssistantPageContext}
           onOpenFull={(sessionId) => {
             if (sessionId) setFloatingAssistantSessionId(sessionId);
             navigateToPage({

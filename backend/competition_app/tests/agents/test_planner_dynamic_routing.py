@@ -91,6 +91,90 @@ class CasualPlannerModel:
         }
 
 
+class CurrentPageTextModel:
+    def __init__(self, answers: list[str] | None = None) -> None:
+        self.answers = list(answers or ["多智能体协同"])
+        self.text_payloads = []
+        self.json_calls = 0
+
+    async def complete_text(self, role, payload, on_delta=None):
+        self.text_payloads.append(payload)
+        return self.answers.pop(0)
+
+    async def complete_json(self, role, payload, on_delta=None):
+        self.json_calls += 1
+        raise AssertionError("standalone current-page query must not enter JSON routing")
+
+
+@pytest.mark.asyncio
+async def test_standalone_current_page_query_uses_focused_natural_language_answer() -> None:
+    model = CurrentPageTextModel()
+    context = {
+        "case_id": "C_PAGE",
+        "trace_id": "T_PAGE",
+        "request_id": "R_PAGE",
+        "execution_id": "E_PAGE",
+        "step_id": "planner",
+        "learner_id": "L_PAGE",
+        "user_request": "请读取当前页面，只告诉我平台核心能力区域的第一个名称。",
+        "messages": [],
+        "current_page_context": {
+            "available": True,
+            "trust_level": "untrusted_page_content",
+            "visible_text": "平台核心能力\n多智能体协同\n个性化学习",
+        },
+    }
+
+    result = await PlannerAgent(model).run(context)
+
+    assert result.payload.task_type == "casual_conversation"
+    assert result.payload.casual_response == "多智能体协同"
+    assert result.payload.selected_agents == []
+    assert model.json_calls == 0
+    assert model.text_payloads[0]["prompt_skill_id"] == "planner.read_current_page"
+    assert (
+        model.text_payloads[0]["payload"]["shared_context"]["current_page"]
+        ["result"]["visible_text"]
+        == "平台核心能力\n多智能体协同\n个性化学习"
+    )
+
+
+@pytest.mark.asyncio
+async def test_current_page_answer_retries_generic_page_access_denial() -> None:
+    model = CurrentPageTextModel(
+        ["抱歉，我无法直接读取您的页面内容。", "当前选中项是学习工作台。"]
+    )
+    context = {
+        "case_id": "C_PAGE_RETRY",
+        "trace_id": "T_PAGE_RETRY",
+        "request_id": "R_PAGE_RETRY",
+        "execution_id": "E_PAGE_RETRY",
+        "step_id": "planner",
+        "learner_id": "L_PAGE_RETRY",
+        "user_request": "当前页面选中了什么？",
+        "messages": [],
+        "current_page_context": {
+            "available": True,
+            "selected_items": ["学习工作台"],
+        },
+    }
+
+    result = await PlannerAgent(model).run(context)
+
+    assert result.payload.casual_response == "当前选中项是学习工作台。"
+    assert len(model.text_payloads) == 2
+    assert "correction" in model.text_payloads[1]["payload"]
+
+
+def test_page_content_used_for_business_action_stays_in_multi_agent_routing() -> None:
+    context = {
+        "user_request": "请结合当前页面内容制定短期学习计划",
+        "current_page_context": {"available": True, "visible_text": "学习进度"},
+    }
+
+    assert PlannerAgent._is_standalone_current_page_query(context) is False
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("user_request", "hint"),

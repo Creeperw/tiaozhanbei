@@ -32,6 +32,7 @@ from competition_app.runtime.snapshot import SnapshotExporter, _sanitize
 from competition_app.runtime.tool_registry import ToolRegistry
 from competition_app.tools.knowledge_assets import KnowledgeAssetPaths, KnowledgeAssetRepository
 from competition_app.tools.knowledge_retrieval import KnowledgeRetrievalTool
+from competition_app.tools.current_page import ALL_PAGE_CONTEXT_AGENTS, CurrentPageReadTool
 from competition_app.tools.exa_retrieval import ExaVideoRetriever
 from competition_app.tools.knowledge_delivery import (
     KnowledgeDeliveryBackend,
@@ -373,6 +374,11 @@ class ApplicationContainer:
             else None
         )
         tool_registry = ToolRegistry()
+        tool_registry.register(
+            "read_current_page",
+            CurrentPageReadTool().read,
+            allowed_agents=set(ALL_PAGE_CONTEXT_AGENTS),
+        )
 
         def unavailable_learner_data(
             external_user_id: str,

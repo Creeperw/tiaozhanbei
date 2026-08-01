@@ -98,6 +98,7 @@ class ReviewCardRequest(BaseModel):
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     plan_scope_hint: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     system_operation: Literal["due_review_dispatch"] | None = None
+    current_page: dict[str, Any] = Field(default_factory=dict)
 
 
 class ReviewCardResult(BaseModel):
@@ -126,6 +127,7 @@ class WorkflowResumeRequest(BaseModel):
     plan_scope: Literal["long_term", "short_term", "daily_task", "unspecified"] | None = None
     plan_change_context: PlanChangeContext | None = None
     profile_updates: dict[str, str] = Field(default_factory=dict)
+    current_page: dict[str, Any] = Field(default_factory=dict)
 
 
 class CoordinationSummary(BaseModel):
@@ -535,6 +537,10 @@ class PersonalizedReviewCardUseCase:
         ]
         effective_goals = effective_user_profile.get("goals")
         effective_goals = effective_goals if isinstance(effective_goals, dict) else {}
+        current_page_context = await self._read_current_page_context(
+            request.current_page,
+            agent="planner_agent",
+        )
         context = {
             "case_id": case_id,
             "trace_id": f"TRACE_{uuid4().hex}",
@@ -627,6 +633,7 @@ class PersonalizedReviewCardUseCase:
                 ),
             },
             "terminal_trace": self.terminal_trace,
+            "current_page_context": current_page_context,
         }
         _FAILURE_STEP_CONTEXT.set("planner")
         planner = self.orchestrator.agent_registry.get("planner_agent")
@@ -991,6 +998,13 @@ class PersonalizedReviewCardUseCase:
             if isinstance(item, dict)
         ]
         continuation.context["latest_resume_answer"] = request.answer.strip()
+        if request.current_page:
+            continuation.context["current_page_context"] = (
+                await self._read_current_page_context(
+                    request.current_page,
+                    agent="planner_agent",
+                )
+            )
         resume_payload = request.model_dump(mode="json", exclude_none=True)
         run_state = self.get_run_state(thread_id) or {}
         interrupt_payload = run_state.get("interrupt") or {}
@@ -1016,6 +1030,7 @@ class PersonalizedReviewCardUseCase:
             or has_pending_parent
         ):
             try:
+                _FAILURE_STEP_CONTEXT.set("prerequisite_plan")
                 prerequisite_resume_answer = await self._materialize_planning_prerequisite(
                     continuation=continuation,
                     answer=request.answer,
@@ -1382,7 +1397,11 @@ class PersonalizedReviewCardUseCase:
                     context=parent_context,
                 )
             if execution_result.status != "success":
-                detail = execution_result.error_message or "父级计划未能发布"
+                detail = (
+                    execution_result.error_message
+                    or self._execution_failure_detail(execution_result)
+                    or "父级计划未能发布"
+                )
                 raise RuntimeError(f"前置{scope}计划生成失败：{detail}")
             parent_output = execution_result.outputs.get("learning_plan")
             parent_result = getattr(parent_output, "payload", parent_output)
@@ -1828,6 +1847,15 @@ class PersonalizedReviewCardUseCase:
             and ("plan contract" in message or "规划合同" in message or "规划正文" in message)
         ):
             return "plan_compilation_failed"
+        if (
+            failed_step == "prerequisite_plan"
+            and (
+                "audit" in message
+                or "审核" in str(exc)
+                or "父级计划未能发布" in str(exc)
+            )
+        ):
+            return "audit_step_failed"
         if (
             failed_step in {"audit", "audit_agent"}
             or "audit decision" in message
@@ -2667,6 +2695,41 @@ class PersonalizedReviewCardUseCase:
             "title": resource.title,
             "resource_bundle": bundle,
         }
+
+    async def _read_current_page_context(
+        self,
+        snapshot: dict[str, Any] | None,
+        *,
+        agent: str,
+    ) -> dict[str, Any]:
+        if not snapshot:
+            return {}
+        try:
+            result = await self.orchestrator.tool_registry.invoke(
+                "read_current_page",
+                agent,
+                safe_input_summary={
+                    "page_type": str(snapshot.get("page_type") or "unknown")[:80],
+                    "visible_text_chars": len(str(snapshot.get("visible_text") or "")),
+                },
+                snapshot=snapshot,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            emit_runtime_event(
+                "current_page_unavailable",
+                tool_name="read_current_page",
+                error_type=type(exc).__name__,
+            )
+            return {}
+        emit_runtime_event(
+            "current_page_read",
+            tool_name="read_current_page",
+            page_type=str(result.get("page_type") or "unknown")[:80],
+            available=bool(result.get("available")),
+            truncated=bool(result.get("truncated")),
+            security_flags=list(result.get("security_flags") or []),
+        )
+        return result
 
     async def _load_behavior_context(self, learner_id: str) -> dict[str, Any]:
         if self.behavior_context_loader is None:

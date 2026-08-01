@@ -59,6 +59,11 @@ describe('workflow chat event adapter', () => {
       runId: 'THREAD_1',
       answer: '制定长期规划',
       messages: [],
+      currentPage: {
+        tool_name: 'read_current_page',
+        page_type: 'knowledge',
+        visible_text: '阴阳学说的基本内容',
+      },
       onEvent: event => received.push(event.event),
     });
 
@@ -74,6 +79,10 @@ describe('workflow chat event adapter', () => {
     expect(JSON.parse(options.body)).toEqual(expect.objectContaining({
       conversation_id: 'CONV_1',
       thread_id: 'THREAD_1',
+      current_page: expect.objectContaining({
+        page_type: 'knowledge',
+        visible_text: '阴阳学说的基本内容',
+      }),
     }));
   });
 
