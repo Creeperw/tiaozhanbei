@@ -11,7 +11,6 @@ import {
   ClipboardList,
   Clock3,
   Plus,
-  X,
 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
@@ -981,9 +980,6 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       {surveyOpen && (
         <div className="home-portal__survey-backdrop">
           <section className="home-portal__survey-dialog" role="dialog" aria-modal="true" aria-label="学情调研">
-            <button type="button" className="home-portal__survey-close" aria-label="关闭学情调研" onClick={() => setSurveyOpen(false)}>
-              <X aria-hidden="true" size={19} />
-            </button>
             <OnboardingSurveyPanel
               exitLabel="退出调研"
               onExit={() => setSurveyOpen(false)}

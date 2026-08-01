@@ -14,6 +14,40 @@ export const resolveTextbookPdf = (book, { signal } = {}) => request(
   { signal },
 );
 
+export const loadTextbookPdfCatalog = ({ signal } = {}) => request(
+  '/textbooks/pdfs/catalog',
+  { signal },
+);
+
+export const loadTextbookCategories = ({ signal } = {}) => request(
+  '/textbooks/categories',
+  { signal },
+);
+
+export const loadTextbookPdfMetadata = (bookId, { signal } = {}) => request(
+  `/textbooks/pdfs/${encodeURIComponent(bookId)}`,
+  { signal },
+);
+
+export const uploadTextbook = async (formData, { signal } = {}) => {
+  const response = await fetchWithAuth('/api/v1/textbooks/import', {
+    method: 'POST',
+    body: formData,
+    ...(signal ? { signal } : {}),
+  });
+  const data = await readJsonResponse(response, {});
+  if (!response.ok) {
+    const detail = data.detail;
+    const message = typeof detail === 'string'
+      ? detail
+      : detail?.message || detail?.code || '教材上传失败';
+    const error = new Error(message);
+    error.code = detail?.code || '';
+    throw error;
+  }
+  return data;
+};
+
 export const loadPdfAnnotations = (bookId, pageNumber, { signal } = {}) => request(
   `/textbooks/pdfs/${encodeURIComponent(bookId)}/pages/${pageNumber}/annotations`,
   { signal },

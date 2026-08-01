@@ -34,7 +34,8 @@ MySQL/SQLite、Qwen 与 FAISS，负责用户认证、学习行为汇总、三层
 ```text
 backend/
 ├── competition_app/                    # 当前主后端
-│   └── data/textbook_pdfs/catalog.v1.json # 可提交的教材 PDF 索引，不含大文件
+│   ├── data/textbook_pdfs/catalog.v1.json # 可提交的内置教材 PDF 索引，不含大文件
+│   └── runtime/textbook_uploads/        # 用户教材、封面、目录 JSON 与 MinerU 产物（不提交 Git）
 └── competition/
     ├── backend-handoff-20260720/        # 已并入同一 FastAPI 进程的业务接口包
     ├── textbook_pdfs/                   # 本地教材 PDF（当前 94 本，不提交 Git）
@@ -119,6 +120,13 @@ export TEXTBOOK_PDF_CATALOG_PATH='/absolute/path/to/catalog.v1.json'
 `textbook_pdfs` 解压或软链接到 `backend/competition/` 下。不要提交 FAISS 索引、知识库交付包
 或 PDF 大文件。教材目录由 `scripts/build_textbook_pdf_catalog.py` 扫描生成，索引文件可提交；
 同名教材优先解析“十四五”，未匹配教材返回“暂无电子教材”，不会错误关联其他 PDF。
+
+用户教材上传保存在 `competition_app/runtime/textbook_uploads/<用户>/<教材 ID>/`。每本教材含
+`textbook.pdf`、`cover.*`、`manifest.json`、`toc.json` 和 `mineru/`。`manifest.json` 的
+`category` 为必填分类；内置教材未显式写分类时按 `中医药` 读取。目录定位与层级提取只调用
+`CHAT_BASE_URL` / `CHAT_MODEL` 配置的多模态模型；目录缺失时接口返回稳定错误码
+`TEXTBOOK_TOC_EXTRACTION_FAILED`。正文只交给 MinerU，超过 180 页的 PDF 会自动分片处理并
+合并 Markdown 与真实 PDF 页码，不要求用户预先拆书。
 
 缺少正式资产时请使用 Stub 模式；Live 模式不会用伪数据静默降级。
 

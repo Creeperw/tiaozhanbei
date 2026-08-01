@@ -24,6 +24,7 @@ import {
 } from '../pageDataLoaders.js';
 import LearningActivityHeatmap from './LearningActivityHeatmap';
 import LearningTrendDualAxisChart from './LearningTrendDualAxisChart';
+import { focusMinutesFromStatistics } from './learningPlanDashboard';
 
 const dimensionOrder = ['mastery', 'accuracy', 'consistency', 'retention', 'execution', 'engagement'];
 const dimensionLabels = {
@@ -95,7 +96,7 @@ function normalizeDimensions(report) {
     .slice(0, 6);
 }
 
-function calculateSummary(report, series) {
+function calculateSummary(report, series, lifetimeFocusMinutes = null) {
   const dataQuality = report.data_quality || {};
   const activitySummary = report.activity_summary || {};
   const counters = activitySummary.counters || {};
@@ -103,9 +104,12 @@ function calculateSummary(report, series) {
   const tasks = counters.learning_tasks || {};
   const activities = counters.activities || {};
   const accuracy = (report.dimensions || []).find((item) => item.key === 'accuracy');
-  const totalFocusMinutes = Number.isFinite(Number(focusSessions.active_seconds))
+  const windowFocusMinutes = Number.isFinite(Number(focusSessions.active_seconds))
     ? Number(focusSessions.active_seconds) / 60
     : series.reduce((total, item) => total + Math.max(0, Number(item?.focus_minutes) || 0), 0);
+  const totalFocusMinutes = Number.isFinite(lifetimeFocusMinutes)
+    ? lifetimeFocusMinutes
+    : windowFocusMinutes;
   const activeDays = Number.isFinite(Number(dataQuality.login_days))
     ? Number(dataQuality.login_days)
     : series.reduce((total, item) => total + Math.max(0, Number(item?.login_days) || 0), 0);
@@ -113,7 +117,7 @@ function calculateSummary(report, series) {
   const completedPractice = integer(dataQuality.completed_practice_count ?? activities.by_type?.question_attempt ?? tasks.by_status?.completed ?? questionCount);
   return {
     totalFocusMinutes: integer(totalFocusMinutes),
-    averageFocusMinutes: integer(totalFocusMinutes / Math.max(Number(activitySummary.window_days) || 30, 1)),
+    averageFocusMinutes: integer(windowFocusMinutes / Math.max(Number(activitySummary.window_days) || 30, 1)),
     completedPractice,
     questionCount,
     accuracy: accuracy?.value,
@@ -467,6 +471,7 @@ export default function LearningInsightsReportPage({ onNavigate }) {
   const [report, setReport] = useState(emptyReport);
   const [effectiveness, setEffectiveness] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lifetimeFocusMinutes, setLifetimeFocusMinutes] = useState(null);
   const [error, setError] = useState('');
   const [resourceEventError, setResourceEventError] = useState('');
   const [busyByResource, setBusyByResource] = useState({});
@@ -487,9 +492,16 @@ export default function LearningInsightsReportPage({ onNavigate }) {
     const loadReport = async () => {
       setLoading(true);
       setError('');
-      const result = await loadReportsData({ fetcher: fetchJsonWithAuthFallback });
+      const [result, statisticsResult] = await Promise.all([
+        loadReportsData({ fetcher: fetchJsonWithAuthFallback }),
+        Promise.resolve(fetchJsonWithAuthFallback({
+          paths: ['/v1/learning-statistics/overview?days=30'],
+          fallback: {},
+        })).catch(() => null),
+      ]);
       if (!cancelled) {
         setReport(result.report);
+        setLifetimeFocusMinutes(focusMinutesFromStatistics(statisticsResult?.data));
         setError(result.error);
         setLoading(false);
         void refreshEffectiveness();
@@ -540,7 +552,10 @@ export default function LearningInsightsReportPage({ onNavigate }) {
 
   const trendSeries = useMemo(() => report.activity_trends?.series || [], [report.activity_trends?.series]);
   const dimensions = useMemo(() => normalizeDimensions(report), [report]);
-  const summary = useMemo(() => calculateSummary(report, trendSeries), [report, trendSeries]);
+  const summary = useMemo(
+    () => calculateSummary(report, trendSeries, lifetimeFocusMinutes),
+    [lifetimeFocusMinutes, report, trendSeries],
+  );
   const dateRange = useMemo(() => reportDateRange(report, trendSeries), [report, trendSeries]);
   const weakPoints = useMemo(() => report.weak_points || [], [report.weak_points]);
 

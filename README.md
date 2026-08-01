@@ -48,6 +48,7 @@ tiaozhanbei/
 学情指标的数据表、采集动作、时间窗口、公式、推荐权重、版本和研究依据见 [学情监测与资源匹配口径](docs/learning-monitoring-methodology.md)。
 
 参与开发前请阅读 [协作与贡献说明](CONTRIBUTING.md)。协作分支以保留原作者提交历史的方式进入 `main`，确保 GitHub Contributors 能正确识别团队成员贡献。
+本分支交付的教材 PDF 上传、训练工坊题库上传和教材 PDF 阅读，详见 [三项导入与 PDF 阅读交付说明](backend/competition/README.md)。
 
 ## 快速启动
 

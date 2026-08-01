@@ -476,13 +476,13 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
             setReport(record.grading_report || (item.score !== undefined ? { score: item.score, diagnosis_correct: item.diagnosis_correct } : null));
             setPatient({ gender: item.gender || '', age_range: item.age_range || '', body_type: item.body_type || '' });
             setTurnCount(record.turn_count || item.turn_count || 0);
-            setViewingHistory({...item, ...record});
+            setViewingHistory({ ...item, ...record });
             setViewingReportExpanded(false);
             setView('consultation');
             if (record.session_id) { setSessionId(record.session_id); sessionStorage.setItem(STORAGE_SESSION, record.session_id); }
             return;
           }
-        } catch {}
+        } catch { }
         setLoading(false);
       }
       // Fallback: show basic info
@@ -712,7 +712,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
                   })}
                 </div>
               ) : (
-                <div style={{color:'#94a3b8',fontSize:'.85rem',padding:'4px 0'}}>详细评分暂不可用</div>
+                <div style={{ color: '#94a3b8', fontSize: '.85rem', padding: '4px 0' }}>详细评分暂不可用</div>
               )}
             </div>
 
@@ -991,6 +991,14 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
   };
 
   // ── Main Render ─────────────────────────────────────────
+  if (view === 'acupuncture') {
+    return (
+      <div className="simulated-patient-acupuncture-layer">
+        <AcupuncturePractice onBack={() => setView('practice_select')} />
+      </div>
+    );
+  }
+
   return (
     <div className="sp-chat">
       <div className={`sp-chat__sidebar${sidebarOpen ? '' : ' is-collapsed'}`}>
@@ -1057,9 +1065,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
       </button>
 
       <div className="sp-chat__main">
-        {view === 'acupuncture' ? (
-          <AcupuncturePractice onBack={() => setView('practice_select')} />
-        ) : view === 'report' ? renderReport() :
+        {view === 'report' ? renderReport() :
           view === 'consultation' ? (
             <>
               {renderConsultation()}

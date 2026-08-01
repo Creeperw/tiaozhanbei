@@ -686,9 +686,7 @@ export default function PersonalizationPage({ onBackHome, onBack, embedded = fal
                     <dl className="flex flex-1 flex-col justify-between">{userProfileColumns.background.map(renderReadOnlyField)}</dl>
                   </section>
                   <section aria-label="学习偏好" className="user-profile-panel__card flex min-h-0 flex-col rounded-[26px] border border-teal-100 bg-gradient-to-br from-teal-50/65 via-white to-emerald-50/40 p-5 sm:p-6 lg:p-7">
-                    <div className="mb-4">
-                      <h3 className="user-profile-panel__card-title flex items-center gap-2.5 text-2xl font-bold text-emerald-950 lg:text-[1.7rem]"><Sparkles aria-hidden="true" size={22} className="text-emerald-600" />学习偏好</h3>
-                    </div>
+                    <h3 className="user-profile-panel__card-title mb-4 flex items-center gap-2.5 text-2xl font-bold text-emerald-950 lg:text-[1.7rem]"><Sparkles aria-hidden="true" size={22} className="text-emerald-600" />学习偏好</h3>
                     <dl className="flex flex-1 flex-col justify-between">{userProfileColumns.preferences.map(renderReadOnlyField)}</dl>
                   </section>
                 </div>

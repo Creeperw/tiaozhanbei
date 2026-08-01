@@ -503,7 +503,7 @@
 }
 
 .acupuncture-model__hint {
-    bottom: 12px;
+    bottom: 18px;
     left: 50%;
     transform: translateX(-50%);
     border: 0;
@@ -549,7 +549,8 @@
 }
 
 .acupuncture-card--fullscreen .acupuncture-model__markers-button {
-    top: 132px;
+    top: 24px;
+    left: 24px;
 }
 
 .acupuncture-card--fullscreen .acupuncture-model__status {
@@ -584,7 +585,7 @@
 .acupuncture-card--fullscreen .acupuncture-card--fullscreen-exit {
     position: absolute;
     z-index: 3;
-    bottom: 24px;
+    bottom: 76px;
 }
 
 .acupuncture-card--fullscreen>.acupuncture-primary {
@@ -637,9 +638,27 @@
 }
 
 .acupuncture-card--fullscreen .acupuncture-case-parameters {
+    top: auto;
     bottom: 24px;
     color: #d9fff2;
     background: rgba(8, 34, 28, .86);
+}
+
+.acupuncture-card--fullscreen .acupuncture-my-answer {
+    bottom: clamp(220px, 31vh, 270px);
+    max-height: min(38vh, 300px);
+    overflow-y: auto;
+}
+
+.acupuncture-my-answer-entry {
+    display: grid;
+    gap: 4px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(157, 236, 210, .25);
+}
+
+.acupuncture-my-answer-entry b {
+    color: #9ee8cf;
 }
 
 .acupuncture-card--fullscreen .acupuncture-standard-list {
@@ -660,6 +679,9 @@
         width: calc(100vw - 24px);
     }
 
+    .acupuncture-card--fullscreen>.acupuncture-card__eyebrow,
+    .acupuncture-card--fullscreen>h2,
+    .acupuncture-card--fullscreen>p,
     .acupuncture-card--fullscreen .acupuncture-summary-list,
     .acupuncture-card--fullscreen .acupuncture-case-parameters {
         left: 12px;
@@ -679,7 +701,13 @@
     }
 
     .acupuncture-card--fullscreen .acupuncture-model__markers-button {
-        top: 126px;
+        top: 12px;
+        left: 12px;
+    }
+
+    .acupuncture-card--fullscreen>.acupuncture-primary,
+    .acupuncture-card--fullscreen:has(.acupuncture-model)>.acupuncture-primary {
+        bottom: 70px;
     }
 }
 
@@ -696,6 +724,15 @@
     font-size: .86rem;
 }
 
+.acupuncture-card--fullscreen .acupuncture-case-parameters strong {
+    color: #9ee8cf;
+    font-size: .98rem;
+}
+
+.acupuncture-card--fullscreen .acupuncture-case-parameters span {
+    line-height: 1.45;
+}
+
 .acupuncture-case-parameters strong {
     color: #08794f;
 }
@@ -703,4 +740,54 @@
 .acupuncture-model.is-expanded {
     height: min(78vh, 900px);
     min-height: 560px;
+}
+
+.acupuncture-card--fullscreen:not(:has(.acupuncture-model)) {
+    display: grid;
+    place-content: center;
+    align-content: center;
+    justify-items: center;
+    gap: 18px;
+    padding: 32px;
+}
+
+.acupuncture-card--fullscreen:not(:has(.acupuncture-model))>* {
+    position: static;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+}
+
+.acupuncture-card--fullscreen:not(:has(.acupuncture-model))>h2,
+.acupuncture-card--fullscreen:not(:has(.acupuncture-model))>p {
+    max-width: min(620px, 90vw);
+    text-align: center;
+}
+
+.acupuncture-card--fullscreen:has(.acupuncture-model)>.acupuncture-card__eyebrow,
+.acupuncture-card--fullscreen:has(.acupuncture-model)>h2,
+.acupuncture-card--fullscreen:has(.acupuncture-model)>p,
+.acupuncture-card--fullscreen:has(.acupuncture-model)>.acupuncture-summary-list,
+.acupuncture-card--fullscreen:has(.acupuncture-model)>.acupuncture-standard-list {
+    display: none;
+}
+
+.acupuncture-card--fullscreen:has(.acupuncture-model)>.acupuncture-primary {
+    right: 50%;
+    bottom: 76px;
+    transform: translateX(50%);
+}
+
+.acupuncture-score-card {
+    position: fixed;
+    z-index: 2001;
+    inset: 50% auto auto 50%;
+    display: grid;
+    width: min(540px, calc(100vw - 32px));
+    max-width: 540px;
+    margin: 0;
+    transform: translate(-50%, -50%);
+    align-items: center;
+    justify-items: center;
 }

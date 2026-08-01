@@ -32,9 +32,9 @@ export default function MasteryHeatmap({ items = [] }) {
   ];
 
   return (
-    <section className="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-200/45 sm:p-6" aria-label="知识点掌握热力图">
+    <section className="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-200/45 sm:p-6" aria-label="知识点掌握情况">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-950">知识点掌握热力图 <span aria-hidden="true" className="text-base font-normal text-slate-400">ⓘ</span></h2>
+        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-950">知识点掌握情况 <span aria-hidden="true" className="text-base font-normal text-slate-400">ⓘ</span></h2>
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>弱</span>
           {['bg-[#F0F9F4]', 'bg-[#E8F5E9]', 'bg-[#D0F0E0]', 'bg-[#C8E6C9]', 'bg-[#A5D6A7]'].map((tone) => <i key={tone} aria-hidden="true" className={`h-4 w-4 rounded-sm ${tone}`} />)}
@@ -48,10 +48,10 @@ export default function MasteryHeatmap({ items = [] }) {
               <span className="text-left">知识点</span>
               {columns.map(([, label]) => <span key={label}>{label}</span>)}
             </div>
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 max-h-[632px] space-y-2 overflow-y-auto pr-1">
               {safeItems.map((item, index) => (
                 <div key={item.kp_id || item.kp_name || index} className="grid grid-cols-[minmax(10rem,1.5fr)_repeat(4,minmax(5.5rem,1fr))] items-center gap-2 rounded-xl px-2 py-2 hover:bg-emerald-50/40">
-                  <span className="truncate text-base font-medium text-slate-700" title={displayKnowledgePointName(item)}>{displayKnowledgePointName(item)}</span>
+                  <span className="truncate text-sm font-normal text-slate-700" title={displayKnowledgePointName(item)}>{displayKnowledgePointName(item)}</span>
                   {columns.map(([key, label, valueFor]) => {
                     const value = valueFor(item);
                     const unavailable = value === null || value === undefined;
@@ -68,7 +68,7 @@ export default function MasteryHeatmap({ items = [] }) {
           </div>
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">完成练习后生成知识点掌握热力图。</div>
+        <div className="mt-5 rounded-2xl bg-slate-50 px-5 py-8 text-center text-sm font-normal text-slate-500">完成练习后生成知识点掌握情况。</div>
       )}
     </section>
   );

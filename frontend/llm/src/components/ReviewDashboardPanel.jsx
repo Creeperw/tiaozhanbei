@@ -34,16 +34,16 @@ function ReviewQueueCard({ entries, names, dueCount, loading }) {
     <section className="rounded-[24px] border border-emerald-100 bg-white/90 p-5 shadow-sm shadow-emerald-100/40 sm:p-6" aria-label="复习队列">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-black text-slate-900">复习队列</h2>
-          <p className="mt-1 text-sm text-slate-500">优先处理已到期和即将复习的知识点。</p>
+          <h2 className="text-xl font-bold text-slate-900">复习队列</h2>
+          <p className="mt-1 text-sm font-normal text-slate-500">优先处理已到期和即将复习的知识点。</p>
         </div>
         <span className="rounded-full bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700">{dueCount} 项到期</span>
       </div>
       {loading ? (
         <p className="mt-5 rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">正在加载复习队列…</p>
       ) : entries.length > 0 ? (
-        <div className="mt-5 space-y-3">
-          {entries.slice(0, 5).map((entry) => {
+        <div className="mt-5 max-h-[760px] space-y-3 overflow-y-auto pr-1">
+          {entries.map((entry) => {
             const unit = entry.memory_unit || {};
             const displayName = readableKnowledgePointName(
               names.get(unit.kp_id),
@@ -52,7 +52,7 @@ function ReviewQueueCard({ entries, names, dueCount, loading }) {
             return (
               <article key={`${unit.kp_id}:${unit.next_review_at}`} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong className="min-w-0 truncate text-sm text-slate-900">{displayName}</strong>
+                  <span className="min-w-0 truncate text-sm font-normal text-slate-900">{displayName}</span>
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${entry.is_due ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{entry.is_due ? '已到期' : '待复习'}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -62,7 +62,6 @@ function ReviewQueueCard({ entries, names, dueCount, loading }) {
               </article>
             );
           })}
-          {entries.length > 5 && <p className="text-center text-xs text-slate-400">还有 {entries.length - 5} 项复习任务</p>}
         </div>
       ) : (
         <p className="mt-5 rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">当前没有复习任务。完成知识点配套题并通过批改后，会自动加入这里。</p>
@@ -149,12 +148,12 @@ export default function ReviewDashboardPanel() {
       </div>
 
       <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm" aria-label="知识点掌握度">
-        <h3 className="font-black text-slate-900">知识点掌握度</h3>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <h3 className="text-xl font-bold text-slate-900">知识点掌握度</h3>
+        <div className="mt-4 grid max-h-[590px] gap-3 overflow-y-auto pr-1 lg:grid-cols-2">
           {(dashboard.mastery || []).map((item) => (
             <article key={item.kp_id} className="rounded-2xl border border-slate-100 p-4">
               <div className="flex items-center justify-between gap-3 text-sm">
-                <strong className="truncate text-slate-900">{readableKnowledgePointName(item.kp_name)}</strong>
+                <span className="truncate text-sm font-normal text-slate-900">{readableKnowledgePointName(item.kp_name)}</span>
                 <span className="font-bold text-slate-700">{Number(item.mastery_score || 0).toFixed(1)}%</span>
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><i className={`block h-full rounded-full ${masteryTone(Number(item.mastery_score || 0))}`} style={{ width: `${Math.max(0, Math.min(100, Number(item.mastery_score || 0)))}%` }} /></div>
@@ -170,11 +169,11 @@ export default function ReviewDashboardPanel() {
       </section>
 
       <section className="rounded-[30px] border border-emerald-100 bg-white/90 p-6 shadow-sm" aria-label="最近复习与掌握变化">
-        <h3 className="font-black text-slate-900">最近复习与掌握变化</h3>
-        <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+        <h3 className="text-xl font-bold text-slate-900">最近复习与掌握变化</h3>
+        <div className="mt-4 max-h-[580px] space-y-2 overflow-y-auto pr-1">
           {(dashboard.mastery_history || []).map((item) => (
             <div key={item.history_id} className="grid grid-cols-[minmax(0,1fr)_140px_140px] items-center gap-4 rounded-xl border border-slate-100 px-4 py-3 text-sm">
-              <span className="truncate font-medium text-slate-800">{readableKnowledgePointName(item.kp_name)}</span>
+              <span className="truncate text-sm font-normal text-slate-800">{readableKnowledgePointName(item.kp_name)}</span>
               <span className="whitespace-nowrap text-slate-600">掌握度 {Number(item.mastery_score || 0).toFixed(1)}%</span>
               <time className="whitespace-nowrap text-xs text-slate-400">{formatTime(item.calculated_at)}</time>
             </div>

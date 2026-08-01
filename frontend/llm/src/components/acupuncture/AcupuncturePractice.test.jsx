@@ -34,6 +34,61 @@ describe('AcupuncturePractice', () => {
         expect(screen.getByText('留针时间')).toBeInTheDocument();
     });
 
+    it('shows my needling answer above the correct answer card', () => {
+        const testCase = normalizeAcupunctureCase({
+            caseId: 'acup-test',
+            title: '测试病例 — 太溪穴',
+            standardAcupoints: [{
+                name: '太溪',
+                code: 'KI3',
+                modelNodeName: 'taixi',
+                needleDepth: { min: 0.5, max: 0.8, unit: '寸' },
+                needleAngle: '直刺0.5-0.8寸',
+                retentionTime: { min: 15, max: 25, unit: '分钟' },
+            }],
+        });
+        render(<AcupuncturePractice caseData={testCase} onBack={vi.fn()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: '愿意配合' }));
+        fireEvent.click(screen.getByRole('button', { name: '进入 3D 模型' }));
+        fireEvent.click(screen.getByRole('button', { name: '开始下针' }));
+        fireEvent.click(screen.getByRole('button', { name: '记录一个落针点' }));
+        fireEvent.click(screen.getByRole('button', { name: '完成施针' }));
+
+        expect(screen.getByText(/我的答案/)).toBeInTheDocument();
+        expect(screen.getAllByText(/进针类型：直刺/)).toHaveLength(2);
+        expect(screen.getByText(/进针深度：0.5 寸/)).toBeInTheDocument();
+        expect(screen.getByText(/留针时间：20 分钟/)).toBeInTheDocument();
+        const myAnswer = screen.getByText(/我的答案/);
+        const correctAnswer = screen.getByText(/正确答案 · 太溪/);
+        expect(myAnswer).toBeInTheDocument();
+        expect(screen.queryByText(/我的答案 · 太溪/)).not.toBeInTheDocument();
+        expect(myAnswer.compareDocumentPosition(correctAnswer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('keeps every needle in my answer records', () => {
+        render(<AcupuncturePractice onBack={vi.fn()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: '愿意配合' }));
+        fireEvent.click(screen.getByRole('button', { name: '进入 3D 模型' }));
+        fireEvent.click(screen.getByRole('button', { name: '开始下针' }));
+        fireEvent.click(screen.getByRole('button', { name: '记录一个落针点' }));
+        fireEvent.click(screen.getByRole('button', { name: '记录一个落针点' }));
+        fireEvent.click(screen.getByRole('button', { name: '完成施针' }));
+
+        expect(screen.getByText('我的答案（共 2 针）')).toBeInTheDocument();
+        expect(screen.getByText('第 1 针')).toBeInTheDocument();
+        expect(screen.getByText('第 2 针')).toBeInTheDocument();
+    });
+
+    it('offers fallback cases when the cases endpoint is empty', () => {
+        render(<AcupuncturePractice onBack={vi.fn()} />);
+
+        const picker = screen.getByRole('combobox', { name: '选择训练病例' });
+        expect(picker).not.toBeDisabled();
+        expect(picker.querySelectorAll('option')).toHaveLength(11);
+    });
+
     it.each([
         { advanceTo: [] },
         { advanceTo: ['开始下针'] },
@@ -87,6 +142,31 @@ describe('AcupuncturePractice', () => {
         expect(normalized.scoring.depthUnit).toBe('寸');
         expect(scoreAcupunctureAttempt(normalized, [{ depthValue: 0.6, retentionMinutes: 20 }]))
             .toMatchObject({ available: true, position: null, depth: 100, retention: 100 });
+    });
+
+    it('scores each matched user needle against the standard instead of fabricating full credit', () => {
+        const normalized = normalizeAcupunctureCase({
+            standardAcupoints: [{
+                name: '太溪',
+                region: 'feet',
+                coordinates: { x: 50, y: 50, unit: 'px' },
+                needleDepth: { min: 0.5, max: 0.8, unit: '寸' },
+                needleAngle: '直刺0.5-0.8寸',
+                retentionTime: { min: 15, max: 25, unit: '分钟' },
+            }],
+            positionTolerance: { value: 15, unit: 'px' },
+        });
+
+        expect(scoreAcupunctureAttempt(normalized, [{
+            x: 50, y: 50, insertionType: 'oblique', depthValue: 1.2, retentionMinutes: 40,
+        }])).toMatchObject({
+            available: true, position: 100, depth: 0, retention: 0, insertion: 0,
+        });
+        expect(scoreAcupunctureAttempt(normalized, [{
+            x: 80, y: 80, insertionType: 'direct', depthValue: 0.6, retentionMinutes: 20,
+        }])).toMatchObject({
+            available: true, position: 0, depth: 100, retention: 100, insertion: 0,
+        });
     });
 
     it('uses the selected region image instead of the case default image', () => {

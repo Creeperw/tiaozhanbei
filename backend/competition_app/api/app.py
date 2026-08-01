@@ -10,7 +10,7 @@ from typing import Any, Literal
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -37,6 +37,10 @@ from competition_app.services.planning_readiness import PlanningReadinessService
 from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.workshop import WorkshopKnowledgeService
+from competition_app.services.textbook_import import (
+    TextbookImportError,
+    TextbookTocNotFound,
+)
 from competition_app.services.qualification_papers import QualificationPaperRepository
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 from competition_app.api.simulated_patient_routes import router as sp_router, init_engine as sp_init_engine
@@ -1357,21 +1361,75 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
 
     @app.get("/api/v1/textbooks/pdfs/catalog")
     async def textbook_pdf_catalog(request: Request) -> dict:
-        current_user(request)
-        items = container.textbook_pdf_service.books()
+        user = current_user(request)
+        items = container.textbook_pdf_service.books(user.user_id)
         return {"items": items, "total": len(items)}
+
+    @app.get("/api/v1/textbooks/categories")
+    async def textbook_categories(request: Request) -> dict:
+        current_user(request)
+        items = container.textbook_import_service.categories()
+        return {"items": items, "total": len(items)}
+
+    @app.post("/api/v1/textbooks/import", status_code=201)
+    async def import_textbook(
+        request: Request,
+        file: UploadFile = File(...),
+        title: str = Form(""),
+        description: str = Form(""),
+        category: str = Form("中医药"),
+        new_category: str = Form(""),
+        cover: UploadFile | None = File(None),
+    ) -> dict:
+        user = current_user(request)
+        content = await file.read()
+        cover_content = await cover.read() if cover is not None else None
+        try:
+            item = await container.textbook_import_service.import_pdf(
+                owner_id=user.user_id,
+                filename=file.filename or "textbook.pdf",
+                content=content,
+                title=title,
+                description=description,
+                category=category,
+                new_category=new_category,
+                cover_content=cover_content,
+                cover_media_type=(cover.content_type or "") if cover is not None else "",
+            )
+        except TextbookTocNotFound as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": exc.code, "message": str(exc)},
+            ) from exc
+        except TextbookImportError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": exc.code, "message": str(exc)},
+            ) from exc
+        public_item = container.textbook_pdf_service.by_id(
+            str(item["book_id"]), user.user_id
+        )
+        return {"ok": True, "book": public_item}
 
     @app.get("/api/v1/textbooks/pdfs/resolve")
     async def resolve_textbook_pdf(book: str, request: Request) -> dict:
-        current_user(request)
-        item = container.textbook_pdf_service.resolve(book)
+        user = current_user(request)
+        item = container.textbook_pdf_service.resolve(book, user.user_id)
         return {"available": bool(item and item.get("available")), "book": item}
+
+    @app.get("/api/v1/textbooks/pdfs/{book_id}")
+    async def textbook_pdf_metadata(book_id: str, request: Request) -> dict:
+        user = current_user(request)
+        item = container.textbook_pdf_service.by_id(book_id, user.user_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="教材不存在")
+        return {"book": item}
 
     @app.get("/api/v1/textbooks/pdfs/{book_id}/file")
     async def textbook_pdf_file(book_id: str, request: Request):
-        current_user(request)
-        item = container.textbook_pdf_service.by_id(book_id)
-        path = container.textbook_pdf_service.file_path(book_id)
+        user = current_user(request)
+        item = container.textbook_pdf_service.by_id(book_id, user.user_id)
+        path = container.textbook_pdf_service.file_path(book_id, user.user_id)
         if item is None or path is None:
             raise HTTPException(status_code=404, detail="该教材暂无电子版")
         return FileResponse(
@@ -1382,12 +1440,27 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             headers={"Cache-Control": "private, max-age=3600"},
         )
 
+    @app.get("/api/v1/textbooks/pdfs/{book_id}/cover")
+    async def textbook_pdf_cover(book_id: str, request: Request):
+        user = current_user(request)
+        path = container.textbook_pdf_service.cover_path(book_id, user.user_id)
+        if path is None:
+            raise HTTPException(status_code=404, detail="教材封面不存在")
+        media_type = {
+            ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif",
+        }.get(path.suffix.lower(), "image/jpeg")
+        return FileResponse(
+            path,
+            media_type=media_type,
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
+
     @app.get("/api/v1/textbooks/pdfs/{book_id}/pages/{page_number}/annotations")
     async def textbook_pdf_annotations(
         book_id: str, page_number: int, request: Request
     ) -> dict:
         user = current_user(request)
-        if page_number < 1 or container.textbook_pdf_service.by_id(book_id) is None:
+        if page_number < 1 or container.textbook_pdf_service.by_id(book_id, user.user_id) is None:
             raise HTTPException(status_code=404, detail="教材页面不存在")
         return container.textbook_pdf_service.annotations.get_page(
             user.user_id, book_id, page_number
@@ -1401,7 +1474,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         request: Request,
     ) -> dict:
         user = current_user(request)
-        if page_number < 1 or container.textbook_pdf_service.by_id(book_id) is None:
+        if page_number < 1 or container.textbook_pdf_service.by_id(book_id, user.user_id) is None:
             raise HTTPException(status_code=404, detail="教材页面不存在")
         return container.textbook_pdf_service.annotations.save_page(
             user.user_id, book_id, page_number, payload.annotations
@@ -1410,7 +1483,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     @app.get("/api/v1/textbooks/pdfs/{book_id}/reading-state")
     async def textbook_pdf_reading_state(book_id: str, request: Request) -> dict:
         user = current_user(request)
-        if container.textbook_pdf_service.by_id(book_id) is None:
+        if container.textbook_pdf_service.by_id(book_id, user.user_id) is None:
             raise HTTPException(status_code=404, detail="教材不存在")
         return container.textbook_pdf_service.annotations.get_reading_state(
             user.user_id, book_id
@@ -1423,7 +1496,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         request: Request,
     ) -> dict:
         user = current_user(request)
-        if container.textbook_pdf_service.by_id(book_id) is None:
+        if container.textbook_pdf_service.by_id(book_id, user.user_id) is None:
             raise HTTPException(status_code=404, detail="教材不存在")
         return container.textbook_pdf_service.annotations.save_reading_state(
             user.user_id, book_id, payload.page_number, payload.zoom

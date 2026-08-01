@@ -177,25 +177,54 @@ class TextbookPdfService:
         pdf_root: Path,
         catalog_path: Path,
         annotations: TextbookPdfAnnotationRepository,
+        uploaded_root: Path | None = None,
     ) -> None:
         self.pdf_root = pdf_root.resolve()
         self.catalog_path = catalog_path
         self.annotations = annotations
+        self.uploaded_root = uploaded_root.resolve() if uploaded_root else None
         self._catalog = self._load_catalog()
 
     def _load_catalog(self) -> list[dict[str, Any]]:
         if not self.catalog_path.is_file():
             return []
         payload = json.loads(self.catalog_path.read_text(encoding="utf-8"))
-        return list(payload.get("books") or [])
+        default_category = str(payload.get("default_category") or "中医药")
+        books = list(payload.get("books") or [])
+        for item in books:
+            if isinstance(item, dict):
+                item.setdefault("category", default_category)
+        return books
 
-    def books(self) -> list[dict[str, Any]]:
-        return [self._public_book(item) for item in self._catalog]
+    def _uploaded_books(self, owner_id: str | None) -> list[dict[str, Any]]:
+        if not owner_id or self.uploaded_root is None:
+            return []
+        owner = re.sub(r"[^0-9A-Za-z_.-]+", "_", str(owner_id))[:96]
+        owner_root = self.uploaded_root / owner
+        if not owner_root.is_dir():
+            return []
+        books: list[dict[str, Any]] = []
+        for manifest in owner_root.glob("*/manifest.json"):
+            try:
+                item = json.loads(manifest.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(item, dict):
+                item["_upload_dir"] = str(manifest.parent.resolve())
+                books.append(item)
+        books.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
+        return books
 
-    def resolve(self, book: str) -> dict[str, Any] | None:
+    def _all_books(self, owner_id: str | None = None) -> list[dict[str, Any]]:
+        return [*self._uploaded_books(owner_id), *self._catalog]
+
+    def books(self, owner_id: str | None = None) -> list[dict[str, Any]]:
+        return [self._public_book(item) for item in self._all_books(owner_id)]
+
+    def resolve(self, book: str, owner_id: str | None = None) -> dict[str, Any] | None:
         target = normalize_book_title(book)
         candidates: list[dict[str, Any]] = []
-        for item in self._catalog:
+        for item in self._all_books(owner_id):
             names = [item.get("title", ""), *(item.get("aliases") or [])]
             if target and target in {normalize_book_title(name) for name in names}:
                 candidates.append(item)
@@ -204,25 +233,50 @@ class TextbookPdfService:
         candidates.sort(key=lambda item: (0 if item.get("edition") == "十四五" else 1, item.get("title", "")))
         return self._public_book(candidates[0])
 
-    def by_id(self, book_id: str) -> dict[str, Any] | None:
-        item = next((row for row in self._catalog if row.get("book_id") == book_id), None)
+    def by_id(self, book_id: str, owner_id: str | None = None) -> dict[str, Any] | None:
+        item = next((row for row in self._all_books(owner_id) if row.get("book_id") == book_id), None)
         return self._public_book(item) if item else None
 
-    def file_path(self, book_id: str) -> Path | None:
-        item = next((row for row in self._catalog if row.get("book_id") == book_id), None)
+    def file_path(self, book_id: str, owner_id: str | None = None) -> Path | None:
+        item = next((row for row in self._all_books(owner_id) if row.get("book_id") == book_id), None)
         if item is None:
             return None
-        path = (self.pdf_root / str(item.get("relative_path") or "")).resolve()
-        try:
-            path.relative_to(self.pdf_root)
-        except ValueError:
+        path = self._item_path(item, "relative_path")
+        if path is None:
             return None
         return path if path.is_file() else None
+
+    def cover_path(self, book_id: str, owner_id: str | None = None) -> Path | None:
+        item = next((row for row in self._all_books(owner_id) if row.get("book_id") == book_id), None)
+        if item is None or not item.get("_upload_dir"):
+            return None
+        path = self._item_path(item, "cover_relative_path")
+        if path is None:
+            return None
+        return path if path.is_file() else None
+
+    def _item_path(self, item: dict[str, Any], field: str) -> Path | None:
+        upload_dir = item.get("_upload_dir")
+        root = Path(str(upload_dir)).resolve() if upload_dir else self.pdf_root
+        path = (root / str(item.get(field) or "")).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError:
+            return None
+        return path
 
     def _public_book(self, item: dict[str, Any] | None) -> dict[str, Any] | None:
         if item is None:
             return None
-        payload = {key: value for key, value in item.items() if key != "relative_path"}
-        payload["available"] = self.file_path(str(item.get("book_id") or "")) is not None
+        payload = {
+            key: value for key, value in item.items()
+            if key not in {"relative_path", "cover_relative_path", "_upload_dir", "owner_id"}
+        }
+        payload.setdefault("category", "中医药")
+        upload_dir = item.get("_upload_dir")
+        path = self._item_path(item, "relative_path")
+        payload["available"] = bool(path and path.is_file())
         payload["file_url"] = f"/api/v1/textbooks/pdfs/{item['book_id']}/file" if payload["available"] else None
+        if upload_dir and item.get("cover_relative_path"):
+            payload["cover_url"] = f"/api/v1/textbooks/pdfs/{item['book_id']}/cover"
         return payload
