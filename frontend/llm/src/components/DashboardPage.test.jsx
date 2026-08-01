@@ -9,6 +9,8 @@ import {
   loadPlannedLearningPath,
 } from './learning-tree/learningPathApi';
 import { loadExamTracks, loadLearningTarget } from './exam-atlas/examAtlasApi';
+import { clearTeachingResourcesPageCache } from './teachingResourcesPageCache';
+import { clearTextbookSnapshotCache } from './learningPlanDashboard';
 
 vi.mock('./knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn() }));
 vi.mock('./knowledge-atlas/knowledgeAtlasFeature', () => ({ resolveKnowledgeAtlasEnabled: vi.fn() }));
@@ -61,6 +63,8 @@ function pathPage(nodes) {
 describe('DashboardPage replacement learning workshop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearTextbookSnapshotCache();
+    clearTeachingResourcesPageCache();
     localStorage.clear();
     loadAtlasNodes.mockResolvedValue({
       route: 'textbook_14_5',
@@ -116,6 +120,7 @@ describe('DashboardPage replacement learning workshop', () => {
       },
     });
   });
+
   it('uses the textbook library as the complete learning-workshop surface', async () => {
     render(<DashboardPage onNavigate={vi.fn()} />);
 

@@ -8,6 +8,15 @@ import {
   STAGE_PALETTE,
 } from './learningStageModel';
 
+const STAGE_TASK_COPY = Object.freeze({
+  '中医基础与文化语言': ['建立中医基础概念', '文化史及语言文字基础'],
+  '中药方剂与经典基础': ['掌握常用中药与方剂', '理解经典理论框架'],
+  '经典与现代医学基础': ['对接中西医思维与现代医学体系', '建立跨学科基础认知'],
+  '现代临床基础': ['掌握诊断思维与辨证思路', '熟悉常见疾病现代临床框架'],
+  '现代临床框架': ['掌握诊断思维与辨证思路', '熟悉常见疾病现代临床框架'],
+  '学术流派与文献提升': ['了解学术流派特点', '提升文献检索与阅读能力'],
+});
+
 function snapshotRect(rect) {
   return {
     left: rect.left,
@@ -20,6 +29,7 @@ function snapshotRect(rect) {
 function withPresentation(stage, index) {
   return {
     ...stage,
+    tasks: STAGE_TASK_COPY[stage.title] || stage.tasks,
     colors: Array.isArray(stage.colors) && stage.colors.length >= 2
       ? stage.colors
       : STAGE_PALETTE[index % STAGE_PALETTE.length],
