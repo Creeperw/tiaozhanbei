@@ -217,7 +217,9 @@ class TextbookImportService:
                     toc_status = "flat"
                     self._report(progress, "toc", "未识别到目录，已按全书平铺处理…")
             self._report(progress, "toc", "正在映射目录页码…")
-            if toc_status == "flat":
+            if toc_status in ("flat", "outline", "headings"):
+                # 书签/标题探测的页码来自结构本身，保留；正文标题匹配只用于视觉目录路径，
+                # 否则会把“目录页里列出的同名标题”误匹配到目录页
                 mapped_toc = chapters
             else:
                 mapped_toc = self._map_toc_pages(
@@ -442,18 +444,39 @@ class TextbookImportService:
             return None
         chapters: list[dict[str, Any]] = []
         for index, item in enumerate(outline, 1):
-            if isinstance(item, list):
-                continue
-            title = str(getattr(item, "title", "") or "").strip()
+            children: list[Any] = []
+            if isinstance(item, list) and item:
+                dest = item[0]
+                children = item[1] if len(item) > 1 and isinstance(item[1], list) else []
+            else:
+                dest = item
+            title = str(getattr(dest, "title", "") or "").strip()
             if not title:
                 continue
             try:
-                page = document.get_destination_page_number(item) + 1
+                page = document.get_destination_page_number(dest) + 1
             except Exception:
                 page = None
+            sections: list[dict[str, Any]] = []
+            for section_index, child in enumerate(children, 1):
+                if isinstance(child, list):
+                    child = child[0]
+                stitle = str(getattr(child, "title", "") or "").strip()
+                if not stitle:
+                    continue
+                try:
+                    spage = document.get_destination_page_number(child) + 1
+                except Exception:
+                    spage = None
+                sections.append({
+                    "id": f"chapter-{index}-section-{section_index}",
+                    "title": stitle,
+                    "printed_page": spage,
+                    "pdf_page": spage,
+                })
             chapters.append({
                 "id": f"chapter-{index}", "title": title,
-                "printed_page": page, "pdf_page": page, "sections": [],
+                "printed_page": page, "pdf_page": page, "sections": sections,
             })
         return chapters or None
 
@@ -781,6 +804,10 @@ class TextbookImportService:
                 offsets.append(pdf_page - printed_page)
         for target, title in entries:
             title_key = _normalized(title)
+            title_core = _normalized(re.sub(
+                r"^(?:第\s*[一二三四五六七八九十百千零0-9]+\s*[章节篇]|[（(]\s*[一二三四五六七八九十0-9]+\s*[)）]|\d+\s*[.、])\s*",
+                "", title,
+            ))
             best_page, best_score = None, 0.0
             if title_key:
                 for page, text in page_text.items():
@@ -790,6 +817,16 @@ class TextbookImportService:
                     if not text_key:
                         continue
                     score = 1.0 if title_key in text_key else SequenceMatcher(None, title_key, text_key[: max(120, len(title_key) * 8)]).ratio()
+                    if score > best_score:
+                        best_page, best_score = page, score
+            if (best_page is None or best_score < 0.58) and title_core and title_core != title_key and len(title_core) >= 3:
+                for page, text in page_text.items():
+                    if page <= toc_last_page:
+                        continue
+                    text_key = _normalized(text)
+                    if not text_key:
+                        continue
+                    score = 1.0 if title_core in text_key else SequenceMatcher(None, title_core, text_key[: max(120, len(title_core) * 8)]).ratio()
                     if score > best_score:
                         best_page, best_score = page, score
             if best_page is not None and best_score >= 0.58:
