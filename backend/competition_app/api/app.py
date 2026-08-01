@@ -458,6 +458,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "acupuncture"),
             name="frontend_acupuncture",
         )
+    if frontend_root and (frontend_root / "knowledge-graph").is_dir():
+        app.mount(
+            "/knowledge-graph",
+            StaticFiles(directory=frontend_root / "knowledge-graph", html=True),
+            name="frontend_knowledge_graph",
+        )
     if frontend_root and (frontend_root / "blender.yibiaozhu.glb").is_file():
         app.mount(
             "/acupuncture-models",
@@ -507,6 +513,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "/textbook-status-icons/",
                     "/acupuncture/",
                     "/acupuncture-models/",
+                    "/knowledge-graph/",
                     "/platform-assets/",
                 )
             )

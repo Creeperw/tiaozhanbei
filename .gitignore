@@ -255,3 +255,6 @@ backend/competition_app/data/workshop_note_images/
 /release_packages/
 /.runlogs/
 /tmp/
+
+# Local MySQL data directory (kept out of Git; removed from index in merge)
+.local-mysql/
