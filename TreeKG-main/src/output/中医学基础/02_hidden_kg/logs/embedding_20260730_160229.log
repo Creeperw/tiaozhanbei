@@ -1,0 +1,7 @@
+2026-07-30 16:03:15,239 [INFO] embedding:122 - Embedding started. infile=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\conv_entities.json, outfile=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\node_embeddings.pkl, model=D:\tree-KG\TreeKG-main\src\HiddenKG\model\bert-base-chinese, device=cuda, batch_size=16, max_length=512, amp=True
+2026-07-30 16:03:15,543 [INFO] embedding:57 - Loading entities for embedding: D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\conv_entities.json
+2026-07-30 16:03:16,387 [INFO] embedding:60 - Loaded entities count=5609
+2026-07-30 16:03:16,398 [INFO] embedding:73 - Generating embeddings. entities=5609
+2026-07-30 16:11:48,105 [INFO] embedding:78 - Generated embeddings shape=5609 x 768
+2026-07-30 16:11:48,169 [INFO] embedding:85 - Saved embeddings: D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\node_embeddings.pkl, count=5609
+2026-07-30 16:11:48,169 [INFO] embedding:143 - Embedding finished. log=D:\tree-KG\TreeKG-main\src\output\02_hidden_kg\logs\embedding_20260730_160229.log

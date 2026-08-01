@@ -1,0 +1,2318 @@
+{
+  "nodes": [
+    {
+      "name": "第一章 绪论",
+      "title": "第一章 绪论",
+      "level": "level1",
+      "description": "绪论"
+    },
+    {
+      "name": "第一节 文化概说",
+      "title": "第一节 文化概说",
+      "level": "level2",
+      "description": "绪论.1"
+    },
+    {
+      "name": "一 文化的内涵与外延",
+      "title": "一 文化的内涵与外延",
+      "level": "level3",
+      "description": "绪论.1.1"
+    },
+    {
+      "name": "二 文化的分类、层次、结构",
+      "title": "二 文化的分类、层次、结构",
+      "level": "level3",
+      "description": "绪论.1.2"
+    },
+    {
+      "name": "第二节 中医文化概说",
+      "title": "第二节 中医文化概说",
+      "level": "level2",
+      "description": "绪论.2"
+    },
+    {
+      "name": "一 中医文化与其他文化的关系",
+      "title": "一 中医文化与其他文化的关系",
+      "level": "level3",
+      "description": "绪论.2.1"
+    },
+    {
+      "name": "二 中医文化的内涵与外延",
+      "title": "二 中医文化的内涵与外延",
+      "level": "level3",
+      "description": "绪论.2.2"
+    },
+    {
+      "name": "第三节 中医文化学概说",
+      "title": "第三节 中医文化学概说",
+      "level": "level2",
+      "description": "绪论.3"
+    },
+    {
+      "name": "一 中医文化与中医文化学的关系",
+      "title": "一 中医文化与中医文化学的关系",
+      "level": "level3",
+      "description": "绪论.3.1"
+    },
+    {
+      "name": "二 中医文化学的内涵与外延",
+      "title": "二 中医文化学的内涵与外延",
+      "level": "level3",
+      "description": "绪论.3.2"
+    },
+    {
+      "name": "三 学习中医文化学的意义",
+      "title": "三 学习中医文化学的意义",
+      "level": "level3",
+      "description": "绪论.3.3"
+    },
+    {
+      "name": "第二章 中医文化的起源",
+      "title": "第二章 中医文化的起源",
+      "level": "level1",
+      "description": "2章"
+    },
+    {
+      "name": "第一节 巫文化与中医文化的起源",
+      "title": "第一节 巫文化与中医文化的起源",
+      "level": "level2",
+      "description": "2.1"
+    },
+    {
+      "name": "一 巫文化概说",
+      "title": "一 巫文化概说",
+      "level": "level3",
+      "description": "2.1.1"
+    },
+    {
+      "name": "二 巫文化与中医文化",
+      "title": "二 巫文化与中医文化",
+      "level": "level3",
+      "description": "2.1.2"
+    },
+    {
+      "name": "第二节 早期社会生活与中医文化的起源",
+      "title": "第二节 早期社会生活与中医文化的起源",
+      "level": "level2",
+      "description": "2.2"
+    },
+    {
+      "name": "一 农耕文化与中医文化的起源",
+      "title": "一 农耕文化与中医文化的起源",
+      "level": "level3",
+      "description": "2.2.1"
+    },
+    {
+      "name": "二 饮食与中医文化的起源",
+      "title": "二 饮食与中医文化的起源",
+      "level": "level3",
+      "description": "2.2.2"
+    },
+    {
+      "name": "第二节 早期社会生活与中医文化的起源",
+      "title": "第二节 早期社会生活与中医文化的起源",
+      "level": "level2",
+      "description": "2.3"
+    },
+    {
+      "name": "一 农耕文化与中医文化的起源",
+      "title": "一 农耕文化与中医文化的起源",
+      "level": "level3",
+      "description": "2.3.1"
+    },
+    {
+      "name": "二 饮食与中医文化的起源",
+      "title": "二 饮食与中医文化的起源",
+      "level": "level3",
+      "description": "2.3.2"
+    },
+    {
+      "name": "第三节 古代天文历法音律与中医文化的起源",
+      "title": "第三节 古代天文历法音律与中医文化的起源",
+      "level": "level2",
+      "description": "2.4"
+    },
+    {
+      "name": "一 中国古代的宇宙观",
+      "title": "一 中国古代的宇宙观",
+      "level": "level3",
+      "description": "2.4.1"
+    },
+    {
+      "name": "二 中国古代的宇宙结构学说",
+      "title": "二 中国古代的宇宙结构学说",
+      "level": "level3",
+      "description": "2.4.2"
+    },
+    {
+      "name": "三 中国古代的天文历法音律",
+      "title": "三 中国古代的天文历法音律",
+      "level": "level3",
+      "description": "2.4.3"
+    },
+    {
+      "name": "四 天文历法音律与中医药学",
+      "title": "四 天文历法音律与中医药学",
+      "level": "level3",
+      "description": "2.4.4"
+    },
+    {
+      "name": "第三节 古代天文历法音律与中医文化的起源",
+      "title": "第三节 古代天文历法音律与中医文化的起源",
+      "level": "level2",
+      "description": "2.5"
+    },
+    {
+      "name": "一 中国古代的宇宙观",
+      "title": "一 中国古代的宇宙观",
+      "level": "level3",
+      "description": "2.5.1"
+    },
+    {
+      "name": "二 中国古代的宇宙结构学说",
+      "title": "二 中国古代的宇宙结构学说",
+      "level": "level3",
+      "description": "2.5.2"
+    },
+    {
+      "name": "三 中国古代的天文历法音律",
+      "title": "三 中国古代的天文历法音律",
+      "level": "level3",
+      "description": "2.5.3"
+    },
+    {
+      "name": "四 天文历法音律与中医药学",
+      "title": "四 天文历法音律与中医药学",
+      "level": "level3",
+      "description": "2.5.4"
+    },
+    {
+      "name": "第三章 中医文化的主要内容",
+      "title": "第三章 中医文化的主要内容",
+      "level": "level1",
+      "description": "3章"
+    },
+    {
+      "name": "第一节 中医思维方法",
+      "title": "第一节 中医思维方法",
+      "level": "level2",
+      "description": "3.1"
+    },
+    {
+      "name": "一 中医思维方法概述",
+      "title": "一 中医思维方法概述",
+      "level": "level3",
+      "description": "3.1.1"
+    },
+    {
+      "name": "二 意象思维的形成",
+      "title": "二 意象思维的形成",
+      "level": "level3",
+      "description": "3.1.2"
+    },
+    {
+      "name": "三 意象思维的运用",
+      "title": "三 意象思维的运用",
+      "level": "level3",
+      "description": "3.1.3"
+    },
+    {
+      "name": "四 意象思维的评价",
+      "title": "四 意象思维的评价",
+      "level": "level3",
+      "description": "3.1.4"
+    },
+    {
+      "name": "第一节 中医思维方法",
+      "title": "第一节 中医思维方法",
+      "level": "level2",
+      "description": "3.2"
+    },
+    {
+      "name": "一 中医思维方法概述",
+      "title": "一 中医思维方法概述",
+      "level": "level3",
+      "description": "3.2.1"
+    },
+    {
+      "name": "二 意象思维的形成",
+      "title": "二 意象思维的形成",
+      "level": "level3",
+      "description": "3.2.2"
+    },
+    {
+      "name": "三 意象思维的运用",
+      "title": "三 意象思维的运用",
+      "level": "level3",
+      "description": "3.2.3"
+    },
+    {
+      "name": "第二节 中医价值观念",
+      "title": "第二节 中医价值观念",
+      "level": "level2",
+      "description": "3.3"
+    },
+    {
+      "name": "一 “天人合一”的生命观",
+      "title": "一 “天人合一”的生命观",
+      "level": "level3",
+      "description": "3.3.1"
+    },
+    {
+      "name": "二 “形神合一”的健康观",
+      "title": "二 “形神合一”的健康观",
+      "level": "level3",
+      "description": "3.3.2"
+    },
+    {
+      "name": "三 失和则病的疾病观",
+      "title": "三 失和则病的疾病观",
+      "level": "level3",
+      "description": "3.3.3"
+    },
+    {
+      "name": "四 阴阳协调的医养观",
+      "title": "四 阴阳协调的医养观",
+      "level": "level3",
+      "description": "3.3.4"
+    },
+    {
+      "name": "第三节 中医制度文化",
+      "title": "第三节 中医制度文化",
+      "level": "level2",
+      "description": "3.4"
+    },
+    {
+      "name": "一 医官制度文化",
+      "title": "一 医官制度文化",
+      "level": "level3",
+      "description": "3.4.1"
+    },
+    {
+      "name": "二 教育制度文化",
+      "title": "二 教育制度文化",
+      "level": "level3",
+      "description": "3.4.2"
+    },
+    {
+      "name": "三 医事法律文化",
+      "title": "三 医事法律文化",
+      "level": "level3",
+      "description": "3.4.3"
+    },
+    {
+      "name": "第四节 中医行为文化",
+      "title": "第四节 中医行为文化",
+      "level": "level2",
+      "description": "3.5"
+    },
+    {
+      "name": "一 医疗行为文化",
+      "title": "一 医疗行为文化",
+      "level": "level3",
+      "description": "3.5.1"
+    },
+    {
+      "name": "二 著述行为文化",
+      "title": "二 著述行为文化",
+      "level": "level3",
+      "description": "3.5.2"
+    },
+    {
+      "name": "三 教育行为文化",
+      "title": "三 教育行为文化",
+      "level": "level3",
+      "description": "3.5.3"
+    },
+    {
+      "name": "第五节 中医器物场所文化",
+      "title": "第五节 中医器物场所文化",
+      "level": "level2",
+      "description": "3.6"
+    },
+    {
+      "name": "一 特色鲜明的医事器具",
+      "title": "一 特色鲜明的医事器具",
+      "level": "level3",
+      "description": "3.6.1"
+    },
+    {
+      "name": "二 医药合一的医事场所",
+      "title": "二 医药合一的医事场所",
+      "level": "level3",
+      "description": "3.6.2"
+    },
+    {
+      "name": "三 简便亲民的医药标识",
+      "title": "三 简便亲民的医药标识",
+      "level": "level3",
+      "description": "3.6.3"
+    },
+    {
+      "name": "第五节 中医器物场所文化",
+      "title": "第五节 中医器物场所文化",
+      "level": "level2",
+      "description": "3.7"
+    },
+    {
+      "name": "一 特色鲜明的医事器具",
+      "title": "一 特色鲜明的医事器具",
+      "level": "level3",
+      "description": "3.7.1"
+    },
+    {
+      "name": "二 医药合一的医事场所",
+      "title": "二 医药合一的医事场所",
+      "level": "level3",
+      "description": "3.7.2"
+    },
+    {
+      "name": "三 简便亲民的医药标识",
+      "title": "三 简便亲民的医药标识",
+      "level": "level3",
+      "description": "3.7.3"
+    },
+    {
+      "name": "第四章 易文化与中医文化",
+      "title": "第四章 易文化与中医文化",
+      "level": "level1",
+      "description": "4章"
+    },
+    {
+      "name": "第一节 易文化概说",
+      "title": "第一节 易文化概说",
+      "level": "level2",
+      "description": "4.1"
+    },
+    {
+      "name": "（二）《周易》的作者与成书年代",
+      "title": "（二）《周易》的作者与成书年代",
+      "level": "level3",
+      "description": "4.1.1"
+    },
+    {
+      "name": "二 易学发展概述",
+      "title": "二 易学发展概述",
+      "level": "level3",
+      "description": "4.1.2"
+    },
+    {
+      "name": "第二节 易文化的主要内容",
+      "title": "第二节 易文化的主要内容",
+      "level": "level2",
+      "description": "4.2"
+    },
+    {
+      "name": "一 象数文化",
+      "title": "一 象数文化",
+      "level": "level3",
+      "description": "4.2.1"
+    },
+    {
+      "name": "二 易图文化",
+      "title": "二 易图文化",
+      "level": "level3",
+      "description": "4.2.2"
+    },
+    {
+      "name": "三 义理文化",
+      "title": "三 义理文化",
+      "level": "level3",
+      "description": "4.2.3"
+    },
+    {
+      "name": "第三节 易文化对中医的影响",
+      "title": "第三节 易文化对中医的影响",
+      "level": "level2",
+      "description": "4.3"
+    },
+    {
+      "name": "一 对中医思维的影响",
+      "title": "一 对中医思维的影响",
+      "level": "level3",
+      "description": "4.3.1"
+    },
+    {
+      "name": "二 对中医理论的影响",
+      "title": "二 对中医理论的影响",
+      "level": "level3",
+      "description": "4.3.2"
+    },
+    {
+      "name": "三 对中医诊治的影响",
+      "title": "三 对中医诊治的影响",
+      "level": "level3",
+      "description": "4.3.3"
+    },
+    {
+      "name": "四 对中医方药的影响",
+      "title": "四 对中医方药的影响",
+      "level": "level3",
+      "description": "4.3.4"
+    },
+    {
+      "name": "第三节 易文化对中医的影响",
+      "title": "第三节 易文化对中医的影响",
+      "level": "level2",
+      "description": "4.4"
+    },
+    {
+      "name": "一 对中医思维的影响",
+      "title": "一 对中医思维的影响",
+      "level": "level3",
+      "description": "4.4.1"
+    },
+    {
+      "name": "二 对中医理论的影响",
+      "title": "二 对中医理论的影响",
+      "level": "level3",
+      "description": "4.4.2"
+    },
+    {
+      "name": "三 对中医诊治的影响",
+      "title": "三 对中医诊治的影响",
+      "level": "level3",
+      "description": "4.4.3"
+    },
+    {
+      "name": "第五章 道文化与中医文化",
+      "title": "第五章 道文化与中医文化",
+      "level": "level1",
+      "description": "5章"
+    },
+    {
+      "name": "第一节 道文化概说",
+      "title": "第一节 道文化概说",
+      "level": "level2",
+      "description": "5.1"
+    },
+    {
+      "name": "一 道家文化概说",
+      "title": "一 道家文化概说",
+      "level": "level3",
+      "description": "5.1.1"
+    },
+    {
+      "name": "二 道教文化概说",
+      "title": "二 道教文化概说",
+      "level": "level3",
+      "description": "5.1.2"
+    },
+    {
+      "name": "第二节 道文化的核心思想",
+      "title": "第二节 道文化的核心思想",
+      "level": "level2",
+      "description": "5.2"
+    },
+    {
+      "name": "一 “道”的内涵与道教哲学",
+      "title": "一 “道”的内涵与道教哲学",
+      "level": "level3",
+      "description": "5.2.1"
+    },
+    {
+      "name": "二 道通为一与道法自然",
+      "title": "二 道通为一与道法自然",
+      "level": "level3",
+      "description": "5.2.2"
+    },
+    {
+      "name": "三 致虚守静与无为而治",
+      "title": "三 致虚守静与无为而治",
+      "level": "level3",
+      "description": "5.2.3"
+    },
+    {
+      "name": "四 贵无轻有与尚阴贵柔",
+      "title": "四 贵无轻有与尚阴贵柔",
+      "level": "level3",
+      "description": "5.2.4"
+    },
+    {
+      "name": "五 重生贵命与淡泊名利",
+      "title": "五 重生贵命与淡泊名利",
+      "level": "level3",
+      "description": "5.2.5"
+    },
+    {
+      "name": "六 道教基本信仰与教义",
+      "title": "六 道教基本信仰与教义",
+      "level": "level3",
+      "description": "5.2.6"
+    },
+    {
+      "name": "七 道教科仪、方术与戒律",
+      "title": "七 道教科仪、方术与戒律",
+      "level": "level3",
+      "description": "5.2.7"
+    },
+    {
+      "name": "第二节 道文化的核心思想",
+      "title": "第二节 道文化的核心思想",
+      "level": "level2",
+      "description": "5.3"
+    },
+    {
+      "name": "一 “道”的内涵与道教哲学",
+      "title": "一 “道”的内涵与道教哲学",
+      "level": "level3",
+      "description": "5.3.1"
+    },
+    {
+      "name": "二 道通为一与道法自然",
+      "title": "二 道通为一与道法自然",
+      "level": "level3",
+      "description": "5.3.2"
+    },
+    {
+      "name": "三 致虚守静与无为而治",
+      "title": "三 致虚守静与无为而治",
+      "level": "level3",
+      "description": "5.3.3"
+    },
+    {
+      "name": "四 贵无轻有与尚阴贵柔",
+      "title": "四 贵无轻有与尚阴贵柔",
+      "level": "level3",
+      "description": "5.3.4"
+    },
+    {
+      "name": "五 重生贵命与淡泊名利",
+      "title": "五 重生贵命与淡泊名利",
+      "level": "level3",
+      "description": "5.3.5"
+    },
+    {
+      "name": "六 道教基本信仰与教义",
+      "title": "六 道教基本信仰与教义",
+      "level": "level3",
+      "description": "5.3.6"
+    },
+    {
+      "name": "七 道教科仪、方术与戒律",
+      "title": "七 道教科仪、方术与戒律",
+      "level": "level3",
+      "description": "5.3.7"
+    },
+    {
+      "name": "第三节 道文化对中医的影响",
+      "title": "第三节 道文化对中医的影响",
+      "level": "level2",
+      "description": "5.4"
+    },
+    {
+      "name": "一 道文化对中医思维的影响",
+      "title": "一 道文化对中医思维的影响",
+      "level": "level3",
+      "description": "5.4.1"
+    },
+    {
+      "name": "二 道文化对中医理论的影响",
+      "title": "二 道文化对中医理论的影响",
+      "level": "level3",
+      "description": "5.4.2"
+    },
+    {
+      "name": "三 道文化对中医诊治的影响",
+      "title": "三 道文化对中医诊治的影响",
+      "level": "level3",
+      "description": "5.4.3"
+    },
+    {
+      "name": "四 道文化对中医养生的影响",
+      "title": "四 道文化对中医养生的影响",
+      "level": "level3",
+      "description": "5.4.4"
+    },
+    {
+      "name": "五 道文化对民俗医药文化的影响",
+      "title": "五 道文化对民俗医药文化的影响",
+      "level": "level3",
+      "description": "5.4.5"
+    },
+    {
+      "name": "第三节 道文化对中医的影响",
+      "title": "第三节 道文化对中医的影响",
+      "level": "level2",
+      "description": "5.5"
+    },
+    {
+      "name": "一 道文化对中医思维的影响",
+      "title": "一 道文化对中医思维的影响",
+      "level": "level3",
+      "description": "5.5.1"
+    },
+    {
+      "name": "二 道文化对中医理论的影响",
+      "title": "二 道文化对中医理论的影响",
+      "level": "level3",
+      "description": "5.5.2"
+    },
+    {
+      "name": "三 道文化对中医诊治的影响",
+      "title": "三 道文化对中医诊治的影响",
+      "level": "level3",
+      "description": "5.5.3"
+    },
+    {
+      "name": "第六章 儒文化与中医文化",
+      "title": "第六章 儒文化与中医文化",
+      "level": "level1",
+      "description": "6章"
+    },
+    {
+      "name": "第一节 儒文化概说",
+      "title": "第一节 儒文化概说",
+      "level": "level2",
+      "description": "6.1"
+    },
+    {
+      "name": "一 儒学的起源与先秦儒家",
+      "title": "一 儒学的起源与先秦儒家",
+      "level": "level3",
+      "description": "6.1.1"
+    },
+    {
+      "name": "二 独尊儒术与汉代经学",
+      "title": "二 独尊儒术与汉代经学",
+      "level": "level3",
+      "description": "6.1.2"
+    },
+    {
+      "name": "三 三教合流与宋明理学",
+      "title": "三 三教合流与宋明理学",
+      "level": "level3",
+      "description": "6.1.3"
+    },
+    {
+      "name": "四 经世致用的实学思潮与清代朴学",
+      "title": "四 经世致用的实学思潮与清代朴学",
+      "level": "level3",
+      "description": "6.1.4"
+    },
+    {
+      "name": "第二节 儒文化的核心思想",
+      "title": "第二节 儒文化的核心思想",
+      "level": "level2",
+      "description": "6.2"
+    },
+    {
+      "name": "一 仁义思想",
+      "title": "一 仁义思想",
+      "level": "level3",
+      "description": "6.2.1"
+    },
+    {
+      "name": "二 孝悌思想",
+      "title": "二 孝悌思想",
+      "level": "level3",
+      "description": "6.2.2"
+    },
+    {
+      "name": "三 礼治思想",
+      "title": "三 礼治思想",
+      "level": "level3",
+      "description": "6.2.3"
+    },
+    {
+      "name": "四 中庸思想",
+      "title": "四 中庸思想",
+      "level": "level3",
+      "description": "6.2.4"
+    },
+    {
+      "name": "第三节 儒文化对中医的影响",
+      "title": "第三节 儒文化对中医的影响",
+      "level": "level2",
+      "description": "6.3"
+    },
+    {
+      "name": "一 儒文化对中医理论的影响",
+      "title": "一 儒文化对中医理论的影响",
+      "level": "level3",
+      "description": "6.3.1"
+    },
+    {
+      "name": "二 儒文化对中医伦理的影响",
+      "title": "二 儒文化对中医伦理的影响",
+      "level": "level3",
+      "description": "6.3.2"
+    },
+    {
+      "name": "三 儒文化对中医治学的影响",
+      "title": "三 儒文化对中医治学的影响",
+      "level": "level3",
+      "description": "6.3.3"
+    },
+    {
+      "name": "四 儒文化对中医养生的影响",
+      "title": "四 儒文化对中医养生的影响",
+      "level": "level3",
+      "description": "6.3.4"
+    },
+    {
+      "name": "第三节 儒文化对中医的影响",
+      "title": "第三节 儒文化对中医的影响",
+      "level": "level2",
+      "description": "6.4"
+    },
+    {
+      "name": "一 儒文化对中医理论的影响",
+      "title": "一 儒文化对中医理论的影响",
+      "level": "level3",
+      "description": "6.4.1"
+    },
+    {
+      "name": "二 儒文化对中医伦理的影响",
+      "title": "二 儒文化对中医伦理的影响",
+      "level": "level3",
+      "description": "6.4.2"
+    },
+    {
+      "name": "第七章 佛文化与中医文化",
+      "title": "第七章 佛文化与中医文化",
+      "level": "level1",
+      "description": "7章"
+    },
+    {
+      "name": "第一节 佛文化概说",
+      "title": "第一节 佛文化概说",
+      "level": "level2",
+      "description": "7.1"
+    },
+    {
+      "name": "一 佛与佛教的产生",
+      "title": "一 佛与佛教的产生",
+      "level": "level3",
+      "description": "7.1.1"
+    },
+    {
+      "name": "二 佛教的传播与发展",
+      "title": "二 佛教的传播与发展",
+      "level": "level3",
+      "description": "7.1.2"
+    },
+    {
+      "name": "三 佛教宗派",
+      "title": "三 佛教宗派",
+      "level": "level3",
+      "description": "7.1.3"
+    },
+    {
+      "name": "第二节 佛文化的核心内容",
+      "title": "第二节 佛文化的核心内容",
+      "level": "level2",
+      "description": "7.2"
+    },
+    {
+      "name": "一 四谛说",
+      "title": "一 四谛说",
+      "level": "level3",
+      "description": "7.2.1"
+    },
+    {
+      "name": "二 缘起与性空",
+      "title": "二 缘起与性空",
+      "level": "level3",
+      "description": "7.2.2"
+    },
+    {
+      "name": "三 轮回与业报",
+      "title": "三 轮回与业报",
+      "level": "level3",
+      "description": "7.2.3"
+    },
+    {
+      "name": "四 三法印",
+      "title": "四 三法印",
+      "level": "level3",
+      "description": "7.2.4"
+    },
+    {
+      "name": "五 三学六度八正道",
+      "title": "五 三学六度八正道",
+      "level": "level3",
+      "description": "7.2.5"
+    },
+    {
+      "name": "六 一念三千与万法唯识",
+      "title": "六 一念三千与万法唯识",
+      "level": "level3",
+      "description": "7.2.6"
+    },
+    {
+      "name": "七 明心见性与顿悟成佛",
+      "title": "七 明心见性与顿悟成佛",
+      "level": "level3",
+      "description": "7.2.7"
+    },
+    {
+      "name": "八 无念为宗、无相为体、无住为本",
+      "title": "八 无念为宗、无相为体、无住为本",
+      "level": "level3",
+      "description": "7.2.8"
+    },
+    {
+      "name": "第二节 佛文化的核心内容",
+      "title": "第二节 佛文化的核心内容",
+      "level": "level2",
+      "description": "7.3"
+    },
+    {
+      "name": "一 四谛说",
+      "title": "一 四谛说",
+      "level": "level3",
+      "description": "7.3.1"
+    },
+    {
+      "name": "二 缘起与性空",
+      "title": "二 缘起与性空",
+      "level": "level3",
+      "description": "7.3.2"
+    },
+    {
+      "name": "三 轮回与业报",
+      "title": "三 轮回与业报",
+      "level": "level3",
+      "description": "7.3.3"
+    },
+    {
+      "name": "四 三法印",
+      "title": "四 三法印",
+      "level": "level3",
+      "description": "7.3.4"
+    },
+    {
+      "name": "五 三学六度八正道",
+      "title": "五 三学六度八正道",
+      "level": "level3",
+      "description": "7.3.5"
+    },
+    {
+      "name": "六 一念三千与万法唯识",
+      "title": "六 一念三千与万法唯识",
+      "level": "level3",
+      "description": "7.3.6"
+    },
+    {
+      "name": "七 明心见性与顿悟成佛",
+      "title": "七 明心见性与顿悟成佛",
+      "level": "level3",
+      "description": "7.3.7"
+    },
+    {
+      "name": "第三节 佛文化对中医的影响",
+      "title": "第三节 佛文化对中医的影响",
+      "level": "level2",
+      "description": "7.4"
+    },
+    {
+      "name": "一 医德境界的提升",
+      "title": "一 医德境界的提升",
+      "level": "level3",
+      "description": "7.4.1"
+    },
+    {
+      "name": "二 医学理论的融通",
+      "title": "二 医学理论的融通",
+      "level": "level3",
+      "description": "7.4.2"
+    },
+    {
+      "name": "三 方药资源的丰富",
+      "title": "三 方药资源的丰富",
+      "level": "level3",
+      "description": "7.4.3"
+    },
+    {
+      "name": "四 医疗实践的借鉴",
+      "title": "四 医疗实践的借鉴",
+      "level": "level3",
+      "description": "7.4.4"
+    },
+    {
+      "name": "五 养生思想的深化",
+      "title": "五 养生思想的深化",
+      "level": "level3",
+      "description": "7.4.5"
+    },
+    {
+      "name": "第三节 佛文化对中医的影响",
+      "title": "第三节 佛文化对中医的影响",
+      "level": "level2",
+      "description": "7.5"
+    },
+    {
+      "name": "一 医德境界的提升",
+      "title": "一 医德境界的提升",
+      "level": "level3",
+      "description": "7.5.1"
+    },
+    {
+      "name": "二 医学理论的融通",
+      "title": "二 医学理论的融通",
+      "level": "level3",
+      "description": "7.5.2"
+    },
+    {
+      "name": "三 方药资源的丰富",
+      "title": "三 方药资源的丰富",
+      "level": "level3",
+      "description": "7.5.3"
+    },
+    {
+      "name": "四 医疗实践的借鉴",
+      "title": "四 医疗实践的借鉴",
+      "level": "level3",
+      "description": "7.5.4"
+    },
+    {
+      "name": "五 养生思想的深化",
+      "title": "五 养生思想的深化",
+      "level": "level3",
+      "description": "7.5.5"
+    },
+    {
+      "name": "第八章 西方文化与中医文化",
+      "title": "第八章 西方文化与中医文化",
+      "level": "level1",
+      "description": "8章"
+    },
+    {
+      "name": "第一节 西学东渐与传统文化革新",
+      "title": "第一节 西学东渐与传统文化革新",
+      "level": "level2",
+      "description": "8.1"
+    },
+    {
+      "name": "一 西方文化的发展脉络",
+      "title": "一 西方文化的发展脉络",
+      "level": "level3",
+      "description": "8.1.1"
+    },
+    {
+      "name": "二 西方文化在中国的传播",
+      "title": "二 西方文化在中国的传播",
+      "level": "level3",
+      "description": "8.1.2"
+    },
+    {
+      "name": "三 西方文化对中国传统文化的影响",
+      "title": "三 西方文化对中国传统文化的影响",
+      "level": "level3",
+      "description": "8.1.3"
+    },
+    {
+      "name": "第二节 近现代西方文化对中医的影响",
+      "title": "第二节 近现代西方文化对中医的影响",
+      "level": "level2",
+      "description": "8.2"
+    },
+    {
+      "name": "一 近现代西方的科学主义",
+      "title": "一 近现代西方的科学主义",
+      "level": "level3",
+      "description": "8.2.1"
+    },
+    {
+      "name": "二 中医“科学”之争",
+      "title": "二 中医“科学”之争",
+      "level": "level3",
+      "description": "8.2.2"
+    },
+    {
+      "name": "第二节 近现代西方文化对中医的影响",
+      "title": "第二节 近现代西方文化对中医的影响",
+      "level": "level2",
+      "description": "8.3"
+    },
+    {
+      "name": "一 近现代西方的科学主义",
+      "title": "一 近现代西方的科学主义",
+      "level": "level3",
+      "description": "8.3.1"
+    },
+    {
+      "name": "二 中医“科学”之争",
+      "title": "二 中医“科学”之争",
+      "level": "level3",
+      "description": "8.3.2"
+    },
+    {
+      "name": "第三节 中西医学文化差异与中医文化自觉",
+      "title": "第三节 中西医学文化差异与中医文化自觉",
+      "level": "level2",
+      "description": "8.4"
+    },
+    {
+      "name": "一 中西医学文化的差异",
+      "title": "一 中西医学文化的差异",
+      "level": "level3",
+      "description": "8.4.1"
+    },
+    {
+      "name": "二 树立中医文化自觉",
+      "title": "二 树立中医文化自觉",
+      "level": "level3",
+      "description": "8.4.2"
+    },
+    {
+      "name": "三 中医文化的现代价值",
+      "title": "三 中医文化的现代价值",
+      "level": "level3",
+      "description": "8.4.3"
+    },
+    {
+      "name": "第九章 中医文化的传播",
+      "title": "第九章 中医文化的传播",
+      "level": "level1",
+      "description": "9章"
+    },
+    {
+      "name": "第一节 中医文化的传播要素",
+      "title": "第一节 中医文化的传播要素",
+      "level": "level2",
+      "description": "9.1"
+    },
+    {
+      "name": "一 中医文化的传播者与受传者",
+      "title": "一 中医文化的传播者与受传者",
+      "level": "level3",
+      "description": "9.1.1"
+    },
+    {
+      "name": "二 中医文化的传播媒介",
+      "title": "二 中医文化的传播媒介",
+      "level": "level3",
+      "description": "9.1.2"
+    },
+    {
+      "name": "三 中医文化的传播内容",
+      "title": "三 中医文化的传播内容",
+      "level": "level3",
+      "description": "9.1.3"
+    },
+    {
+      "name": "四 中医文化传播的原则",
+      "title": "四 中医文化传播的原则",
+      "level": "level3",
+      "description": "9.1.4"
+    },
+    {
+      "name": "第二节 中医文化传播的主要类型与形式",
+      "title": "第二节 中医文化传播的主要类型与形式",
+      "level": "level2",
+      "description": "9.2"
+    },
+    {
+      "name": "一 中医文化的内向传播",
+      "title": "一 中医文化的内向传播",
+      "level": "level3",
+      "description": "9.2.1"
+    },
+    {
+      "name": "二 中医文化的人际传播",
+      "title": "二 中医文化的人际传播",
+      "level": "level3",
+      "description": "9.2.2"
+    },
+    {
+      "name": "三 中医文化的组织传播",
+      "title": "三 中医文化的组织传播",
+      "level": "level3",
+      "description": "9.2.3"
+    },
+    {
+      "name": "四 中医文化的社会传播",
+      "title": "四 中医文化的社会传播",
+      "level": "level3",
+      "description": "9.2.4"
+    },
+    {
+      "name": "五 中医文化的跨文化传播",
+      "title": "五 中医文化的跨文化传播",
+      "level": "level3",
+      "description": "9.2.5"
+    },
+    {
+      "name": "第三节 中医文化的传播技巧、效果及其实践",
+      "title": "第三节 中医文化的传播技巧、效果及其实践",
+      "level": "level2",
+      "description": "9.3"
+    },
+    {
+      "name": "一 中医文化传播的常用技巧",
+      "title": "一 中医文化传播的常用技巧",
+      "level": "level3",
+      "description": "9.3.1"
+    },
+    {
+      "name": "二 中医文化的传播效果",
+      "title": "二 中医文化的传播效果",
+      "level": "level3",
+      "description": "9.3.2"
+    },
+    {
+      "name": "三 中医文化传播实践",
+      "title": "三 中医文化传播实践",
+      "level": "level3",
+      "description": "9.3.3"
+    },
+    {
+      "name": "第四节 中医文化传播的历史、现状与展望",
+      "title": "第四节 中医文化传播的历史、现状与展望",
+      "level": "level2",
+      "description": "9.4"
+    },
+    {
+      "name": "一 中医文化传播的历史",
+      "title": "一 中医文化传播的历史",
+      "level": "level3",
+      "description": "9.4.1"
+    },
+    {
+      "name": "二 中医文化传播的现状",
+      "title": "二 中医文化传播的现状",
+      "level": "level3",
+      "description": "9.4.2"
+    },
+    {
+      "name": "三 中医文化传播的展望",
+      "title": "三 中医文化传播的展望",
+      "level": "level3",
+      "description": "9.4.3"
+    }
+  ],
+  "edges": [
+    {
+      "source": "第一章 绪论",
+      "target": "第一节 文化概说",
+      "relationship": "child_of",
+      "description": "第一章 绪论 -> 第一节 文化概说"
+    },
+    {
+      "source": "第一节 文化概说",
+      "target": "一 文化的内涵与外延",
+      "relationship": "child_of",
+      "description": "第一节 文化概说 -> 一 文化的内涵与外延"
+    },
+    {
+      "source": "第一节 文化概说",
+      "target": "二 文化的分类、层次、结构",
+      "relationship": "child_of",
+      "description": "第一节 文化概说 -> 二 文化的分类、层次、结构"
+    },
+    {
+      "source": "第一章 绪论",
+      "target": "第二节 中医文化概说",
+      "relationship": "child_of",
+      "description": "第一章 绪论 -> 第二节 中医文化概说"
+    },
+    {
+      "source": "第二节 中医文化概说",
+      "target": "一 中医文化与其他文化的关系",
+      "relationship": "child_of",
+      "description": "第二节 中医文化概说 -> 一 中医文化与其他文化的关系"
+    },
+    {
+      "source": "第二节 中医文化概说",
+      "target": "二 中医文化的内涵与外延",
+      "relationship": "child_of",
+      "description": "第二节 中医文化概说 -> 二 中医文化的内涵与外延"
+    },
+    {
+      "source": "第一章 绪论",
+      "target": "第三节 中医文化学概说",
+      "relationship": "child_of",
+      "description": "第一章 绪论 -> 第三节 中医文化学概说"
+    },
+    {
+      "source": "第三节 中医文化学概说",
+      "target": "一 中医文化与中医文化学的关系",
+      "relationship": "child_of",
+      "description": "第三节 中医文化学概说 -> 一 中医文化与中医文化学的关系"
+    },
+    {
+      "source": "第三节 中医文化学概说",
+      "target": "二 中医文化学的内涵与外延",
+      "relationship": "child_of",
+      "description": "第三节 中医文化学概说 -> 二 中医文化学的内涵与外延"
+    },
+    {
+      "source": "第三节 中医文化学概说",
+      "target": "三 学习中医文化学的意义",
+      "relationship": "child_of",
+      "description": "第三节 中医文化学概说 -> 三 学习中医文化学的意义"
+    },
+    {
+      "source": "第二章 中医文化的起源",
+      "target": "第一节 巫文化与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二章 中医文化的起源 -> 第一节 巫文化与中医文化的起源"
+    },
+    {
+      "source": "第一节 巫文化与中医文化的起源",
+      "target": "一 巫文化概说",
+      "relationship": "child_of",
+      "description": "第一节 巫文化与中医文化的起源 -> 一 巫文化概说"
+    },
+    {
+      "source": "第一节 巫文化与中医文化的起源",
+      "target": "二 巫文化与中医文化",
+      "relationship": "child_of",
+      "description": "第一节 巫文化与中医文化的起源 -> 二 巫文化与中医文化"
+    },
+    {
+      "source": "第二章 中医文化的起源",
+      "target": "第二节 早期社会生活与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二章 中医文化的起源 -> 第二节 早期社会生活与中医文化的起源"
+    },
+    {
+      "source": "第二节 早期社会生活与中医文化的起源",
+      "target": "一 农耕文化与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二节 早期社会生活与中医文化的起源 -> 一 农耕文化与中医文化的起源"
+    },
+    {
+      "source": "第二节 早期社会生活与中医文化的起源",
+      "target": "二 饮食与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二节 早期社会生活与中医文化的起源 -> 二 饮食与中医文化的起源"
+    },
+    {
+      "source": "第二章 中医文化的起源",
+      "target": "第二节 早期社会生活与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二章 中医文化的起源 -> 第二节 早期社会生活与中医文化的起源"
+    },
+    {
+      "source": "第二节 早期社会生活与中医文化的起源",
+      "target": "一 农耕文化与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二节 早期社会生活与中医文化的起源 -> 一 农耕文化与中医文化的起源"
+    },
+    {
+      "source": "第二节 早期社会生活与中医文化的起源",
+      "target": "二 饮食与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二节 早期社会生活与中医文化的起源 -> 二 饮食与中医文化的起源"
+    },
+    {
+      "source": "第二章 中医文化的起源",
+      "target": "第三节 古代天文历法音律与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二章 中医文化的起源 -> 第三节 古代天文历法音律与中医文化的起源"
+    },
+    {
+      "source": "第三节 古代天文历法音律与中医文化的起源",
+      "target": "一 中国古代的宇宙观",
+      "relationship": "child_of",
+      "description": "第三节 古代天文历法音律与中医文化的起源 -> 一 中国古代的宇宙观"
+    },
+    {
+      "source": "第三节 古代天文历法音律与中医文化的起源",
+      "target": "二 中国古代的宇宙结构学说",
+      "relationship": "child_of",
+      "description": "第三节 古代天文历法音律与中医文化的起源 -> 二 中国古代的宇宙结构学说"
+    },
+    {
+      "source": "第三节 古代天文历法音律与中医文化的起源",
+      "target": "三 中国古代的天文历法音律",
+      "relationship": "child_of",
+      "description": "第三节 古代天文历法音律与中医文化的起源 -> 三 中国古代的天文历法音律"
+    },
+    {
+      "source": "第三节 古代天文历法音律与中医文化的起源",
+      "target": "四 天文历法音律与中医药学",
+      "relationship": "child_of",
+      "description": "第三节 古代天文历法音律与中医文化的起源 -> 四 天文历法音律与中医药学"
+    },
+    {
+      "source": "第二章 中医文化的起源",
+      "target": "第三节 古代天文历法音律与中医文化的起源",
+      "relationship": "child_of",
+      "description": "第二章 中医文化的起源 -> 第三节 古代天文历法音律与中医文化的起源"
+    },
+    {
+      "source": "第三节 古代天文历法音律与中医文化的起源",
+      "target": "一 中国古代的宇宙观",
+      "relationship": "child_of",
+      "description": "第三节 古代天文历法音律与中医文化的起源 -> 一 中国古代的宇宙观"
+    },
+    {
+      "source": "第三节 古代天文历法音律与中医文化的起源",
+      "target": "二 中国古代的宇宙结构学说",
+      "relationship": "child_of",
+      "description": "第三节 古代天文历法音律与中医文化的起源 -> 二 中国古代的宇宙结构学说"
+    },
+    {
+      "source": "第三节 古代天文历法音律与中医文化的起源",
+      "target": "三 中国古代的天文历法音律",
+      "relationship": "child_of",
+      "description": "第三节 古代天文历法音律与中医文化的起源 -> 三 中国古代的天文历法音律"
+    },
+    {
+      "source": "第三节 古代天文历法音律与中医文化的起源",
+      "target": "四 天文历法音律与中医药学",
+      "relationship": "child_of",
+      "description": "第三节 古代天文历法音律与中医文化的起源 -> 四 天文历法音律与中医药学"
+    },
+    {
+      "source": "第三章 中医文化的主要内容",
+      "target": "第一节 中医思维方法",
+      "relationship": "child_of",
+      "description": "第三章 中医文化的主要内容 -> 第一节 中医思维方法"
+    },
+    {
+      "source": "第一节 中医思维方法",
+      "target": "一 中医思维方法概述",
+      "relationship": "child_of",
+      "description": "第一节 中医思维方法 -> 一 中医思维方法概述"
+    },
+    {
+      "source": "第一节 中医思维方法",
+      "target": "二 意象思维的形成",
+      "relationship": "child_of",
+      "description": "第一节 中医思维方法 -> 二 意象思维的形成"
+    },
+    {
+      "source": "第一节 中医思维方法",
+      "target": "三 意象思维的运用",
+      "relationship": "child_of",
+      "description": "第一节 中医思维方法 -> 三 意象思维的运用"
+    },
+    {
+      "source": "第一节 中医思维方法",
+      "target": "四 意象思维的评价",
+      "relationship": "child_of",
+      "description": "第一节 中医思维方法 -> 四 意象思维的评价"
+    },
+    {
+      "source": "第三章 中医文化的主要内容",
+      "target": "第一节 中医思维方法",
+      "relationship": "child_of",
+      "description": "第三章 中医文化的主要内容 -> 第一节 中医思维方法"
+    },
+    {
+      "source": "第一节 中医思维方法",
+      "target": "一 中医思维方法概述",
+      "relationship": "child_of",
+      "description": "第一节 中医思维方法 -> 一 中医思维方法概述"
+    },
+    {
+      "source": "第一节 中医思维方法",
+      "target": "二 意象思维的形成",
+      "relationship": "child_of",
+      "description": "第一节 中医思维方法 -> 二 意象思维的形成"
+    },
+    {
+      "source": "第一节 中医思维方法",
+      "target": "三 意象思维的运用",
+      "relationship": "child_of",
+      "description": "第一节 中医思维方法 -> 三 意象思维的运用"
+    },
+    {
+      "source": "第三章 中医文化的主要内容",
+      "target": "第二节 中医价值观念",
+      "relationship": "child_of",
+      "description": "第三章 中医文化的主要内容 -> 第二节 中医价值观念"
+    },
+    {
+      "source": "第二节 中医价值观念",
+      "target": "一 “天人合一”的生命观",
+      "relationship": "child_of",
+      "description": "第二节 中医价值观念 -> 一 “天人合一”的生命观"
+    },
+    {
+      "source": "第二节 中医价值观念",
+      "target": "二 “形神合一”的健康观",
+      "relationship": "child_of",
+      "description": "第二节 中医价值观念 -> 二 “形神合一”的健康观"
+    },
+    {
+      "source": "第二节 中医价值观念",
+      "target": "三 失和则病的疾病观",
+      "relationship": "child_of",
+      "description": "第二节 中医价值观念 -> 三 失和则病的疾病观"
+    },
+    {
+      "source": "第二节 中医价值观念",
+      "target": "四 阴阳协调的医养观",
+      "relationship": "child_of",
+      "description": "第二节 中医价值观念 -> 四 阴阳协调的医养观"
+    },
+    {
+      "source": "第三章 中医文化的主要内容",
+      "target": "第三节 中医制度文化",
+      "relationship": "child_of",
+      "description": "第三章 中医文化的主要内容 -> 第三节 中医制度文化"
+    },
+    {
+      "source": "第三节 中医制度文化",
+      "target": "一 医官制度文化",
+      "relationship": "child_of",
+      "description": "第三节 中医制度文化 -> 一 医官制度文化"
+    },
+    {
+      "source": "第三节 中医制度文化",
+      "target": "二 教育制度文化",
+      "relationship": "child_of",
+      "description": "第三节 中医制度文化 -> 二 教育制度文化"
+    },
+    {
+      "source": "第三节 中医制度文化",
+      "target": "三 医事法律文化",
+      "relationship": "child_of",
+      "description": "第三节 中医制度文化 -> 三 医事法律文化"
+    },
+    {
+      "source": "第三章 中医文化的主要内容",
+      "target": "第四节 中医行为文化",
+      "relationship": "child_of",
+      "description": "第三章 中医文化的主要内容 -> 第四节 中医行为文化"
+    },
+    {
+      "source": "第四节 中医行为文化",
+      "target": "一 医疗行为文化",
+      "relationship": "child_of",
+      "description": "第四节 中医行为文化 -> 一 医疗行为文化"
+    },
+    {
+      "source": "第四节 中医行为文化",
+      "target": "二 著述行为文化",
+      "relationship": "child_of",
+      "description": "第四节 中医行为文化 -> 二 著述行为文化"
+    },
+    {
+      "source": "第四节 中医行为文化",
+      "target": "三 教育行为文化",
+      "relationship": "child_of",
+      "description": "第四节 中医行为文化 -> 三 教育行为文化"
+    },
+    {
+      "source": "第三章 中医文化的主要内容",
+      "target": "第五节 中医器物场所文化",
+      "relationship": "child_of",
+      "description": "第三章 中医文化的主要内容 -> 第五节 中医器物场所文化"
+    },
+    {
+      "source": "第五节 中医器物场所文化",
+      "target": "一 特色鲜明的医事器具",
+      "relationship": "child_of",
+      "description": "第五节 中医器物场所文化 -> 一 特色鲜明的医事器具"
+    },
+    {
+      "source": "第五节 中医器物场所文化",
+      "target": "二 医药合一的医事场所",
+      "relationship": "child_of",
+      "description": "第五节 中医器物场所文化 -> 二 医药合一的医事场所"
+    },
+    {
+      "source": "第五节 中医器物场所文化",
+      "target": "三 简便亲民的医药标识",
+      "relationship": "child_of",
+      "description": "第五节 中医器物场所文化 -> 三 简便亲民的医药标识"
+    },
+    {
+      "source": "第三章 中医文化的主要内容",
+      "target": "第五节 中医器物场所文化",
+      "relationship": "child_of",
+      "description": "第三章 中医文化的主要内容 -> 第五节 中医器物场所文化"
+    },
+    {
+      "source": "第五节 中医器物场所文化",
+      "target": "一 特色鲜明的医事器具",
+      "relationship": "child_of",
+      "description": "第五节 中医器物场所文化 -> 一 特色鲜明的医事器具"
+    },
+    {
+      "source": "第五节 中医器物场所文化",
+      "target": "二 医药合一的医事场所",
+      "relationship": "child_of",
+      "description": "第五节 中医器物场所文化 -> 二 医药合一的医事场所"
+    },
+    {
+      "source": "第五节 中医器物场所文化",
+      "target": "三 简便亲民的医药标识",
+      "relationship": "child_of",
+      "description": "第五节 中医器物场所文化 -> 三 简便亲民的医药标识"
+    },
+    {
+      "source": "第四章 易文化与中医文化",
+      "target": "第一节 易文化概说",
+      "relationship": "child_of",
+      "description": "第四章 易文化与中医文化 -> 第一节 易文化概说"
+    },
+    {
+      "source": "第一节 易文化概说",
+      "target": "（二）《周易》的作者与成书年代",
+      "relationship": "child_of",
+      "description": "第一节 易文化概说 -> （二）《周易》的作者与成书年代"
+    },
+    {
+      "source": "第一节 易文化概说",
+      "target": "二 易学发展概述",
+      "relationship": "child_of",
+      "description": "第一节 易文化概说 -> 二 易学发展概述"
+    },
+    {
+      "source": "第四章 易文化与中医文化",
+      "target": "第二节 易文化的主要内容",
+      "relationship": "child_of",
+      "description": "第四章 易文化与中医文化 -> 第二节 易文化的主要内容"
+    },
+    {
+      "source": "第二节 易文化的主要内容",
+      "target": "一 象数文化",
+      "relationship": "child_of",
+      "description": "第二节 易文化的主要内容 -> 一 象数文化"
+    },
+    {
+      "source": "第二节 易文化的主要内容",
+      "target": "二 易图文化",
+      "relationship": "child_of",
+      "description": "第二节 易文化的主要内容 -> 二 易图文化"
+    },
+    {
+      "source": "第二节 易文化的主要内容",
+      "target": "三 义理文化",
+      "relationship": "child_of",
+      "description": "第二节 易文化的主要内容 -> 三 义理文化"
+    },
+    {
+      "source": "第四章 易文化与中医文化",
+      "target": "第三节 易文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第四章 易文化与中医文化 -> 第三节 易文化对中医的影响"
+    },
+    {
+      "source": "第三节 易文化对中医的影响",
+      "target": "一 对中医思维的影响",
+      "relationship": "child_of",
+      "description": "第三节 易文化对中医的影响 -> 一 对中医思维的影响"
+    },
+    {
+      "source": "第三节 易文化对中医的影响",
+      "target": "二 对中医理论的影响",
+      "relationship": "child_of",
+      "description": "第三节 易文化对中医的影响 -> 二 对中医理论的影响"
+    },
+    {
+      "source": "第三节 易文化对中医的影响",
+      "target": "三 对中医诊治的影响",
+      "relationship": "child_of",
+      "description": "第三节 易文化对中医的影响 -> 三 对中医诊治的影响"
+    },
+    {
+      "source": "第三节 易文化对中医的影响",
+      "target": "四 对中医方药的影响",
+      "relationship": "child_of",
+      "description": "第三节 易文化对中医的影响 -> 四 对中医方药的影响"
+    },
+    {
+      "source": "第四章 易文化与中医文化",
+      "target": "第三节 易文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第四章 易文化与中医文化 -> 第三节 易文化对中医的影响"
+    },
+    {
+      "source": "第三节 易文化对中医的影响",
+      "target": "一 对中医思维的影响",
+      "relationship": "child_of",
+      "description": "第三节 易文化对中医的影响 -> 一 对中医思维的影响"
+    },
+    {
+      "source": "第三节 易文化对中医的影响",
+      "target": "二 对中医理论的影响",
+      "relationship": "child_of",
+      "description": "第三节 易文化对中医的影响 -> 二 对中医理论的影响"
+    },
+    {
+      "source": "第三节 易文化对中医的影响",
+      "target": "三 对中医诊治的影响",
+      "relationship": "child_of",
+      "description": "第三节 易文化对中医的影响 -> 三 对中医诊治的影响"
+    },
+    {
+      "source": "第五章 道文化与中医文化",
+      "target": "第一节 道文化概说",
+      "relationship": "child_of",
+      "description": "第五章 道文化与中医文化 -> 第一节 道文化概说"
+    },
+    {
+      "source": "第一节 道文化概说",
+      "target": "一 道家文化概说",
+      "relationship": "child_of",
+      "description": "第一节 道文化概说 -> 一 道家文化概说"
+    },
+    {
+      "source": "第一节 道文化概说",
+      "target": "二 道教文化概说",
+      "relationship": "child_of",
+      "description": "第一节 道文化概说 -> 二 道教文化概说"
+    },
+    {
+      "source": "第五章 道文化与中医文化",
+      "target": "第二节 道文化的核心思想",
+      "relationship": "child_of",
+      "description": "第五章 道文化与中医文化 -> 第二节 道文化的核心思想"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "一 “道”的内涵与道教哲学",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 一 “道”的内涵与道教哲学"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "二 道通为一与道法自然",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 二 道通为一与道法自然"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "三 致虚守静与无为而治",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 三 致虚守静与无为而治"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "四 贵无轻有与尚阴贵柔",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 四 贵无轻有与尚阴贵柔"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "五 重生贵命与淡泊名利",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 五 重生贵命与淡泊名利"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "六 道教基本信仰与教义",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 六 道教基本信仰与教义"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "七 道教科仪、方术与戒律",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 七 道教科仪、方术与戒律"
+    },
+    {
+      "source": "第五章 道文化与中医文化",
+      "target": "第二节 道文化的核心思想",
+      "relationship": "child_of",
+      "description": "第五章 道文化与中医文化 -> 第二节 道文化的核心思想"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "一 “道”的内涵与道教哲学",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 一 “道”的内涵与道教哲学"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "二 道通为一与道法自然",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 二 道通为一与道法自然"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "三 致虚守静与无为而治",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 三 致虚守静与无为而治"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "四 贵无轻有与尚阴贵柔",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 四 贵无轻有与尚阴贵柔"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "五 重生贵命与淡泊名利",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 五 重生贵命与淡泊名利"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "六 道教基本信仰与教义",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 六 道教基本信仰与教义"
+    },
+    {
+      "source": "第二节 道文化的核心思想",
+      "target": "七 道教科仪、方术与戒律",
+      "relationship": "child_of",
+      "description": "第二节 道文化的核心思想 -> 七 道教科仪、方术与戒律"
+    },
+    {
+      "source": "第五章 道文化与中医文化",
+      "target": "第三节 道文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第五章 道文化与中医文化 -> 第三节 道文化对中医的影响"
+    },
+    {
+      "source": "第三节 道文化对中医的影响",
+      "target": "一 道文化对中医思维的影响",
+      "relationship": "child_of",
+      "description": "第三节 道文化对中医的影响 -> 一 道文化对中医思维的影响"
+    },
+    {
+      "source": "第三节 道文化对中医的影响",
+      "target": "二 道文化对中医理论的影响",
+      "relationship": "child_of",
+      "description": "第三节 道文化对中医的影响 -> 二 道文化对中医理论的影响"
+    },
+    {
+      "source": "第三节 道文化对中医的影响",
+      "target": "三 道文化对中医诊治的影响",
+      "relationship": "child_of",
+      "description": "第三节 道文化对中医的影响 -> 三 道文化对中医诊治的影响"
+    },
+    {
+      "source": "第三节 道文化对中医的影响",
+      "target": "四 道文化对中医养生的影响",
+      "relationship": "child_of",
+      "description": "第三节 道文化对中医的影响 -> 四 道文化对中医养生的影响"
+    },
+    {
+      "source": "第三节 道文化对中医的影响",
+      "target": "五 道文化对民俗医药文化的影响",
+      "relationship": "child_of",
+      "description": "第三节 道文化对中医的影响 -> 五 道文化对民俗医药文化的影响"
+    },
+    {
+      "source": "第五章 道文化与中医文化",
+      "target": "第三节 道文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第五章 道文化与中医文化 -> 第三节 道文化对中医的影响"
+    },
+    {
+      "source": "第三节 道文化对中医的影响",
+      "target": "一 道文化对中医思维的影响",
+      "relationship": "child_of",
+      "description": "第三节 道文化对中医的影响 -> 一 道文化对中医思维的影响"
+    },
+    {
+      "source": "第三节 道文化对中医的影响",
+      "target": "二 道文化对中医理论的影响",
+      "relationship": "child_of",
+      "description": "第三节 道文化对中医的影响 -> 二 道文化对中医理论的影响"
+    },
+    {
+      "source": "第三节 道文化对中医的影响",
+      "target": "三 道文化对中医诊治的影响",
+      "relationship": "child_of",
+      "description": "第三节 道文化对中医的影响 -> 三 道文化对中医诊治的影响"
+    },
+    {
+      "source": "第六章 儒文化与中医文化",
+      "target": "第一节 儒文化概说",
+      "relationship": "child_of",
+      "description": "第六章 儒文化与中医文化 -> 第一节 儒文化概说"
+    },
+    {
+      "source": "第一节 儒文化概说",
+      "target": "一 儒学的起源与先秦儒家",
+      "relationship": "child_of",
+      "description": "第一节 儒文化概说 -> 一 儒学的起源与先秦儒家"
+    },
+    {
+      "source": "第一节 儒文化概说",
+      "target": "二 独尊儒术与汉代经学",
+      "relationship": "child_of",
+      "description": "第一节 儒文化概说 -> 二 独尊儒术与汉代经学"
+    },
+    {
+      "source": "第一节 儒文化概说",
+      "target": "三 三教合流与宋明理学",
+      "relationship": "child_of",
+      "description": "第一节 儒文化概说 -> 三 三教合流与宋明理学"
+    },
+    {
+      "source": "第一节 儒文化概说",
+      "target": "四 经世致用的实学思潮与清代朴学",
+      "relationship": "child_of",
+      "description": "第一节 儒文化概说 -> 四 经世致用的实学思潮与清代朴学"
+    },
+    {
+      "source": "第六章 儒文化与中医文化",
+      "target": "第二节 儒文化的核心思想",
+      "relationship": "child_of",
+      "description": "第六章 儒文化与中医文化 -> 第二节 儒文化的核心思想"
+    },
+    {
+      "source": "第二节 儒文化的核心思想",
+      "target": "一 仁义思想",
+      "relationship": "child_of",
+      "description": "第二节 儒文化的核心思想 -> 一 仁义思想"
+    },
+    {
+      "source": "第二节 儒文化的核心思想",
+      "target": "二 孝悌思想",
+      "relationship": "child_of",
+      "description": "第二节 儒文化的核心思想 -> 二 孝悌思想"
+    },
+    {
+      "source": "第二节 儒文化的核心思想",
+      "target": "三 礼治思想",
+      "relationship": "child_of",
+      "description": "第二节 儒文化的核心思想 -> 三 礼治思想"
+    },
+    {
+      "source": "第二节 儒文化的核心思想",
+      "target": "四 中庸思想",
+      "relationship": "child_of",
+      "description": "第二节 儒文化的核心思想 -> 四 中庸思想"
+    },
+    {
+      "source": "第六章 儒文化与中医文化",
+      "target": "第三节 儒文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第六章 儒文化与中医文化 -> 第三节 儒文化对中医的影响"
+    },
+    {
+      "source": "第三节 儒文化对中医的影响",
+      "target": "一 儒文化对中医理论的影响",
+      "relationship": "child_of",
+      "description": "第三节 儒文化对中医的影响 -> 一 儒文化对中医理论的影响"
+    },
+    {
+      "source": "第三节 儒文化对中医的影响",
+      "target": "二 儒文化对中医伦理的影响",
+      "relationship": "child_of",
+      "description": "第三节 儒文化对中医的影响 -> 二 儒文化对中医伦理的影响"
+    },
+    {
+      "source": "第三节 儒文化对中医的影响",
+      "target": "三 儒文化对中医治学的影响",
+      "relationship": "child_of",
+      "description": "第三节 儒文化对中医的影响 -> 三 儒文化对中医治学的影响"
+    },
+    {
+      "source": "第三节 儒文化对中医的影响",
+      "target": "四 儒文化对中医养生的影响",
+      "relationship": "child_of",
+      "description": "第三节 儒文化对中医的影响 -> 四 儒文化对中医养生的影响"
+    },
+    {
+      "source": "第六章 儒文化与中医文化",
+      "target": "第三节 儒文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第六章 儒文化与中医文化 -> 第三节 儒文化对中医的影响"
+    },
+    {
+      "source": "第三节 儒文化对中医的影响",
+      "target": "一 儒文化对中医理论的影响",
+      "relationship": "child_of",
+      "description": "第三节 儒文化对中医的影响 -> 一 儒文化对中医理论的影响"
+    },
+    {
+      "source": "第三节 儒文化对中医的影响",
+      "target": "二 儒文化对中医伦理的影响",
+      "relationship": "child_of",
+      "description": "第三节 儒文化对中医的影响 -> 二 儒文化对中医伦理的影响"
+    },
+    {
+      "source": "第七章 佛文化与中医文化",
+      "target": "第一节 佛文化概说",
+      "relationship": "child_of",
+      "description": "第七章 佛文化与中医文化 -> 第一节 佛文化概说"
+    },
+    {
+      "source": "第一节 佛文化概说",
+      "target": "一 佛与佛教的产生",
+      "relationship": "child_of",
+      "description": "第一节 佛文化概说 -> 一 佛与佛教的产生"
+    },
+    {
+      "source": "第一节 佛文化概说",
+      "target": "二 佛教的传播与发展",
+      "relationship": "child_of",
+      "description": "第一节 佛文化概说 -> 二 佛教的传播与发展"
+    },
+    {
+      "source": "第一节 佛文化概说",
+      "target": "三 佛教宗派",
+      "relationship": "child_of",
+      "description": "第一节 佛文化概说 -> 三 佛教宗派"
+    },
+    {
+      "source": "第七章 佛文化与中医文化",
+      "target": "第二节 佛文化的核心内容",
+      "relationship": "child_of",
+      "description": "第七章 佛文化与中医文化 -> 第二节 佛文化的核心内容"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "一 四谛说",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 一 四谛说"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "二 缘起与性空",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 二 缘起与性空"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "三 轮回与业报",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 三 轮回与业报"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "四 三法印",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 四 三法印"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "五 三学六度八正道",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 五 三学六度八正道"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "六 一念三千与万法唯识",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 六 一念三千与万法唯识"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "七 明心见性与顿悟成佛",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 七 明心见性与顿悟成佛"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "八 无念为宗、无相为体、无住为本",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 八 无念为宗、无相为体、无住为本"
+    },
+    {
+      "source": "第七章 佛文化与中医文化",
+      "target": "第二节 佛文化的核心内容",
+      "relationship": "child_of",
+      "description": "第七章 佛文化与中医文化 -> 第二节 佛文化的核心内容"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "一 四谛说",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 一 四谛说"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "二 缘起与性空",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 二 缘起与性空"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "三 轮回与业报",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 三 轮回与业报"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "四 三法印",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 四 三法印"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "五 三学六度八正道",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 五 三学六度八正道"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "六 一念三千与万法唯识",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 六 一念三千与万法唯识"
+    },
+    {
+      "source": "第二节 佛文化的核心内容",
+      "target": "七 明心见性与顿悟成佛",
+      "relationship": "child_of",
+      "description": "第二节 佛文化的核心内容 -> 七 明心见性与顿悟成佛"
+    },
+    {
+      "source": "第七章 佛文化与中医文化",
+      "target": "第三节 佛文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第七章 佛文化与中医文化 -> 第三节 佛文化对中医的影响"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "一 医德境界的提升",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 一 医德境界的提升"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "二 医学理论的融通",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 二 医学理论的融通"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "三 方药资源的丰富",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 三 方药资源的丰富"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "四 医疗实践的借鉴",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 四 医疗实践的借鉴"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "五 养生思想的深化",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 五 养生思想的深化"
+    },
+    {
+      "source": "第七章 佛文化与中医文化",
+      "target": "第三节 佛文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第七章 佛文化与中医文化 -> 第三节 佛文化对中医的影响"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "一 医德境界的提升",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 一 医德境界的提升"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "二 医学理论的融通",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 二 医学理论的融通"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "三 方药资源的丰富",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 三 方药资源的丰富"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "四 医疗实践的借鉴",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 四 医疗实践的借鉴"
+    },
+    {
+      "source": "第三节 佛文化对中医的影响",
+      "target": "五 养生思想的深化",
+      "relationship": "child_of",
+      "description": "第三节 佛文化对中医的影响 -> 五 养生思想的深化"
+    },
+    {
+      "source": "第八章 西方文化与中医文化",
+      "target": "第一节 西学东渐与传统文化革新",
+      "relationship": "child_of",
+      "description": "第八章 西方文化与中医文化 -> 第一节 西学东渐与传统文化革新"
+    },
+    {
+      "source": "第一节 西学东渐与传统文化革新",
+      "target": "一 西方文化的发展脉络",
+      "relationship": "child_of",
+      "description": "第一节 西学东渐与传统文化革新 -> 一 西方文化的发展脉络"
+    },
+    {
+      "source": "第一节 西学东渐与传统文化革新",
+      "target": "二 西方文化在中国的传播",
+      "relationship": "child_of",
+      "description": "第一节 西学东渐与传统文化革新 -> 二 西方文化在中国的传播"
+    },
+    {
+      "source": "第一节 西学东渐与传统文化革新",
+      "target": "三 西方文化对中国传统文化的影响",
+      "relationship": "child_of",
+      "description": "第一节 西学东渐与传统文化革新 -> 三 西方文化对中国传统文化的影响"
+    },
+    {
+      "source": "第八章 西方文化与中医文化",
+      "target": "第二节 近现代西方文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第八章 西方文化与中医文化 -> 第二节 近现代西方文化对中医的影响"
+    },
+    {
+      "source": "第二节 近现代西方文化对中医的影响",
+      "target": "一 近现代西方的科学主义",
+      "relationship": "child_of",
+      "description": "第二节 近现代西方文化对中医的影响 -> 一 近现代西方的科学主义"
+    },
+    {
+      "source": "第二节 近现代西方文化对中医的影响",
+      "target": "二 中医“科学”之争",
+      "relationship": "child_of",
+      "description": "第二节 近现代西方文化对中医的影响 -> 二 中医“科学”之争"
+    },
+    {
+      "source": "第八章 西方文化与中医文化",
+      "target": "第二节 近现代西方文化对中医的影响",
+      "relationship": "child_of",
+      "description": "第八章 西方文化与中医文化 -> 第二节 近现代西方文化对中医的影响"
+    },
+    {
+      "source": "第二节 近现代西方文化对中医的影响",
+      "target": "一 近现代西方的科学主义",
+      "relationship": "child_of",
+      "description": "第二节 近现代西方文化对中医的影响 -> 一 近现代西方的科学主义"
+    },
+    {
+      "source": "第二节 近现代西方文化对中医的影响",
+      "target": "二 中医“科学”之争",
+      "relationship": "child_of",
+      "description": "第二节 近现代西方文化对中医的影响 -> 二 中医“科学”之争"
+    },
+    {
+      "source": "第八章 西方文化与中医文化",
+      "target": "第三节 中西医学文化差异与中医文化自觉",
+      "relationship": "child_of",
+      "description": "第八章 西方文化与中医文化 -> 第三节 中西医学文化差异与中医文化自觉"
+    },
+    {
+      "source": "第三节 中西医学文化差异与中医文化自觉",
+      "target": "一 中西医学文化的差异",
+      "relationship": "child_of",
+      "description": "第三节 中西医学文化差异与中医文化自觉 -> 一 中西医学文化的差异"
+    },
+    {
+      "source": "第三节 中西医学文化差异与中医文化自觉",
+      "target": "二 树立中医文化自觉",
+      "relationship": "child_of",
+      "description": "第三节 中西医学文化差异与中医文化自觉 -> 二 树立中医文化自觉"
+    },
+    {
+      "source": "第三节 中西医学文化差异与中医文化自觉",
+      "target": "三 中医文化的现代价值",
+      "relationship": "child_of",
+      "description": "第三节 中西医学文化差异与中医文化自觉 -> 三 中医文化的现代价值"
+    },
+    {
+      "source": "第九章 中医文化的传播",
+      "target": "第一节 中医文化的传播要素",
+      "relationship": "child_of",
+      "description": "第九章 中医文化的传播 -> 第一节 中医文化的传播要素"
+    },
+    {
+      "source": "第一节 中医文化的传播要素",
+      "target": "一 中医文化的传播者与受传者",
+      "relationship": "child_of",
+      "description": "第一节 中医文化的传播要素 -> 一 中医文化的传播者与受传者"
+    },
+    {
+      "source": "第一节 中医文化的传播要素",
+      "target": "二 中医文化的传播媒介",
+      "relationship": "child_of",
+      "description": "第一节 中医文化的传播要素 -> 二 中医文化的传播媒介"
+    },
+    {
+      "source": "第一节 中医文化的传播要素",
+      "target": "三 中医文化的传播内容",
+      "relationship": "child_of",
+      "description": "第一节 中医文化的传播要素 -> 三 中医文化的传播内容"
+    },
+    {
+      "source": "第一节 中医文化的传播要素",
+      "target": "四 中医文化传播的原则",
+      "relationship": "child_of",
+      "description": "第一节 中医文化的传播要素 -> 四 中医文化传播的原则"
+    },
+    {
+      "source": "第九章 中医文化的传播",
+      "target": "第二节 中医文化传播的主要类型与形式",
+      "relationship": "child_of",
+      "description": "第九章 中医文化的传播 -> 第二节 中医文化传播的主要类型与形式"
+    },
+    {
+      "source": "第二节 中医文化传播的主要类型与形式",
+      "target": "一 中医文化的内向传播",
+      "relationship": "child_of",
+      "description": "第二节 中医文化传播的主要类型与形式 -> 一 中医文化的内向传播"
+    },
+    {
+      "source": "第二节 中医文化传播的主要类型与形式",
+      "target": "二 中医文化的人际传播",
+      "relationship": "child_of",
+      "description": "第二节 中医文化传播的主要类型与形式 -> 二 中医文化的人际传播"
+    },
+    {
+      "source": "第二节 中医文化传播的主要类型与形式",
+      "target": "三 中医文化的组织传播",
+      "relationship": "child_of",
+      "description": "第二节 中医文化传播的主要类型与形式 -> 三 中医文化的组织传播"
+    },
+    {
+      "source": "第二节 中医文化传播的主要类型与形式",
+      "target": "四 中医文化的社会传播",
+      "relationship": "child_of",
+      "description": "第二节 中医文化传播的主要类型与形式 -> 四 中医文化的社会传播"
+    },
+    {
+      "source": "第二节 中医文化传播的主要类型与形式",
+      "target": "五 中医文化的跨文化传播",
+      "relationship": "child_of",
+      "description": "第二节 中医文化传播的主要类型与形式 -> 五 中医文化的跨文化传播"
+    },
+    {
+      "source": "第九章 中医文化的传播",
+      "target": "第三节 中医文化的传播技巧、效果及其实践",
+      "relationship": "child_of",
+      "description": "第九章 中医文化的传播 -> 第三节 中医文化的传播技巧、效果及其实践"
+    },
+    {
+      "source": "第三节 中医文化的传播技巧、效果及其实践",
+      "target": "一 中医文化传播的常用技巧",
+      "relationship": "child_of",
+      "description": "第三节 中医文化的传播技巧、效果及其实践 -> 一 中医文化传播的常用技巧"
+    },
+    {
+      "source": "第三节 中医文化的传播技巧、效果及其实践",
+      "target": "二 中医文化的传播效果",
+      "relationship": "child_of",
+      "description": "第三节 中医文化的传播技巧、效果及其实践 -> 二 中医文化的传播效果"
+    },
+    {
+      "source": "第三节 中医文化的传播技巧、效果及其实践",
+      "target": "三 中医文化传播实践",
+      "relationship": "child_of",
+      "description": "第三节 中医文化的传播技巧、效果及其实践 -> 三 中医文化传播实践"
+    },
+    {
+      "source": "第九章 中医文化的传播",
+      "target": "第四节 中医文化传播的历史、现状与展望",
+      "relationship": "child_of",
+      "description": "第九章 中医文化的传播 -> 第四节 中医文化传播的历史、现状与展望"
+    },
+    {
+      "source": "第四节 中医文化传播的历史、现状与展望",
+      "target": "一 中医文化传播的历史",
+      "relationship": "child_of",
+      "description": "第四节 中医文化传播的历史、现状与展望 -> 一 中医文化传播的历史"
+    },
+    {
+      "source": "第四节 中医文化传播的历史、现状与展望",
+      "target": "二 中医文化传播的现状",
+      "relationship": "child_of",
+      "description": "第四节 中医文化传播的历史、现状与展望 -> 二 中医文化传播的现状"
+    },
+    {
+      "source": "第四节 中医文化传播的历史、现状与展望",
+      "target": "三 中医文化传播的展望",
+      "relationship": "child_of",
+      "description": "第四节 中医文化传播的历史、现状与展望 -> 三 中医文化传播的展望"
+    }
+  ],
+  "entity_count": 197,
+  "relation_count": 188
+}

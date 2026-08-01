@@ -1,0 +1,22 @@
+2026-07-30 14:49:49,471 [INFO] explicit_main:67 - ExplicitKG pipeline started. cwd=D:\tree-KG\TreeKG-main\src, python=C:\Users\lizhe\.conda\envs\tcm\python.exe
+2026-07-30 14:49:49,471 [INFO] explicit_main:22 - Starting script: ExplicitKG/TextSegmentation.py
+2026-07-30 14:49:50,415 [INFO] explicit_main:42 - [INFO] Start parsing. format=md, input=D:\tree-KG\TreeKG-main\src\ExplicitKG\output\中医学基础.md
+2026-07-30 14:49:50,430 [INFO] explicit_main:42 - [INFO] Parsed TOC roots=11, warnings=7
+2026-07-30 14:49:50,444 [INFO] explicit_main:42 - [INFO] ✅ 完成文本分割：D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\toc_structure.json
+2026-07-30 14:49:50,444 [INFO] explicit_main:42 - [INFO] 首章：绪论  绪论
+2026-07-30 14:49:50,446 [INFO] explicit_main:42 - [WARNING] 共有 7 条格式告警（非致命）
+2026-07-30 14:49:50,446 [INFO] explicit_main:42 - [WARNING]   - [无法分类] 行4072: （1）便次异常
+2026-07-30 14:49:50,446 [INFO] explicit_main:42 - [WARNING]   - [无法分类] 行4094: （2）便质异常
+2026-07-30 14:49:50,446 [INFO] explicit_main:42 - [WARNING]   - [无法分类] 行4106: （3）排便感异常
+2026-07-30 14:49:50,446 [INFO] explicit_main:42 - [WARNING]   - [无法分类] 行4120: （1）尿量异常
+2026-07-30 14:49:50,447 [INFO] explicit_main:42 - [WARNING]   - [无法分类] 行4126: （2）尿次异常
+2026-07-30 14:49:50,447 [INFO] explicit_main:42 - [WARNING]   - [无法分类] 行4132: （3）排尿感异常
+2026-07-30 14:49:50,447 [INFO] explicit_main:42 - [WARNING]   - [无法分类] 行4733: 续表
+2026-07-30 14:49:50,447 [INFO] explicit_main:42 - [INFO] Text segmentation log: D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\logs\text_segmentation_20260730_144950.log
+2026-07-30 14:49:50,463 [INFO] explicit_main:50 - Finished script: ExplicitKG/TextSegmentation.py
+2026-07-30 14:49:50,464 [INFO] explicit_main:22 - Starting script: ExplicitKG/Summarize.py
+2026-07-30 14:49:50,766 [INFO] explicit_main:42 - Traceback (most recent call last):
+2026-07-30 14:49:50,766 [INFO] explicit_main:42 -   File "D:\tree-KG\TreeKG-main\src\ExplicitKG\Summarize.py", line 25, in <module>
+2026-07-30 14:49:50,767 [INFO] explicit_main:42 -     import openai
+2026-07-30 14:49:50,767 [INFO] explicit_main:42 - ModuleNotFoundError: No module named 'openai'
+2026-07-30 14:49:50,783 [ERROR] explicit_main:46 - Script failed: ExplicitKG/Summarize.py, returncode=1

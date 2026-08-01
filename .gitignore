@@ -258,3 +258,18 @@ backend/competition_app/data/workshop_note_images/
 
 # Local MySQL data directory (kept out of Git; removed from index in merge)
 .local-mysql/
+
+# TreeKG 知识图谱构建管线（合并自 origin/知识图谱）
+# BERT 模型文件（太大）
+TreeKG-main/src/HiddenKG/model/
+
+# 生成的 HTML 可视化（output 目录下的）
+**/output/**/*.html
+# data 目录下的 HTML
+**/data/**/*.html
+
+# 大型中间处理文件（可重新生成）
+*dedup_result.json
+*aggr_entities.json
+*conv_entities.json
+*final_knowledge_points_merged.json

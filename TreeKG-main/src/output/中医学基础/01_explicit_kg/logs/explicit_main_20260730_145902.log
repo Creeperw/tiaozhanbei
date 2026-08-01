@@ -1,0 +1,9 @@
+2026-07-30 14:59:02,087 [INFO] explicit_main:66 - ExplicitKG pipeline started. cwd=D:\tree-KG\TreeKG-main\src, python=C:\Users\lizhe\.conda\envs\tcm\python.exe
+2026-07-30 14:59:02,087 [INFO] explicit_main:22 - Starting script: ExplicitKG/TextSegmentation.py
+2026-07-30 14:59:02,417 [INFO] explicit_main:49 - Finished script: ExplicitKG/TextSegmentation.py
+2026-07-30 14:59:02,417 [INFO] explicit_main:22 - Starting script: ExplicitKG/Summarize.py
+2026-07-30 15:03:48,499 [INFO] explicit_main:49 - Finished script: ExplicitKG/Summarize.py
+2026-07-30 15:03:48,500 [INFO] explicit_main:22 - Starting script: ExplicitKG/Extraction.py
+2026-07-30 15:15:13,516 [INFO] explicit_main:49 - Finished script: ExplicitKG/Extraction.py
+2026-07-30 15:15:13,518 [INFO] explicit_main:22 - Starting script: ExplicitKG/toc_graph.py
+2026-07-30 15:15:13,643 [ERROR] explicit_main:45 - Script failed: ExplicitKG/toc_graph.py, returncode=1

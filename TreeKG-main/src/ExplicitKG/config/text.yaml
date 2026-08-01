@@ -1,0 +1,23 @@
+TextSegConfig:
+  ENCODING: utf-8
+  INPUT_FORMAT: md
+  MAX_LEVEL: 4
+  MD_APPENDIX_PATTERN: ^\s*［附］
+  MD_CHAPTER_PATTERN: ^\s*第\s*[一二三四五六七八九十百零〇0-9]+\s*章\b|^\s*绪论\s*$
+  MD_CHINESE_NUM_PATTERN: ^\s*[一二三四五六七八九十]+\s+\S
+  MD_NAME: 中医学基础.md
+  MD_ARABIC_PAREN_PATTERN: ^\s*（\d+）
+  MD_PAREN_NUM_PATTERN: ^\s*（[一二三四五六七八九十]+）
+  MD_POINT_PATTERN: ^\s*\d+[\.\、]
+  MD_SECTION_PATTERN: ^\s*第\s*[一二三四五六七八九十]+\s*节\b
+  NORMALIZE_SPACES: true
+  REMOVE_TRAILING_PAGE_NO: true
+  SAVE_WARNINGS_FILE: true
+  SPACE_SUBSTITUTIONS:
+  -  
+  -  
+  - 　
+  STRIP_COLONS: true
+  TOC_NAME: toc_structure.json
+  WARNINGS_PRINT_TOP: 10
+  WARN_NAME: toc_warnings.log

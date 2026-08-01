@@ -1,0 +1,10 @@
+{
+  "name": "中医学基础_clean",
+  "totalNodes": 4737,
+  "tocNodes": 54,
+  "coreEntities": 2774,
+  "noncoreEntities": 1909,
+  "totalEdges": 3025,
+  "sections": 15,
+  "orphanEntities": 4440
+}

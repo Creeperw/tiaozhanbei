@@ -1,0 +1,17 @@
+2026-07-30 14:35:46,815 [INFO] text_segmentation:560 - Start parsing. format=md, input=D:\tree-KG\TreeKG-main\src\ExplicitKG\output\中医学基础.md
+2026-07-30 14:35:46,827 [INFO] text_segmentation:571 - Parsed TOC roots=11, warnings=61
+2026-07-30 14:35:46,839 [INFO] text_segmentation:578 - ✅ 完成文本分割：D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\toc_structure.json
+2026-07-30 14:35:46,839 [INFO] text_segmentation:580 - 首章：2章  绪论
+2026-07-30 14:35:46,839 [WARNING] text_segmentation:583 - 共有 61 条格式告警（非致命）
+2026-07-30 14:35:46,839 [WARNING] text_segmentation:585 -   - [无法分类] 行1956: 2.风邪的性质及致病特点
+2026-07-30 14:35:46,839 [WARNING] text_segmentation:585 -   - [无法分类] 行1972: 2.寒邪的性质及致病特点
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:585 -   - [无法分类] 行1986: 2.暑邪的性质及致病特点
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:585 -   - [无法分类] 行1998: 2.湿邪的性质及致病特点
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:585 -   - [无法分类] 行2016: 2.燥邪的性质及致病特点
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:585 -   - [无法分类] 行2026: 2.热（火）邪的性质及致病特点
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:585 -   - [无法分类] 行2232: 1.瘀血致病的病机特征
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:585 -   - [无法分类] 行2242: 2.瘀血致病的症状特征
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:585 -   - [无法分类] 行2679: 1.气与血的关系失常
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:585 -   - [无法分类] 行2693: 2.气与津液的关系失常
+2026-07-30 14:35:46,840 [WARNING] text_segmentation:587 -   ...（其余已省略；完整内容见文件：toc_warnings.log）
+2026-07-30 14:35:46,840 [INFO] text_segmentation:588 - Text segmentation log: D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\logs\text_segmentation_20260730_143546.log

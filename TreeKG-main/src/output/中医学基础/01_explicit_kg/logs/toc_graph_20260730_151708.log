@@ -1,0 +1,4 @@
+2026-07-30 15:17:08,035 [INFO] toc_graph:14 - TOC graph started. input=D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\toc_with_entities_and_relations.json, output=D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\toc_graph.json
+2026-07-30 15:17:08,084 [INFO] toc_graph:18 - Loaded TOC roots=11
+2026-07-30 15:17:08,097 [INFO] toc_graph:53 - TOC graph saved. nodes=210, edges=199, output=D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\toc_graph.json
+2026-07-30 15:17:08,098 [INFO] toc_graph:54 - TOC graph log: D:\tree-KG\TreeKG-main\src\output\01_explicit_kg\logs\toc_graph_20260730_151708.log

@@ -1,0 +1,7 @@
+2026-07-30 19:32:57,334 [INFO] embedding:123 - Embedding started. infile=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\conv_entities.json, outfile=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\node_embeddings.pkl, model=D:\tree-KG\TreeKG-main\src\HiddenKG\model\bert-base-chinese, device=cuda, batch_size=16, max_length=512, amp=True
+2026-07-30 19:32:57,615 [INFO] embedding:58 - Loading entities for embedding: D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\conv_entities.json
+2026-07-30 19:32:57,935 [INFO] embedding:61 - Loaded entities count=4157
+2026-07-30 19:32:57,938 [INFO] embedding:74 - Generating embeddings. entities=4157
+2026-07-30 19:39:11,987 [INFO] embedding:79 - Generated embeddings shape=4157 x 768
+2026-07-30 19:39:12,033 [INFO] embedding:86 - Saved embeddings: D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\node_embeddings.pkl, count=4157
+2026-07-30 19:39:12,033 [INFO] embedding:144 - Embedding finished. log=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\logs\embedding_20260730_193244.log

@@ -1,0 +1,4 @@
+2026-07-30 14:53:22,249 [INFO] explicit_main:66 - ExplicitKG pipeline started. cwd=D:\tree-KG\TreeKG-main\src, python=C:\Users\lizhe\.conda\envs\tcm\python.exe
+2026-07-30 14:53:22,250 [INFO] explicit_main:22 - Starting script: ExplicitKG/TextSegmentation.py
+2026-07-30 14:53:22,556 [INFO] explicit_main:49 - Finished script: ExplicitKG/TextSegmentation.py
+2026-07-30 14:53:22,556 [INFO] explicit_main:22 - Starting script: ExplicitKG/Summarize.py

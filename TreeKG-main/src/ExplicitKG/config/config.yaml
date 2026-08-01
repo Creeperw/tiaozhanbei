@@ -1,0 +1,11 @@
+# config/config.yaml
+APIConfig:
+  API_BASE: "https://ark.cn-beijing.volces.com/api/plan/v1/messages"
+  API_KEY: ""                              # 推荐用 TREEKG_API_KEY 环境变量
+  MODEL_NAME: "deepseek-v4-flash"
+  TIMEOUT_SECS: 120
+
+include_files:
+  - "extraction.yaml"
+  - "text.yaml"
+  - "summarize.yaml"
