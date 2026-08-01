@@ -35,7 +35,7 @@ function answersMatch(answer, referenceAnswer, questionType) {
   return normalized(answer) === normalized(referenceAnswer);
 }
 
-export default function SectionExamPanel({ sectionName, kpIds = [], onBack }) {
+export default function SectionExamPanel({ sectionName, kpIds = [], onBack, backLabel }) {
   const uniqueKpIds = useMemo(() => [...new Set(kpIds.filter(Boolean))], [kpIds]);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -75,7 +75,7 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack }) {
   return <section className="section-exam-panel" aria-label={`${sectionName}小节作答`}>
     <header className="section-exam-header">
       <div><span>作业与考试</span><h2>{sectionName}</h2></div>
-      <button type="button" onClick={onBack}>返回小节目录</button>
+      <button type="button" onClick={onBack}>{backLabel || '返回小节目录'}</button>
     </header>
     <div className="section-exam-worksheet">
       {questions.map((question, index) => {

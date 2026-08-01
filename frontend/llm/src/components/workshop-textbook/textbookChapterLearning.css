@@ -64,7 +64,9 @@
 .textbook-section-content>header span { color:#53836f; font-size:13px; font-weight:800; }
 .textbook-section-content__eyebrow { display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .textbook-section-content__eyebrow button { display:inline-flex; flex:0 0 auto; align-items:center; gap:5px; border:0; border-radius:999px; padding:7px 11px; color:#477460; background:#edf6f0; font-size:12px; font-weight:800; cursor:pointer; }
-.textbook-section-content>header h2 { margin:5px 0; color:#153f2f; font-size:clamp(24px,2.2vw,34px); }
+.textbook-section-content>header h2 { margin:5px 0; display:flex; align-items:center; gap:14px; color:#153f2f; font-size:clamp(24px,2.2vw,34px); }
+.textbook-section-exam-btn { display:inline-flex; flex:0 0 auto; align-items:center; gap:5px; margin-left:auto; border:0; border-radius:8px; padding:7px 14px; color:#fff; background:#398769; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; transition:background .15s ease; }
+.textbook-section-exam-btn:hover { background:#2e7358; }
 .textbook-section-content>header p { margin:0; color:#789087; font-size:12px; }
 .textbook-section-workspace { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; height:min(700px,72vh); min-height:520px; margin-top:20px; }
 .textbook-section-content__kps,.textbook-section-content__videos { min-height:0; margin:0; padding:18px; overflow-y:auto; border:1px solid #e0ece5; border-radius:18px; background:#fbfefc; scrollbar-color:#bad6c6 transparent; scrollbar-width:thin; }

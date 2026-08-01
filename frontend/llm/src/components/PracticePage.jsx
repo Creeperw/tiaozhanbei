@@ -25,7 +25,6 @@ import QualificationPaperPanel from './QualificationPaperPanel';
 import SimulatedPatientChat from './SimulatedPatientChat';
 import MistakeRedoPanel from './MistakeRedoPanel';
 import MistakeVariationPanel from './MistakeVariationPanel';
-import TrainingHistoryPanel from './TrainingHistoryPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
@@ -36,7 +35,6 @@ import QuestionFavoritesPanel from './QuestionFavoritesPanel';
 import StudyNotesPanel from './StudyNotesPanel';
 import KnowledgeGraphPanel from './KnowledgeGraphPanel';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
-import { focusMinutesFromStatistics } from './learningPlanDashboard';
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -71,7 +69,7 @@ function contentSections(content) {
 }
 
 function EmptyState({ children }) {
-  return <p className="[overflow-wrap:anywhere] py-5 text-[15px] leading-6 text-slate-500">{children}</p>;
+  return <p className="[overflow-wrap:anywhere] py-5 text-sm leading-6 text-slate-500">{children}</p>;
 }
 
 function KnowledgeCardContent({ content }) {
@@ -186,15 +184,24 @@ function ArtifactResult({ taskResult }) {
   );
 }
 
-const trainingCards = [
+const featuredCards = [
+  {
+    key: 'special_training',
+    initialMode: 'case_training',
+    title: '专项特训',
+    description: '覆盖核心知识点，系统巩固基础能力。',
+    icon: Target,
+  },
   {
     key: 'topic_training',
     initialMode: 'objective',
-    title: '专题训练',
+    title: '知识点特训',
     description: '按教材章节定位知识点，聚焦薄弱环节精准提升。',
     icon: Stethoscope,
-    tone: 'teal',
   },
+];
+
+const trainingCards = [
   {
     key: 'paper_workspace',
     title: '智能组卷',
@@ -205,7 +212,7 @@ const trainingCards = [
   {
     key: 'question_training',
     initialMode: 'objective',
-    title: '综合套题',
+    title: '真题模拟',
     description: '从正式题库抽取客观题与案例，模拟综合考试场景。',
     icon: ClipboardCheck,
     tone: 'emerald',
@@ -226,23 +233,6 @@ const trainingCards = [
   },
 ];
 
-const featuredTrainingCard = {
-  key: 'special_training',
-  initialMode: 'case_training',
-  title: '专项训练',
-  description: '覆盖核心知识点，系统巩固基础能力。',
-  icon: Target,
-  tone: 'cyan',
-};
-
-const overviewTrainingCards = [
-  featuredTrainingCard,
-  trainingCards[0],
-  trainingCards[2],
-  trainingCards[1],
-  ...trainingCards.slice(3),
-];
-
 const uploadQuestionBankCard = {
   key: 'resource_upload',
   title: '上传资源',
@@ -253,9 +243,9 @@ const uploadQuestionBankCard = {
 
 const utilityCards = [
   {
-    key: 'training_history',
-    title: '历史记录',
-    description: '按训练类型查看做过的题目和学习记录。',
+    key: 'mistake_variation',
+    title: '错题库',
+    description: '整理错题记录，生成变式并针对性复盘。',
     icon: FolderHeart,
     available: true,
   },
@@ -303,7 +293,7 @@ const percentageOrNull = (value) => {
 };
 
 const resumableTrainingCards = [
-  featuredTrainingCard,
+  ...featuredCards,
   ...trainingCards,
   ...utilityCards,
   uploadQuestionBankCard,
@@ -363,7 +353,7 @@ const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, check
     ? activitySummary.recent_activities
     : [];
   const latestResumableActivity = recentActivities.find(recentTaskKeyFromActivity);
-  const focusMinutes = focusMinutesFromStatistics(statistics);
+  const focusMinutes = nonNegativeNumberOrNull(lifetime.focus_minutes);
 
   // Today accuracy — filter activities from today only
   const todayStr = String(activitySummary?.calculated_at || new Date().toISOString()).slice(0, 10);
@@ -389,13 +379,12 @@ const buildTrainingOverviewStats = (statistics = {}, activitySummary = {}, check
 };
 
 const workspaceTitles = {
-  question_training: '综合套题',
-  special_training: '专项训练',
-  topic_training: '专题训练',
+  question_training: '真题模拟',
+  special_training: '专项特训',
+  topic_training: '知识点特训',
   ai_patient_simulation: '模拟病患',
   mistake_variation: '错题库',
   mistake_redo: '错题重做',
-  training_history: '历史记录',
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
   question_favorites: '收藏夹',
@@ -497,7 +486,7 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
           <h1 id="practice-overview-title">训练工坊</h1>
           <p>今日建议完成 <strong>{stats.todayGoal}</strong> 道综合题，预计 <strong>15</strong> 分钟</p>
           <div className="practice-overview__hero-actions">
-            <button type="button" className="practice-overview__primary-action" onClick={() => onOpenModule(featuredTrainingCard)}>
+            <button type="button" className="practice-overview__primary-action" onClick={() => onOpenModule(featuredCards[0])}>
               <CirclePlay aria-hidden="true" size={18} />开始今日训练
             </button>
             <button type="button" className="practice-overview__secondary-action" onClick={() => onOpenModule(recentCard)}>
@@ -525,22 +514,40 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
 
       <div className="practice-overview__layout">
         <section className="practice-overview__main" aria-label="训练模块">
-          <div className="practice-overview__training-grid">
-            {overviewTrainingCards.map((card) => {
+          <div className="grid gap-3 grid-cols-2 items-stretch">
+            {[...featuredCards, ...trainingCards].map((card) => {
               const Icon = card.icon;
+              const isFeatured = card.key === 'special_training' || card.key === 'topic_training';
               return (
                 <button
                   key={card.key}
                   type="button"
-                  className={`practice-overview__training-card practice-overview__training-card--${card.tone}`}
+                  className={isFeatured
+                    ? 'practice-overview__featured-card h-full'
+                    : `practice-overview__training-card practice-overview__training-card--${card.tone || 'green'} h-full`}
                   onClick={() => onOpenModule(card)}
                 >
-                  <span className="practice-overview__card-icon"><Icon aria-hidden="true" size={26} /></span>
-                  <span className="practice-overview__card-copy">
-                    <strong>{card.title}</strong>
-                    <small>{card.description}</small>
-                  </span>
-                  <ChevronRight className="practice-overview__card-arrow" aria-hidden="true" size={19} />
+                  {isFeatured ? (
+                    <>
+                      <span className="practice-overview__featured-icon"><Icon aria-hidden="true" size={30} /></span>
+                      <span className="practice-overview__featured-copy">
+                        <span className="practice-overview__featured-title"><strong>{card.title}</strong>{card.key === 'special_training' && <em>推荐</em>}</span>
+                        <small>{card.description}</small>
+                      </span>
+                      <span className="practice-overview__featured-action">
+                        <b>开始练习 <ArrowRight aria-hidden="true" size={16} /></b>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="practice-overview__card-icon"><Icon aria-hidden="true" size={26} /></span>
+                      <span className="practice-overview__card-copy">
+                        <strong>{card.title}</strong>
+                        <small>{card.description}</small>
+                      </span>
+                      <ChevronRight className="practice-overview__card-arrow" aria-hidden="true" size={19} />
+                    </>
+                  )}
                 </button>
               );
             })}
@@ -570,7 +577,6 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
         </section>
 
         <aside className="practice-overview__utilities" aria-label="学习工具">
-          <h2 className="practice-overview__utilities-title">功能入口</h2>
           <div className="practice-overview__utility-list">
             {utilityCards.filter((card) => card.available).map((card) => {
               const Icon = card.icon;
@@ -593,8 +599,7 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
               onClick={() => onOpenModule(uploadQuestionBankCard)}
             >
               <span className="practice-overview__utility-icon"><UploadCloud aria-hidden="true" size={22} /></span>
-              <span><strong>上传资源</strong><small>上传题库或考纲，沉淀个人学习资源。</small><em>支持 PDF / 图片 / Word / Excel / Markdown / TXT · 智能解析</em></span>
-              <ChevronRight aria-hidden="true" size={18} />
+              <span><strong>上传资源</strong><small>上传题库或考纲，沉淀个人学习资源。</small><em>支持 PDF / 图片 / Word / Excel / Markdown / TXT · 智能解析</em></span>              <ChevronRight aria-hidden="true" size={18} />
             </button>
           </div>
         </aside>
@@ -619,8 +624,6 @@ export default function PracticePage({
   const returnIntent = navigationContext.returnTo;
   const returnLabel = returnIntent?.page === 'assistant'
     ? '返回智能助教'
-    : returnIntent?.page === 'learning-path'
-      ? '返回学习路径'
     : returnIntent?.page === 'qualification-route'
       ? '返回今日学习'
       : returnIntent?.page === 'personalization' && returnIntent?.params?.view === 'reports'
@@ -713,12 +716,11 @@ export default function PracticePage({
 
   if (activeTaskType === 'question_workspace') {
     return (
-      <div className="question-workspace-shell space-y-5 text-slate-800">
-        <div className="practice-workspace__heading question-workspace-shell__toolbar flex items-center gap-4 border-b border-slate-200 pb-4">
+      <div className="space-y-5 text-slate-800">
+        <div className="practice-workspace__toolbar">
           <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}>
-            <ArrowLeft aria-hidden="true" size={16} />返回
+            <ArrowLeft aria-hidden="true" size={18} />{returnLabel}
           </button>
-          <h1 className="text-2xl font-bold text-slate-950">上传题库</h1>
         </div>
         <QuestionWorkspacePage />
       </div>
@@ -768,23 +770,20 @@ export default function PracticePage({
   const isSP = activeTaskType === 'ai_patient_simulation';
 
   if (isSP) {
-    return (
-      <div className="practice-workspace practice-workspace--ai_patient_simulation">
-        <SimulatedPatientChat onBack={leaveWorkspace} />
-      </div>
-    );
+    return <SimulatedPatientChat onBack={leaveWorkspace} />;
   }
 
   return (
     <div className={`practice-workspace practice-workspace--${activeTaskType} space-y-5 text-slate-800`}>
-      <div className={`practice-workspace__heading flex items-center gap-4 border-b border-slate-200 pb-4${activeTaskType === 'training_history' ? ' practice-workspace__heading--history' : ''}`}>
-        <button type="button" className="practice-workspace__back" aria-label={returnLabel} onClick={leaveWorkspace}>
-          <ArrowLeft aria-hidden="true" size={16} />返回
+      <div className="flex items-center gap-4 border-b border-slate-200 pb-4">
+        <button type="button" className="inline-flex items-center gap-2 rounded-lg border-2 border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50" onClick={leaveWorkspace}>
+          <ArrowLeft aria-hidden="true" size={16} />{returnLabel}
         </button>
         <h1 className="text-2xl font-bold text-slate-950">{workspaceTitles[activeTaskType] || '训练任务'}</h1>
       </div>
+
       {selectedKnowledgePoint && (
-        <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-[15px] text-emerald-950" aria-label="当前考纲知识点">
+        <section className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" aria-label="当前考纲知识点">
           <div className="font-semibold">当前训练上下文：{selectedKnowledgePoint.kpName}</div>
           <p className="mt-2 leading-6 text-emerald-900">
             已按该知识点筛选训练内容，作答结果会写回掌握度与复习记录。
@@ -793,21 +792,15 @@ export default function PracticePage({
       )}
 
       <div className="min-w-0 space-y-5">
-          <section className={`practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50${activeTaskType === 'paper_workspace' ? ' practice-task-panel--paper' : ''}`}>
+          <section className="practice-task-panel rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
             {activeTaskType === 'question_training' && !taskItemId ? (
               <QualificationPaperPanel enabled />
             ) : activeTaskType === 'mistake_redo' ? (
               <MistakeRedoPanel />
             ) : activeTaskType === 'mistake_variation' ? (
               <MistakeVariationPanel enabled />
-            ) : activeTaskType === 'training_history' ? (
-              <TrainingHistoryPanel enabled />
             ) : activeTaskType === 'paper_workspace' ? (
-              <SmartPaperPanel
-                enabled
-                paperId={navigationContext.paperId || navigationContext.paper_id || ''}
-                taskItemId={taskItemId}
-              />
+              <SmartPaperPanel enabled paperId={navigationContext.paperId || navigationContext.paper_id || ''} taskItemId={taskItemId} />
             ) : activeTaskType === 'knowledge_cards' ? (
               <KnowledgeCardLibrary
                 cardId={navigationContext.cardId || navigationContext.card_id || ''}
@@ -820,9 +813,8 @@ export default function PracticePage({
             ) : activeTaskType === 'question_favorites' ? (
               <QuestionFavoritesPanel onNavigate={onNavigate} />
             ) : activeTaskType === 'knowledge_graph' ? (
-              <KnowledgeGraphPanel />
-            ) : activeTaskType === 'study_notes' ? (
-              <StudyNotesPanel onNavigate={onNavigate} />
+              <KnowledgeGraphPanel />            ) : activeTaskType === 'study_notes' ? (
+              <StudyNotesPanel />
             ) : activeTaskType === 'topic_training' ? (
               <KnowledgePointTrainingHub
                 initialKnowledgePoint={selectedKnowledgePoint}
@@ -838,7 +830,7 @@ export default function PracticePage({
                 taskItemId={taskItemId}
               />
             ) : (
-              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-[15px] leading-6 text-slate-600">
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm leading-6 text-slate-600">
                 此模块正在准备中，暂不支持提交任务。
               </div>
             )}

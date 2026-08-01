@@ -210,6 +210,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [courseMode, setCourseMode] = useState('pdf');
   const [graphOpen, setGraphOpen] = useState(false);
   const [sectionExamMode, setSectionExamMode] = useState(false);
+  const [examEnteredFromContent, setExamEnteredFromContent] = useState(false);
   const [sectionQuestionCounts, setSectionQuestionCounts] = useState({});
   const [sectionKpIdsBySection, setSectionKpIdsBySection] = useState({});
   const [pdfInitialPage, setPdfInitialPage] = useState(navigationContext.pdfPage || 1);
@@ -715,7 +716,15 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             <SectionExamPanel
               sectionName={selectedSection.name}
               kpIds={sectionKpIdsBySection[selectedSection.id] || sectionKpIds}
-              onBack={() => setSelectedSection(null)}
+              onBack={() => {
+                if (examEnteredFromContent) {
+                  setSectionExamMode(false);
+                  setExamEnteredFromContent(false);
+                } else {
+                  setSelectedSection(null);
+                }
+              }}
+              backLabel={examEnteredFromContent ? '返回学习' : undefined}
             />
           ) : selectedSection && (
           <section className="textbook-section-content" aria-live="polite">
@@ -726,7 +735,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
                   <ArrowLeft aria-hidden="true" size={14} />返回小节目录
                 </button>
               </div>
-              <h2>{selectedSection?.name || '请选择小节'}</h2>
+              <h2>{selectedSection?.name || '请选择小节'}<button type="button" className="textbook-section-exam-btn" onClick={() => { setExamEnteredFromContent(true); setSectionExamMode(true); setCourseMode('catalog'); }}><Layers3 aria-hidden="true" size={14} />开始练习</button></h2>
               {detail?.section && <p>{detail.section.book} / {detail.section.chapter} / {detail.section.name}</p>}
             </header>
 

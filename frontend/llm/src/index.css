@@ -14141,3 +14141,37 @@ textarea:focus-visible {
     transition: none;
   }
 }
+
+
+
+/* ── 侧边栏诊室切换 & 针灸评分回顾 ── */
+.sp-sidebar-room-tabs { display:flex; gap:4px; margin-bottom:6px; padding:6px; border:1px solid #e0ebe5; border-radius:10px; background:#f7fbf9; }
+.sp-sidebar-room-tabs button { display:flex; flex:1; align-items:center; justify-content:center; gap:5px; border:0; border-radius:7px; padding:7px 10px; color:#5b7d6e; background:transparent; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s ease; }
+.sp-sidebar-room-tabs button.is-active { color:#196f4f; background:#fff; box-shadow:0 2px 6px rgba(20,85,55,.1); }
+.sp-sidebar-room-tabs button:hover:not(.is-active) { color:#267553; background:#edf7f1; }
+.sp-sidebar-empty { padding:20px 12px; color:#8a9e95; font-size:12px; text-align:center; }
+.sp-acu-review-overlay { position:fixed; z-index:90; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.35); backdrop-filter:blur(3px); }
+.sp-acu-review-panel { width:min(460px,92vw); max-height:82vh; overflow-y:auto; border-radius:16px; background:#fff; box-shadow:0 20px 50px rgba(0,0,0,.2); animation:sp-fade-in .18s ease-out; }
+.sp-acu-review-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #e7f0ea; }
+.sp-acu-review-header h3 { margin:0; color:#1e4c38; font-size:17px; }
+.sp-acu-review-header button { display:grid; width:30px; height:30px; place-items:center; border:0; border-radius:7px; color:#6d8178; background:transparent; cursor:pointer; }
+.sp-acu-review-header button:hover { background:#eef7f2; }
+.sp-acu-review-body { padding:20px 18px 24px; text-align:center; }
+.sp-acu-review-score { margin-bottom:16px; color:#1e4c38; font-size:42px; font-weight:800; line-height:1; }
+.sp-acu-review-score small { display:block; margin-top:4px; color:#738a80; font-size:14px; font-weight:500; }
+.sp-acu-review-criteria { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:14px; }
+.sp-acu-review-criteria span { padding:10px 12px; border-radius:10px; background:#f7fbf9; color:#40594e; font-size:13px; }
+.sp-acu-review-criteria strong { display:block; margin-top:3px; color:#1e4c38; font-size:17px; font-weight:800; }
+.sp-acu-review-feedback { margin:0 0 10px; padding:14px; border-radius:10px; color:#4a5c53; background:#f2f7f4; font-size:14px; line-height:1.6; text-align:left; }
+.sp-acu-review-date { color:#8a9e95; font-size:11px; }
+@keyframes sp-fade-in { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:none; } }
+.sp-acu-review-complaint { margin-bottom:8px; padding:10px 14px; border-radius:10px; color:#5a3d1e; background:#fdf6ed; font-size:13px; text-align:left; }
+.sp-acu-review-meta { display:flex; justify-content:center; gap:20px; margin-bottom:14px; color:#6b8277; font-size:13px; }
+.sp-acu-review-meta strong { color:#2e5343; }
+.sp-acu-review-correct { margin-bottom:14px; padding:12px 14px; border-radius:10px; background:#f2f7f4; text-align:left; }
+.sp-acu-review-correct strong { display:block; margin-bottom:6px; color:#2e5343; font-size:13px; }
+.sp-acu-review-points { display:flex; flex-wrap:wrap; gap:5px; }
+.sp-acu-review-points span { padding:4px 8px; border-radius:6px; color:#3d6e57; background:#e4f2ea; font-size:12px; }
+.sp-acu-review-actions { display:flex; justify-content:center; padding:0 18px 10px; }
+.sp-acu-review-fav-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid #cfe0d7; border-radius:8px; padding:6px 14px; color:#47685a; background:#f8fbf9; font-size:12px; font-weight:600; cursor:pointer; }
+.sp-acu-review-fav-btn:hover { border-color:#8abca3; color:#176e50; background:#e8f5ed; }
