@@ -482,7 +482,7 @@ describe('QualificationRoutePage', () => {
     const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
     expect(stylesheet).toMatch(/\.home-portal__planning-markdown table\s*\{[^}]*table-layout:\s*fixed;/s);
     expect(stylesheet).toMatch(/\.home-portal__planning-markdown th,\s*\.home-portal__planning-markdown td\s*\{[^}]*overflow-wrap:\s*anywhere;/s);
-    fireEvent.click(screen.getByRole('button', { name: '返回路径' }));
+    fireEvent.click(screen.getByRole('button', { name: '返回' }));
     expect(await screen.findByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
   });
 

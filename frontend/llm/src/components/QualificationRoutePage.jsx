@@ -376,6 +376,7 @@ function HomeLearningRoute({
     };
   });
   const [selectedNode, setSelectedNode] = useState(null);
+  const [detailsReturnView, setDetailsReturnView] = useState('orbit');
   const [planningDetails, setPlanningDetails] = useState({
     loaded: false,
     loading: false,
@@ -503,6 +504,7 @@ function HomeLearningRoute({
   };
 
   const showPlanningDetails = async () => {
+    setDetailsReturnView(routeView);
     changeRouteView('details');
     if (planningDetails.loaded || planningDetails.loading) return;
     setPlanningDetails((current) => ({ ...current, loading: true, error: '' }));
@@ -535,7 +537,8 @@ function HomeLearningRoute({
   };
 
   const returnToPath = () => {
-    changeRouteView('orbit');
+    const returnView = detailsReturnView === 'cards' ? 'cards' : 'orbit';
+    changeRouteView(returnView);
     setSelectedNode(null);
   };
 
@@ -556,7 +559,7 @@ function HomeLearningRoute({
           <div className="home-portal__route-kicker">
             <h2>{selectedTarget?.name || '当前考证'}</h2>
             <button type="button" className="home-portal__route-detail-toggle" onClick={routeView === 'details' ? returnToPath : showPlanningDetails}>
-              {routeView === 'details' ? '返回路径' : '规划详情'}
+              {routeView === 'details' ? '返回' : '规划详情'}
             </button>
           </div>
         </div>
