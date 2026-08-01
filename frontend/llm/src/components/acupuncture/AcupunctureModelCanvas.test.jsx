@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { HUMAN_MODEL_URL } from './AcupunctureModelCanvas';
 import {
@@ -31,7 +31,22 @@ describe('image acupuncture needle', () => {
         expect(getNeedleDirection(normal, 45, 90).angleTo(normal)).toBeCloseTo(Math.PI / 4);
     });
 
-    it('records an angled insertion direction while anchoring the image needle and glow at its point', () => {
+    it('aligns a direct needle axis to the picked skin normal instead of world vertical', () => {
+        const normal = new THREE.Vector3(0.6, 0.8, 0).normalize();
+        const model = createRealisticNeedle({
+            id: 'direct-on-side',
+            point: [0, 0, 0],
+            normal: normal.toArray(),
+            insertionType: 'direct',
+            tiltAngle: 0,
+        });
+        const needleAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(model.quaternion);
+
+        expect(needleAxis.angleTo(normal)).toBeCloseTo(0);
+        expect(model.children.find((child) => child.name === 'needle-shaft')).toBeTruthy();
+    });
+
+    it('records an angled insertion direction while anchoring the 3D needle and glow at its point', () => {
         const needle = {
             id: 'needle-oblique',
             point: [1, 2, 3],
@@ -43,24 +58,21 @@ describe('image acupuncture needle', () => {
 
         const model = createRealisticNeedle(needle);
         const expectedDirection = getNeedleDirection(new THREE.Vector3(...needle.normal), 45, 90);
+        const needleAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(model.quaternion);
 
         expect(model.position.toArray()).toEqual(needle.point);
         expect(model.userData.direction).toEqual(expectedDirection.toArray());
-        expect(model.children.find((child) => child.name === 'needle-image').position.toArray()).toEqual([0, 0, 0]);
+        expect(needleAxis.angleTo(expectedDirection)).toBeCloseTo(0);
+        expect(model.children.find((child) => child.name === 'needle-shaft')).toBeTruthy();
         expect(model.children.find((child) => child.name === 'needle-contact-glow').position.toArray()).toEqual([0, 0, 0]);
     });
 
-    it('disposes each placed needle sprite material before clearing its group', () => {
+    it('clears placed 3D needle instances without disposing their shared template materials', () => {
         const group = new THREE.Group();
-        const material = new THREE.SpriteMaterial();
-        const dispose = vi.spyOn(material, 'dispose');
-        const needleSprite = new THREE.Sprite(material);
-        needleSprite.name = 'needle-image';
-        group.add(needleSprite);
+        group.add(new THREE.Mesh(new THREE.CylinderGeometry(), new THREE.MeshPhysicalMaterial()));
 
         disposePlacedNeedles(group);
 
-        expect(dispose).toHaveBeenCalledTimes(1);
         expect(group.children).toHaveLength(0);
     });
 });

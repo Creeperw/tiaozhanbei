@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
+    cacheRealisticNeedleTemplate,
     createRealisticNeedle,
+    disposeNeedleScene,
     disposePlacedNeedles,
-    preloadNeedleTextures,
 } from './realisticNeedle';
 
 const EXCLUDED_NODE_NAMES = new Set([
@@ -28,6 +29,7 @@ const isMarkerNode = (object) => object.name
 
 const NEEDLE_TAP_THRESHOLD_PX = 6;
 export const HUMAN_MODEL_URL = '/acupuncture-models/blender.yibiaozhu.glb';
+const NEEDLE_MODEL_URL = '/acupuncture-models/realistic-acupuncture-needle.glb';
 
 export default function AcupunctureModelCanvas({
     mode = 'observe',
@@ -56,7 +58,7 @@ export default function AcupunctureModelCanvas({
     const [modelStats, setModelStats] = useState({ markers: 0 });
     const [showPointNames, setShowPointNames] = useState(false);
     const [hoveredPoint, setHoveredPoint] = useState(null);
-    const [needleTextureVersion, setNeedleTextureVersion] = useState(0);
+    const [needleTemplateVersion, setNeedleTemplateVersion] = useState(0);
     const pendingPickRef = useRef(null);
     const pointerGestureRef = useRef(null);
     const markerVisibilityRef = useRef({ showMarkers, revealStandardPoints });
@@ -68,14 +70,6 @@ export default function AcupunctureModelCanvas({
             standardMarkerGroupRef.current.visible = showMarkers || revealStandardPoints;
         }
     }, [revealStandardPoints, showMarkers]);
-
-    useEffect(() => {
-        let active = true;
-        preloadNeedleTextures(() => {
-            if (active) setNeedleTextureVersion((version) => version + 1);
-        });
-        return () => { active = false; };
-    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -169,6 +163,15 @@ export default function AcupunctureModelCanvas({
         resize();
 
         const loader = new GLTFLoader();
+        loader.load(NEEDLE_MODEL_URL, (gltf) => {
+            if (disposed) {
+                disposeNeedleScene(gltf.scene);
+                return;
+            }
+            if (cacheRealisticNeedleTemplate(gltf.scene)) {
+                setNeedleTemplateVersion((version) => version + 1);
+            }
+        }, undefined, () => { });
         loader.load(HUMAN_MODEL_URL, (gltf) => {
             if (disposed) return;
             const model = gltf.scene;
@@ -256,7 +259,7 @@ export default function AcupunctureModelCanvas({
             if (!Array.isArray(needle.point) || needle.point.length !== 3) return;
             group.add(createRealisticNeedle(needle, index));
         });
-    }, [needles, needleTextureVersion]);
+    }, [needles, needleTemplateVersion]);
 
     const handlePointerDown = (event) => {
         if (!interactive || !modelRef.current || !onSurfacePick) return;
