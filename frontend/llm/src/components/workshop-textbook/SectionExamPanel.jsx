@@ -117,7 +117,7 @@ function checkAnswer(userAnswer, correctAnswer, questionType) {
   return user === correct || correct.includes(user) || user.includes(correct);
 }
 
-export default function SectionExamPanel({ sectionName, kpIds = [], onBack }) {
+export default function SectionExamPanel({ sectionName, kpIds = [], onBack, backLabel }) {
   const uniqueKpIds = useMemo(() => [...new Set(kpIds.filter(Boolean))], [kpIds]);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -236,7 +236,7 @@ export default function SectionExamPanel({ sectionName, kpIds = [], onBack }) {
     <div className="section-exam-panel">
       <header className="section-exam-header">
         <button type="button" className="section-exam-back" onClick={onBack}>
-          <ArrowLeft size={14} aria-hidden="true" />返回小节目录
+          <ArrowLeft size={14} aria-hidden="true" />{backLabel || '返回小节目录'}
         </button>
         <em>{questions.length} 道题目</em>
       </header>

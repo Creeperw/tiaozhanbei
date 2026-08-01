@@ -538,6 +538,7 @@
 }
 
 .textbook-section-content>header h2 {
+    display:flex; align-items:center; gap:14px;
     margin: 5px 0;
     color: #153f2f;
     font-size: clamp(24px, 2.2vw, 34px);
@@ -1154,6 +1155,8 @@
     cursor: not-allowed;
     opacity: .6;
 }
+.textbook-section-exam-btn { display:inline-flex; flex:0 0 auto; align-items:center; gap:5px; margin-left:auto; border:0; border-radius:8px; padding:7px 14px; color:#fff; background:#398769; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; transition:background .15s ease; }
+.textbook-section-exam-btn:hover { background:#2e7358; }
 /* ══ 以下为合并补充：HEAD 独有功能样式（hero 折叠 / 返回按钮 / 作业考试完整套件）══ */
 .textbook-chapter-learning__hero.is-collapsed { display:flex; align-items:center; justify-content:center; min-height:38px; padding:4px 12px; }
 .textbook-chapter-learning__hero.is-collapsed .textbook-chapter-learning__intro-collapsed h1 { margin:0; font-size:17px; }

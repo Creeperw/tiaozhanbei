@@ -3,7 +3,7 @@ import {
   ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowUp,
   Heart, Bookmark, Coffee, ArrowRight, HelpCircle,
   Send, Stethoscope, History, AlertCircle, Trash2, Loader2,
-  Star, Activity, FileText, RotateCcw, X, User
+  Star, Activity, FileText, RotateCcw, X, User, Crosshair
 } from 'lucide-react';
 import { fetchWithAuth, readJsonResponse } from '../utils/api';
 import AcupuncturePractice from './acupuncture/AcupuncturePractice';
@@ -15,8 +15,10 @@ import {
 
 // ── localStorage keys ────────────────────────────────────
 const STORAGE_SESSION = 'sp-session-id';
-const STORAGE_SESSIONS = 'sp-completed-sessions'; // 完整接诊记录
+const STORAGE_SESSIONS = 'sp-completed-sessions';
 const STORAGE_COLLECTIONS = 'sp-collections';
+const STORAGE_ACUPUNCTURE_SESSIONS = 'sp-acupuncture-sessions';
+const STORAGE_ACUPUNCTURE_MISTAKES = 'sp-acupuncture-mistakes';
 
 const GUIDE_PATIENT = { gender: '女', age_range: '35-40 岁', body_type: '偏瘦' };
 const GUIDE_CONSULTATION = [
@@ -30,6 +32,10 @@ const GUIDE_CONSULTATION = [
 // ── Helpers ───────────────────────────────────────────────
 const getSessions = () => { try { return JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]'); } catch { return []; } };
 const setSessions = (v) => localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(v));
+const getAcupunctureSessions = () => { try { return JSON.parse(localStorage.getItem(STORAGE_ACUPUNCTURE_SESSIONS) || '[]'); } catch { return []; } };
+const saveAcupunctureSessions = (v) => localStorage.setItem(STORAGE_ACUPUNCTURE_SESSIONS, JSON.stringify(v));
+const getAcupunctureMistakes = () => { try { return JSON.parse(localStorage.getItem(STORAGE_ACUPUNCTURE_MISTAKES) || '[]'); } catch { return []; } };
+const saveAcupunctureMistakes = (v) => localStorage.setItem(STORAGE_ACUPUNCTURE_MISTAKES, JSON.stringify(v));
 const getCollections = () => { try { return JSON.parse(localStorage.getItem(STORAGE_COLLECTIONS) || '[]'); } catch { return []; } };
 const setCollections = (v) => localStorage.setItem(STORAGE_COLLECTIONS, JSON.stringify(v));
 
@@ -65,12 +71,16 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarMode, setSidebarMode] = useState('history'); // history | favorites | mistakes
   const [sidebarLoading, setSidebarLoading] = useState(false);
+  const [acupunctureRoom, setAcupunctureRoom] = useState('consultation'); // consultation | acupuncture
 
   // Sidebar data
   const [favoritesList, setFavoritesList] = useState(getCollections);
   const [mistakesList, setMistakesList] = useState([]);
   const [backendHistory, setBackendHistory] = useState([]);
   const [completedSessions, setCompletedSessions] = useState(getSessions);
+  const [acupunctureSessions, setAcupunctureSessions] = useState(getAcupunctureSessions);
+  const [acupunctureMistakes, setAcupunctureMistakes] = useState(getAcupunctureMistakes);
+  const [acupunctureReviewData, setAcupunctureReviewData] = useState(null);
 
   // Practice mode
   const [practiceMode, setPracticeMode] = useState(null);
@@ -78,8 +88,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
   const [selectedAcupunctureCaseId, setSelectedAcupunctureCaseId] = useState(
     () => BUILTIN_ACUPUNCTURE_CASES[0]?.caseId || '',
   );
-  const [specialtyInput, setSpecialtyInput] = useState('');
-
   // Consultation
   const [input, setInput] = useState('');
   const [showHelpCard, setShowHelpCard] = useState(false);
@@ -222,6 +230,65 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
   };
 
   const refreshSessions = () => setCompletedSessions(getSessions());
+  const refreshAcupunctureSessions = () => setAcupunctureSessions(getAcupunctureSessions());
+
+  const handleAcupunctureScoreComplete = (sessionData) => {
+    const sessions = getAcupunctureSessions();
+    sessions.unshift({
+      session_id: `acu-${Date.now()}`,
+      caseId: sessionData.caseId,
+      case_name: sessionData.caseName || sessionData.caseId,
+      total: sessionData.total,
+      position: sessionData.position,
+      depth: sessionData.depth,
+      retention: sessionData.retention,
+      insertion: sessionData.insertion,
+      feedback: sessionData.feedback,
+      needles: sessionData.needles,
+      standardPoints: sessionData.standardPoints,
+      complaint: sessionData.complaint,
+      completed_at: new Date().toISOString(),
+    });
+    saveAcupunctureSessions(sessions);
+    refreshAcupunctureSessions();
+    // 低于60分自动记入误诊
+    if (sessionData.total != null && sessionData.total < 60) {
+      const mistakes = getAcupunctureMistakes();
+      mistakes.unshift({
+        ...sessions[0],
+        recorded_at: new Date().toISOString(),
+      });
+      saveAcupunctureMistakes(mistakes);
+      setAcupunctureMistakes(mistakes);
+    }
+  };
+
+  const handleViewAcupuncture = (item) => {
+    setAcupunctureReviewData(item);
+  };
+
+  const handleFavoriteAcupuncture = (item) => {
+    const collections = getCollections();
+    const exists = collections.some((c) => c.resource_id === item.session_id);
+    if (!exists) {
+      collections.unshift({
+        resource_id: item.session_id,
+        resource_type: 'acupuncture_session',
+        title: `针灸实训 · ${item.case_name || item.caseId}`,
+        source: '模拟病患',
+        created_at: new Date().toISOString(),
+        content: {
+          caseId: item.caseId,
+          case_name: item.case_name,
+          total: item.total,
+          needles_count: Array.isArray(item.needles) ? item.needles.length : 0,
+          completed_at: item.completed_at,
+        },
+      });
+      setCollections(collections);
+      setFavoritesList(collections);
+    }
+  };
 
   // ── Actions ─────────────────────────────────────────────
 
@@ -233,9 +300,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
       return;
     }
     const payload = {};
-    if (practiceMode === 'topic' && specialtyInput.trim()) {
-      payload.specialty = specialtyInput.trim();
-    }
     const result = await callAPI('start', payload, { forceNewSession: true });
     if (!result) return;
     const opening = result.data?.patient_reply || '您好，请开始问诊。';
@@ -381,7 +445,6 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
     setSessionId('');
     sessionStorage.removeItem(STORAGE_SESSION);
     setPracticeMode(null);
-    setSpecialtyInput('');
     setView('practice_select');
   };
 
@@ -503,19 +566,42 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
       setView('consultation');
     };
 
+    // 按当前诊室过滤数据
+    const isAcuRoom = acupunctureRoom === 'acupuncture';
+
     if (sidebarMode === 'favorites') {
-      if (favoritesList.length === 0) return <div className="sp-sidebar-empty">暂无收藏</div>;
-      return favoritesList.map((item, i) => (
-        <div key={i} className="sp-sidebar-item" onClick={() => findAndViewSession(item)}>
-          <div className="sp-sidebar-item__name">{item.case_name || '未知案例'}</div>
-          <div className="sp-sidebar-item__score">收藏于 {item.collected_at?.slice(0, 10) || ''}</div>
+      const filtered = isAcuRoom
+        ? favoritesList.filter((item) => item.resource_type === 'acupuncture_session')
+        : favoritesList.filter((item) => item.resource_type !== 'acupuncture_session');
+      if (filtered.length === 0) return <div className="sp-sidebar-empty">{isAcuRoom ? '暂无针灸收藏' : '暂无收藏'}</div>;
+      return filtered.map((item, i) => (
+        <div key={i} className="sp-sidebar-item" onClick={() => {
+          if (isAcuRoom) {
+            const acuItem = { session_id: item.resource_id, case_name: item.title, ...item.content, completed_at: item.content?.completed_at || item.created_at };
+            handleViewAcupuncture(acuItem);
+          } else {
+            findAndViewSession(item);
+          }
+        }}>
+          <div className="sp-sidebar-item__name">{item.title || item.case_name || '未知'}</div>
+          <div className="sp-sidebar-item__score">{isAcuRoom ? `${item.content?.total ?? '--'}分` : `收藏于 ${item.collected_at?.slice(0, 10) || ''}`}</div>
         </div>
       ));
     }
 
     if (sidebarMode === 'mistakes') {
-      if (mistakesList.length === 0) return <div className="sp-sidebar-empty">暂无错题记录</div>;
-      return mistakesList.map((item, i) => (
+      if (isAcuRoom) {
+        if (acupunctureMistakes.length === 0) return <div className="sp-sidebar-empty">暂无针灸误诊记录</div>;
+        return acupunctureMistakes.map((item, i) => (
+          <div key={i} className="sp-sidebar-item" onClick={() => handleViewAcupuncture(item)}>
+            <div className="sp-sidebar-item__name">{item.case_name || item.caseId || '未知'}</div>
+            <div className="sp-sidebar-item__meta">得分: {item.total ?? '--'} / 100</div>
+          </div>
+        ));
+      }
+      const filtered = mistakesList;
+      if (filtered.length === 0) return <div className="sp-sidebar-empty">暂无误诊记录</div>;
+      return filtered.map((item, i) => (
         <div key={i} className="sp-sidebar-item" onClick={() => findAndViewSession(item)}>
           <div className="sp-sidebar-item__name">{item.case_name || '未知案例'}</div>
           <div className="sp-sidebar-item__meta">
@@ -629,30 +715,15 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
               className={`sp-welcome__mode-option${practiceMode === 'free' ? ' is-active' : ''}`}
               onClick={() => setPracticeMode('free')}
             >
-              随心练
+              模拟坐诊
             </button>
             <button
               className={`sp-welcome__mode-option${practiceMode === 'acupuncture' ? ' is-active' : ''}`}
               onClick={() => setPracticeMode('acupuncture')}
             >
-              针灸专练
-            </button>
-            <button
-              className={`sp-welcome__mode-option${practiceMode === 'topic' ? ' is-active' : ''}`}
-              onClick={() => setPracticeMode('topic')}
-            >
-              题型专练
+              针灸实训
             </button>
           </div>
-          {practiceMode === 'topic' && (
-            <input
-              className="sp-welcome__specialty-input"
-              type="text"
-              placeholder="输入科室或专科方向（可选）"
-              value={specialtyInput}
-              onChange={e => setSpecialtyInput(e.target.value)}
-            />
-          )}
           {practiceMode === 'acupuncture' && (
             <label className="sp-welcome__specialty-input" htmlFor="acupuncture-entry-case">
               <span>选择训练病例</span>
@@ -1022,6 +1093,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
         <AcupuncturePractice
           caseData={acupunctureCases.find((item) => item.caseId === selectedAcupunctureCaseId)}
           onBack={() => setView('practice_select')}
+          onScoreComplete={handleAcupunctureScoreComplete}
         />
       </div>
     );
@@ -1043,6 +1115,16 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
                 <ArrowLeft className="sp-sidebar-back__icon" />
                 返回诊室列表
               </button>
+            )}
+            {!viewingHistory && (
+              <div className="sp-sidebar-room-tabs">
+                <button className={acupunctureRoom === 'consultation' ? 'is-active' : ''} onClick={() => { setAcupunctureRoom('consultation'); setSidebarMode('history'); }}>
+                  <Stethoscope size={14} />我的诊室
+                </button>
+                <button className={acupunctureRoom === 'acupuncture' ? 'is-active' : ''} onClick={() => { setAcupunctureRoom('acupuncture'); }}>
+                  <Crosshair size={14} />我的针灸室
+                </button>
+              </div>
             )}
             <div className="sp-sidebar-actions">
               <button className="sp-sidebar-action sp-sidebar-action--primary" onClick={() => { setView('practice_select'); setReport(null); setMessages([]); }}>
@@ -1073,6 +1155,7 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
             </div>
           </div>
 
+          {acupunctureRoom === 'consultation' && (
           <div className="sp-sidebar-section">
             <h3 className="sp-sidebar-section__title">
               {sidebarMode === 'favorites' ? '我的收藏' : sidebarMode === 'mistakes' ? '我的误诊' : '我的诊室'}
@@ -1081,6 +1164,34 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
               {renderSidebarList()}
             </div>
           </div>
+          )}
+          {acupunctureRoom === 'acupuncture' && sidebarMode === 'history' && (
+          <div className="sp-sidebar-section">
+            <h3 className="sp-sidebar-section__title">我的针灸室</h3>
+            <div className="sp-sidebar-list">
+              {acupunctureSessions.length === 0 ? (
+                <p className="sp-sidebar-empty">暂无针灸训练记录</p>
+              ) : (
+                acupunctureSessions.map((item) => (
+                  <button key={item.session_id} className="sp-sidebar-item" onClick={() => handleViewAcupuncture(item)}>
+                    <div><strong>{item.case_name || item.caseId}</strong><small>{item.completed_at?.slice(0, 10)}</small></div>
+                    <span className={`sp-sidebar-item__score${item.total >= 85 ? ' is-good' : item.total >= 60 ? ' is-medium' : ''}`}>{item.total != null ? `${item.total}分` : '--'}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+          )}
+          {acupunctureRoom === 'acupuncture' && sidebarMode !== 'history' && (
+          <div className="sp-sidebar-section">
+            <h3 className="sp-sidebar-section__title">
+              {sidebarMode === 'favorites' ? '我的收藏' : '我的误诊'}
+            </h3>
+            <div className="sp-sidebar-list">
+              {renderSidebarList()}
+            </div>
+          </div>
+          )}
         </div>
       </div>
 
@@ -1102,6 +1213,57 @@ export default function SimulatedPatientChat({ showBack = true, onBack, guideDem
           ) :
             renderWelcome()
         }
+        {acupunctureReviewData && (
+          <div className="sp-acu-review-overlay" onClick={() => setAcupunctureReviewData(null)}>
+            <div className="sp-acu-review-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="sp-acu-review-header">
+                <h3>针灸训练 · {acupunctureReviewData.case_name || acupunctureReviewData.caseId}</h3>
+                <button onClick={() => setAcupunctureReviewData(null)}><X size={16} /></button>
+              </div>
+              <div className="sp-acu-review-actions">
+                <button className="sp-acu-review-fav-btn" onClick={() => handleFavoriteAcupuncture(acupunctureReviewData)}>
+                  <Bookmark size={14} />加入收藏
+                </button>
+                <button className="sp-acu-review-fav-btn" onClick={() => {
+                  const mistakes = getAcupunctureMistakes();
+                  const exists = mistakes.some((m) => m.session_id === acupunctureReviewData.session_id);
+                  if (!exists) {
+                    mistakes.unshift({ ...acupunctureReviewData, recorded_at: new Date().toISOString() });
+                    saveAcupunctureMistakes(mistakes);
+                    setAcupunctureMistakes([...mistakes]);
+                  }
+                }}>
+                  <AlertCircle size={14} />加入误诊
+                </button>
+              </div>
+              <div className="sp-acu-review-body">
+                {acupunctureReviewData.complaint && <div className="sp-acu-review-complaint"><strong>主诉：</strong>{acupunctureReviewData.complaint}</div>}
+                <div className="sp-acu-review-meta">
+                  <span>我的答案：<strong>{Array.isArray(acupunctureReviewData.needles) ? `${acupunctureReviewData.needles.length} 针` : '--'}</strong></span>
+                  <span>完成时间：<strong>{acupunctureReviewData.completed_at?.slice(0, 10) || '--'}</strong></span>
+                </div>
+                {Array.isArray(acupunctureReviewData.standardPoints) && acupunctureReviewData.standardPoints.length > 0 && (
+                  <div className="sp-acu-review-correct">
+                    <strong>正确答案（标准穴位）</strong>
+                    <div className="sp-acu-review-points">
+                      {acupunctureReviewData.standardPoints.map((p, i) => (
+                        <span key={i}>{p.name}{p.code ? `（${p.code}）` : ''}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="sp-acu-review-score">{acupunctureReviewData.total != null ? acupunctureReviewData.total : '--'}<small>分</small></div>
+                <div className="sp-acu-review-criteria">
+                  <span>位置准确度 <strong>{acupunctureReviewData.position != null ? `${acupunctureReviewData.position}%` : '--'}</strong></span>
+                  <span>进针类型 <strong>{acupunctureReviewData.insertion != null ? `${acupunctureReviewData.insertion}%` : '--'}</strong></span>
+                  <span>深浅程度 <strong>{acupunctureReviewData.depth != null ? `${acupunctureReviewData.depth}%` : '--'}</strong></span>
+                  <span>留针时间 <strong>{acupunctureReviewData.retention != null ? `${acupunctureReviewData.retention}%` : '--'}</strong></span>
+                </div>
+                {acupunctureReviewData.feedback && <div className="sp-acu-review-feedback">{acupunctureReviewData.feedback}</div>}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

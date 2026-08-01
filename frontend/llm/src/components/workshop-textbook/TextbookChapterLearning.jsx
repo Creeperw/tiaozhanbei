@@ -205,6 +205,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   // PDF / 目录 / 作业与考试 模式
   const [courseMode, setCourseMode] = useState('catalog');
   const [sectionExamMode, setSectionExamMode] = useState(false);
+  const [examEnteredFromContent, setExamEnteredFromContent] = useState(false);
   const [pdfInitialPage, setPdfInitialPage] = useState(navigationContext.pdfPage || 1);
   const [pageNotesOpen, setPageNotesOpen] = useState(false);
   // 作业与考试独立数据
@@ -658,7 +659,15 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
               <SectionExamPanel
                 sectionName={selectedSection.name}
                 kpIds={sectionKpIdsMap[selectedSection.id] || []}
-                onBack={() => setSelectedSection(null)}
+                onBack={() => {
+                  if (examEnteredFromContent) {
+                    setSectionExamMode(false);
+                    setExamEnteredFromContent(false);
+                  } else {
+                    setSelectedSection(null);
+                  }
+                }}
+                backLabel={examEnteredFromContent ? '返回学习' : undefined}
               />
             </div>
           ) : selectedSection && !sectionExamMode && (
@@ -670,7 +679,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
                   <ArrowLeft aria-hidden="true" size={14} />返回小节目录
                 </button>
               </div>
-              <h2>{selectedSection?.name || '请选择小节'}</h2>
+              <h2>{selectedSection?.name || '请选择小节'}<button type="button" className="textbook-section-exam-btn" onClick={() => { setExamEnteredFromContent(true); setSectionExamMode(true); setCourseMode('catalog'); }}><Layers3 aria-hidden="true" size={14} />开始练习</button></h2>
               {detail?.section && <p>{detail.section.book} / {detail.section.chapter} / {detail.section.name}</p>}
             </header>
 

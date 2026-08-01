@@ -16,7 +16,7 @@ import './acupuncturePractice.css';
 
 const STEPS = ['配合意愿', '3D模型', '施针', '正确答案', '开始评分'];
 
-export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE, onBack }) {
+export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE, onBack, onScoreComplete }) {
     const [cases, setCases] = useState(() => BUILTIN_ACUPUNCTURE_CASES.map(normalizeAcupunctureCase));
     const [selectedCaseId, setSelectedCaseId] = useState(caseData.caseId || BUILTIN_ACUPUNCTURE_CASES[0]?.caseId || '');
     const [casesLoading, setCasesLoading] = useState(true);
@@ -179,6 +179,21 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         }
         setSubmittedResult(nextResult);
         setScoreGenerated(true);
+        if (onScoreComplete) {
+          onScoreComplete({
+            caseId: activeCase.caseId,
+            caseName: activeCase.title || activeCase.caseId,
+            total: nextResult.total,
+            position: nextResult.position,
+            depth: nextResult.depth,
+            retention: nextResult.retention,
+            insertion: nextResult.insertion,
+            feedback: nextResult.feedback,
+            needles,
+            standardPoints: activeCase.standardPoints?.map((p) => ({ name: p.name, code: p.code, locationDescription: p.locationDescription })),
+            complaint: activeCase.complaint,
+          });
+        }
     };
 
     const renderStep = () => {
