@@ -816,6 +816,25 @@ textarea:focus-visible {
   animation: spin 800ms linear infinite;
 }
 
+.page-loading-spinner {
+  display: grid;
+  place-items: center;
+}
+
+.page-loading-spinner__ring {
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border: 3px solid rgba(22, 128, 91, .16);
+  border-top-color: #16805b;
+  border-radius: 50%;
+  animation: page-loading-spinner-spin 680ms linear infinite;
+}
+
+@keyframes page-loading-spinner-spin {
+  to { transform: rotate(360deg); }
+}
+
 .segmented-control {
   display: inline-flex;
   gap: 2px;
@@ -12445,6 +12464,10 @@ textarea:focus-visible {
   box-shadow: 0 7px 14px rgba(72, 126, 77, .22);
 }
 
+.home-study-calendar__grid > span[data-today="true"][data-task-incomplete="true"] {
+  box-shadow: 0 0 0 2px #d9534f, 0 7px 14px rgba(72, 126, 77, .22);
+}
+
 .home-study-calendar__legend {
   display: flex;
   justify-content: center;
@@ -12869,6 +12892,28 @@ textarea:focus-visible {
   box-shadow: 0 10px 30px rgba(32, 62, 52, .14);
 }
 
+.app-shell__main[data-page="learning-path"] .home-portal__route .learning-stage-card__title {
+  margin-top: 12px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route .learning-stage-card__duration {
+  margin-top: 12px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route .learning-stage-card__tasks {
+  gap: 12px;
+  margin-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, .14);
+  padding-top: 18px;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__route .learning-stage-card__tasks > span {
+  gap: 7px;
+  border-bottom: 0;
+  padding-bottom: 10px;
+  line-height: 1.65;
+}
+
 /* Learning-path typography remains legible without changing the compact top navigation. */
 .app-shell__main[data-page="learning-path"] .learning-stage-card h3,
 .app-shell__main[data-page="learning-path"] .learning-stage-card[data-current="true"] h3 {
@@ -12953,6 +12998,7 @@ textarea:focus-visible {
   display: inline-flex;
   min-width: 0;
   height: 36px;
+  margin-left: clamp(28px, 3vw, 48px);
   align-items: center;
   justify-content: center;
   border: 1px solid #c7e5d8;
@@ -13855,4 +13901,65 @@ textarea:focus-visible {
   }
   .agent-collaboration-receipt__title strong { font-size: 12px; }
   .app-shell__main[data-page="assistant"] .assistant-composer { padding: 10px 12px 14px; }
+}
+
+/* Learning-path page reveal: reuse the teaching-resource spinner and reserve
+   the final welcome-copy geometry before the typewriter starts. */
+.app-shell__main[data-page="learning-path"] .home-portal {
+  position: relative;
+  min-height: calc(100dvh - 92px);
+}
+
+.app-shell__main[data-page="learning-path"] .learning-path-page__loading {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  min-height: calc(100dvh - 92px);
+  background: #f8fcfa;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__learning-area {
+  opacity: 1;
+  transition: opacity 280ms ease;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal[data-page-revealed="false"] .home-portal__learning-area {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title,
+.app-shell__main[data-page="learning-path"] .home-portal__hero-copy .home-portal__hero-title {
+  position: relative;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title > .home-portal__hero-title-reserve,
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title > .home-portal__hero-title-typed {
+  display: block;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title-reserve {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title-typed {
+  position: absolute;
+  inset: 0;
+}
+
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title-reserve .home-portal__hero-title-lead,
+.app-shell__main[data-page="learning-path"] .home-portal__hero-title-typed .home-portal__hero-title-lead {
+  white-space: pre-line;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loading-spinner__ring {
+    animation: none;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__learning-area {
+    transition: none;
+  }
 }

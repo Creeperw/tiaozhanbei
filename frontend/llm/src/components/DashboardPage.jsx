@@ -10,6 +10,7 @@ import {
 } from './exam-atlas/examAtlasApi';
 import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
+import PageLoadingSpinner from './PageLoadingSpinner';
 import TextbookLibrary from './workshop-textbook/TextbookLibrary';
 import { loadTextbookPdfCatalog } from './workshop-textbook/textbookPdfApi';
 import { buildTextbookViewModels } from './workshop-textbook/textbookLibraryModel';
@@ -30,6 +31,10 @@ import {
   useLearningPlanMetrics,
   visibleWorkshopTextbooks,
 } from './learningPlanDashboard';
+import {
+  readTeachingResourcesPageCache,
+  updateTeachingResourcesPageCache,
+} from './teachingResourcesPageCache';
 
 const WORKSHOP_PREFERENCES_KEY = 'learning-workshop.preferences';
 const VALID_PATH_MODES = new Set(['personalized', 'classic']);
@@ -60,6 +65,33 @@ function preferredStageId(navigationContext, preferences) {
     || navigationContext.stageId
     || preferences.currentStageId
     || '',
+  );
+}
+
+function teachingResourcesPageCacheKey(currentUser, navigationContext, pathMode) {
+  const userKey = String(
+    currentUser?.id
+    || currentUser?.user_id
+    || currentUser?.username
+    || currentUser?.display_name
+    || 'anonymous',
+  );
+  return JSON.stringify([
+    userKey,
+    pathMode,
+    navigationContext.trackId || '',
+    navigationContext.currentStageId || navigationContext.stageId || '',
+    navigationContext.classicRouteId || navigationContext.routeId || '',
+  ]);
+}
+
+function selectCurrentStageId(stages, preferredId = '') {
+  if (stages.some((stage) => stage.node_id === preferredId)) return preferredId;
+  return (
+    stages.find((stage) => ['in_progress', 'current'].includes(stage.status))?.node_id
+    || stages.find((stage) => stage.status !== 'completed')?.node_id
+    || stages[0]?.node_id
+    || ''
   );
 }
 
@@ -100,35 +132,64 @@ function buildPathNodes(items, summaries) {
 }
 
 export default function DashboardPage({
+  currentUser,
   navigationContext = {},
   onNavigate,
   onKnowledgeContextChange,
 }) {
-  const error = '';
-  const [track, setTrack] = useState({ id: '', label: '' });
-  const [nodes, setNodes] = useState([]);
-  const [legacyDrilldown, setLegacyDrilldown] = useState(null);
-  const [plannedPath, setPlannedPath] = useState(null);
   const [initialPreferences] = useState(readWorkshopPreferences);
   const [pathMode] = useState(() => preferredPathMode(navigationContext, initialPreferences));
-  const [classicRoutes, setClassicRoutes] = useState([]);
+  const teachingResourcesCacheKey = teachingResourcesPageCacheKey(
+    currentUser,
+    navigationContext,
+    pathMode,
+  );
+  const initialTeachingResourcesCache = readTeachingResourcesPageCache(teachingResourcesCacheKey);
+  const hasInitialCurrentTask = Object.prototype.hasOwnProperty.call(
+    initialTeachingResourcesCache || {},
+    'currentLearningTask',
+  );
+  const error = '';
+  const [track, setTrack] = useState(() => initialTeachingResourcesCache?.track || { id: '', label: '' });
+  const [nodes, setNodes] = useState(() => initialTeachingResourcesCache?.nodes || []);
+  const [legacyDrilldown, setLegacyDrilldown] = useState(null);
+  const [plannedPath, setPlannedPath] = useState(() => initialTeachingResourcesCache?.plannedPath || null);
+  const [classicRoutes, setClassicRoutes] = useState(() => initialTeachingResourcesCache?.classicRoutes || []);
   const [classicRouteId, setClassicRouteId] = useState(() => (
-    navigationContext.classicRouteId || navigationContext.routeId || initialPreferences.classicRouteId || ''
+    navigationContext.classicRouteId
+    || navigationContext.routeId
+    || initialTeachingResourcesCache?.classicRouteId
+    || initialPreferences.classicRouteId
+    || ''
   ));
   const [currentStageId, setCurrentStageId] = useState(() => (
     preferredStageId(navigationContext, initialPreferences)
+    || initialTeachingResourcesCache?.currentStageId
+    || ''
   ));
-  const [classicRoutePayload, setClassicRoutePayload] = useState(null);
-  const [plannedBooks, setPlannedBooks] = useState([]);
+  const [classicRoutePayload, setClassicRoutePayload] = useState(
+    () => initialTeachingResourcesCache?.classicRoutePayload || null,
+  );
+  const [plannedBooks, setPlannedBooks] = useState(() => initialTeachingResourcesCache?.plannedBooks || []);
   const [, setClassicBooks] = useState([]);
   const [classicError, setClassicError] = useState('');
-  const [allTextbooks, setAllTextbooks] = useState([]);
-  const [uploadedTextbooks, setUploadedTextbooks] = useState([]);
+  const [allTextbooks, setAllTextbooks] = useState(
+    () => initialTeachingResourcesCache?.allTextbooks || [],
+  );
+  const [uploadedTextbooks, setUploadedTextbooks] = useState(
+    () => initialTeachingResourcesCache?.uploadedTextbooks || [],
+  );
   const [textbookError, setTextbookError] = useState('');
-  const [textbooksLoading, setTextbooksLoading] = useState(true);
-  const [currentLearningTask, setCurrentLearningTask] = useState(null);
-  const [currentTaskLoading, setCurrentTaskLoading] = useState(true);
-  const [pathLoading, setPathLoading] = useState(true);
+  const [textbooksLoading, setTextbooksLoading] = useState(
+    () => !Array.isArray(initialTeachingResourcesCache?.allTextbooks),
+  );
+  const [currentLearningTask, setCurrentLearningTask] = useState(
+    () => initialTeachingResourcesCache?.currentLearningTask || null,
+  );
+  const [currentTaskLoading, setCurrentTaskLoading] = useState(() => !hasInitialCurrentTask);
+  const [pathLoading, setPathLoading] = useState(
+    () => !initialTeachingResourcesCache?.pathReady,
+  );
   const [fallbackKnowledgePoint, setFallbackKnowledgePoint] = useState({ sectionId: '', value: '' });
   const [showAllTextbooks, setShowAllTextbooks] = useState(
     () => Boolean(navigationContext.expandAll),
@@ -137,30 +198,52 @@ export default function DashboardPage({
 
   useEffect(() => {
     let cancelled = false;
+    const cached = readTeachingResourcesPageCache(teachingResourcesCacheKey);
+    const hasCachedCurrentTask = Object.prototype.hasOwnProperty.call(
+      cached || {},
+      'currentLearningTask',
+    );
+    if (hasCachedCurrentTask) {
+      setCurrentLearningTask(cached.currentLearningTask);
+      setCurrentTaskLoading(false);
+    } else {
+      setCurrentLearningTask(null);
+      setCurrentTaskLoading(true);
+    }
     fetchWithAuth(`${MAIN_API_BASE}/dashboard/home`)
       .then(async (response) => {
         const payload = await readJsonResponse(response, {});
         if (!response.ok) throw new Error(payload.detail || '学习任务加载失败');
         if (!cancelled) {
-          setCurrentLearningTask(payload.current_learning_task || null);
+          const nextCurrentLearningTask = payload.current_learning_task || null;
+          setCurrentLearningTask(nextCurrentLearningTask);
+          updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+            currentLearningTask: nextCurrentLearningTask,
+          });
           setCurrentTaskLoading(false);
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!cancelled && !hasCachedCurrentTask) {
           setCurrentLearningTask(null);
           setCurrentTaskLoading(false);
         }
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [teachingResourcesCacheKey]);
 
   useEffect(() => {
     const controller = new AbortController();
+    const cached = readTeachingResourcesPageCache(teachingResourcesCacheKey);
+    if (Array.isArray(cached?.uploadedTextbooks)) {
+      setUploadedTextbooks(cached.uploadedTextbooks);
+    } else {
+      setUploadedTextbooks([]);
+    }
     loadTextbookPdfCatalog({ signal: controller.signal })
       .then((payload) => {
         const items = (payload.items || []).filter((item) => item.origin === 'user_upload');
-        setUploadedTextbooks(items.map((item) => ({
+        const nextUploadedTextbooks = items.map((item) => ({
           ...item,
           id: item.book_id,
           book: item.title,
@@ -168,14 +251,29 @@ export default function DashboardPage({
           title: `《${item.title}》`,
           stage_title: item.category || '用户教材',
           navigation: { book: item.title, book_id: item.book_id, route_id: 'user_textbooks' },
-        })));
+        }));
+        setUploadedTextbooks(nextUploadedTextbooks);
+        updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+          uploadedTextbooks: nextUploadedTextbooks,
+        });
       })
       .catch(() => {});
     return () => controller.abort();
-  }, []);
+  }, [teachingResourcesCacheKey]);
 
   useEffect(() => {
     const controller = new AbortController();
+    const cached = readTeachingResourcesPageCache(teachingResourcesCacheKey);
+    const hasCachedCatalog = Array.isArray(cached?.allTextbooks);
+    if (hasCachedCatalog) {
+      setAllTextbooks(cached.allTextbooks);
+      setTextbookError('');
+      setTextbooksLoading(false);
+    } else {
+      setAllTextbooks([]);
+      setTextbookError('');
+      setTextbooksLoading(true);
+    }
     loadAtlasNodes({ level: 1, route: 'textbook_14_5', signal: controller.signal })
       .then((payload) => {
         const books = (payload.nodes || []).map((node) => ({
@@ -190,21 +288,48 @@ export default function DashboardPage({
           },
         }));
         setAllTextbooks(books);
+        updateTeachingResourcesPageCache(teachingResourcesCacheKey, { allTextbooks: books });
         setTextbookError('');
         setTextbooksLoading(false);
       })
       .catch((loadError) => {
         if (loadError?.name !== 'AbortError') {
-          setAllTextbooks([]);
-          setTextbookError(loadError.message || '教材目录加载失败');
+          if (!hasCachedCatalog) {
+            setAllTextbooks([]);
+            setTextbookError(loadError.message || '教材目录加载失败');
+          }
           setTextbooksLoading(false);
         }
       });
     return () => controller.abort();
-  }, []);
+  }, [teachingResourcesCacheKey]);
 
   useEffect(() => {
     let cancelled = false;
+    const cached = readTeachingResourcesPageCache(teachingResourcesCacheKey);
+    const hasCachedPath = Boolean(cached?.pathReady);
+    if (hasCachedPath) {
+      setTrack(cached.track || { id: '', label: '' });
+      setNodes(cached.nodes || []);
+      setPlannedBooks(cached.plannedBooks || []);
+      setPlannedPath(cached.plannedPath || null);
+      setCurrentStageId(cached.currentStageId || '');
+      setPathLoading(false);
+      if (cached.track?.id) {
+        onKnowledgeContextChange?.({
+          trackId: cached.track.id,
+          ...(cached.plannedPath?.plan_ref?.plan_id
+            ? { planId: cached.plannedPath.plan_ref.plan_id }
+            : {}),
+        });
+      }
+    } else {
+      setTrack({ id: '', label: '' });
+      setNodes([]);
+      setPlannedBooks([]);
+      setPlannedPath(null);
+      setPathLoading(true);
+    }
     const loadPath = async () => {
       try {
         const [targetRequest, tracksRequest] = await Promise.allSettled([
@@ -233,19 +358,25 @@ export default function DashboardPage({
             }
           }));
           if (cancelled) return;
-          setTrack({ id: trackId, label: getTrackLabel(target, tracks, trackId) });
-          setPlannedBooks(stageBookPages.flat());
-          setCurrentStageId((current) => {
-            if (rootStages.some((stage) => stage.node_id === current)) return current;
-            return (
-              rootStages.find((stage) => ['in_progress', 'current'].includes(stage.status))?.node_id
-              || rootStages.find((stage) => stage.status !== 'completed')?.node_id
-              || rootStages[0]?.node_id
-              || ''
-            );
-          });
+          const nextTrack = { id: trackId, label: getTrackLabel(target, tracks, trackId) };
+          const nextPlannedBooks = stageBookPages.flat();
+          const nextCurrentStageId = selectCurrentStageId(
+            rootStages,
+            preferredStageId(navigationContext, initialPreferences) || cached?.currentStageId || '',
+          );
+          setTrack(nextTrack);
+          setPlannedBooks(nextPlannedBooks);
+          setCurrentStageId(nextCurrentStageId);
           setNodes(rootNodes);
           setPlannedPath(planned);
+          updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+            pathReady: true,
+            track: nextTrack,
+            nodes: rootNodes,
+            plannedBooks: nextPlannedBooks,
+            plannedPath: planned,
+            currentStageId: nextCurrentStageId,
+          });
           setLegacyDrilldown(null);
           onKnowledgeContextChange?.({ trackId, planId: planned.plan_ref?.plan_id });
           return;
@@ -253,7 +384,22 @@ export default function DashboardPage({
           // Existing exam-tree data remains a compatibility fallback for users
           // who have not generated a long-term plan yet.
         }
-        if (!trackId) return;
+        if (!trackId) {
+          setTrack({ id: '', label: '' });
+          setNodes([]);
+          setPlannedBooks([]);
+          setPlannedPath(null);
+          setCurrentStageId('');
+          updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+            pathReady: true,
+            track: { id: '', label: '' },
+            nodes: [],
+            plannedBooks: [],
+            plannedPath: null,
+            currentStageId: '',
+          });
+          return;
+        }
         const rootResult = await loadExamNodes(trackId);
         const roots = Array.isArray(rootResult?.items) ? rootResult.items : [];
         const children = (await Promise.all(roots.map(async (root) => {
@@ -262,14 +408,29 @@ export default function DashboardPage({
         }))).flat();
         const summaries = await Promise.all(children.map((node) => loadNodeLearnerSummary(trackId, node.membership_id)));
         if (cancelled) return;
-        setTrack({ id: trackId, label: getTrackLabel(target, tracks, trackId) });
-        setNodes(buildPathNodes(children, summaries));
+        const nextTrack = { id: trackId, label: getTrackLabel(target, tracks, trackId) };
+        const nextNodes = buildPathNodes(children, summaries);
+        const nextCurrentStageId = selectCurrentStageId(
+          nextNodes,
+          preferredStageId(navigationContext, initialPreferences) || cached?.currentStageId || '',
+        );
+        setTrack(nextTrack);
+        setNodes(nextNodes);
         setPlannedBooks([]);
         setPlannedPath(null);
+        setCurrentStageId(nextCurrentStageId);
+        updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+          pathReady: true,
+          track: nextTrack,
+          nodes: nextNodes,
+          plannedBooks: [],
+          plannedPath: null,
+          currentStageId: nextCurrentStageId,
+        });
         setLegacyDrilldown(null);
         onKnowledgeContextChange?.({ trackId });
       } catch {
-        if (!cancelled) {
+        if (!cancelled && !hasCachedPath) {
           setNodes([]);
           setPlannedBooks([]);
         }
@@ -279,48 +440,74 @@ export default function DashboardPage({
       if (!cancelled) setPathLoading(false);
     });
     return () => { cancelled = true; };
-  }, [navigationContext.stageId, navigationContext.trackId, onKnowledgeContextChange]);
+  }, [
+    initialPreferences,
+    onKnowledgeContextChange,
+    teachingResourcesCacheKey,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
+    const cached = readTeachingResourcesPageCache(teachingResourcesCacheKey);
+    if (Array.isArray(cached?.classicRoutes)) {
+      setClassicRoutes(cached.classicRoutes);
+      setClassicRouteId(cached.classicRouteId || '');
+    }
     loadClassicLearningRoutes()
       .then((payload) => {
         if (cancelled) return;
         const routes = payload.items || [];
         setClassicRoutes(routes);
-        setClassicRouteId((current) => (
-          routes.some((route) => route.route_id === current)
+        setClassicRouteId((current) => {
+          const nextClassicRouteId = routes.some((route) => route.route_id === current)
             ? current
-            : routes[0]?.route_id || ''
-        ));
+            : routes[0]?.route_id || '';
+          updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+            classicRoutes: routes,
+            classicRouteId: nextClassicRouteId,
+          });
+          return nextClassicRouteId;
+        });
       })
       .catch((loadError) => {
-        if (!cancelled) setClassicError(loadError.message || '经典路线列表加载失败');
+        if (!cancelled && !Array.isArray(cached?.classicRoutes)) {
+          setClassicError(loadError.message || '经典路线列表加载失败');
+        }
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [teachingResourcesCacheKey]);
 
   useEffect(() => {
     const selectedRoute = classicRoutes.find((route) => route.route_id === classicRouteId);
     const textbookRouteId = selectedRoute?.textbook_route_id;
     if (!textbookRouteId) return undefined;
     let cancelled = false;
+    const cached = readTeachingResourcesPageCache(teachingResourcesCacheKey);
+    if (cached?.classicRouteId === classicRouteId && cached?.classicRoutePayload) {
+      setClassicRoutePayload(cached.classicRoutePayload);
+    }
     loadClassicLearningRoute(textbookRouteId)
       .then((payload) => {
         if (cancelled) return;
         setClassicRoutePayload(payload);
+        updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+          classicRouteId,
+          classicRoutePayload: payload,
+        });
         setClassicBooks(payload.route.stages.flatMap((stage) => adaptClassicRouteBooks(
           payload.route, stage, payload.navigation?.atlas_route_id,
         ).map((book) => ({ ...book, stage_title: stage.name, stage_order: stage.order }))));
       })
       .catch((loadError) => {
         if (cancelled) return;
-        setClassicRoutePayload(null);
-        setClassicBooks([]);
-        setClassicError(loadError.message || '经典路线详情加载失败');
+        if (!(cached?.classicRouteId === classicRouteId && cached?.classicRoutePayload)) {
+          setClassicRoutePayload(null);
+          setClassicBooks([]);
+          setClassicError(loadError.message || '经典路线详情加载失败');
+        }
       });
     return () => { cancelled = true; };
-  }, [classicRouteId, classicRoutes]);
+  }, [classicRouteId, classicRoutes, teachingResourcesCacheKey]);
 
   useEffect(() => {
     try {
@@ -363,7 +550,11 @@ export default function DashboardPage({
   const snapshotBooks = useMemo(() => (
     pathLoading ? currentStageBooks : allTextbooks
   ), [allTextbooks, currentStageBooks, pathLoading]);
-  const learningMetrics = useLearningPlanMetrics({ books: snapshotBooks, taskBook: taskBookName });
+  const learningMetrics = useLearningPlanMetrics({
+    books: snapshotBooks,
+    taskBook: taskBookName,
+    cacheKey: teachingResourcesCacheKey,
+  });
   const mostRecentlyStudiedBook = useMemo(() => currentStageBooks.reduce((latest, book) => {
     const snapshot = learningMetrics.snapshots.byBook[normalizedBookName(book)];
     if (!snapshot?.lastActivityAt) return latest;
@@ -531,9 +722,7 @@ export default function DashboardPage({
         pathContent={(
           <div className="workshop-library-page">
               {textbooksLoading ? (
-                <div className="workshop-library-page__loading" role="status" aria-label="正在加载教材目录">
-                  <span aria-hidden="true" />
-                </div>
+                <PageLoadingSpinner className="workshop-library-page__loading" label="正在加载教材目录" />
               ) : libraryTextbooks.length > 0 ? (
                 <>
                   {!hidePlan && <section className="workshop-plan" aria-label="当前学习计划">

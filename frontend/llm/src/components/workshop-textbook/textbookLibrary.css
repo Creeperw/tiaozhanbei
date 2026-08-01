@@ -110,11 +110,9 @@
 .workshop-plan .workshop-plan__focus button:hover,.workshop-plan .workshop-plan__focus button:focus-visible { background:#f8fffb; box-shadow:0 9px 22px rgba(9,65,43,.22); transform:translateY(-2px) scale(1.025); }
 .workshop-plan .workshop-plan__focus button.is-secondary:hover,.workshop-plan .workshop-plan__focus button.is-secondary:focus-visible { color:#176443; background:#fff; }
 .workshop-plan__focus button:focus-visible { outline:2px solid rgba(255,255,255,.9); outline-offset:3px; }
-.workshop-library-page__loading { display:grid; min-height:calc(100dvh - 74px); place-items:center; }
-.workshop-library-page__loading > span { width:28px; height:28px; border:3px solid rgba(22,128,91,.16); border-top-color:#16805b; border-radius:50%; animation:workshop-library-spin 680ms linear infinite; }
+.workshop-library-page__loading { min-height:calc(100dvh - 74px); }
 @keyframes workshop-awaiting-plan-pulse { from{opacity:.08} to{opacity:.46} }
 @keyframes workshop-plan-skeleton { to{background-position:-220% 0} }
-@keyframes workshop-library-spin { to{transform:rotate(360deg)} }
 @media (max-width:1080px) { .workshop-plan{grid-template-columns:1fr;gap:10px}.workshop-plan__focus{min-height:158px}.workshop-plan__focus-content{width:72%} }
 @media (max-width:1180px) { .textbook-library__list{grid-template-columns:1fr} }
 @media (max-width:1380px) { .textbook-library__title-row{grid-template-columns:minmax(170px,.7fr) minmax(230px,1fr) auto}.textbook-library__filters{grid-column:1/3;grid-row:2}.textbook-library__title-row>p{grid-column:3;grid-row:2;justify-self:end} }

@@ -108,6 +108,10 @@ describe('QualificationRoutePage', () => {
     installHomeFetch({});
     render(<QualificationRoutePage currentUser={{ display_name: '林同学' }} onNavigate={vi.fn()} />);
 
+    const pageLoader = screen.getByRole('status', { name: '正在加载学习路径' });
+    expect(pageLoader).toBeInTheDocument();
+    expect(pageLoader).toHaveTextContent('');
+    expect(pageLoader.querySelector('.page-loading-spinner__ring')).toBeInTheDocument();
     const heroFrame = document.querySelector('.home-portal__hero');
     const heroPrimary = document.querySelector('.home-portal__hero-primary');
     const routeFrame = screen.getByLabelText('中医执业医师资格考试学习路径');
@@ -125,6 +129,7 @@ describe('QualificationRoutePage', () => {
 
     expect(await within(routeFrame).findByText('中医基础与文化语言')).toBeInTheDocument();
     await waitFor(() => expect(heroPrimary).toHaveAttribute('data-content-ready', 'true'));
+    expect(screen.queryByRole('status', { name: '正在加载学习路径' })).not.toBeInTheDocument();
     expect(routeFrame).toHaveAttribute('data-content-ready', 'true');
     expect(planRail).toHaveAttribute('data-content-ready', 'true');
     await waitFor(
@@ -145,6 +150,7 @@ describe('QualificationRoutePage', () => {
     expect(stylesheet).toMatch(/data-page="learning-path"[^}]+\.home-portal__route\s*\{[^}]*contain:\s*layout paint;/s);
     expect(stylesheet).toMatch(/data-page="learning-path"[^}]+\.learning-path-orbit__legend\s*\{[^}]*margin:\s*-3px 18px 8px;/s);
     expect(stylesheet).toMatch(/home-portal__plan-rail \.home-study-calendar > \*[\s\S]*transition:\s*opacity 480ms ease;/);
+    expect(stylesheet).toMatch(/\.learning-path-page__loading\s*\{[^}]*z-index:\s*10;/s);
   });
 
   it('waits for the qualification target before showing the exam countdown', async () => {
@@ -156,7 +162,7 @@ describe('QualificationRoutePage', () => {
     await waitFor(() => expect(countdownText).toBeVisible());
   });
 
-  it('restores cached page content immediately and refreshes it in the background', async () => {
+  it('restores a complete cached page immediately without showing the loading cover', async () => {
     installHomeFetch({
       current_learning_task: {
         task_id: 'TASK_CACHED',
@@ -178,6 +184,8 @@ describe('QualificationRoutePage', () => {
     vi.stubGlobal('fetch', pendingRefresh);
     render(<QualificationRoutePage currentUser={{ username: 'cache-user' }} onNavigate={vi.fn()} />);
 
+    expect(screen.queryByRole('status', { name: '正在加载学习路径' })).not.toBeInTheDocument();
+    expect(document.querySelector('.home-portal')).toHaveAttribute('data-page-revealed', 'true');
     expect(screen.getByLabelText('今日学习计划')).toHaveAttribute('data-content-ready', 'true');
     expect(screen.getByText('缓存中的今日任务')).toBeVisible();
     expect(screen.getByLabelText('中医类别执业医师资格考试学习路径')).toHaveAttribute('data-content-ready', 'true');
@@ -188,7 +196,8 @@ describe('QualificationRoutePage', () => {
     installHomeFetch({ announcements: ['这是一条需要完整显示、不能被欢迎框裁切的学习安排提示。'] });
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
-    expect(await screen.findByRole('status')).toHaveTextContent('这是一条需要完整显示、不能被欢迎框裁切的学习安排提示。');
+    const notice = await screen.findByText('这是一条需要完整显示、不能被欢迎框裁切的学习安排提示。');
+    expect(notice).toHaveAttribute('role', 'status');
     const stylesheet = readFileSync(resolve(cwd(), 'src/index.css'), 'utf8');
     const noticeRule = stylesheet.match(/data-page="learning-path"[^}]+\.home-portal__hero-notices \.home-portal__notice\s*\{([^}]+)\}/s)?.[1] || '';
     expect(noticeRule).toContain('overflow: visible;');
@@ -217,6 +226,14 @@ describe('QualificationRoutePage', () => {
   });
 
   it('renders the learning path by default with the current plan on the right', async () => {
+    const learnedDate = new Date();
+    learnedDate.setDate(learnedDate.getDate() - 1);
+    const learnedDateKey = [
+      learnedDate.getFullYear(),
+      String(learnedDate.getMonth() + 1).padStart(2, '0'),
+      String(learnedDate.getDate()).padStart(2, '0'),
+    ].join('-');
+    const learnedDateLabel = `${learnedDate.getFullYear()}年${learnedDate.getMonth() + 1}月${learnedDate.getDate()}日，已学习`;
     installHomeFetch({
       current_learning_task: {
         task_id: 'TASK_TODAY',
@@ -250,7 +267,7 @@ describe('QualificationRoutePage', () => {
       },
       learning_activity: {
         trends: {
-          series: [{ date: '2026-07-23', login_days: 1, focus_minutes: 12 }],
+          series: [{ date: learnedDateKey, login_days: 1, focus_minutes: 12 }],
         },
         recent_activities: [],
       },
@@ -281,9 +298,12 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByRole('region', { name: '今日任务' })).toHaveAttribute('data-task-count', '2');
     expect(screen.getByRole('complementary', { name: '学习日历' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '学习日历' }).compareDocumentPosition(screen.getByRole('region', { name: '今日任务' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const calendar = screen.getByRole('complementary', { name: '学习日历' });
+    expect(within(calendar).getByText('已签到')).toBeInTheDocument();
+    expect(within(calendar).getByLabelText(/，今天，今日任务未完成$/)).toHaveAttribute('data-task-incomplete', 'true');
     expect(screen.queryByRole('button', { name: '学习与复习任务' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('今日任务完成 1/2')).toBeInTheDocument();
-    expect(screen.getByLabelText('2026年7月23日，已学习')).toBeInTheDocument();
+    expect(screen.getByLabelText(learnedDateLabel)).toBeInTheDocument();
     expect(screen.getByText('完成阴阳学说训练')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /添加新任务/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
@@ -339,7 +359,7 @@ describe('QualificationRoutePage', () => {
 
     resolvePersonalizedPath(response(routePayload));
     expect(await screen.findByText('中医基础与文化语言')).toBeInTheDocument();
-    expect(screen.getByLabelText('中医类别执业医师资格考试学习路径')).toHaveAttribute('data-content-ready', 'true');
+    await waitFor(() => expect(screen.getByLabelText('中医类别执业医师资格考试学习路径')).toHaveAttribute('data-content-ready', 'true'));
   });
 
   it('opens the assistant with the current learning context when adding a task', async () => {
@@ -347,6 +367,8 @@ describe('QualificationRoutePage', () => {
     installHomeFetch({ current_learning_task: null });
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
 
+    const calendar = await screen.findByRole('complementary', { name: '学习日历' });
+    expect(within(calendar).getByLabelText(/，今天$/)).toHaveAttribute('data-task-incomplete', 'false');
     fireEvent.click(await screen.findByRole('button', { name: /添加新任务/ }));
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'assistant',
@@ -498,7 +520,7 @@ describe('QualificationRoutePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '今日签到' }));
     expect(await screen.findByRole('button', { name: '今日已签到，连续4天' })).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('今日签到成功');
+    expect(screen.getByText('今日签到成功')).toHaveAttribute('role', 'status');
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringMatching(/\/checkin$/),
       expect.objectContaining({ method: 'POST' }),

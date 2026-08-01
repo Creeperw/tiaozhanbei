@@ -105,12 +105,38 @@ describe('LearningStageLanding', () => {
 
     const stage = await screen.findByRole('button', { name: '进入中医基础与文化语言阶段' });
     expect(stage).toHaveTextContent('4 本教材');
-    expect(stage).toHaveTextContent('建立中医基础概念、文化史脉络和医古文阅读基础。');
+    expect(stage).toHaveTextContent('建立中医基础概念');
+    expect(stage).toHaveTextContent('文化史及语言文字基础');
+    expect(stage).not.toHaveTextContent('建立中医基础概念、文化史脉络和医古文阅读基础。');
     expect(screen.queryByText('基础筑基')).not.toBeInTheDocument();
     fireEvent.click(stage);
     expect(onStageSelect).toHaveBeenCalledWith(expect.objectContaining({
       stage: expect.objectContaining({ nodeId: 'plan:LP_1:stage:stage-1' }),
     }));
+  });
+
+  it('uses the approved two-line copy for all five qualification route cards', () => {
+    render(<LearningStageLanding stages={[
+      { id: '1', title: '中医基础与文化语言', duration: '4 本教材', tasks: ['旧说明'] },
+      { id: '2', title: '中药方剂与经典基础', duration: '3 本教材', tasks: ['旧说明'] },
+      { id: '3', title: '经典与现代医学基础', duration: '8 本教材', tasks: ['旧说明'] },
+      { id: '4', title: '现代临床框架', duration: '3 本教材', tasks: ['旧说明'] },
+      { id: '5', title: '学术流派与文献提升', duration: '3 本教材', tasks: ['旧说明'] },
+    ]} />);
+
+    [
+      '建立中医基础概念',
+      '文化史及语言文字基础',
+      '掌握常用中药与方剂',
+      '理解经典理论框架',
+      '对接中西医思维与现代医学体系',
+      '建立跨学科基础认知',
+      '掌握诊断思维与辨证思路',
+      '熟悉常见疾病现代临床框架',
+      '了解学术流派特点',
+      '提升文献检索与阅读能力',
+    ].forEach((copy) => expect(screen.getByText(copy)).toBeInTheDocument());
+    expect(screen.queryByText('旧说明')).not.toBeInTheDocument();
   });
 
   it('shows a planning action when the backend reports no long-term plan', async () => {

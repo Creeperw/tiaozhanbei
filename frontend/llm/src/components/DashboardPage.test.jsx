@@ -10,6 +10,7 @@ import {
   loadPlannedLearningPath,
 } from './learning-tree/learningPathApi';
 import { loadExamTracks, loadLearningTarget } from './exam-atlas/examAtlasApi';
+import { clearTeachingResourcesPageCache } from './teachingResourcesPageCache';
 
 vi.mock('./knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn() }));
 vi.mock('./knowledge-atlas/knowledgeAtlasFeature', () => ({ resolveKnowledgeAtlasEnabled: vi.fn() }));
@@ -63,6 +64,7 @@ describe('DashboardPage replacement learning workshop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearTextbookSnapshotCache();
+    clearTeachingResourcesPageCache();
     localStorage.clear();
     loadAtlasNodes.mockImplementation(({ level }) => Promise.resolve({
       route: 'textbook_14_5',
@@ -125,6 +127,42 @@ describe('DashboardPage replacement learning workshop', () => {
         source: 'textbook-library',
       },
     });
+  });
+
+  it('restores the complete teaching-resources page immediately and refreshes it in the background', async () => {
+    const firstRender = render(
+      <DashboardPage currentUser={{ username: 'cache-user' }} onNavigate={vi.fn()} />,
+    );
+    expect(await screen.findByRole('region', { name: '教材学习列表' })).toBeInTheDocument();
+    const firstPlan = await screen.findByRole('region', { name: '当前学习计划' });
+    expect(await within(firstPlan).findByText('下一个知识点：五行生克关系')).toBeInTheDocument();
+    expect(await within(firstPlan).findByText('50%')).toBeInTheDocument();
+    expect(within(firstPlan).getByText('基础阶段')).toBeInTheDocument();
+    firstRender.unmount();
+
+    const firstFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url, ...args) => (
+      String(url).includes('/dashboard/home')
+        ? new Promise(() => {})
+        : firstFetch(url, ...args)
+    )));
+    loadAtlasNodes.mockImplementation(() => new Promise(() => {}));
+    loadLearningTarget.mockImplementation(() => new Promise(() => {}));
+    render(<DashboardPage currentUser={{ username: 'cache-user' }} onNavigate={vi.fn()} />);
+
+    const cachedPlan = screen.getByRole('region', { name: '当前学习计划' });
+    expect(screen.getByRole('region', { name: '教材学习列表' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '继续学习《中医学基础》' })).toBeInTheDocument();
+    expect(within(cachedPlan).getByText('基础阶段')).toBeInTheDocument();
+    expect(within(cachedPlan).getByText('下一个知识点：五行生克关系')).toBeInTheDocument();
+    expect(cachedPlan.querySelector('.workshop-plan__focus')).toHaveAttribute('aria-busy', 'false');
+    expect(within(cachedPlan).getByText('基础阶段').closest('article')).not.toHaveClass('is-loading');
+    expect(screen.queryByRole('status', { name: '正在加载教材目录' })).not.toBeInTheDocument();
+    expect(loadAtlasNodes).toHaveBeenCalledWith(expect.objectContaining({
+      level: 1,
+      route: 'textbook_14_5',
+    }));
+    expect(loadLearningTarget).toHaveBeenCalled();
   });
   it('uses the textbook library as the complete learning-workshop surface', async () => {
     render(<DashboardPage onNavigate={vi.fn()} />);
