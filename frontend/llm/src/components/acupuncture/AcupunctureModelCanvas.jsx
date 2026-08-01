@@ -27,7 +27,7 @@ const isMarkerNode = (object) => object.name
     && !object.isBone;
 
 const NEEDLE_TAP_THRESHOLD_PX = 6;
-export const HUMAN_MODEL_URL = '/blender.yibiaozhu.glb';
+export const HUMAN_MODEL_URL = '/acupuncture-models/blender.yibiaozhu.glb';
 
 export default function AcupunctureModelCanvas({
     mode = 'observe',

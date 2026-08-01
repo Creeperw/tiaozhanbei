@@ -10,8 +10,8 @@ import {
 } from './realisticNeedle';
 
 describe('image acupuncture needle', () => {
-    it('loads the human model from its public Vite path', () => {
-        expect(HUMAN_MODEL_URL).toBe('/blender.yibiaozhu.glb');
+    it('loads the human model from the backend acupuncture static mount', () => {
+        expect(HUMAN_MODEL_URL).toBe('/acupuncture-models/blender.yibiaozhu.glb');
     });
 
     it('selects the direct reference image for direct insertion', () => {
