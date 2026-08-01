@@ -72,44 +72,54 @@ function forceLayout(nodes, edges, nameToIndex) {
     if (a !== undefined && b !== undefined && a !== b) adj.push([a, b]);
   }
   const pos = nodes.map(() => ({
-    x: VIEW_W / 2 + (Math.random() - 0.5) * VIEW_W * 0.6,
-    y: VIEW_H / 2 + (Math.random() - 0.5) * VIEW_H * 0.6,
-    vx: 0,
-    vy: 0,
+    x: VIEW_W / 2 + (Math.random() - 0.5) * VIEW_W * 0.5,
+    y: VIEW_H / 2 + (Math.random() - 0.5) * VIEW_H * 0.5,
   }));
-  const k = Math.sqrt((VIEW_W * VIEW_H) / Math.max(n, 1)) * 0.85;
-  const iterations = n > 200 ? 120 : 200;
+  // Fruchterman-Reingold：温度冷却 + 位移上限，保证收敛且不产生 NaN
+  const k = Math.sqrt((VIEW_W * VIEW_H) / Math.max(n, 1)) * 1.1;
+  let temperature = Math.sqrt(VIEW_W * VIEW_H) / 12;
+  const iterations = n > 200 ? 140 : 220;
   for (let iter = 0; iter < iterations; iter += 1) {
+    const disp = nodes.map(() => ({ x: 0, y: 0 }));
     for (let i = 0; i < n; i += 1) {
       for (let j = i + 1; j < n; j += 1) {
         const dx = pos[i].x - pos[j].x;
         const dy = pos[i].y - pos[j].y;
         let d2 = dx * dx + dy * dy;
-        if (d2 < 1) d2 = 1;
+        if (d2 < 0.01) d2 = 0.01;
         const d = Math.sqrt(d2);
         const f = (k * k) / d;
         const fx = (dx / d) * f;
         const fy = (dy / d) * f;
-        pos[i].vx += fx; pos[i].vy += fy;
-        pos[j].vx -= fx; pos[j].vy -= fy;
+        disp[i].x += fx; disp[i].y += fy;
+        disp[j].x -= fx; disp[j].y -= fy;
       }
     }
     for (const [a, b] of adj) {
       const dx = pos[b].x - pos[a].x;
       const dy = pos[b].y - pos[a].y;
-      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      let d2 = dx * dx + dy * dy;
+      if (d2 < 0.01) d2 = 0.01;
+      const d = Math.sqrt(d2);
       const f = (d * d) / k;
       const fx = (dx / d) * f;
       const fy = (dy / d) * f;
-      pos[a].vx += fx; pos[a].vy += fy;
-      pos[b].vx -= fx; pos[b].vy -= fy;
+      disp[a].x += fx; disp[a].y += fy;
+      disp[b].x -= fx; disp[b].y -= fy;
     }
-    for (const p of pos) {
-      p.vx += (VIEW_W / 2 - p.x) * 0.008;
-      p.vy += (VIEW_H / 2 - p.y) * 0.008;
-      p.vx *= 0.85; p.vy *= 0.85;
-      p.x += p.vx; p.y += p.vy;
+    for (let i = 0; i < n; i += 1) {
+      disp[i].x += (VIEW_W / 2 - pos[i].x) * 0.01;
+      disp[i].y += (VIEW_H / 2 - pos[i].y) * 0.01;
     }
+    for (let i = 0; i < n; i += 1) {
+      const d = Math.sqrt(disp[i].x * disp[i].x + disp[i].y * disp[i].y) || 1;
+      const move = Math.min(d, temperature);
+      pos[i].x += (disp[i].x / d) * move;
+      pos[i].y += (disp[i].y / d) * move;
+      pos[i].x = Math.max(10, Math.min(VIEW_W - 10, pos[i].x));
+      pos[i].y = Math.max(10, Math.min(VIEW_H - 10, pos[i].y));
+    }
+    temperature = Math.max(0.5, temperature * 0.92);
   }
   return pos;
 }

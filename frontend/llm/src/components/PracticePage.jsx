@@ -12,7 +12,6 @@ import {
   Files,
   FolderHeart,
   HeartPulse,
-  Network,
   NotebookPen,
   Stethoscope,
   Target,
@@ -258,13 +257,6 @@ const utilityCards = [
     title: '收藏夹',
     description: '收藏重点题目与解析，构建个人知识库随时回顾。',
     icon: BookMarked,
-    available: true,
-  },
-  {
-    key: 'knowledge_graph',
-    title: '知识图谱',
-    description: '查看上传教材自动构建的知识图谱。',
-    icon: Network,
     available: true,
   },
   {

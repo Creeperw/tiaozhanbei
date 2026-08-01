@@ -155,7 +155,7 @@ describe('PracticePage training modules', () => {
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['\u5386\u53f2\u8bb0\u5f55', '\u6536\u85cf\u5939', '\u77e5\u8bc6\u56fe\u8c31', '\u7b14\u8bb0\u672c', '\u4e0a\u4f20\u8d44\u6e90']);
+    ).toEqual(['\u5386\u53f2\u8bb0\u5f55', '\u6536\u85cf\u5939', '\u7b14\u8bb0\u672c', '\u4e0a\u4f20\u8d44\u6e90']);
     expect(within(learningTools).getByText('\u652f\u6301 PDF / \u56fe\u7247 / Word / Excel / Markdown / TXT \u00b7 \u667a\u80fd\u89e3\u6790')).toBeInTheDocument();
   });
 
