@@ -104,6 +104,9 @@ class KnowledgeExplanationAgent:
                             "compressed_conversation_summary": compressed_summary,
                             "user_preference": preferences,
                             "topic": evidence_pack.query,
+                            "user_syllabus": context.get("user_syllabus"),
+                            "syllabus_requirements": context.get("syllabus_requirements", []),
+                            "syllabus_knowledge_points": context.get("syllabus_knowledge_points", []),
                             "retrieval_summary": retrieval_summary,
                             "semantic_evidence": semantic_evidence if not retrieval_summary else [],
                             "audit_feedback": list(

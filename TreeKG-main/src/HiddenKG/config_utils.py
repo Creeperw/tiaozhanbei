@@ -46,6 +46,9 @@ def get_book_name() -> str:
     MD 模式: MD_NAME 去后缀
     JSONL 模式: JSONL_BOOK_NAME 直接返回
     """
+    env_book = os.getenv("TREEKG_BOOK_NAME", "").strip()
+    if env_book:
+        return env_book
     cfg = load_config("summarize.yaml")
     sc = cfg.get("SummarizeConfig", {})
     fmt = sc.get("INPUT_FORMAT", "md")
@@ -57,6 +60,9 @@ def get_book_name() -> str:
 
 def get_input_format() -> str:
     """返回当前输入格式: 'md' | 'docx' | 'jsonl'"""
+    env_format = os.getenv("TREEKG_INPUT_FORMAT", "").strip().lower()
+    if env_format:
+        return env_format
     cfg = load_config("summarize.yaml")
     return cfg.get("SummarizeConfig", {}).get("INPUT_FORMAT", "md")
 
@@ -65,7 +71,7 @@ def get_jsonl_data_dir() -> Path:
     """JSONL 模式下的数据文件夹路径"""
     cfg = load_config("summarize.yaml")
     sc = cfg.get("SummarizeConfig", {})
-    data_dir = sc.get("JSONL_DATA_DIR", "")
+    data_dir = os.getenv("TREEKG_JSONL_DATA_DIR", "").strip() or sc.get("JSONL_DATA_DIR", "")
     if data_dir:
         path = Path(data_dir)
         return path if path.is_absolute() else (SRC_DIR.parent / path).resolve()
@@ -85,4 +91,6 @@ def get_output_dir(stage: str) -> Path:
         "merged": f"03_merged",
     }
     subdir = mapping.get(stage, stage)
-    return SRC_DIR / "output" / book / subdir
+    output_root = os.getenv("TREEKG_OUTPUT_ROOT", "").strip()
+    root = Path(output_root).resolve() if output_root else SRC_DIR / "output"
+    return root / book / subdir

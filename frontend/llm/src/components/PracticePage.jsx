@@ -29,10 +29,12 @@ import TrainingHistoryPanel from './TrainingHistoryPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
+import UserSyllabusPage from './UserSyllabusPage';
 import KnowledgeCardLibrary from './KnowledgeCardLibrary';
 import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
 import QuestionFavoritesPanel from './QuestionFavoritesPanel';
 import StudyNotesPanel from './StudyNotesPanel';
+import KnowledgeGraphPanel from './KnowledgeGraphPanel';
 import { practiceContextFromIntent } from './exam-atlas/examAtlasPageContext';
 import { focusMinutesFromStatistics } from './learningPlanDashboard';
 
@@ -242,9 +244,9 @@ const overviewTrainingCards = [
 ];
 
 const uploadQuestionBankCard = {
-  key: 'question_workspace',
-  title: '上传题库',
-  description: '上传学习资料，沉淀个人专属题库。',
+  key: 'resource_upload',
+  title: '上传资源',
+  description: '上传题库或考纲，沉淀个人学习资源。',
   icon: UploadCloud,
   tone: 'amber',
 };
@@ -397,7 +399,9 @@ const workspaceTitles = {
   paper_workspace: '智能组卷',
   knowledge_cards: '知识卡片',
   question_favorites: '收藏夹',
+  knowledge_graph: '知识图谱',
   study_notes: '笔记本',
+  resource_upload: '上传资源',
 };
 
 const legacyTaskTypes = {
@@ -589,7 +593,7 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
               onClick={() => onOpenModule(uploadQuestionBankCard)}
             >
               <span className="practice-overview__utility-icon"><UploadCloud aria-hidden="true" size={22} /></span>
-              <span><strong>上传题库</strong><small>上传学习资料，沉淀个人专属题库。</small><em>支持 PDF / 图片 / Markdown / TXT · 智能解析</em></span>
+              <span><strong>上传资源</strong><small>上传题库或考纲，沉淀个人学习资源。</small><em>支持 PDF / 图片 / Word / Excel / Markdown / TXT · 智能解析</em></span>
               <ChevronRight aria-hidden="true" size={18} />
             </button>
           </div>
@@ -608,6 +612,7 @@ export default function PracticePage({
   const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
   const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
   const [activeInitialMode, setActiveInitialMode] = useState(() => initialTaskIntent.initialMode);
+  const [resourceView, setResourceView] = useState('chooser');
   const [view, setView] = useState(() => (navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'));
   const [loadedOverviewStats, setLoadedOverviewStats] = useState(DEFAULT_TRAINING_OVERVIEW_STATS);
   const taskItemId = navigationContext.taskItemId || navigationContext.task_item_id || '';
@@ -691,8 +696,11 @@ export default function PracticePage({
   const openWorkshopModule = ({ key, initialMode }) => {
     setActiveTaskType(key);
     setActiveInitialMode(initialMode || key);
+    if (key === 'resource_upload') setResourceView('chooser');
     setView('workspace');
   };
+
+  const openResourceView = (nextView) => setResourceView(nextView);
 
   if (view === 'overview') {
     return (
@@ -713,6 +721,46 @@ export default function PracticePage({
           <h1 className="text-2xl font-bold text-slate-950">上传题库</h1>
         </div>
         <QuestionWorkspacePage />
+      </div>
+    );
+  }
+
+  if (activeTaskType === 'resource_upload') {
+    if (resourceView === 'question') {
+      return (
+        <div className="question-workspace-shell space-y-5 text-slate-800">
+          <div className="practice-workspace__heading question-workspace-shell__toolbar flex items-center gap-4 border-b border-slate-200 pb-4">
+            <button type="button" className="practice-workspace__back" onClick={() => openResourceView('chooser')}><ArrowLeft aria-hidden="true" size={16} />返回</button>
+            <h1 className="text-2xl font-bold text-slate-950">上传题库</h1>
+          </div>
+          <QuestionWorkspacePage />
+        </div>
+      );
+    }
+    if (resourceView === 'syllabus') {
+      return (
+        <div className="question-workspace-shell space-y-5 text-slate-800">
+          <div className="practice-workspace__heading question-workspace-shell__toolbar flex items-center gap-4 border-b border-slate-200 pb-4">
+            <button type="button" className="practice-workspace__back" onClick={() => openResourceView('chooser')}><ArrowLeft aria-hidden="true" size={16} />返回</button>
+            <h1 className="text-2xl font-bold text-slate-950">上传考纲</h1>
+          </div>
+          <UserSyllabusPage />
+        </div>
+      );
+    }
+    return (
+      <div className="question-workspace-shell space-y-5 text-slate-800">
+        <div className="practice-workspace__heading question-workspace-shell__toolbar flex items-center gap-4 border-b border-slate-200 pb-4">
+          <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}><ArrowLeft aria-hidden="true" size={16} />返回</button>
+          <h1 className="text-2xl font-bold text-slate-950">上传资源</h1>
+        </div>
+        <section className="question-workspace__section" aria-label="选择上传资源类型">
+          <header><div><span>资源入口</span><h3>选择上传类型</h3></div></header>
+          <div className="grid gap-3 md:grid-cols-2">
+            <button type="button" className="practice-overview__utility-card" onClick={() => openResourceView('question')}><UploadCloud size={22} /><span><strong>上传题库</strong><small>解析个人题目并进入题库审核流程。</small></span></button>
+            <button type="button" className="practice-overview__utility-card" onClick={() => openResourceView('syllabus')}><FileText size={22} /><span><strong>上传考纲</strong><small>用多模态模型结构化考纲并绑定当前激活考纲。</small></span></button>
+          </div>
+        </section>
       </div>
     );
   }
@@ -771,6 +819,8 @@ export default function PracticePage({
               />
             ) : activeTaskType === 'question_favorites' ? (
               <QuestionFavoritesPanel onNavigate={onNavigate} />
+            ) : activeTaskType === 'knowledge_graph' ? (
+              <KnowledgeGraphPanel />
             ) : activeTaskType === 'study_notes' ? (
               <StudyNotesPanel onNavigate={onNavigate} />
             ) : activeTaskType === 'topic_training' ? (

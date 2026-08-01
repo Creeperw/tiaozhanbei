@@ -15,7 +15,7 @@ ConvConfig:
   API_TIMEOUT: 120
   RETRIES: 3
   WORKERS: 10
-  CHAT_COMPLETIONS_PATH: "/messages"
+  CHAT_COMPLETIONS_PATH: "/chat/completions"
 
   # —— 速率限制（可选）——
   RATE_LIMIT_QPS: 0

@@ -31,7 +31,7 @@ PredConfig:
   MAX_TOKENS: 1000
   API_TIMEOUT: 120
   API_RETRIES: 3
-  CHAT_COMPLETIONS_PATH: "/messages"
+  CHAT_COMPLETIONS_PATH: "/chat/completions"
 
   # —— Prompt 模板 —— #
   PROMPT_SYSTEM: |

@@ -20,7 +20,7 @@ from competition_app.application.personalized_review_card import (
     ReviewCardRequest,
     WorkflowResumeRequest,
 )
-from competition_app.runtime.event_stream import bind_recording_sink, reset_event_sink
+from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
 from competition_app.runtime.snapshot import _sanitize
 from competition_app.contracts.review import ReviewAttemptSubmission
 from competition_app.contracts.auth import (
@@ -41,6 +41,10 @@ from competition_app.services.textbook_import import (
     TextbookImportError,
     TextbookTocNotFound,
 )
+from competition_app.services.user_syllabus import (
+    USER_SYLLABUS_NOT_FOUND,
+    UserSyllabusError,
+)
 from competition_app.services.qualification_papers import QualificationPaperRepository
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 from competition_app.api.simulated_patient_routes import router as sp_router, init_engine as sp_init_engine
@@ -56,15 +60,6 @@ QUALIFICATION_TARGET_CATALOG = (
 WORKSHOP_NOTE_IMAGE_ROOT = (
     Path(__file__).resolve().parents[1] / "data" / "workshop_note_images"
 )
-
-# 高音量模型调用/系统内部事件不随消息持久化，只进 SSE 流。
-_NON_TRACE_EVENT_TYPES = frozenset({
-    "model_delta",
-    "model_input",
-    "model_output",
-    "model_transport",
-    "system_output",
-})
 
 _PRACTICE_TYPE_ALIASES = {
     "单项选择题": "single_choice",
@@ -458,12 +453,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "acupuncture"),
             name="frontend_acupuncture",
         )
-    if frontend_root and (frontend_root / "knowledge-graph").is_dir():
-        app.mount(
-            "/knowledge-graph",
-            StaticFiles(directory=frontend_root / "knowledge-graph", html=True),
-            name="frontend_knowledge_graph",
-        )
     if frontend_root and (frontend_root / "blender.yibiaozhu.glb").is_file():
         app.mount(
             "/acupuncture-models",
@@ -513,7 +502,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "/textbook-status-icons/",
                     "/acupuncture/",
                     "/acupuncture-models/",
-                    "/knowledge-graph/",
                     "/platform-assets/",
                 )
             )
@@ -1391,6 +1379,74 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=404, detail="笔记不存在")
         return Response(status_code=204)
 
+    def syllabus_owner(request: Request) -> str:
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        return user.user_id
+
+    def raise_syllabus_error(exc: UserSyllabusError) -> None:
+        status = 404 if exc.code == USER_SYLLABUS_NOT_FOUND else 422
+        raise HTTPException(status_code=status, detail={"code": exc.code, "message": exc.message}) from exc
+
+    @app.post("/api/v1/user-syllabi", status_code=201)
+    async def upload_user_syllabus(request: Request, file: UploadFile = File(...),
+                                   title: str = Form(""), subject: str = Form(""),
+                                   exam_type: str = Form("")) -> dict:
+        try:
+            return await asyncio.shield(container.user_syllabus_service.import_file(
+                syllabus_owner(request), file.filename or "syllabus", await file.read(),
+                title=title, subject=subject, exam_type=exam_type))
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.get("/api/v1/user-syllabi")
+    async def list_user_syllabi(request: Request) -> dict:
+        return {"items": container.user_syllabus_service.list(syllabus_owner(request))}
+
+    @app.get("/api/v1/user-syllabi/{syllabus_id}/requirements")
+    async def get_user_syllabus_requirements(syllabus_id: str, request: Request) -> dict:
+        try:
+            return {"items": container.user_syllabus_service.requirements(syllabus_owner(request), syllabus_id)}
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.get("/api/v1/user-syllabi/{syllabus_id}/mappings")
+    async def get_user_syllabus_mappings(syllabus_id: str, request: Request) -> dict:
+        try:
+            return {"items": container.user_syllabus_service.mappings(syllabus_owner(request), syllabus_id)}
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.get("/api/v1/user-syllabi/{syllabus_id}")
+    async def get_user_syllabus(syllabus_id: str, request: Request) -> dict:
+        try:
+            return container.user_syllabus_service.get(syllabus_owner(request), syllabus_id)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.put("/api/v1/user-syllabi/{syllabus_id}/activate")
+    async def activate_user_syllabus(syllabus_id: str, request: Request) -> dict:
+        try:
+            return container.user_syllabus_service.activate(syllabus_owner(request), syllabus_id)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.post("/api/v1/user-syllabi/{syllabus_id}/reprocess")
+    async def reprocess_user_syllabus(syllabus_id: str, request: Request) -> dict:
+        try:
+            return await container.user_syllabus_service.reprocess(syllabus_owner(request), syllabus_id)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+
+    @app.delete("/api/v1/user-syllabi/{syllabus_id}", status_code=204)
+    async def delete_user_syllabus(syllabus_id: str, request: Request) -> Response:
+        try:
+            container.user_syllabus_service.delete(syllabus_owner(request), syllabus_id)
+        except UserSyllabusError as exc:
+            raise_syllabus_error(exc)
+        return Response(status_code=204)
+
     @app.get("/api/v1/textbooks/pdfs/catalog")
     async def textbook_pdf_catalog(request: Request) -> dict:
         user = current_user(request)
@@ -1403,7 +1459,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         items = container.textbook_import_service.categories()
         return {"items": items, "total": len(items)}
 
-    @app.post("/api/v1/textbooks/import", status_code=201)
+    textbook_import_tasks: dict[str, dict[str, Any]] = {}
+
+    @app.post("/api/v1/textbooks/import", status_code=202)
     async def import_textbook(
         request: Request,
         file: UploadFile = File(...),
@@ -1412,36 +1470,97 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         category: str = Form("中医药"),
         new_category: str = Form(""),
         cover: UploadFile | None = File(None),
+        match_local: bool = Form(False),
+        allow_large: bool = Form(False),
     ) -> dict:
         user = current_user(request)
         content = await file.read()
-        cover_content = await cover.read() if cover is not None else None
-        try:
-            item = await container.textbook_import_service.import_pdf(
-                owner_id=user.user_id,
-                filename=file.filename or "textbook.pdf",
-                content=content,
-                title=title,
-                description=description,
-                category=category,
-                new_category=new_category,
-                cover_content=cover_content,
-                cover_media_type=(cover.content_type or "") if cover is not None else "",
+        if len(content) > 200 * 1024 * 1024 and not allow_large:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "TEXTBOOK_TOO_LARGE", "message": "当前教材超过大小限制（200MB），解析质量可能下降"},
             )
-        except TextbookTocNotFound as exc:
-            raise HTTPException(
-                status_code=422,
-                detail={"code": exc.code, "message": str(exc)},
-            ) from exc
-        except TextbookImportError as exc:
-            raise HTTPException(
-                status_code=422,
-                detail={"code": exc.code, "message": str(exc)},
-            ) from exc
-        public_item = container.textbook_pdf_service.by_id(
-            str(item["book_id"]), user.user_id
-        )
-        return {"ok": True, "book": public_item}
+        cover_content = await cover.read() if cover is not None else None
+        # 清理已结束的旧任务，防止字典无限膨胀
+        if len(textbook_import_tasks) > 200:
+            stale = [key for key, value in textbook_import_tasks.items()
+                     if value.get("status") in {"done", "failed"}]
+            for key in stale[: len(stale) - 50]:
+                textbook_import_tasks.pop(key, None)
+        task_id = f"TBI_{uuid4().hex}"
+        state: dict[str, Any] = {
+            "task_id": task_id,
+            "status": "running",
+            "step": "upload",
+            "step_label": "已接收文件，准备处理",
+            "error": None,
+            "book": None,
+        }
+        textbook_import_tasks[task_id] = state
+
+        def report(step: str, label: str) -> None:
+            state["step"] = step
+            state["step_label"] = label
+
+        async def run() -> None:
+            try:
+                item = await container.textbook_import_service.import_pdf(
+                    owner_id=user.user_id,
+                    filename=file.filename or "textbook.pdf",
+                    content=content,
+                    title=title,
+                    description=description,
+                    category=category,
+                    new_category=new_category,
+                    cover_content=cover_content,
+                    cover_media_type=(cover.content_type or "") if cover is not None else "",
+                    match_local=match_local,
+                    allow_large=allow_large,
+                    progress=report,
+                )
+                public_item = container.textbook_pdf_service.by_id(
+                    str(item["book_id"]), user.user_id
+                )
+                state.update({
+                    "status": "done",
+                    "step": "done",
+                    "step_label": "教材处理完成",
+                    "book": public_item,
+                })
+            except TextbookTocNotFound as exc:
+                state.update({"status": "failed", "step": "toc",
+                              "error": {"code": exc.code, "message": str(exc)}})
+            except TextbookImportError as exc:
+                state.update({"status": "failed",
+                              "error": {"code": exc.code, "message": str(exc)}})
+            except Exception as exc:
+                state.update({"status": "failed", "step": "failed",
+                              "error": {"code": "TEXTBOOK_IMPORT_FAILED",
+                                        "message": f"教材处理失败：{type(exc).__name__}: {exc}"}})
+
+        asyncio.create_task(run())
+        return {"task_id": task_id, "status": "running",
+                "step": state["step"], "step_label": state["step_label"]}
+
+    @app.get("/api/v1/textbooks/knowledge-graphs")
+    async def list_textbook_knowledge_graphs(request: Request) -> dict:
+        user = current_user(request)
+        return {"items": container.textbook_import_service.list_knowledge_graphs(user.user_id)}
+
+    @app.get("/api/v1/textbooks/knowledge-graphs/{book_id}")
+    async def get_textbook_knowledge_graph(book_id: str, request: Request) -> dict:
+        user = current_user(request)
+        item = container.textbook_import_service.get_knowledge_graph(user.user_id, book_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="未找到该教材的知识图谱")
+        return item
+
+    @app.get("/api/v1/textbooks/import/{task_id}")
+    async def textbook_import_status(task_id: str) -> dict:
+        state = textbook_import_tasks.get(task_id)
+        if state is None:
+            raise HTTPException(status_code=404, detail="导入任务不存在")
+        return state
 
     @app.get("/api/v1/textbooks/pdfs/resolve")
     async def resolve_textbook_pdf(book: str, request: Request) -> dict:
@@ -1825,8 +1944,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "content": row.get("content"),
                 "timestamp": row.get("created_at"),
             }
-            if isinstance(row.get("trace_events"), list):
-                message["trace_events"] = row["trace_events"]
             if isinstance(row.get("actions"), list):
                 message["actions"] = row["actions"]
             elif str(row.get("content") or "").startswith(
@@ -4402,10 +4519,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     ) -> StreamingResponse:
         queue: asyncio.Queue[dict[str, object] | None] = asyncio.Queue()
 
-        # 高音量模型调用/系统内部事件不随消息持久化，只进 SSE 流。
-        def publish(event: dict[str, object]) -> None:
-            queue.put_nowait(event)
-
         def failure_event(exc: Exception) -> dict[str, object]:
             run_state = container.review_card_use_case.get_run_state(thread_id) or {}
             execution_id = run_state.get("execution_id")
@@ -4493,7 +4606,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             queue.put_nowait(event)
 
         async def run_workflow() -> None:
-            token = bind_recording_sink(publish, _NON_TRACE_EVENT_TYPES)
+            token = bind_event_sink(publish)
             try:
                 await queue.put(
                     {

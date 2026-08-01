@@ -11,19 +11,6 @@ const COVER_NAME_ALIASES = {
   细胞生物学实验: '细胞生物学基础',
 };
 
-const KNOWLEDGE_GRAPH_FILES = {
-  中医学基础: 'zhongyixue-jichu-final-kg.html',
-  中医文化学: 'zhongyi-wenhuaxue-final-kg.html',
-};
-
-export function textbookKnowledgeGraphUrl(book) {
-  const name = String(book || '').replace(/[《》]/g, '').trim();
-  const fileName = KNOWLEDGE_GRAPH_FILES[name];
-  if (!fileName) return '';
-  const baseUrl = String(import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-  return `${baseUrl}/knowledge-graph/${fileName}`;
-}
-
 export function textbookIntroduction(book) {
   const name = String(book || '本教材').replace(/[《》]/g, '').trim();
   if (BOOK_INTRODUCTIONS[name]) return BOOK_INTRODUCTIONS[name];

@@ -204,6 +204,7 @@ class PersonalizedReviewCardUseCase:
         profile_memory_extractor: Callable[[str, str, str | None], dict[str, Any]] | None = None,
         data_permission_gateway: AgentDataPermissionGateway | None = None,
         workshop_runtime: Any | None = None,
+        syllabus_context_loader: Callable[[str, str], dict[str, Any]] | None = None,
     ) -> None:
         self.orchestrator = orchestrator
         self.snapshot_exporter = snapshot_exporter
@@ -225,6 +226,7 @@ class PersonalizedReviewCardUseCase:
         self.profile_memory_extractor = profile_memory_extractor
         self.data_permission_gateway = data_permission_gateway or AgentDataPermissionGateway()
         self.workshop_runtime = workshop_runtime
+        self.syllabus_context_loader = syllabus_context_loader
         self._continuations: dict[str, _WorkflowContinuation] = {}
 
     async def execute(
@@ -514,6 +516,14 @@ class PersonalizedReviewCardUseCase:
         ]
         effective_goals = effective_user_profile.get("goals")
         effective_goals = effective_goals if isinstance(effective_goals, dict) else {}
+        syllabus_context = {}
+        if self.syllabus_context_loader is not None:
+            try:
+                syllabus_context = await asyncio.to_thread(
+                    self.syllabus_context_loader, request.learner_id, effective_user_request
+                )
+            except Exception as exc:
+                emit_runtime_event("user_syllabus_context_unavailable", error_type=type(exc).__name__)
         context = {
             "case_id": case_id,
             "trace_id": f"TRACE_{uuid4().hex}",
@@ -576,6 +586,9 @@ class PersonalizedReviewCardUseCase:
             "current_short_term_plan": current_short_term_plan,
             "current_learning_task": current_learning_task,
             "exam_constraints": request.exam_constraints,
+            "user_syllabus": syllabus_context.get("user_syllabus"),
+            "syllabus_requirements": syllabus_context.get("syllabus_requirements", []),
+            "syllabus_knowledge_points": syllabus_context.get("syllabus_knowledge_points", []),
             "plan_change_context": (
                 plan_change.model_dump(exclude_none=True) if plan_change else None
             ),

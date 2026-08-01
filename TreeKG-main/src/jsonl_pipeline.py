@@ -112,17 +112,18 @@ def rebuild_toc(book_dir: Path, book_name: str) -> Tuple[List[Dict], Dict[str, L
 
     if not jsonl_path.exists():
         raise FileNotFoundError(f"找不到 JSONL: {jsonl_path}")
-    if not kp_path.exists():
-        raise FileNotFoundError(f"找不到 KP: {kp_path}")
 
     # ── 加载数据 ──
     logger.info("加载 JSONL chunks...")
     chunks = [json.loads(line) for line in open(jsonl_path, "r", encoding="utf-8")]
     logger.info(f"  加载 {len(chunks)} chunks")
 
-    with open(kp_path, "r", encoding="utf-8") as f:
-        kps = json.load(f)
-    logger.info(f"  加载 {len(kps)} 知识点")
+    if kp_path.exists():
+        with open(kp_path, "r", encoding="utf-8") as f:
+            kps = json.load(f)
+        logger.info(f"  加载 {len(kps)} 个上游知识点（兼容输入）")
+    else:
+        logger.info("  未提供上游知识点文件；将直接从正文摘要抽取实体")
 
     # ── 推断章边界 ──
     lv2_order = OrderedDict()

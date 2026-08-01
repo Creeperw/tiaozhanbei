@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tree-kg-build-result.schema.json",
+  "title": "TreeKG build result manifest",
+  "type": "object",
+  "required": ["schema_version", "job_id", "status"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "job_id": {"type": "string", "minLength": 1},
+    "graph_id": {"type": ["string", "null"]},
+    "user_id": {"type": "string"},
+    "book_id": {"type": "string"},
+    "book_title": {"type": "string"},
+    "owner_scope": {"enum": ["user", "public"]},
+    "status": {"enum": ["running", "validated", "ready", "failed"]},
+    "request_sha256": {"type": "string"},
+    "source_sha256": {"type": "string"},
+    "created_at": {"type": "string"},
+    "completed_at": {"type": ["string", "null"]},
+    "input": {"type": "object"},
+    "artifacts": {"type": "object"},
+    "counts": {
+      "type": "object",
+      "properties": {
+        "chunks": {"type": "integer", "minimum": 0},
+        "nodes": {"type": "integer", "minimum": 0},
+        "edges": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": ["object", "null"],
+      "properties": {
+        "code": {"type": "string"},
+        "message": {"type": "string"}
+      },
+      "required": ["code", "message"]
+    }
+  },
+  "additionalProperties": true
+}

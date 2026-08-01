@@ -29,6 +29,21 @@ export const loadTextbookPdfMetadata = (bookId, { signal } = {}) => request(
   { signal },
 );
 
+export const listKnowledgeGraphs = ({ signal } = {}) => request(
+  '/textbooks/knowledge-graphs',
+  { signal },
+);
+
+export const loadKnowledgeGraph = (bookId, { signal } = {}) => request(
+  `/textbooks/knowledge-graphs/${encodeURIComponent(bookId)}`,
+  { signal },
+);
+
+export const loadTextbookImportStatus = (taskId, { signal } = {}) => request(
+  `/textbooks/import/${encodeURIComponent(taskId)}`,
+  { signal },
+);
+
 export const uploadTextbook = async (formData, { signal } = {}) => {
   const response = await fetchWithAuth('/api/v1/textbooks/import', {
     method: 'POST',

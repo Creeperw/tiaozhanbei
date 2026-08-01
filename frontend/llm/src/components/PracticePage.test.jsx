@@ -157,8 +157,8 @@ describe('PracticePage training modules', () => {
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['历史记录', '收藏夹', '笔记本', '上传题库']);
-    expect(within(learningTools).getByText('支持 PDF / 图片 / Markdown / TXT · 智能解析')).toBeInTheDocument();
+    ).toEqual(['历史记录', '收藏夹', '笔记本', '上传资源']);
+    expect(within(learningTools).getByText('支持 PDF / 图片 / Word / Excel / Markdown / TXT · 智能解析')).toBeInTheDocument();
   });
 
   it('renders the local overview statistics contract without replacing main workshop modules', () => {
@@ -413,7 +413,8 @@ describe('PracticePage training modules', () => {
   it('opens the upload question bank as its own page', async () => {
     render(<PracticePage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /上传题库/ }));
+    fireEvent.click(screen.getByRole('button', { name: /\u4e0a\u4f20\u8d44\u6e90/ }));
+    fireEvent.click(screen.getByRole('button', { name: /\u4e0a\u4f20\u9898\u5e93/ }));
 
     expect(await screen.findByTestId('question-workspace-page')).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
