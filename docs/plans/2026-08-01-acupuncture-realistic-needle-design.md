@@ -24,6 +24,12 @@
 - 不再将 PNG 作为始终面向相机的 Sprite；那会破坏空间针轴和正确的深度关系。
 - 将两张 PNG 的视觉风格应用于 3D 针体材质：环柄、螺纹握柄和过渡套采用暖金铜金属，针身与针尖保持偏冷银色。
 
+## 已确认的针体尺寸（2026-08-02）
+
+- 运行时将整支 GLB 针体等比缩放至原始尺寸的 75%，缩放以落针原点为基准，因此不会移动针尖接触皮肤的位置。
+- `needle-shaft` 与 `needle-tip` 仅在横向（局部 X/Z）缩放至 50%，局部 Y 轴不缩放，以获得更细的针前段而不改变其进针长度和方向。
+- 不增加用户界面控制项；本次以固定的临床演示尺寸替换当前默认尺寸。
+
 ## 实现范围
 
 新增 `frontend/llm/public/acupuncture-models/realistic-acupuncture-needle.glb`，并修改 `frontend/llm/src/components/acupuncture/AcupunctureModelCanvas.jsx` 及其对应样式。不改变落针坐标、进针角度、深度、撤销、评分接口或病例数据结构。

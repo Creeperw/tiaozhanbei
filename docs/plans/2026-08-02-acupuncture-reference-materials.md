@@ -55,3 +55,29 @@ Expected: 通过；仅保留项目既有的非阻塞构建提示。
 
 确认两张最终 PNG 和 GLB 均由 Git 追踪，并只提交本次针灸实现文件。
 
+### Task 3: 调整空间针体比例
+
+**Files:**
+
+- Modify: `frontend/llm/src/components/acupuncture/AcupunctureModelCanvas.test.jsx`
+- Modify: `frontend/llm/src/components/acupuncture/realisticNeedle.js`
+
+**Step 1: Write the failing test**
+
+断言 `createRealisticNeedle` 生成的模型保留落针位置，将根节点等比缩小至 75%，并将 `needle-shaft` 与 `needle-tip` 的局部 X/Z 缩放至 50%、局部 Y 保持 100%。
+
+**Step 2: Run test to verify it fails**
+
+Run: `npm --prefix frontend/llm run test:unit -- src/components/acupuncture/AcupunctureModelCanvas.test.jsx`
+
+Expected: FAIL，因为当前模型及其前段网格均保持原始比例。
+
+**Step 3: Write minimal implementation**
+
+在 `createRealisticNeedle` 克隆 GLB 后，按命名节点缩放针身和针尖横截面，并对根节点应用 0.75 等比缩放；保持其位置与 quaternion 设置顺序不变。
+
+**Step 4: Run test to verify it passes**
+
+Run: `npm --prefix frontend/llm run test:unit -- src/components/acupuncture/AcupunctureModelCanvas.test.jsx`
+
+Expected: PASS。
