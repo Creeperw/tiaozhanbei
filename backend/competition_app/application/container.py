@@ -89,6 +89,10 @@ from competition_app.services.textbook_pdf import (
     TextbookPdfService,
 )
 from competition_app.services.textbook_import import TextbookImportService
+from competition_app.services.textbook_pdf_ai import (
+    TextbookPdfAiService,
+    TextbookPdfAiSettings,
+)
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -119,6 +123,7 @@ class ApplicationContainer:
     frontend_dist_root: Path | None = None
     default_route_repository: DefaultRouteRepository | None = None
     textbook_route_repository: TextbookRouteRepository | None = None
+    textbook_pdf_ai_service: TextbookPdfAiService | None = None
 
     @classmethod
     def build(
@@ -203,6 +208,20 @@ class ApplicationContainer:
                 / "knowledge_upload_pipeline"
             ),
             timeout_seconds=settings.llm_timeout_seconds,
+        )
+        textbook_pdf_ai_service = (
+            TextbookPdfAiService(
+                textbook_pdf_service,
+                TextbookPdfAiSettings(
+                    base_url=settings.chat_base_url,
+                    api_key=chat_api_key,
+                    model=settings.chat_model,
+                    timeout_seconds=settings.llm_timeout_seconds,
+                ),
+                conversation_repository=conversation_repository,
+            )
+            if settings.mode == "live" and chat_api_key
+            else None
         )
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
@@ -587,6 +606,7 @@ class ApplicationContainer:
             workshop_library_service=workshop_library_service,
             textbook_pdf_service=textbook_pdf_service,
             textbook_import_service=textbook_import_service,
+            textbook_pdf_ai_service=textbook_pdf_ai_service,
             learning_plan_service=learning_plan_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,

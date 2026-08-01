@@ -468,6 +468,7 @@
 }
 
 .acupuncture-model__markers-button,
+.acupuncture-model__names-button,
 .acupuncture-model__status,
 .acupuncture-model__count,
 .acupuncture-model__hint {
@@ -483,8 +484,35 @@
 .acupuncture-model__markers-button {
     top: 12px;
     left: 12px;
+    box-sizing: border-box;
+    width: 180px;
     padding: 8px 11px;
+    text-align: center;
     cursor: pointer;
+}
+
+.acupuncture-model__names-button {
+    top: 88px;
+    left: 12px;
+    box-sizing: border-box;
+    width: 180px;
+    padding: 8px 11px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.acupuncture-model__point-tooltip {
+    position: absolute;
+    z-index: 12;
+    transform: translate(12px, -50%);
+    border: 1px solid rgba(157, 236, 210, .3);
+    border-radius: 9px;
+    padding: 8px 10px;
+    color: #d9fff2;
+    background: rgba(8, 34, 28, .86);
+    backdrop-filter: blur(8px);
+    pointer-events: none;
+    white-space: nowrap;
 }
 
 .acupuncture-model__status {
@@ -552,6 +580,12 @@
     top: 24px;
     left: 24px;
 }
+
+.acupuncture-card--fullscreen .acupuncture-model__names-button {
+    top: 96px;
+    left: 24px;
+}
+
 
 .acupuncture-card--fullscreen .acupuncture-model__status {
     top: 92px;

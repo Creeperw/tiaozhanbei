@@ -37,7 +37,7 @@ const dimensionLabels = {
 };
 
 const clampRatio = (value) => Math.max(0, Math.min(1, Number(value) || 0));
-const percent = (value) => `${Math.round(clampRatio(value) * 100)}%`;
+const percent = (value, digits = 0) => `${(clampRatio(value) * 100).toFixed(digits)}%`;
 const integer = (value) => Math.max(0, Math.round(Number(value) || 0));
 
 const parseDateKey = (value) => {
@@ -194,7 +194,7 @@ function CapabilityLegend({ dimensions }) {
             <span className="truncate">{item.label}</span>
           </span>
           <strong className="shrink-0 font-mono font-semibold tabular-nums text-slate-900">
-            {item.status === 'insufficient_evidence' ? '数据不足' : percent(item.value)}
+            {item.status === 'insufficient_evidence' ? '数据不足' : percent(item.value, 2)}
           </strong>
         </div>
       ))}

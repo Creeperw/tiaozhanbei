@@ -12,6 +12,7 @@ import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import TextbookLibrary from './workshop-textbook/TextbookLibrary';
 import { loadTextbookPdfCatalog } from './workshop-textbook/textbookPdfApi';
+import { cachedPromise } from './workshop-textbook/textbookCache';
 import { buildTextbookViewModels } from './workshop-textbook/textbookLibraryModel';
 import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
@@ -157,8 +158,11 @@ export default function DashboardPage({
 
   useEffect(() => {
     const controller = new AbortController();
-    loadTextbookPdfCatalog({ signal: controller.signal })
-      .then((payload) => {
+    cachedPromise(
+      'textbook-pdf-catalog',
+      () => loadTextbookPdfCatalog({ signal: controller.signal }),
+      { ttl: 60 * 60 * 1000 },
+    ).then((payload) => {
         const items = (payload.items || []).filter((item) => item.origin === 'user_upload');
         setUploadedTextbooks(items.map((item) => ({
           ...item,
@@ -176,8 +180,11 @@ export default function DashboardPage({
 
   useEffect(() => {
     const controller = new AbortController();
-    loadAtlasNodes({ level: 1, route: 'textbook_14_5', signal: controller.signal })
-      .then((payload) => {
+    cachedPromise(
+      'textbook-atlas-books',
+      () => loadAtlasNodes({ level: 1, route: 'textbook_14_5', signal: controller.signal }),
+      { ttl: 60 * 60 * 1000 },
+    ).then((payload) => {
         const books = (payload.nodes || []).map((node) => ({
           ...node,
           node_type: 'book',

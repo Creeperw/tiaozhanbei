@@ -20,7 +20,7 @@ from competition_app.application.personalized_review_card import (
     ReviewCardRequest,
     WorkflowResumeRequest,
 )
-from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
+from competition_app.runtime.event_stream import bind_recording_sink, reset_event_sink
 from competition_app.runtime.snapshot import _sanitize
 from competition_app.contracts.review import ReviewAttemptSubmission
 from competition_app.contracts.auth import (
@@ -56,6 +56,15 @@ QUALIFICATION_TARGET_CATALOG = (
 WORKSHOP_NOTE_IMAGE_ROOT = (
     Path(__file__).resolve().parents[1] / "data" / "workshop_note_images"
 )
+
+# 高音量模型调用/系统内部事件不随消息持久化，只进 SSE 流。
+_NON_TRACE_EVENT_TYPES = frozenset({
+    "model_delta",
+    "model_input",
+    "model_output",
+    "model_transport",
+    "system_output",
+})
 
 _PRACTICE_TYPE_ALIASES = {
     "单项选择题": "single_choice",
@@ -115,6 +124,22 @@ class TextbookPdfAnnotationsUpdateRequest(BaseModel):
 class TextbookPdfReadingStateUpdateRequest(BaseModel):
     page_number: int = Field(default=1, ge=1)
     zoom: float = Field(default=1.0, ge=0.5, le=4.0)
+
+
+class TextbookPdfAiRequest(BaseModel):
+    mode: Literal["summary", "chat"] = "summary"
+    question: str = Field(default="", max_length=4000)
+    history: list[dict[str, Any]] = Field(default_factory=list, max_length=16)
+    page_span: int = Field(default=0, ge=0, le=5)
+    session_id: str | None = Field(default=None, max_length=200)
+
+
+class TextbookPdfAiSessionCreateRequest(BaseModel):
+    title: str = Field(default="新对话", min_length=1, max_length=100)
+
+
+class TextbookPdfAiSessionRenameRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
 
 
 class StageEvidenceRequest(BaseModel):
@@ -433,6 +458,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "acupuncture"),
             name="frontend_acupuncture",
         )
+    if frontend_root and (frontend_root / "knowledge-graph").is_dir():
+        app.mount(
+            "/knowledge-graph",
+            StaticFiles(directory=frontend_root / "knowledge-graph", html=True),
+            name="frontend_knowledge_graph",
+        )
     if frontend_root and (frontend_root / "blender.yibiaozhu.glb").is_file():
         app.mount(
             "/acupuncture-models",
@@ -482,6 +513,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "/textbook-status-icons/",
                     "/acupuncture/",
                     "/acupuncture-models/",
+                    "/knowledge-graph/",
                     "/platform-assets/",
                 )
             )
@@ -1502,6 +1534,168 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             user.user_id, book_id, payload.page_number, payload.zoom
         )
 
+    @app.post("/api/v1/textbooks/pdfs/{book_id}/pages/{page_number}/ai")
+    async def textbook_pdf_ai(
+        book_id: str,
+        page_number: int,
+        payload: TextbookPdfAiRequest,
+        request: Request,
+    ) -> StreamingResponse:
+        user = current_user(request)
+        if container.textbook_pdf_service.by_id(book_id, user.user_id) is None:
+            raise HTTPException(status_code=404, detail="教材不存在")
+        if container.textbook_pdf_ai_service is None:
+            raise HTTPException(status_code=503, detail="AI 助教服务未启用（当前为演示模式）")
+
+        ai_service = container.textbook_pdf_ai_service
+        session_id = str(payload.session_id or "").strip() or None
+        if session_id and not session_id.startswith("textbook-ai-"):
+            raise HTTPException(status_code=400, detail="无效的会话标识")
+
+        saved_user_text = payload.question.strip() or "总结本页内容"
+
+        async def sse():
+            queue: asyncio.Queue[str] = asyncio.Queue()
+            full_text: list[str] = []
+
+            def on_delta(text: str) -> None:
+                full_text.append(text)
+                queue.put_nowait(text)
+
+            async def pump():
+                try:
+                    if payload.mode == "chat":
+                        question = payload.question.strip()
+                        if not question:
+                            await queue.put("__error__:请输入问题")
+                            return
+                        await ai_service.chat(
+                            book_id,
+                            page_number,
+                            question,
+                            payload.history,
+                            user.user_id,
+                            page_span=payload.page_span,
+                            on_delta=on_delta,
+                        )
+                    else:
+                        await ai_service.summarize(
+                            book_id,
+                            page_number,
+                            user.user_id,
+                            page_span=payload.page_span,
+                            on_delta=on_delta,
+                        )
+                    # 流式完成后写入会话（含新建会话）
+                    if session_id:
+                        try:
+                            existing = ai_service.get_messages(session_id, user.user_id)
+                            if not existing:
+                                ai_service.conversation_repository.create_session(
+                                    session_id, user.user_id, "新对话"
+                                )
+                            ai_service.save_messages(session_id, user.user_id, [
+                                *existing,
+                                {"role": "user", "content": saved_user_text},
+                                {"role": "assistant", "content": "".join(full_text)},
+                            ])
+                        except Exception:
+                            pass
+                except ValueError as exc:
+                    await queue.put(f"__error__:{exc}")
+                except Exception:
+                    await queue.put("__error__:AI 生成失败，请稍后重试")
+                finally:
+                    await queue.put("__done__")
+
+            task = asyncio.create_task(pump())
+            try:
+                while True:
+                    item = await queue.get()
+                    if item == "__done__":
+                        break
+                    if item.startswith("__error__:"):
+                        yield f"data: {json.dumps({'event': 'error', 'message': item[10:]}, ensure_ascii=False)}\n\n"
+                        break
+                    yield f"data: {json.dumps({'event': 'delta', 'text': item}, ensure_ascii=False)}\n\n"
+            finally:
+                task.cancel()
+            yield "data: " + json.dumps({"event": "done"}, ensure_ascii=False) + "\n\n"
+
+        return StreamingResponse(
+            sse(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    # ── 教材 AI 会话管理 ──
+    @app.get("/api/v1/textbooks/ai/sessions")
+    async def textbook_ai_sessions(request: Request) -> dict:
+        user = current_user(request)
+        if container.textbook_pdf_ai_service is None:
+            raise HTTPException(status_code=503, detail="AI 助教服务未启用（当前为演示模式）")
+        return {"sessions": container.textbook_pdf_ai_service.list_sessions(user.user_id)}
+
+    @app.post("/api/v1/textbooks/ai/sessions", status_code=201)
+    async def textbook_ai_create_session(
+        payload: TextbookPdfAiSessionCreateRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if container.textbook_pdf_ai_service is None:
+            raise HTTPException(status_code=503, detail="AI 助教服务未启用（当前为演示模式）")
+        session_id = container.textbook_pdf_ai_service.create_session(
+            user.user_id, payload.title.strip() or "新对话"
+        )
+        return {"session_id": session_id}
+
+    @app.get("/api/v1/textbooks/ai/sessions/{session_id}/messages")
+    async def textbook_ai_session_messages(session_id: str, request: Request) -> dict:
+        user = current_user(request)
+        if container.textbook_pdf_ai_service is None:
+            raise HTTPException(status_code=503, detail="AI 助教服务未启用（当前为演示模式）")
+        if not session_id.startswith("textbook-ai-"):
+            raise HTTPException(status_code=400, detail="无效的会话标识")
+        messages = container.textbook_pdf_ai_service.get_messages(session_id, user.user_id)
+        if not messages and not any(
+            session.get("id") == session_id
+            for session in container.textbook_pdf_ai_service.list_sessions(user.user_id)
+        ):
+            raise HTTPException(status_code=404, detail="会话不存在")
+        return {"messages": messages}
+
+    @app.patch("/api/v1/textbooks/ai/sessions/{session_id}")
+    async def textbook_ai_rename_session(
+        session_id: str,
+        payload: TextbookPdfAiSessionRenameRequest,
+        request: Request,
+    ) -> dict:
+        user = current_user(request)
+        if container.textbook_pdf_ai_service is None:
+            raise HTTPException(status_code=503, detail="AI 助教服务未启用（当前为演示模式）")
+        if not session_id.startswith("textbook-ai-"):
+            raise HTTPException(status_code=400, detail="无效的会话标识")
+        if not container.textbook_pdf_ai_service.rename_session(
+            session_id, user.user_id, payload.title.strip()
+        ):
+            raise HTTPException(status_code=404, detail="会话不存在")
+        return {"ok": True}
+
+    @app.delete("/api/v1/textbooks/ai/sessions/{session_id}")
+    async def textbook_ai_delete_session(session_id: str, request: Request) -> dict:
+        user = current_user(request)
+        if container.textbook_pdf_ai_service is None:
+            raise HTTPException(status_code=503, detail="AI 助教服务未启用（当前为演示模式）")
+        if not session_id.startswith("textbook-ai-"):
+            raise HTTPException(status_code=400, detail="无效的会话标识")
+        if not container.textbook_pdf_ai_service.delete_session(session_id, user.user_id):
+            raise HTTPException(status_code=404, detail="会话不存在")
+        return {"ok": True}
+
     @app.post("/api/v1/workshop/note-images", status_code=201)
     async def upload_workshop_note_image(
         request: Request, file: UploadFile = File(...)
@@ -1631,6 +1825,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 "content": row.get("content"),
                 "timestamp": row.get("created_at"),
             }
+            if isinstance(row.get("trace_events"), list):
+                message["trace_events"] = row["trace_events"]
             if isinstance(row.get("actions"), list):
                 message["actions"] = row["actions"]
             elif str(row.get("content") or "").startswith(
@@ -4206,6 +4402,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     ) -> StreamingResponse:
         queue: asyncio.Queue[dict[str, object] | None] = asyncio.Queue()
 
+        # 高音量模型调用/系统内部事件不随消息持久化，只进 SSE 流。
+        def publish(event: dict[str, object]) -> None:
+            queue.put_nowait(event)
+
         def failure_event(exc: Exception) -> dict[str, object]:
             run_state = container.review_card_use_case.get_run_state(thread_id) or {}
             execution_id = run_state.get("execution_id")
@@ -4293,7 +4493,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             queue.put_nowait(event)
 
         async def run_workflow() -> None:
-            token = bind_event_sink(publish)
+            token = bind_recording_sink(publish, _NON_TRACE_EVENT_TYPES)
             try:
                 await queue.put(
                     {

@@ -135,3 +135,41 @@ def test_conversation_history_gives_legacy_paper_messages_a_safe_fallback(tmp_pa
         "destination": "workshop.paper",
         "params": {},
     }
+
+
+def test_conversation_history_returns_persisted_trace_events(tmp_path: Path) -> None:
+    """Stream 工作流结束后，消息接口应返回随消息持久化的运行时事件。"""
+    client = client_for(tmp_path)
+    register(client, "conversation-trace")
+    conversation_id = client.post(
+        "/api/v1/conversations", json={"title": "执行轨迹"}
+    ).json()["id"]
+
+    with client.stream(
+        "POST",
+        "/api/v1/review-cards/stream",
+        json={
+            "thread_id": "THREAD_TRACE_EVENTS_1",
+            "conversation_id": conversation_id,
+            "learner_id": "browser-placeholder",
+            "user_request": "请讲解四君子汤",
+        },
+    ) as response:
+        assert response.status_code == 200
+        assert response.iter_lines()
+
+    messages = client.get(
+        f"/api/v1/conversations/{conversation_id}/messages"
+    ).json()
+    assistant = next(
+        item for item in messages if item["role"] == "assistant"
+    )
+    assert isinstance(assistant.get("trace_events"), list)
+    assert any(
+        event.get("event") == "graph_compiled"
+        for event in assistant["trace_events"]
+    )
+    assert not any(
+        event.get("event") == "model_delta"
+        for event in assistant["trace_events"]
+    )

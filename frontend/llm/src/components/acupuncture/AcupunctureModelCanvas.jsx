@@ -21,19 +21,22 @@ const isMarkerNode = (object) => object.name
     && !object.isLight
     && !object.isBone;
 
+const NEEDLE_TAP_THRESHOLD_PX = 6;
+
 export default function AcupunctureModelCanvas({
+    mode = 'observe',
     showMarkers = false,
     highlightNames = [],
     standardNodeNames = [],
-    revealStandardPoints = false,
     expanded = false,
     fullScreen = false,
     onStandardPointsReady,
-    interactive = false,
     onSurfacePick,
     onToggleMarkers,
     needles = [],
 }) {
+    const interactive = mode === 'needling';
+    const revealStandardPoints = mode === 'review';
     const hostRef = useRef(null);
     const sceneRef = useRef(null);
     const markerGroupRef = useRef(null);
@@ -42,8 +45,46 @@ export default function AcupunctureModelCanvas({
     const modelRef = useRef(null);
     const raycasterRef = useRef(new THREE.Raycaster());
     const pointerRef = useRef(new THREE.Vector2());
+    const pointNameMapRef = useRef({});
     const [status, setStatus] = useState('正在加载 3D 模型…');
     const [modelStats, setModelStats] = useState({ markers: 0 });
+    const [showPointNames, setShowPointNames] = useState(false);
+    const [hoveredPoint, setHoveredPoint] = useState(null);
+    const pendingPickRef = useRef(null);
+    const pointerGestureRef = useRef(null);
+    const markerVisibilityRef = useRef({ showMarkers, revealStandardPoints });
+
+    useEffect(() => {
+        markerVisibilityRef.current = { showMarkers, revealStandardPoints };
+        if (markerGroupRef.current) markerGroupRef.current.visible = showMarkers;
+        if (standardMarkerGroupRef.current) {
+            standardMarkerGroupRef.current.visible = showMarkers || revealStandardPoints;
+        }
+    }, [revealStandardPoints, showMarkers]);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/acupuncture/acupoint-name-map.csv')
+            .then((response) => response.ok ? response.text() : '')
+            .then((text) => {
+                if (cancelled) return;
+                const map = {};
+                text.split(/\r?\n/).slice(1).forEach((line) => {
+                    const columns = line.split(',').map((value) => value.replace(/^"|"$/g, '').trim());
+                    const pinyin = columns[0];
+                    const chineseName = columns[1];
+                    const nodeNames = columns[2]?.split(/[;|\s]+/).filter(Boolean) || [];
+                    if (chineseName) [pinyin, ...nodeNames].filter(Boolean).forEach((name) => { map[name] = chineseName; });
+                });
+                pointNameMapRef.current = map;
+                [...(markerGroupRef.current?.children || []), ...(standardMarkerGroupRef.current?.children || [])]
+                    .forEach((marker) => {
+                        marker.userData.pointName = map[marker.userData.nodeName] || marker.userData.nodeName;
+                    });
+            })
+            .catch(() => { });
+        return () => { cancelled = true; };
+    }, []);
 
     useEffect(() => {
         const host = hostRef.current;
@@ -83,11 +124,12 @@ export default function AcupunctureModelCanvas({
         controls.maxDistance = 100;
 
         const markerGroup = new THREE.Group();
-        markerGroup.visible = false;
+        markerGroup.visible = markerVisibilityRef.current.showMarkers;
         markerGroupRef.current = markerGroup;
         scene.add(markerGroup);
         const standardMarkerGroup = new THREE.Group();
-        standardMarkerGroup.visible = false;
+        standardMarkerGroup.visible = markerVisibilityRef.current.showMarkers
+            || markerVisibilityRef.current.revealStandardPoints;
         standardMarkerGroupRef.current = standardMarkerGroup;
         scene.add(standardMarkerGroup);
         const needleGroup = new THREE.Group();
@@ -137,6 +179,7 @@ export default function AcupunctureModelCanvas({
                 );
                 marker.position.copy(object.getWorldPosition(new THREE.Vector3()));
                 marker.userData.nodeName = object.name;
+                marker.userData.pointName = pointNameMapRef.current[object.name] || object.name;
                 marker.userData.isCasePoint = highlightedNames.has(object.name);
                 if (marker.userData.isCasePoint) standardMarkerGroup.add(marker);
                 else markerGroup.add(marker);
@@ -176,19 +219,16 @@ export default function AcupunctureModelCanvas({
     }, [onStandardPointsReady, standardNodeNames]);
 
     useEffect(() => {
-        if (markerGroupRef.current) markerGroupRef.current.visible = showMarkers;
-        if (standardMarkerGroupRef.current) standardMarkerGroupRef.current.visible = revealStandardPoints;
-    }, [revealStandardPoints, showMarkers]);
-
-    useEffect(() => {
         const names = new Set(highlightNames);
         [...(markerGroupRef.current?.children || []), ...(standardMarkerGroupRef.current?.children || [])].forEach((marker) => {
             const highlighted = names.has(marker.userData.nodeName)
                 || (revealStandardPoints && marker.userData.isCasePoint);
-            marker.material.color.set(highlighted ? '#ff5f57' : '#f7c948');
-            marker.scale.setScalar(highlighted ? 1.7 : 1);
+            const hovered = marker.uuid === hoveredPoint?.markerId;
+            marker.material.color.set(hovered ? '#3b82f6' : highlighted ? '#f97316' : '#f7c948');
+            marker.material.emissive.set(hovered ? '#123a7a' : highlighted ? '#9a3412' : '#7d5a00');
+            marker.scale.setScalar(hovered ? 1.9 : highlighted ? 1.7 : 1);
         });
-    }, [highlightNames, modelStats.markers, revealStandardPoints, standardNodeNames]);
+    }, [highlightNames, hoveredPoint?.markerId, modelStats.markers, revealStandardPoints, standardNodeNames]);
 
     useEffect(() => {
         const group = needleGroupRef.current;
@@ -222,6 +262,8 @@ export default function AcupunctureModelCanvas({
 
     const handlePointerDown = (event) => {
         if (!interactive || !modelRef.current || !onSurfacePick) return;
+        if (event.button !== 0) return;
+        event.currentTarget.setPointerCapture?.(event.pointerId);
         const rect = event.currentTarget.getBoundingClientRect();
         pointerRef.current.set(
             ((event.clientX - rect.left) / rect.width) * 2 - 1,
@@ -231,26 +273,94 @@ export default function AcupunctureModelCanvas({
         if (!camera) return;
         raycasterRef.current.setFromCamera(pointerRef.current, camera);
         const hit = raycasterRef.current.intersectObject(modelRef.current, true).find((item) => item.object.isMesh);
-        if (!hit) return;
+        if (!hit) {
+            pendingPickRef.current = null;
+            pointerGestureRef.current = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                moved: false,
+            };
+            return;
+        }
         const normal = hit.face?.normal?.clone();
         if (normal) {
             normal.applyMatrix3(
                 new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld),
             ).normalize();
         }
-        onSurfacePick({ point: hit.point.toArray(), normal: normal?.toArray() || null });
+        pendingPickRef.current = { point: hit.point.toArray(), normal: normal?.toArray() || null };
+        pointerGestureRef.current = {
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            moved: false,
+        };
+    };
+
+    const handlePointerMove = (event) => {
+        if (showPointNames) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            pointerRef.current.set(
+                ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                -((event.clientY - rect.top) / rect.height) * 2 + 1,
+            );
+            const camera = event.currentTarget.__acupunctureCamera;
+            if (camera) {
+                raycasterRef.current.setFromCamera(pointerRef.current, camera);
+                const visibleMarkers = [
+                    ...(markerGroupRef.current?.visible ? markerGroupRef.current.children : []),
+                    ...(standardMarkerGroupRef.current?.visible ? standardMarkerGroupRef.current.children : []),
+                ];
+                const markerHit = raycasterRef.current.intersectObjects(visibleMarkers, false)[0];
+                setHoveredPoint(markerHit ? {
+                    markerId: markerHit.object.uuid,
+                    name: markerHit.object.userData.pointName,
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top,
+                } : null);
+            }
+        } else if (hoveredPoint) {
+            setHoveredPoint(null);
+        }
+        const gesture = pointerGestureRef.current;
+        if (!gesture || gesture.pointerId !== event.pointerId) return;
+        const distance = Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY);
+        if (distance > NEEDLE_TAP_THRESHOLD_PX) {
+            gesture.moved = true;
+            pendingPickRef.current = null;
+        }
+    };
+
+    const handlePointerUp = (event) => {
+        const gesture = pointerGestureRef.current;
+        if (!gesture || gesture.pointerId !== event.pointerId) return;
+        const shouldPlaceNeedle = !gesture.moved && pendingPickRef.current;
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+        if (shouldPlaceNeedle) onSurfacePick(pendingPickRef.current);
+        pendingPickRef.current = null;
+        pointerGestureRef.current = null;
     };
 
     return (
         <div className={`acupuncture-model${interactive ? ' is-interactive' : ''}${expanded ? ' is-expanded' : ''}${fullScreen ? ' is-fullscreen' : ''}`}>
             <div ref={(node) => {
                 hostRef.current = node;
-            }} className="acupuncture-model__viewport" onPointerDown={handlePointerDown} />
+            }} className="acupuncture-model__viewport" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp} />
             <button type="button" className="acupuncture-model__markers-button" onClick={onToggleMarkers}>
-                {revealStandardPoints ? (showMarkers ? '隐藏其他穴位' : '显示其他穴位') : (showMarkers ? '隐藏穴位' : '显示穴位')}
+                {revealStandardPoints
+                    ? (showMarkers ? '隐藏其他穴位' : '显示其他穴位')
+                    : (showMarkers ? '隐藏穴位' : '显示穴位')}
             </button>
+            <button type="button" className="acupuncture-model__names-button" onClick={() => setShowPointNames((value) => !value)}>
+                {showPointNames ? '隐藏穴位名称' : '显示穴位名称'}
+            </button>
+            {showPointNames && hoveredPoint && <span
+                className="acupuncture-model__point-tooltip"
+                style={{ left: hoveredPoint.x, top: hoveredPoint.y }}
+            >{hoveredPoint.name}</span>}
             <div className="acupuncture-model__status">{status}</div>
-            <span className="acupuncture-model__hint">拖拽旋转 · 滚轮缩放{interactive ? ' · 点击人体记录针位' : ''}</span>
+            <span className="acupuncture-model__hint">拖拽旋转 · 滚轮缩放{interactive ? ' · 点击并松开人体记录针位' : ''}</span>
             <span className="acupuncture-model__count">穴位 {modelStats.markers}</span>
         </div>
     );

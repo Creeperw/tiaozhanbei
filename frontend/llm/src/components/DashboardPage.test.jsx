@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DashboardPage from './DashboardPage';
 import { clearTextbookSnapshotCache, visibleWorkshopTextbooks } from './learningPlanDashboard';
+import { clearTextbookCache } from './workshop-textbook/textbookCache';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
 import {
   loadClassicLearningRoute,
@@ -63,6 +64,7 @@ describe('DashboardPage replacement learning workshop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearTextbookSnapshotCache();
+    clearTextbookCache();
     localStorage.clear();
     loadAtlasNodes.mockImplementation(({ level }) => Promise.resolve({
       route: 'textbook_14_5',

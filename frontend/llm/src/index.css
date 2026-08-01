@@ -6422,7 +6422,7 @@ textarea:focus-visible {
 .home-portal__route > .learning-path-orbit .learning-path-orbit__summary { display: none; }
 
 .home-portal__route .learning-stage--embedded {
-  min-height: 438px;
+  min-height: 410px;
   height: 100%;
   border: 0;
   border-radius: 0;
@@ -6852,7 +6852,7 @@ textarea:focus-visible {
   .home-portal__plan-rail .home-plan { min-height: 0; }
   .home-portal__plan-rail .home-plan__body { grid-template-columns: minmax(0, 1fr) 238px; overflow: visible; }
   .home-portal__plan-rail .home-plan__task-list { max-height: none; }
-  .home-portal__route .learning-stage--embedded .learning-stage__staircase { min-height: 370px; }
+  .home-portal__route .learning-stage--embedded .learning-stage__staircase { min-height: 344px; }
   .home-portal__activity { min-height: 330px; }
   .home-portal__route { min-height: 520px; }
   .home-portal__highlights,
@@ -10272,14 +10272,14 @@ textarea:focus-visible {
 }
 
 .home-portal__route .learning-stage--embedded .learning-stage__staircase {
-  min-height: 392px;
+  min-height: 366px;
   box-sizing: border-box;
   flex: 1;
   padding-bottom: 26px;
 }
 
 .home-portal__route .learning-stage--embedded .learning-stage-card {
-  height: calc(300px + var(--stage-progress) * 155px);
+  height: calc(182px + var(--stage-progress) * 130px);
 }
 
 .home-portal__activity-tabs button.is-active {
@@ -13296,6 +13296,14 @@ textarea:focus-visible {
   box-shadow: 0 10px 26px rgba(31, 108, 81, .07);
 }
 
+.app-shell__main[data-page="assistant"] .assistant-session-rail[data-open="false"] {
+  width: 0 !important;
+  flex-basis: 0 !important;
+  border-width: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
 .app-shell__main[data-page="assistant"] .assistant-session-rail__header {
   min-height: 70px;
   padding: 10px 13px 8px;
@@ -13856,3 +13864,53 @@ textarea:focus-visible {
   .agent-collaboration-receipt__title strong { font-size: 12px; }
   .app-shell__main[data-page="assistant"] .assistant-composer { padding: 10px 12px 14px; }
 }
+.simulated-patient-acupuncture-layer {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: #333;
+}
+
+.app-shell:has(.simulated-patient-acupuncture-layer) .app-shell__topbar,
+.app-shell:has(.simulated-patient-acupuncture-layer) .global-assistant-dock,
+.app-shell:has(.simulated-patient-acupuncture-layer) .app-shell__mobile-header {
+  display: none;
+}
+
+.app-shell:has(.simulated-patient-acupuncture-layer) .app-shell__main {
+  max-width: none;
+  height: 100dvh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.simulated-patient-acupuncture-layer .acupuncture-practice {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #333;
+}
+
+.simulated-patient-acupuncture-layer .acupuncture-header,
+.simulated-patient-acupuncture-layer .acupuncture-case-picker,
+.simulated-patient-acupuncture-layer .acupuncture-steps {
+  display: none;
+}
+
+.simulated-patient-acupuncture-layer .acupuncture-practice main {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+.simulated-patient-acupuncture-layer .acupuncture-card--fullscreen {
+  position: relative;
+  z-index: 1;
+}
+
