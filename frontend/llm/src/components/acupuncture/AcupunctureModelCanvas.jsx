@@ -241,8 +241,11 @@ export default function AcupunctureModelCanvas({
             const reference = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
             const tangent = new THREE.Vector3().crossVectors(reference, normal).normalize();
             const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
-            const insertionTilts = { direct: 0, oblique: 45, transverse: 78 };
-            const tilt = THREE.MathUtils.degToRad(insertionTilts[needle.insertionType] ?? Number(needle.tiltAngle || 0));
+            const insertionTilts = { direct: 0, oblique: 45, transverse: 75 };
+            const tiltDeg = Number.isFinite(Number(needle.tiltAngle))
+                ? Number(needle.tiltAngle)
+                : insertionTilts[needle.insertionType];
+            const tilt = THREE.MathUtils.degToRad(tiltDeg ?? 0);
             const azimuth = THREE.MathUtils.degToRad(Number(needle.directionAngle || 0));
             const direction = normal.clone().multiplyScalar(Math.cos(tilt))
                 .add(tangent.multiplyScalar(Math.sin(tilt) * Math.cos(azimuth)))

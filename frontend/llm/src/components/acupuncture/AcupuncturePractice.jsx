@@ -16,6 +16,15 @@ import './acupuncturePractice.css';
 
 const STEPS = ['配合意愿', '3D模型', '施针', '正确答案', '开始评分'];
 
+// 进针类型：相对皮肤表面的进针角度（直刺≈90°、斜刺≈45°、平刺≈15°）
+const INSERTION_OPTIONS = [
+    ['direct', '直刺', 90],
+    ['oblique', '斜刺', 45],
+    ['transverse', '平刺', 15],
+];
+// 相对皮肤表面法线的倾斜角（surfaceAngle = 90 - tilt）
+const INSERTION_TILT_BY_TYPE = { direct: 0, oblique: 45, transverse: 75 };
+
 export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE, onBack }) {
     const [cases, setCases] = useState(() => BUILTIN_ACUPUNCTURE_CASES.map(normalizeAcupunctureCase));
     const [selectedCaseId, setSelectedCaseId] = useState(caseData.caseId || BUILTIN_ACUPUNCTURE_CASES[0]?.caseId || '');
@@ -143,12 +152,6 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         }]);
     };
 
-    const updateLatestNeedle = (updates) => {
-        setNeedles((current) => current.map((needle, index) => (
-            index === current.length - 1 ? { ...needle, ...updates } : needle
-        )));
-    };
-
     const confirmFinish = () => {
         setStep(5);
     };
@@ -233,13 +236,14 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
                         <div className="acupuncture-insertion-choice" role="group" aria-label="选择进针类型">
                             <span>进针类型</span>
                             <div className="acupuncture-choice-row">
-                                {[['direct', '直刺'], ['oblique', '斜刺'], ['transverse', '平刺']].map(([value, label]) => (
-                                    <button key={value} type="button" className={insertionType === value ? 'is-selected' : ''} onClick={() => { setInsertionType(value); updateLatestNeedle({ insertionType: value }); }}>{label}</button>
+                                {INSERTION_OPTIONS.map(([value, label, angle]) => (
+                                    <button key={value} type="button" className={insertionType === value ? 'is-selected' : ''} aria-label={label} onClick={() => { setInsertionType(value); setTiltAngle(INSERTION_TILT_BY_TYPE[value]); }}>{label} {angle}°</button>
                                 ))}
                             </div>
                         </div>
-                        <label><span>进针深度 <strong>{depth} 寸</strong></span><input type="range" min="0" max="2.5" step="0.1" value={depth} onChange={(event) => { const value = Number(event.target.value); setDepth(value); updateLatestNeedle({ depthValue: value }); }} /></label>
-                        <label><span>留针时间 <strong>{retentionMinutes} 分钟</strong></span><input type="range" min="1" max="60" step="1" value={retentionMinutes} onChange={(event) => { const value = Number(event.target.value); setRetentionMinutes(value); updateLatestNeedle({ retentionMinutes: value }); }} /></label>
+                        <label><span>进针角度 <strong>{90 - tiltAngle}°</strong></span><input type="range" min="5" max="90" step="1" value={90 - tiltAngle} onChange={(event) => { const value = Number(event.target.value); setTiltAngle(90 - value); }} /></label>
+                        <label><span>进针深度 <strong>{depth} 寸</strong></span><input type="range" min="0" max="2.5" step="0.1" value={depth} onChange={(event) => { const value = Number(event.target.value); setDepth(value); }} /></label>
+                        <label><span>留针时间 <strong>{retentionMinutes} 分钟</strong></span><input type="range" min="1" max="60" step="1" value={retentionMinutes} onChange={(event) => { const value = Number(event.target.value); setRetentionMinutes(value); }} /></label>
                         <div className="acupuncture-needle-summary">已记录 {needles.length} 个落针点{surfacePick ? ' · 最近一针已定位' : ''}</div>
                         <button className="acupuncture-secondary" disabled={!needles.length} onClick={() => setNeedles((current) => current.slice(0, -1))}>撤销上一针</button>
                     </div>}
@@ -255,6 +259,7 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
                         <div className="acupuncture-my-answer-entry" key={needle.id || index}>
                             <b>第 {index + 1} 针</b>
                             <span>进针类型：{needle.insertionType === 'oblique' ? '斜刺' : needle.insertionType === 'transverse' ? '平刺' : '直刺'}</span>
+                            <span>进针角度：{Number.isFinite(Number(needle.tiltAngle)) ? `${90 - Number(needle.tiltAngle)}°` : '未记录'}</span>
                             <span>进针深度：{needle.depthValue ?? '未记录'} 寸</span>
                             <span>留针时间：{needle.retentionMinutes ?? '未记录'} 分钟</span>
                         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import AcupuncturePractice from './AcupuncturePractice';
 import { EMPTY_ACUPUNCTURE_CASE, getAcupunctureCaseDisplayTitle, normalizeAcupunctureCase, resolveRegionImage } from './acupuncturePracticeData';
 import { scoreAcupunctureAttempt } from './acupunctureScoring';
@@ -442,5 +442,40 @@ describe('AcupuncturePractice', () => {
             expect.objectContaining({ method: 'POST' }),
         );
         fetchMock.mockRestore();
+    });
+
+    it('locks an already-placed needle when the insertion type is switched', () => {
+        render(<AcupuncturePractice onBack={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: '愿意配合' }));
+        fireEvent.click(screen.getByRole('button', { name: '进入 3D 模型' }));
+        fireEvent.click(screen.getByRole('button', { name: '开始下针' }));
+        fireEvent.click(screen.getByRole('button', { name: '记录一个落针点' }));
+        fireEvent.click(screen.getByRole('button', { name: '斜刺' }));
+        fireEvent.click(screen.getByRole('button', { name: '记录一个落针点' }));
+        fireEvent.click(screen.getByRole('button', { name: '完成施针' }));
+
+        expect(screen.getByText('我的答案（共 2 针）')).toBeInTheDocument();
+        const firstEntry = screen.getByText('第 1 针').closest('.acupuncture-my-answer-entry');
+        expect(within(firstEntry).getByText('进针类型：直刺')).toBeInTheDocument();
+        expect(within(firstEntry).getByText('进针角度：90°')).toBeInTheDocument();
+        const secondEntry = screen.getByText('第 2 针').closest('.acupuncture-my-answer-entry');
+        expect(within(secondEntry).getByText('进针类型：斜刺')).toBeInTheDocument();
+        expect(within(secondEntry).getByText('进针角度：45°')).toBeInTheDocument();
+    });
+
+    it('sets the needle angle to the selected insertion type and lets it be adjusted', () => {
+        render(<AcupuncturePractice onBack={vi.fn()} />);
+        fireEvent.click(screen.getByRole('button', { name: '愿意配合' }));
+        fireEvent.click(screen.getByRole('button', { name: '进入 3D 模型' }));
+        fireEvent.click(screen.getByRole('button', { name: '开始下针' }));
+
+        expect(screen.getByText('90°')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: '平刺' }));
+        expect(screen.getByText('15°')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: '斜刺' }));
+        expect(screen.getByText('45°')).toBeInTheDocument();
+        const angleSlider = screen.getByRole('slider', { name: /进针角度/ });
+        fireEvent.change(angleSlider, { target: { value: '60' } });
+        expect(screen.getByText('60°')).toBeInTheDocument();
     });
 });
