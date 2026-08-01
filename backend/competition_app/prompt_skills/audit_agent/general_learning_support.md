@@ -1,6 +1,6 @@
 ---
 skill_id: audit.general_learning_support
-version: 1.1.0
+version: 1.0.0
 agent: audit_agent
 task_type: general_learning_support
 ---

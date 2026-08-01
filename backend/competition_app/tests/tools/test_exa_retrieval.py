@@ -90,7 +90,6 @@ async def test_exa_retriever_supports_reference_and_question_resources() -> None
     assert references[0].resource_type == "reference"
     assert questions[0].resource_type == "question"
 
-
 @pytest.mark.asyncio
 async def test_exa_retriever_supports_current_web_fact_search() -> None:
     class FakeAsyncExa:

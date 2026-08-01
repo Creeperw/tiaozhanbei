@@ -19,6 +19,7 @@ async def test_memory_agent_compresses_context_with_sources_without_persisting_m
             {"message_id": "MSG_2", "role": "assistant", "content": "已记录本次临时学习请求。"},
         ],
         "profile": {"confirmed_preferences": {"resource_types": ["comparison_card"]}},
+        "memory_required": True,
     }
 
     envelope = await agent.run(context)
@@ -121,6 +122,39 @@ async def test_memory_agent_governs_short_conversation_without_compressing() -> 
     assert envelope.payload.governance.requires_clarification is False
 
 
+@pytest.mark.asyncio
+async def test_memory_agent_does_not_infer_compression_from_local_message_length() -> None:
+    model = CountingMemoryModel()
+    context = build_context()
+    context["messages"] = [{
+        "message_id": "M5_LONG",
+        "role": "user",
+        "content": "很长的历史内容" * 1000,
+    }]
+    # The application did not set the system-owned flag, so the Memory Agent
+    # must still govern memory but must not invoke compression itself.
+    envelope = await MemoryAgent(model, compression_threshold_chars=1).run(context)
+    assert model.calls == 1
+    assert envelope.payload.context_summary is None
+    assert envelope.payload.governance is not None
+
+
+@pytest.mark.asyncio
+async def test_memory_agent_compresses_only_when_system_flag_is_true() -> None:
+    model = CountingMemoryModel()
+    context = build_context()
+    context["messages"] = [{
+        "message_id": "M5_FLAGGED",
+        "role": "user",
+        "content": "短消息也可以由系统明确要求压缩",
+    }]
+    context["memory_required"] = True
+
+    envelope = await MemoryAgent(model, compression_threshold_chars=100000).run(context)
+    assert model.calls == 2
+    assert envelope.payload.context_summary is not None
+
+
 class OmittedOptionalMemoryFieldsModel:
     async def complete_json(self, role, payload, on_delta=None):
         business_payload = payload.get("payload", payload)
@@ -138,6 +172,7 @@ async def test_memory_agent_accepts_omitted_empty_list_fields() -> None:
     context["messages"] = [
         {"message_id": "M6", "role": "user", "content": "请总结本轮对话内容。"}
     ]
+    context["memory_required"] = True
 
     envelope = await MemoryAgent(
         OmittedOptionalMemoryFieldsModel(), compression_threshold_chars=1

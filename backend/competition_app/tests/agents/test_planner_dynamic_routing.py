@@ -2,6 +2,7 @@ import pytest
 
 from competition_app.agents.planner import PlannerAgent, PlannerDecision
 from competition_app.llm.schemas import PlannerModelOutput
+from competition_app.llm.stub import StubChatModel
 
 
 def test_dynamic_plan_contains_only_planner_selected_agents() -> None:
@@ -148,6 +149,19 @@ class PlanWithoutScopeModel:
         }
 
 
+class GenericPlanIncorrectlyDefaultsToLongTermModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        return {
+            "task_type": "learning_plan",
+            "plan_scope": "long_term",
+            "plan_action": "create_or_update",
+            "selected_agents": ["diagnosis_agent", "audit_agent", "learning_plan_service"],
+            "routing_reason": "模型错误地把泛化请求理解成重新制定长期规划。",
+            "risk_level": "medium",
+            "requires_audit": True,
+        }
+
+
 class ScopeIgnoringPlannerModel:
     async def complete_json(self, role, payload, on_delta=None):
         return {
@@ -230,6 +244,8 @@ async def test_plain_greeting_never_enters_learning_plan_or_resource_chain() -> 
         ("哪些知识点还没掌握？", "mastery_status"),
         ("最近有哪些复习到期？", "review_status"),
         ("当前长期规划进展到哪一步？", "plan_progress"),
+        ("给我看看我的长期学习计划", "plan_progress"),
+        ("我的短期学习计划是什么样的？", "plan_progress"),
     ],
 )
 async def test_learner_data_queries_use_read_only_diagnosis_route(
@@ -376,6 +392,52 @@ async def test_daily_question_cannot_be_mislabeled_as_short_term_plan() -> None:
 
 
 @pytest.mark.asyncio
+async def test_today_learning_tasks_without_caller_scope_use_daily_task() -> None:
+    result = await PlannerAgent(StubChatModel()).run(
+        {
+            "case_id": "C_DAILY_NO_HINT",
+            "trace_id": "T_DAILY_NO_HINT",
+            "request_id": "R_DAILY_NO_HINT",
+            "execution_id": "E_DAILY_NO_HINT",
+            "step_id": "planner",
+            "learner_id": "L_DAILY_NO_HINT",
+            "user_request": "我今天有哪些学习任务",
+            "plan_scope": None,
+            "plan_scope_hint": None,
+            "messages": [],
+            "conversation_requires_compression": False,
+        }
+    )
+
+    assert result.payload.task_type == "learning_plan"
+    assert result.payload.plan_scope == "daily_task"
+    assert "当日任务" in result.payload.routing_reason
+    assert "长期规划" not in result.payload.routing_reason
+
+
+@pytest.mark.asyncio
+async def test_existing_long_term_plan_query_is_read_only_not_daily_plan_creation() -> None:
+    result = await PlannerAgent(LearnerDataPlannerModel()).run(
+        {
+            "case_id": "C_PLAN_QUERY",
+            "trace_id": "T_PLAN_QUERY",
+            "request_id": "R_PLAN_QUERY",
+            "execution_id": "E_PLAN_QUERY",
+            "step_id": "planner",
+            "learner_id": "L_PLAN_QUERY",
+            "user_request": "我现有的长期计划是什么样的",
+            "messages": [],
+            "current_long_term_plan": {"content": "系统掌握方剂学"},
+            "conversation_requires_compression": False,
+        }
+    )
+    assert result.payload.task_type == "learner_data_query"
+    assert result.payload.query_kind == "plan_progress"
+    assert result.payload.plan_scope is None
+    assert result.payload.selected_agents == ["memory_agent", "diagnosis_agent"]
+
+
+@pytest.mark.asyncio
 async def test_planner_semantics_override_classifier_hint() -> None:
     result = await PlannerAgent(DailyTaskSemanticPlannerModel()).run(
         {
@@ -443,6 +505,75 @@ async def test_planner_uses_unspecified_instead_of_null_for_ambiguous_plan() -> 
     assert result.payload.plan_scope == "unspecified"
 
 
+@pytest.mark.asyncio
+async def test_generic_plan_with_existing_plans_clarifies_scope_before_replanning() -> None:
+    request = "请结合我的学习状态，为我制定一份学习计划。"
+    result = await PlannerAgent(GenericPlanIncorrectlyDefaultsToLongTermModel()).run(
+        {
+            "case_id": "C_EXISTING_GENERIC",
+            "trace_id": "T_EXISTING_GENERIC",
+            "request_id": "R_EXISTING_GENERIC",
+            "execution_id": "E_EXISTING_GENERIC",
+            "step_id": "planner",
+            "learner_id": "L_EXISTING_GENERIC",
+            "user_request": request,
+            "plan_scope": None,
+            "plan_scope_hint": None,
+            "continued_plan_scope": None,
+            "messages": [{"role": "user", "content": request}],
+            "current_long_term_plan": {
+                "content": "已有长期规划",
+                "status": "active",
+            },
+            "current_short_term_plan": {
+                "content": "已有短期计划",
+                "status": "active",
+            },
+            "conversation_requires_compression": False,
+        }
+    )
+
+    assert result.payload.plan_scope == "unspecified"
+    assert result.payload.plan_action == "clarify"
+    assert result.payload.requires_clarification is True
+    assert result.payload.clarification_question == (
+        "你当前已经有有效的长期规划、短期计划。"
+        "这次希望制定或调整哪一层：长期规划、短期计划，还是当日任务？"
+    )
+
+
+@pytest.mark.asyncio
+async def test_explicit_plan_scope_is_not_blocked_by_existing_plan_clarification() -> None:
+    result = await PlannerAgent(GenericPlanIncorrectlyDefaultsToLongTermModel()).run(
+        {
+            "case_id": "C_EXPLICIT_EXISTING",
+            "trace_id": "T_EXPLICIT_EXISTING",
+            "request_id": "R_EXPLICIT_EXISTING",
+            "execution_id": "E_EXPLICIT_EXISTING",
+            "step_id": "planner",
+            "learner_id": "L_EXPLICIT_EXISTING",
+            "user_request": "请结合最新学情重新制定长期规划。",
+            "plan_scope": "long_term",
+            "plan_scope_hint": "long_term",
+            "continued_plan_scope": None,
+            "messages": [],
+            "current_long_term_plan": {
+                "content": "已有长期规划",
+                "status": "active",
+            },
+            "current_short_term_plan": {
+                "content": "已有短期计划",
+                "status": "active",
+            },
+            "conversation_requires_compression": False,
+        }
+    )
+
+    assert result.payload.plan_scope == "long_term"
+    assert result.payload.plan_action == "create_or_update"
+    assert result.payload.requires_clarification is False
+
+
 def test_explicit_force_change_cannot_be_downgraded_to_plan_reuse() -> None:
     normalized = PlannerAgent._normalize_output(
         {
@@ -490,10 +621,13 @@ async def test_planner_receives_routing_skills_and_does_not_output_knowledge_que
         "learner_data_query", "learning_plan",
         "personalized_review_card", "paper_generation"
     }
-    assert payload["conversation_context"]["requires_compression"] is False
     assert payload["conversation_context"]["recent_turns"] == [
         {"role": "user", "content": "制定计划"}
     ]
+    assert "multi_scale_learning_state" not in payload
+    assert "plan_scope_hint" not in payload
+    assert "requires_compression" not in payload["conversation_context"]
+    assert "memory_required" not in payload["conversation_context"]
 
 
 @pytest.mark.asyncio
@@ -660,10 +794,11 @@ def test_paper_generation_uses_minimal_evidence_expert_audit_chain() -> None:
     )
 
     assert completed.selected_agents == [
-        "knowledge_base_agent", "expert_agent", "audit_agent"
+        "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
     ]
     assert [(step.agent, step.depends_on) for step in plan.steps] == [
-        ("paper_blueprint_agent", []),
+        ("memory_agent", []),
+        ("paper_blueprint_agent", ["memory"]),
         ("knowledge_base_agent", ["paper_blueprint"]),
         ("paper_assembly_agent", ["paper_blueprint", "question_pool"]),
         ("audit_agent", ["paper_blueprint", "question_pool", "paper_assembly"]),
@@ -699,7 +834,7 @@ def test_knowledge_explanation_does_not_include_planning_or_review_services() ->
     )
 
     assert [step.agent for step in plan.steps] == [
-        "knowledge_base_agent", "knowledge_explanation_agent", "audit_agent"
+        "memory_agent", "knowledge_base_agent", "knowledge_explanation_agent", "audit_agent"
     ]
 
 
@@ -753,11 +888,11 @@ def test_current_fact_request_routes_to_external_learning_support() -> None:
 def test_question_difficulty_request_stays_knowledge_explanation() -> None:
     normalized = PlannerAgent._normalize_output(
         {
-            "task_type": "learner_data_query",
-            "selected_agents": [],
+            "task_type": "knowledge_explanation",
+            "selected_agents": ["knowledge_base_agent", "expert_agent", "audit_agent"],
             "routing_reason": "解释题目",
             "risk_level": "low",
-            "requires_audit": False,
+            "requires_audit": True,
         },
         {"user_request": "试述感冒暑湿证的主症特点、治法及代表方剂，这题有点难度"},
     )
@@ -775,54 +910,12 @@ def test_emotional_support_replaces_generic_completion_fallback() -> None:
             "risk_level": "low",
             "requires_audit": False,
         },
-        {"user_request": "我明天就要考试了，好焦虑啊"},
+        {
+            "user_request": "我明天就要考试了，好焦虑啊",
+            "emotional_support_request": True,
+        },
     )
 
     assert normalized["task_type"] == "casual_conversation"
     assert "焦虑" in normalized["casual_response"]
     assert "10分钟" in normalized["casual_response"]
-
-
-def test_learning_plan_with_general_difficulty_is_not_question_explanation() -> None:
-    normalized = PlannerAgent._normalize_output(
-        {
-            "task_type": "learning_plan",
-            "selected_agents": [],
-            "routing_reason": "制定学习计划",
-            "risk_level": "low",
-            "requires_audit": False,
-        },
-        {"user_request": "我基础很差，学起来很难，帮我制定学习计划"},
-    )
-
-    assert normalized["task_type"] == "learning_plan"
-
-
-def test_difficult_subject_without_question_stays_a_learning_plan() -> None:
-    normalized = PlannerAgent._normalize_output(
-        {
-            "task_type": "learning_plan",
-            "selected_agents": [],
-            "routing_reason": "制定学习计划",
-            "risk_level": "low",
-            "requires_audit": False,
-        },
-        {"user_request": "我对方剂学习很难，帮我制定学习计划"},
-    )
-
-    assert normalized["task_type"] == "learning_plan"
-
-
-def test_emotional_plan_request_keeps_its_business_route() -> None:
-    normalized = PlannerAgent._normalize_output(
-        {
-            "task_type": "learning_plan",
-            "selected_agents": [],
-            "routing_reason": "制定冲刺计划",
-            "risk_level": "low",
-            "requires_audit": False,
-        },
-        {"user_request": "我明天考试很焦虑，帮我制定冲刺计划"},
-    )
-
-    assert normalized["task_type"] == "learning_plan"

@@ -11,6 +11,11 @@ _DIRECT_DAILY_QUESTION = re.compile(
     r"(?:当日|今日|今天|今晚)[^，。；！？?]{0,18}"
     r"(?:学(?:习)?(?:些)?什么|学啥|要学|该学|看什么|看啥|做什么|做啥|复习什么|练什么)"
 )
+_DAILY_TASK_LOOKUP = re.compile(
+    r"(?:当日|今日|今天|今晚)[^，。；！？?]{0,18}"
+    r"(?:有哪些|有些什么|有什么)[^，。；！？?]{0,12}"
+    r"(?:学习)?任务"
+)
 _EXPLICIT_DAILY_TASK = re.compile(
     r"(?:安排|制定|生成|更新|调整|给我|再给我|来一个)[^，。；！？?]{0,18}"
     r"(?:当日|今日|今天|今晚)(?:的)?(?:学习)?任务"
@@ -55,6 +60,7 @@ def infer_plan_scope(user_request: str) -> PlanScope | None:
         return None
     if (
         _DIRECT_DAILY_QUESTION.search(request)
+        or _DAILY_TASK_LOOKUP.search(request)
         or _EXPLICIT_DAILY_TASK.search(request)
         or _DAILY_TASK_NOUN.search(request)
     ):

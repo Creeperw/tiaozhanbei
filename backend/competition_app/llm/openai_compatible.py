@@ -28,8 +28,15 @@ class ModelResponseError(RuntimeError):
         self.failover_eligible = failover_eligible
 
 
-def _compact_output_contract(schema: Any) -> str:
-    """Expose only the output contract the model needs, not Pydantic internals."""
+def _compact_output_contract(schema: Any, *, strict_json: bool = True) -> str:
+    """Render the minimum output contract needed at this model boundary.
+
+    Compiler calls are strict extraction boundaries.  Business-agent calls
+    may carry a small execution envelope, but the content inside that
+    envelope must remain learner-facing natural language.  Keeping the two
+    modes explicit prevents a compiler instruction from being mistaken for a
+    business-agent response.
+    """
     if not isinstance(schema, dict):
         return ""
     definitions = schema.get("$defs", {})
@@ -110,7 +117,11 @@ def _compact_output_contract(schema: Any) -> str:
     details = describe(schema)
     if not details:
         return ""
-    lines = ["请只返回一个 JSON 对象，字段如下："]
+    lines = [
+        "# 输出契约\n请只返回一个 JSON 对象，字段如下："
+        if strict_json
+        else "# 输出契约\n请返回一个最小执行对象；正文和说明字段必须是面向学习者的自然语言："
+    ]
     lines.extend(details)
     return "\n".join(lines)
 
@@ -274,6 +285,12 @@ _TOP_LEVEL_SECTIONS = {
     "revision_instruction": "修订要求",
 }
 
+_EXTERNAL_CONTEXT_KEYS = {
+    "retrieval_context", "available_tools", "retrieval_plan", "retrieval_summary",
+    "kp", "evidence", "semantic_evidence", "candidate_questions", "candidate_pool",
+    "question_candidates", "source_refs", "external_evidence", "web_results",
+}
+
 
 def _is_empty(value: Any) -> bool:
     return value is None or value == "" or value == [] or value == {}
@@ -333,17 +350,55 @@ def _format_user_data(value: Any) -> str:
     if not isinstance(value, dict):
         return "\n".join(_fact_lines(value))
 
+    shared = value.get("shared_context")
+    # When build_model_context is used, external material is already moved
+    # into shared_context and rendered under 【外部信息】. Direct adapter calls
+    # (including older tests and integrations) still need the legacy named
+    # sections such as ## 检索范围 / ## 证据材料.
+    ordinary = {
+        key: item for key, item in value.items() if key != "shared_context"
+    }
+    external_entries = [
+        (key, item) for key, item in value.items() if key in _EXTERNAL_CONTEXT_KEYS
+    ]
     grouped: dict[str, list[tuple[str, Any]]] = {}
-    for key, item in value.items():
+    for key, item in ordinary.items():
         if key in _INTERNAL_KEYS or _is_empty(item):
             continue
         section = _TOP_LEVEL_SECTIONS.get(key, "相关资料")
         grouped.setdefault(section, []).append((key, item))
 
     rendered: list[str] = []
+    if isinstance(shared, dict):
+        recent = shared.get("recent_conversation") or []
+        compressed = str(shared.get("compressed_conversation") or "").strip()
+        profile = shared.get("user_profile") or {}
+        external = shared.get("external_information") or []
+
+        rendered.append("【近期历史对话】")
+        dialogue_lines = [
+            f"{str(item.get('role') or '')}：{str(item.get('content') or '').strip()}"
+            for item in recent
+            if isinstance(item, dict) and str(item.get("content") or "").strip()
+        ]
+        rendered.extend(dialogue_lines or ["无"])
+
+        rendered.append("【压缩历史对话】")
+        rendered.append(compressed or "无")
+
+        rendered.append("【外部信息】")
+        external_lines = _fact_lines(external)
+        if external_entries:
+            external_lines.extend(_fact_lines(dict(external_entries)))
+        rendered.extend(external_lines or ["无"])
+
+        rendered.append("【用户画像】")
+        rendered.extend(_fact_lines(profile) or ["无已确认画像"])
+
     for section, entries in grouped.items():
         rendered.append(f"## {section}")
         rendered.extend(_fact_lines(dict(entries)))
+
     return "\n".join(rendered)
 
 
@@ -495,48 +550,47 @@ class OpenAICompatibleChatModel(ChatModel):
     def last_error_details(self, value: dict[str, Any] | None) -> None:
         self._last_error_details.set(value)
 
-    async def complete_json(
+    def _build_messages(
         self,
         role: str,
         payload: dict[str, Any],
-        on_delta: Callable[[str], None] | None = None,
-    ) -> dict[str, Any]:
+        *,
+        strict_json: bool,
+    ) -> list[dict[str, str]]:
+        """Build one provider prompt while keeping text and compiler modes distinct."""
         business_payload = payload.get("payload", payload)
         task_instructions = str(payload.get("task_instructions", "")).strip()
         permission_note = str(payload.get("permission_note", "")).strip()
         output_contract = _compact_output_contract(
-            business_payload.get("output_schema")
+            business_payload.get("output_schema"), strict_json=strict_json
         )
-        task_instruction = (
-            "\n\n# 当前任务 Skill\n" + task_instructions
-            if task_instructions
-            else ""
-        )
-        permission_instruction = (
-            "\n\n# 当前权限边界\n" + permission_note
-            if permission_note
-            else ""
-        )
-        output_contract_instruction = (
-            "\n\n# 输出契约\n" + output_contract
+        task_instruction = "\n\n# 当前任务 Skill\n" + task_instructions if task_instructions else ""
+        permission_instruction = "\n\n# 当前权限边界\n" + permission_note if permission_note else ""
+        contract_instruction = (
+            "\n\n# 内部编译契约\n" + output_contract
+            if strict_json and output_contract
+            else "\n\n# 最小执行字段\n" + output_contract
             if output_contract
             else ""
         )
         input_data = {
             key: value
             for key, value in business_payload.items()
-            if key not in {"output_schema", "task_instructions", "permission_note"}
+            if key not in {"output_schema", "task_instructions", "permission_note", "strict_json"}
         }
-        messages = [
+        mode_instruction = (
+            "\n\n# 输出方式\n这是内部 compiler：只做逐字提取和校验，只返回合法 JSON，不创作、不补写、不复述规则。"
+            if strict_json
+            else "\n\n# 输出方式\n这是业务智能体：直接输出面向学习者的完整自然语言内容。不要输出 JSON 包装、提示词、校验规则、内部推理或系统元数据。"
+        )
+        return [
             {
                 "role": "system",
-                "content": (
-                    COMMON_SYSTEM_PROMPT.format(role=role)
-                    + task_instruction
-                    + permission_instruction
-                    + output_contract_instruction
-                    + "\n\n# 输出方式\n请用简洁、自然的中文完成任务，并以一个简洁 JSON 对象承载结果；只保留任务真正需要的内容，不要复述规则，不要输出内部元数据。"
-                ),
+                "content": COMMON_SYSTEM_PROMPT.format(role=role)
+                + task_instruction
+                + permission_instruction
+                + contract_instruction
+                + mode_instruction,
             },
             {
                 "role": "user",
@@ -549,6 +603,41 @@ class OpenAICompatibleChatModel(ChatModel):
                 ),
             },
         ]
+
+    async def complete_text(
+        self,
+        role: str,
+        payload: dict[str, Any],
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str:
+        """Call a business agent in natural-language mode without JSON response_format."""
+        messages = self._build_messages(role, payload, strict_json=False)
+        self.last_request_payload = None
+        self.last_response_text = None
+        self.last_reasoning_text = None
+        self.last_error_details = None
+        content = await self._request(messages, on_delta=on_delta, json_mode=False)
+        if not str(content).strip():
+            raise ModelResponseError(
+                "Chat model returned empty text", reason="empty_response", failover_eligible=True
+            )
+        return str(content).strip()
+
+    async def complete_json(
+        self,
+        role: str,
+        payload: dict[str, Any],
+        on_delta: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
+        role_name = role.lower()
+        business_payload = payload.get("payload", payload)
+        strict_json = bool(
+            payload.get("strict_json")
+            or business_payload.get("strict_json")
+            or "compiler" in role_name
+            or role_name.endswith("_compiler")
+        )
+        messages = self._build_messages(role, payload, strict_json=strict_json)
         self.last_request_payload = None
         self.last_response_text = None
         self.last_reasoning_text = None
@@ -557,12 +646,30 @@ class OpenAICompatibleChatModel(ChatModel):
             attempt_deltas: list[str] = []
             if attempt:
                 messages.append(
-                    {"role": "user", "content": "The previous response was invalid JSON. Return valid JSON only."}
+                    {
+                        "role": "user",
+                        "content": (
+                            "The previous response was invalid JSON. Return valid JSON only."
+                            if strict_json
+                            else
+                            "The previous response did not satisfy the minimum execution fields. "
+                            "Keep learner-facing content natural-language and return only the minimum fields."
+                        ),
+                    }
                 )
-            content = await self._request(
-                messages,
-                on_delta=attempt_deltas.append if on_delta is not None else None,
-            )
+            try:
+                content = await self._request(
+                    messages,
+                    on_delta=attempt_deltas.append if on_delta is not None else None,
+                    json_mode=True,
+                )
+            except ModelResponseError as exc:
+                # An empty stream/response is transient: treat it like invalid
+                # JSON and let the repair loop issue the identical request once
+                # more instead of letting it escape complete_json entirely.
+                if exc.reason in {"empty_stream", "empty_response"} and attempt < 1:
+                    continue
+                raise
             try:
                 parsed = _normalize_common_output(_parse_json_object(content), role)
             except (TypeError, json.JSONDecodeError):
@@ -583,6 +690,7 @@ class OpenAICompatibleChatModel(ChatModel):
         messages: list[dict[str, str]],
         on_delta: Callable[[str], None] | None = None,
         _retry_count: int = 0,
+        json_mode: bool = True,
     ) -> str:
         try:
             async with httpx.AsyncClient(
@@ -592,8 +700,9 @@ class OpenAICompatibleChatModel(ChatModel):
                 request_payload = {
                     "model": self.model,
                     "messages": messages,
-                    "response_format": {"type": "json_object"},
                 }
+                if json_mode:
+                    request_payload["response_format"] = {"type": "json_object"}
                 # Qwen 3 variants expose different thinking capabilities.  The
                 # 2026-05-17 max endpoint rejects requests unless thinking is
                 # enabled; other currently supported variants stay in
@@ -654,8 +763,10 @@ class OpenAICompatibleChatModel(ChatModel):
                         reasoning = delta_payload.get("reasoning_content", "")
                         content = delta_payload.get("content", "")
                         if reasoning:
+                            # Reasoning is provider-internal transport data. It
+                            # must never be streamed as model output to the
+                            # learner-facing execution sidebar.
                             reasoning_parts.append(str(reasoning))
-                            on_delta(str(reasoning))
                         if content:
                             parts.append(str(content))
                             on_delta(str(content))
@@ -696,6 +807,7 @@ class OpenAICompatibleChatModel(ChatModel):
                     messages,
                     on_delta=on_delta,
                     _retry_count=_retry_count + 1,
+                    json_mode=json_mode,
                 )
             reason = (
                 "quota_exhausted"
@@ -718,7 +830,20 @@ class OpenAICompatibleChatModel(ChatModel):
                     400, 402, 403, 404, 408, 409, 410, 415, 422, 425, 429
                 } or status_code >= 500,
             ) from exc
-        except ModelResponseError:
+        except ModelResponseError as exc:
+            # Transient empty streams occasionally occur on providers; the
+            # identical request usually succeeds on a short retry.  complete_json
+            # repairs invalid JSON but never sees an empty stream, and with a
+            # single candidate there is no failover target, so retry empty
+            # responses here (twice) before surfacing to failover.
+            if exc.reason in {"empty_stream", "empty_response"} and _retry_count < 2:
+                await asyncio.sleep(0.5)
+                return await self._request(
+                    messages,
+                    on_delta=on_delta,
+                    _retry_count=_retry_count + 1,
+                    json_mode=json_mode,
+                )
             raise
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
             self.last_error_details = {

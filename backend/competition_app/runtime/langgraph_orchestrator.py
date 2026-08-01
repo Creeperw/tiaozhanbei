@@ -76,6 +76,7 @@ class _InterruptedSession:
     config: dict[str, Any]
     plan: ExecutionPlan
     trace: TraceRecorder
+    context: dict[str, Any]
 
 
 class LangGraphOrchestrator(Orchestrator):
@@ -123,6 +124,7 @@ class LangGraphOrchestrator(Orchestrator):
             config=config,
             plan=plan,
             trace=trace,
+            context=context,
         )
 
     async def execute(
@@ -142,6 +144,7 @@ class LangGraphOrchestrator(Orchestrator):
             config=config,
             plan=plan,
             trace=trace,
+            context=context,
         )
         initial_state: LangGraphExecutionState = {
             "outputs": {},
@@ -190,6 +193,12 @@ class LangGraphOrchestrator(Orchestrator):
             session = self._interrupted_sessions.get(thread_id)
         if session is None:
             raise KeyError(f"LangGraph thread {thread_id} is not waiting for input")
+        if context:
+            # Graph node closures retain the original root_context object.  A
+            # resumed run may have materialized a parent plan or appended
+            # profile/memory facts meanwhile, so update that same object
+            # instead of merely passing an unused context argument around.
+            session.context.update(context)
         emit_runtime_event("graph_resume_requested", thread_id=thread_id)
         try:
             state = await session.graph.ainvoke(
@@ -1076,6 +1085,31 @@ class LangGraphOrchestrator(Orchestrator):
         questions = list(
             getattr(clarification_source, "clarification_questions", []) or []
         )
+        # Keep the business scope selected by the agent separate from a
+        # prerequisite scope.  These values used to be referenced as local
+        # variables without being derived from the clarification result,
+        # which made the first prerequisite interrupt fail with NameError and
+        # also caused the resume path to lose the original daily/short-term
+        # request.  The agent is authoritative here; no keyword inference is
+        # performed by the orchestrator.
+        original_scope = getattr(clarification_source, "plan_scope", None) or getattr(
+            step, "plan_scope", None
+        )
+        requested_scope = getattr(clarification_source, "requested_scope", None)
+        prerequisite_scope = getattr(
+            clarification_source, "prerequisite_scope", None
+        )
+        if not prerequisite_scope and getattr(
+            clarification_source, "interrupt_type", None
+        ) == "planning_prerequisite":
+            prerequisite_scope = requested_scope
+        if (
+            not prerequisite_scope
+            and original_scope in {"long_term", "short_term", "daily_task"}
+            and requested_scope in {"long_term", "short_term"}
+            and requested_scope != original_scope
+        ):
+            prerequisite_scope = requested_scope
         return {
             "step_id": step.step_id,
             "agent": step.agent,
@@ -1083,8 +1117,12 @@ class LangGraphOrchestrator(Orchestrator):
             or getattr(clarification_source, "clarification_reason", None)
             or "需要用户补充信息后继续。",
             "questions": questions,
-            "requested_scope": getattr(clarification_source, "requested_scope", None)
-            or getattr(clarification_source, "plan_scope", None),
+            # For a planning prerequisite, requested_scope is the missing
+            # parent that must be created.  The original child layer remains
+            # available separately so resume can return to it.
+            "requested_scope": prerequisite_scope or requested_scope or original_scope,
+            "original_scope": original_scope,
+            "prerequisite_scope": prerequisite_scope,
             "profile_fields": list(
                 getattr(clarification_source, "clarification_fields", []) or []
             ),
@@ -1125,7 +1163,72 @@ class LangGraphOrchestrator(Orchestrator):
                     if str(key).strip() and item not in (None, "")
                 }
             )
+
+        # A profile-completion answer is evidence for the learner profile, not
+        # a request to mutate an existing plan.  Keep it on the conversation
+        # and return to the interrupted planning scope.  In particular, do not
+        # fall through to the generic free-form branch below: that branch
+        # creates ``plan_change_context`` and makes Diagnosis treat answers
+        # such as “每周学习5天，每天2小时” as a replanning request.  The
+        # semantic planner must only assess an actual change after the profile
+        # gate has completed.
+        if interrupt_type == "profile_completion":
+            answer = str(value.get("answer") or "").strip()
+            if answer:
+                root_context["latest_resume_answer"] = answer
+                messages = root_context.setdefault("messages", [])
+                if not any(
+                    item.get("role") == "user" and item.get("content") == answer
+                    for item in messages
+                    if isinstance(item, dict)
+                ):
+                    messages.append({"role": "user", "content": answer})
+            if requested_scope in {"long_term", "short_term", "daily_task"}:
+                root_context["plan_scope"] = requested_scope
+                root_context["plan_scope_hint"] = requested_scope
+                root_context["continued_plan_scope"] = requested_scope
+            return
+
+        if interrupt_type == "planning_prerequisite":
+            # The user is answering the prerequisite question raised by the
+            # already-selected child task (for example “可以” to “是否先建立
+            # 短期计划？”).  It is not a new plan-change request and must not
+            # be interpreted as a new scope by the generic resume branch.
+            answer = str(value.get("answer") or "").strip()
+            if answer:
+                root_context["latest_resume_answer"] = answer
+                messages = root_context.setdefault("messages", [])
+                if not any(
+                    item.get("role") == "user" and item.get("content") == answer
+                    for item in messages
+                    if isinstance(item, dict)
+                ):
+                    messages.append({"role": "user", "content": answer})
+            original_scope = value.get("plan_scope") or root_context.get(
+                "requested_plan_scope"
+            )
+            if original_scope in {"long_term", "short_term", "daily_task"}:
+                root_context["plan_scope"] = original_scope
+                root_context["continued_plan_scope"] = original_scope
+                root_context["plan_scope_hint"] = original_scope
+            return
+
         selected_scope = value.get("plan_scope")
+        if (
+            selected_scope not in {"long_term", "short_term", "daily_task"}
+            and requested_scope in {"long_term", "short_term", "daily_task"}
+        ):
+            # This scope was requested by the upstream agent in the interrupt
+            # payload. It is not inferred from the user's words.
+            selected_scope = requested_scope
+        if selected_scope in {"long_term", "short_term", "daily_task"} and (
+            value.get("clarification_kind") == "plan_scope"
+            or interrupt_type in {"plan_scope_resolution", "planning_prerequisite"}
+            or selected_scope != root_context.get("plan_scope")
+        ):
+            root_context["plan_scope"] = selected_scope
+            root_context["plan_scope_hint"] = selected_scope
+            root_context["continued_plan_scope"] = selected_scope
         is_scope_clarification_answer = (
             value.get("clarification_kind") == "plan_scope"
             or selected_scope in {
@@ -1148,8 +1251,9 @@ class LangGraphOrchestrator(Orchestrator):
                 root_context["plan_scope"] = selected_scope
                 root_context["plan_scope_hint"] = selected_scope
                 root_context["continued_plan_scope"] = selected_scope
-                root_context["explicit_long_term_change"] = selected_scope == "long_term"
-                root_context["explicit_short_term_change"] = selected_scope == "short_term"
+                # Selecting a planning layer is not a request to mutate that
+                # layer. Diagnosis decides create/reuse from the actual user
+                # facts and existing plan state.
             if answer:
                 root_context["latest_resume_answer"] = answer
                 messages = root_context.setdefault("messages", [])
@@ -1160,23 +1264,55 @@ class LangGraphOrchestrator(Orchestrator):
                 ):
                     messages.append({"role": "user", "content": answer})
             return
+        if interrupt_type == "route_resolution":
+            # Route/profile answers are facts for the resolver, not plan
+            # mutations. Keep the established goal and feed the answer back
+            # through conversation context without creating a replan contract.
+            answer = str(value.get("answer") or "").strip()
+            if answer:
+                root_context["latest_resume_answer"] = answer
+                messages = root_context.setdefault("messages", [])
+                if not any(
+                    item.get("role") == "user" and item.get("content") == answer
+                    for item in messages
+                    if isinstance(item, dict)
+                ):
+                    messages.append({"role": "user", "content": answer})
+                original = str(
+                    root_context.get("original_user_request")
+                    or root_context.get("user_request")
+                    or ""
+                ).strip()
+                root_context["user_request"] = "\n".join(
+                    item for item in (original, f"用户补充信息：{answer}") if item
+                )
+            return
         change = value.get("plan_change_context")
         if not isinstance(change, dict):
             answer = str(value.get("answer") or "").strip()
             change = {
                 "original_request": root_context.get("user_request", ""),
-                "target_layers": [
-                    value.get("plan_scope")
-                    or requested_scope
-                    or root_context.get("plan_scope")
-                    or "unspecified"
-                ],
+                # Leave target_layers empty when the answer is natural
+                # language. Diagnosis owns the semantic interpretation; an
+                # empty list is materially different from claiming the user
+                # selected "unspecified" as a layer.
+                "target_layers": [],
                 "change_details": answer,
             }
         details = str(change.get("change_details") or value.get("answer") or "").strip()
         if details:
             root_context["latest_resume_answer"] = details
-            root_context["learning_goal"] = details
+            # Backward-compatible direct orchestration callers may provide a
+            # goal answer without any existing plan context. In a real
+            # replanning continuation the answer remains a change fact for
+            # Diagnosis and never replaces the established goal.
+            if (
+                not root_context.get("current_long_term_plan")
+                and not root_context.get("current_short_term_plan")
+                and not root_context.get("plan_change_context")
+                and not change.get("target_layers")
+            ):
+                root_context["learning_goal"] = details
         original_request = str(
             change.get("original_request")
             or root_context.get("original_user_request")
@@ -1197,10 +1333,10 @@ class LangGraphOrchestrator(Orchestrator):
                 parts.append(f"{label}：{item}")
         root_context["user_request"] = "\n".join(dict.fromkeys(parts))
         root_context["plan_change_context"] = change
-        scope = value.get("plan_scope") or requested_scope or next(
-            iter(change.get("target_layers") or []), root_context.get("plan_scope")
-        )
-        if scope:
+        # Only an explicit, validated scope changes the current planning
+        # layer. Free-form answers stay in plan_change_context for Diagnosis.
+        scope = value.get("plan_scope")
+        if scope in {"long_term", "short_term", "daily_task"}:
             root_context["plan_scope"] = scope
         root_context["explicit_long_term_change"] = bool(
             "long_term" in (change.get("target_layers") or [])

@@ -214,3 +214,195 @@ async def test_compiler_prefers_valid_diagnosis_fields_over_model_invention() ->
     assert envelope.result.contract.short_term_plan_content == "原始计划正文。"
     assert envelope.result.contract.duration_days == 7
     assert envelope.result.contract.selected_books == ["《方剂学》"]
+
+
+class DocumentCompilerModel:
+    def __init__(self) -> None:
+        self.called = False
+
+    async def complete_json(self, role, payload, on_delta=None):
+        assert role == "plan_contract_compiler"
+        self.called = True
+        business_payload = payload["payload"]
+        source = business_payload["diagnosis_output"]["plan_document"]
+        props = business_payload["output_schema"]["$defs"]["CompiledShortTermContract"]["properties"]
+        assert "short_term_plan_content" not in props
+        return {
+            "status": "compiled",
+            "contract_version": "1.0",
+            "contract": {
+                "scope": "short_term",
+                "short_term_plan_content": source,
+                "duration_days": 14,
+                "progression_nodes": ["先完成教材核对", "再完成闭卷比较"],
+                "expected_output": "一张类方比较表",
+                "completion_criteria": "能够闭卷比较代表方剂",
+                "selected_stage_id": "stage-1",
+                "selected_books": ["《方剂学》"],
+                "field_anchors": {
+                    "/short_term_plan_content": [{"source_field": "plan_document", "source_quote": source}],
+                    "/duration_days": [{"source_field": "plan_document", "source_quote": "14天"}],
+                    "/progression_nodes": [
+                        {"source_field": "plan_document", "source_quote": "先完成教材核对"},
+                        {"source_field": "plan_document", "source_quote": "再完成闭卷比较"},
+                    ],
+                    "/expected_output": [{"source_field": "plan_document", "source_quote": "一张类方比较表"}],
+                    "/completion_criteria": [{"source_field": "plan_document", "source_quote": "能够闭卷比较代表方剂"}],
+                    "/selected_books": [{"source_field": "plan_document", "source_quote": "《方剂学》"}],
+                },
+            },
+        }
+
+
+@pytest.mark.asyncio
+async def test_document_compiler_is_called_for_complete_prose_document() -> None:
+    model = DocumentCompilerModel()
+    document = (
+        "## 当前周期目标\n未来14天使用《方剂学》完成补益剂学习。"
+        "推进节点：先完成教材核对；再完成闭卷比较。"
+        "预期产出：一张类方比较表。"
+        "完成标准：能够闭卷比较代表方剂。"
+    )
+    envelope = await PlanContractCompilerAgent(model).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={"current_stage_duration_days": 30},
+    )
+    assert model.called is True
+    assert envelope.result.status == "compiled"
+    assert envelope.result.contract.short_term_plan_content == document
+
+
+@pytest.mark.asyncio
+async def test_document_compiler_does_not_invent_missing_semantics() -> None:
+    envelope = await PlanContractCompilerAgent(StubChatModel()).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": "只说学习方剂，不给周期、节点、产出或完成标准。"},
+        trusted_route={},
+        parent_plan_constraints={},
+    )
+    assert envelope.result.status == "needs_revision"
+    assert envelope.result.issues
+
+
+class LongTermCompilerModel:
+    def __init__(self, *, anchor_indexes: tuple[int, ...]) -> None:
+        self.anchor_indexes = anchor_indexes
+
+    async def complete_json(self, role, payload, on_delta=None):
+        assert role == "plan_contract_compiler"
+        anchors = {
+            "/total_duration_days": [
+                {"source_field": "plan_document", "source_quote": "共30天"}
+            ]
+        }
+        for index in self.anchor_indexes:
+            for field in (
+                "stage",
+                "stage_name",
+                "books",
+                "goal",
+                "duration_days",
+                "schedule_summary",
+            ):
+                anchors[f"/stages/{index}/{field}"] = [
+                    {"source_field": "plan_document", "source_quote": "阶段"}
+                ]
+        return {
+            "status": "compiled",
+            "contract_version": "1.0",
+            "contract": {
+                "scope": "long_term",
+                "total_duration_days": 30,
+                "stages": [
+                    {
+                        "stage": 1,
+                        "stage_name": "基础阶段",
+                        "books": ["《中医基础理论》"],
+                        "goal": "掌握基础理论",
+                        "duration_days": 15,
+                        "schedule_summary": "完成基础学习与验收",
+                    },
+                    {
+                        "stage": 2,
+                        "stage_name": "临床阶段",
+                        "books": ["《中医内科学》"],
+                        "goal": "建立辨证思路",
+                        "duration_days": 15,
+                        "schedule_summary": "完成临床学习与验收",
+                    },
+                ],
+                "field_anchors": anchors,
+            },
+        }
+
+
+@pytest.mark.asyncio
+async def test_long_term_stage_anchor_indexes_must_match_contract_positions() -> None:
+    document = "共30天。阶段一使用《中医基础理论》；阶段二使用《中医内科学》。"
+    envelope = await PlanContractCompilerAgent(
+        LongTermCompilerModel(anchor_indexes=(1, 2))
+    ).compile(
+        compiler_context(),
+        plan_scope="long_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={},
+    )
+
+    assert envelope.result.status == "needs_revision"
+    assert "/stages" in {issue.field_path for issue in envelope.result.issues}
+
+
+@pytest.mark.asyncio
+async def test_long_term_stage_anchor_indexes_accept_exact_positions() -> None:
+    document = "共30天。阶段一使用《中医基础理论》；阶段二使用《中医内科学》。"
+    envelope = await PlanContractCompilerAgent(
+        LongTermCompilerModel(anchor_indexes=(0, 1))
+    ).compile(
+        compiler_context(),
+        plan_scope="long_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={},
+    )
+
+    assert envelope.result.status == "compiled"
+
+
+class RejectingCompilerModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        return {
+            "status": "needs_revision",
+            "contract_version": "1.0",
+            "issues": [
+                {
+                    "code": "missing_required_field",
+                    "category": "missing",
+                    "field_path": "/stages",
+                }
+            ],
+        }
+
+
+@pytest.mark.asyncio
+async def test_long_term_document_fallback_never_invents_stage_fields() -> None:
+    document = (
+        "total_duration_days：30\n"
+        "stages：\n"
+        "- 阶段1使用《中医基础理论》\n"
+        "- 阶段2使用《中医内科学》"
+    )
+    envelope = await PlanContractCompilerAgent(RejectingCompilerModel()).compile(
+        compiler_context(),
+        plan_scope="long_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={},
+    )
+
+    assert envelope.result.status == "needs_revision"
+    assert envelope.result.issues[0].field_path == "/stages"

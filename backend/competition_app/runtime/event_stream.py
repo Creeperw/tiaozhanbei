@@ -28,11 +28,7 @@ def current_event_sink() -> EventSink | None:
 
 
 class RecordingEventSink:
-    """Record events while forwarding them to the previous sink.
-
-    Lets a workflow persist its runtime trace into conversation messages while
-    the SSE stream keeps receiving every event unchanged.
-    """
+    """Record low-volume UI events while forwarding the complete SSE stream."""
 
     def __init__(
         self,
@@ -61,7 +57,6 @@ def bind_recording_sink(
     sink: EventSink | None,
     skip_types: frozenset[str] | None = None,
 ) -> Token:
-    """Wrap the current sink with a recorder; restore it with reset_event_sink."""
     return _EVENT_SINK.set(RecordingEventSink(sink, skip_types))
 
 

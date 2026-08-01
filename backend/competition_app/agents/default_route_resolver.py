@@ -372,7 +372,7 @@ class DefaultRouteResolverAgent:
             return self._clarification_resolution(
                 goal_type,
                 goal_name,
-                "暂时无法可靠识别学习路线，请说明具体考试、升学目标、专业方向，或确认仅进行课程学习。",
+                "请说明要参加的具体中医药资格考试官方名称；仅说“长期学习中医”或“零基础”还不能确定报考路线。",
             )
 
         if (
@@ -404,8 +404,7 @@ class DefaultRouteResolverAgent:
             return catalog_match
 
         question = decision.clarification_question or (
-            "当前没有可确认的已批准路线，请说明具体考试、升学目标、专业方向，"
-            "或确认仅进行课程学习。"
+            "请说明要参加的具体中医药资格考试官方名称，以便匹配已批准的教材路线。"
         )
         return self._clarification_resolution(goal_type, goal_name, question)
 

@@ -121,9 +121,9 @@ class PlanningReadinessService:
             return PlanningParentState(
                 scope="long_term",
                 exists=True,
-                valid=True,
+                valid=False,
                 persisted=False,
-                reason_codes=["importable_inline_parent"],
+                reason_codes=["unreviewed_inline_parent"],
             )
         plan_id = str(raw.get("plan_id") or "").strip() or None
         version = raw.get("version")
@@ -194,13 +194,27 @@ class PlanningReadinessService:
     def _stale_parent(
         requested_scope: str, parents: list[PlanningParentState]
     ) -> PlanningReadiness:
+        reason_codes = [
+            reason
+            for parent in parents
+            for reason in parent.reason_codes
+        ]
+        if "unreviewed_inline_parent" in reason_codes:
+            question = (
+                "当前提供的长期规划只是对话中的内联内容，尚未经过系统路线校验、审核和发布；"
+                "请先重新制定长期规划，发布后再生成短期计划。"
+            )
+        elif requested_scope == "daily_task":
+            question = "当前短期计划已失效或不是最新版本，请先重新制定短期计划后再安排今天的任务。"
+        else:
+            question = "上层规划已经失效或不是当前版本，请先重新制定对应的上层规划。"
         return PlanningReadiness(
             requested_scope=requested_scope,
             status="stale_parent_plan",
             can_generate=False,
             required_action="refresh_parent_plan",
-            reason_codes=["parent_plan_stale_or_invalid"],
-            questions=["上层规划已经失效或不是当前版本，请先重新生成对应的上层规划。"],
+            reason_codes=["parent_plan_stale_or_invalid", *reason_codes],
+            questions=[question],
             parent_states=parents,
             available_actions=[],
         )

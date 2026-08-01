@@ -32,7 +32,98 @@ class PlanChangeGate:
         sustained_learning_change: bool = False,
         route_changed: bool = False,
         single_performance_change: bool = False,
+        semantic_decision: PlanChangeDecision | dict[str, Any] | None = None,
+        # Kept only for old direct callers/tests. Production Diagnosis always
+        # passes the semantic contract and explicitly disables this branch.
+        allow_legacy_heuristics: bool = True,
     ) -> PlanChangeDecision:
+        # The semantic assessment is produced by DiagnosisAgent.  The gate is
+        # deliberately only a safety boundary here: it normalizes the three
+        # layers and propagates invalidation, but does not infer meaning from
+        # user wording.
+        if semantic_decision is not None:
+            decision = (
+                semantic_decision
+                if isinstance(semantic_decision, PlanChangeDecision)
+                else PlanChangeDecision.model_validate(semantic_decision)
+            )
+            has_long = self._is_valid(current_long_term_plan)
+            has_short = self._is_valid(current_short_term_plan)
+            long_action = decision.long_term_action
+            short_action = decision.short_term_action
+            daily_action = decision.daily_task_action
+            requested_long_update = long_action == "update"
+            requested_short_update = short_action == "update"
+            # Missing layers are filled only when that layer is the requested
+            # deliverable.  A first long-term plan must not accidentally force
+            # empty short/daily contracts into the same model response.
+            if not has_long and (
+                requested_long_update or decision.replan_requested
+            ):
+                long_action = "update"
+            if not has_short and requested_short_update:
+                short_action = "update"
+            # A parent change invalidates every child layer.  A short-term
+            # change invalidates the current daily task.
+            # A long-term *revision* is a parent-version change.  Initial
+            # creation of a missing long-term plan is different: it must not
+            # force the same response to invent short/daily layers.  Once a
+            # parent exists, or Diagnosis explicitly marks this as a replan,
+            # propagate invalidation through macro→meso→micro.
+            if long_action == "update" and (has_long or decision.replan_requested):
+                short_action = "update"
+                daily_action = "update"
+            elif short_action == "update":
+                daily_action = "update"
+            if single_performance_change:
+                long_action = "reuse" if has_long else "update"
+                short_action = "reuse" if has_short else "update"
+                daily_action = "update"
+            clarification = decision.requires_clarification
+            clarification_questions = list(decision.clarification_questions)
+            if decision.replan_requested and decision.changed_facts:
+                clarification = False
+                clarification_questions = []
+            return decision.model_copy(
+                update={
+                    "long_term_action": long_action,
+                    "short_term_action": short_action,
+                    "daily_task_action": daily_action,
+                    "replan_requested": bool(
+                        decision.replan_requested
+                        or long_action == "update"
+                        or short_action == "update"
+                    ),
+                    "requires_clarification": clarification,
+                    "clarification_questions": clarification_questions,
+                }
+            )
+        # No semantic contract means the model did not provide enough
+        # information to interpret the user's wording. Never infer intent from
+        # Chinese keywords here: that was the source of false re-plans and
+        # repeated clarification loops. Use only system-confirmed facts.
+        if not allow_legacy_heuristics:
+            has_long = self._is_valid(current_long_term_plan)
+            has_short = self._is_valid(current_short_term_plan)
+            long_update = bool(explicit_long_term_change or route_changed)
+            short_update = bool(explicit_short_term_change or sustained_learning_change)
+            if long_update:
+                short_update = True
+            if single_performance_change:
+                long_update = False
+                short_update = False
+            return PlanChangeDecision(
+                long_term_action="update" if long_update or not has_long else "reuse",
+                short_term_action="update" if short_update or not has_short else "reuse",
+                daily_task_action="update",
+                reason=(
+                    "仅依据系统已确认事实；用户语义需由 Diagnosis 合同提供。"
+                    if not (long_update or short_update)
+                    else "依据系统已确认的路线、学习节奏或计划变更事实。"
+                ),
+                replan_requested=bool(long_update or short_update),
+            )
+
         text = "".join(str(user_request or "").split())
         has_long = self._is_valid(current_long_term_plan)
         has_short = self._is_valid(current_short_term_plan)
@@ -67,6 +158,7 @@ class PlanChangeGate:
                     "调整原因和期望结果是什么？",
                 ],
                 reason="重规划请求没有给出足以确定调整层级和内容的事实。",
+                replan_requested=True,
             )
 
         long_update = explicit_long_term_change or route_changed or (
@@ -96,6 +188,7 @@ class PlanChangeGate:
                 if long_update or short_update
                 else "已有有效长短期计划默认原样复用；当日任务按今日事实更新。"
             ),
+            replan_requested=bool(long_update or short_update),
         )
 
     @staticmethod

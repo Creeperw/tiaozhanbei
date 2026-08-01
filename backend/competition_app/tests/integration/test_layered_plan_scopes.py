@@ -547,29 +547,11 @@ async def test_short_term_plan_loads_persisted_parent_when_request_omits_it(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("scope", "expected", "forbidden"),
-    [
-        (
-            "long_term",
-            {"long_term_plan_content", "long_term_plan_stages"},
-            {"short_term_plan_content", "daily_task_content"},
-        ),
-        (
-            "short_term",
-            {"short_term_plan_content", "expected_output", "completion_criteria"},
-            {"long_term_plan_content", "daily_task_content"},
-        ),
-        (
-            "daily_task",
-            {"daily_task_content", "estimated_minutes", "expected_output", "completion_criteria"},
-            {"long_term_plan_content", "short_term_plan_content"},
-        ),
-    ],
+    "scope",
+    ["long_term", "short_term", "daily_task"],
 )
-async def test_diagnosis_sends_only_the_target_layer_schema_to_the_model(
+async def test_diagnosis_sends_natural_language_draft_schema_to_the_model(
     scope: str,
-    expected: set[str],
-    forbidden: set[str],
 ) -> None:
     model = CapturingStubChatModel()
     context = {
@@ -591,6 +573,13 @@ async def test_diagnosis_sends_only_the_target_layer_schema_to_the_model(
 
     await DiagnosisAgent(model).run(context)
 
-    properties = set(model.last_payload["payload"]["output_schema"]["properties"])
-    assert expected <= properties
-    assert properties.isdisjoint(forbidden)
+    payload = model.last_payload["payload"]
+    schema = payload["output_schema"]
+
+    assert payload["plan_scope"] == scope
+    assert set(schema["properties"]) == {
+        "plan_document",
+        "selected_path_candidate_id",
+    }
+    assert schema["required"] == ["plan_document"]
+    assert schema["additionalProperties"] is False

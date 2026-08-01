@@ -45,7 +45,7 @@ OPTIONAL_AGENT_DEPENDENCIES: dict[str, list[str]] = {
 AGENT_CAPABILITIES = {
     "memory_agent": "读取当前会话、确认偏好和临时约束，生成学习者上下文",
     "knowledge_base_agent": "解析知识查询并检索教材证据或候选题",
-    "default_route_resolver": "根据学习目标解析已批准的默认学习路线或保守暂定路线",
+    "default_route_resolver": "系统在学情诊断前自动注入的路线解析节点，Planner 无需选择它",
     "diagnosis_agent": "分析学情、查询本人学习数据，并生成规划及任务建议",
     "learning_plan_service": "将规划建议转成带系统ID、版本和状态的正式计划与任务",
     "review_scheduler": "为需要立即生成复习资源的任务建立复习调度壳",
@@ -99,6 +99,12 @@ class PlannerAgent:
         self.chat_model = chat_model or StubChatModel()
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[PlannerDecision]:
+        # The live planner is semantic-first.  A few direct unit callers still
+        # invoke ``_normalize_output`` without going through ``run``; keeping
+        # this marker here lets that legacy fixture path remain compatible
+        # without allowing keyword heuristics to override a model decision in
+        # the real orchestration flow.
+        context["semantic_routing_mode"] = True
         routing_skill = prompt_skill_registry.load("planner_agent", "route_request")
         skills = prompt_skill_registry.load_many(
             [
@@ -118,8 +124,14 @@ class PlannerAgent:
                 payload={
                     "user_request": context.get("user_request", ""),
                     "plan_scope": context.get("plan_scope"),
-                    "plan_scope_hint": context.get("plan_scope_hint"),
-                    "continued_plan_scope": context.get("continued_plan_scope"),
+                    # This is only a weak, system-provided hint.  The Planner
+                    # still owns the semantic routing decision, but it must
+                    # actually receive the hint when the caller did not pass
+                    # an explicit scope (for example “本周计划” followed by
+                    # “今天的任务”).  Previously it was computed in the use
+                    # case and then dropped here, so the offline/live model
+                    # saw both values as null and often reused the parent
+                    # long-term layer.
                     "available_minutes": context.get("available_minutes"),
                     "existing_plan_state": {
                         "has_long_term_plan": bool(
@@ -132,18 +144,7 @@ class PlannerAgent:
                             context.get("current_learning_task", {}).get("task_content")
                         ),
                     },
-                    "multi_scale_learning_state": context.get(
-                        "planner_multiscale_summary", {}
-                    ),
                     "conversation_context": {
-                        "message_count": len(context.get("messages", [])),
-                        "total_characters": sum(
-                            len(str(item.get("content", "")))
-                            for item in context.get("messages", [])
-                        ),
-                        "requires_compression": bool(
-                            context.get("conversation_requires_compression", False)
-                        ),
                         "recent_turns": [
                             {
                                 "role": str(item.get("role", "")),
@@ -160,21 +161,22 @@ class PlannerAgent:
                         "casual_conversation必须结合本轮话语和最近对话生成casual_response；问候与真实任务并存时必须处理真实任务。",
                         "长期或短期规划必须选择audit_agent并在审核通过后才能由learning_plan_service发布；当日任务无需选择audit_agent。",
                         "plan_scope 是明确指定，有值时必须原样保留并路由为 learning_plan。",
-                        "plan_scope_hint 只是规则提示，必须结合用户本轮语义和最近对话独立判断，可以改写。",
                         "continued_plan_scope 表示当前话语是上一轮规划调研的补充或纠正；有值时必须延续 learning_plan 和该层级。",
                         "制定或修改计划时必须输出 long_term、short_term、daily_task 或 unspecified 之一；纯学情查询可返回 null。",
-                        "已有对应层级的当前有效计划时，除非用户明确说强制修改、重新制定、调整、更新或表达不满意，否则plan_action必须为reuse，不得重新生成。",
-                        "用户只泛化地说“制定学习计划”且已有计划时，不追问层级：优先复用当前短期计划；没有短期计划时复用长期规划。只有明确提到今天或当日任务时才复用当日任务。",
-                        "复用计划时不选择Diagnosis和Audit，只由LearningPlanService读取正式版本；系统会另行根据学习监控数据执行规划复盘。",
+                        "已有对应层级的当前有效计划时，用户只是查看、沿用或泛化询问计划情况时plan_action为reuse，不得重新生成；但用户明确要求强制修改、重新制定、调整、更新、表达不满意，或表达“结合我的学习状态/最新学情/最近学习情况”重新评估后制定时，必须进入重评估路径，不得直接复用。",
+                        "用户泛化地说“制定学习计划”且已有任一有效计划、但没有明确长期/短期/当日层级时，必须先说明当前已有计划并追问本次要制定或调整哪一层；不得自行选择长期规划、短期计划或当日任务，也不得在层级确认前进入Diagnosis重规划、Compiler或Audit。用户确认层级后，再由对应层级的前置条件检查追问缺失的基本信息。",
+                        "判定为纯复用（用户查看/沿用已有计划）时不选择Diagnosis和Audit，只由LearningPlanService读取正式版本；判定为需重评估的“制定”请求时，必须选择Diagnosis并结合其结论决定复用或更新，长期或短期重制定仍需audit_agent。",
                         "是否需要追问由Planner结合本轮语义和最近对话判断；只有无法判断规划层级时才使用unspecified，并给出一条自然、可直接回答的clarification_question。",
                         "用户同时要求学习计划和学习卡片、复习卡或可直接学习资源时，交付物属于资源生成链路；该链路仍会先生成并落地学习计划。",
                         "用户要求组卷、试卷、模拟卷、测试卷或试卷蓝图时使用paper_generation；该链路只需要Knowledge、Expert、Audit，不强制生成学习计划或复习调度任务。",
                         "用户要求讲解、解释、介绍某个知识点或询问是什么、为什么、原理、区别时使用knowledge_explanation；只运行Knowledge、Expert、Audit，不生成学习计划、学习任务或复习调度。",
+                        "当本轮用户询问今天/今晚/当日有哪些学习任务或要学习什么时，最终交付物只能是daily_task；这是把已有规划落地为今日任务，不是长期规划或短期计划。提交前必须核对时间范围，并让routing_reason明确写‘当日任务’。",
                         "用户要求梳理某教材章节的学习要点、阅读重点、学习方法或开放式学习支持，而不是解释单个概念时，使用general_learning_support；允许Expert用自然语言灵活组织，不强制套知识讲解五段式。",
                         "用户询问自己最近学了什么、接下来需要学什么、完成了多少题、学习进度、掌握情况、薄弱点、复习状态或现有计划进展时使用learner_data_query；只选择Diagnosis读取本人只读数据，不生成资源或改写计划。",
                         "“最近需要学习些什么、接下来该学什么、下一步学什么”是在查询下一步学习重点，不等于要求创建短期计划；除非用户明确要求制定、生成、安排或修改计划，否则使用learner_data_query。",
                         "learner_data_query必须返回query_kind：近期学习recent_learning、下一步重点next_learning、统计进度progress_summary、掌握情况mastery_status、复习状态review_status、计划进展plan_progress。",
                         "只有生成教学资源时才选择expert_agent；选择expert_agent时必须选择audit_agent。",
+                        "default_route_resolver 由系统在学情诊断前自动注入，Planner 不得将其加入 selected_agents。",
                         "Planner只负责编排，不生成学习规划内容、工具参数或系统ID。",
                     ],
                     "routing_skills": [skill.as_model_input() for skill in skills],
@@ -182,6 +184,17 @@ class PlannerAgent:
                 },
                 permission_note="只能输出任务类型、参与Agent、路由理由、编排风险、审核需求，以及纯闲聊时面向用户的自然回复；不得生成检索表达、学习规划、调用工具或写业务状态。",
             )
+            # These values are optional routing aids.  Omitting absent hints
+            # keeps the model boundary clean for callers that did not compute
+            # a hint, while preserving them whenever the application has one.
+            if context.get("plan_scope_hint") is not None:
+                model_context["payload"]["plan_scope_hint"] = context.get(
+                    "plan_scope_hint"
+                )
+            if context.get("continued_plan_scope") is not None:
+                model_context["payload"]["continued_plan_scope"] = context.get(
+                    "continued_plan_scope"
+                )
             model_context["_result_validator"] = lambda result: PlannerModelOutput.model_validate(
                 self._normalize_output(result, context)
             ).model_dump(mode="json")
@@ -198,19 +211,9 @@ class PlannerAgent:
                     "planner_agent", valid=False, detail="PlannerModelOutput"
                 )
             raise ValueError("planner output validation failed") from exc
-        if (
-            context.get("conversation_requires_compression", False)
-            and "memory_agent" not in model_output.selected_agents
-        ):
-            model_output = model_output.model_copy(
-                update={
-                    "selected_agents": ["memory_agent", *model_output.selected_agents],
-                    "routing_reason": (
-                        model_output.routing_reason
-                        + " 会话已超过上下文阈值，系统强制先由记忆管理智能体压缩。"
-                    )[:500],
-                }
-            )
+        # Memory participation and compression are separate concerns.  Memory
+        # is a normal context/governance node for business workflows; its own
+        # fixed threshold decides whether the compression sub-step runs.
         if (
             model_output.task_type != "casual_conversation"
             and "memory_agent" not in model_output.selected_agents
@@ -220,7 +223,7 @@ class PlannerAgent:
                     "selected_agents": ["memory_agent", *model_output.selected_agents],
                     "routing_reason": (
                         model_output.routing_reason
-                        + " 系统强制先由记忆管理智能体检索相关学习记忆、提取候选并检查冲突。"
+                        + " 本轮先由记忆管理智能体读取并治理相关长短期记忆；上下文压缩仅由系统阈值触发。"
                     )[:500],
                 }
             )
@@ -293,6 +296,10 @@ class PlannerAgent:
         personalized_resource_request = PlannerAgent._requests_personalized_resource(
             request
         )
+        # Current-fact requests (weather, exam dates, schedules, etc.) are
+        # still delivered through the open-ended support graph, but are marked
+        # on context so Knowledge can use the web-reference tool instead of
+        # trying to resolve a textbook knowledge-point ID.
         if PlannerAgent._is_external_information_request(request):
             context["external_information_request"] = True
             task_type = "general_learning_support"
@@ -301,10 +308,7 @@ class PlannerAgent:
             and not personalized_resource_request
         ):
             context["question_explanation_request"] = True
-        if (
-            PlannerAgent._is_emotional_support_request(request)
-            and not PlannerAgent._has_explicit_business_delivery_request(request)
-        ):
+        if PlannerAgent._is_emotional_support_request(request):
             context["emotional_support_request"] = True
         query_kind = (
             None
@@ -336,6 +340,11 @@ class PlannerAgent:
         if scoped_planning_request:
             task_type = "learning_plan"
             query_kind = None
+        elif query_kind is not None:
+            # Read-only requests such as “我的长期计划是什么样的” must not
+            # enter the plan-creation prerequisite gate.  Diagnosis owns the
+            # read and returns the current persisted plan/progress instead.
+            task_type = "learner_data_query"
         elif context.get("question_explanation_request") and task_type in {
             "", "learner_data_query", "learning_plan", "personalized_review_card"
         }:
@@ -373,13 +382,21 @@ class PlannerAgent:
             "knowledge_explanation", "learner_data_query", "learning_plan",
             "personalized_review_card", "paper_generation"
         }:
-            task_type = (
-                "paper_generation" if any(word in request for word in ("组卷", "试卷", "模拟卷", "测试卷"))
-                else "knowledge_explanation" if any(word in request for word in ("讲解", "解释", "介绍", "为什么"))
-                else "learning_plan" if any(word in request for word in ("学习计划", "复习计划", "制定计划"))
-                else "learner_data_query" if query_kind is not None
-                else "personalized_review_card"
-            )
+            # Production never repairs an invalid model label by scanning the
+            # user's text. A model omission is routed conservatively to the
+            # general-support node; explicit system scope/query signals above
+            # remain authoritative. Legacy direct normalizer tests may opt into
+            # the old fixture behavior with ``semantic_routing_mode=False``.
+            if context.get("semantic_routing_mode"):
+                task_type = "general_learning_support"
+            else:
+                task_type = (
+                    "paper_generation" if any(word in request for word in ("组卷", "试卷", "模拟卷", "测试卷"))
+                    else "knowledge_explanation" if any(word in request for word in ("讲解", "解释", "介绍", "为什么"))
+                    else "learning_plan" if any(word in request for word in ("学习计划", "复习计划", "制定计划"))
+                    else "learner_data_query" if query_kind is not None
+                    else "personalized_review_card"
+                )
         clear_business_signals = (
             explicit_planning_scope
             or continued_planning_request
@@ -389,6 +406,7 @@ class PlannerAgent:
                 for phrase in (
                     "制定计划", "学习计划", "学习规划", "复习计划", "长期规划", "短期计划",
                     "今天任务", "今日任务", "安排任务", "安排一下学习", "组卷", "试卷",
+                    "我今天有哪些学习任务", "我今天要学习什么", "今天安排什么", "今晚学习什么", "今天学什么",
                     "模拟卷", "测试卷", "讲解", "解释", "介绍", "为什么", "学习卡",
                     "复习卡", "学习资源", "直接学习",
                     "最近学", "学习进度", "完成了多少题", "做了多少题", "掌握情况",
@@ -433,23 +451,52 @@ class PlannerAgent:
                 context.get("current_learning_task"), "task_content"
             ),
         }
-        explicit_mutation = PlannerAgent._explicit_plan_mutation(request)
+        model_plan_action = raw.get("plan_action")
+        # ``run`` marks production routing; direct calls to this normalizer in
+        # older tests remain deterministic fixtures.
+        semantic_routing_mode = bool(context.get("semantic_routing_mode"))
+        # ``_explicit_plan_mutation`` is retained only for old direct fixture
+        # calls.  In the running system the model owns whether the current
+        # request means reuse or revision; the normalizer only applies safe
+        # state-based defaults when the model omitted the field.
+        explicit_mutation = (
+            PlannerAgent._explicit_plan_mutation(request)
+            if not semantic_routing_mode
+            else False
+        )
         plan_action = None
         if task_type == "learning_plan":
-            # A vague planning request must not discard an already approved
-            # plan. Planner semantics remain authoritative for explicit scopes;
-            # this deterministic closure protects persistence from accidental
-            # regeneration when the model omits or contradicts plan_action.
-            if (
+            # A generic “制定学习计划” request does not identify which persisted
+            # layer the learner wants to replace.  This is a deterministic
+            # safety boundary rather than a model preference: when at least one
+            # valid plan already exists, tell the learner what exists and ask
+            # for the target layer before Diagnosis, Compiler or Audit can run.
+            # Once the learner names a layer, explicit/continued scope remains
+            # authoritative and the normal profile/readiness checks run next.
+            ambiguous_existing_plan_request = (
                 not scoped_planning_request
                 and context.get("plan_scope_hint") not in valid_scopes
-                and not explicit_mutation
-            ):
-                if existing_state["short_term"]:
-                    plan_scope = "short_term"
-                elif existing_state["long_term"]:
-                    plan_scope = "long_term"
-            if explicit_mutation:
+                and any(existing_state.values())
+                and PlannerAgent._is_generic_plan_creation_request(request)
+            )
+            if ambiguous_existing_plan_request:
+                plan_scope = "unspecified"
+                plan_action = "clarify"
+            elif semantic_routing_mode and model_plan_action in {
+                "reuse", "create_or_update", "clarify"
+            }:
+                plan_action = model_plan_action
+            elif semantic_routing_mode:
+                # No semantic decision means no safe mutation.  Reuse an
+                # existing requested layer; otherwise leave the request for
+                # the clarification path instead of guessing from wording.
+                if plan_scope in {"long_term", "short_term", "daily_task"} and existing_state[plan_scope]:
+                    plan_action = "reuse"
+                elif plan_scope == "unspecified":
+                    plan_action = "clarify"
+                else:
+                    plan_action = "create_or_update"
+            elif explicit_mutation:
                 plan_action = "create_or_update"
             elif (
                 plan_scope in {"long_term", "short_term", "daily_task"}
@@ -462,7 +509,16 @@ class PlannerAgent:
                 plan_action = "create_or_update"
         requires_clarification = bool(raw.get("requires_clarification"))
         clarification_question = str(raw.get("clarification_question") or "").strip() or None
+        if task_type == "learning_plan" and ambiguous_existing_plan_request:
+            clarification_question = PlannerAgent._existing_plan_scope_question(
+                existing_state
+            )
         casual_response = str(raw.get("casual_response") or "").strip() or None
+        # Emotional-support turns are intentionally open-ended, but a model
+        # fallback such as “本次处理已经完成” is not a useful response. Keep
+        # the model's wording when it is substantive; otherwise provide a
+        # small, actionable safety net so the conversation never degrades into
+        # an empty workflow acknowledgement.
         if (
             task_type == "casual_conversation"
             and context.get("emotional_support_request")
@@ -637,6 +693,38 @@ class PlannerAgent:
         }
 
     @staticmethod
+    def _existing_plan_scope_question(existing_state: dict[str, bool]) -> str:
+        labels = [
+            label
+            for scope, label in (
+                ("long_term", "长期规划"),
+                ("short_term", "短期计划"),
+                ("daily_task", "当日任务"),
+            )
+            if existing_state.get(scope)
+        ]
+        existing = "、".join(labels)
+        return (
+            f"你当前已经有有效的{existing}。"
+            "这次希望制定或调整哪一层：长期规划、短期计划，还是当日任务？"
+        )
+
+    @staticmethod
+    def _is_generic_plan_creation_request(request: str) -> bool:
+        text = "".join(str(request or "").split())
+        asks_for_plan = any(
+            marker in text
+            for marker in ("学习计划", "学习规划", "复习计划", "安排学习")
+        )
+        asks_to_create = any(
+            marker in text
+            for marker in (
+                "制定", "生成", "安排", "规划一份", "做一份", "做个", "来一份", "给我一份",
+            )
+        )
+        return asks_for_plan and asks_to_create
+
+    @staticmethod
     def _explicit_plan_mutation(request: str) -> bool:
         normalized = "".join(str(request or "").split())
         exact = any(
@@ -732,22 +820,7 @@ class PlannerAgent:
             marker in text
             for marker in ("难", "不会", "不懂", "卡住", "看不懂", "怎么答", "答不出来")
         )
-        has_question_context = any(
-            marker in text
-            for marker in ("题", "怎么答", "答不出来")
-        )
-        return asks_to_explain or (asks_for_difficulty_help and has_question_context)
-
-    @staticmethod
-    def _has_explicit_business_delivery_request(request: str) -> bool:
-        text = "".join(str(request or "").split())
-        return any(
-            marker in text
-            for marker in (
-                "制定", "计划", "规划", "安排", "生成", "组卷", "试卷",
-                "讲解", "解释", "复习卡", "学习卡", "学习资源",
-            )
-        )
+        return asks_to_explain or asks_for_difficulty_help
 
     @staticmethod
     def _is_emotional_support_request(request: str) -> bool:
@@ -786,7 +859,15 @@ class PlannerAgent:
                     "现在应该学什么", "需要学习些什么",
                 ),
             ),
-            ("plan_progress", ("计划进展", "规划进展", "计划进度", "规划进度", "阶段进展")),
+            (
+                "plan_progress",
+                (
+                    "计划进展", "规划进展", "计划进度", "规划进度", "阶段进展",
+                    "现有长期计划", "当前长期计划", "我的长期计划", "长期计划是什么",
+                    "现有短期计划", "当前短期计划", "我的短期计划", "短期计划是什么",
+                    "现有学习规划", "当前学习规划", "我的学习规划",
+                ),
+            ),
             (
                 "review_status",
                 ("复习状态", "复习情况", "最近复习", "到期复习", "复习到期", "复习队列"),
@@ -804,6 +885,20 @@ class PlannerAgent:
                 ("最近学", "近期学", "这周学", "本周学", "学了些什么", "学过什么"),
             ),
         )
+        # This is a response-shape closure, not the primary router.  The live
+        # model still decides whether the turn is a learner-data query; once it
+        # has done so, a request to *view* a named plan layer must not inherit a
+        # generic query_kind from a malformed/model fallback response.
+        mentions_plan_layer = any(
+            layer in text
+            for layer in ("长期计划", "长期学习计划", "长期规划", "短期计划", "短期学习计划", "短期规划")
+        )
+        asks_to_view = any(
+            intent in text
+            for intent in ("看看", "查看", "看下", "是什么", "什么样", "内容", "进展", "进度")
+        )
+        if mentions_plan_layer and asks_to_view:
+            return "plan_progress"
         if (
             any(marker in text for marker in ("接下来", "下一步", "最近需要", "近期需要"))
             and "学" in text
@@ -825,9 +920,13 @@ class PlannerAgent:
                 raise ValueError("casual conversation must not select downstream agents")
             return
         if output.task_type == "learning_plan" and output.plan_action == "reuse":
-            if selected != {"learning_plan_service"}:
+            # Memory is still a required context/governance node when an
+            # existing plan is reused.  Reuse skips diagnosis/audit and does
+            # not mutate the plan, but it must let Memory read the current
+            # learner context and extract any newly stated facts.
+            if selected - {"memory_agent", "learning_plan_service"} or "learning_plan_service" not in selected:
                 raise ValueError(
-                    "reusing a learning plan only requires learning_plan_service"
+                    "reusing a learning plan requires memory_agent and learning_plan_service"
                 )
             if output.requires_audit:
                 raise ValueError("reusing an approved plan must not trigger a new audit")
@@ -892,18 +991,18 @@ class PlannerAgent:
         if "expert_agent" in selected and "audit_agent" not in selected:
             raise ValueError("expert output requires audit_agent")
         if output.task_type == "paper_generation" and not {
-            "knowledge_base_agent", "expert_agent", "audit_agent"
+            "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
         }.issubset(selected):
-            raise ValueError("paper_generation requires knowledge, expert and audit")
+            raise ValueError("paper_generation requires memory, knowledge, expert and audit")
         if output.task_type == "knowledge_explanation" and not {
-            "knowledge_base_agent", "expert_agent", "audit_agent"
+            "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
         }.issubset(selected):
-            raise ValueError("knowledge_explanation requires knowledge, expert and audit")
+            raise ValueError("knowledge_explanation requires memory, knowledge, expert and audit")
         if output.task_type == "general_learning_support" and not {
-            "knowledge_base_agent", "expert_agent", "audit_agent"
+            "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
         }.issubset(selected):
             raise ValueError(
-                "general_learning_support requires knowledge, expert and audit"
+                "general_learning_support requires memory, knowledge, expert and audit"
             )
         if output.task_type == "knowledge_explanation" and selected.intersection(
             {"diagnosis_agent", "learning_plan_service", "review_scheduler"}
@@ -933,7 +1032,7 @@ class PlannerAgent:
                 }
             )
         if output.task_type == "paper_generation":
-            required = {"knowledge_base_agent", "expert_agent", "audit_agent"}
+            required = {"memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"}
             selected_set = set(output.selected_agents) | required
             selected = [
                 agent
@@ -952,7 +1051,7 @@ class PlannerAgent:
                 }
             )
         if output.task_type == "learner_data_query":
-            selected_set = set(output.selected_agents) | {"diagnosis_agent"}
+            selected_set = set(output.selected_agents) | {"memory_agent", "diagnosis_agent"}
             return output.model_copy(
                 update={
                     "selected_agents": [
@@ -965,7 +1064,7 @@ class PlannerAgent:
             )
         if output.task_type == "knowledge_explanation":
             selected_set = set(output.selected_agents) | {
-                "knowledge_base_agent", "expert_agent", "audit_agent"
+                "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
             }
             selected = [
                 agent for agent in KNOWLEDGE_EXPLANATION_AGENTS if agent in selected_set
@@ -981,7 +1080,7 @@ class PlannerAgent:
             )
         if output.task_type == "general_learning_support":
             selected_set = set(output.selected_agents) | {
-                "knowledge_base_agent", "expert_agent", "audit_agent"
+                "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
             }
             selected = [
                 agent
@@ -1019,7 +1118,7 @@ class PlannerAgent:
             if output.plan_action == "reuse":
                 return output.model_copy(
                     update={
-                        "selected_agents": ["learning_plan_service"],
+                        "selected_agents": ["memory_agent", "learning_plan_service"],
                         "requires_audit": False,
                     }
                 )
@@ -1165,6 +1264,24 @@ class PlannerAgent:
                 plan_id="PLAN_DYNAMIC_PAPER_GENERATION",
                 task_type=decision.task_type,
                 steps=steps,
+            )
+        if decision.task_type == "learning_plan" and decision.plan_action == "reuse":
+            # Reuse is read-only for the persisted plan, but Memory still runs
+            # first to read/govern current learner facts.  No diagnosis or
+            # audit is needed because nothing is regenerated or published.
+            return ExecutionPlan(
+                plan_id="PLAN_DYNAMIC_LEARNING_PLAN_REUSE",
+                task_type=decision.task_type,
+                steps=[
+                    ExecutionStep(step_id="memory", agent="memory_agent", timeout_seconds=300.0),
+                    ExecutionStep(
+                        step_id="learning_plan",
+                        agent="learning_plan_service",
+                        action="reuse_plan",
+                        depends_on=["memory"],
+                        timeout_seconds=300.0,
+                    ),
+                ],
             )
         if decision.task_type in {
             "knowledge_explanation",

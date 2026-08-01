@@ -25,6 +25,17 @@ class MigrationRunner:
             statement = raw_statement.strip()
             if not statement:
                 continue
+            # MySQL-only column-type changes (e.g. MODIFY COLUMN ... LONGTEXT)
+            # are no-ops for SQLite: TEXT columns are unbounded and the column
+            # already exists from its ADD COLUMN migration.  Skipping them here
+            # keeps the formal SQLite test database on the same migration
+            # history as MySQL without dialect-specific ALTER support.
+            if re.search(
+                r"ALTER\s+TABLE\s+[\w.`]+\s+MODIFY\s+COLUMN",
+                statement,
+                flags=re.IGNORECASE,
+            ):
+                continue
             table_match = re.search(
                 r"CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+([A-Za-z0-9_]+)",
                 statement,

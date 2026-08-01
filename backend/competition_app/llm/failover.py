@@ -50,6 +50,44 @@ class FailoverChatModel(ChatModel):
     def candidate_models(self) -> tuple[str, ...]:
         return tuple(str(getattr(item, "model", "unknown")) for item in self._candidates)
 
+    async def complete_text(
+        self,
+        role: str,
+        payload: dict[str, Any],
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str:
+        """Fail over natural-language calls without changing them into JSON calls."""
+        async with self._state_lock:
+            start_index = self._active_index
+        last_error: ModelResponseError | None = None
+        for index in range(start_index, len(self._candidates)):
+            candidate = self._candidates[index]
+            buffered: list[str] = []
+            try:
+                result = await candidate.complete_text(
+                    role,
+                    payload,
+                    on_delta=buffered.append if on_delta is not None else None,
+                )
+            except ModelResponseError as exc:
+                self._copy_transport(candidate, [])
+                last_error = exc
+                if not exc.failover_eligible or index == len(self._candidates) - 1:
+                    raise
+                async with self._state_lock:
+                    self._active_index = max(self._active_index, index + 1)
+                continue
+            async with self._state_lock:
+                self._active_index = max(self._active_index, index)
+            self._copy_transport(candidate, [])
+            if on_delta is not None:
+                for delta in buffered:
+                    on_delta(delta)
+            return str(result)
+        if last_error is not None:
+            raise last_error
+        raise ModelResponseError("No chat model candidate was available", reason="unavailable")
+
     async def complete_json(
         self,
         role: str,

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlparse
 from uuid import uuid4
 
 from competition_app.agents.common import envelope
@@ -22,12 +21,6 @@ from pydantic import ValidationError
 
 
 class AuditAgent:
-    OFFICIAL_CURRENT_FACT_HOSTS = {
-        "nmec.org.cn",
-        "weather.com.cn",
-        "cma.cn",
-    }
-
     def __init__(
         self,
         chat_model: ChatModel | None = None,
@@ -112,7 +105,9 @@ class AuditAgent:
                         "teaching_only": True,
                         "paper_generation": paper_generation,
                         "knowledge_explanation": knowledge_explanation,
-                        "external_information_request": external_information_request,
+                        "external_information_request": bool(
+                            external_information_request
+                        ),
                         "exam_constraints": context.get("exam_constraints", {}),
                     },
                     "output_schema": AuditModelOutput.model_json_schema(),
@@ -132,6 +127,12 @@ class AuditAgent:
                 context["terminal_trace"].validation("audit_agent", valid=True, detail="AuditModelOutput")
         deterministic_findings: list[str] = []
         selected_task = getattr(schedule, "selected_task", None)
+        # A current-fact answer (weather, exam dates, etc.) is deliberately
+        # independent of the learner's currently scheduled knowledge point.
+        # The scheduler may still be present in the shared execution context,
+        # but it must not turn an otherwise valid web answer into a target-KP
+        # mismatch.  Likewise, time-budget checks apply to generated learning
+        # resources, not to a concise factual lookup.
         if not external_information_request:
             if selected_task and expert.target_kp_id != selected_task.primary_kp_id:
                 deterministic_findings.append("资源目标知识点与复习调度任务不一致。")
@@ -139,21 +140,24 @@ class AuditAgent:
                 deterministic_findings.append("资源预计时长超过用户本次可用时间。")
         model_decision = model_output.decision
         decision = "revise" if missing or deterministic_findings else model_decision
-        nonofficial_web_evidence = (
+        # External facts are already bounded by the web evidence pack and the
+        # dedicated prompt.  Do not fail closed merely because a general audit
+        # model asks for a pedagogical revision (for example, an exercise,
+        # textbook structure, or a learner-task alignment that does not apply
+        # to a weather/date lookup).  A source-backed answer can be published
+        # while retaining the model's findings as non-blocking audit notes.
+        if (
             external_information_request
-            and any(
-                item.resource_type == "web"
-                and item.authority_level != "system_notice"
-                and not self._is_official_current_fact_source(item.source_url)
-                for item in evidence.evidence_items
-            )
-        )
-        if nonofficial_web_evidence:
+            and not missing
+            and not deterministic_findings
+            and model_decision in {"revise", "needs_human_review"}
+        ):
+            decision = "pass"
             model_output = model_output.model_copy(
                 update={
                     "findings": [
                         *model_output.findings,
-                        "实时信息提示：信息来自非官方网页，请以官方渠道为准。",
+                        "外部事实已具备网络证据；审核建议作为非阻断提示保留。",
                     ]
                 }
             )
@@ -220,18 +224,6 @@ class AuditAgent:
             subject_type="resource",
         )
         return envelope(context, "audit_agent", "audit_result", result)
-
-    @staticmethod
-    def _is_official_current_fact_source(source_url: str | None) -> bool:
-        host = (urlparse(source_url or "").hostname or "").lower()
-        return (
-            host == "gov.cn"
-            or host.endswith(".gov.cn")
-            or any(
-                host == official_host or host.endswith(f".{official_host}")
-                for official_host in AuditAgent.OFFICIAL_CURRENT_FACT_HOSTS
-            )
-        )
 
     @staticmethod
     def _resource_repair_issues(

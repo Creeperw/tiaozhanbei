@@ -47,6 +47,16 @@ from competition_app.api.simulated_patient_routes import router as sp_router, in
 
 
 SESSION_COOKIE = "competition_session"
+
+# Persist collaboration events needed by the GitHub-main assistant UI, while
+# keeping high-volume model payloads exclusively in the live SSE stream.
+_NON_TRACE_EVENT_TYPES = frozenset({
+    "model_delta",
+    "model_input",
+    "model_output",
+    "model_transport",
+    "system_output",
+})
 QUALIFICATION_TARGET_CATALOG = (
     Path(__file__).resolve().parents[1]
     / "data"
@@ -56,15 +66,6 @@ QUALIFICATION_TARGET_CATALOG = (
 WORKSHOP_NOTE_IMAGE_ROOT = (
     Path(__file__).resolve().parents[1] / "data" / "workshop_note_images"
 )
-
-# 高音量模型调用/系统内部事件不随消息持久化，只进 SSE 流。
-_NON_TRACE_EVENT_TYPES = frozenset({
-    "model_delta",
-    "model_input",
-    "model_output",
-    "model_transport",
-    "system_output",
-})
 
 _PRACTICE_TYPE_ALIASES = {
     "单项选择题": "single_choice",
@@ -827,6 +828,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=401, detail="请先登录后继续")
         try:
             return qualification_papers.get_attempt(user.user_id, attempt_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=410, detail=str(exc)) from exc
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -857,6 +860,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if user is None:
             raise HTTPException(status_code=401, detail="请先登录后继续")
         try:
+            cached = qualification_papers.get_cached_submission(
+                user.user_id, attempt_id, payload.request_id
+            )
+            # Only responses enriched by this API are final.  Legacy/base
+            # service caches do not contain learning_writeback and still need
+            # the one-time handoff below.
+            if cached is not None and "learning_writeback" in cached:
+                return cached
             result = qualification_papers.submit_attempt(user.user_id, attempt_id, payload.request_id)
             if backend_handoff is not None and hasattr(
                 backend_handoff, "record_qualification_paper_outcomes"
@@ -870,6 +881,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     )
                 except Exception:
                     result["learning_writeback"] = {"status": "retry_pending"}
+            else:
+                result["learning_writeback"] = {"status": "not_configured"}
+            qualification_papers.cache_submission_response(
+                user.user_id,
+                attempt_id,
+                payload.request_id,
+                result,
+            )
             return result
         except (KeyError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -1655,6 +1674,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "destination": "workshop.paper",
                     "params": {},
                 }]
+            if isinstance(row.get("trace_events"), list):
+                message["trace_events"] = row["trace_events"]
+            elif isinstance(row.get("traceEvents"), list):
+                message["traceEvents"] = row["traceEvents"]
             messages.append(message)
         return messages
 
@@ -4249,6 +4272,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     error_code = "model_timeout"
                 else:
                     error_code = "workflow_timeout"
+                retryable = True
+            elif failed_step in {"conversation", "persistence", "snapshot", "profile_writeback"}:
+                error_code = "persistence_failed"
                 retryable = True
             elif "knowledge" in normalized:
                 error_code = "knowledge_step_failed"

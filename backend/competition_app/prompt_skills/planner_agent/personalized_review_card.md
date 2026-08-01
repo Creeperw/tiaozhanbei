@@ -19,7 +19,7 @@ task_type: personalized_review_card
 4. ReviewScheduler 为立即生成的复习资源建立调度壳。
 5. Expert 依据正式任务和证据生成资源。
 6. Audit 审核资源事实、适配性和教学安全。
-7. Memory 只在系统明确标记长对话需要压缩时加入。
+7. Memory 是业务流程常规上下文节点，非闲聊任务由系统自动前置注入；上下文压缩仅由系统阈值触发，Planner 无需自行选择。
 
 ## 选择规则
 

@@ -294,6 +294,8 @@ class PlanChangeDecision(ContractModel):
     requires_clarification: bool = False
     clarification_questions: list[str] = Field(default_factory=list)
     reason: str = Field(min_length=1)
+    replan_requested: bool = False
+    changed_facts: list[str] = Field(default_factory=list)
 
 
 class LearningPlanClarificationResult(ContractModel):
@@ -301,3 +303,4 @@ class LearningPlanClarificationResult(ContractModel):
     clarification_questions: list[str] = Field(min_length=1)
     reason: str = Field(min_length=1)
     requested_scope: PlanScope | Literal["unspecified"] | None = None
+    prerequisite_scope: PlanScope | None = None

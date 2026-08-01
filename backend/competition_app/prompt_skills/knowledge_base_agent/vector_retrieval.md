@@ -1,6 +1,6 @@
 ---
 skill_id: knowledge.vector_retrieval
-version: 1.1.0
+version: 1.0.0
 agent: knowledge_base_agent
 task_type: vector_retrieval
 ---
@@ -17,8 +17,8 @@ task_type: vector_retrieval
 - 不得加入用户没有提到的方剂、病证或知识点。
 - `kp_query` 是 `get_kp_with_content` 的参数，必须能召回知识点及教材内容。
 - `question_query` 是 `get_question_with_content` 的参数。无论用户是否明确要求出题，每次任务都必须生成有效题目检索语句并执行题目内容检索；是否把题目用于最终资源由下游任务决定。
-- 对天气、考试日期、报名时间、截止日期等时效性事实，不要生成教材知识点检索词或尝试解析正式知识点 ID；由系统使用 `search_web_resources`/外部事实工具，优先检索官方来源。
 - 不输出工具名和工具参数对象；系统根据结构化字段调用固定白名单工具。
+- 对天气、考试日期、报名时间���截止日期等时效性事实，不要生成教材知识点检索词或尝试解析正式知识点ID；由系统使用 `search_web_resources`/外部事实工具，优先检索官方来源。
 - 检索表达属于本次运行时数据，不能写回用户画像或长期记忆。
 
 ## 召回内容处理

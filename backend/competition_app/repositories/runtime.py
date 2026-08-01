@@ -10,6 +10,10 @@ from typing import Any, Protocol
 from pydantic import BaseModel
 from sqlalchemy import Engine, text
 
+from competition_app.services.conversation_history import (
+    sanitize_conversation_messages,
+)
+
 
 def _json_default(value: Any) -> Any:
     if isinstance(value, BaseModel):
@@ -253,10 +257,11 @@ class InMemoryConversationRepository:
             session = self.sessions.get(session_id)
             if session is None or session["learner_id"] != learner_id:
                 return []
-            return [
+            messages = [
                 {"message_id": message_id, **_copy_json(message)}
                 for message_id, message in session["messages"].items()
             ]
+            return sanitize_conversation_messages(messages)
 
     def rename_session(self, session_id: str, learner_id: str, title: str) -> bool:
         with self._lock:
@@ -292,7 +297,7 @@ class InMemoryConversationRepository:
             )
             if session["learner_id"] != learner_id:
                 raise ValueError("conversation session belongs to another learner")
-            for index, message in enumerate(messages):
+            for index, message in enumerate(sanitize_conversation_messages(messages)):
                 message_id = _message_id(session_id, index, message)
                 session["messages"][message_id] = _copy_json(message)
 
@@ -348,8 +353,8 @@ class SqlConversationRepository:
                 ),
                 {"session_id": session_id},
             ).mappings().all()
-        messages: list[dict[str, Any]] = []
-        for row in rows:
+        sequenced_messages: list[tuple[int, dict[str, Any]]] = []
+        for row_index, row in enumerate(rows):
             metadata = row.get("metadata_json")
             if isinstance(metadata, str) and metadata.strip():
                 try:
@@ -358,14 +363,20 @@ class SqlConversationRepository:
                     metadata = {}
             if not isinstance(metadata, dict):
                 metadata = {}
-            messages.append({
+            sequence = metadata.pop("_conversation_sequence", None)
+            if not isinstance(sequence, int):
+                # Legacy rows have no durable sequence. Preserve the order
+                # returned by their existing created_at/message_id query.
+                sequence = 1_000_000_000 + row_index
+            sequenced_messages.append((sequence, {
+                **metadata,
                 "message_id": row["message_id"],
                 "role": row["role"],
                 "content": row["content"],
                 "created_at": row["created_at"],
-                **metadata,
-            })
-        return messages
+            }))
+        messages = [item for _, item in sorted(sequenced_messages, key=lambda pair: pair[0])]
+        return sanitize_conversation_messages(messages)
 
     def rename_session(self, session_id: str, learner_id: str, title: str) -> bool:
         with self.engine.begin() as connection:
@@ -423,7 +434,14 @@ class SqlConversationRepository:
                 )
             elif owner != learner_id:
                 raise ValueError("conversation session belongs to another learner")
-            for index, message in enumerate(messages):
+            next_sequence = int(connection.execute(
+                text(
+                    "SELECT COUNT(*) FROM conversation_messages "
+                    "WHERE session_id=:session_id"
+                ),
+                {"session_id": session_id},
+            ).scalar_one())
+            for index, message in enumerate(sanitize_conversation_messages(messages)):
                 message_id = _message_id(session_id, index, message)
                 exists = connection.execute(
                     text(
@@ -434,6 +452,12 @@ class SqlConversationRepository:
                 ).first()
                 if exists:
                     continue
+                metadata = {
+                    key: value
+                    for key, value in message.items()
+                    if key not in {"message_id", "role", "content", "created_at"}
+                }
+                metadata["_conversation_sequence"] = next_sequence
                 connection.execute(
                     text(
                         "INSERT INTO conversation_messages "
@@ -446,16 +470,11 @@ class SqlConversationRepository:
                         "role": str(message.get("role", "user")),
                         "content": str(message.get("content", "")),
                         "metadata_json": json.dumps(
-                            {
-                                key: value
-                                for key, value in message.items()
-                                if key not in {"message_id", "role", "content", "created_at"}
-                            },
-                            ensure_ascii=False,
-                            default=str,
+                            metadata, ensure_ascii=False, default=str
                         ),
                     },
                 )
+                next_sequence += 1
 
 
 def _message_id(session_id: str, index: int, message: dict[str, Any]) -> str:

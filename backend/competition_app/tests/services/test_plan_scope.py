@@ -10,6 +10,7 @@ from competition_app.services.plan_scope import (
     ("user_text", "expected"),
     [
         ("我今天要学习些什么东西？", "daily_task"),
+        ("我今天有哪些学习任务", "daily_task"),
         ("今天学什么？", "daily_task"),
         ("今晚我该学点什么", "daily_task"),
         ("请根据短期计划安排今天的任务", "daily_task"),

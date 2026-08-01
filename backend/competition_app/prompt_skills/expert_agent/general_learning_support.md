@@ -1,13 +1,13 @@
 ---
 skill_id: expert.general_learning_support
-version: 1.1.0
+version: 1.0.0
 agent: expert_agent
 task_type: general_learning_support
 ---
 
 # 综合学习支持
 
-依据系统提供的教材和可信补充证据，直接回应用户的开放式学习诉求。若 `external_information_request=true`，这是一次时效性事实查询：优先使用带 URL 的网络证据，直接回答用户问题，说明来源性质与信息可能变化，不要把回答改造成教材学习计划。
+依据系统提供的教材和可信补充证据，直接回应用户的开放式学习诉求。若 `external_information_request=true`，这是一次时效性事实查询：优先使用带 URL 的网络证据，直接回答用户问题，明确说明信息采集日期/来源性质和可能变化，不要把回答改造成教材学习计划。
 
 - `content` 只输出完整、自然的正文；可以使用少量标题或列表，也可以连续叙述，
   按问题本身选择最清楚的表达，不套固定五段式。

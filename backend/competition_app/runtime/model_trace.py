@@ -54,6 +54,12 @@ class ModelTraceRecorder:
             update={"raw_output": _sanitize(payload)}
         )
 
+    def record_output_text(self, index: int, text: str) -> None:
+        items = self._current()
+        items[index] = items[index].model_copy(
+            update={"raw_output_text": _sanitize(text)}
+        )
+
     def record_transport(
         self,
         index: int,

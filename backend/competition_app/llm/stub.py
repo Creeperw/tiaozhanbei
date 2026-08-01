@@ -25,6 +25,169 @@ class PlannerLikeCasualBoundary:
 
 
 class StubChatModel:
+    async def complete_text(
+        self,
+        role: str,
+        payload: dict[str, Any],
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str:
+        """Offline compatibility path for business-agent prose calls."""
+        result = await self.complete_json(role, payload, on_delta=None)
+        if role == "diagnosis_agent" and isinstance(result, dict):
+            text = self._diagnosis_plan_document(result)
+        else:
+            body = (
+                result.get("explanation_content")
+                or result.get("content")
+                or result.get("body")
+                or result.get("summary")
+                or result.get("learning_tip")
+                or ""
+            )
+            text = str(body)
+        if on_delta and text:
+            on_delta(text)
+        return text
+
+    @staticmethod
+    def _diagnosis_plan_document(result: dict[str, Any]) -> str:
+        """Render the stub's business result as prose, never as a contract JSON."""
+
+        parts: list[str] = []
+        if result.get("long_term_plan_content"):
+            parts.extend([
+                "## 长期规划正文",
+                str(result["long_term_plan_content"]),
+            ])
+        if result.get("total_duration_days") is not None:
+            parts.extend(["## 总周期", f"{result.get('total_duration_days')}天"])
+        for stage in result.get("long_term_plan_stages") or []:
+            if not isinstance(stage, dict):
+                continue
+            books = "；".join(str(item) for item in stage.get("book") or [])
+            parts.extend([
+                f"## 阶段{stage.get('stage', 1)}：{stage.get('stage_name', '')}",
+                f"教材：{books}",
+                f"目标：{stage.get('goal', '')}",
+                f"阶段天数：{stage.get('duration_days', '')}天",
+                f"安排：{stage.get('schedule_summary', '')}",
+            ])
+        if result.get("short_term_plan_content"):
+            parts.extend([
+                "## 短期规划正文",
+                str(result["short_term_plan_content"]),
+                "## 周期",
+                f"{result.get('duration_days') or result.get('short_term_duration_days', '')}天",
+                "## 推进节点",
+                *[f"- {item}" for item in (result.get("progression_nodes") or result.get("short_term_progression_nodes") or [])],
+                f"## 预期产出\n{result.get('expected_output', '')}",
+                f"## 完成标准\n{result.get('completion_criteria', '')}",
+                f"## 选用阶段\n{result.get('selected_stage_id') or ''}",
+                f"## 选用教材\n{'；'.join(str(item) for item in result.get('selected_books') or [])}",
+            ])
+        if result.get("daily_task_content"):
+            parts.extend([
+                "## 当日任务正文",
+                str(result["daily_task_content"]),
+                f"## 学习章节\n{result.get('learning_chapter', '')}",
+                "## 重点知识点",
+                *[f"- {item}" for item in result.get("focus_knowledge_points") or []],
+                f"## 预计分钟\n{result.get('estimated_minutes', '')}",
+                f"## 当日产出\n{result.get('expected_output', '')}",
+                f"## 完成标准\n{result.get('completion_criteria', '')}",
+            ])
+        return "\n".join(parts).strip()
+
+    @staticmethod
+    def _section(document: str, heading: str, next_headings: tuple[str, ...]) -> str:
+        pattern = rf"(?ms)^## {re.escape(heading)}\s*\n(.*?)(?=^## (?:{'|'.join(map(re.escape, next_headings))})\s*$|\Z)"
+        match = re.search(pattern, document)
+        return match.group(1).strip() if match else ""
+
+    @classmethod
+    def _compile_plan_document(cls, scope: str, document: str) -> dict[str, Any]:
+        """Parse only the stable prose markers emitted by this test double."""
+
+        def anchor(path: str, quote: Any, field: str = "plan_document") -> tuple[str, list[dict[str, str]]]:
+            return path, [{"source_field": field, "source_quote": cls._source_quote(quote)}]
+
+        if scope == "long_term":
+            content = cls._section(document, "长期规划正文", ("总周期", "阶段1：", "阶段2：", "阶段3："))
+            total_match = re.search(r"(?m)^## 总周期\s*\n(\d+)天", document)
+            stages: list[dict[str, Any]] = []
+            stage_quotes: list[str] = []
+            for match in re.finditer(
+                r"(?ms)^## 阶段(\d+)：([^\n]*)\n教材：([^\n]*)\n目标：([^\n]*)\n阶段天数：(\d+)天\n安排：(.+?)(?=^## 阶段\d+：|\Z)",
+                document,
+            ):
+                stage_quotes.append(match.group(0).strip())
+                stages.append({
+                    "stage": int(match.group(1)),
+                    "stage_name": match.group(2).strip(),
+                    "books": [item for item in match.group(3).split("；") if item],
+                    "goal": match.group(4).strip(),
+                    "duration_days": int(match.group(5)),
+                    "schedule_summary": match.group(6).strip(),
+                })
+            if not content or not total_match or not stages:
+                return {"status": "needs_revision", "contract_version": "1.0", "issues": [{"code": "missing_required_field", "category": "missing", "field_path": "/plan_document"}]}
+            anchors = dict([
+                anchor("/long_term_plan_content", content),
+                anchor("/total_duration_days", total_match.group(1)),
+                ("/stages", [
+                    {"source_field": "plan_document", "source_quote": quote}
+                    for quote in stage_quotes
+                ]),
+            ])
+            return {"status": "compiled", "contract_version": "1.0", "contract": {"scope": scope, "long_term_plan_content": content, "total_duration_days": int(total_match.group(1)), "stages": stages, "field_anchors": anchors}}
+        if scope == "short_term":
+            content = cls._section(document, "短期规划正文", ("周期", "推进节点", "预期产出", "完成标准", "选用阶段", "选用教材"))
+            duration = re.search(r"(?m)^## 周期\s*\n(\d+)天", document)
+            nodes_block = cls._section(document, "推进节点", ("预期产出", "完成标准", "选用阶段", "选用教材"))
+            nodes = [line[2:].strip() for line in nodes_block.splitlines() if line.strip().startswith("-")]
+            expected = cls._section(document, "预期产出", ("完成标准", "选用阶段", "选用教材"))
+            criteria = cls._section(document, "完成标准", ("选用阶段", "选用教材"))
+            stage = cls._section(document, "选用阶段", ("选用教材",)) or None
+            books = [item for item in cls._section(document, "选用教材", ()).split("；") if item]
+            if not content or not duration or len(nodes) < 2 or not expected or not criteria or not books:
+                return {"status": "needs_revision", "contract_version": "1.0", "issues": [{"code": "missing_required_field", "category": "missing", "field_path": "/plan_document"}]}
+            anchors = dict([
+                anchor("/short_term_plan_content", content),
+                anchor("/duration_days", duration.group(1)),
+                ("/progression_nodes", [
+                    {"source_field": "plan_document", "source_quote": node}
+                    for node in nodes
+                ]),
+                anchor("/expected_output", expected),
+                anchor("/completion_criteria", criteria),
+                ("/selected_books", [
+                    {"source_field": "plan_document", "source_quote": book}
+                    for book in books
+                ]),
+            ])
+            return {"status": "compiled", "contract_version": "1.0", "contract": {"scope": scope, "short_term_plan_content": content, "duration_days": int(duration.group(1)), "progression_nodes": nodes, "expected_output": expected, "completion_criteria": criteria, "selected_stage_id": stage, "selected_books": books, "field_anchors": anchors}}
+        content = cls._section(document, "当日任务正文", ("学习章节", "重点知识点", "预计分钟", "当日产出", "完成标准"))
+        chapter = cls._section(document, "学习章节", ("重点知识点", "预计分钟", "当日产出", "完成标准"))
+        points_block = cls._section(document, "重点知识点", ("预计分钟", "当日产出", "完成标准"))
+        points = [line[2:].strip() for line in points_block.splitlines() if line.strip().startswith("-")]
+        minutes = re.search(r"(?m)^## 预计分钟\s*\n(\d+)", document)
+        expected = cls._section(document, "当日产出", ("完成标准",))
+        criteria = cls._section(document, "完成标准", ())
+        if not content or not chapter or not points or not minutes or not expected or not criteria:
+            return {"status": "needs_revision", "contract_version": "1.0", "issues": [{"code": "missing_required_field", "category": "missing", "field_path": "/plan_document"}]}
+        anchors = dict([
+            anchor("/daily_task_content", content),
+            anchor("/learning_chapter", chapter),
+            ("/focus_knowledge_points", [
+                {"source_field": "plan_document", "source_quote": point}
+                for point in points
+            ]),
+            anchor("/estimated_minutes", minutes.group(1)),
+            anchor("/expected_output", expected),
+            anchor("/completion_criteria", criteria),
+        ])
+        return {"status": "compiled", "contract_version": "1.0", "contract": {"scope": scope, "daily_task_content": content, "learning_chapter": chapter, "focus_knowledge_points": points, "estimated_minutes": int(minutes.group(1)), "expected_output": expected, "completion_criteria": criteria, "field_anchors": anchors}}
+
     async def complete_json(
         self,
         role: str,
@@ -192,9 +355,7 @@ class StubChatModel:
             request_text = str(business_payload.get("user_request", ""))
             plan_scope = business_payload.get("plan_scope")
             plan_scope_hint = business_payload.get("plan_scope_hint")
-            requires_compression = bool(
-                business_payload.get("conversation_context", {}).get("requires_compression")
-            )
+            routing_correction = business_payload.get("routing_correction") or {}
             requests_resource = any(
                 keyword in request_text
                 for keyword in ("学习卡", "学习卡片", "复习卡", "学习资源", "直接学习")
@@ -208,6 +369,18 @@ class StubChatModel:
                 for keyword in ("讲一讲", "讲讲", "解释", "介绍", "是什么", "为什么", "原理", "区别")
             ) and not requests_resource and not requests_paper
             casual_request = PlannerLikeCasualBoundary.matches(request_text)
+            # Stub mode is an offline fixture, so it cannot perform the live
+            # Planner's semantic inference.  Still preserve the production
+            # contract: asking to view an already persisted plan is a read-only
+            # learner-data query, never a request to create/reuse another plan
+            # layer.  Keep this boundary inside the stub rather than making it
+            # an application router; live mode remains model-led.
+            normalized_request = "".join(request_text.split())
+            requests_existing_plan = (
+                any(layer in normalized_request for layer in ("长期计划", "长期学习计划", "长期规划", "短期计划", "短期学习计划", "短期规划"))
+                and any(intent in normalized_request for intent in ("看看", "查看", "看下", "是什么", "什么样", "内容", "进展", "进度"))
+                and not any(intent in normalized_request for intent in ("制定", "生成", "安排", "修改", "调整", "重新", "更新"))
+            )
             is_plan = not requests_resource and (
                 plan_scope in {"long_term", "short_term", "daily_task", "unspecified"}
                 or plan_scope_hint in {"long_term", "short_term", "daily_task", "unspecified"}
@@ -216,6 +389,8 @@ class StubChatModel:
                 for keyword in (
                     "制定计划", "学习计划", "复习计划", "长期计划", "短期计划",
                     "调整计划", "规划", "学习状态", "状态如何", "学情",
+                    "我今天有哪些学习任务", "我今天要学习什么", "今天安排什么",
+                    "今晚学习什么", "今天学什么",
                 )
                 )
             )
@@ -224,10 +399,69 @@ class StubChatModel:
             ) and not any(
                 keyword in request_text for keyword in ("制定", "调整", "修改", "计划", "规划")
             )
+            existing_state = business_payload.get("existing_plan_state") or {}
+            effective_scope = plan_scope or plan_scope_hint
+            # The offline planner mirrors the production semantic rule for a
+            # generic “制定一份学习计划” request: if a current short-term
+            # plan exists, it is the natural reusable layer; otherwise fall
+            # back to the current long-term plan. This is fixture behaviour,
+            # not an application keyword router.
+            if not effective_scope and is_plan:
+                if routing_correction and plan_scope_hint == "daily_task":
+                    effective_scope = "daily_task"
+                elif any(
+                    phrase in request_text
+                    for phrase in ("我今天有哪些学习任务", "我今天要学习什么", "今天安排什么", "今晚学习什么", "今天学什么")
+                ):
+                    effective_scope = "daily_task"
+                elif existing_state.get("has_short_term_plan"):
+                    effective_scope = "short_term"
+                elif existing_state.get("has_long_term_plan"):
+                    effective_scope = "long_term"
+            has_existing_scope = bool(
+                effective_scope
+                and existing_state.get({
+                    "long_term": "has_long_term_plan",
+                    "short_term": "has_short_term_plan",
+                    "daily_task": "has_daily_task",
+                }.get(effective_scope, ""), False)
+            )
+            # The stub mirrors the production contract: Planner must emit a
+            # semantic plan_action.  These branches are confined to the
+            # offline model and exist only to exercise reuse/revision flows.
+            explicit_revision_fixture = any(
+                marker in request_text
+                for marker in (
+                    "强制修改",
+                    "重新制定",
+                    "重新规划",
+                    "重新计划",
+                    "调整",
+                    "修改",
+                    "不满意",
+                    "学过",
+                )
+            )
+            plan_action = (
+                "create_or_update"
+                if is_plan and explicit_revision_fixture
+                else "reuse"
+                if is_plan and has_existing_scope
+                else "clarify"
+                if is_plan and (plan_scope or plan_scope_hint) == "unspecified"
+                else "create_or_update"
+                if is_plan
+                else None
+            )
+            emitted_scope = effective_scope or plan_scope or plan_scope_hint
+            if is_plan and emitted_scope is None:
+                emitted_scope = "unspecified"
             return self._emit({
                 "task_type": (
                     "casual_conversation"
                     if casual_request
+                    else "learner_data_query"
+                    if requests_existing_plan
                     else "paper_generation"
                     if requests_paper
                     else "knowledge_explanation" if requests_explanation
@@ -236,28 +470,31 @@ class StubChatModel:
                 "selected_agents": (
                     []
                     if casual_request
+                    else ["memory_agent", "diagnosis_agent"]
+                    if requests_existing_plan
                     else [
+                        "memory_agent",
                         "knowledge_base_agent",
                         "expert_agent",
                         "audit_agent",
                     ]
                     if requests_paper
                     else [
-                        *(["memory_agent"] if requires_compression else []),
+                        "memory_agent",
                         "knowledge_base_agent",
                         "expert_agent",
                         "audit_agent",
                     ]
                     if requests_explanation
                     else [
-                        *(["memory_agent"] if requires_compression else []),
+                        "memory_agent",
                         *([] if status_only else ["knowledge_base_agent"]),
                         "diagnosis_agent",
                         "learning_plan_service",
                     ]
                     if is_plan
                     else [
-                        *(["memory_agent"] if requires_compression else []),
+                        "memory_agent",
                         "knowledge_base_agent",
                         "diagnosis_agent",
                         "learning_plan_service",
@@ -266,10 +503,18 @@ class StubChatModel:
                         "audit_agent",
                     ]
                 ),
-                "plan_scope": plan_scope or plan_scope_hint,
+                "plan_scope": None if requests_existing_plan else emitted_scope,
+                "plan_action": None if requests_existing_plan else plan_action,
+                "query_kind": "plan_progress" if requests_existing_plan else None,
                 "casual_response": (
-                    "你好！我是时珍智训智能助教。你想先聊聊当前学习情况，还是直接开始一项学习任务？"
-                    if casual_request
+                    (
+                        "我能理解你明天要考试时的焦虑，紧张并不代表你准备得不好。现在先不要试图把所有内容重学一遍："
+                        "用10分钟列出最常考、最不稳的3个点，接着做一轮限时回忆或错题复盘，最后留出时间休息和准备考试用品。"
+                        "如果你愿意，可以把考试科目或最担心的题型告诉我，我帮你把剩余时间拆成一个可执行的冲刺安排。"
+                        if "焦虑" in request_text or "紧张" in request_text
+                        else "你好！我是时珍智训智能助教。你想先聊聊当前学习情况，还是直接开始一项学习任务？"
+                    )
+                    if casual_request or "焦虑" in request_text or "紧张" in request_text
                     else None
                 ),
                 "routing_reason": (
@@ -279,7 +524,11 @@ class StubChatModel:
                     if requests_paper
                     else "用户要求知识讲解，需要教材检索、专家讲解和审核，不生成学习规划。"
                     if requests_explanation
-                    else "用户只要求制定计划，无需生成教学资源。"
+                    else (
+                        "用户要的是当日任务，将已有规划和当前学情落地为今天可执行的学习安排。"
+                        if emitted_scope == "daily_task"
+                        else "用户只要求制定计划，无需生成教学资源。"
+                    )
                     if is_plan
                     else "用户同时需要学习计划和可直接学习的资源，需要完成计划落地、专家生成和审核。"
                 ),
@@ -322,6 +571,14 @@ class StubChatModel:
             scope = str(business_payload.get("plan_scope") or "")
             diagnosis = business_payload.get("diagnosis_output") or {}
             route = business_payload.get("trusted_route") or {}
+            if isinstance(diagnosis.get("plan_document"), str):
+                return self._emit(
+                    self._compile_plan_document(
+                        scope,
+                        diagnosis["plan_document"],
+                    ),
+                    on_delta,
+                )
             required_fields = {
                 "long_term": (
                     "long_term_plan_content",
@@ -428,6 +685,78 @@ class StubChatModel:
                     },
                 },
             }, on_delta)
+        if role == "diagnosis_plan_change":
+            change = business_payload.get("plan_change_context") or {}
+            explicit = business_payload.get("explicit_flags") or {}
+            request_text = str(business_payload.get("user_request") or "")
+            has_change_context = bool(str(change.get("change_details") or "").strip())
+            # Test-double semantics only. The production model receives the
+            # full context and decides this; these phrases keep offline flows
+            # representative without making application code depend on them.
+            fixture_learning_change = any(
+                marker in request_text
+                for marker in ("重新规划", "重新计划", "调整计划", "修改计划", "不满意", "已经学过", "学过")
+            )
+            has_change_context = has_change_context or fixture_learning_change
+            vague_replan_fixture = (
+                not str(change.get("change_details") or "").strip()
+                and any(marker in request_text for marker in ("重新规划", "重新计划", "不满意"))
+                and not any(marker in request_text for marker in ("学过", "已经学过", "可用时间", "每天", "每周", "期限"))
+            )
+            if vague_replan_fixture:
+                return self._emit(
+                    {
+                        "long_term_action": "reuse",
+                        "short_term_action": "reuse",
+                        "daily_task_action": "reuse",
+                        "replan_requested": True,
+                        "changed_facts": [],
+                        "requires_clarification": True,
+                        "clarification_questions": [
+                            "你希望调整长期规划、短期计划，还是两者？请同时说明发生了什么变化。"
+                        ],
+                        "reason": "当前只表达了重规划意愿，尚未给出可确定影响范围的变化事实。",
+                    },
+                    on_delta,
+                )
+            long_update = bool(explicit.get("long_term"))
+            short_update = bool(explicit.get("short_term"))
+            scope = business_payload.get("plan_scope")
+            # Offline model fixture: emulate a semantic Diagnosis decision for
+            # a supplied learning-state change. Production uses the live model.
+            if has_change_context and not (long_update or short_update):
+                if scope == "short_term":
+                    short_update = True
+                elif scope == "daily_task":
+                    short_update = False
+                else:
+                    long_update = True
+                    short_update = True
+            # A named completed textbook is sufficient evidence for a plan
+            # revision; the model should not ask whether the whole book or a
+            # particular chapter was completed before updating the path.
+            if any(marker in request_text for marker in ("已经学习过", "已经学过", "学过")):
+                long_update = True
+                short_update = True
+            return self._emit(
+                {
+                    "long_term_action": "update" if long_update else "reuse",
+                    "short_term_action": "update" if short_update else "reuse",
+                    "daily_task_action": "update",
+                    "replan_requested": bool(
+                        has_change_context or long_update or short_update
+                    ),
+                    "changed_facts": (
+                        [str(change.get("change_details"))[:500]]
+                        if has_change_context
+                        else []
+                    ),
+                    "requires_clarification": False,
+                    "clarification_questions": [],
+                    "reason": "离线模型根据学习变化事实生成层级变更合同。",
+                },
+                on_delta,
+            )
         if role == "diagnosis_agent":
             if "plan_actions" in business_payload:
                 plan_scope = business_payload.get("plan_scope")
@@ -638,7 +967,7 @@ class StubChatModel:
                 return self._emit(response, on_delta)
             current_long = business_payload.get("long_term_plan", {})
             current_short = business_payload.get("short_term_plan", {})
-            route_context = business_payload.get("route_context", {})
+            route_context = business_payload.get("route_context") or business_payload.get("default_route") or {}
             planning_status = str(route_context.get("planning_status", "provisional"))
             route_is_approved = planning_status == "approved_route"
             route_goal_type = str(route_context.get("goal_type", "course"))
@@ -788,8 +1117,18 @@ class StubChatModel:
                 return self._emit({
                     "generated_items": []
                 }, on_delta)
-            if phase == "knowledge_explanation":
+            if phase in {"knowledge_explanation", "general_learning_support"}:
                 topic = str(business_payload.get("topic", "当前主题"))
+                if business_payload.get("external_information_request"):
+                    evidence = str(business_payload.get("retrieval_summary") or "").strip()
+                    return self._emit({
+                        "title": f"{topic}查询结果",
+                        "explanation_content": (
+                            (evidence + "\n\n") if evidence else ""
+                        )
+                        + "以上为网络检索到的当前信息；考试日期、天气等内容可能变化，建议以相关官方发布页面为最终依据。",
+                        "uncertainty": [],
+                    }, on_delta)
                 return self._emit({
                     "title": f"{topic}知识讲解",
                     "explanation_content": (

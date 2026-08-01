@@ -33,6 +33,7 @@ class PlanningValidator:
         unmet_prerequisite_courses: set[str] | None = None,
         path_candidates: dict[str, Any] | None = None,
         parent_stage_duration_days: int | None = None,
+        active_scope: str | None = None,
     ) -> PlanningValidationResult:
         issues: list[str] = []
         actions = {
@@ -69,7 +70,18 @@ class PlanningValidator:
                     issues.append(
                         f"长期规划第{index}阶段缺少包含书名、重点、产出和验收条件的详细安排。"
                     )
-        if actions["short"] == "update":
+        # A change at an upper layer invalidates lower-layer versions, but it
+        # does not mean those lower layers must be regenerated in the same
+        # response.  Diagnosis may therefore validate only the layer the
+        # current request is materialising.  Direct callers that do not pass
+        # active_scope retain the historical strict three-layer contract.
+        validate_short = actions["short"] == "update" and (
+            active_scope is None or active_scope in {"short_term", "full"}
+        )
+        validate_daily = actions["daily"] == "update" and (
+            active_scope is None or active_scope in {"daily_task", "full"}
+        )
+        if validate_short:
             if output.short_term_duration_days <= 0:
                 issues.append("短期计划必须提供大于0的结构化周期 short_term_duration_days。")
             if len(output.short_term_progression_nodes) < 2:
@@ -102,7 +114,7 @@ class PlanningValidator:
                         "学习行为证据不足或新鲜度未知，短期计划不得断言精确掌握度、"
                         "错误频次或薄弱知识点总数；请改为待验证的学习重点。"
                     )
-        if actions["daily"] == "update":
+        if validate_daily:
             if not output.learning_chapter.strip():
                 issues.append("当日任务必须提供结构化 learning_chapter。")
             if not 1 <= len(output.focus_knowledge_points) <= 5:
@@ -261,7 +273,7 @@ class PlanningValidator:
         if (
             available_minutes is not None
             and available_minutes > 0
-            and daily_task_action == "update"
+            and validate_daily
             and output.estimated_minutes > max(available_minutes + 10, int(available_minutes * 1.5))
         ):
             issues.append(
@@ -422,4 +434,3 @@ class PlanningValidator:
             "",
             value.strip().removeprefix("《").removesuffix("》"),
         ).casefold()
-

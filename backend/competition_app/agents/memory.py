@@ -7,6 +7,10 @@ from pydantic import Field
 
 from competition_app.contracts.base import AgentEnvelope, ArtifactReference, ContractModel
 from competition_app.contracts.agent_context import build_model_context
+from competition_app.services.conversation_history import (
+    sanitize_compressed_dialogue_summary,
+    sanitize_conversation_messages,
+)
 from competition_app.contracts.memory import (
     ConversationContextSummary,
     LearnerContextBrief,
@@ -53,28 +57,33 @@ class MemoryAgentResult(ContractModel):
 class MemoryAgent:
     def __init__(self, chat_model: ChatModel, compression_threshold_chars: int = 4_000) -> None:
         self.chat_model = chat_model
+        # Kept as a compatibility argument for older callers.  Compression is
+        # never decided here: the application computes the authoritative
+        # threshold fact and passes it as ``memory_required``.
         self.compression_threshold_chars = compression_threshold_chars
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[MemoryAgentResult]:
-        messages = list(context.get("messages", []))
+        raw_messages = list(context.get("messages", []))
         learner_id = str(context["learner_id"])
-        allowed_roles = {"user", "assistant", "system", "tool"}
-        for index, item in enumerate(messages):
+        for index, item in enumerate(raw_messages):
             if not item.get("message_id"):
                 raise ValueError(f"message_id is required for context message {index}")
-            if item.get("role") not in allowed_roles:
+            if item.get("role") not in {"user", "assistant"}:
                 raise ValueError(f"unsupported conversation role: {item.get('role')}")
             message_learner = item.get("learner_id")
             if message_learner is not None and str(message_learner) != learner_id:
                 raise ValueError("conversation message learner does not match current learner")
+        messages = sanitize_conversation_messages(raw_messages)
         source_refs = [
             ArtifactReference(ref_type="conversation_message", ref_id=item["message_id"])
             for item in messages
         ]
-        total_chars = sum(len(str(item.get("content", ""))) for item in messages)
-        should_compress = bool(context.get("force_context_compression")) or (
-            total_chars > self.compression_threshold_chars
-        )
+        # Compression is a system-owned concern.  The fixed threshold is
+        # evaluated once by the application before orchestration starts.  The
+        # Memory Agent always performs governance below; this flag controls
+        # only its optional compression sub-step and must not be inferred from
+        # message length or user wording here.
+        should_compress = bool(context.get("memory_required", False))
         summary = None
         compression_candidates: list[str] = []
         if should_compress:
@@ -104,7 +113,10 @@ class MemoryAgent:
                     ),
                 )
                 if isinstance(raw_output, dict) and isinstance(raw_output.get("summary"), str):
-                    raw_output = {**raw_output, "summary": raw_output["summary"][:2_000]}
+                    raw_output = {
+                        **raw_output,
+                        "summary": sanitize_compressed_dialogue_summary(raw_output["summary"]),
+                    }
                 model_output = validate_training_style_output(
                     MemoryModelOutput,
                     raw_output,
@@ -146,6 +158,10 @@ class MemoryAgent:
                         "relevant_memories": context.get(
                             "relevant_personalization_memories", []
                         ),
+                        "memory_interpretation_rules": [
+                            "字段缺失、空数组、未填写或暂无记录只表示没有证据，不表示相反事实。",
+                            "用户本轮明确陈述并用于当前规划的学习事实，应直接作为当前事实传递；只有旧记忆明确记录相反事实才构成冲突。",
+                        ],
                         "retrieval_degraded": bool(
                             context.get("memory_retrieval_degraded")
                         ),
@@ -157,6 +173,8 @@ class MemoryAgent:
                     },
                     permission_note=(
                         "只提取用户明确陈述并判断相关记忆是否真正冲突；"
+                        "空字段或缺失记录不等于相反事实；用户明确陈述并要求据此规划时，"
+                        "除非旧记忆明确记录相反事实，不要为二次确认而阻断流程；"
                         "不得覆盖记忆、写画像、生成计划或通过关键词直接下结论。"
                     ),
                 ),

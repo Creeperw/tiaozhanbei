@@ -78,3 +78,43 @@ def test_confirmed_long_term_change_also_updates_dependent_short_term_plan() -> 
     assert result.long_term_action == "update"
     assert result.short_term_action == "update"
     assert result.daily_task_action == "update"
+
+
+def test_semantic_contract_drives_replan_without_user_keyword_matching() -> None:
+    """Production decisions come from Diagnosis, not PlanChangeGate wording rules."""
+    result = PlanChangeGate().decide(
+        user_request="我已经完成了前置教材学习，想按新的基础重新安排",
+        current_long_term_plan=ACTIVE_LONG,
+        current_short_term_plan=ACTIVE_SHORT,
+        semantic_decision={
+            "long_term_action": "update",
+            "short_term_action": "reuse",
+            "daily_task_action": "reuse",
+            "replan_requested": True,
+            "changed_facts": ["已完成《中医学基础》学习"],
+            "requires_clarification": True,
+            "clarification_questions": ["是否整本书都学完？"],
+            "reason": "已完成的前置教材改变了当前阶段起点。",
+        },
+        allow_legacy_heuristics=False,
+    )
+
+    assert result.replan_requested is True
+    assert result.changed_facts == ["已完成《中医学基础》学习"]
+    assert result.requires_clarification is False
+    assert (result.long_term_action, result.short_term_action, result.daily_task_action) == (
+        "update", "update", "update"
+    )
+
+
+def test_missing_semantic_contract_does_not_parse_replan_words_in_production_mode() -> None:
+    result = PlanChangeGate().decide(
+        user_request="这个长期规划我不满意，重新规划一下",
+        current_long_term_plan=ACTIVE_LONG,
+        current_short_term_plan=ACTIVE_SHORT,
+        allow_legacy_heuristics=False,
+    )
+
+    assert result.replan_requested is False
+    assert result.long_term_action == "reuse"
+    assert result.short_term_action == "reuse"

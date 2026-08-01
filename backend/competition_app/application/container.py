@@ -28,7 +28,7 @@ from competition_app.embeddings.siliconflow import SiliconFlowEmbeddingModel
 from competition_app.db.bootstrap import DatabaseBootstrap
 from competition_app.runtime.agent_registry import AgentRegistry
 from competition_app.runtime.orchestrator import Orchestrator
-from competition_app.runtime.snapshot import SnapshotExporter
+from competition_app.runtime.snapshot import SnapshotExporter, _sanitize
 from competition_app.runtime.tool_registry import ToolRegistry
 from competition_app.tools.knowledge_assets import KnowledgeAssetPaths, KnowledgeAssetRepository
 from competition_app.tools.knowledge_retrieval import KnowledgeRetrievalTool
@@ -45,6 +45,7 @@ from competition_app.services.learning_plan import LearningPlanService
 from competition_app.services.daily_task_refresh import DailyTaskRefreshService
 from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
 from competition_app.services.plan_progress import build_plan_progress
+from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.review import ReviewService
 from competition_app.llm.terminal import (
     terminal_agent_finished,
@@ -355,7 +356,10 @@ class ApplicationContainer:
                 default_route_repository, textbook_route_repository, chat_model
             ),
         )
-        registry.register("diagnosis_agent", DiagnosisAgent(chat_model))
+        registry.register(
+            "diagnosis_agent",
+            DiagnosisAgent(chat_model, learning_plan_service=learning_plan_service),
+        )
         registry.register("learning_plan_service", LearningPlanServiceAdapter(learning_plan_service))
         registry.register("review_scheduler", ReviewSchedulerAdapter())
         registry.register("expert_agent", ExpertAgent(chat_model))
@@ -422,6 +426,146 @@ class ApplicationContainer:
                 daily_task_progress=daily_progress,
             )
 
+        def load_learning_planning_context(
+            external_user_id: str,
+            *,
+            scope: str,
+            available_minutes: int = 60,
+        ) -> dict:
+            """Load the bounded learner slice needed by Diagnosis planning.
+
+            Planner never receives this result. Diagnosis explicitly invokes
+            the tool after routing has selected a planning task.
+            """
+
+            plans = plan_repository.get_current(external_user_id)
+            long_term_plan = (
+                plans.long_term_plan.model_dump(mode="json")
+                if plans is not None and plans.long_term_plan is not None
+                else {}
+            )
+            short_term_plan = (
+                plans.short_term_plan.model_dump(mode="json")
+                if plans is not None and plans.short_term_plan is not None
+                else {}
+            )
+            learning_task = (
+                plans.learning_task.model_dump(mode="json")
+                if plans is not None and plans.learning_task is not None
+                else {}
+            )
+            plan_context = {
+                key: value
+                for key, value in {
+                    "long_term_plan": long_term_plan,
+                    "short_term_plan": short_term_plan,
+                    "learning_task": learning_task,
+                    "available_minutes": available_minutes,
+                }.items()
+                if value not in (None, "", [], {})
+            }
+            if backend_handoff_runtime is None:
+                return {
+                    "schema_version": "1.0",
+                    "source": "learning_plan_repository",
+                    "learning_profile": {},
+                    "system_data": {},
+                    "user_knowledge_states": [],
+                    "question_attempts": [],
+                    "question_learning_stats": [],
+                    "learning_monitoring": {
+                        "evidence_status": "unavailable",
+                        "freshness_status": "unknown",
+                        "sample_counts": {},
+                        "metrics": {},
+                    },
+                    "current_long_term_plan": long_term_plan,
+                    "current_short_term_plan": short_term_plan,
+                    "current_learning_task": learning_task,
+                    "multi_scale_learning_state": {},
+                    "path_candidates": {"eligible": [], "blocked": []},
+                    "task_load_policy": {},
+                }
+
+            behavior = backend_handoff_runtime.load_learning_context(
+                external_user_id, days=7
+            )
+            monitoring = LearningMonitoringService().build_snapshot(
+                external_user_id,
+                behavior,
+                window_days=7,
+            ).model_dump(mode="json")
+            multiscale = backend_handoff_runtime.load_multiscale_learning_state(
+                external_user_id,
+                plan_context=plan_context,
+                window_days=30,
+            )
+            # ``scope`` is normalized here: Planner may legitimately route an
+            # underspecified request (e.g. "结合我的学习状态制定学习计划") with
+            # plan_scope="unspecified", and Diagnosis invokes this tool before
+            # it resolves the layer.  The legacy path-candidate builder only
+            # accepts one of the three concrete scopes, so an unspecified
+            # request must not leak through to it; candidates are pointless
+            # anyway until Diagnosis has pinned the layer.
+            if scope in {"long_term", "short_term", "daily_task"}:
+                raw_candidates = backend_handoff_runtime.load_path_candidates(
+                    external_user_id,
+                    plan_context=plan_context,
+                    scope=scope,
+                    limit=30,
+                    include_blocked=True,
+                )
+                candidate_items = (
+                    raw_candidates.get("items", [])
+                    if isinstance(raw_candidates, dict)
+                    else []
+                )
+            else:
+                candidate_items = []
+            review_projection = backend_handoff_runtime.load_review_dashboard(
+                external_user_id,
+                history_limit=100,
+            )
+            task_load_policy = backend_handoff_runtime.load_task_load_policy(
+                external_user_id,
+                plan_context=plan_context,
+                review_projection={
+                    "source": "review_dashboard",
+                    "due_count": sum(
+                        1
+                        for item in review_projection.get("review_states", [])
+                        if str(item.get("status") or "").lower() in {"due", "overdue"}
+                    ),
+                    "total_count": len(review_projection.get("review_states", [])),
+                },
+                days=7,
+            )
+            return {
+                "schema_version": "1.0",
+                "source": "authorized_learning_planning_tools",
+                "learning_profile": behavior.get("learning_profile") or {},
+                "system_data": behavior.get("system_data") or {},
+                "user_knowledge_states": behavior.get("user_knowledge_state") or [],
+                "question_attempts": behavior.get("question_attempt") or [],
+                "question_learning_stats": behavior.get("question_learning_stats") or [],
+                "learning_monitoring": monitoring,
+                "current_long_term_plan": long_term_plan,
+                "current_short_term_plan": short_term_plan,
+                "current_learning_task": learning_task,
+                "multi_scale_learning_state": multiscale,
+                "path_candidates": {
+                    "eligible": [
+                        item for item in candidate_items
+                        if isinstance(item, dict) and item.get("eligible") is True
+                    ],
+                    "blocked": [
+                        item for item in candidate_items
+                        if isinstance(item, dict) and item.get("eligible") is not True
+                    ],
+                },
+                "task_load_policy": task_load_policy,
+            }
+
         tool_registry.register(
             "get_recent_learning_summary",
             recent_learning_handler,
@@ -445,6 +589,11 @@ class ApplicationContainer:
         tool_registry.register(
             "get_current_plan_progress",
             load_current_plan_progress,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_learning_planning_context",
+            load_learning_planning_context,
             allowed_agents={"diagnosis_agent"},
         )
         tool_registry.register(
@@ -652,12 +801,56 @@ class StreamingChatModel:
         emit_runtime_event(
             "model_transport",
             agent=str(payload.get("target_agent") or "model"),
+            output_kind=(
+                "compiler"
+                if "compiler" in str(payload.get("target_agent") or "").lower()
+                else "business"
+            ),
             call_id=call_id,
             step_id=workflow_step_id,
             request_payload=request_payload,
             response_text=response_text,
-            reasoning_text=reasoning_text,
         )
+
+    async def complete_text(self, role, payload, on_delta=None):
+        """Trace a business-agent prose call without exposing provider reasoning."""
+        observable_payload = {
+            key: value for key, value in payload.items() if key != "_result_validator"
+        }
+        trace_index = self.model_trace_recorder.begin(role, observable_payload)
+        call_id = f"MODEL_CALL_{trace_index + 1}"
+        workflow_step_id = str(payload.get("workflow_step_id", role))
+        output_kind = "compiler" if "compiler" in str(role).lower() else "business"
+        emit_runtime_event(
+            "model_input", agent=role, call_id=call_id,
+            output_kind=output_kind,
+            step_id=workflow_step_id, raw_input=_sanitize(observable_payload),
+        )
+        stream_callback = on_delta
+        if has_event_sink():
+            def stream_callback(delta: str) -> None:
+                emit_runtime_event(
+                    "model_delta", agent=role, call_id=call_id,
+                    output_kind=output_kind,
+                    step_id=workflow_step_id, delta=delta,
+                )
+                if on_delta:
+                    on_delta(delta)
+        try:
+            result = await self.inner.complete_text(role, payload, on_delta=stream_callback)
+            self._record_transport(
+                trace_index, call_id, workflow_step_id, observable_payload, result
+            )
+            self.model_trace_recorder.record_output_text(trace_index, result)
+            emit_runtime_event(
+                "model_output", agent=role, call_id=call_id,
+                output_kind=output_kind,
+                step_id=workflow_step_id, raw_output=str(result),
+            )
+            return str(result)
+        except BaseException as exc:
+            self.model_trace_recorder.fail(trace_index, exc)
+            raise
 
     async def complete_json(self, role, payload, on_delta=None):
         observable_payload = {
@@ -666,15 +859,24 @@ class StreamingChatModel:
         trace_index = self.model_trace_recorder.begin(role, observable_payload)
         call_id = f"MODEL_CALL_{trace_index + 1}"
         workflow_step_id = str(payload.get("workflow_step_id", role))
+        output_kind = (
+            "compiler" if "compiler" in str(role).lower() or str(role).lower().endswith("_contract")
+            else "business"
+        )
         emit_runtime_event(
             "model_input", agent=role, call_id=call_id,
-            step_id=workflow_step_id, raw_input=observable_payload,
+            output_kind=output_kind,
+            # The collaboration sidebar may expose this event to the browser;
+            # keep the complete model boundary while redacting credentials and
+            # personal identifiers first.
+            step_id=workflow_step_id, raw_input=_sanitize(observable_payload),
         )
         stream_callback = on_delta
         if has_event_sink():
             def stream_callback(delta: str) -> None:
                 emit_runtime_event(
                     "model_delta", agent=role, call_id=call_id,
+                    output_kind=output_kind,
                     step_id=workflow_step_id, delta=delta,
                 )
                 if on_delta:
@@ -688,7 +890,8 @@ class StreamingChatModel:
                 self.model_trace_recorder.succeed(trace_index, result)
                 emit_runtime_event(
                     "model_output", agent=role, call_id=call_id,
-                    step_id=workflow_step_id, raw_output=result,
+                    output_kind=output_kind,
+                    step_id=workflow_step_id, raw_output=_sanitize(result),
                 )
                 return result
             except BaseException as exc:
@@ -711,7 +914,8 @@ class StreamingChatModel:
                 self.model_trace_recorder.succeed(trace_index, result)
                 emit_runtime_event(
                     "model_output", agent=role, call_id=call_id,
-                    step_id=workflow_step_id, raw_output=result,
+                    output_kind=output_kind,
+                    step_id=workflow_step_id, raw_output=_sanitize(result),
                 )
                 return result
             except BaseException as exc:

@@ -37,7 +37,12 @@ class ExaVideoRetriever:
         return await self.search_resources(query, resource_type="question", limit=limit)
 
     async def search_web(self, query: str, limit: int = 5) -> list[ExaResourceHit]:
-        """Search current external facts without adding a subject-matter suffix."""
+        """Search current external facts that are not textbook knowledge points.
+
+        This deliberately uses the same approved Exa adapter as video/reference
+        retrieval, but does not append a Chinese-medicine suffix.  It is used
+        for time-sensitive questions such as exam dates and weather.
+        """
         return await self.search_resources(query, resource_type="web", limit=limit)
 
     async def search_resources(

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from competition_app.contracts.learning_plan import (
 from competition_app.db.bootstrap import DatabaseBootstrap
 from competition_app.repositories.learning_plan import SqlLearningPlanRepository
 from competition_app.repositories.runtime import (
+    InMemoryConversationRepository,
     SqlConversationRepository,
     SqlRunStateRepository,
 )
@@ -278,6 +280,93 @@ def test_sql_conversation_repository_is_idempotent_and_checks_owner() -> None:
         assert connection.execute(text("SELECT COUNT(*) FROM conversation_sessions")).scalar_one() == 1
         assert connection.execute(text("SELECT COUNT(*) FROM conversation_messages")).scalar_one() == 1
     assert repository.get_messages("THREAD_1", "L1")[0]["actions"][0]["label"] == "开始答题"
+
+
+def test_conversation_repositories_sanitize_persisted_history_at_both_boundaries() -> None:
+    messages = [
+        {"message_id": "M_USER", "role": "user", "content": "介绍感冒"},
+        {
+            "message_id": "M_TRACE",
+            "role": "tool",
+            "content": "外部检索结果，不应进入正式历史",
+        },
+        {
+            "message_id": "M_ASSISTANT",
+            "role": "assistant",
+            "content": '<think>内部推理</think>感冒可分风寒、风热。<<EV:{"secret":1}>>',
+            "actions": [{"label": "查看知识卡"}],
+            "raw_model_output": "不应持久化",
+        },
+    ]
+
+    in_memory = InMemoryConversationRepository()
+    in_memory.save_messages("THREAD_MEM", "L1", messages)
+    memory_rows = in_memory.get_messages("THREAD_MEM", "L1")
+    assert [row["role"] for row in memory_rows] == ["user", "assistant"]
+    assert memory_rows[1]["content"] == "感冒可分风寒、风热。"
+    assert memory_rows[1]["actions"][0]["label"] == "查看知识卡"
+    assert "raw_model_output" not in memory_rows[1]
+
+    engine = build_engine()
+    sql = SqlConversationRepository(engine)
+    sql.save_messages("THREAD_SQL", "L1", messages)
+    sql_rows = sql.get_messages("THREAD_SQL", "L1")
+    assert [row["role"] for row in sql_rows] == ["user", "assistant"]
+    assistant_row = next(row for row in sql_rows if row["role"] == "assistant")
+    assert assistant_row["content"] == "感冒可分风寒、风热。"
+    assert "raw_model_output" not in assistant_row
+
+
+def test_sql_conversation_repository_sanitizes_legacy_polluted_rows_on_read() -> None:
+    engine = build_engine()
+    with engine.begin() as connection:
+        connection.execute(text(
+            "INSERT INTO conversation_sessions (session_id, learner_id, title) "
+            "VALUES ('LEGACY', 'L1', '旧会话')"
+        ))
+        connection.execute(
+            text(
+                "INSERT INTO conversation_messages "
+                "(message_id, session_id, role, content, metadata_json) VALUES "
+                "(:message_id, 'LEGACY', :role, :content, :metadata_json)"
+            ),
+            [
+                {
+                    "message_id": "OLD_USER",
+                    "role": "user",
+                    "content": "给我讲讲感冒",
+                    "metadata_json": '{}',
+                },
+                {
+                    "message_id": "OLD_TOOL",
+                    "role": "tool",
+                    "content": "教材外部检索结果",
+                    "metadata_json": '{}',
+                },
+                {
+                    "message_id": "OLD_ASSISTANT",
+                    "role": "assistant",
+                    "content": '<think>推理</think>正式回答<<REFS:[{"id":"E1"}]>>',
+                    # Old metadata must not be able to replace the canonical
+                    # database role/content or leak trace data into history.
+                    "metadata_json": json.dumps({
+                        "role": "tool",
+                        "content": "伪造外部信息",
+                        "raw_model_input": "隐藏",
+                        "actions": [{"label": "查看详情"}],
+                    }, ensure_ascii=False),
+                },
+            ],
+        )
+
+    rows = SqlConversationRepository(engine).get_messages("LEGACY", "L1")
+    assert [(row["role"], row["content"]) for row in rows] == [
+        ("assistant", "正式回答"),
+        ("user", "给我讲讲感冒"),
+    ]
+    assistant_row = next(row for row in rows if row["role"] == "assistant")
+    assert assistant_row["actions"] == [{"label": "查看详情"}]
+    assert "raw_model_input" not in assistant_row
 
 
 def test_formal_sqlite_database_preserves_runtime_repositories(tmp_path: Path) -> None:

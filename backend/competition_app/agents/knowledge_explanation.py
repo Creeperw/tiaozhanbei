@@ -47,6 +47,7 @@ class KnowledgeExplanationAgent:
                 )
             )
         )
+        current_date = date.today().isoformat()
         question_explanation_request = bool(
             context.get("question_explanation_request")
             or any(
@@ -81,18 +82,17 @@ class KnowledgeExplanationAgent:
         compressed_summary = str(getattr(context_summary, "summary", "") or "").strip()
         conversation_messages = list(context.get("messages", []))
         recent_messages = conversation_messages[-1:] if compressed_summary else conversation_messages[-8:]
-        try:
-            raw_output = await self.chat_model.complete_json(
-                    "expert_agent",
-                    build_model_context(
+        model_payload = build_model_context(
                         context,
                         target_agent="expert_agent",
                         prompt_skill=skill,
                         payload={
                             "phase": skill_name,
                             "user_request": context.get("user_request", ""),
-                            "external_information_request": external_information_request,
-                            "current_date": date.today().isoformat(),
+                            "external_information_request": bool(
+                                external_information_request
+                            ),
+                            "current_date": current_date,
                             "recent_conversation": [
                                 {
                                     "role": str(item.get("role", "")),
@@ -132,7 +132,17 @@ class KnowledgeExplanationAgent:
                             "结合最近对话解析当前问题中的指代，优先依据教材和网络来源生成教学讲解；覆盖不足时允许使用明确标注的"
                             "模型自身知识。不得伪造引用，不得生成现实诊断、处方或剂量建议。"
                         ),
-                    ),
+                    )
+        try:
+            # Knowledge explanation is a prose-producing business agent. Keep
+            # a JSON fallback for test doubles and older model adapters.
+            if callable(getattr(self.chat_model, "complete_text", None)):
+                text_output = await self.chat_model.complete_text("expert_agent", model_payload)
+                raw_output = {"content": text_output}
+            else:
+                raw_output = await self.chat_model.complete_json(
+                    "expert_agent",
+                    model_payload,
                 )
             if not isinstance(raw_output, dict):
                 raw_output = {}

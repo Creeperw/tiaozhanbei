@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -21,6 +22,7 @@ from competition_app.runtime.trace import (
 )
 from competition_app.runtime.tool_registry import ToolRegistry
 from competition_app.runtime.event_stream import emit_runtime_event
+from competition_app.runtime.snapshot import _sanitize
 
 
 class ExecutionResult(BaseModel):
@@ -305,11 +307,17 @@ class Orchestrator:
         trace: TraceRecorder,
     ) -> Any:
         agent = self.agent_registry.get(step.agent)
+        dependency_names = list(step.depends_on)
         emit_runtime_event(
             "step_started",
             step_id=step.step_id,
             agent=step.agent,
             depends_on=step.depends_on,
+            input_summary=self._runtime_input_summary(
+                root_context,
+                step,
+                dependency_names,
+            ),
         )
         step_context = dict(root_context)
         step_context["step_id"] = step.step_id
@@ -423,10 +431,21 @@ class Orchestrator:
                     "system_output",
                     step_id=step.step_id,
                     agent=step.agent,
-                    output=result,
+                    output_kind=(
+                        "compiler"
+                        if "compiler" in str(step.agent).lower()
+                        else "business"
+                    ),
+                    output_summary=self._runtime_output_summary(result),
                 )
                 emit_runtime_event(
-                    "step_completed", step_id=step.step_id, agent=step.agent, status="success"
+                    "step_completed", step_id=step.step_id, agent=step.agent,
+                    status="success",
+                    output_kind=(
+                        "compiler"
+                        if "compiler" in str(step.agent).lower()
+                        else "business"
+                    ),
                 )
                 return result
             except AgentHandoffBlocked:
@@ -447,6 +466,70 @@ class Orchestrator:
                 trace.record(step.step_id, step.agent, "failed", attempt, type(exc).__name__)
                 raise
         raise RuntimeError("unreachable")
+
+    @staticmethod
+    def _runtime_input_summary(
+        root_context: dict[str, Any],
+        step: ExecutionStep,
+        dependency_names: list[str],
+    ) -> dict[str, Any]:
+        """Expose a bounded, secret-safe handoff summary to the UI."""
+        return _sanitize(
+            {
+                "user_request": str(root_context.get("user_request") or "")[:1200],
+                "original_user_request": str(
+                    root_context.get("original_user_request")
+                    or root_context.get("user_request")
+                    or ""
+                )[:1200],
+                "task_type": root_context.get("task_type"),
+                "plan_scope": root_context.get("plan_scope"),
+                "available_minutes": root_context.get("available_minutes"),
+                "dependencies": dependency_names,
+                "has_learning_monitoring": bool(root_context.get("learning_monitoring")),
+                "has_existing_long_term_plan": bool(
+                    (root_context.get("current_long_term_plan") or {}).get("content")
+                ),
+                "has_existing_short_term_plan": bool(
+                    (root_context.get("current_short_term_plan") or {}).get("content")
+                ),
+            }
+        )
+
+    @staticmethod
+    def _runtime_output_summary(result: Any) -> dict[str, Any]:
+        """Keep the full agent result inspectable without flooding SSE."""
+        safe = _sanitize(result)
+        # Test doubles and a few internal agents return lightweight objects
+        # instead of dicts/envelopes.  Convert those through their public
+        # payload/model_dump surface before serializing the trace; observability
+        # must never change the workflow result.
+        if not isinstance(safe, (dict, list, str, int, float, bool, type(None))):
+            if hasattr(safe, "model_dump"):
+                safe = _sanitize(safe.model_dump(mode="json"))
+            elif hasattr(safe, "payload"):
+                payload = getattr(safe, "payload")
+                safe = {
+                    "payload": _sanitize(
+                        payload.model_dump(mode="json")
+                        if hasattr(payload, "model_dump")
+                        else payload
+                    )
+                }
+            else:
+                safe = {"repr": _sanitize(repr(safe))}
+        if isinstance(safe, dict):
+            payload = safe.get("payload", safe)
+            encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+            if len(encoded) > 6000:
+                payload = {"truncated": encoded[:6000], "truncated_chars": len(encoded)}
+            return {
+                "artifact_type": safe.get("artifact_type"),
+                "producer": safe.get("producer"),
+                "payload": payload,
+            }
+        encoded = json.dumps(safe, ensure_ascii=False, separators=(",", ":"))
+        return {"payload": encoded[:6000], "truncated_chars": len(encoded)}
 
     @staticmethod
     def _can_prepare_handoff(root_context: dict[str, Any]) -> bool:

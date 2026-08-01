@@ -69,6 +69,7 @@ class PlannerModelOutput(BaseModel):
         Literal[
             "memory_agent",
             "knowledge_base_agent",
+            "default_route_resolver",
             "diagnosis_agent",
             "learning_plan_service",
             "review_scheduler",
@@ -77,7 +78,8 @@ class PlannerModelOutput(BaseModel):
         ]
     ] = Field(
         default_factory=list,
-        description="完成当前交付物所需的最小充分Agent集合，必须满足能力目录中的依赖关系。",
+        description="完成当前交付物所需的最小充分Agent集合，必须满足能力目录中的依赖关系。"
+        "default_route_resolver 由系统在学情诊断前自动注入，通常无需模型选择。",
     )
     routing_reason: str = Field(
         min_length=1,

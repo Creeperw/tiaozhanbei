@@ -4,6 +4,13 @@ from typing import Any, Callable, Protocol
 
 
 class ChatModel(Protocol):
+    async def complete_text(
+        self,
+        role: str,
+        payload: dict[str, Any],
+        on_delta: Callable[[str], None] | None = None,
+    ) -> str: ...
+
     async def complete_json(
         self,
         role: str,

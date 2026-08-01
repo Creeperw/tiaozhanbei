@@ -152,29 +152,34 @@ class PlanContractCompilerAgent:
     ) -> PlanCompilationEnvelope:
         source_digest = self._digest(diagnosis_output)
 
-        # Diagnosis already emits the execution fields required by the plan
-        # service.  Prefer compiling those trusted fields deterministically:
-        # this is faster, preserves their exact values, and prevents a second
-        # model from inventing conflicts while merely copying a contract.
-        direct_result = self._compile_from_direct_sources(
-            diagnosis_output,
-            plan_scope,
-            parent_plan_constraints,
-        )
-        if direct_result is not None:
-            direct_issues = self._source_issues(
-                direct_result,
+        # New Diagnosis drafts are natural-language documents.  They must
+        # always pass through the compiler model; otherwise a structured
+        # Diagnosis response can silently become the execution contract and
+        # the Compiler is reduced to a no-op wrapper.
+        #
+        # Keep the deterministic path only for legacy callers/tests that still
+        # provide the old field-by-field payload and do not provide a document.
+        # This compatibility path is intentionally unreachable for the new
+        # business-agent boundary.
+        if "plan_document" not in diagnosis_output:
+            direct_result = self._compile_from_direct_sources(
                 diagnosis_output,
                 plan_scope,
+                parent_plan_constraints,
             )
-            if not direct_issues:
-                return PlanCompilationEnvelope(
-                    result=direct_result,
-                    source_digest=source_digest,
+            if direct_result is not None:
+                direct_issues = self._source_issues(
+                    direct_result,
+                    diagnosis_output,
+                    plan_scope,
                 )
+                if not direct_issues:
+                    return PlanCompilationEnvelope(
+                        result=direct_result,
+                        source_digest=source_digest,
+                    )
 
-        # The model compiler remains a compatibility fallback for older
-        # Diagnosis outputs that only contain prose or use legacy field names.
+        # The model compiler extracts a strict contract from the document.
         skill = prompt_skill_registry.load(
             "plan_contract_compiler", "compile_plan_contract"
         )
@@ -183,8 +188,12 @@ class PlanContractCompilerAgent:
             "diagnosis_output": diagnosis_output,
             "trusted_route": trusted_route,
             "parent_plan_constraints": parent_plan_constraints,
-            "system_inserted_fields": self._system_inserted_fields(plan_scope),
-            "output_schema": self._model_output_schema(),
+            "system_inserted_fields": (
+                []
+                if "plan_document" in diagnosis_output
+                else self._system_inserted_fields(plan_scope)
+            ),
+            "output_schema": self._model_output_schema(include_managed_text=False),
         }
         raw = await self.chat_model.complete_json(
             "plan_contract_compiler",
@@ -200,6 +209,16 @@ class PlanContractCompilerAgent:
             ),
         )
         normalized_raw = self._normalize_model_output(raw, diagnosis_output)
+        # The compiler model may return extracted field values but omit the
+        # corresponding field_anchors entries (unstable extraction).  Backfill
+        # missing anchors from diagnosis_output verbatim text; values that do
+        # not actually appear in the diagnosis output keep failing strict
+        # source validation below.
+        normalized_raw = self._backfill_anchors(
+            normalized_raw,
+            diagnosis_output,
+            plan_scope,
+        )
         result = self._parse(
             self._inject_system_fields(
                 normalized_raw,
@@ -213,8 +232,32 @@ class PlanContractCompilerAgent:
             if isinstance(result, PlanContractNeedsRevision)
             else issues
         )
+        # The compiler model can give up on a natural-language document even
+        # when every value is present.  Fall back to a deterministic parse of
+        # the labeled plan_document; strict source validation still applies to
+        # whatever the parser produces.
         if (
-            isinstance(result, PlanContractNeedsRevision)
+            result_issues
+            and isinstance(diagnosis_output.get("plan_document"), str)
+            and diagnosis_output["plan_document"].strip()
+        ):
+            doc_result = self._compile_from_plan_document(
+                diagnosis_output["plan_document"],
+                plan_scope,
+                parent_plan_constraints,
+            )
+            if doc_result is not None:
+                doc_issues = self._source_issues(
+                    doc_result,
+                    diagnosis_output,
+                    plan_scope,
+                )
+                if not doc_issues:
+                    result = doc_result
+                    issues = []
+        if (
+            "plan_document" not in diagnosis_output
+            and isinstance(result, PlanContractNeedsRevision)
             and result_issues
             and self._can_recover_from_direct_sources(result_issues)
         ):
@@ -635,6 +678,13 @@ class PlanContractCompilerAgent:
             return None
         if candidate in sources:
             return candidate
+        # The compiler model sometimes emits nested JSON paths such as
+        # ``plan_document.short_term_plan_content.duration_days``.  Resolve the
+        # root source field so the anchor still points at the actual
+        # diagnosis_output key.
+        root = candidate.split(".")[0]
+        if root in sources:
+            return root
         canonical = cls._canonical_source_field(candidate)
         for key in sources:
             if cls._canonical_source_field(key) == canonical:
@@ -661,8 +711,14 @@ class PlanContractCompilerAgent:
 
     @classmethod
     def _canonical_contract_path(cls, path: Any) -> str:
-        if not isinstance(path, str) or not path.startswith("/"):
+        if not isinstance(path, str):
             return str(path)
+        if not path.startswith("/"):
+            # The compiler model sometimes emits ``contract.duration_days``
+            # instead of ``/duration_days``.  Normalize that form as well.
+            if path.startswith("contract."):
+                return "/" + cls._canonical_contract_field(path[len("contract."):])
+            return path
         parts = path.split("/")
         if len(parts) < 2:
             return path
@@ -734,10 +790,16 @@ class PlanContractCompilerAgent:
         return [field] if field else []
 
     @classmethod
-    def _model_output_schema(cls) -> dict[str, Any]:
-        """Allow the model to omit full正文 fields owned by deterministic code."""
+    def _model_output_schema(
+        cls,
+        *,
+        include_managed_text: bool = False,
+    ) -> dict[str, Any]:
+        """Build the compiler schema for document or legacy sources."""
 
         schema = deepcopy(TypeAdapter(PlanContractCompilerResult).json_schema())
+        if include_managed_text:
+            return schema
         managed_fields = {
             "long_term_plan_content",
             "short_term_plan_content",
@@ -764,6 +826,422 @@ class PlanContractCompilerAgent:
         strip_managed_fields(schema)
         return schema
 
+    @staticmethod
+    def _parse_plan_document_sections(
+        plan_document: str,
+    ) -> dict[str, list[str]]:
+        """Split the natural-language document into ``label: lines`` buckets.
+
+        The Diagnosis document uses explicit English tags such as
+        ``duration_days：7``, ``progression_nodes：`` or ``selected_books：``
+        followed by ``- `` list items.  This deterministic parser extracts each
+        section verbatim so the backend can recompile a contract without
+        relying on the compiler model when the model gives up.
+        """
+
+        import re
+
+        tag_re = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*)：")
+        sections: dict[str, list[str]] = {}
+        current: str | None = None
+        current_lines: list[str] = []
+        for raw_line in plan_document.split("\n"):
+            match = tag_re.match(raw_line)
+            if match:
+                if current is not None:
+                    sections[current] = current_lines
+                current = match.group(1)
+                current_lines = []
+                rest = raw_line[match.end():].strip()
+                if rest:
+                    current_lines.append(rest)
+            elif current is not None:
+                stripped = raw_line.strip()
+                if stripped:
+                    current_lines.append(stripped)
+        if current is not None:
+            sections[current] = current_lines
+        return sections
+
+    @classmethod
+    def _compile_from_plan_document(
+        cls,
+        plan_document: str,
+        plan_scope: str,
+        parent_plan_constraints: dict[str, Any],
+    ) -> CompiledPlanContractResult | None:
+        """Deterministically compile a labeled plan_document.
+
+        Fallback used when the compiler model returns ``needs_revision`` or
+        anchors that cannot be verified.  Only values written verbatim in the
+        document are used; anything missing keeps the revision path alive.
+        """
+
+        sections = cls._parse_plan_document_sections(plan_document)
+        if plan_scope == "short_term":
+            return cls._compile_short_term_from_plan_document(
+                plan_document,
+                sections,
+                parent_plan_constraints,
+            )
+        if plan_scope == "long_term":
+            # A long-term stage has six independent semantic fields.  The old
+            # fallback derived several of them from one free-form line and
+            # even supplied ``duration_days=1``.  That turns a compiler into a
+            # plan author and can publish a contract that the Diagnosis never
+            # wrote.  Long-term documents therefore require the model
+            # compiler (and its field-level source anchors); an incomplete
+            # model result must go through Diagnosis revision instead.
+            return None
+        if plan_scope == "daily_task":
+            return cls._compile_daily_task_from_plan_document(
+                plan_document,
+                sections,
+            )
+        return None
+
+    @classmethod
+    def _strip_list_prefix(cls, lines: list[str]) -> list[str]:
+        values: list[str] = []
+        for line in lines:
+            text = line.strip()
+            for prefix in ("- ", "• ", "· ", "1. ", "2. ", "3. "):
+                if text.startswith(prefix):
+                    text = text[len(prefix):].strip()
+                    break
+            if text:
+                values.append(text)
+        return values
+
+    @classmethod
+    def _extract_books(cls, lines: list[str]) -> list[str]:
+        """Extract clean book names from list items or inline ``《A》、《B》``.
+
+        The Diagnosis document writes books either as ``- 《中医学基础》`` list
+        items or as an inline ``selected_books：《中医学基础》、《方剂学》``
+        line.  Both forms must yield separate book entries.
+        """
+
+        import re
+
+        books: list[str] = []
+        for line in lines:
+            text = line.strip()
+            for prefix in ("- ", "• ", "· "):
+                if text.startswith(prefix):
+                    text = text[len(prefix):].strip()
+                    break
+            # Collect every 《...》 occurrence on the line.
+            found = re.findall(r"《([^》]+)》", text)
+            if found:
+                for name in found:
+                    book = f"《{name}》".strip()
+                    if book and book not in books:
+                        books.append(book)
+                continue
+            # Bare names separated by commas / slashes (no book-mark quotes).
+            if text and any(sep in text for sep in ("、", "，", ",", "/", "；", ";")):
+                for part in re.split(r"[、，,;；/]", text):
+                    part = part.strip()
+                    if part and part not in books:
+                        books.append(part)
+                continue
+            if text and text not in books:
+                books.append(text)
+        return books
+
+    @classmethod
+    def _section_value(cls, sections: dict[str, list[str]], label: str) -> str:
+        lines = sections.get(label) or []
+        return "\n".join(lines).strip()
+
+    @classmethod
+    def _section_int(cls, sections: dict[str, list[str]], label: str) -> int | None:
+        value = cls._section_value(sections, label)
+        import re
+
+        match = re.search(r"\d+", value)
+        if not match:
+            return None
+        try:
+            return int(match.group(0))
+        except ValueError:
+            return None
+
+    @classmethod
+    def _compile_short_term_from_plan_document(
+        cls,
+        plan_document: str,
+        sections: dict[str, list[str]],
+        parent_plan_constraints: dict[str, Any],
+    ) -> CompiledPlanContractResult | None:
+        duration = cls._section_int(sections, "duration_days")
+        if duration is None or duration <= 0:
+            return None
+        limit = parent_plan_constraints.get("current_stage_duration_days")
+        if limit is not None and duration > limit:
+            return None
+        nodes = cls._strip_list_prefix(sections.get("progression_nodes") or [])
+        if len(nodes) < 2:
+            return None
+        expected_output = cls._section_value(sections, "expected_output")
+        completion_criteria = cls._section_value(sections, "completion_criteria")
+        if not expected_output or not completion_criteria:
+            return None
+        books = cls._extract_books(sections.get("selected_books") or [])
+        if not books or len(books) > 2:
+            return None
+        stage_id = cls._section_value(sections, "selected_stage_id") or None
+        if stage_id and stage_id.lower() in {"null", "none", "无"}:
+            stage_id = None
+        content = plan_document.strip()
+        if not content:
+            return None
+        field_anchors = {
+            "/short_term_plan_content": [
+                {"source_field": "plan_document", "source_quote": content}
+            ],
+            "/duration_days": [
+                {"source_field": "plan_document", "source_quote": str(duration)}
+            ],
+            "/progression_nodes": [
+                {"source_field": "plan_document", "source_quote": node}
+                for node in nodes
+            ],
+            "/expected_output": [
+                {
+                    "source_field": "plan_document",
+                    "source_quote": expected_output,
+                }
+            ],
+            "/completion_criteria": [
+                {
+                    "source_field": "plan_document",
+                    "source_quote": completion_criteria,
+                }
+            ],
+            "/selected_books": [
+                {"source_field": "plan_document", "source_quote": book}
+                for book in books
+            ],
+        }
+        if stage_id:
+            field_anchors["/selected_stage_id"] = [
+                {"source_field": "plan_document", "source_quote": stage_id}
+            ]
+        contract = CompiledShortTermContract(
+            scope="short_term",
+            short_term_plan_content=content,
+            duration_days=duration,
+            progression_nodes=nodes,
+            expected_output=expected_output,
+            completion_criteria=completion_criteria,
+            selected_stage_id=stage_id,
+            selected_books=books,
+            field_anchors=field_anchors,
+        )
+        return CompiledPlanContractResult(status="compiled", contract=contract)
+
+    @classmethod
+    def _compile_long_term_from_plan_document(
+        cls,
+        plan_document: str,
+        sections: dict[str, list[str]],
+    ) -> CompiledPlanContractResult | None:
+        content = plan_document.strip()
+        if not content:
+            return None
+        stages_lines = sections.get("long_term_plan_stages") or sections.get("stages") or []
+        compiled_stages: list[CompiledLongTermStage] = []
+        for line in cls._strip_list_prefix(stages_lines):
+            import re
+
+            match = re.search(r"《([^》]+)》", line)
+            book = match.group(1) if match else None
+            stage_no = re.search(r"(?:阶段|stage)[\s#]*(\d+)", line, re.IGNORECASE)
+            if not book or not stage_no:
+                continue
+            compiled_stages.append(
+                CompiledLongTermStage(
+                    stage=int(stage_no.group(1)),
+                    stage_name=line[:40],
+                    books=[f"《{book}》"],
+                    goal=line[:120],
+                    duration_days=1,
+                    schedule_summary=line[:200],
+                )
+            )
+        if not compiled_stages:
+            return None
+        total = cls._section_int(sections, "total_duration_days")
+        if total is None or total <= 0:
+            return None
+        contract = CompiledLongTermContract(
+            scope="long_term",
+            long_term_plan_content=content,
+            total_duration_days=total,
+            stages=compiled_stages,
+            field_anchors={
+                "/long_term_plan_content": [
+                    {"source_field": "plan_document", "source_quote": content}
+                ],
+                "/total_duration_days": [
+                    {"source_field": "plan_document", "source_quote": str(total)}
+                ],
+                "/stages": [
+                    {"source_field": "plan_document", "source_quote": line}
+                    for line in cls._strip_list_prefix(stages_lines)
+                ],
+            },
+        )
+        return CompiledPlanContractResult(status="compiled", contract=contract)
+
+    @classmethod
+    def _compile_daily_task_from_plan_document(
+        cls,
+        plan_document: str,
+        sections: dict[str, list[str]],
+    ) -> CompiledPlanContractResult | None:
+        content = plan_document.strip()
+        chapter = cls._section_value(sections, "learning_chapter")
+        points = cls._strip_list_prefix(sections.get("focus_knowledge_points") or [])
+        minutes = cls._section_int(sections, "estimated_minutes")
+        expected_output = cls._section_value(sections, "expected_output")
+        completion_criteria = cls._section_value(sections, "completion_criteria")
+        if (
+            not content
+            or not chapter
+            or not points
+            or minutes is None
+            or minutes <= 0
+            or not expected_output
+            or not completion_criteria
+        ):
+            return None
+        contract = CompiledDailyTaskContract(
+            scope="daily_task",
+            daily_task_content=content,
+            learning_chapter=chapter,
+            focus_knowledge_points=points,
+            estimated_minutes=minutes,
+            expected_output=expected_output,
+            completion_criteria=completion_criteria,
+            field_anchors={
+                "/daily_task_content": [
+                    {"source_field": "plan_document", "source_quote": content}
+                ],
+                "/learning_chapter": [
+                    {"source_field": "plan_document", "source_quote": chapter}
+                ],
+                "/focus_knowledge_points": [
+                    {"source_field": "plan_document", "source_quote": point}
+                    for point in points
+                ],
+                "/estimated_minutes": [
+                    {"source_field": "plan_document", "source_quote": str(minutes)}
+                ],
+                "/expected_output": [
+                    {
+                        "source_field": "plan_document",
+                        "source_quote": expected_output,
+                    }
+                ],
+                "/completion_criteria": [
+                    {
+                        "source_field": "plan_document",
+                        "source_quote": completion_criteria,
+                    }
+                ],
+            },
+        )
+        return CompiledPlanContractResult(status="compiled", contract=contract)
+
+    @classmethod
+    def _backfill_anchors(
+        cls,
+        raw: Any,
+        diagnosis_output: dict[str, Any],
+        plan_scope: str,
+    ) -> Any:
+        """Restore field_anchors entries the compiler model omitted or
+        mis-quoted.
+
+        The compiler sometimes returns extracted contract values without the
+        matching ``field_anchors`` entries, or quotes them in a rewritten
+        (non-verbatim) form.  When every value of a required field can be
+        located verbatim inside ``diagnosis_output``, re-anchor it there so the
+        strict source check below still passes only for values that genuinely
+        came from the diagnosis output.  Values that cannot be found are left
+        untouched and keep failing with ``source_anchor_missing`` /
+        ``source_anchor_invalid``.
+        """
+
+        if not isinstance(raw, dict) or raw.get("status") != "compiled":
+            return raw
+        contract = raw.get("contract")
+        if not isinstance(contract, dict):
+            return raw
+        anchors = contract.get("field_anchors")
+        if not isinstance(anchors, dict):
+            return raw
+        searchable_sources = {
+            str(key): cls._source_text(value)
+            for key, value in diagnosis_output.items()
+        }
+        required = cls._required_anchor_paths(plan_scope)
+        rebuilt = deepcopy(raw)
+        rebuilt_contract = rebuilt["contract"]
+        rebuilt_anchors = rebuilt_contract["field_anchors"]
+
+        def _anchors_verbatim(path: str) -> bool:
+            entries = rebuilt_anchors.get(path)
+            if not isinstance(entries, list) or not entries:
+                return False
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    return False
+                source = searchable_sources.get(str(entry.get("source_field")))
+                quote = entry.get("source_quote")
+                if source is None or not isinstance(quote, str) or quote not in source:
+                    return False
+            return True
+
+        for field_path in required:
+            if _anchors_verbatim(field_path):
+                continue
+            field = field_path.lstrip("/")
+            value = rebuilt_contract.get(field)
+            if value is None:
+                continue
+            candidates = value if isinstance(value, list) else [value]
+            if not candidates:
+                continue
+            recovered: list[dict[str, str]] = []
+            for item in candidates:
+                if item is None:
+                    continue
+                quote = cls._source_text(item)
+                if not quote:
+                    recovered = []
+                    break
+                source_field = next(
+                    (
+                        key
+                        for key, source in searchable_sources.items()
+                        if quote in source
+                    ),
+                    None,
+                )
+                if source_field is None:
+                    recovered = []
+                    break
+                recovered.append(
+                    {"source_field": source_field, "source_quote": quote}
+                )
+            if recovered:
+                rebuilt_anchors[field_path] = recovered
+        return rebuilt
+
     @classmethod
     def _inject_system_fields(
         cls,
@@ -784,6 +1262,19 @@ class PlanContractCompilerAgent:
             return normalized
         field = field_names[0]
         value = diagnosis_output.get(field)
+        source_field = field
+        # New Diagnosis drafts carry a natural-language plan_document instead
+        # of the legacy structured field.  The model schema strips managed
+        # fields, so the backend must inject the document as the managed正文,
+        # and anchor it to the plan_document source so source validation can
+        # verify it verbatim.
+        if (
+            (not isinstance(value, str) or not value)
+            and isinstance(diagnosis_output.get("plan_document"), str)
+            and diagnosis_output["plan_document"].strip()
+        ):
+            value = diagnosis_output["plan_document"]
+            source_field = "plan_document"
         if not isinstance(value, str) or not value:
             return normalized
         contract[field] = value
@@ -793,7 +1284,7 @@ class PlanContractCompilerAgent:
             contract["field_anchors"] = anchors
         anchors[f"/{field}"] = [
             {
-                "source_field": field,
+                "source_field": source_field,
                 "source_quote": value,
             }
         ]
@@ -844,8 +1335,48 @@ class PlanContractCompilerAgent:
                         }
                     )
         required_paths = cls._required_anchor_paths(contract.scope)
+        # The compiler model anchors each stage through per-field sub-paths
+        # (``/stages/0/stage_name``, ``/stages/0/books``, ...) instead of a
+        # single top-level ``/stages`` anchor.  When every stage's required
+        # sub-field is anchored verbatim, the top-level collection is
+        # considered anchored as well; otherwise the strict per-field check
+        # above already reported the concrete gap.
+        effective_anchors = set(contract.field_anchors)
+        if "/stages" not in effective_anchors and contract.scope == "long_term":
+            stages_value = getattr(contract, "stages", None)
+            stage_count = len(stages_value) if isinstance(stages_value, list) else 0
+            required_sub_fields = {
+                "stage",
+                "stage_name",
+                "books",
+                "goal",
+                "duration_days",
+                "schedule_summary",
+            }
+            covered_by_stage: dict[int, set[str]] = {}
+            for path in contract.field_anchors:
+                parts = path.split("/")
+                if (
+                    len(parts) >= 4
+                    and parts[1] == "stages"
+                    and parts[2].isdigit()
+                ):
+                    covered_by_stage.setdefault(int(parts[2]), set()).add(parts[3])
+            all_stages_covered = (
+                stage_count > 0
+                # Contract list positions are zero-based JSON-pointer indexes.
+                # Merely comparing counts lets indexes such as {1, 2} satisfy
+                # a two-stage contract while stage 0 has no evidence.
+                and set(covered_by_stage) == set(range(stage_count))
+                and all(
+                    required_sub_fields <= covered
+                    for covered in covered_by_stage.values()
+                )
+            )
+            if all_stages_covered:
+                effective_anchors.add("/stages")
         for field_path in required_paths:
-            if field_path not in contract.field_anchors:
+            if field_path not in effective_anchors:
                 issues.append(
                     {
                         "code": "source_anchor_missing",
@@ -870,6 +1401,8 @@ class PlanContractCompilerAgent:
                 "/short_term_plan_content",
                 "/duration_days",
                 "/progression_nodes",
+                "/expected_output",
+                "/completion_criteria",
                 "/selected_books",
             }
         return {

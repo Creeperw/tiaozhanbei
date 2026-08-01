@@ -14,7 +14,7 @@ task_type: knowledge_explanation
 1. Knowledge Base Agent 检索用户所问知识对象的教材证据。
 2. Expert Agent 根据证据和已确认表达偏好生成知识讲解。
 3. Audit Agent 审核事实、证据覆盖和教学安全。
-4. Memory 仅在系统判定长对话需要压缩时参与。
+4. Memory 是业务流程常规上下文节点，非闲聊任务由系统自动前置注入；上下文压缩仅由系统阈值触发。
 
 ## 边界
 

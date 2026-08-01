@@ -29,6 +29,37 @@ def test_tool_registry_rejects_duplicate_names() -> None:
 
 
 @pytest.mark.asyncio
+async def test_learning_planning_context_is_diagnosis_only() -> None:
+    registry = ToolRegistry()
+    registry.register(
+        "get_learning_planning_context",
+        lambda external_user_id, scope, available_minutes=60: {
+            "learner_id": external_user_id,
+            "scope": scope,
+            "available_minutes": available_minutes,
+        },
+        allowed_agents={"diagnosis_agent"},
+    )
+
+    result = await registry.invoke(
+        "get_learning_planning_context",
+        "diagnosis_agent",
+        external_user_id="USER_1",
+        scope="short_term",
+        available_minutes=90,
+    )
+    assert result["scope"] == "short_term"
+    with pytest.raises(ToolPermissionError):
+        await registry.invoke(
+            "get_learning_planning_context",
+            "planner_agent",
+            external_user_id="USER_1",
+            scope="short_term",
+            available_minutes=90,
+        )
+
+
+@pytest.mark.asyncio
 async def test_tool_registry_records_safe_success_summary() -> None:
     registry = ToolRegistry()
     recorder = TraceRecorder()

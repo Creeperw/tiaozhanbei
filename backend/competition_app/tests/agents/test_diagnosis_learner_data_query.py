@@ -27,6 +27,11 @@ class NextLearningAnswerModel:
         }
 
 
+class FailingAnswerModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        raise RuntimeError("offline answer unavailable")
+
+
 @pytest.mark.asyncio
 async def test_diagnosis_queries_current_learner_and_excludes_recommendation_noise() -> None:
     captured = {}
@@ -203,3 +208,47 @@ async def test_next_learning_combines_plan_mastery_review_and_recent_history() -
         "get_mastery_snapshot",
         "get_recent_learning_summary",
     ]
+
+
+@pytest.mark.asyncio
+async def test_plan_lookup_returns_requested_long_term_content_not_short_term() -> None:
+    registry = ToolRegistry()
+    registry.register(
+        "get_current_plan_progress",
+        lambda external_user_id: {
+            "long_term": {
+                "status": "active",
+                "content": "这是正式长期规划正文。",
+                "structured": {"stages": [{"stage": 1, "goal": "长期目标"}]},
+                "stage_progress": [{"stage": 1, "name": "基础阶段", "status": "in_progress"}],
+            },
+            "short_term": {
+                "status": "active",
+                "content": "这是短期计划正文。",
+                "structured": {},
+                "acceptance_gate": {"status": "in_progress"},
+            },
+            "daily_task": None,
+        },
+        allowed_agents={"diagnosis_agent"},
+    )
+
+    result = await DiagnosisAgent(FailingAnswerModel()).run(
+        {
+            "case_id": "C_PLAN_LOOKUP",
+            "trace_id": "T_PLAN_LOOKUP",
+            "request_id": "R_PLAN_LOOKUP",
+            "execution_id": "E_PLAN_LOOKUP",
+            "step_id": "diagnosis",
+            "learner_id": "CURRENT_USER",
+            "user_request": "给我看看我的长期学习计划",
+            "task_type": "learner_data_query",
+            "learner_data_query_kind": "plan_progress",
+            "tool_registry": registry,
+        }
+    )
+
+    assert result.payload.summary == "这是正式长期规划正文。"
+    snapshot = result.payload.learner_data["snapshot"]
+    assert snapshot["requested_scope"] == "long_term"
+    assert snapshot["long_term"]["structured"]["stages"][0]["goal"] == "长期目标"

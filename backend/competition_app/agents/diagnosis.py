@@ -21,6 +21,7 @@ from competition_app.contracts.learning_plan import (
     ShortTermFocusContext,
     ShortTermLearningPackage,
     TextbookSelectionContext,
+    PlanChangeDecision,
 )
 from competition_app.contracts.review import DailyReviewPolicy
 from competition_app.contracts.plan_compilation import (
@@ -30,6 +31,7 @@ from competition_app.contracts.plan_compilation import (
     PlanCompilationEnvelope,
 )
 from competition_app.llm.base import ChatModel
+from competition_app.llm.openai_compatible import ModelResponseError
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
 from competition_app.llm.schemas import (
@@ -69,6 +71,7 @@ class DiagnosisResult(BaseModel):
     clarification_fields: list[str] = Field(default_factory=list)
     interrupt_type: str | None = None
     plan_scope: str | None = None
+    prerequisite_scope: str | None = None
     learner_data: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -77,17 +80,24 @@ class DiagnosisAgent:
         self,
         chat_model: ChatModel | None = None,
         plan_contract_compiler: PlanContractCompilerAgent | None = None,
+        learning_plan_service: Any | None = None,
     ) -> None:
         self.chat_model = chat_model or StubChatModel()
         self.plan_contract_compiler = (
             plan_contract_compiler or PlanContractCompilerAgent(self.chat_model)
         )
+        # Readiness is still backend-owned, but receives the repository-backed
+        # service when the application has one so lower-layer requests can
+        # reject stale parent versions.  Direct unit callers may omit it.
+        self.learning_plan_service = learning_plan_service
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[DiagnosisResult]:
         dependency_outputs = context.get("dependency_outputs", {})
         task_type = str(context.get("task_type", "learning_plan"))
         if task_type == "learner_data_query":
             return await self._run_learner_data_query(context)
+        if task_type == "learning_plan":
+            context = await self._with_authorized_planning_context(context)
         knowledge_output = dependency_outputs.get("knowledge")
         knowledge = getattr(knowledge_output, "payload", None)
         knowledge_query = getattr(knowledge, "query", "")
@@ -205,7 +215,9 @@ class DiagnosisAgent:
             if enforce_scope_readiness and plan_scope in {
                 "long_term", "short_term", "daily_task"
             }:
-                planning_readiness = PlanningReadinessService().evaluate(
+                planning_readiness = PlanningReadinessService(
+                    self.learning_plan_service
+                ).evaluate(
                     context, plan_scope, learner_id=context.get("learner_id")
                 )
                 if not planning_readiness.can_generate:
@@ -216,7 +228,11 @@ class DiagnosisAgent:
                         "needs_profile": "制定长期规划前，需要先补齐最少量的个性化信息。",
                         "needs_long_term_plan": "制定短期计划前，需要先建立长期规划。",
                         "needs_short_term_plan": "制定当日任务前，需要先建立短期计划。",
-                        "stale_parent_plan": "上层规划已失效，需要先恢复当前有效版本。",
+                        "stale_parent_plan": (
+                            "当前短期计划已失效，需要先重新制定短期计划。"
+                            if plan_scope == "daily_task"
+                            else "上层规划已失效，需要先重新制定当前有效版本。"
+                        ),
                     }.get(
                         planning_readiness.status,
                         "当前规划前置条件尚未满足。",
@@ -242,6 +258,13 @@ class DiagnosisAgent:
                         # silently turn a short-term request into a long-term
                         # planning result.
                         plan_scope=plan_scope,
+                        prerequisite_scope=(
+                            "short_term"
+                            if planning_readiness.status == "needs_short_term_plan"
+                            else "long_term"
+                            if planning_readiness.status == "needs_long_term_plan"
+                            else None
+                        ),
                     )
                     return envelope(context, "diagnosis_agent", "diagnosis_result", result)
         textbook_context = route_context.get("textbook_route") or {}
@@ -277,6 +300,47 @@ class DiagnosisAgent:
                 plan_scope=plan_scope,
             )
             return envelope(context, "diagnosis_agent", "diagnosis_result", result)
+        semantic_change = (
+            await self._assess_plan_change(context, plan_scope)
+            if (
+                context.get("plan_change_context") is not None
+                or (
+                    # Whenever a plan already exists, Diagnosis owns the
+                    # semantic decision for this turn.  Planner's
+                    # ``create_or_update`` flag is only a routing hint and
+                    # must not suppress a learning-state change such as
+                    # “我已经学过《中医学基础》了，重新规划一下”.
+                    self._has_plan_content(context.get("current_long_term_plan"))
+                    or self._has_plan_content(context.get("current_short_term_plan"))
+                )
+                or context.get("explicit_long_term_change")
+                or context.get("explicit_short_term_change")
+                or context.get("sustained_learning_change")
+                or context.get("route_changed")
+            )
+            else None
+        )
+        # The requested scope is a system-owned execution boundary, not a
+        # semantic guess. For an ordinary first-time scoped request, provide a
+        # minimal contract so the gate does not treat missing child plans as a
+        # reason to generate all three layers in one response.
+        if (
+            semantic_change is None
+            and task_type == "learning_plan"
+            and plan_scope in {"long_term", "short_term", "daily_task"}
+        ):
+            scoped_actions = {
+                "long_term": ("update", "reuse", "reuse"),
+                "short_term": ("reuse", "update", "reuse"),
+                "daily_task": ("reuse", "reuse", "update"),
+            }[plan_scope]
+            semantic_change = PlanChangeDecision(
+                long_term_action=scoped_actions[0],
+                short_term_action=scoped_actions[1],
+                daily_task_action=scoped_actions[2],
+                replan_requested=False,
+                reason=f"系统已确认本次只处理{plan_scope}层。",
+            )
         change_decision = PlanChangeGate().decide(
             user_request=str(context.get("user_request", "")),
             current_long_term_plan=context.get("current_long_term_plan"),
@@ -286,6 +350,8 @@ class DiagnosisAgent:
             sustained_learning_change=bool(context.get("sustained_learning_change")),
             route_changed=bool(context.get("route_changed")),
             single_performance_change=bool(context.get("single_performance_change")),
+            semantic_decision=semantic_change,
+            allow_legacy_heuristics=False,
         )
         if task_type == "personalized_review_card":
             change_decision = change_decision.model_copy(update={
@@ -306,14 +372,24 @@ class DiagnosisAgent:
                 plan_scope=plan_scope,
             )
             return envelope(context, "diagnosis_agent", "diagnosis_result", result)
-        if task_type == "learning_plan" and plan_scope in {
-            "long_term", "short_term", "daily_task"
-        }:
+        if (
+            task_type == "learning_plan"
+            and plan_scope in {"long_term", "short_term", "daily_task"}
+        ):
             scoped_actions = {
                 "long_term": ("update", "reuse", "reuse"),
                 "short_term": ("reuse", "update", "reuse"),
                 "daily_task": ("reuse", "reuse", "update"),
             }
+            # ``plan_scope`` is the execution boundary selected by Planner
+            # (or restored from the interrupt checkpoint).  A changed upper
+            # layer invalidates lower-layer versions, but those layers are
+            # deliberately not materialised in the same Diagnosis call.  In
+            # particular, do not let a semantic replan decision turn a
+            # short-term rerun into a three-layer update: the scoped output
+            # contract would then be validated against fields that are not
+            # present in the current model response (for example long-term
+            # stage durations while compiling a short-term plan).
             long_action, short_action, daily_action = scoped_actions[plan_scope]
             change_decision = change_decision.model_copy(update={
                 "long_term_action": long_action,
@@ -332,8 +408,8 @@ class DiagnosisAgent:
             if plan_scope == "long_term":
                 summary = "当前目标还没有绑定到包含明确教材的可信学习路线。"
                 fallback_question = (
-                    "请补充你要参加的具体考试、课程或升学方向；"
-                    "如果是资格考试，也请说明具体报考路径。"
+                    "请说明要参加的具体中医药资格考试官方名称；"
+                    "“长期学习中医”或“零基础”不能代替资格考试目标。"
                 )
             else:
                 summary = "现有长期规划没有绑定完整的教材路线，不能据此继续生成下层计划。"
@@ -477,25 +553,21 @@ class DiagnosisAgent:
                 if audit_revision is not None
                 else {}
             ),
-            "output_schema": self._planning_output_schema(plan_scope),
+            "output_schema": self._planning_draft_schema(plan_scope),
         }
         try:
-            raw_output = await self.chat_model.complete_json(
-                "diagnosis_agent",
-                build_model_context(
-                    context,
-                    target_agent="diagnosis_agent",
-                    prompt_skill=prompt_skill,
-                    payload=planning_payload,
-                    permission_note=(
-                        "只可生成 plan_scope 指定的个人规划层及该层必要的结构化语义；"
-                        "route_id、route_version、route_status、planning_status 由 Resolver 拥有，"
-                        "只能复述且不得修改；不得生成用户事实、知识点ID、系统时间、计划ID或持久化状态。"
-                    ),
+            raw_dict = await self._complete_plan_draft(
+                context,
+                planning_payload,
+                prompt_skill,
+                permission_note=(
+                    "业务智能体只生成当前规划层的详细自然语言计划文档；"
+                    "仅在确有必要时返回 selected_path_candidate_id；"
+                    "不得输出执行合同字段、系统ID、路线事实或持久化字段。"
                 ),
             )
-            raw_dict = raw_output if isinstance(raw_output, dict) else {}
             compiled_plan_contract: PlanCompilationEnvelope | None = None
+            legacy_structured_output = "plan_document" not in raw_dict
             if plan_scope in {"long_term", "short_term", "daily_task"}:
                 compiled_plan_contract = await self.plan_contract_compiler.compile(
                     context,
@@ -506,6 +578,48 @@ class DiagnosisAgent:
                         context, plan_scope
                     ),
                 )
+                if (
+                    compiled_plan_contract.result.status != "compiled"
+                    and not legacy_structured_output
+                ):
+                    revision_payload = {
+                        **planning_payload,
+                        "previous_plan_document": raw_dict.get("plan_document", ""),
+                        "compiler_revision_issues": [
+                            issue.model_dump()
+                            for issue in compiled_plan_contract.result.issues
+                        ],
+                        "revision_instruction": (
+                            "只根据编译器列出的缺失或冲突修订自然语言计划文档；"
+                            "不要直接输出合同字段。"
+                        ),
+                    }
+                    raw_dict = await self._complete_plan_draft(
+                        context,
+                        revision_payload,
+                        prompt_skill,
+                        permission_note=(
+                            "只修订自然语言计划文档以满足编译器指出的来源要求；"
+                            "不得补造事实、系统ID或执行合同字段。"
+                        ),
+                    )
+                    compiled_plan_contract = await self.plan_contract_compiler.compile(
+                        context,
+                        plan_scope=plan_scope,
+                        diagnosis_output=raw_dict,
+                        trusted_route=self._compiler_route_context(route_context),
+                        parent_plan_constraints=self._parent_plan_constraints(
+                            context, plan_scope
+                        ),
+                    )
+                    if compiled_plan_contract.result.status != "compiled":
+                        raise ValueError(
+                            "规划自然语言文档经一次受控修订后仍未能编译为合同："
+                            + "; ".join(
+                                f"{issue.code}@{issue.field_path}"
+                                for issue in compiled_plan_contract.result.issues
+                            )
+                        )
                 if compiled_plan_contract.result.status == "compiled":
                     raw_dict = self._apply_compiled_contract(
                         raw_dict,
@@ -545,6 +659,7 @@ class DiagnosisAgent:
                     parent_stage_duration_days=self._parent_plan_constraints(
                         context, plan_scope
                     ).get("current_stage_duration_days"),
+                    active_scope=plan_scope,
                 )
                 if not validation.valid:
                     revision_payload = {
@@ -557,20 +672,42 @@ class DiagnosisAgent:
                             else "只修正列出的问题并返回完整三层输出。"
                         ),
                     }
-                    revised_raw = await self.chat_model.complete_json(
-                        "diagnosis_agent",
-                        build_model_context(
-                            context,
-                            target_agent="diagnosis_agent",
-                            prompt_skill=prompt_skill,
-                            payload=revision_payload,
-                            permission_note=(
-                                "仅修订 plan_scope 指定的当前规划层；不得生成系统ID或修改默认路线。"
-                                if plan_scope in {"long_term", "short_term", "daily_task"}
-                                else "仅修订三层规划正文；不得生成系统ID或修改默认路线。"
-                            ),
+                    revised_raw = await self._complete_plan_draft(
+                        context,
+                        {
+                            **revision_payload,
+                            "output_schema": self._planning_draft_schema(plan_scope),
+                        },
+                        prompt_skill,
+                        permission_note=(
+                            "仅修订当前规划层的自然语言计划文档；不得生成系统ID、"
+                            "路线事实或执行合同字段。"
                         ),
                     )
+                    if plan_scope in {"long_term", "short_term", "daily_task"}:
+                        if not legacy_structured_output:
+                            revised_compilation = await self.plan_contract_compiler.compile(
+                                context,
+                                plan_scope=plan_scope,
+                                diagnosis_output=revised_raw,
+                                trusted_route=self._compiler_route_context(route_context),
+                                parent_plan_constraints=self._parent_plan_constraints(
+                                    context, plan_scope
+                                ),
+                            )
+                            if revised_compilation.result.status != "compiled":
+                                raise ValueError(
+                                    "规划修订后的自然语言文档未能编译为合同："
+                                    + "; ".join(
+                                        f"{issue.code}@{issue.field_path}"
+                                        for issue in revised_compilation.result.issues
+                                    )
+                                )
+                            compiled_plan_contract = revised_compilation
+                            revised_raw = self._apply_compiled_contract(
+                                revised_raw,
+                                revised_compilation.result,
+                            )
                     three_layer = (
                         self._expand_scoped_planning_output(
                             plan_scope,
@@ -607,6 +744,7 @@ class DiagnosisAgent:
                         parent_stage_duration_days=self._parent_plan_constraints(
                             context, plan_scope
                         ).get("current_stage_duration_days"),
+                        active_scope=plan_scope,
                     )
                     if not validation.valid:
                         if any(
@@ -624,8 +762,8 @@ class DiagnosisAgent:
                                         route_context.get("unknowns_to_confirm")
                                     )[:1]
                                     or [
-                                        "请补充你要参加的具体考试、课程或升学方向；"
-                                        "如果是资格考试，也请说明具体报考路径。"
+                                        "请说明要参加的具体中医药资格考试官方名称；"
+                                        "“长期学习中医”或“零基础”不能代替资格考试目标。"
                                     ]
                                 ),
                                 clarification_reason=(
@@ -670,7 +808,12 @@ class DiagnosisAgent:
                         raise ValueError(
                             "三层规划修订后仍未通过校验：" + "; ".join(validation.issues)
                         )
-                if plan_scope in {"long_term", "short_term", "daily_task"}:
+                if legacy_structured_output and plan_scope in {
+                    "long_term", "short_term", "daily_task"
+                }:
+                    # Compatibility only for old test doubles/integrations
+                    # that still return field-by-field JSON. Production uses
+                    # plan_document and has already compiled that document.
                     final_scoped_output = self._scoped_output_for_compilation(
                         plan_scope,
                         three_layer,
@@ -684,25 +827,18 @@ class DiagnosisAgent:
                             context, plan_scope
                         ),
                     )
-                    if final_compilation.result.status != "compiled":
-                        raise ValueError(
-                            "最终规划正文未能编译为可审核合同："
-                            + "; ".join(
-                                f"{issue.code}@{issue.field_path}"
-                                for issue in final_compilation.result.issues
-                            )
+                    if final_compilation.result.status == "compiled":
+                        compiled_plan_contract = final_compilation
+                        raw_dict = self._apply_compiled_contract(
+                            final_scoped_output,
+                            compiled_plan_contract.result,
                         )
-                    compiled_plan_contract = final_compilation
-                    raw_dict = self._apply_compiled_contract(
-                        final_scoped_output,
-                        compiled_plan_contract.result,
-                    )
-                    three_layer = self._expand_scoped_planning_output(
-                        plan_scope,
-                        raw_dict,
-                        context,
-                        route_context,
-                    )
+                        three_layer = self._expand_scoped_planning_output(
+                            plan_scope,
+                            raw_dict,
+                            context,
+                            route_context,
+                        )
             standard = DiagnosisStandardOutput.model_validate(raw_dict)
             natural_language_keys = {
                 "summary",
@@ -770,6 +906,155 @@ class DiagnosisAgent:
             parent_plan_constraints=self._parent_plan_constraints(context, plan_scope),
         )
         return envelope(context, "diagnosis_agent", "diagnosis_result", result)
+
+    async def _with_authorized_planning_context(
+        self, context: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Fetch planning evidence only after Planner selected Diagnosis."""
+
+        registry = context.get("tool_registry")
+        if registry is None:
+            return context
+        try:
+            planning_context = await registry.invoke(
+                "get_learning_planning_context",
+                "diagnosis_agent",
+                trace_recorder=context.get("trace_recorder"),
+                safe_input_summary={
+                    "current_learner": True,
+                    "scope": str(context.get("plan_scope") or "unspecified"),
+                },
+                safe_output_summary_factory=lambda result: {
+                    "source": str(result.get("source") or "unknown")
+                    if isinstance(result, dict)
+                    else "unknown",
+                    "has_long_term_plan": bool(
+                        isinstance(result, dict)
+                        and result.get("current_long_term_plan")
+                    ),
+                    "has_short_term_plan": bool(
+                        isinstance(result, dict)
+                        and result.get("current_short_term_plan")
+                    ),
+                    "has_daily_task": bool(
+                        isinstance(result, dict)
+                        and result.get("current_learning_task")
+                    ),
+                },
+                external_user_id=str(context.get("learner_id") or ""),
+                scope=str(context.get("plan_scope") or "unspecified"),
+                available_minutes=int(context.get("available_minutes") or 60),
+            )
+        except (KeyError, PermissionError):
+            # Unit callers and older deployments may not register the new
+            # bounded tool yet. Their explicitly supplied context remains a
+            # compatible fallback; live orchestration always registers it.
+            return context
+        if not isinstance(planning_context, dict):
+            return context
+        enriched = dict(context)
+        for key in (
+            "learning_profile",
+            "system_data",
+            "user_knowledge_states",
+            "question_attempts",
+            "question_learning_stats",
+            "learning_monitoring",
+            "current_long_term_plan",
+            "current_short_term_plan",
+            "current_learning_task",
+            "multi_scale_learning_state",
+            "path_candidates",
+            "task_load_policy",
+        ):
+            if key in planning_context:
+                candidate = planning_context[key]
+                # The bounded tool is authoritative for persisted data, but it
+                # may legitimately return an empty value when the caller has
+                # supplied an inline parent (or an older parent for a stale
+                # version check).  Do not erase that caller evidence before
+                # PlanningReadinessService evaluates it.
+                if key in {
+                    "current_long_term_plan",
+                    "current_short_term_plan",
+                    "current_learning_task",
+                } and not candidate and enriched.get(key):
+                    continue
+                enriched[key] = candidate
+        enriched["planning_context_source"] = planning_context.get("source")
+        return enriched
+
+    async def _assess_plan_change(
+        self, context: dict[str, Any], plan_scope: str | None
+    ) -> PlanChangeDecision:
+        """Ask Diagnosis to interpret replanning semantics.
+
+        Wording is intentionally not parsed here.  The model receives the
+        current plans, learner evidence and conversation answer, then returns
+        only the small mutation contract.  The gate below applies dependency
+        propagation and rejects unsafe combinations.
+        """
+        current_request = str(context.get("user_request") or "").strip()
+        existing = {
+            "long_term": context.get("current_long_term_plan") or {},
+            "short_term": context.get("current_short_term_plan") or {},
+            "daily_task": context.get("current_learning_task") or {},
+        }
+        skill = prompt_skill_registry.load("diagnosis_agent", "plan_change")
+        payload = {
+            "user_request": current_request,
+            "plan_scope": plan_scope,
+            "existing_plans": existing,
+            "learner_profile": context.get("user_profile") or {},
+            "learning_state": context.get("multi_scale_learning_state") or {},
+            "learning_monitoring": context.get("learning_monitoring") or {},
+            "plan_change_context": context.get("plan_change_context"),
+            "explicit_flags": {
+                "long_term": bool(context.get("explicit_long_term_change")),
+                "short_term": bool(context.get("explicit_short_term_change")),
+                "sustained_learning_change": bool(
+                    context.get("sustained_learning_change")
+                ),
+                "route_changed": bool(context.get("route_changed")),
+            },
+            "output_schema": PlanChangeDecision.model_json_schema(),
+        }
+        try:
+            raw = await self.chat_model.complete_json(
+                "diagnosis_plan_change",
+                build_model_context(
+                    context,
+                    target_agent="diagnosis_agent",
+                    prompt_skill=skill,
+                    payload=payload,
+                    permission_note=(
+                        "只判断本次是否需要重规划、涉及哪些层和事实变化；"
+                        "不得生成规划正文、系统ID、路线ID或持久化状态。"
+                    ),
+                ),
+            )
+            return PlanChangeDecision.model_validate(raw)
+        except Exception:
+            # A model failure must not manufacture a change from wording. Keep
+            # explicit system facts only and let the normal gate decide.
+            return PlanChangeDecision(
+                long_term_action="update"
+                if context.get("explicit_long_term_change")
+                else "reuse",
+                short_term_action="update"
+                if context.get("explicit_short_term_change")
+                or context.get("sustained_learning_change")
+                else "reuse",
+                daily_task_action="update",
+                replan_requested=bool(
+                    context.get("explicit_long_term_change")
+                    or context.get("explicit_short_term_change")
+                    or context.get("sustained_learning_change")
+                    or context.get("route_changed")
+                ),
+                reason="由系统已确认的规划事实决定；未使用词法推断。",
+            )
+
 
     async def _run_learner_data_query(
         self,
@@ -840,6 +1125,8 @@ class DiagnosisAgent:
                 else evidence_by_source[tools_by_kind[query_kind][0]]
             )
         compact_evidence = self._compact_learner_evidence(query_kind, evidence)
+        if query_kind == "plan_progress":
+            compact_evidence["requested_scope"] = self._requested_plan_scope(request)
         prompt_skill = prompt_skill_registry.load(
             "diagnosis_agent", "learner_data_query"
         )
@@ -908,6 +1195,25 @@ class DiagnosisAgent:
         if any(marker in text for marker in ("近7天", "最近7天", "本周", "这周")):
             return 7
         return 7 if query_kind == "recent_learning" else 30
+
+    @staticmethod
+    def _requested_plan_scope(request: str) -> str | None:
+        """Select which already-loaded plan slice should be presented.
+
+        This does not route or mutate a plan. Diagnosis has already been
+        authorized for a read-only plan query; the helper only avoids returning
+        a short-term summary when the user explicitly asked to see the long-term
+        document (and vice versa).
+        """
+
+        text = "".join(str(request or "").split())
+        if "长期" in text:
+            return "long_term"
+        if "短期" in text:
+            return "short_term"
+        if any(marker in text for marker in ("今日", "今天", "当日")):
+            return "daily_task"
+        return None
 
     @staticmethod
     def _learner_record_count(value: Any) -> int:
@@ -1020,12 +1326,16 @@ class DiagnosisAgent:
             ),
             "long_term": {
                 "status": long_term.get("status"),
+                "content": long_term.get("content"),
+                "structured": dict(long_term.get("structured") or {}),
                 "stage_progress": list(long_term.get("stage_progress") or []),
             }
             if long_term
             else None,
             "short_term": {
                 "status": short_term.get("status"),
+                "content": short_term.get("content"),
+                "structured": dict(short_term.get("structured") or {}),
                 "acceptance_gate": short_term.get("acceptance_gate"),
             }
             if short_term
@@ -1161,6 +1471,23 @@ class DiagnosisAgent:
                 for item in tasks
             )
             return f"当前复习记录中有{pending}项待处理任务。复习队列本身不代表已经完成复习。"
+        requested_scope = str(evidence.get("requested_scope") or "")
+        if requested_scope == "long_term":
+            long_term = dict(evidence.get("long_term") or {})
+            content = str(long_term.get("content") or "").strip()
+            return content or "当前还没有有效的长期学习计划。"
+        if requested_scope == "short_term":
+            short_term = dict(evidence.get("short_term") or {})
+            content = str(short_term.get("content") or "").strip()
+            return content or "当前还没有有效的短期学习计划。"
+        if requested_scope == "daily_task":
+            daily_task = dict(evidence.get("daily_task") or {})
+            content = str(
+                daily_task.get("task_content")
+                or daily_task.get("content")
+                or ""
+            ).strip()
+            return content or "当前还没有有效的今日任务。"
         long_term = evidence.get("long_term") or {}
         stages = list(long_term.get("stage_progress") or [])
         current = next(
@@ -1173,6 +1500,87 @@ class DiagnosisAgent:
                 "只有阶段通过指标取得服务端核验证据后，系统才会推进下一阶段。"
             )
         return "当前已有规划记录，但还没有可确认的阶段推进证据。"
+
+    @staticmethod
+    def _planning_draft_schema(plan_scope: Any) -> dict[str, Any]:
+        """Tiny business-agent envelope: prose is the only planning source."""
+
+        return {
+            "type": "object",
+            "required": ["plan_document"],
+            "properties": {
+                "plan_document": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": (
+                        "详细自然语言计划文档。必须把当前层的期限、阶段/节点、教材、"
+                        "章节、知识点、预期产出和完成标准写在正文中，供 Compiler 提取。"
+                    ),
+                },
+                "selected_path_candidate_id": {
+                    "type": ["string", "null"],
+                    "description": "仅在需要从系统候选中选择路径时填写；不得生成新ID。",
+                },
+            },
+            "additionalProperties": False,
+        }
+
+    async def _complete_plan_draft(
+        self,
+        context: dict[str, Any],
+        payload: dict[str, Any],
+        prompt_skill: str,
+        *,
+        permission_note: str,
+    ) -> dict[str, Any]:
+        """Ask Diagnosis for prose first, with legacy test-double fallback."""
+
+        model_context = build_model_context(
+            context,
+            target_agent="diagnosis_agent",
+            prompt_skill=prompt_skill,
+            payload=payload,
+            permission_note=permission_note,
+        )
+        complete_text = getattr(self.chat_model, "complete_text", None)
+        # An omitted scope is a legacy full-output caller.  Keep that explicit
+        # compatibility mode until the caller supplies one of the three
+        # compiler-owned scopes; scoped production planning never enters it.
+        if payload.get("plan_scope") is None:
+            complete_text = None
+        if callable(complete_text):
+            try:
+                text = await complete_text("diagnosis_agent", model_context)
+            except (AttributeError, NotImplementedError, TypeError):
+                text = ""
+            except ModelResponseError:
+                # Natural-language streaming occasionally returns an empty
+                # stream on providers.  complete_json (structured mode) is the
+                # proven-stable path for this agent, so fall back to it instead
+                # of surfacing the empty-stream failure.
+                text = ""
+            if isinstance(text, str) and text.strip():
+                return {"plan_document": text.strip()}
+        # Older unit-test doubles implement only complete_json. Keep this
+        # fallback deliberately isolated; production models use complete_text.
+        try:
+            raw = await self.chat_model.complete_json("diagnosis_agent", model_context)
+        except ModelResponseError as exc:
+            # Both prose and structured paths hit a persistent empty stream.
+            # Do not let it escape as a raw model failure: return an empty
+            # envelope so the caller's compile gate reports a bounded error.
+            if exc.reason in {"empty_stream", "empty_response"}:
+                return {}
+            raise
+        if not isinstance(raw, dict):
+            return {}
+        if isinstance(raw.get("plan_document"), str) and raw["plan_document"].strip():
+            return {
+                "plan_document": raw["plan_document"].strip(),
+                **({"selected_path_candidate_id": raw["selected_path_candidate_id"]}
+                   if raw.get("selected_path_candidate_id") else {}),
+            }
+        return raw
 
     @staticmethod
     def _scoped_output_for_compilation(
@@ -1621,9 +2029,24 @@ class DiagnosisAgent:
                 for key, value in raw_output.items()
                 if key in ShortTermPlanningModelOutput.model_fields
             })
-            common.update(
-                scoped.model_dump(exclude={"duration_days", "progression_nodes"})
+            scoped_dump = scoped.model_dump(
+                exclude={"duration_days", "progression_nodes"}
             )
+            # The four textbook-selection fields are system-owned.  Production
+            # models only write plan_document, so ShortTermPlanning defaults
+            # (None/[]) must not clobber the trusted-route fallback already
+            # placed in ``common`` above.  But a model that explicitly selects
+            # a stage (legacy structured output) keeps its choice so
+            # prerequisite and stage checks still apply to it.
+            for selection_field in (
+                "selected_textbook_route_id",
+                "selected_stage_id",
+                "selected_books",
+                "selection_reason",
+            ):
+                if scoped_dump.get(selection_field) in (None, "", []):
+                    scoped_dump.pop(selection_field, None)
+            common.update(scoped_dump)
             common["short_term_duration_days"] = scoped.duration_days
             common["short_term_progression_nodes"] = scoped.progression_nodes
             common.update({

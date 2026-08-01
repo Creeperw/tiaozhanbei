@@ -174,7 +174,6 @@ async def test_get_kp_with_content_reserves_space_for_external_resources() -> No
     }
     assert len(pack.evidence_items) == 5
 
-
 @pytest.mark.asyncio
 async def test_external_evidence_pack_does_not_require_knowledge_point_mapping() -> None:
     class FakeExa:

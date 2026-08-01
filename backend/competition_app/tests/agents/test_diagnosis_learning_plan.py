@@ -724,7 +724,13 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "plan_actions",
         "plan_scope",
         "output_schema",
+        "original_user_request",
+        "request_context",
+        "shared_context",
     }
+    assert diagnosis_payload["shared_context"]["external_information"] == []
+    assert "learning_monitoring" not in diagnosis_payload["shared_context"]
+    assert "current_long_term_plan" not in diagnosis_payload["shared_context"]
     assert diagnosis_payload["learning_state"] == {}
     assert diagnosis_payload["path_candidates"] == {
         "eligible": [],

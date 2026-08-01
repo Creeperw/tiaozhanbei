@@ -60,14 +60,17 @@ class KnowledgeBaseAgent:
         conversation_messages = list(context.get("messages", []))
         recent_messages = conversation_messages[-1:] if compressed_summary else conversation_messages[-8:]
         try:
-            raw_plan = (
-                {
+            if external_request:
+                # Current-fact retrieval has no textbook KP expression to
+                # generate. Keep the user's wording intact and let the
+                # approved web tool resolve it directly.
+                raw_plan = {
                     "kp_query": user_request,
                     "question_query": user_request,
                     "retrieval_reason": "用户请求的是时效性外部事实，直接检索网络参考来源。",
                 }
-                if external_request
-                else await self.chat_model.complete_json(
+            else:
+                raw_plan = await self.chat_model.complete_json(
                     "knowledge_base_agent",
                     build_model_context(
                         context,
@@ -85,12 +88,6 @@ class KnowledgeBaseAgent:
                                 if isinstance(item, dict) and str(item.get("content", "")).strip()
                             ],
                             "compressed_conversation_summary": compressed_summary,
-                            "retrieval_context": {
-                                "user_short_term_goal": context.get("user_profile", {}).get("goals", {}).get("short_term_goal", ""),
-                                "current_long_term_plan": context.get("current_long_term_plan", {}).get("content", ""),
-                                "current_short_term_plan": context.get("current_short_term_plan", {}).get("content", ""),
-                                "user_knowledge_state": context.get("user_knowledge_states", []),
-                            },
                             "task_type": str(context.get("task_type", "personalized_review_card")),
                             "available_tools": {
                                 "get_kp_with_content": "用模型生成的 kp_query 检索知识点及教材内容。",
@@ -98,6 +95,7 @@ class KnowledgeBaseAgent:
                                 "search_video_resources": "按知识主题检索公开教学视频；只返回视频链接和摘要，不把网页内容当作教材事实。",
                                 "search_reference_resources": "检索外部参考内容、论文或原文；只作为补充来源，不替代教材证据。",
                                 "search_question_resources": "检索外部练习题、考试题和解析；只作为题目候选参考，不直接写入正式题库。",
+                                "search_web_resources": "检索天气、考试日期、报名时间等时效性事实；优先官方来源。",
                             },
                             "output_schema": KnowledgeRetrievalPlanModelOutput.model_json_schema(),
                         },
@@ -107,7 +105,6 @@ class KnowledgeBaseAgent:
                         ),
                     ),
                 )
-            )
             if not isinstance(raw_plan, dict):
                 raw_plan = {}
             retrieval_plan = KnowledgeRetrievalPlanModelOutput.model_validate(
@@ -427,12 +424,12 @@ class KnowledgeBaseAgent:
                             ]
                         })
                         warnings.append("首轮候选不足，已执行一次扩展题目/网络参考检索。")
-                    except (LookupError, FileNotFoundError, OSError, RuntimeError, TimeoutError, ValueError) as exc:
+                    except (LookupError, RuntimeError, TimeoutError, ValueError) as exc:
                         warnings.append(
                             "扩展题目/网络参考检索暂不可用："
                             f"{type(exc).__name__}；已保留首轮正式题库候选继续组卷。"
                         )
-            except (LookupError, FileNotFoundError, OSError, RuntimeError, TimeoutError, ValueError) as exc:
+            except (LookupError, RuntimeError, TimeoutError, ValueError) as exc:
                 warnings.append(
                     f"{unit.knowledge_module}检索失败：{type(exc).__name__}；待补充检索。"
                 )

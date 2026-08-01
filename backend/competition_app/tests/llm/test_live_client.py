@@ -736,7 +736,7 @@ async def test_chat_client_streams_incremental_content() -> None:
 
 
 @pytest.mark.asyncio
-async def test_chat_client_streams_reasoning_content_when_present() -> None:
+async def test_chat_client_keeps_reasoning_content_out_of_model_deltas() -> None:
     observed: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -755,7 +755,7 @@ async def test_chat_client_streams_reasoning_content_when_present() -> None:
     )
 
     assert await client.complete_json("planner_agent", {}, on_delta=observed.append) == {"status": "ok"}
-    assert observed == ["分析中...", '{"status":"ok"}']
+    assert observed == ['{"status":"ok"}']
     assert client.last_reasoning_text == "分析中..."
     assert client.last_response_text == '{"status":"ok"}'
 

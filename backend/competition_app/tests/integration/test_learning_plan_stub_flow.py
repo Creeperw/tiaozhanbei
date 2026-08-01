@@ -195,29 +195,29 @@ async def test_existing_valid_long_and_short_plans_are_reused_verbatim(tmp_path)
 
 
 @pytest.mark.asyncio
-async def test_generic_learning_plan_request_reuses_current_short_term_plan(tmp_path) -> None:
+async def test_generic_learning_plan_request_clarifies_existing_plan_scope(tmp_path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     learner_id = "LEARNER_GENERIC_PLAN_REUSE"
     initial = await build_layered_plan(container, learner_id=learner_id)
 
     result = await container.review_card_use_case.execute(
         ReviewCardRequest(
+            thread_id="THREAD_GENERIC_PLAN_SCOPE",
             learner_id=learner_id,
             user_request="请结合我的学习状态，为我制定一份学习计划。",
             available_minutes=30,
         )
     )
 
-    assert result.status == "success"
-    assert result.learning_plan.generated_scope == "short_term"
-    assert result.learning_plan.reused_existing is True
-    assert result.learning_plan.short_term_plan.plan_id == initial.short_term_plan.plan_id
-    assert result.learning_plan.short_term_plan.version == initial.short_term_plan.version
-    assert "强制修改" in result.learning_plan.force_replan_prompt
-    assert [item.producer for item in result.agent_outputs] == [
-        "planner_agent",
-        "learning_plan_service",
-    ]
+    assert result.status == "interrupted"
+    assert result.interrupt["requested_scope"] == "unspecified"
+    assert "已经有有效的长期规划、短期计划" in (
+        result.interrupt["questions"][0]
+    )
+    assert "audit_agent" not in [item.producer for item in result.agent_outputs]
+    persisted = container.review_card_use_case.plan_repository.get_current(learner_id)
+    assert persisted.long_term_plan.version == initial.long_term_plan.version
+    assert persisted.short_term_plan.version == initial.short_term_plan.version
 
 
 @pytest.mark.asyncio

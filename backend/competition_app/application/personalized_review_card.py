@@ -34,11 +34,7 @@ from competition_app.runtime.orchestrator import Orchestrator
 from competition_app.runtime.trace import CommunicationTrace, RepairTrace
 from competition_app.runtime.snapshot import SnapshotExporter
 from competition_app.runtime.model_trace import ModelCallTrace, ModelTraceRecorder
-from competition_app.runtime.event_stream import (
-    bind_recording_sink,
-    drain_recording_sink,
-    emit_runtime_event,
-)
+from competition_app.runtime.event_stream import drain_recording_sink, emit_runtime_event
 from competition_app.runtime.data_permissions import AgentDataPermissionGateway
 from competition_app.repositories.learning_plan import (
     InMemoryLearningPlanRepository,
@@ -57,6 +53,10 @@ from competition_app.services.plan_scope import (
     infer_plan_scope,
 )
 from competition_app.services.learning_monitoring import LearningMonitoringService
+from competition_app.services.conversation_history import (
+    sanitize_conversation_content,
+    sanitize_conversation_messages,
+)
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 
 
@@ -64,16 +64,6 @@ _FAILURE_STEP_CONTEXT: ContextVar[str | None] = ContextVar(
     "personalized_review_card_failure_step",
     default=None,
 )
-
-# 事件量大的模型调用/系统内部事件不随消息持久化，避免消息元数据膨胀。
-_NON_TRACE_EVENT_TYPES = {
-    "model_delta",
-    "model_input",
-    "model_output",
-    "model_transport",
-    "system_output",
-}
-
 
 class PlanChangeContext(BaseModel):
     original_request: str = Field(min_length=1)
@@ -181,6 +171,24 @@ class _WorkflowContinuation:
     context: dict[str, Any]
 
 
+class _PrerequisiteInterrupted(Exception):
+    """A parent-plan run is waiting for the learner before the child can continue."""
+
+    def __init__(
+        self,
+        *,
+        thread_id: str,
+        interrupt: dict[str, Any],
+        scope: str | None = None,
+        confirmation: str | None = None,
+    ) -> None:
+        super().__init__("parent planning prerequisite is waiting for learner input")
+        self.thread_id = thread_id
+        self.interrupt = interrupt
+        self.scope = scope
+        self.confirmation = confirmation
+
+
 class PersonalizedReviewCardUseCase:
     conversation_compression_threshold_chars = 4_000
 
@@ -278,27 +286,40 @@ class PersonalizedReviewCardUseCase:
         existing_messages = self.conversation_repository.get_messages(
             conversation_id, request.learner_id
         )
+        clean_existing_messages = sanitize_conversation_messages(existing_messages)
+        clean_request_messages = sanitize_conversation_messages(request.messages)
         # The repository is the durable source of conversation context.  A
         # client may send only the visible/current turn after a refresh, so it
         # must never replace a longer server-side history.
-        persisted_messages = list(existing_messages)
-        if request.messages:
+        persisted_messages = list(clean_existing_messages)
+        if clean_request_messages:
             if not persisted_messages:
-                persisted_messages = list(request.messages)
-            elif (
-                len(request.messages) >= len(persisted_messages)
-                and request.messages[: len(persisted_messages)] == persisted_messages
-            ):
-                persisted_messages = list(request.messages)
+                persisted_messages = list(clean_request_messages)
             else:
-                for message in request.messages:
+                persisted_signature = [
+                    (item.get("role"), item.get("content"))
+                    for item in persisted_messages
+                ]
+                request_signature = [
+                    (item.get("role"), item.get("content"))
+                    for item in clean_request_messages
+                ]
+                if request_signature[: len(persisted_signature)] == persisted_signature:
+                    suffix = clean_request_messages[len(persisted_signature) :]
+                else:
+                    suffix = clean_request_messages
+                for message in suffix:
                     if not persisted_messages or message != persisted_messages[-1]:
                         persisted_messages.append(message)
+        clean_user_request = (
+            sanitize_conversation_content(request.user_request)
+            or request.user_request.strip()
+        )
         if (
             not persisted_messages
-            or persisted_messages[-1].get("content") != request.user_request
+            or persisted_messages[-1].get("content") != clean_user_request
         ):
-            persisted_messages.append({"role": "user", "content": request.user_request})
+            persisted_messages.append({"role": "user", "content": clean_user_request})
         self.conversation_repository.save_messages(
             conversation_id, request.learner_id, persisted_messages
         )
@@ -521,7 +542,7 @@ class PersonalizedReviewCardUseCase:
             "execution_id": execution_id,
             "thread_id": thread_id,
             "interruptible": request.thread_id is not None,
-            "original_user_request": request.user_request,
+            "original_user_request": clean_user_request,
             "learner_id": request.learner_id,
             "user_request": effective_user_request,
             "learning_goal": (
@@ -595,6 +616,11 @@ class PersonalizedReviewCardUseCase:
             "conversation_requires_compression": (
                 total_message_chars > self.conversation_compression_threshold_chars
             ),
+            # This is a system-owned fact. Planner only receives it; the
+            # threshold itself is never inferred from user wording.
+            "memory_required": (
+                total_message_chars > self.conversation_compression_threshold_chars
+            ),
             "profile": {
                 "confirmed_preferences": effective_user_profile.get(
                     "user_preference", {}
@@ -656,9 +682,40 @@ class PersonalizedReviewCardUseCase:
             planner_output.payload.task_type == "learning_plan"
             and planner_output.payload.plan_action == "reuse"
         ):
+            # The reuse fast path is intentionally executed without invoking
+            # the orchestrator, but it is still a real two-node workflow. Emit
+            # the compiled graph before running the nodes so the browser sees
+            # the same authoritative execution-path contract as normal runs.
+            reuse_plan = PlannerAgent.build_plan(planner_output.payload)
+            self._emit_compiled_graph(reuse_plan)
             context["task_type"] = "learning_plan"
             context["plan_scope"] = planner_output.payload.plan_scope
             _FAILURE_STEP_CONTEXT.set("plan_reuse")
+            # Reusing a persisted plan is read-only for the plan service, but
+            # it still goes through Memory Agent. Memory reads current
+            # long/short-term facts, extracts any newly stated durable facts,
+            # and governs conflicts on every business turn. The system-owned
+            # memory_required flag only controls whether Memory also runs the
+            # context-compression sub-step.
+            memory_agent = self.orchestrator.agent_registry.get("memory_agent")
+            memory_context = {
+                **context,
+                "step_id": "memory",
+                "dependency_outputs": {},
+            }
+            emit_runtime_event(
+                "step_started", step_id="memory", agent="memory_agent", depends_on=[]
+            )
+            memory_output = await memory_agent.run(memory_context)
+            emit_runtime_event(
+                "system_output",
+                step_id="memory",
+                agent="memory_agent",
+                output=memory_output,
+            )
+            emit_runtime_event(
+                "step_completed", step_id="memory", agent="memory_agent", status="success"
+            )
             plan_review: dict[str, Any] = {}
             if self.workshop_runtime is not None and hasattr(
                 self.workshop_runtime, "run_plan_review"
@@ -689,8 +746,14 @@ class PersonalizedReviewCardUseCase:
             service_context = {
                 **context,
                 "step_id": "learning_plan",
-                "dependency_outputs": {},
+                "dependency_outputs": {"memory": memory_output},
             }
+            emit_runtime_event(
+                "step_started",
+                step_id="learning_plan",
+                agent="learning_plan_service",
+                depends_on=["memory"],
+            )
             service_output = envelope(
                 service_context,
                 "learning_plan_service",
@@ -703,6 +766,11 @@ class PersonalizedReviewCardUseCase:
                 agent="learning_plan_service",
                 status="success",
             )
+            # Memory is still executed and emitted in the collaboration trace
+            # on every business turn.  Keep the historical reuse response
+            # contract compact: the published agent_outputs list contains the
+            # planner decision and the service result, while the full Memory
+            # envelope remains available in the runtime events/model trace.
             agent_outputs = [planner_output, service_output]
             _FAILURE_STEP_CONTEXT.set("snapshot")
             snapshot_path = self.snapshot_exporter.export(
@@ -744,6 +812,12 @@ class PersonalizedReviewCardUseCase:
         execution_plan = PlannerAgent.build_plan(planner_output.payload)
         context["task_type"] = planner_output.payload.task_type
         context["plan_scope"] = planner_output.payload.plan_scope
+        # Keep the scope selected for the original business request separate
+        # from any temporary scope used while satisfying a prerequisite.  A
+        # resumed child plan (daily_task/short_term) must return to this value
+        # after its parent has been materialized.
+        context["requested_plan_scope"] = planner_output.payload.plan_scope
+        context["planner_plan_action"] = planner_output.payload.plan_action
         context["learner_data_query_kind"] = planner_output.payload.query_kind
         context["planner_requires_clarification"] = (
             planner_output.payload.requires_clarification
@@ -887,13 +961,116 @@ class PersonalizedReviewCardUseCase:
         persisted_messages = self.conversation_repository.get_messages(
             conversation_id, continuation.request.learner_id
         )
-        persisted_messages.append({"role": "user", "content": request.answer})
+        persisted_messages.append(
+            {
+                "message_id": f"{conversation_id}:message:{len(persisted_messages) + 1}",
+                "learner_id": continuation.request.learner_id,
+                "role": "user",
+                "content": request.answer,
+            }
+        )
         self.conversation_repository.save_messages(
             conversation_id, continuation.request.learner_id, persisted_messages
         )
+        # The durable conversation is the source of truth after a resume.  A
+        # checkpointed LangGraph node may still hold the context from the
+        # interrupted turn, so write the normalized history through to the
+        # same root context before *any* resume branch (profile, route,
+        # plan-scope or prerequisite) is evaluated.  This keeps every
+        # downstream agent on the same original request + clarification
+        # history instead of silently falling back to stale messages.
+        continuation.context["messages"] = [
+            {
+                **item,
+                "message_id": item.get("message_id")
+                or f"{conversation_id}:message:{index + 1}",
+                "learner_id": item.get("learner_id")
+                or continuation.request.learner_id,
+            }
+            for index, item in enumerate(persisted_messages)
+            if isinstance(item, dict)
+        ]
+        continuation.context["latest_resume_answer"] = request.answer.strip()
         resume_payload = request.model_dump(mode="json", exclude_none=True)
         run_state = self.get_run_state(thread_id) or {}
         interrupt_payload = run_state.get("interrupt") or {}
+
+        # A child planning request may be paused by Diagnosis because its
+        # parent layer is missing (for example daily_task -> short_term).
+        # The answer is a confirmation for the already selected workflow, not
+        # a new planning request.  Materialize the missing parent first, then
+        # resume the original graph with its original scope.  This keeps the
+        # user's original request and all prior agent outputs intact while
+        # preventing the child Diagnosis node from being forced into the
+        # parent's scope and asking the same question again.
+        # Once a parent graph has been opened, subsequent answers belong to
+        # that parent until it completes.  Do not let the outer child graph's
+        # interrupt type (profile_completion/route_resolution/etc.) divert the
+        # answer into the generic resume handlers.
+        has_pending_parent = bool(
+            isinstance(continuation.context.get("pending_prerequisite"), dict)
+            and continuation.context["pending_prerequisite"].get("thread_id")
+        )
+        if (
+            interrupt_payload.get("interrupt_type") == "planning_prerequisite"
+            or has_pending_parent
+        ):
+            try:
+                prerequisite_resume_answer = await self._materialize_planning_prerequisite(
+                    continuation=continuation,
+                    answer=request.answer,
+                    interrupt_payload=interrupt_payload,
+                    persisted_messages=persisted_messages,
+                )
+            except _PrerequisiteInterrupted as pending:
+                continuation.context["pending_prerequisite"] = {
+                    "thread_id": pending.thread_id,
+                    "scope": pending.scope,
+                    "confirmation": pending.confirmation,
+                    "interrupt": pending.interrupt,
+                }
+                interrupted = WorkflowInterruptedResult(
+                    thread_id=thread_id,
+                    execution_id=continuation.execution_id,
+                    task_type=continuation.planner_output.payload.task_type,
+                    interrupt=pending.interrupt,
+                    completed_steps=[],
+                    agent_outputs=[continuation.planner_output],
+                    model_trace=self._model_trace(),
+                    coordination=CoordinationSummary(),
+                )
+                self._remember_run(
+                    thread_id,
+                    {
+                        "status": "interrupted",
+                        "thread_id": thread_id,
+                        "interrupt": pending.interrupt,
+                        "completed_steps": interrupted.completed_steps,
+                        "execution_id": continuation.execution_id,
+                        "task_type": interrupted.task_type,
+                        "coordination": interrupted.coordination,
+                        "continuation": self._continuation_payload(continuation),
+                    },
+                )
+                self._save_assistant_message(
+                    conversation_id,
+                    continuation.request.learner_id,
+                    persisted_messages,
+                    interrupted,
+                )
+                return interrupted
+            if prerequisite_resume_answer:
+                # The answer that confirmed the original child request (for
+                # example “可以”) must be sent to the paused child graph
+                # after the parent has finished.  The current answer may have
+                # been a second answer to a parent-profile question.
+                resume_payload["answer"] = prerequisite_resume_answer
+            original_scope = continuation.context.get("requested_plan_scope")
+            if original_scope in {"long_term", "short_term", "daily_task"}:
+                resume_payload["plan_scope"] = original_scope
+                continuation.context["plan_scope"] = original_scope
+                continuation.context["continued_plan_scope"] = original_scope
+                continuation.context["plan_scope_hint"] = original_scope
         if (
             "plan_scope" not in resume_payload
             and self._is_plan_scope_clarification(interrupt_payload)
@@ -1065,6 +1242,265 @@ class PersonalizedReviewCardUseCase:
         )
         return result
 
+    async def _materialize_planning_prerequisite(
+        self,
+        *,
+        continuation: _WorkflowContinuation,
+        answer: str,
+        interrupt_payload: dict[str, Any],
+        persisted_messages: list[dict[str, Any]],
+    ) -> str | None:
+        """Create a missing parent plan before resuming a child plan.
+
+        Planner has already selected the business task and Diagnosis has
+        already identified the missing parent.  We therefore reuse that
+        decision rather than classifying the confirmation with keywords or
+        launching a second, unrelated conversation.  The parent run receives
+        the complete original context, the clarification, the conversation
+        history and the same learner data.  Its published result is written
+        through to the child continuation context before the checkpoint is
+        resumed.
+        """
+        pending = continuation.context.get("pending_prerequisite")
+        pending_scope = (
+            str(pending.get("scope") or "").strip()
+            if isinstance(pending, dict)
+            else ""
+        )
+        parent_scope = str(
+            pending_scope or interrupt_payload.get("requested_scope") or ""
+        ).strip()
+        child_scope = str(
+            continuation.context.get("requested_plan_scope")
+            or interrupt_payload.get("original_scope")
+            or continuation.context.get("plan_scope")
+            or ""
+        ).strip()
+        if parent_scope not in {"long_term", "short_term"}:
+            return None
+        continuation.context.setdefault("requested_plan_scope", child_scope)
+        continuation.context["latest_resume_answer"] = str(answer or "").strip()
+        continuation.context["messages"] = [
+            {
+                **item,
+                "message_id": item.get("message_id")
+                or f"{continuation.request.conversation_id or continuation.execution_id}:message:{index + 1}",
+                "learner_id": item.get("learner_id")
+                or continuation.request.learner_id,
+            }
+            for index, item in enumerate(persisted_messages)
+            if isinstance(item, dict)
+        ]
+
+        # Preserve the original user wording and add the answer as a bounded
+        # fact.  Downstream agents see both fields via build_model_context.
+        original_request = str(
+            continuation.context.get("original_user_request")
+            or continuation.context.get("user_request")
+            or ""
+        ).strip()
+        continuation.context["user_request"] = "\n".join(
+            item
+            for item in (
+                original_request,
+                f"用户已确认先建立{('长期规划' if parent_scope == 'long_term' else '短期计划')}：{str(answer).strip()}",
+            )
+            if item
+        )
+        parent_context = dict(continuation.context)
+        confirmation = str(answer or "").strip()
+        parent_context["task_type"] = "learning_plan"
+        parent_context["prerequisite_confirmation"] = confirmation
+        parent_context["interruptible"] = True
+        emit_runtime_event(
+            "prerequisite_plan_started",
+            parent_scope=parent_scope,
+            child_scope=child_scope,
+            original_request=original_request,
+        )
+        async def materialize(scope: str) -> Any:
+            """Materialize one scope, recursively satisfying its parent."""
+            parent_decision = continuation.planner_output.payload.model_copy(
+                update={
+                    "task_type": "learning_plan",
+                    "plan_scope": scope,
+                    "plan_action": "create_or_update",
+                    "requires_clarification": False,
+                    "clarification_question": None,
+                    "requires_audit": True,
+                    "selected_agents": [
+                        "memory_agent",
+                        "default_route_resolver",
+                        "diagnosis_agent",
+                        "audit_agent",
+                        "learning_plan_service",
+                    ],
+                }
+            )
+            parent_decision = PlannerAgent.complete_required_selection(
+                parent_decision.model_copy(deep=True)
+            )
+            plan = PlannerAgent.build_plan(parent_decision)
+            run_thread = f"{continuation.execution_id}:prerequisite:{scope}"
+            parent_context["plan_scope"] = scope
+            parent_context["requested_plan_scope"] = scope
+            parent_context["continued_plan_scope"] = scope
+            parent_context["plan_scope_hint"] = scope
+            parent_context["prerequisite_parent_scope"] = scope
+            execution_result = await self.orchestrator.execute(
+                plan, parent_context, thread_id=run_thread
+            )
+            if execution_result.status == "interrupted":
+                nested = execution_result.interrupt or {}
+                if nested.get("interrupt_type") != "planning_prerequisite":
+                    # Keep the parent checkpoint alive and surface its own
+                    # question to the same conversation.  The next answer is
+                    # routed back to this parent graph; it is not sent to the
+                    # child graph and it does not trigger a fresh Planner run.
+                    raise _PrerequisiteInterrupted(
+                        thread_id=run_thread,
+                        interrupt=nested,
+                        scope=scope,
+                        confirmation=confirmation,
+                    )
+                nested_parent = str(nested.get("requested_scope") or "").strip()
+                if nested_parent not in {"long_term", "short_term"}:
+                    raise RuntimeError(f"前置{scope}计划缺少可识别的父级计划")
+                await materialize(nested_parent)
+                # The recursive parent may have written a newly published
+                # long-term plan into the continuation.  Refresh the copied
+                # context used by the still-paused child graph before its
+                # checkpoint is resumed.
+                parent_context.update(continuation.context)
+                parent_context["plan_scope"] = scope
+                parent_context["requested_plan_scope"] = scope
+                parent_context["continued_plan_scope"] = scope
+                execution_result = await self.orchestrator.resume(
+                    run_thread,
+                    {"answer": confirmation, "plan_scope": scope},
+                    plan=plan,
+                    context=parent_context,
+                )
+            if execution_result.status != "success":
+                detail = execution_result.error_message or "父级计划未能发布"
+                raise RuntimeError(f"前置{scope}计划生成失败：{detail}")
+            parent_output = execution_result.outputs.get("learning_plan")
+            parent_result = getattr(parent_output, "payload", parent_output)
+            if parent_result is None:
+                raise RuntimeError("前置计划生成未返回学习计划结果")
+            if scope == "long_term":
+                plan_record = getattr(parent_result, "long_term_plan", None)
+                if plan_record is None:
+                    raise RuntimeError("前置长期规划未发布")
+                continuation.context["current_long_term_plan"] = plan_record.model_dump(mode="json")
+            else:
+                plan_record = getattr(parent_result, "short_term_plan", None)
+                if plan_record is None:
+                    raise RuntimeError("前置短期计划未发布")
+                continuation.context["current_short_term_plan"] = plan_record.model_dump(mode="json")
+            return plan_record
+
+        if isinstance(pending, dict) and pending.get("thread_id"):
+            pending_thread = str(pending["thread_id"])
+            pending_scope = str(pending.get("scope") or parent_scope)
+            parent_context = dict(continuation.context)
+            parent_context["plan_scope"] = pending_scope
+            parent_context["requested_plan_scope"] = pending_scope
+            parent_context["continued_plan_scope"] = pending_scope
+            parent_context["prerequisite_parent_scope"] = pending_scope
+            pending_interrupt = pending.get("interrupt") or {}
+            pending_answer = str(answer or "").strip()
+            if pending_interrupt.get("interrupt_type") == "profile_completion":
+                profile_fields = [
+                    str(field).strip()
+                    for field in (pending_interrupt.get("profile_fields") or [])
+                    if str(field).strip()
+                ]
+                profile_updates = (
+                    {profile_fields[0]: pending_answer}
+                    if len(profile_fields) == 1 and pending_answer
+                    else {}
+                )
+                if profile_updates and self.profile_update_writer is not None:
+                    self.data_permission_gateway.authorize(
+                        agent="memory_agent",
+                        domain="learner_profile",
+                        action="write",
+                        fields=set(profile_updates),
+                        confirmed_fields=set(profile_fields),
+                    )
+                    await asyncio.to_thread(
+                        self.profile_update_writer,
+                        continuation.request.learner_id,
+                        profile_updates,
+                        continuation.execution_id,
+                    )
+                    parent_context.setdefault("user_profile", {}).update(profile_updates)
+                    continuation.context.setdefault("user_profile", {}).update(profile_updates)
+            parent_context["messages"] = list(persisted_messages)
+            resumed_parent = await self.orchestrator.resume(
+                pending_thread,
+                {
+                    "answer": pending_answer,
+                    "plan_scope": pending_scope,
+                    "profile_updates": (
+                        {profile_fields[0]: pending_answer}
+                        if pending_interrupt.get("interrupt_type") == "profile_completion"
+                        and len(profile_fields) == 1
+                        and pending_answer
+                        else {}
+                    ),
+                },
+                context=parent_context,
+            )
+            if resumed_parent.status == "interrupted":
+                continuation.context["pending_prerequisite"] = {
+                    "thread_id": pending_thread,
+                    "scope": pending_scope,
+                    "confirmation": str(
+                        pending.get("confirmation") or ""
+                    ).strip(),
+                    "interrupt": resumed_parent.interrupt or {},
+                }
+                raise _PrerequisiteInterrupted(
+                    thread_id=pending_thread,
+                    interrupt=resumed_parent.interrupt or {},
+                    scope=pending_scope,
+                    confirmation=str(pending.get("confirmation") or "").strip(),
+                )
+            if resumed_parent.status != "success":
+                raise RuntimeError(
+                    resumed_parent.error_message or "前置计划未能继续"
+                )
+            parent_output = resumed_parent.outputs.get("learning_plan")
+            parent_result = getattr(parent_output, "payload", parent_output)
+            plan_record = (
+                getattr(parent_result, "long_term_plan", None)
+                if pending_scope == "long_term"
+                else getattr(parent_result, "short_term_plan", None)
+            )
+            if plan_record is None:
+                raise RuntimeError("前置计划生成未返回学习计划结果")
+            continuation.context.pop("pending_prerequisite", None)
+            if pending_scope == "long_term":
+                continuation.context["current_long_term_plan"] = plan_record.model_dump(mode="json")
+            else:
+                continuation.context["current_short_term_plan"] = plan_record.model_dump(mode="json")
+            return str(pending.get("confirmation") or "").strip() or None
+
+        plan = await materialize(parent_scope)
+        continuation.context["plan_scope"] = child_scope or continuation.context.get(
+            "requested_plan_scope", "daily_task"
+        )
+        continuation.context["task_type"] = "learning_plan"
+        emit_runtime_event(
+            "prerequisite_plan_completed",
+            parent_scope=parent_scope,
+            child_scope=child_scope,
+            plan_id=getattr(plan, "plan_id", None),
+        )
+        return None
+
     @staticmethod
     def _is_plan_scope_clarification(interrupt_payload: dict[str, Any]) -> bool:
         if interrupt_payload.get("interrupt_type") == "plan_scope_resolution":
@@ -1175,7 +1611,7 @@ class PersonalizedReviewCardUseCase:
         messages: list[dict[str, Any]],
         result: ReviewCardResult | WorkflowInterruptedResult,
     ) -> None:
-        content = workflow_result_to_markdown(result)
+        content = sanitize_conversation_content(workflow_result_to_markdown(result))
         actions = [
             action.model_dump(mode="json")
             for action in getattr(result, "ui_actions", [])
@@ -1183,7 +1619,9 @@ class PersonalizedReviewCardUseCase:
         assistant_message: dict[str, Any] = {"role": "assistant", "content": content}
         if actions:
             assistant_message["actions"] = actions
-        trace_events = drain_recording_sink()
+        runtime_events = drain_recording_sink()
+        durable_receipt = self._persisted_trace_events(result)
+        trace_events = [*runtime_events, *durable_receipt]
         if trace_events:
             assistant_message["trace_events"] = trace_events
         self.conversation_repository.save_messages(
@@ -1191,6 +1629,110 @@ class PersonalizedReviewCardUseCase:
             learner_id,
             [*messages, assistant_message],
         )
+
+    @staticmethod
+    def _persisted_trace_events(result: ReviewCardResult | WorkflowInterruptedResult) -> list[dict[str, Any]]:
+        """Build a durable, UI-only collaboration receipt for reopened chats.
+
+        The formal conversation remains prose-only.  These events are copied
+        into message metadata so refreshing the page does not erase the
+        "查看过程" affordance or the model input/output details.
+
+        The receipt is bounded: raw model payloads are truncated so the
+        metadata column never exceeds its size limit, while still keeping
+        enough detail for the frontend to render the process.
+        """
+        events: list[dict[str, Any]] = [{"event": "run_completed"}]
+        for envelope in getattr(result, "agent_outputs", []) or []:
+            payload = getattr(envelope, "payload", None)
+            if hasattr(payload, "model_dump"):
+                payload = payload.model_dump(mode="json")
+            elif payload is None:
+                payload = {}
+            events.append({
+                "event": "step_completed",
+                "step_id": getattr(envelope, "step_id", ""),
+                "agent": getattr(envelope, "producer", ""),
+                "output_summary": PersonalizedReviewCardUseCase._truncate_trace(
+                    payload, limit=3_000
+                ),
+            })
+        for trace in getattr(result, "model_trace", []) or []:
+            item = trace.model_dump(mode="json") if hasattr(trace, "model_dump") else dict(trace)
+            agent = item.get("agent", "model")
+            step_id = item.get("workflow_step_id") or agent
+            call_id = f"MODEL_CALL_{item.get('sequence', len(events))}"
+            if item.get("raw_input") is not None:
+                events.append({
+                    "event": "model_input",
+                    "agent": agent,
+                    "output_kind": (
+                        "compiler" if "compiler" in str(agent).lower() else "business"
+                    ),
+                    "step_id": step_id,
+                    "call_id": call_id,
+                    "raw_input": PersonalizedReviewCardUseCase._truncate_trace(
+                        item.get("raw_input") or {}, limit=2_000
+                    ),
+                })
+            if item.get("raw_output") is not None or item.get("raw_output_text") is not None:
+                events.append({
+                    "event": "model_output",
+                    "agent": agent,
+                    "output_kind": (
+                        "compiler" if "compiler" in str(agent).lower() else "business"
+                    ),
+                    "step_id": step_id,
+                    "call_id": call_id,
+                    "raw_output": PersonalizedReviewCardUseCase._truncate_trace(
+                        item.get("raw_output") or {}, limit=2_000
+                    ),
+                })
+            if item.get("transport_input") is not None or item.get("raw_output_text") is not None:
+                events.append({
+                    "event": "model_transport",
+                    "agent": agent,
+                    "output_kind": (
+                        "compiler" if "compiler" in str(agent).lower() else "business"
+                    ),
+                    "step_id": step_id,
+                    "call_id": call_id,
+                    "request_payload": PersonalizedReviewCardUseCase._truncate_trace(
+                        item.get("transport_input") or {}, limit=2_000
+                    ),
+                    "response_text": str(item.get("raw_output_text") or "")[:2_000],
+                })
+        coordination = getattr(result, "coordination", None)
+        repair_trace = getattr(coordination, "repair_trace", []) if coordination else []
+        for repair in repair_trace or []:
+            item = repair.model_dump(mode="json") if hasattr(repair, "model_dump") else dict(repair)
+            events.append({
+                "event": "audit_revision_completed",
+                "status": item.get("status", "completed"),
+                "audit_step_id": item.get("trigger_step_id", "audit"),
+            })
+        return events
+
+    @staticmethod
+    def _truncate_trace(value: Any, *, limit: int) -> Any:
+        """Recursively truncate a trace payload so metadata stays bounded.
+
+        Long strings are cut at ``limit`` characters; nested containers are
+        pruned to at most 50 entries each.  Primitive scalars pass through.
+        """
+        if isinstance(value, str):
+            return value[:limit]
+        if isinstance(value, dict):
+            return {
+                key: PersonalizedReviewCardUseCase._truncate_trace(item, limit=limit)
+                for key, item in list(value.items())[:50]
+            }
+        if isinstance(value, list):
+            return [
+                PersonalizedReviewCardUseCase._truncate_trace(item, limit=limit)
+                for item in value[:50]
+            ]
+        return value
 
     def get_run_state(self, thread_id: str) -> dict[str, Any] | None:
         return self.run_state_repository.get(thread_id)
@@ -1274,6 +1816,11 @@ class PersonalizedReviewCardUseCase:
             and "dailytaskprogresserror" in message
         ):
             return "daily_task_publication_failed"
+        # Failed-step is authoritative.  Persistence errors often include
+        # the word "knowledge" in a serialized trace; that must not mask the
+        # actual database/writeback failure.
+        if failed_step in {"conversation", "persistence", "snapshot", "profile_writeback"}:
+            return "persistence_failed"
         if failed_step in {"knowledge", "knowledge_base_agent"} or "knowledge" in message:
             return "knowledge_step_failed"
         if (

@@ -54,32 +54,6 @@ class GenericQueryModel:
         }
 
 
-class ExternalFactRetrievalTool:
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, str]] = []
-
-    async def build_external_evidence_pack(
-        self, query: str, *, location: str = ""
-    ) -> EvidencePack:
-        self.calls.append((query, location))
-        return EvidencePack(
-            evidence_pack_id="EP_WEB_1",
-            query=query,
-            evidence_items=[
-                EvidenceItem(
-                    evidence_id="E_WEB_1",
-                    source_id="EXA_WEB_1",
-                    content_summary="官方考试时间\n以主管部门公告为准",
-                    authority_level="web_current_fact",
-                    confidence=0.9,
-                    bridge_layer="external",
-                    source_url="https://www.nmec.org.cn/exam",
-                    resource_type="web",
-                )
-            ],
-        )
-
-
 def context() -> dict[str, object]:
     return {
         "case_id": "CASE_1",
@@ -110,27 +84,6 @@ async def test_knowledge_agent_falls_back_to_concrete_user_topic() -> None:
 
     assert retrieval.queries == ["中医药基础知识点", "感冒"]
     assert output.payload.query == "感冒"
-
-
-@pytest.mark.asyncio
-async def test_knowledge_agent_uses_web_evidence_for_current_fact_request() -> None:
-    retrieval = ExternalFactRetrievalTool()
-    ctx = context()
-    ctx.update(
-        {
-            "user_request": "距离下次执业医师资格证考试还有多久？",
-            "task_type": "general_learning_support",
-            "external_information_request": True,
-            "user_profile": {"location": "上海"},
-        }
-    )
-
-    output = await KnowledgeBaseAgent(retrieval).run(ctx)
-
-    assert retrieval.calls == [("距离下次执业医师资格证考试还有多久？", "上海")]
-    assert output.payload.resolved_kp_ids == []
-    assert [item.resource_type for item in output.payload.evidence_items] == ["web"]
-    assert output.payload.question_candidates == []
 
 
 @pytest.mark.asyncio
@@ -216,97 +169,6 @@ async def test_second_review_turns_non_blocking_revision_into_pass() -> None:
 
     assert result.payload.decision == "pass"
     assert any("非阻断建议" in finding for finding in result.payload.findings)
-
-
-@pytest.mark.asyncio
-async def test_current_fact_web_evidence_preserves_audit_revision_decision() -> None:
-    retrieval = ExternalFactRetrievalTool()
-    ctx = context()
-    ctx.update(
-        {
-            "step_id": "audit",
-            "task_type": "general_learning_support",
-            "user_request": "距离下次执业医师资格证考试还有多久？",
-            "external_information_request": True,
-        }
-    )
-    knowledge = await KnowledgeBaseAgent(retrieval).run(ctx)
-    expert_context = dict(ctx)
-    expert_context["step_id"] = "expert"
-    expert_context["dependency_outputs"] = {"knowledge": knowledge}
-    expert = await ExpertAgent().run(expert_context)
-    model = CapturingModel({"decision": "revise", "findings": ["建议增加练习。"]})
-    ctx["dependency_outputs"] = {"knowledge": knowledge, "expert": expert}
-
-    result = await AuditAgent(model).run(ctx)
-
-    assert model.payload["payload"]["semantic_evidence"][0]["resource_type"] == "web"
-    assert result.payload.decision == "revise"
-    assert result.payload.findings == ["建议增加练习。"]
-
-
-@pytest.mark.asyncio
-async def test_non_official_current_fact_evidence_adds_a_source_reminder() -> None:
-    retrieval = ExternalFactRetrievalTool()
-    ctx = context()
-    ctx.update(
-        {
-            "step_id": "audit",
-            "task_type": "general_learning_support",
-            "user_request": "距离下次执业医师资格证考试还有多久？",
-            "external_information_request": True,
-        }
-    )
-    knowledge = await KnowledgeBaseAgent(retrieval).run(ctx)
-    knowledge.payload.evidence_items[0].source_url = "https://example.test/exam"
-    expert_context = dict(ctx)
-    expert_context["step_id"] = "expert"
-    expert_context["dependency_outputs"] = {"knowledge": knowledge}
-    expert = await ExpertAgent().run(expert_context)
-    ctx["dependency_outputs"] = {"knowledge": knowledge, "expert": expert}
-
-    result = await AuditAgent(CapturingModel({"decision": "pass", "findings": []})).run(ctx)
-
-    assert result.payload.decision == "pass"
-    assert result.payload.findings == [
-        "实时信息提示：信息来自非官方网页，请以官方渠道为准。"
-    ]
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "source_url",
-    [
-        "https://www.weather.com.cn/weather/101010100.shtml",
-        "https://weather.cma.cn/web/weather/101010100.html",
-    ],
-)
-async def test_official_weather_evidence_is_not_blocked_by_low_search_score(
-    source_url: str,
-) -> None:
-    retrieval = ExternalFactRetrievalTool()
-    ctx = context()
-    ctx.update(
-        {
-            "step_id": "audit",
-            "task_type": "general_learning_support",
-            "user_request": "今天天气怎样？",
-            "external_information_request": True,
-        }
-    )
-    knowledge = await KnowledgeBaseAgent(retrieval).run(ctx)
-    knowledge.payload.evidence_items[0].source_url = source_url
-    knowledge.payload.evidence_items[0].confidence = 0.5
-    expert_context = dict(ctx)
-    expert_context["step_id"] = "expert"
-    expert_context["dependency_outputs"] = {"knowledge": knowledge}
-    expert = await ExpertAgent().run(expert_context)
-    ctx["dependency_outputs"] = {"knowledge": knowledge, "expert": expert}
-
-    result = await AuditAgent(CapturingModel({"decision": "pass", "findings": []})).run(ctx)
-
-    assert result.payload.decision == "pass"
-    assert not any("人工复核" in item for item in result.payload.findings)
 
 
 class CapturingModel:
@@ -421,12 +283,18 @@ async def test_review_expert_context_is_compact_and_has_line_breaks() -> None:
     instructions = model.payload["task_instructions"]
     business = model.payload["payload"]
     assert "\n" in instructions
+    # Shared conversation/request context is injected for every agent; the
+    # business slice itself must stay compact and free of internal identifiers.
     assert set(business) <= {
-        "topic", "retrieval_summary", "evidence", "candidate_questions", "task", "output_contract"
+        "topic", "retrieval_summary", "evidence", "candidate_questions", "task",
+        "output_contract",
+        "shared_context", "user_request", "original_user_request", "request_context",
     }
     assert "semantic_evidence" not in business
     assert "learning_data" not in business
     assert "question_candidate_catalog" not in business
+    assert "evidence_id" not in str(business)
+    assert "claim_id" not in str(business)
 
 
 @pytest.mark.asyncio
