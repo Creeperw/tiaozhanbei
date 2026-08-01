@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BookOpen,
+  BookOpenText,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -22,6 +23,7 @@ import {
   loadTextbookProgress,
 } from './textbookChapterApi';
 import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
+import { cachedPromise } from './textbookCache';
 import SectionExamPanel from './SectionExamPanel';
 import TextbookPdfReader from './TextbookPdfReader';
 import { loadTextbookPdfMetadata } from './textbookPdfApi';
@@ -205,8 +207,9 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [catalogQuery, setCatalogQuery] = useState('');
   const [catalogStatus, setCatalogStatus] = useState('all');
   const [searchCatalog, setSearchCatalog] = useState(null);
+  const [heroCollapsed, setHeroCollapsed] = useState(false);
   // PDF / 目录 / 作业与考试 模式
-  const [courseMode, setCourseMode] = useState('catalog');
+  const [courseMode, setCourseMode] = useState('pdf');
   const [sectionExamMode, setSectionExamMode] = useState(false);
   const [pdfInitialPage, setPdfInitialPage] = useState(navigationContext.pdfPage || 1);
   const [pageNotesOpen, setPageNotesOpen] = useState(false);
@@ -261,11 +264,11 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       return () => controller.abort();
     }
     setUploadedBook(null);
-    const chapterPromise = loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal }).then(async (payload) => {
+    const chapterPromise = cachedPromise(`atlas-chapters-${route}-${book}`, () => loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal })).then(async (payload) => {
       const next = sortByHeadingNumber(Array.isArray(payload.nodes) ? payload.nodes : [], '章');
       setChapters(next); setSelectedChapter((current) => next.find((item) => item.id === current?.id) || next[0] || null);
       const results = await Promise.all(next.map(async (chapter) => {
-        const sectionPayload = await loadAtlasNodes({ level: 3, route, lv1: book, chapter: chapter.name, chapterId: chapter.id, signal: controller.signal });
+        const sectionPayload = await cachedPromise(`atlas-sections-${route}-${book}-${chapter.id}`, () => loadAtlasNodes({ level: 3, route, lv1: book, chapter: chapter.name, chapterId: chapter.id, signal: controller.signal }));
         return [chapter.id, sortByHeadingNumber(Array.isArray(sectionPayload.nodes) ? sectionPayload.nodes : [], '节')];
       }));
       setSectionsByChapter(Object.fromEntries(results));
@@ -536,6 +539,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     catch (saveError) { if (saveError.name !== 'AbortError') setError((current) => current || saveError.message || '保存小节学习进度失败。'); }
   };
   const startOrContinueLearning = () => {
+    setSectionExamMode(false); setCourseMode('catalog'); setPageNotesOpen(false);
     const location = progress > 0 ? findSectionLocation(lastSectionId) : null;
     const firstChapter = chapters[0]; const firstSection = firstChapter ? (sectionsByChapter[firstChapter.id] || [])[0] : null;
     const target = location || (firstChapter && firstSection ? { chapter: firstChapter, section: firstSection } : null);
@@ -564,30 +568,40 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
 
   return (
     <main className="textbook-chapter-learning">
-      <header className="textbook-chapter-learning__hero">
-        <div className="textbook-chapter-learning__cover">
-          <img src={uploadedBook?.cover_url || textbookCoverUrl(book)} alt={`《${book}》教材封面`} />
-        </div>
-        <div className="textbook-chapter-learning__intro">
-          <span>学习工坊 · 教材章节学习</span>
-          <h1>《{book || '教材章节'}》</h1>
-          <p>{uploadedBook?.description || textbookIntroduction(book)}</p>
-          <div className="textbook-chapter-learning__stats">
-            <span><BookOpen aria-hidden="true" size={14} />{chapters.length} 个章节</span>
-            <span><Film aria-hidden="true" size={14} />章节视频与知识点片段</span>
-          </div>
-        </div>
-        <div className="textbook-chapter-learning__actions">
-          <button className="textbook-chapter-learning__back" type="button" onClick={() => onNavigate?.({ page: 'practice', params: {} })}>
-            <ArrowLeft aria-hidden="true" size={14} />返回
-          </button>
-          <div className="textbook-chapter-learning__progress" aria-label="课程学习进度">
-            <div className="textbook-progress-ring" style={{ background: `conic-gradient(#3b936c ${progress}%, #dce6e1 0)` }}><div><strong>{progress}%</strong><span>学习进度</span></div></div>
-            <button type="button" className="textbook-start-learning" onClick={startOrContinueLearning} disabled={progressLoading || !allSections.length}>
-              <PlayCircle aria-hidden="true" size={18} />{progress > 0 ? '继续学习' : '开始学习'}
-            </button>
-          </div>
-        </div>
+      <header className={`textbook-chapter-learning__hero${heroCollapsed ? ' is-collapsed' : ''}`}>
+        {!heroCollapsed && (
+          <>
+            <div className="textbook-chapter-learning__cover">
+              <img src={uploadedBook?.cover_url || textbookCoverUrl(book)} alt={`《${book}》教材封面`} />
+            </div>
+            <div className="textbook-chapter-learning__intro">
+              <span>学习工坊 · 教材章节学习</span>
+              <h1>《{book || '教材章节'}》</h1>
+              <p>{uploadedBook?.description || textbookIntroduction(book)}</p>
+              <div className="textbook-chapter-learning__stats">
+                <span><BookOpen aria-hidden="true" size={14} />{chapters.length} 个章节</span>
+                <span><Film aria-hidden="true" size={14} />章节视频与知识点片段</span>
+              </div>
+            </div>
+            <div className="textbook-chapter-learning__actions">
+              <div className="textbook-chapter-learning__progress" aria-label="课程学习进度">
+                <div className="textbook-progress-ring" style={{ background: `conic-gradient(#3b936c ${progress}%, #dce6e1 0)` }}><div><strong>{progress}%</strong><span>学习进度</span></div></div>
+                <button type="button" className="textbook-start-learning" onClick={startOrContinueLearning} disabled={progressLoading || !allSections.length}>
+                  <PlayCircle aria-hidden="true" size={18} />{progress > 0 ? '继续学习' : '开始学习'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+        <button
+          type="button"
+          className="textbook-chapter-learning__collapse"
+          aria-label={heroCollapsed ? '展开教材信息' : '折叠教材信息'}
+          title={heroCollapsed ? '展开教材信息' : '折叠教材信息'}
+          onClick={() => setHeroCollapsed((current) => !current)}
+        >
+          {heroCollapsed ? <ChevronDown aria-hidden="true" size={16} /> : <ChevronUp aria-hidden="true" size={16} />}
+        </button>
       </header>
 
       {error && <div className="textbook-chapter-learning__error" role="alert">{error}</div>}
@@ -598,13 +612,16 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <button type="button" className={!sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(false); setCourseMode('catalog'); setPageNotesOpen(false); }}>
+            <button type="button" className={courseMode === 'pdf' && !sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(false); setCourseMode('pdf'); setPageNotesOpen(false); }}>
+              <BookOpenText aria-hidden="true" size={18} />电子教材
+            </button>
+            <button type="button" className={courseMode === 'catalog' && !sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(false); setCourseMode('catalog'); setPageNotesOpen(false); }}>
               <BookOpen aria-hidden="true" size={18} />课程内容
             </button>
             <button type="button" className={sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(true); setCourseMode('catalog'); setPageNotesOpen(false); }}>
               <Layers3 aria-hidden="true" size={18} />作业与考试
             </button>
-            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}>
+            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen((current) => !current); setCourseMode('pdf'); }}>
               <BookOpen aria-hidden="true" size={18} />笔记本
             </button>
           </aside>
@@ -618,17 +635,19 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
               route={route}
               notesOpen={pageNotesOpen}
               onNotesOpenChange={setPageNotesOpen}
-              onClose={() => { setPageNotesOpen(false); setCourseMode('catalog'); }}
+              onClose={() => onNavigate?.({ page: 'practice', params: {} })}
             />
           ) : (
           <>
             {!sectionExamMode && (
             <div className="textbook-learning-main__toolbar">
-              <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
-              <div className="textbook-learning-filters">
-                <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}>
-                  <BookOpen aria-hidden="true" size={15} />阅读电子教材
+              <div>
+                <button type="button" className="textbook-view-back" onClick={() => onNavigate?.({ page: 'practice', params: {} })}>
+                  <ArrowLeft aria-hidden="true" size={15} />返回教材目录
                 </button>
+                <h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p>
+              </div>
+              <div className="textbook-learning-filters">
                 <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
                 {[
                   ['all', '全部'],
@@ -642,6 +661,15 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
               </div>
             </div>
             )}
+          {sectionExamMode && !selectedSection && (
+            <div className="textbook-exam-toolbar">
+              <button type="button" className="textbook-view-back" onClick={() => onNavigate?.({ page: 'practice', params: {} })}>
+                <ArrowLeft aria-hidden="true" size={15} />返回教材目录
+              </button>
+              <h2>作业与考试</h2>
+              <p>选择章节后进入对应练习</p>
+            </div>
+          )}
           {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
             <Directory
               title="章节"

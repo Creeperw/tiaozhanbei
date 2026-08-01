@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TextbookChapterLearning from './TextbookChapterLearning';
 import { loadAtlasNodes } from '../knowledge-atlas/knowledgeAtlasApi';
 import { completeTextbookSection, loadSectionLearningDetail, loadSectionQuestions, loadTextbookProgress } from './textbookChapterApi';
+import { clearTextbookCache } from './textbookCache';
 
 vi.mock('../knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn() }));
 vi.mock('./TextbookPdfReader', () => ({
-  default: ({ onClose, notesOpen }) => <div><span>电子教材阅读器</span>{notesOpen && <span>简约页笔记</span>}<button type="button" onClick={onClose}>课程目录</button></div>,
+  default: ({ onClose, notesOpen }) => <div><span>电子教材阅读器</span>{notesOpen && <span>简约页笔记</span>}<button type="button" onClick={onClose}>返回教材目录</button></div>,
 }));
 vi.mock('./textbookChapterApi', () => ({
   completeTextbookSection: vi.fn().mockResolvedValue({ ok: true }),
@@ -37,15 +38,54 @@ function prepare({ withSectionVideo = true } = {}) {
 }
 
 async function openCatalog() {
-  fireEvent.click(await screen.findByRole('button', { name: '课程目录' }));
+  fireEvent.click(await screen.findByRole('button', { name: '课程内容' }));
 }
 
 describe('TextbookChapterLearning', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearTextbookCache();
     loadSectionQuestions.mockResolvedValue({ items: [] });
     loadTextbookProgress.mockResolvedValue({ completed_section_ids: [], last_section_id: '' });
     completeTextbookSection.mockResolvedValue({ ok: true });
+  });
+
+  it('opens the e-textbook PDF reader by default with separate navigation buttons', async () => {
+    prepare();
+    render(<TextbookChapterLearning navigationContext={{ route: 'textbook_14_5', lv1: '中医学基础' }} />);
+
+    expect(await screen.findByText('电子教材阅读器')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '电子教材' })).toHaveClass('is-active');
+    expect(screen.getByRole('button', { name: '课程内容' })).not.toHaveClass('is-active');
+
+    fireEvent.click(screen.getByRole('button', { name: '课程内容' }));
+    expect(await screen.findByRole('button', { name: /第一章 绪论/ })).toBeInTheDocument();
+    expect(screen.queryByText('电子教材阅读器')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '电子教材' }));
+    expect(await screen.findByText('电子教材阅读器')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /第一章 绪论/ })).not.toBeInTheDocument();
+  });
+
+  it('returns to the textbook library when the PDF back button is clicked', async () => {
+    prepare();
+    const onNavigate = vi.fn();
+    render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} onNavigate={onNavigate} />);
+    expect(await screen.findByText('电子教材阅读器')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '返回教材目录' }));
+
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'practice', params: {} });
+  });
+
+  it('switches to the section content when starting learning from the PDF', async () => {
+    prepare();
+    render(<TextbookChapterLearning navigationContext={{ lv1: '中医学基础' }} />);
+    expect(await screen.findByText('电子教材阅读器')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /开始学习/ }));
+    expect(await screen.findByRole('button', { name: /阴阳概念/ })).toBeInTheDocument();
+    expect(screen.queryByText('电子教材阅读器')).not.toBeInTheDocument();
   });
 
   it('shows the textbook introduction and equal chapter/section catalogues', async () => {

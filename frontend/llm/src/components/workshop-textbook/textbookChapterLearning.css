@@ -1,7 +1,7 @@
 .textbook-chapter-learning { min-height:100%; padding:5px 22px 20px; color:#183129; background:radial-gradient(circle at 86% 0,rgba(123,204,168,.18),transparent 32%),#f5faf7; }
 .textbook-chapter-learning__hero { display:grid; grid-template-columns:112px minmax(0,1fr) 250px; align-items:center; gap:18px; max-width:1580px; margin:0 auto 10px; padding:13px 16px; border:1px solid #dce9e2; border-radius:18px; background:rgba(255,255,255,.96); box-shadow:0 8px 24px rgba(35,81,59,.07); }
-.textbook-chapter-learning__actions { display:flex; min-width:0; align-self:stretch; flex-direction:column; align-items:flex-end; justify-content:space-between; gap:8px; }
-.textbook-chapter-learning__back { display:inline-flex; align-items:center; gap:6px; margin:0; border:1px solid #cfe2d8; border-radius:999px; padding:7px 12px 7px 10px; color:#28624b; background:#f8fcf9; font-size:12px; font-weight:800; cursor:pointer; transition:background .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease; }
+.textbook-chapter-learning__actions { display:flex; min-width:0; align-self:stretch; flex-direction:column; align-items:flex-end; justify-content:center; gap:10px; }
+.textbook-chapter-learning__back { display:inline-flex; align-items:center; gap:6px; margin:0; border:1px solid #cfe2d8; border-radius:999px; padding:9px 16px 9px 13px; color:#28624b; background:#f8fcf9; font-size:13px; font-weight:800; cursor:pointer; transition:background .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease; }
 .textbook-chapter-learning__back:hover { border-color:#83b79b; background:#eaf6ef; box-shadow:0 5px 12px rgba(48,119,87,.14); transform:translateY(-1px); }
 .textbook-chapter-learning__cover { display:block; aspect-ratio:3/4; width:112px; overflow:hidden; border:1px solid #dce9e2; border-radius:10px; background:#fff; box-shadow:0 6px 16px rgba(31,93,67,.13); }
 .textbook-chapter-learning__cover img { display:block; width:100%; height:100%; padding:0; object-fit:cover; object-position:center; }
@@ -10,7 +10,21 @@
 .textbook-chapter-learning__intro p { display:-webkit-box; max-width:900px; margin:0; overflow:hidden; color:#5c7469; font-size:12px; line-height:1.55; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
 .textbook-chapter-learning__stats { display:flex; flex-wrap:wrap; gap:16px; margin-top:8px; }
 .textbook-chapter-learning__stats span { display:inline-flex; align-items:center; gap:6px; color:#628074; font-size:12px; font-weight:700; }
-.textbook-chapter-learning__progress { display:flex; align-items:center; justify-content:flex-end; gap:14px; width:100%; }
+.textbook-chapter-learning__progress { display:flex; align-items:center; justify-content:center; gap:14px; width:100%; }
+/* 折叠态：仅剩折叠箭头的一行窄条 */
+.textbook-chapter-learning__hero.is-collapsed { display:flex; align-items:center; justify-content:center; min-height:38px; padding:4px 12px; }
+.textbook-chapter-learning__hero.is-collapsed .textbook-chapter-learning__intro-collapsed h1 { margin:0; font-size:17px; }
+.textbook-chapter-learning__hero.is-collapsed .textbook-chapter-learning__actions { flex-direction:row; align-items:center; align-self:auto; }
+/* 折叠箭头：hero 底部居中 */
+.textbook-chapter-learning__collapse { display:grid; width:44px; height:20px; place-items:center; grid-column:1/-1; justify-self:center; margin-top:2px; border:1px solid #d5e5dc; border-radius:999px; color:#3f7a61; background:#f8fcf9; cursor:pointer; transition:background .18s ease,border-color .18s ease; }
+.textbook-chapter-learning__hero.is-collapsed .textbook-chapter-learning__collapse { grid-column:auto; justify-self:center; margin-top:0; }
+.textbook-chapter-learning__collapse:hover { border-color:#83b79b; background:#eaf6ef; }
+/* 各视图左上角返回按钮 */
+.textbook-view-back { display:inline-flex; align-items:center; gap:6px; margin:0 0 8px; border:1px solid #cfe2d8; border-radius:999px; padding:7px 14px 7px 11px; color:#28624b; background:#f8fcf9; font-size:12px; font-weight:800; cursor:pointer; transition:background .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease; }
+.textbook-view-back:hover { border-color:#83b79b; background:#eaf6ef; box-shadow:0 5px 12px rgba(48,119,87,.14); transform:translateY(-1px); }
+.textbook-exam-toolbar { display:flex; flex-direction:column; gap:2px; padding:14px 0 6px; }
+.textbook-exam-toolbar h2 { margin:0; color:#1b4533; font-size:18px; }
+.textbook-exam-toolbar p { margin:0; color:#68877a; font-size:12px; }
 .textbook-progress-ring { display:flex; width:62px; height:62px; align-items:center; justify-content:center; border-radius:50%; color:#5d776c; }
 .textbook-progress-ring>div { display:flex; width:52px; height:52px; flex-direction:column; align-items:center; justify-content:center; border-radius:50%; background:#fff; }
 .textbook-progress-ring strong { color:#315c4b; font-size:14px; line-height:1.1; }
@@ -34,8 +48,6 @@
 .textbook-learning-filters input { min-width:0; width:100%; border:0; outline:0; color:#34594b; font-size:12px; }
 .textbook-learning-filters button { border:1px solid #e0e9e4; border-radius:8px; padding:7px 14px; color:#60786e; background:#fff; font-size:12px; cursor:pointer; }
 .textbook-learning-filters button.is-active { border-color:#398769; color:#fff; background:#398769; }
-.textbook-learning-filters .textbook-open-pdf { display:inline-flex; align-items:center; gap:6px; border-color:#b8d7c7; color:#266c51; background:#edf7f1; font-weight:800; }
-.textbook-learning-filters .textbook-open-pdf:hover { border-color:#6ca98a; background:#dff1e7; }
 .textbook-catalog-stage { display:block; width:100%; margin:0; }
 .textbook-catalog-stage__section-reveal { display:none; }
 .textbook-directory,.textbook-section-content { min-width:0; border:1px solid #dce9e1; border-radius:14px; background:#fff; box-shadow:none; }
