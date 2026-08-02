@@ -187,7 +187,7 @@ function ArtifactResult({ taskResult }) {
 const featuredCards = [
   {
     key: 'special_training',
-    initialMode: 'case_training',
+    initialMode: 'objective',
     title: '专项特训',
     description: '覆盖核心知识点，系统巩固基础能力。',
     icon: Target,

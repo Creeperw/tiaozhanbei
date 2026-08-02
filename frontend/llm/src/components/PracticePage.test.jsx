@@ -297,7 +297,7 @@ describe('PracticePage training modules', () => {
     fireEvent.click(screen.getByRole('button', { name: /专项特训/ }));
 
     expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '案例简答' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '客观题' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('returns a deep-linked daily task to its caller instead of the generic workshop overview', () => {

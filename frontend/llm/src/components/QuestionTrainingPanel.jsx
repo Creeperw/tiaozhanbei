@@ -5,7 +5,7 @@ import MistakeVariationPanel from './MistakeVariationPanel';
 
 const modes = [
   ['objective', '客观题'],
-  ['case', '案例简答'],
+  ['case', '案例解答'],
 ];
 
 function normalizeInitialMode(value) {

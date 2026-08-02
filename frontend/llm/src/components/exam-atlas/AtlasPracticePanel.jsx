@@ -252,7 +252,7 @@ export default function AtlasPracticePanel({
 
           {!result && (
             <Button aria-label="提交并批改" className="practice-submit-button" onClick={submit} disabled={!submittedAnswer} loading={submitting}>
-              <Send size={17} aria-hidden="true" />提交训练任务
+              <Send size={17} aria-hidden="true" />提交答案
             </Button>
           )}
           {error && question && <InlineError message={error} />}
