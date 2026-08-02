@@ -23,19 +23,7 @@ git switch main
 git pull --ff-only origin main
 ```
 
-将本数据包目录放在任意位置，在数据包目录执行：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install_data.ps1 -RepoRoot "D:\你的目录\tiaozhanbei"
-```
-
-脚本会安装到：
-
-- `backend\competition\知识星球视频知识库_前端交接包_2026-07-18`
-- `backend\competition\vdb_store`
-- `backend\competition\textbook_pdfs`
-
-教材 PDF 的索引 `backend\competition_app\data\textbook_pdfs\catalog.v1.json` 已随 Git 仓库提交，不需要另行复制。
+直接在夸克网盘下载，文件夹有textbook_pdfs和knowledge_delivery...
 
 ## MySQL
 
