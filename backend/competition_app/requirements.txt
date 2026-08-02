@@ -16,10 +16,7 @@ python-jose[cryptography]>=3.3,<4
 passlib[argon2]>=1.7,<2
 fastapi-mail>=1.4,<2
 python-docx>=1.1,<2
-<<<<<<< HEAD
-=======
 openpyxl>=3.1,<4
->>>>>>> origin/ikram/传奇三条龙
 pypdf>=5,<7
 Pillow>=10,<13
 exa-py>=1.0,<2

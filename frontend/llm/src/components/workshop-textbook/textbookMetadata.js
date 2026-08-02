@@ -11,6 +11,20 @@ const COVER_NAME_ALIASES = {
   细胞生物学实验: '细胞生物学基础',
 };
 
+// TreeKG 新版知识图谱（带左侧目录）已生成数据的教材。
+// 数据目录: TreeKG-main/src/data/{教材}/
+const TREEKG_BOOKS = ['中医学基础', '中医学基础_clean', '中医文化学'];
+
+export function textbookKnowledgeGraphUrl(book) {
+  const name = String(book || '').replace(/[《》]/g, '').trim();
+  const baseUrl = String(import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  // 优先新版 TreeKG viewer（带目录树 + 教材切换）
+  if (TREEKG_BOOKS.includes(name)) {
+    return `${baseUrl}/treekg/?book=${encodeURIComponent(name)}`;
+  }
+  return '';
+}
+
 export function textbookIntroduction(book) {
   const name = String(book || '本教材').replace(/[《》]/g, '').trim();
   if (BOOK_INTRODUCTIONS[name]) return BOOK_INTRODUCTIONS[name];

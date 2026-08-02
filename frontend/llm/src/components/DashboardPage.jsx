@@ -13,6 +13,7 @@ import LearningPathOverview from './learning-tree/LearningPathOverview';
 import PageLoadingSpinner from './PageLoadingSpinner';
 import TextbookLibrary from './workshop-textbook/TextbookLibrary';
 import { loadTextbookPdfCatalog } from './workshop-textbook/textbookPdfApi';
+import { buildTextbookViewModels } from './workshop-textbook/textbookLibraryModel';
 import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
 import {
@@ -28,6 +29,7 @@ import {
   normalizeBookName,
   selectNextKnowledgePoint,
   useLearningPlanMetrics,
+  visibleWorkshopTextbooks,
 } from './learningPlanDashboard';
 import {
   readTeachingResourcesPageCache,
@@ -37,9 +39,7 @@ const WORKSHOP_PREFERENCES_KEY = 'learning-workshop.preferences';
 const VALID_PATH_MODES = new Set(['personalized', 'classic']);
 
 function normalizedBookName(item) {
-  return String(item?.navigation?.book || item?.book || item?.name || item?.title || '')
-    .replace(/[《》]/g, '')
-    .trim();
+  return normalizeBookName(item?.navigation?.book || item?.book || item?.name || item?.title);
 }
 
 function readWorkshopPreferences() {
@@ -98,11 +98,6 @@ function getTrackId(target, tracks, requestedTrackId) {
   if (requestedTrackId) return requestedTrackId;
   if (target?.exam_track_id) return target.exam_track_id;
   return tracks?.[0]?.track_id || '';
-}
-
-export function visibleWorkshopTextbooks({ allTextbooks = [], plannedBooks = [], remainingTextbooks = [], showAllTextbooks = false } = {}) {
-  if (!plannedBooks.length) return allTextbooks;
-  return showAllTextbooks ? [...plannedBooks, ...remainingTextbooks] : plannedBooks;
 }
 
 function getTrackLabel(target, tracks, trackId) {
@@ -438,7 +433,9 @@ export default function DashboardPage({
         }
       }
     };
-    loadPath();
+    loadPath().finally(() => {
+      if (!cancelled) setPathLoading(false);
+    });
     return () => { cancelled = true; };
   }, [
     initialPreferences,
@@ -530,13 +527,12 @@ export default function DashboardPage({
     || nodes[0]
     || null
   ), [currentStageId, nodes]);
-  const taskBookName = currentLearningTask?.learning_chapter?.book || '';
-  const currentPlanBook = useMemo(() => (
-    plannedBooks.find((book) => normalizedBookName(book) === taskBookName)
-    || plannedBooks.find((book) => ['in_progress', 'current'].includes(book.status))
-    || plannedBooks[0]
-    || null
-  ), [plannedBooks, taskBookName]);
+  const currentStageBooks = useMemo(() => (
+    currentStage
+      ? plannedBooks.filter((book) => book.parent_id === currentStage.node_id)
+      : []
+  ), [currentStage, plannedBooks]);
+  const taskBookName = normalizeBookName(currentLearningTask?.learning_chapter?.book);
   const planBookNames = useMemo(() => new Set(plannedBooks.map(normalizedBookName)), [plannedBooks]);
   const libraryTextbooks = useMemo(() => {
     const uploadedNames = new Set(uploadedTextbooks.map(normalizedBookName));
@@ -548,11 +544,6 @@ export default function DashboardPage({
   const visibleTextbooks = useMemo(() => visibleWorkshopTextbooks({
     allTextbooks: libraryTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks,
   }), [libraryTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks]);
-  const currentStageBooks = useMemo(() => (
-    currentStage
-      ? plannedBooks.filter((book) => book.parent_id === currentStage.node_id)
-      : []
-  ), [currentStage, plannedBooks]);
   const snapshotBooks = useMemo(() => (
     pathLoading ? currentStageBooks : allTextbooks
   ), [allTextbooks, currentStageBooks, pathLoading]);
@@ -568,12 +559,72 @@ export default function DashboardPage({
       ? { book, lastActivityAt: snapshot.lastActivityAt }
       : latest;
   }, null)?.book || null, [currentStageBooks, learningMetrics.snapshots.byBook]);
+  const currentPlanBook = useMemo(() => (
+    currentStageBooks.find((book) => normalizedBookName(book) === taskBookName)
+    || mostRecentlyStudiedBook
+    || currentStageBooks.find((book) => ['in_progress', 'current'].includes(book.status))
+    || currentStageBooks.find((book) => learningMetrics.snapshots.byBook[normalizedBookName(book)]?.progress !== 1)
+    || currentStageBooks[0]
+    || null
+  ), [currentStageBooks, learningMetrics.snapshots.byBook, mostRecentlyStudiedBook, taskBookName]);
   const currentBookName = taskBookName || normalizedBookName(currentPlanBook);
-  const currentChapter = currentLearningTask?.learning_chapter?.title || '';
-  const currentBookProgress = Number(currentPlanBook?.progress || 0);
-  const currentBookStatus = currentBookProgress > 0
-    ? `${Math.round(currentBookProgress * 100)}%`
-    : currentPlanBook?.status === 'completed' ? '已完成' : '学习中';
+  const currentBookSnapshot = learningMetrics.snapshots.byBook[currentBookName] || null;
+  const currentBookProgress = Number.isFinite(currentBookSnapshot?.progress)
+    ? currentBookSnapshot.progress
+    : null;
+  const currentChapter = currentLearningTask?.learning_chapter?.title
+    || currentBookSnapshot?.lastChapterName
+    || currentBookSnapshot?.nextChapterName
+    || '';
+  const taskKnowledgePoint = selectNextKnowledgePoint(currentLearningTask);
+  const nextKnowledgePoint = taskKnowledgePoint || (
+    fallbackKnowledgePoint.sectionId === currentBookSnapshot?.nextSectionId
+      ? fallbackKnowledgePoint.value
+      : ''
+  );
+  const currentAtlasTextbook = allTextbooks.find((book) => normalizedBookName(book) === currentBookName);
+  const currentBookRoute = currentAtlasTextbook?.navigation?.route_id
+    || currentPlanBook?.navigation?.route_id
+    || currentBookSnapshot?.route
+    || 'textbook_14_5';
+  const textbookViewModels = useMemo(() => buildTextbookViewModels({
+    textbooks: visibleTextbooks,
+    plannedBooks,
+    snapshotsByBook: learningMetrics.snapshots.byBook,
+    currentBookName,
+  }), [currentBookName, learningMetrics.snapshots.byBook, plannedBooks, visibleTextbooks]);
+  const textbookCatalogViewModels = useMemo(() => buildTextbookViewModels({
+    textbooks: allTextbooks,
+    plannedBooks,
+    snapshotsByBook: learningMetrics.snapshots.byBook,
+    currentBookName,
+  }), [allTextbooks, currentBookName, learningMetrics.snapshots.byBook, plannedBooks]);
+  const currentStageProgressLoading = currentStageBooks.some((book) => (
+    !learningMetrics.snapshots.byBook[normalizedBookName(book)]
+  ));
+  const catalogProgressLoading = allTextbooks.some((book) => (
+    !learningMetrics.snapshots.byBook[normalizedBookName(book)]
+  ));
+  const completedStageBooks = currentStageProgressLoading
+    ? null
+    : currentStageBooks.filter((book) => (
+      learningMetrics.snapshots.byBook[normalizedBookName(book)]?.progress === 1
+    )).length;
+
+  useEffect(() => {
+    if (taskKnowledgePoint || !currentBookSnapshot?.nextSectionId) return undefined;
+    const controller = new AbortController();
+    loadSectionLearningDetail(currentBookSnapshot.nextSectionId, { signal: controller.signal })
+      .then((payload) => {
+        const point = Array.isArray(payload?.knowledge_points) ? payload.knowledge_points[0] : null;
+        setFallbackKnowledgePoint({
+          sectionId: currentBookSnapshot.nextSectionId,
+          value: point?.name || point?.title || point?.kp_name || '',
+        });
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [currentBookSnapshot?.nextSectionId, taskKnowledgePoint]);
 
   const openKnowledgePlanet = async (node) => {
     if (pathMode === 'classic') {
@@ -627,7 +678,7 @@ export default function DashboardPage({
       params: {
         view: 'textbook-chapters',
         // 学习工坊教材目录来自全量教材路线，不能沿用考试路线的筛选 route。
-        route: 'textbook_14_5',
+        route: node.routeId || node.navigation?.route_id || 'textbook_14_5',
         lv1: name,
         bookId: node.book_id || node.navigation?.book_id || '',
         uploaded: node.origin === 'user_upload',
@@ -637,13 +688,16 @@ export default function DashboardPage({
   };
 
   const continueCurrentPlan = () => {
-    if (currentPlanBook) {
-      openTextbook(currentPlanBook);
-      return;
-    }
-    if (taskBookName) {
-      openTextbook({ name: taskBookName, navigation: { route_id: 'textbook_14_5', book: taskBookName } });
-    }
+    if (!currentBookName) return;
+    onNavigate?.({
+      page: 'practice',
+      params: {
+        view: 'textbook-chapters',
+        route: currentBookRoute,
+        lv1: currentBookName,
+        source: 'learning-plan',
+      },
+    });
   };
 
   if (legacyDrilldown) {
@@ -674,25 +728,50 @@ export default function DashboardPage({
                       <h1>学习计划</h1>
                       <p>{currentStage?.description || plannedPath?.message || '结合你的长期目标，按计划教材循序推进学习。'}</p>
                       <div className="workshop-plan__meta">
-                        <span>{plannedPath?.plan_ref?.plan_id ? `计划 ${plannedPath.plan_ref.plan_id}` : '当前学习计划'}</span>
-                        <span>{currentStage ? `当前阶段：${currentStage.title}` : '等待生成学习阶段'}</span>
-                        <span>{plannedBooks.length} 本计划教材</span>
+                        <article className={learningMetrics.loading ? 'is-loading' : ''}>
+                          <span className="workshop-plan__meta-icon"><Clock3 aria-hidden="true" size={25} /></span>
+                          <span><small>累计学习时长</small><strong>{formatLearningDuration(learningMetrics.totalFocusMinutes)}</strong></span>
+                        </article>
+                        <article className={pathLoading ? 'is-loading' : ''}>
+                          <span className="workshop-plan__meta-icon"><Route aria-hidden="true" size={25} /></span>
+                          <span><small>学习阶段</small><strong>{currentStage?.title || '等待生成学习阶段'}</strong></span>
+                        </article>
+                        <article className={currentStageProgressLoading ? 'is-loading' : ''}>
+                          <span className="workshop-plan__meta-icon"><BookOpenCheck aria-hidden="true" size={25} /></span>
+                          <span><small>计划教材</small><strong>{currentStageBooks.length} 本 <em>/</em> 已完成 {completedStageBooks ?? '--'} 本</strong></span>
+                        </article>
                       </div>
                     </div>
-                    <div className={`workshop-plan__focus${currentBookName ? '' : ' is-awaiting-plan'}`}>
-                      <span><Sparkles aria-hidden="true" size={14} />现在继续</span>
+                    <div className={`workshop-plan__focus${currentBookName ? '' : ' is-awaiting-plan'}`} aria-busy={currentTaskLoading || Boolean(currentBookName && !currentBookSnapshot)}>
+                      <span className="workshop-plan__decoration" aria-hidden="true" />
+                      <div className="workshop-plan__focus-content">
+                      <span><Sparkles aria-hidden="true" size={14} />当前在学</span>
                       {currentBookName ? (
                         <>
-                          <h2>该继续学习《{currentBookName}》</h2>
-                          <p>{currentChapter ? `当前任务：${currentChapter}` : currentLearningTask?.title || currentPlanBook?.description || '从当前计划教材继续学习。'}</p>
+                          <h2>《{currentBookName}》</h2>
+                          <p>{currentChapter || '章节目录准备中'}</p>
                           <div className="workshop-plan__progress">
-                            <div><i style={{ width: currentBookProgress > 0 ? `${Math.round(currentBookProgress * 100)}%` : '12%' }} /></div>
-                            <strong>{currentBookStatus}</strong>
-                            {currentLearningTask?.duration && <small><Clock3 aria-hidden="true" size={13} />预计 {currentLearningTask.duration}</small>}
+                            <div
+                              role={currentBookProgress === null ? undefined : 'progressbar'}
+                              aria-label="当前教材学习进度"
+                              aria-valuemin={currentBookProgress === null ? undefined : 0}
+                              aria-valuemax={currentBookProgress === null ? undefined : 100}
+                              aria-valuenow={currentBookProgress === null ? undefined : Math.round(currentBookProgress * 100)}
+                            ><i style={{ width: currentBookProgress === null ? '0%' : `${Math.round(currentBookProgress * 100)}%` }} /></div>
+                            <strong>{currentBookProgress === null ? '进度待统计' : `${Math.round(currentBookProgress * 100)}%`}</strong>
                           </div>
-                          <button type="button" onClick={continueCurrentPlan}>
-                            <BookOpenCheck aria-hidden="true" size={17} />点击继续学习<ArrowRight aria-hidden="true" size={16} />
-                          </button>
+                          <div className="workshop-plan__suggestions">
+                            <span><Clock3 aria-hidden="true" size={14} />今日建议学习 {learningMetrics.recommendedMinutes ? `${learningMetrics.recommendedMinutes} 分钟` : '时长待生成'}</span>
+                            <span><Sparkles aria-hidden="true" size={14} />下一个知识点：{nextKnowledgePoint || '完成当前章节后生成下一学习重点'}</span>
+                          </div>
+                          <div className="workshop-plan__actions">
+                            <button type="button" onClick={continueCurrentPlan}>
+                              <BookOpenCheck aria-hidden="true" size={17} />继续学习<ArrowRight aria-hidden="true" size={16} />
+                            </button>
+                            <button type="button" className="is-secondary" onClick={() => onNavigate?.({ page: 'learning-path', params: {} })}>
+                              查看完整计划
+                            </button>
+                          </div>
                         </>
                       ) : (
                         <>
@@ -701,12 +780,15 @@ export default function DashboardPage({
                           <button type="button" onClick={() => onNavigate?.({ page: 'assistant', params: { context: '请结合我的学习状态，给我制定一份长期学习规划。' } })}>去制定学习计划</button>
                         </>
                       )}
+                      </div>
                     </div>
                   </section>}
                   <TextbookLibrary
-                    books={visibleTextbooks}
+                    books={textbookViewModels}
                     emptyText="当前计划暂未匹配到教材"
                     onOpen={openTextbook}
+                    progressLoading={catalogProgressLoading}
+                    catalogBooks={textbookCatalogViewModels}
                     remainingCount={plannedBooks.length > 0 && !showAllTextbooks ? remainingTextbooks.length : 0}
                     onExpandAll={() => setShowAllTextbooks(true)}
                     onUploaded={(bookItem) => {

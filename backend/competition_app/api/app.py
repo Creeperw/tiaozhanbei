@@ -48,6 +48,7 @@ from competition_app.services.user_syllabus import (
 from competition_app.services.qualification_papers import QualificationPaperRepository
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 from competition_app.api.simulated_patient_routes import router as sp_router, init_engine as sp_init_engine
+from competition_app.api.treekg_routes import mount_treekg, router as treekg_router
 
 
 SESSION_COOKIE = "competition_session"
@@ -453,6 +454,12 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             StaticFiles(directory=frontend_root / "acupuncture"),
             name="frontend_acupuncture",
         )
+    if frontend_root and (frontend_root / "knowledge-graph").is_dir():
+        app.mount(
+            "/knowledge-graph",
+            StaticFiles(directory=frontend_root / "knowledge-graph", html=True),
+            name="frontend_knowledge_graph",
+        )
     if frontend_root and (frontend_root / "blender.yibiaozhu.glb").is_file():
         app.mount(
             "/acupuncture-models",
@@ -476,6 +483,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         import logging
         _logger = logging.getLogger("competition_app.simulated_patient")
         _logger.warning("模拟病患模块初始化失败", exc_info=True)
+
+    # ── TreeKG 知识图谱 viewer（新版带左侧目录） ────────
+    app.include_router(treekg_router)
+    mount_treekg(app)
 
     @app.middleware("http")
     async def authentication_boundary(request: Request, call_next):
@@ -502,6 +513,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "/textbook-status-icons/",
                     "/acupuncture/",
                     "/acupuncture-models/",
+                    "/knowledge-graph/",
                     "/platform-assets/",
                 )
             )
