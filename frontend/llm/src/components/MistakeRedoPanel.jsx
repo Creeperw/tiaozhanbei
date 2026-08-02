@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-  CheckCircle2, ChevronDown, ChevronUp, EyeOff, Filter, Home, Loader2,
+  CheckCircle2, ChevronDown, ChevronUp, Filter, Home, Loader2,
   RotateCcw, Search, Send, Target, X, XCircle,
 } from 'lucide-react';
 import { fetchJsonWithAuthFallback } from '../utils/api';
@@ -105,16 +105,6 @@ function ReviewSession({ mistake, currentIndex, totalCount, onSubmit, onExit, on
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <span className="mb-3 inline-block rounded-full bg-emerald-100 px-3 py-1 text-sm text-emerald-700">错题重做</span>
           <h2 className="text-lg font-semibold leading-relaxed text-slate-900">{mistake.title}</h2>
-          {mistake.options?.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {mistake.options.map((opt, i) => {
-                const label = String.fromCharCode(65 + i);
-                const val = opt.option_id || opt.id || '';
-                const text = opt.content || opt.value || opt.text || String(opt);
-                return <div key={i} className="rounded-lg border border-slate-200 px-3 py-2 text-sm"><strong className="text-slate-600">{label}.</strong> {String(text).replace(/^[A-Z][.．、)\s]\s*/, '')}</div>;
-              })}
-            </div>
-          )}
         </div>
         {!showResult ? (
           <div>
@@ -149,9 +139,9 @@ function ReviewSession({ mistake, currentIndex, totalCount, onSubmit, onExit, on
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-500">本次作答</div>
                 <div className={isCorrect ? 'text-emerald-700' : 'text-rose-600'}>{userAnswer || '未填写'}</div>
               </div>
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-sm font-medium text-rose-600">错误作答</div>
-                <div className="text-rose-700">{mistake.wrongAnswer || '未填写'}</div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <div className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-700">我的首次作答</div>
+                <div className="text-amber-800">{mistake.wrongAnswer || '未填写'}</div>
               </div>
             </div>
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
@@ -160,8 +150,8 @@ function ReviewSession({ mistake, currentIndex, totalCount, onSubmit, onExit, on
             </div>
             {mistake.explanation && (
               <div className="rounded-xl border border-amber-200 bg-amber-50/50">
-                <button onClick={() => setShowExplanation(!showExplanation)} className="flex w-full items-center justify-between p-4 text-left">
-                  <span className="flex items-center gap-2 font-medium text-slate-800"><EyeOff size={16} />详细解析</span>
+                <button type="button" onClick={() => setShowExplanation((prev) => !prev)} className="flex w-full items-center justify-between p-4 text-left">
+                  <span className="flex items-center gap-2 font-medium text-slate-800">详细解析</span>
                   {showExplanation ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
                 </button>
                 {showExplanation && <div className="border-t border-amber-200 px-4 pb-4 text-sm leading-relaxed text-slate-700">{mistake.explanation}</div>}
@@ -231,9 +221,9 @@ function ReviewResult({ results, onContinue, onFinish }) {
           <h3 className="mb-4 flex items-center gap-2 text-lg font-medium text-slate-900"><XCircle size={20} className="text-rose-500" />错题回顾</h3>
           <div className="space-y-3">
             {wrongItems.map(({ mistake }) => (
-              <div key={mistake.id} className="rounded-xl border border-rose-200 bg-rose-50/50 p-4">
+              <div key={mistake.id} className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
                 <div className="mb-2 font-medium text-slate-900">{mistake.title}</div>
-                <div className="mb-1 text-sm text-rose-600">你的答案：{mistake.wrongAnswer}</div>
+                <div className="mb-1 text-sm text-amber-700">我的首次作答：{mistake.wrongAnswer}</div>
                 <div className="text-sm text-emerald-600">正确答案：{mistake.correctAnswer}</div>
               </div>
             ))}
@@ -465,7 +455,7 @@ export default function MistakeRedoPanel() {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3"><div className="mb-1 text-xs font-medium text-rose-600">错误作答</div><div className="text-sm text-rose-700">{viewingMistake.wrongAnswer || '未填写'}</div></div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3"><div className="mb-1 text-xs font-medium text-amber-700">我的首次作答</div><div className="text-sm text-amber-800">{viewingMistake.wrongAnswer || '未填写'}</div></div>
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"><div className="mb-1 text-xs font-medium text-emerald-600">正确答案</div><div className="text-sm text-emerald-700">{viewingMistake.correctAnswer || '未收录'}</div></div>
               </div>
               {viewingMistake.explanation && <div><h3 className="mb-2 text-sm font-medium text-slate-500">解析</h3><div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">{viewingMistake.explanation}</div></div>}
