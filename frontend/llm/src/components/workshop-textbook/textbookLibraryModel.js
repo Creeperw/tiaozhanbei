@@ -57,6 +57,7 @@ export function buildTextbookViewModels({
       isCompleted,
       isCurrent,
       isPlanned: plannedNames.has(name),
+      origin: textbook.origin || 'platform',
       lastSectionId: snapshot?.lastSectionId || '',
       lastActivityAt: finiteCount(snapshot?.lastActivityAt),
       source: textbook,
@@ -72,14 +73,30 @@ export function textbookMatchesFilter(textbook, filter) {
   return true;
 }
 
-export function filterTextbookViewModels(textbooks, { filter = 'all', query = '' } = {}) {
+export function textbookMatchesSource(textbook, source) {
+  if (!source || source === 'all') return true;
+  if (source === 'uploaded') return textbook.origin === 'user_upload';
+  if (source === 'platform') return textbook.origin !== 'user_upload';
+  return true;
+}
+
+export function filterTextbookViewModels(textbooks, { filter = 'all', source = 'all', query = '' } = {}) {
   const normalizedQuery = String(query).trim().toLocaleLowerCase('zh-CN');
   return textbooks.filter((textbook) => {
     if (!textbookMatchesFilter(textbook, filter)) return false;
+    if (!textbookMatchesSource(textbook, source)) return false;
     if (!normalizedQuery) return true;
     return [textbook.name, textbook.categoryLabel, textbook.description]
       .some((value) => String(value || '').toLocaleLowerCase('zh-CN').includes(normalizedQuery));
   });
+}
+
+export function textbookSourceCounts(textbooks) {
+  return {
+    all: textbooks.length,
+    uploaded: textbooks.filter((book) => book.origin === 'user_upload').length,
+    platform: textbooks.filter((book) => book.origin !== 'user_upload').length,
+  };
 }
 
 export function textbookFilterCounts(textbooks) {

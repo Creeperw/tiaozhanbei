@@ -3,6 +3,7 @@ import {
   buildTextbookViewModels,
   filterTextbookViewModels,
   textbookFilterCounts,
+  textbookSourceCounts,
 } from './textbookLibraryModel';
 import { textbookIntroduction } from './textbookMetadata';
 
@@ -39,5 +40,21 @@ describe('textbook library unified model', () => {
     expect(filterTextbookViewModels(books, { filter: 'learning' })).toEqual([books[0]]);
     expect(filterTextbookViewModels(books, { filter: 'planned' })).toEqual(books);
     expect(textbookFilterCounts(books, { progressLoading: true })).toMatchObject({ learning: 1, planned: 2 });
+  });
+
+  it('keeps origin on view models and filters by uploaded/platform source', () => {
+    const books = buildTextbookViewModels({
+      textbooks: [
+        { id: 'u1', name: '自编讲义', origin: 'user_upload', navigation: { route_id: 'user_textbooks', book: '自编讲义' } },
+        { id: 'p1', name: '中医学基础', navigation: { route_id: 'textbook_14_5', book: '中医学基础' } },
+      ],
+    });
+
+    expect(books[0].origin).toBe('user_upload');
+    expect(books[1].origin).toBe('platform');
+    expect(filterTextbookViewModels(books, { source: 'uploaded' })).toEqual([books[0]]);
+    expect(filterTextbookViewModels(books, { source: 'platform' })).toEqual([books[1]]);
+    expect(filterTextbookViewModels(books, { source: 'all' })).toEqual(books);
+    expect(textbookSourceCounts(books)).toEqual({ all: 2, uploaded: 1, platform: 1 });
   });
 });
