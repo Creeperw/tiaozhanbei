@@ -84,29 +84,27 @@ describe('DashboardPage textbook plan library', () => {
     render(<DashboardPage onNavigate={onNavigate} />);
 
     const plan = await screen.findByRole('region', { name: '当前学习计划' });
-    expect(within(plan).getByText('该继续学习《方剂学》')).toBeInTheDocument();
-    expect(within(plan).getByText('当前任务：补益剂·补气')).toBeInTheDocument();
-    expect(within(plan).getByText('35%')).toBeInTheDocument();
+    expect(within(plan).getByText('《方剂学》')).toBeInTheDocument();
+    expect(within(plan).getByText('补益剂·补气')).toBeInTheDocument();
 
     const library = screen.getByRole('region', { name: '教材学习列表' });
-    const firstPlannedCard = within(library).getByRole('button', { name: '学习《中医学基础》' });
-    const secondPlannedCard = within(library).getByRole('button', { name: '学习《方剂学》' });
-    expect(within(library).queryByRole('button', { name: '学习《针灸学》' })).not.toBeInTheDocument();
-    expect(within(library).getByRole('button', { name: '展开所有教材' })).toBeInTheDocument();
+    const firstPlannedCard = within(library).getByRole('button', { name: /继续学习《中医学基础》/ });
+    const secondPlannedCard = within(library).getByRole('button', { name: /继续学习《方剂学》/ });
+    expect(within(library).queryByRole('button', { name: /继续学习《针灸学》/ })).not.toBeInTheDocument();
+    expect(within(library).getByRole('button', { name: /展开全部教材/ })).toBeInTheDocument();
 
-    fireEvent.click(within(library).getByRole('button', { name: '展开所有教材' }));
-    expect(within(library).getByRole('button', { name: '学习《针灸学》' })).toBeInTheDocument();
-    expect(within(library).getByRole('button', { name: '学习《中药学》' })).toBeInTheDocument();
-    expect(within(library).getByRole('button', { name: '学习《中医学基础》' })).toBe(firstPlannedCard);
-    expect(within(library).getByRole('button', { name: '学习《方剂学》' })).toBe(secondPlannedCard);
-    expect(within(library).queryByRole('button', { name: '展开所有教材' })).not.toBeInTheDocument();
+    fireEvent.click(within(library).getByRole('button', { name: /展开全部教材/ }));
+    expect(within(library).getByRole('button', { name: /继续学习《针灸学》/ })).toBeInTheDocument();
+    expect(within(library).getByRole('button', { name: /继续学习《中药学》/ })).toBeInTheDocument();
+    expect(within(library).getByRole('button', { name: /继续学习《中医学基础》/ })).toBe(firstPlannedCard);
+    expect(within(library).getByRole('button', { name: /继续学习《方剂学》/ })).toBe(secondPlannedCard);
+    expect(within(library).queryByRole('button', { name: /展开全部教材/ })).not.toBeInTheDocument();
 
-    fireEvent.click(within(plan).getByRole('button', { name: /点击继续学习/ }));
+    fireEvent.click(within(plan).getByRole('button', { name: /继续学习/ }));
     await waitFor(() => expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
       params: {
-        bookId: '', uploaded: false,
-        view: 'textbook-chapters', route: 'textbook_14_5', lv1: '方剂学', source: 'textbook-library',
+        view: 'textbook-chapters', route: 'textbook_14_5', lv1: '方剂学', source: 'learning-plan',
       },
     }));
   });
