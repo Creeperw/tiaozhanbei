@@ -1827,6 +1827,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=404, detail="会话不存在")
         return {"ok": True}
 
+    @app.get("/api/v1/textbooks/pdfs/{book_id}/questions")
+    async def get_textbook_matched_questions(book_id: str, request: Request) -> dict:
+        user = current_user(request)
+        return await container.textbook_import_service.book_matched_questions(user.user_id, book_id)
+
     @app.post("/api/v1/workshop/note-images", status_code=201)
     async def upload_workshop_note_image(
         request: Request, file: UploadFile = File(...)

@@ -26,6 +26,7 @@ import {
 import { textbookCoverUrl, textbookIntroduction, textbookKnowledgeGraphUrl } from './textbookMetadata';
 import { cachedPromise } from './textbookCache';
 import SectionExamPanel from './SectionExamPanel';
+import BookMatchedQuestions from '../BookMatchedQuestions';
 import TextbookPdfReader from './TextbookPdfReader';
 import { loadTextbookPdfMetadata } from './textbookPdfApi';
 import './textbookChapterLearning.css';
@@ -696,7 +697,11 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             </div>
           )}
 
-          {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
+          {sectionExamMode && !selectedSection && uploadedBook && (
+            <BookMatchedQuestions bookId={uploadedBook.book_id} bookTitle={uploadedBook.title} />
+          )}
+
+          {!selectedSection && !(sectionExamMode && uploadedBook) && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
                   <Directory
                     title="章节"
                     icon={BookOpen}

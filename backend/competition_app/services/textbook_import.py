@@ -348,6 +348,82 @@ class TextbookImportService:
                 text = ""
             output[index + 1] = re.sub(r"[ \t\u3000]+", " ", text).strip()
         return output
+    async def book_matched_questions(self, owner_id: str, book_id: str) -> dict[str, Any]:
+        owner = _safe_owner(owner_id)
+        book_dir = self.runtime_root / owner / str(book_id)
+        title = str(book_id)
+        manifest_path = book_dir / "manifest.json"
+        if manifest_path.is_file():
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                title = str(manifest.get("title") or title)
+            except (OSError, json.JSONDecodeError):
+                pass
+        matches_path = book_dir / "chunk_matches.jsonl"
+        if not matches_path.is_file() and (book_dir / "chunks" / "metadata.jsonl").is_file():
+            # 知识可迁移性：上传后随时可请求匹配，即使当时没勾选也会按需补齐
+            try:
+                await self._match_book_questions_on_demand(book_dir)
+            except Exception as exc:
+                return {
+                    "book_id": book_id, "book_title": title, "matched": False,
+                    "reason": f"按需匹配失败：{type(exc).__name__}: {exc}", "items": [],
+                }
+        items = self._collect_question_matches(matches_path) if matches_path.is_file() else None
+        if items is None:
+            return {
+                "book_id": book_id, "book_title": title, "matched": False,
+                "reason": "该教材没有切片数据（上传时未勾选“匹配本地数据库”），无法关联题目", "items": [],
+            }
+        return {
+            "book_id": book_id, "book_title": title, "matched": True,
+            "total": len(items), "items": items,
+        }
+
+    async def _match_book_questions_on_demand(self, book_dir: Path) -> None:
+        from competition_app.tools.textbook_chunking import match_chunks
+        chunks_path = book_dir / "chunks" / "metadata.jsonl"
+        chunks = [
+            json.loads(line)
+            for line in chunks_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        if not chunks:
+            raise RuntimeError("切片数据为空")
+        if self.embedding_model is None:
+            raise RuntimeError("未配置 embedding 模型")
+        await match_chunks(
+            chunks,
+            [],
+            embedding_model=self.embedding_model,
+            vector_store_root=self.vector_store_root if self.vector_store_root is not None else Path(""),
+            kp_resolver=None,
+            out_path=book_dir / "chunk_matches.jsonl",
+        )
+
+    @staticmethod
+    def _collect_question_matches(path: Path) -> list[dict[str, Any]] | None:
+        if not path.is_file():
+            return None
+        best: dict[str, dict[str, Any]] = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            for question in row.get("question_matches") or []:
+                question_id = str(question.get("question_id") or "")
+                if not question_id:
+                    continue
+                score = float(question.get("score") or 0)
+                if question_id not in best or score > float(best[question_id].get("score") or 0):
+                    best[question_id] = question
+        items = list(best.values())
+        items.sort(key=lambda item: -float(item.get("score") or 0))
+        return items
+
     def list_knowledge_graphs(self, owner_id: str) -> list[dict[str, Any]]:
         owner = _safe_owner(owner_id)
         owner_root = self.runtime_root / owner
