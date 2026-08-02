@@ -55,6 +55,22 @@ describe('textbook library unified model', () => {
     expect(filterTextbookViewModels(books, { source: 'uploaded' })).toEqual([books[0]]);
     expect(filterTextbookViewModels(books, { source: 'platform' })).toEqual([books[1]]);
     expect(filterTextbookViewModels(books, { source: 'all' })).toEqual(books);
-    expect(textbookSourceCounts(books)).toEqual({ all: 2, uploaded: 1, platform: 1 });
+    expect(textbookSourceCounts(books)).toEqual({ all: 2, uploaded: 1, platform: 1, hidden: 0 });
+  });
+
+  it('filters and counts hidden uploaded textbooks', () => {
+    const books = buildTextbookViewModels({
+      textbooks: [
+        { id: 'u1', name: '自编讲义', origin: 'user_upload', hidden: true, navigation: { route_id: 'user_textbooks', book: '自编讲义' } },
+        { id: 'u2', name: '自编讲义2', origin: 'user_upload', navigation: { route_id: 'user_textbooks', book: '自编讲义2' } },
+        { id: 'p1', name: '中医学基础', navigation: { route_id: 'textbook_14_5', book: '中医学基础' } },
+      ],
+    });
+
+    expect(books[0].isHidden).toBe(true);
+    expect(books[1].isHidden).toBe(false);
+    expect(filterTextbookViewModels(books, { source: 'hidden' })).toEqual([books[0]]);
+    expect(filterTextbookViewModels(books, { source: 'uploaded' })).toEqual([books[1]]);
+    expect(textbookSourceCounts(books)).toEqual({ all: 3, uploaded: 1, platform: 1, hidden: 1 });
   });
 });

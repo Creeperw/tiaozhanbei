@@ -248,6 +248,54 @@
     margin: 0;
 }
 
+.textbook-knowledge-graph__toolbar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.textbook-knowledge-graph__toolbar h2 {
+    margin: 0;
+    color: #1d3e32;
+    font-size: 1rem;
+}
+
+.textbook-knowledge-graph__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #cfe1d7;
+    border-radius: 10px;
+    background: #fff;
+    padding: 8px 13px;
+    color: #176d52;
+    font-size: .82rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease;
+}
+
+.textbook-knowledge-graph__back:hover,
+.textbook-knowledge-graph__back:focus-visible {
+    border-color: #8dc8b0;
+    background: #eef9f4;
+}
+
+.textbook-knowledge-graph__empty {
+    display: grid;
+    min-height: 0;
+    flex: 1;
+    place-items: center;
+    border: 1px dashed #c6dcd0;
+    border-radius: 12px;
+    color: #70877d;
+    background: #fff;
+    font-size: .92rem;
+    text-align: center;
+    padding: 24px;
+}
+
 .textbook-knowledge-graph__frame {
     width: 100%;
     min-height: 0;

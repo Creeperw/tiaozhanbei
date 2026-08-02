@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 from threading import RLock
 from typing import Any, Protocol
@@ -236,6 +237,50 @@ class TextbookPdfService:
     def by_id(self, book_id: str, owner_id: str | None = None) -> dict[str, Any] | None:
         item = next((row for row in self._all_books(owner_id) if row.get("book_id") == book_id), None)
         return self._public_book(item) if item else None
+
+    def delete_uploaded_book(self, book_id: str, owner_id: str | None) -> bool:
+        """删除用户上传的教材（仅限本人上传的；平台内置教材不可删除）。"""
+        if not owner_id or self.uploaded_root is None:
+            return False
+        owner = re.sub(r"[^0-9A-Za-z_.-]+", "_", str(owner_id))[:96]
+        owner_root = self.uploaded_root / owner
+        if not owner_root.is_dir():
+            return False
+        for manifest in owner_root.glob("*/manifest.json"):
+            try:
+                item = json.loads(manifest.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(item, dict) and item.get("book_id") == book_id:
+                target = manifest.parent.resolve()
+                if target.parent.resolve() != owner_root.resolve():
+                    continue
+                shutil.rmtree(target, ignore_errors=True)
+                return True
+        return False
+
+    def set_uploaded_book_hidden(self, book_id: str, owner_id: str | None, hidden: bool) -> bool:
+        """设置用户上传教材的隐藏标记（仅限本人上传的；平台内置教材不可修改）。"""
+        if not owner_id or self.uploaded_root is None:
+            return False
+        owner = re.sub(r"[^0-9A-Za-z_.-]+", "_", str(owner_id))[:96]
+        owner_root = self.uploaded_root / owner
+        if not owner_root.is_dir():
+            return False
+        for manifest_path in owner_root.glob("*/manifest.json"):
+            try:
+                item = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(item, dict) and item.get("book_id") == book_id:
+                if manifest_path.parent.resolve().parent.resolve() != owner_root.resolve():
+                    continue
+                item["hidden"] = bool(hidden)
+                manifest_path.write_text(
+                    json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
+                return True
+        return False
 
     def file_path(self, book_id: str, owner_id: str | None = None) -> Path | None:
         item = next((row for row in self._all_books(owner_id) if row.get("book_id") == book_id), None)

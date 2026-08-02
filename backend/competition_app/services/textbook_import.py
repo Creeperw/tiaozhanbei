@@ -669,14 +669,19 @@ class TextbookImportService:
                     return locator, extracted
             except (OSError, json.JSONDecodeError):
                 pass
-        locator = await self._locate_toc(pdf_path, document)
-        toc_pages = sorted({
-            int(page) for page in locator.get("toc_pdf_pages", [])
-            if str(page).isdigit() and 1 <= int(page) <= len(document.pages)
-        })
-        if not locator.get("has_toc") or not toc_pages:
-            return locator, {}
-        extracted = await self._extract_toc(pdf_path, toc_pages)
+        try:
+            locator = await self._locate_toc(pdf_path, document)
+            toc_pages = sorted({
+                int(page) for page in locator.get("toc_pdf_pages", [])
+                if str(page).isdigit() and 1 <= int(page) <= len(document.pages)
+            })
+            if not locator.get("has_toc") or not toc_pages:
+                return locator, {}
+            extracted = await self._extract_toc(pdf_path, toc_pages)
+        except TextbookImportError:
+            # 视觉目录识别不可用（模型不支持图片等）时降级，
+            # 由调用方继续走 PDF 内嵌书签 / 正文标题探测兜底。
+            return {"has_toc": False, "toc_pdf_pages": []}, {}
         if not isinstance(extracted.get("chapters"), list) or not extracted["chapters"]:
             return locator, extracted
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -703,6 +708,19 @@ class TextbookImportService:
         return list(range(1, min(len(document.pages), 36) + 1))
     def _render_page(self, pdf_path: Path, page_number: int, scale: float) -> Image.Image:
         self.runtime_root.mkdir(parents=True, exist_ok=True)
+        try:
+            import fitz  # PyMuPDF 自带渲染，不依赖外部 pdftoppm
+
+            doc = fitz.open(str(pdf_path))
+            try:
+                page = doc.load_page(max(0, page_number - 1))
+                dpi = max(48, min(180, int(72 * scale)))
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(dpi / 72, dpi / 72), alpha=False)
+                return Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
+            finally:
+                doc.close()
+        except ImportError:
+            pass
         with tempfile.TemporaryDirectory(dir=self.runtime_root) as temp_dir:
             prefix = Path(temp_dir) / "page"
             dpi = max(48, min(180, int(72 * scale)))

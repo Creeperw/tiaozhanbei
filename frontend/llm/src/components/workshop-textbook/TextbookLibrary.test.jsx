@@ -51,7 +51,8 @@ it('combines status filters with search and keeps multiple learning textbooks', 
     textbook({ id: 'BOOK_4', name: '中医养生学', isCurrent: false, isCompleted: true, progress: 1 }),
   ]} />);
 
-  fireEvent.click(screen.getByRole('button', { name: /学习中/ }));
+  fireEvent.click(screen.getByRole('button', { name: /全部状态/ }));
+  fireEvent.click(screen.getByRole('menuitemradio', { name: /学习中/ }));
   expect(screen.getByText('《中医学基础》')).toBeInTheDocument();
   expect(screen.getByText('《中医诊断学》')).toBeInTheDocument();
   expect(screen.queryByText('《中医文化学》')).not.toBeInTheDocument();

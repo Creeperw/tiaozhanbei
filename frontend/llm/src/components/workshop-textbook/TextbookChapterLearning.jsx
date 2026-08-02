@@ -657,6 +657,12 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             />
           ) : !sectionExamMode && courseMode === 'graph' ? (
             <section className="textbook-knowledge-graph" aria-label="中医知识图谱">
+              <div className="textbook-knowledge-graph__toolbar">
+                <button type="button" className="textbook-knowledge-graph__back" onClick={() => setCourseMode('pdf')}>
+                  <ArrowLeft aria-hidden="true" size={15} />返回
+                </button>
+                <h2>{book || '本教材'} · 知识图谱</h2>
+              </div>
               {knowledgeGraphUrl ? (
                 <iframe className="textbook-knowledge-graph__frame" title={`${book}知识图谱`} src={knowledgeGraphUrl} />
               ) : (

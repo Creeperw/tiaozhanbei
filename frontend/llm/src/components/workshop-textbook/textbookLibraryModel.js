@@ -3,7 +3,7 @@ import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
 import { textbookPlanningLabel } from './textbookPlanning';
 
 export const TEXTBOOK_FILTERS = [
-  { id: 'all', label: '全部教材' },
+  { id: 'all', label: '全部状态' },
   { id: 'learning', label: '学习中' },
   { id: 'not-started', label: '未开始' },
   { id: 'completed', label: '已完成' },
@@ -58,6 +58,7 @@ export function buildTextbookViewModels({
       isCurrent,
       isPlanned: plannedNames.has(name),
       origin: textbook.origin || 'platform',
+      isHidden: Boolean(textbook.hidden),
       lastSectionId: snapshot?.lastSectionId || '',
       lastActivityAt: finiteCount(snapshot?.lastActivityAt),
       source: textbook,
@@ -75,8 +76,9 @@ export function textbookMatchesFilter(textbook, filter) {
 
 export function textbookMatchesSource(textbook, source) {
   if (!source || source === 'all') return true;
-  if (source === 'uploaded') return textbook.origin === 'user_upload';
+  if (source === 'uploaded') return textbook.origin === 'user_upload' && !textbook.isHidden;
   if (source === 'platform') return textbook.origin !== 'user_upload';
+  if (source === 'hidden') return textbook.isHidden;
   return true;
 }
 
@@ -94,8 +96,9 @@ export function filterTextbookViewModels(textbooks, { filter = 'all', source = '
 export function textbookSourceCounts(textbooks) {
   return {
     all: textbooks.length,
-    uploaded: textbooks.filter((book) => book.origin === 'user_upload').length,
+    uploaded: textbooks.filter((book) => book.origin === 'user_upload' && !book.isHidden).length,
     platform: textbooks.filter((book) => book.origin !== 'user_upload').length,
+    hidden: textbooks.filter((book) => book.isHidden).length,
   };
 }
 

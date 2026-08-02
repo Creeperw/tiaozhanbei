@@ -138,6 +138,10 @@ class TextbookPdfAiSessionRenameRequest(BaseModel):
     title: str = Field(min_length=1, max_length=100)
 
 
+class TextbookPdfHiddenRequest(BaseModel):
+    hidden: bool = False
+
+
 class StageEvidenceRequest(BaseModel):
     requirement: str = Field(min_length=1, max_length=1000)
     task_id: str = Field(min_length=1, max_length=160)
@@ -1587,6 +1591,30 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         if item is None:
             raise HTTPException(status_code=404, detail="教材不存在")
         return {"book": item}
+
+    @app.delete("/api/v1/textbooks/pdfs/{book_id}")
+    async def textbook_pdf_delete(book_id: str, request: Request) -> dict:
+        user = current_user(request)
+        item = container.textbook_pdf_service.by_id(book_id, user.user_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="教材不存在")
+        if item.get("origin") != "user_upload":
+            raise HTTPException(status_code=403, detail="平台内置教材不可删除")
+        if not container.textbook_pdf_service.delete_uploaded_book(book_id, user.user_id):
+            raise HTTPException(status_code=404, detail="教材不存在或无权删除")
+        return {"ok": True}
+
+    @app.patch("/api/v1/textbooks/pdfs/{book_id}")
+    async def textbook_pdf_set_hidden(book_id: str, payload: TextbookPdfHiddenRequest, request: Request) -> dict:
+        user = current_user(request)
+        item = container.textbook_pdf_service.by_id(book_id, user.user_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="教材不存在")
+        if item.get("origin") != "user_upload":
+            raise HTTPException(status_code=403, detail="平台内置教材不可隐藏")
+        if not container.textbook_pdf_service.set_uploaded_book_hidden(book_id, user.user_id, payload.hidden):
+            raise HTTPException(status_code=404, detail="教材不存在或无权修改")
+        return {"ok": True, "hidden": payload.hidden}
 
     @app.get("/api/v1/textbooks/pdfs/{book_id}/file")
     async def textbook_pdf_file(book_id: str, request: Request):
