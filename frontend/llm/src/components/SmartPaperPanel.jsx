@@ -310,7 +310,7 @@ function PaperList({ papers, onOpen, onDownload, empty, compact = false }) {
     return <div className={`grid place-items-center px-5 text-center ${compact ? 'min-h-32 py-6' : 'min-h-64 py-12'}`}><div><FileCheck2 className="mx-auto text-slate-300" size={compact ? 26 : 34} /><h3 className="mt-3 text-sm font-semibold text-slate-800">{empty}</h3><p className="mt-1 text-xs leading-5 text-slate-500">生成并审核通过的试卷会显示在这里。</p></div></div>;
   }
   return (
-    <div className={`grid gap-3 ${compact ? 'max-h-52 overflow-y-auto p-3' : 'p-5 sm:p-7 md:grid-cols-2'}`}>
+    <div className={`grid gap-3 ${compact ? 'max-h-[32rem] overflow-y-auto overscroll-contain p-3' : 'p-5 sm:p-7 md:grid-cols-2'}`}>
       {papers.map((paper) => (
         <article key={paper.paper_id} className={`group flex flex-col rounded-xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md ${compact ? 'min-h-24 p-3' : 'min-h-32 p-4'}`}>
           <div className="flex items-start justify-between gap-3">

@@ -26,6 +26,7 @@ import {
 import { textbookCoverUrl, textbookIntroduction, textbookKnowledgeGraphUrl } from './textbookMetadata';
 import { cachedPromise } from './textbookCache';
 import SectionExamPanel from './SectionExamPanel';
+import BookMatchedQuestions from '../BookMatchedQuestions';
 import TextbookPdfReader from './TextbookPdfReader';
 import { loadTextbookPdfMetadata } from './textbookPdfApi';
 import './textbookChapterLearning.css';
@@ -678,6 +679,12 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             />
           ) : !sectionExamMode && courseMode === 'graph' ? (
             <section className="textbook-knowledge-graph" aria-label="中医知识图谱">
+              <div className="textbook-knowledge-graph__toolbar">
+                <button type="button" className="textbook-knowledge-graph__back" onClick={() => setCourseMode('pdf')}>
+                  <ArrowLeft aria-hidden="true" size={15} />返回
+                </button>
+                <h2>{book || '本教材'} · 知识图谱</h2>
+              </div>
               {knowledgeGraphUrl ? (
                 <iframe className="textbook-knowledge-graph__frame" title={`${book}知识图谱`} src={knowledgeGraphUrl} />
               ) : (
@@ -718,7 +725,11 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
             </div>
           )}
 
-          {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
+          {sectionExamMode && !selectedSection && uploadedBook && (
+            <BookMatchedQuestions bookId={uploadedBook.book_id} bookTitle={uploadedBook.title} />
+          )}
+
+          {!selectedSection && !(sectionExamMode && uploadedBook) && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
                   <Directory
                     title="章节"
                     icon={BookOpen}

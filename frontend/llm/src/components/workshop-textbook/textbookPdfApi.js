@@ -29,6 +29,21 @@ export const loadTextbookPdfMetadata = (bookId, { signal } = {}) => request(
   { signal },
 );
 
+export const loadBookMatchedQuestions = (bookId, { signal } = {}) => request(
+  `/textbooks/pdfs/${encodeURIComponent(bookId)}/questions`,
+  { signal },
+);
+
+export const deleteUploadedTextbook = (bookId) => request(
+  `/textbooks/pdfs/${encodeURIComponent(bookId)}`,
+  { method: 'DELETE' },
+);
+
+export const setUploadedTextbookHidden = (bookId, hidden) => request(
+  `/textbooks/pdfs/${encodeURIComponent(bookId)}`,
+  json('PATCH', { hidden }),
+);
+
 export const listKnowledgeGraphs = ({ signal } = {}) => request(
   '/textbooks/knowledge-graphs',
   { signal },

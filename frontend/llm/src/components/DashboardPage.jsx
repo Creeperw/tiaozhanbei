@@ -12,7 +12,7 @@ import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import PageLoadingSpinner from './PageLoadingSpinner';
 import TextbookLibrary from './workshop-textbook/TextbookLibrary';
-import { loadTextbookPdfCatalog } from './workshop-textbook/textbookPdfApi';
+import { deleteUploadedTextbook, loadTextbookPdfCatalog, setUploadedTextbookHidden } from './workshop-textbook/textbookPdfApi';
 import { buildTextbookViewModels } from './workshop-textbook/textbookLibraryModel';
 import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
@@ -541,9 +541,18 @@ export default function DashboardPage({
   const remainingTextbooks = useMemo(() => (
     libraryTextbooks.filter((book) => !planBookNames.has(normalizedBookName(book)))
   ), [libraryTextbooks, planBookNames]);
-  const visibleTextbooks = useMemo(() => visibleWorkshopTextbooks({
-    allTextbooks: libraryTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks,
-  }), [libraryTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks]);
+  const visibleTextbooks = useMemo(() => {
+    const planned = visibleWorkshopTextbooks({
+      allTextbooks: libraryTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks,
+    });
+    // 用户上传的教材始终可见，不受学习计划视图收起影响；已隐藏的教材默认不展示
+    const uploadedNames = new Set(uploadedTextbooks.map(normalizedBookName));
+    const visible = [...planned, ...libraryTextbooks.filter((book) => (
+      uploadedNames.has(normalizedBookName(book))
+      && !planned.some((item) => normalizedBookName(item) === normalizedBookName(book))
+    ))];
+    return visible.filter((book) => !book.hidden);
+  }, [libraryTextbooks, plannedBooks, remainingTextbooks, showAllTextbooks, uploadedTextbooks]);
   const snapshotBooks = useMemo(() => (
     pathLoading ? currentStageBooks : allTextbooks
   ), [allTextbooks, currentStageBooks, pathLoading]);
@@ -594,11 +603,11 @@ export default function DashboardPage({
     currentBookName,
   }), [currentBookName, learningMetrics.snapshots.byBook, plannedBooks, visibleTextbooks]);
   const textbookCatalogViewModels = useMemo(() => buildTextbookViewModels({
-    textbooks: allTextbooks,
+    textbooks: libraryTextbooks,
     plannedBooks,
     snapshotsByBook: learningMetrics.snapshots.byBook,
     currentBookName,
-  }), [allTextbooks, currentBookName, learningMetrics.snapshots.byBook, plannedBooks]);
+  }), [currentBookName, learningMetrics.snapshots.byBook, libraryTextbooks, plannedBooks]);
   const currentStageProgressLoading = currentStageBooks.some((book) => (
     !learningMetrics.snapshots.byBook[normalizedBookName(book)]
   ));
@@ -685,6 +694,47 @@ export default function DashboardPage({
         source: 'textbook-library',
       },
     });
+  };
+
+  const deleteTextbook = async (book) => {
+    const name = normalizedBookName(book);
+    if (!window.confirm(`确定删除《${name}》吗？删除后不可恢复。`)) return;
+    try {
+      await deleteUploadedTextbook(book.book_id || book.id);
+      setUploadedTextbooks((current) => {
+        const next = current.filter((item) => (
+          String(item.book_id || item.id) !== String(book.book_id || book.id)
+        ));
+        updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+          uploadedTextbooks: next,
+        });
+        return next;
+      });
+    } catch (reason) {
+      window.alert(reason.message || '删除教材失败');
+    }
+  };
+
+  const toggleHiddenTextbook = async (book) => {
+    const name = normalizedBookName(book);
+    const nextHidden = !Boolean(book.hidden);
+    try {
+      await setUploadedTextbookHidden(book.book_id || book.id, nextHidden);
+      setUploadedTextbooks((current) => {
+        const next = current.map((item) => (
+          String(item.book_id || item.id) === String(book.book_id || book.id)
+            ? { ...item, hidden: nextHidden }
+            : item
+        ));
+        updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+          uploadedTextbooks: next,
+        });
+        return next;
+      });
+      if (nextHidden) window.alert(`《${name}》已隐藏，可在“全部教材”下拉的“已隐藏”中恢复显示。`);
+    } catch (reason) {
+      window.alert(reason.message || '隐藏教材失败');
+    }
   };
 
   const continueCurrentPlan = () => {
@@ -793,17 +843,25 @@ export default function DashboardPage({
                     onExpandAll={() => setShowAllTextbooks(true)}
                     onUploaded={(bookItem) => {
                       if (!bookItem) return;
-                      setUploadedTextbooks((current) => [{
-                        ...bookItem,
-                        id: bookItem.book_id,
-                        book: bookItem.title,
-                        node_type: 'book',
-                        title: `《${bookItem.title}》`,
-                        stage_title: bookItem.category || '用户教材',
-                        navigation: { book: bookItem.title, book_id: bookItem.book_id, route_id: 'user_textbooks' },
-                      }, ...current.filter((item) => item.book_id !== bookItem.book_id)]);
+                      setUploadedTextbooks((current) => {
+                        const nextUploaded = [{
+                          ...bookItem,
+                          id: bookItem.book_id,
+                          book: bookItem.title,
+                          node_type: 'book',
+                          title: `《${bookItem.title}》`,
+                          stage_title: bookItem.category || '用户教材',
+                          navigation: { book: bookItem.title, book_id: bookItem.book_id, route_id: 'user_textbooks' },
+                        }, ...current.filter((item) => item.book_id !== bookItem.book_id)];
+                        updateTeachingResourcesPageCache(teachingResourcesCacheKey, {
+                          uploadedTextbooks: nextUploaded,
+                        });
+                        return nextUploaded;
+                      });
                       setShowAllTextbooks(true);
                     }}
+                    onDelete={deleteTextbook}
+                    onToggleHidden={toggleHiddenTextbook}
                   />
                 </>
               ) : textbookError ? (
