@@ -16,7 +16,17 @@ import './acupuncturePractice.css';
 
 const STEPS = ['配合意愿', '3D模型', '施针', '正确答案', '开始评分'];
 
-export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE, onBack }) {
+// 进针类型：相对皮肤表面的进针角度（直刺≈90°、斜刺≈45°、平刺≈15°）
+const INSERTION_OPTIONS = [
+    ['direct', '直刺', 90],
+    ['oblique', '斜刺', 45],
+    ['transverse', '平刺', 15],
+];
+// 相对皮肤表面法线的倾斜角（surfaceAngle = 90 - tilt）
+const INSERTION_TILT_BY_TYPE = { direct: 0, oblique: 45, transverse: 75 };
+
+
+export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE, onBack, onScoreComplete }) {
     const [cases, setCases] = useState(() => BUILTIN_ACUPUNCTURE_CASES.map(normalizeAcupunctureCase));
     const [selectedCaseId, setSelectedCaseId] = useState(caseData.caseId || BUILTIN_ACUPUNCTURE_CASES[0]?.caseId || '');
     const [casesLoading, setCasesLoading] = useState(true);
@@ -32,6 +42,7 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
     const [surfacePick, setSurfacePick] = useState(null);
     const [standardPositions, setStandardPositions] = useState({});
     const [scoreGenerated, setScoreGenerated] = useState(false);
+    const [submittedResult, setSubmittedResult] = useState(null);
     const needleSequence = useRef(0);
 
     useEffect(() => {
@@ -64,10 +75,11 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         ...activeCase,
         standardPoints: activeCase.standardPoints.map((point) => ({
             ...point,
-            modelPosition: standardPositions[point.modelNodeName],
+            modelPosition: point.modelPosition || standardPositions[point.modelNodeName],
         })),
     }), [activeCase, standardPositions]);
-    const result = useMemo(() => scoreAcupunctureAttempt(scoringCase, needles), [scoringCase, needles]);
+    const localResult = useMemo(() => scoreAcupunctureAttempt(scoringCase, needles), [scoringCase, needles]);
+    const result = submittedResult || localResult;
     const standardNodeNames = useMemo(
         () => activeCase.standardPoints.map((point) => point.modelNodeName).filter(Boolean),
         [activeCase],
@@ -89,6 +101,7 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         setStandardPositions({});
         setShowModelMarkers(false);
         setScoreGenerated(false);
+        setSubmittedResult(null);
         setTiltAngle(0);
         setInsertionType('direct');
         setDirectionAngle(0);
@@ -110,6 +123,7 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         setStandardPositions({});
         setShowModelMarkers(false);
         setScoreGenerated(false);
+        setSubmittedResult(null);
         setTiltAngle(0);
         setInsertionType('direct');
         setDirectionAngle(0);
@@ -139,34 +153,51 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
         }]);
     };
 
-    const updateLatestNeedle = (updates) => {
-        setNeedles((current) => current.map((needle, index) => (
-            index === current.length - 1 ? { ...needle, ...updates } : needle
-        )));
-    };
-
     const confirmFinish = () => {
-        setShowModelMarkers(true);
         setStep(5);
     };
 
     const generateFeedback = async () => {
-        if (activeCase.caseId && Object.keys(standardPositions).length) {
+        let nextResult = localResult;
+        if (activeCase.caseId) {
             try {
-                await fetchWithAuth('/api/v1/simulated-patient/acupuncture-score', {
+                const response = await fetchWithAuth('/api/v1/simulated-patient/acupuncture-score', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         case_id: activeCase.caseId,
                         needles,
-                        standard_positions: standardPositions,
                     }),
                 });
+                const payload = await readJsonResponse(response, {});
+                if (payload?.success && payload?.data) {
+                    nextResult = {
+                        ...localResult,
+                        ...payload.data,
+                        feedback: payload.data.feedback || localResult.feedback,
+                    };
+                }
             } catch {
                 // The local score remains available when the review endpoint is unavailable.
             }
         }
+        setSubmittedResult(nextResult);
         setScoreGenerated(true);
+        if (onScoreComplete) {
+          onScoreComplete({
+            caseId: activeCase.caseId,
+            caseName: activeCase.title || activeCase.caseId,
+            total: nextResult.total,
+            position: nextResult.position,
+            depth: nextResult.depth,
+            retention: nextResult.retention,
+            insertion: nextResult.insertion,
+            feedback: nextResult.feedback,
+            needles,
+            standardPoints: activeCase.standardPoints?.map((p) => ({ name: p.name, code: p.code, locationDescription: p.locationDescription })),
+            complaint: activeCase.complaint,
+          });
+        }
     };
 
     const renderStep = () => {
@@ -190,58 +221,61 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
             </section>
         );
 
-        if (step === 2) return (
-            <section className="acupuncture-card acupuncture-card--wide acupuncture-card--fullscreen">
-                <span className="acupuncture-card__eyebrow"><MapPinned size={16} /> 第二步</span>
-                <h2>观察 3D 人体模型</h2>
-                <p>旋转、缩放模型观察人体；点击左上角按钮显示或隐藏穴位。准备好后直接进入施针。</p>
-                <AcupunctureModelCanvas expanded fullScreen standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} showMarkers={showModelMarkers} revealStandardPoints={false} onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
-                <button className="acupuncture-secondary acupuncture-card--fullscreen-exit" onClick={onBack}><ArrowLeft size={16} /> 退出训练</button>
-                <button className="acupuncture-primary" onClick={() => setStep(3)}>开始下针</button>
-            </section>
-        );
+        if (step >= 2 && step <= 4) {
+            const modelMode = step === 2 ? 'observe' : step === 3 ? 'needling' : 'review';
+            const heading = step === 2 ? '观察 3D 人体模型' : step === 3 ? '开始下针' : '展示正确答案';
+            const description = step === 2
+                ? '旋转、缩放模型观察人体；可自主显示穴位和名称作为提示，正确答案不会提前高亮。'
+                : step === 3
+                    ? '按住并松开人体表面完成施针定位；拖拽旋转模型不会落针，提交前可撤销上一针并重新选择位置。'
+                    : '下面显示本病例的标准穴位。当前答案已经锁定，确认后进入评分。';
+            const StepIcon = step === 2 ? MapPinned : step === 3 ? Crosshair : CheckCircle2;
 
-        if (step === 3) return (
+            return (
             <section className="acupuncture-card acupuncture-card--wide acupuncture-card--fullscreen">
-                <span className="acupuncture-card__eyebrow"><Crosshair size={16} /> 第三步</span>
-                <h2>开始下针</h2>
-                <p>点击人体表面完成施针定位；提交前可撤销上一针并重新选择位置。</p>
+                <span className="acupuncture-card__eyebrow"><StepIcon size={16} /> 第{step === 2 ? '二' : step === 3 ? '三' : '四'}步</span>
+                <h2>{heading}</h2>
+                <p>{description}</p>
                 <div className="acupuncture-needling-layout">
-                    <AcupunctureModelCanvas expanded fullScreen standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} interactive onSurfacePick={placeModelNeedle} showMarkers={showModelMarkers} revealStandardPoints={false} onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
-                    <button className="acupuncture-secondary acupuncture-card--fullscreen-exit" onClick={onBack}><ArrowLeft size={16} /> 退出训练</button>
-                    <div className="acupuncture-controls">
+                    <AcupunctureModelCanvas
+                        mode={modelMode}
+                        expanded
+                        fullScreen
+                        standardNodeNames={standardNodeNames}
+                        onStandardPointsReady={setStandardPositions}
+                        needles={needles}
+                        onSurfacePick={placeModelNeedle}
+                        showMarkers={showModelMarkers}
+                        onToggleMarkers={() => setShowModelMarkers((value) => !value)}
+                    />
+                    {step === 3 && <div className="acupuncture-controls">
                         <div className="acupuncture-insertion-choice" role="group" aria-label="选择进针类型">
                             <span>进针类型</span>
                             <div className="acupuncture-choice-row">
-                                {[['direct', '直刺'], ['oblique', '斜刺'], ['transverse', '平刺']].map(([value, label]) => (
-                                    <button key={value} type="button" className={insertionType === value ? 'is-selected' : ''} onClick={() => { setInsertionType(value); updateLatestNeedle({ insertionType: value }); }}>{label}</button>
+                                {INSERTION_OPTIONS.map(([value, label, angle]) => (
+                                    <button key={value} type="button" className={insertionType === value ? 'is-selected' : ''} aria-label={label} onClick={() => { setInsertionType(value); setTiltAngle(INSERTION_TILT_BY_TYPE[value]); }}>{label} {angle}°</button>
                                 ))}
                             </div>
                         </div>
-                        <label><span>进针深度 <strong>{depth} 寸</strong></span><input type="range" min="0" max="2.5" step="0.1" value={depth} onChange={(event) => { const value = Number(event.target.value); setDepth(value); updateLatestNeedle({ depthValue: value }); }} /></label>
-                        <label><span>留针时间 <strong>{retentionMinutes} 分钟</strong></span><input type="range" min="1" max="60" step="1" value={retentionMinutes} onChange={(event) => { const value = Number(event.target.value); setRetentionMinutes(value); updateLatestNeedle({ retentionMinutes: value }); }} /></label>
+                        <label><span>进针角度 <strong>{90 - tiltAngle}°</strong></span><input type="range" min="5" max="90" step="1" value={90 - tiltAngle} onChange={(event) => { const value = Number(event.target.value); setTiltAngle(90 - value); }} /></label>
+                        <label><span>进针深度 <strong>{depth} 寸</strong></span><input type="range" min="0" max="2.5" step="0.1" value={depth} onChange={(event) => { const value = Number(event.target.value); setDepth(value); }} /></label>
+                        <label><span>留针时间 <strong>{retentionMinutes} 分钟</strong></span><input type="range" min="1" max="60" step="1" value={retentionMinutes} onChange={(event) => { const value = Number(event.target.value); setRetentionMinutes(value); }} /></label>
                         <div className="acupuncture-needle-summary">已记录 {needles.length} 个落针点{surfacePick ? ' · 最近一针已定位' : ''}</div>
                         <button className="acupuncture-secondary" disabled={!needles.length} onClick={() => setNeedles((current) => current.slice(0, -1))}>撤销上一针</button>
-                    </div>
+                    </div>}
                 </div>
-                <button className="acupuncture-primary" disabled={!needles.length} onClick={completeNeedling}>完成施针</button>
-            </section>
-        );
-
-        if (step === 4) return (
-            <section className="acupuncture-card acupuncture-card--fullscreen">
-                <span className="acupuncture-card__eyebrow"><CheckCircle2 size={16} /> 第四步</span>
-                <h2>展示正确答案</h2>
-                <div className="acupuncture-summary-list"><span>落针数量<strong>{needles.length} 针</strong></span><span>案例留针<strong>{caseRetentionMinutes ?? '未配置'} {caseRetentionRange?.unit || ''}</strong></span></div>
-                <p>下面显示本病例的标准穴位。确认后进入评分，本次施针操作将不再修改。</p>
-                <AcupunctureModelCanvas expanded fullScreen standardNodeNames={standardNodeNames} onStandardPointsReady={setStandardPositions} needles={needles} showMarkers={showModelMarkers} revealStandardPoints onToggleMarkers={() => setShowModelMarkers((value) => !value)} />
                 <button className="acupuncture-secondary acupuncture-card--fullscreen-exit" onClick={onBack}><ArrowLeft size={16} /> 退出训练</button>
+                {step === 2 && <button className="acupuncture-primary" onClick={() => setStep(3)}>开始下针</button>}
+                {step === 3 && <button className="acupuncture-primary" disabled={!needles.length} onClick={completeNeedling}>完成施针</button>}
+                {step === 4 && <>
+                <div className="acupuncture-summary-list"><span>落针数量<strong>{needles.length} 针</strong></span><span>案例留针<strong>{caseRetentionMinutes ?? '未配置'} {caseRetentionRange?.unit || ''}</strong></span></div>
                 <div className="acupuncture-case-parameters acupuncture-my-answer">
                     <strong>我的答案（共 {needles.length} 针）</strong>
                     {needles.map((needle, index) => (
                         <div className="acupuncture-my-answer-entry" key={needle.id || index}>
                             <b>第 {index + 1} 针</b>
                             <span>进针类型：{needle.insertionType === 'oblique' ? '斜刺' : needle.insertionType === 'transverse' ? '平刺' : '直刺'}</span>
+                            <span>进针角度：{Number.isFinite(Number(needle.tiltAngle)) ? `${90 - Number(needle.tiltAngle)}°` : '未记录'}</span>
                             <span>进针深度：{needle.depthValue ?? '未记录'} 寸</span>
                             <span>留针时间：{needle.retentionMinutes ?? '未记录'} 分钟</span>
                         </div>
@@ -256,18 +290,20 @@ export default function AcupuncturePractice({ caseData = EMPTY_ACUPUNCTURE_CASE,
                     <span>留针时间：{caseRetentionRange ? `${caseRetentionRange.min}–${caseRetentionRange.max} ${caseRetentionRange.unit}` : '未配置'}</span>
                 </div>
                 {activeCase.standardPoints.length
-                    ? <div className="acupuncture-standard-list">{activeCase.standardPoints.map((point) => <span key={point.id || point.name}>{point.name}（{point.code}）<small>{point.locationDescription}</small></span>)}</div>
+                    ? <div className="acupuncture-standard-list">{activeCase.standardPoints.map((point) => <span key={point.id || point.name}>{point.name}（{point.code}）<small>{point.locationDescription}</small>{point.procedureType === 'pricking_cupping' && <small>操作提示：{point.needleAngle || '刺络拔罐'}</small>}</span>)}</div>
                     : <div className="acupuncture-empty-data">标准穴位数据为空，已保留接入位置。</div>}
-                <button className="acupuncture-primary" onClick={confirmFinish}>开始评分</button>
+                <button className="acupuncture-primary" onClick={confirmFinish}>确认并进入评分</button>
+                </>}
             </section>
-        );
+            );
+        }
 
         if (step === 5) return (
             <section className="acupuncture-card acupuncture-score-card">
                 <span className="acupuncture-card__eyebrow"><Crosshair size={16} /> 第五步</span>
                 <h2>开始评分</h2>
                 {!scoreGenerated && <>
-                    <div className="acupuncture-criteria"><article><MapPinned size={20} /><span>位置准确度</span><strong>{result.position === null ? '待数据' : `${result.position}%`}</strong></article><article><CircleDot size={20} /><span>深浅程度</span><strong>{result.depth === null ? '待数据' : `${result.depth}%`}</strong></article><article><Clock3 size={20} /><span>留针时间</span><strong>{result.retention === null ? '待数据' : `${result.retention}%`}</strong></article></div>
+                    <div className="acupuncture-criteria"><article><MapPinned size={20} /><span>位置准确度</span><strong>{result.position === null ? '待数据' : `${result.position}%`}</strong></article><article><ShieldCheck size={20} /><span>进针类型</span><strong>{result.insertion === null ? '待数据' : `${result.insertion}%`}</strong></article><article><CircleDot size={20} /><span>深浅程度</span><strong>{result.depth === null ? '待数据' : `${result.depth}%`}</strong></article><article><Clock3 size={20} /><span>留针时间</span><strong>{result.retention === null ? '待数据' : `${result.retention}%`}</strong></article></div>
                     {!result.available && <div className="acupuncture-notice">当前病例坐标或单位标准未完整配置，只保存操作结果，不生成伪判定。</div>}
                     <button className="acupuncture-primary" onClick={generateFeedback}>生成评分反馈</button>
                 </>}

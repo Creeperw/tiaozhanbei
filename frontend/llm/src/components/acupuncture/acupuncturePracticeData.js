@@ -40,6 +40,7 @@ export const EMPTY_ACUPUNCTURE_CASE = {
         positionToleranceUnit: 'model',
         positionToleranceExcellent: null,
         positionTolerancePass: null,
+        positionToleranceOuter: null,
         positionTolerancePercent: null,
         depthRange: null,
         depthUnit: null,
@@ -107,11 +108,12 @@ export const normalizeAcupunctureCase = (source) => {
             ...point,
             id: point.code || point.name,
             regionId: point.region,
-            x: point.coordinates?.x || null,
-            y: point.coordinates?.y || null,
+            x: point.coordinates?.x ?? null,
+            y: point.coordinates?.y ?? null,
+            modelPosition: Array.isArray(point.modelPosition) ? point.modelPosition : null,
             depthRange: point.needleDepth,
             needleAngle: point.needleAngle || '',
-            insertionType: insertionTypeFromAngle(point.needleAngle),
+            insertionType: point.insertionType ?? insertionTypeFromAngle(point.needleAngle),
             retentionRange: point.retentionTime,
         }))
         : [];
@@ -137,8 +139,9 @@ export const normalizeAcupunctureCase = (source) => {
         standardPoints,
         scoring: {
             positionToleranceUnit: source?.standardAcupoints?.[0]?.positionTolerance?.unit || 'model',
-            positionToleranceExcellent: source?.positionTolerance3d?.excellent ?? 0.005,
-            positionTolerancePass: source?.positionTolerance3d?.pass ?? 0.01,
+            positionToleranceExcellent: source?.positionTolerance3d?.excellent ?? 0.012,
+            positionTolerancePass: source?.positionTolerance3d?.pass ?? 0.03,
+            positionToleranceOuter: source?.positionTolerance3d?.outer ?? 0.06,
             positionTolerancePercent: hasCoordinates ? source?.positionTolerance?.value : null,
             depthRange: firstPoint?.depthRange
                 && Number.isFinite(firstPoint.depthRange.min)

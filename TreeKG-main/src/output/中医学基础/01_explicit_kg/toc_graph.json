@@ -1,0 +1,2462 @@
+{
+  "nodes": [
+    {
+      "name": "绪论",
+      "title": "绪论",
+      "level": "level1",
+      "description": "绪论"
+    },
+    {
+      "name": "一 中医学理论体系的形成和发展概况",
+      "title": "一 中医学理论体系的形成和发展概况",
+      "level": "level2",
+      "description": "绪论.1"
+    },
+    {
+      "name": "（一）中医学理论体系的形成",
+      "title": "（一）中医学理论体系的形成",
+      "level": "level3",
+      "description": "绪论.1.1"
+    },
+    {
+      "name": "（二）中医学理论体系的发展阶段",
+      "title": "（二）中医学理论体系的发展阶段",
+      "level": "level3",
+      "description": "绪论.1.2"
+    },
+    {
+      "name": "二 中医学理论体系的基本特点",
+      "title": "二 中医学理论体系的基本特点",
+      "level": "level2",
+      "description": "绪论.2"
+    },
+    {
+      "name": "（一）整体观念",
+      "title": "（一）整体观念",
+      "level": "level3",
+      "description": "绪论.2.1"
+    },
+    {
+      "name": "（二）辨证论治",
+      "title": "（二）辨证论治",
+      "level": "level3",
+      "description": "绪论.2.2"
+    },
+    {
+      "name": "三 中医学的主要思维方法",
+      "title": "三 中医学的主要思维方法",
+      "level": "level2",
+      "description": "绪论.3"
+    },
+    {
+      "name": "（二）类比",
+      "title": "（二）类比",
+      "level": "level3",
+      "description": "绪论.3.1"
+    },
+    {
+      "name": "（三）演绎",
+      "title": "（三）演绎",
+      "level": "level3",
+      "description": "绪论.3.2"
+    },
+    {
+      "name": "（四）以表知里",
+      "title": "（四）以表知里",
+      "level": "level3",
+      "description": "绪论.3.3"
+    },
+    {
+      "name": "（五）试探和反证",
+      "title": "（五）试探和反证",
+      "level": "level3",
+      "description": "绪论.3.4"
+    },
+    {
+      "name": "第一章 中医学的哲学基础",
+      "title": "第一章 中医学的哲学基础",
+      "level": "level1",
+      "description": "1章"
+    },
+    {
+      "name": "第一节 阴阳学说",
+      "title": "第一节 阴阳学说",
+      "level": "level2",
+      "description": "1.1"
+    },
+    {
+      "name": "一 阴阳学说的基本概念",
+      "title": "一 阴阳学说的基本概念",
+      "level": "level3",
+      "description": "1.1.1"
+    },
+    {
+      "name": "二 阴阳学说的基本内容",
+      "title": "二 阴阳学说的基本内容",
+      "level": "level3",
+      "description": "1.1.2"
+    },
+    {
+      "name": "三 阴阳学说在中医学中的应用",
+      "title": "三 阴阳学说在中医学中的应用",
+      "level": "level3",
+      "description": "1.1.3"
+    },
+    {
+      "name": "第二节 五行学说",
+      "title": "第二节 五行学说",
+      "level": "level2",
+      "description": "1.2"
+    },
+    {
+      "name": "一 五行的基本概念",
+      "title": "一 五行的基本概念",
+      "level": "level3",
+      "description": "1.2.1"
+    },
+    {
+      "name": "二 五行学说的基本内容",
+      "title": "二 五行学说的基本内容",
+      "level": "level3",
+      "description": "1.2.2"
+    },
+    {
+      "name": "三 五行学说在中医学中的应用",
+      "title": "三 五行学说在中医学中的应用",
+      "level": "level3",
+      "description": "1.2.3"
+    },
+    {
+      "name": "第二章 藏象",
+      "title": "第二章 藏象",
+      "level": "level1",
+      "description": "2章"
+    },
+    {
+      "name": "第一节 藏象概述",
+      "title": "第一节 藏象概述",
+      "level": "level2",
+      "description": "2.1"
+    },
+    {
+      "name": "二 脏腑的分类与区别",
+      "title": "二 脏腑的分类与区别",
+      "level": "level3",
+      "description": "2.1.1"
+    },
+    {
+      "name": "三 藏象学说的形成与特点",
+      "title": "三 藏象学说的形成与特点",
+      "level": "level3",
+      "description": "2.1.2"
+    },
+    {
+      "name": "第二节 五脏",
+      "title": "第二节 五脏",
+      "level": "level2",
+      "description": "2.2"
+    },
+    {
+      "name": "一 心",
+      "title": "一 心",
+      "level": "level3",
+      "description": "2.2.1"
+    },
+    {
+      "name": "二 肺",
+      "title": "二 肺",
+      "level": "level3",
+      "description": "2.2.2"
+    },
+    {
+      "name": "三 脾",
+      "title": "三 脾",
+      "level": "level3",
+      "description": "2.2.3"
+    },
+    {
+      "name": "四 肝",
+      "title": "四 肝",
+      "level": "level3",
+      "description": "2.2.4"
+    },
+    {
+      "name": "五 肾",
+      "title": "五 肾",
+      "level": "level3",
+      "description": "2.2.5"
+    },
+    {
+      "name": "第二节 五脏",
+      "title": "第二节 五脏",
+      "level": "level2",
+      "description": "2.3"
+    },
+    {
+      "name": "一 心",
+      "title": "一 心",
+      "level": "level3",
+      "description": "2.3.1"
+    },
+    {
+      "name": "二 肺",
+      "title": "二 肺",
+      "level": "level3",
+      "description": "2.3.2"
+    },
+    {
+      "name": "三 脾",
+      "title": "三 脾",
+      "level": "level3",
+      "description": "2.3.3"
+    },
+    {
+      "name": "第三节 六腑",
+      "title": "第三节 六腑",
+      "level": "level2",
+      "description": "2.4"
+    },
+    {
+      "name": "一 胆",
+      "title": "一 胆",
+      "level": "level3",
+      "description": "2.4.1"
+    },
+    {
+      "name": "二 胃",
+      "title": "二 胃",
+      "level": "level3",
+      "description": "2.4.2"
+    },
+    {
+      "name": "三 小肠",
+      "title": "三 小肠",
+      "level": "level3",
+      "description": "2.4.3"
+    },
+    {
+      "name": "四 大肠",
+      "title": "四 大肠",
+      "level": "level3",
+      "description": "2.4.4"
+    },
+    {
+      "name": "五 膀胱",
+      "title": "五 膀胱",
+      "level": "level3",
+      "description": "2.4.5"
+    },
+    {
+      "name": "六 三焦",
+      "title": "六 三焦",
+      "level": "level3",
+      "description": "2.4.6"
+    },
+    {
+      "name": "第四节 奇恒之腑",
+      "title": "第四节 奇恒之腑",
+      "level": "level2",
+      "description": "2.5"
+    },
+    {
+      "name": "一 脑",
+      "title": "一 脑",
+      "level": "level3",
+      "description": "2.5.1"
+    },
+    {
+      "name": "二 女子胞",
+      "title": "二 女子胞",
+      "level": "level3",
+      "description": "2.5.2"
+    },
+    {
+      "name": "第五节 脏腑之间的关系",
+      "title": "第五节 脏腑之间的关系",
+      "level": "level2",
+      "description": "2.6"
+    },
+    {
+      "name": "一 脏与脏之间的关系",
+      "title": "一 脏与脏之间的关系",
+      "level": "level3",
+      "description": "2.6.1"
+    },
+    {
+      "name": "二 脏与腑之间的关系",
+      "title": "二 脏与腑之间的关系",
+      "level": "level3",
+      "description": "2.6.2"
+    },
+    {
+      "name": "三 腑与腑之间的关系",
+      "title": "三 腑与腑之间的关系",
+      "level": "level3",
+      "description": "2.6.3"
+    },
+    {
+      "name": "第三章 气血津液",
+      "title": "第三章 气血津液",
+      "level": "level1",
+      "description": "3章"
+    },
+    {
+      "name": "第一节 气",
+      "title": "第一节 气",
+      "level": "level2",
+      "description": "3.1"
+    },
+    {
+      "name": "一 气的概念",
+      "title": "一 气的概念",
+      "level": "level3",
+      "description": "3.1.1"
+    },
+    {
+      "name": "二 气的运动",
+      "title": "二 气的运动",
+      "level": "level3",
+      "description": "3.1.2"
+    },
+    {
+      "name": "三 气的生成",
+      "title": "三 气的生成",
+      "level": "level3",
+      "description": "3.1.3"
+    },
+    {
+      "name": "四 气的功能",
+      "title": "四 气的功能",
+      "level": "level3",
+      "description": "3.1.4"
+    },
+    {
+      "name": "五 气的分类",
+      "title": "五 气的分类",
+      "level": "level3",
+      "description": "3.1.5"
+    },
+    {
+      "name": "第二节 血",
+      "title": "第二节 血",
+      "level": "level2",
+      "description": "3.2"
+    },
+    {
+      "name": "一 血的概念",
+      "title": "一 血的概念",
+      "level": "level3",
+      "description": "3.2.1"
+    },
+    {
+      "name": "二 血的生成",
+      "title": "二 血的生成",
+      "level": "level3",
+      "description": "3.2.2"
+    },
+    {
+      "name": "三 血的运行",
+      "title": "三 血的运行",
+      "level": "level3",
+      "description": "3.2.3"
+    },
+    {
+      "name": "四 血的功能",
+      "title": "四 血的功能",
+      "level": "level3",
+      "description": "3.2.4"
+    },
+    {
+      "name": "第三节 津液",
+      "title": "第三节 津液",
+      "level": "level2",
+      "description": "3.3"
+    },
+    {
+      "name": "一 津液的概念",
+      "title": "一 津液的概念",
+      "level": "level3",
+      "description": "3.3.1"
+    },
+    {
+      "name": "二 津液的代谢",
+      "title": "二 津液的代谢",
+      "level": "level3",
+      "description": "3.3.2"
+    },
+    {
+      "name": "三 津液的功能",
+      "title": "三 津液的功能",
+      "level": "level3",
+      "description": "3.3.3"
+    },
+    {
+      "name": "第四节 气血津液的关系",
+      "title": "第四节 气血津液的关系",
+      "level": "level2",
+      "description": "3.4"
+    },
+    {
+      "name": "一 气与血的关系",
+      "title": "一 气与血的关系",
+      "level": "level3",
+      "description": "3.4.1"
+    },
+    {
+      "name": "二 气与津液的关系",
+      "title": "二 气与津液的关系",
+      "level": "level3",
+      "description": "3.4.2"
+    },
+    {
+      "name": "三 血与津液的关系",
+      "title": "三 血与津液的关系",
+      "level": "level3",
+      "description": "3.4.3"
+    },
+    {
+      "name": "第四章 经络",
+      "title": "第四章 经络",
+      "level": "level1",
+      "description": "4章"
+    },
+    {
+      "name": "第一节 经络系统的概述",
+      "title": "第一节 经络系统的概述",
+      "level": "level2",
+      "description": "4.1"
+    },
+    {
+      "name": "一 经络的概念",
+      "title": "一 经络的概念",
+      "level": "level3",
+      "description": "4.1.1"
+    },
+    {
+      "name": "二 经络系统的组成",
+      "title": "二 经络系统的组成",
+      "level": "level3",
+      "description": "4.1.2"
+    },
+    {
+      "name": "三 经络的生理功能",
+      "title": "三 经络的生理功能",
+      "level": "level3",
+      "description": "4.1.3"
+    },
+    {
+      "name": "第二节 十二经脉",
+      "title": "第二节 十二经脉",
+      "level": "level2",
+      "description": "4.2"
+    },
+    {
+      "name": "一 十二经脉的名称",
+      "title": "一 十二经脉的名称",
+      "level": "level3",
+      "description": "4.2.1"
+    },
+    {
+      "name": "二 十二经脉的走向、交接规律",
+      "title": "二 十二经脉的走向、交接规律",
+      "level": "level3",
+      "description": "4.2.2"
+    },
+    {
+      "name": "三 十二经脉的分布规律",
+      "title": "三 十二经脉的分布规律",
+      "level": "level3",
+      "description": "4.2.3"
+    },
+    {
+      "name": "四 十二经脉的表里关系",
+      "title": "四 十二经脉的表里关系",
+      "level": "level3",
+      "description": "4.2.4"
+    },
+    {
+      "name": "五 十二经脉气血的流注次序",
+      "title": "五 十二经脉气血的流注次序",
+      "level": "level3",
+      "description": "4.2.5"
+    },
+    {
+      "name": "六 十二经脉的循行",
+      "title": "六 十二经脉的循行",
+      "level": "level3",
+      "description": "4.2.6"
+    },
+    {
+      "name": "第三节 奇经八脉",
+      "title": "第三节 奇经八脉",
+      "level": "level2",
+      "description": "4.3"
+    },
+    {
+      "name": "一 奇经八脉的概念",
+      "title": "一 奇经八脉的概念",
+      "level": "level3",
+      "description": "4.3.1"
+    },
+    {
+      "name": "二 督脉、任脉、冲脉、带脉的循行及生理功能",
+      "title": "二 督脉、任脉、冲脉、带脉的循行及生理功能",
+      "level": "level3",
+      "description": "4.3.2"
+    },
+    {
+      "name": "第四节 经络学说的应用",
+      "title": "第四节 经络学说的应用",
+      "level": "level2",
+      "description": "4.4"
+    },
+    {
+      "name": "一 阐释疾病病理变化",
+      "title": "一 阐释疾病病理变化",
+      "level": "level3",
+      "description": "4.4.1"
+    },
+    {
+      "name": "二 指导疾病的诊断",
+      "title": "二 指导疾病的诊断",
+      "level": "level3",
+      "description": "4.4.2"
+    },
+    {
+      "name": "三 指导疾病的治疗",
+      "title": "三 指导疾病的治疗",
+      "level": "level3",
+      "description": "4.4.3"
+    },
+    {
+      "name": "四 指导养生、预防和康复",
+      "title": "四 指导养生、预防和康复",
+      "level": "level3",
+      "description": "4.4.4"
+    },
+    {
+      "name": "第五章 体质",
+      "title": "第五章 体质",
+      "level": "level1",
+      "description": "5章"
+    },
+    {
+      "name": "第一节 体质学说的基本内容",
+      "title": "第一节 体质学说的基本内容",
+      "level": "level2",
+      "description": "5.1"
+    },
+    {
+      "name": "一 体质的概念",
+      "title": "一 体质的概念",
+      "level": "level3",
+      "description": "5.1.1"
+    },
+    {
+      "name": "二 体质的特点",
+      "title": "二 体质的特点",
+      "level": "level3",
+      "description": "5.1.2"
+    },
+    {
+      "name": "三 体质的构成要素",
+      "title": "三 体质的构成要素",
+      "level": "level3",
+      "description": "5.1.3"
+    },
+    {
+      "name": "四 影响体质的因素",
+      "title": "四 影响体质的因素",
+      "level": "level3",
+      "description": "5.1.4"
+    },
+    {
+      "name": "五 体质的分类",
+      "title": "五 体质的分类",
+      "level": "level3",
+      "description": "5.1.5"
+    },
+    {
+      "name": "第二节 体质学说的应用",
+      "title": "第二节 体质学说的应用",
+      "level": "level2",
+      "description": "5.2"
+    },
+    {
+      "name": "一 说明对某些病邪的易感性",
+      "title": "一 说明对某些病邪的易感性",
+      "level": "level3",
+      "description": "5.2.1"
+    },
+    {
+      "name": "二 阐释发病原理",
+      "title": "二 阐释发病原理",
+      "level": "level3",
+      "description": "5.2.2"
+    },
+    {
+      "name": "三 解释病理变化",
+      "title": "三 解释病理变化",
+      "level": "level3",
+      "description": "5.2.3"
+    },
+    {
+      "name": "四 指导辨证",
+      "title": "四 指导辨证",
+      "level": "level3",
+      "description": "5.2.4"
+    },
+    {
+      "name": "五 指导治疗",
+      "title": "五 指导治疗",
+      "level": "level3",
+      "description": "5.2.5"
+    },
+    {
+      "name": "六 指导养生",
+      "title": "六 指导养生",
+      "level": "level3",
+      "description": "5.2.6"
+    },
+    {
+      "name": "第六章 病因",
+      "title": "第六章 病因",
+      "level": "level1",
+      "description": "6章"
+    },
+    {
+      "name": "第一节 外感病因",
+      "title": "第一节 外感病因",
+      "level": "level2",
+      "description": "6.1"
+    },
+    {
+      "name": "一 六淫",
+      "title": "一 六淫",
+      "level": "level3",
+      "description": "6.1.1"
+    },
+    {
+      "name": "二 疫气",
+      "title": "二 疫气",
+      "level": "level3",
+      "description": "6.1.2"
+    },
+    {
+      "name": "第二节 内伤病因",
+      "title": "第二节 内伤病因",
+      "level": "level2",
+      "description": "6.2"
+    },
+    {
+      "name": "一 七情内伤",
+      "title": "一 七情内伤",
+      "level": "level3",
+      "description": "6.2.1"
+    },
+    {
+      "name": "二 饮食失宜",
+      "title": "二 饮食失宜",
+      "level": "level3",
+      "description": "6.2.2"
+    },
+    {
+      "name": "三 劳逸过度",
+      "title": "三 劳逸过度",
+      "level": "level3",
+      "description": "6.2.3"
+    },
+    {
+      "name": "第三节 病理产物性病因",
+      "title": "第三节 病理产物性病因",
+      "level": "level2",
+      "description": "6.3"
+    },
+    {
+      "name": "一 痰饮",
+      "title": "一 痰饮",
+      "level": "level3",
+      "description": "6.3.1"
+    },
+    {
+      "name": "二 瘀血",
+      "title": "二 瘀血",
+      "level": "level3",
+      "description": "6.3.2"
+    },
+    {
+      "name": "三 结石",
+      "title": "三 结石",
+      "level": "level3",
+      "description": "6.3.3"
+    },
+    {
+      "name": "第四节 其他病因",
+      "title": "第四节 其他病因",
+      "level": "level2",
+      "description": "6.4"
+    },
+    {
+      "name": "一 外伤",
+      "title": "一 外伤",
+      "level": "level3",
+      "description": "6.4.1"
+    },
+    {
+      "name": "二 寄生虫感染",
+      "title": "二 寄生虫感染",
+      "level": "level3",
+      "description": "6.4.2"
+    },
+    {
+      "name": "三 医过",
+      "title": "三 医过",
+      "level": "level3",
+      "description": "6.4.3"
+    },
+    {
+      "name": "四 药邪",
+      "title": "四 药邪",
+      "level": "level3",
+      "description": "6.4.4"
+    },
+    {
+      "name": "五 先天因素",
+      "title": "五 先天因素",
+      "level": "level3",
+      "description": "6.4.5"
+    },
+    {
+      "name": "第七章 病机",
+      "title": "第七章 病机",
+      "level": "level1",
+      "description": "7章"
+    },
+    {
+      "name": "第一节 发病原理",
+      "title": "第一节 发病原理",
+      "level": "level2",
+      "description": "7.1"
+    },
+    {
+      "name": "一 发病的基本原理",
+      "title": "一 发病的基本原理",
+      "level": "level3",
+      "description": "7.1.1"
+    },
+    {
+      "name": "二 影响发病的因素",
+      "title": "二 影响发病的因素",
+      "level": "level3",
+      "description": "7.1.2"
+    },
+    {
+      "name": "三 发病形式",
+      "title": "三 发病形式",
+      "level": "level3",
+      "description": "7.1.3"
+    },
+    {
+      "name": "第二节 基本病机",
+      "title": "第二节 基本病机",
+      "level": "level2",
+      "description": "7.2"
+    },
+    {
+      "name": "一 邪正盛衰",
+      "title": "一 邪正盛衰",
+      "level": "level3",
+      "description": "7.2.1"
+    },
+    {
+      "name": "二 阴阳失调",
+      "title": "二 阴阳失调",
+      "level": "level3",
+      "description": "7.2.2"
+    },
+    {
+      "name": "三 气血津液失常",
+      "title": "三 气血津液失常",
+      "level": "level3",
+      "description": "7.2.3"
+    },
+    {
+      "name": "四 “内生五邪”病机",
+      "title": "四 “内生五邪”病机",
+      "level": "level3",
+      "description": "7.2.4"
+    },
+    {
+      "name": "第二节 基本病机",
+      "title": "第二节 基本病机",
+      "level": "level2",
+      "description": "7.3"
+    },
+    {
+      "name": "一 邪正盛衰",
+      "title": "一 邪正盛衰",
+      "level": "level3",
+      "description": "7.3.1"
+    },
+    {
+      "name": "二 阴阳失调",
+      "title": "二 阴阳失调",
+      "level": "level3",
+      "description": "7.3.2"
+    },
+    {
+      "name": "三 气血津液失常",
+      "title": "三 气血津液失常",
+      "level": "level3",
+      "description": "7.3.3"
+    },
+    {
+      "name": "第八章 诊法",
+      "title": "第八章 诊法",
+      "level": "level1",
+      "description": "8章"
+    },
+    {
+      "name": "第一节 望诊",
+      "title": "第一节 望诊",
+      "level": "level2",
+      "description": "8.1"
+    },
+    {
+      "name": "一 望神",
+      "title": "一 望神",
+      "level": "level3",
+      "description": "8.1.1"
+    },
+    {
+      "name": "二 望色",
+      "title": "二 望色",
+      "level": "level3",
+      "description": "8.1.2"
+    },
+    {
+      "name": "三 望形态",
+      "title": "三 望形态",
+      "level": "level3",
+      "description": "8.1.3"
+    },
+    {
+      "name": "四 望头颈五官",
+      "title": "四 望头颈五官",
+      "level": "level3",
+      "description": "8.1.4"
+    },
+    {
+      "name": "五 望皮肤",
+      "title": "五 望皮肤",
+      "level": "level3",
+      "description": "8.1.5"
+    },
+    {
+      "name": "六 望二阴",
+      "title": "六 望二阴",
+      "level": "level3",
+      "description": "8.1.6"
+    },
+    {
+      "name": "七 望舌",
+      "title": "七 望舌",
+      "level": "level3",
+      "description": "8.1.7"
+    },
+    {
+      "name": "八 望排出物",
+      "title": "八 望排出物",
+      "level": "level3",
+      "description": "8.1.8"
+    },
+    {
+      "name": "第一节 望诊",
+      "title": "第一节 望诊",
+      "level": "level2",
+      "description": "8.2"
+    },
+    {
+      "name": "一 望神",
+      "title": "一 望神",
+      "level": "level3",
+      "description": "8.2.1"
+    },
+    {
+      "name": "二 望色",
+      "title": "二 望色",
+      "level": "level3",
+      "description": "8.2.2"
+    },
+    {
+      "name": "三 望形态",
+      "title": "三 望形态",
+      "level": "level3",
+      "description": "8.2.3"
+    },
+    {
+      "name": "四 望头颈五官",
+      "title": "四 望头颈五官",
+      "level": "level3",
+      "description": "8.2.4"
+    },
+    {
+      "name": "五 望皮肤",
+      "title": "五 望皮肤",
+      "level": "level3",
+      "description": "8.2.5"
+    },
+    {
+      "name": "第二节 闻诊",
+      "title": "第二节 闻诊",
+      "level": "level2",
+      "description": "8.3"
+    },
+    {
+      "name": "一 听声音",
+      "title": "一 听声音",
+      "level": "level3",
+      "description": "8.3.1"
+    },
+    {
+      "name": "二 嗅气味",
+      "title": "二 嗅气味",
+      "level": "level3",
+      "description": "8.3.2"
+    },
+    {
+      "name": "第三节 问诊",
+      "title": "第三节 问诊",
+      "level": "level2",
+      "description": "8.4"
+    },
+    {
+      "name": "一 问诊的内容",
+      "title": "一 问诊的内容",
+      "level": "level3",
+      "description": "8.4.1"
+    },
+    {
+      "name": "二 问现在症",
+      "title": "二 问现在症",
+      "level": "level3",
+      "description": "8.4.2"
+    },
+    {
+      "name": "第三节 问诊",
+      "title": "第三节 问诊",
+      "level": "level2",
+      "description": "8.5"
+    },
+    {
+      "name": "一 问诊的内容",
+      "title": "一 问诊的内容",
+      "level": "level3",
+      "description": "8.5.1"
+    },
+    {
+      "name": "二 问现在症",
+      "title": "二 问现在症",
+      "level": "level3",
+      "description": "8.5.2"
+    },
+    {
+      "name": "第四节 切诊",
+      "title": "第四节 切诊",
+      "level": "level2",
+      "description": "8.6"
+    },
+    {
+      "name": "一 脉诊",
+      "title": "一 脉诊",
+      "level": "level3",
+      "description": "8.6.1"
+    },
+    {
+      "name": "二 按诊",
+      "title": "二 按诊",
+      "level": "level3",
+      "description": "8.6.2"
+    },
+    {
+      "name": "第九章 辨证",
+      "title": "第九章 辨证",
+      "level": "level1",
+      "description": "9章"
+    },
+    {
+      "name": "第一节 八纲辨证",
+      "title": "第一节 八纲辨证",
+      "level": "level2",
+      "description": "9.1"
+    },
+    {
+      "name": "一 八纲基本证",
+      "title": "一 八纲基本证",
+      "level": "level3",
+      "description": "9.1.1"
+    },
+    {
+      "name": "二 八纲证之间的关系",
+      "title": "二 八纲证之间的关系",
+      "level": "level3",
+      "description": "9.1.2"
+    },
+    {
+      "name": "第一节 八纲辨证",
+      "title": "第一节 八纲辨证",
+      "level": "level2",
+      "description": "9.2"
+    },
+    {
+      "name": "一 八纲基本证",
+      "title": "一 八纲基本证",
+      "level": "level3",
+      "description": "9.2.1"
+    },
+    {
+      "name": "二 八纲证之间的关系",
+      "title": "二 八纲证之间的关系",
+      "level": "level3",
+      "description": "9.2.2"
+    },
+    {
+      "name": "第二节 气血津液辨证",
+      "title": "第二节 气血津液辨证",
+      "level": "level2",
+      "description": "9.3"
+    },
+    {
+      "name": "一 气病辨证",
+      "title": "一 气病辨证",
+      "level": "level3",
+      "description": "9.3.1"
+    },
+    {
+      "name": "二 血病辨证",
+      "title": "二 血病辨证",
+      "level": "level3",
+      "description": "9.3.2"
+    },
+    {
+      "name": "三 气血同病辨证",
+      "title": "三 气血同病辨证",
+      "level": "level3",
+      "description": "9.3.3"
+    },
+    {
+      "name": "四 津液病辨证",
+      "title": "四 津液病辨证",
+      "level": "level3",
+      "description": "9.3.4"
+    },
+    {
+      "name": "第三节 脏腑辨证",
+      "title": "第三节 脏腑辨证",
+      "level": "level2",
+      "description": "9.4"
+    },
+    {
+      "name": "一 心与小肠病辨证",
+      "title": "一 心与小肠病辨证",
+      "level": "level3",
+      "description": "9.4.1"
+    },
+    {
+      "name": "二 肺与大肠病辨证",
+      "title": "二 肺与大肠病辨证",
+      "level": "level3",
+      "description": "9.4.2"
+    },
+    {
+      "name": "三 脾胃病辨证",
+      "title": "三 脾胃病辨证",
+      "level": "level3",
+      "description": "9.4.3"
+    },
+    {
+      "name": "四 肝胆病辨证",
+      "title": "四 肝胆病辨证",
+      "level": "level3",
+      "description": "9.4.4"
+    },
+    {
+      "name": "五 肾与膀胱病辨证",
+      "title": "五 肾与膀胱病辨证",
+      "level": "level3",
+      "description": "9.4.5"
+    },
+    {
+      "name": "六 脏腑兼病辨证",
+      "title": "六 脏腑兼病辨证",
+      "level": "level3",
+      "description": "9.4.6"
+    },
+    {
+      "name": "第三节 脏腑辨证",
+      "title": "第三节 脏腑辨证",
+      "level": "level2",
+      "description": "9.5"
+    },
+    {
+      "name": "一 心与小肠病辨证",
+      "title": "一 心与小肠病辨证",
+      "level": "level3",
+      "description": "9.5.1"
+    },
+    {
+      "name": "二 肺与大肠病辨证",
+      "title": "二 肺与大肠病辨证",
+      "level": "level3",
+      "description": "9.5.2"
+    },
+    {
+      "name": "三 脾胃病辨证",
+      "title": "三 脾胃病辨证",
+      "level": "level3",
+      "description": "9.5.3"
+    },
+    {
+      "name": "第四节 外感病辨证",
+      "title": "第四节 外感病辨证",
+      "level": "level2",
+      "description": "9.6"
+    },
+    {
+      "name": "一 六经辨证",
+      "title": "一 六经辨证",
+      "level": "level3",
+      "description": "9.6.1"
+    },
+    {
+      "name": "二 卫气营血辨证",
+      "title": "二 卫气营血辨证",
+      "level": "level3",
+      "description": "9.6.2"
+    },
+    {
+      "name": "三 三焦辨证",
+      "title": "三 三焦辨证",
+      "level": "level3",
+      "description": "9.6.3"
+    },
+    {
+      "name": "第十章 预防、治则、养生、康复",
+      "title": "第十章 预防、治则、养生、康复",
+      "level": "level1",
+      "description": "10章"
+    },
+    {
+      "name": "第一节 预防",
+      "title": "第一节 预防",
+      "level": "level2",
+      "description": "10.1"
+    },
+    {
+      "name": "一 未病先防",
+      "title": "一 未病先防",
+      "level": "level3",
+      "description": "10.1.1"
+    },
+    {
+      "name": "二 既病防变",
+      "title": "二 既病防变",
+      "level": "level3",
+      "description": "10.1.2"
+    },
+    {
+      "name": "三 愈后防复",
+      "title": "三 愈后防复",
+      "level": "level3",
+      "description": "10.1.3"
+    },
+    {
+      "name": "第二节 治则",
+      "title": "第二节 治则",
+      "level": "level2",
+      "description": "10.2"
+    },
+    {
+      "name": "一 扶正祛邪",
+      "title": "一 扶正祛邪",
+      "level": "level3",
+      "description": "10.2.1"
+    },
+    {
+      "name": "二 标本先后",
+      "title": "二 标本先后",
+      "level": "level3",
+      "description": "10.2.2"
+    },
+    {
+      "name": "三 正治反治",
+      "title": "三 正治反治",
+      "level": "level3",
+      "description": "10.2.3"
+    },
+    {
+      "name": "四 调整阴阳",
+      "title": "四 调整阴阳",
+      "level": "level3",
+      "description": "10.2.4"
+    },
+    {
+      "name": "五 三因制宜",
+      "title": "五 三因制宜",
+      "level": "level3",
+      "description": "10.2.5"
+    },
+    {
+      "name": "六 调和脏腑",
+      "title": "六 调和脏腑",
+      "level": "level3",
+      "description": "10.2.6"
+    },
+    {
+      "name": "七 调理气血津液",
+      "title": "七 调理气血津液",
+      "level": "level3",
+      "description": "10.2.7"
+    },
+    {
+      "name": "第三节 养生",
+      "title": "第三节 养生",
+      "level": "level2",
+      "description": "10.3"
+    },
+    {
+      "name": "一 养生的基本原则",
+      "title": "一 养生的基本原则",
+      "level": "level3",
+      "description": "10.3.1"
+    },
+    {
+      "name": "二 养生的重要意义",
+      "title": "二 养生的重要意义",
+      "level": "level3",
+      "description": "10.3.2"
+    },
+    {
+      "name": "第四节 康复",
+      "title": "第四节 康复",
+      "level": "level2",
+      "description": "10.4"
+    },
+    {
+      "name": "一 中医康复学的基本观点",
+      "title": "一 中医康复学的基本观点",
+      "level": "level3",
+      "description": "10.4.1"
+    },
+    {
+      "name": "二 中医康复学的基本原则",
+      "title": "二 中医康复学的基本原则",
+      "level": "level3",
+      "description": "10.4.2"
+    },
+    {
+      "name": "三 常用的康复方法",
+      "title": "三 常用的康复方法",
+      "level": "level3",
+      "description": "10.4.3"
+    }
+  ],
+  "edges": [
+    {
+      "source": "绪论",
+      "target": "一 中医学理论体系的形成和发展概况",
+      "relationship": "child_of",
+      "description": "绪论 -> 一 中医学理论体系的形成和发展概况"
+    },
+    {
+      "source": "一 中医学理论体系的形成和发展概况",
+      "target": "（一）中医学理论体系的形成",
+      "relationship": "child_of",
+      "description": "一 中医学理论体系的形成和发展概况 -> （一）中医学理论体系的形成"
+    },
+    {
+      "source": "一 中医学理论体系的形成和发展概况",
+      "target": "（二）中医学理论体系的发展阶段",
+      "relationship": "child_of",
+      "description": "一 中医学理论体系的形成和发展概况 -> （二）中医学理论体系的发展阶段"
+    },
+    {
+      "source": "绪论",
+      "target": "二 中医学理论体系的基本特点",
+      "relationship": "child_of",
+      "description": "绪论 -> 二 中医学理论体系的基本特点"
+    },
+    {
+      "source": "二 中医学理论体系的基本特点",
+      "target": "（一）整体观念",
+      "relationship": "child_of",
+      "description": "二 中医学理论体系的基本特点 -> （一）整体观念"
+    },
+    {
+      "source": "二 中医学理论体系的基本特点",
+      "target": "（二）辨证论治",
+      "relationship": "child_of",
+      "description": "二 中医学理论体系的基本特点 -> （二）辨证论治"
+    },
+    {
+      "source": "绪论",
+      "target": "三 中医学的主要思维方法",
+      "relationship": "child_of",
+      "description": "绪论 -> 三 中医学的主要思维方法"
+    },
+    {
+      "source": "三 中医学的主要思维方法",
+      "target": "（二）类比",
+      "relationship": "child_of",
+      "description": "三 中医学的主要思维方法 -> （二）类比"
+    },
+    {
+      "source": "三 中医学的主要思维方法",
+      "target": "（三）演绎",
+      "relationship": "child_of",
+      "description": "三 中医学的主要思维方法 -> （三）演绎"
+    },
+    {
+      "source": "三 中医学的主要思维方法",
+      "target": "（四）以表知里",
+      "relationship": "child_of",
+      "description": "三 中医学的主要思维方法 -> （四）以表知里"
+    },
+    {
+      "source": "三 中医学的主要思维方法",
+      "target": "（五）试探和反证",
+      "relationship": "child_of",
+      "description": "三 中医学的主要思维方法 -> （五）试探和反证"
+    },
+    {
+      "source": "第一章 中医学的哲学基础",
+      "target": "第一节 阴阳学说",
+      "relationship": "child_of",
+      "description": "第一章 中医学的哲学基础 -> 第一节 阴阳学说"
+    },
+    {
+      "source": "第一节 阴阳学说",
+      "target": "一 阴阳学说的基本概念",
+      "relationship": "child_of",
+      "description": "第一节 阴阳学说 -> 一 阴阳学说的基本概念"
+    },
+    {
+      "source": "第一节 阴阳学说",
+      "target": "二 阴阳学说的基本内容",
+      "relationship": "child_of",
+      "description": "第一节 阴阳学说 -> 二 阴阳学说的基本内容"
+    },
+    {
+      "source": "第一节 阴阳学说",
+      "target": "三 阴阳学说在中医学中的应用",
+      "relationship": "child_of",
+      "description": "第一节 阴阳学说 -> 三 阴阳学说在中医学中的应用"
+    },
+    {
+      "source": "第一章 中医学的哲学基础",
+      "target": "第二节 五行学说",
+      "relationship": "child_of",
+      "description": "第一章 中医学的哲学基础 -> 第二节 五行学说"
+    },
+    {
+      "source": "第二节 五行学说",
+      "target": "一 五行的基本概念",
+      "relationship": "child_of",
+      "description": "第二节 五行学说 -> 一 五行的基本概念"
+    },
+    {
+      "source": "第二节 五行学说",
+      "target": "二 五行学说的基本内容",
+      "relationship": "child_of",
+      "description": "第二节 五行学说 -> 二 五行学说的基本内容"
+    },
+    {
+      "source": "第二节 五行学说",
+      "target": "三 五行学说在中医学中的应用",
+      "relationship": "child_of",
+      "description": "第二节 五行学说 -> 三 五行学说在中医学中的应用"
+    },
+    {
+      "source": "第二章 藏象",
+      "target": "第一节 藏象概述",
+      "relationship": "child_of",
+      "description": "第二章 藏象 -> 第一节 藏象概述"
+    },
+    {
+      "source": "第一节 藏象概述",
+      "target": "二 脏腑的分类与区别",
+      "relationship": "child_of",
+      "description": "第一节 藏象概述 -> 二 脏腑的分类与区别"
+    },
+    {
+      "source": "第一节 藏象概述",
+      "target": "三 藏象学说的形成与特点",
+      "relationship": "child_of",
+      "description": "第一节 藏象概述 -> 三 藏象学说的形成与特点"
+    },
+    {
+      "source": "第二章 藏象",
+      "target": "第二节 五脏",
+      "relationship": "child_of",
+      "description": "第二章 藏象 -> 第二节 五脏"
+    },
+    {
+      "source": "第二节 五脏",
+      "target": "一 心",
+      "relationship": "child_of",
+      "description": "第二节 五脏 -> 一 心"
+    },
+    {
+      "source": "第二节 五脏",
+      "target": "二 肺",
+      "relationship": "child_of",
+      "description": "第二节 五脏 -> 二 肺"
+    },
+    {
+      "source": "第二节 五脏",
+      "target": "三 脾",
+      "relationship": "child_of",
+      "description": "第二节 五脏 -> 三 脾"
+    },
+    {
+      "source": "第二节 五脏",
+      "target": "四 肝",
+      "relationship": "child_of",
+      "description": "第二节 五脏 -> 四 肝"
+    },
+    {
+      "source": "第二节 五脏",
+      "target": "五 肾",
+      "relationship": "child_of",
+      "description": "第二节 五脏 -> 五 肾"
+    },
+    {
+      "source": "第二章 藏象",
+      "target": "第二节 五脏",
+      "relationship": "child_of",
+      "description": "第二章 藏象 -> 第二节 五脏"
+    },
+    {
+      "source": "第二节 五脏",
+      "target": "一 心",
+      "relationship": "child_of",
+      "description": "第二节 五脏 -> 一 心"
+    },
+    {
+      "source": "第二节 五脏",
+      "target": "二 肺",
+      "relationship": "child_of",
+      "description": "第二节 五脏 -> 二 肺"
+    },
+    {
+      "source": "第二节 五脏",
+      "target": "三 脾",
+      "relationship": "child_of",
+      "description": "第二节 五脏 -> 三 脾"
+    },
+    {
+      "source": "第二章 藏象",
+      "target": "第三节 六腑",
+      "relationship": "child_of",
+      "description": "第二章 藏象 -> 第三节 六腑"
+    },
+    {
+      "source": "第三节 六腑",
+      "target": "一 胆",
+      "relationship": "child_of",
+      "description": "第三节 六腑 -> 一 胆"
+    },
+    {
+      "source": "第三节 六腑",
+      "target": "二 胃",
+      "relationship": "child_of",
+      "description": "第三节 六腑 -> 二 胃"
+    },
+    {
+      "source": "第三节 六腑",
+      "target": "三 小肠",
+      "relationship": "child_of",
+      "description": "第三节 六腑 -> 三 小肠"
+    },
+    {
+      "source": "第三节 六腑",
+      "target": "四 大肠",
+      "relationship": "child_of",
+      "description": "第三节 六腑 -> 四 大肠"
+    },
+    {
+      "source": "第三节 六腑",
+      "target": "五 膀胱",
+      "relationship": "child_of",
+      "description": "第三节 六腑 -> 五 膀胱"
+    },
+    {
+      "source": "第三节 六腑",
+      "target": "六 三焦",
+      "relationship": "child_of",
+      "description": "第三节 六腑 -> 六 三焦"
+    },
+    {
+      "source": "第二章 藏象",
+      "target": "第四节 奇恒之腑",
+      "relationship": "child_of",
+      "description": "第二章 藏象 -> 第四节 奇恒之腑"
+    },
+    {
+      "source": "第四节 奇恒之腑",
+      "target": "一 脑",
+      "relationship": "child_of",
+      "description": "第四节 奇恒之腑 -> 一 脑"
+    },
+    {
+      "source": "第四节 奇恒之腑",
+      "target": "二 女子胞",
+      "relationship": "child_of",
+      "description": "第四节 奇恒之腑 -> 二 女子胞"
+    },
+    {
+      "source": "第二章 藏象",
+      "target": "第五节 脏腑之间的关系",
+      "relationship": "child_of",
+      "description": "第二章 藏象 -> 第五节 脏腑之间的关系"
+    },
+    {
+      "source": "第五节 脏腑之间的关系",
+      "target": "一 脏与脏之间的关系",
+      "relationship": "child_of",
+      "description": "第五节 脏腑之间的关系 -> 一 脏与脏之间的关系"
+    },
+    {
+      "source": "第五节 脏腑之间的关系",
+      "target": "二 脏与腑之间的关系",
+      "relationship": "child_of",
+      "description": "第五节 脏腑之间的关系 -> 二 脏与腑之间的关系"
+    },
+    {
+      "source": "第五节 脏腑之间的关系",
+      "target": "三 腑与腑之间的关系",
+      "relationship": "child_of",
+      "description": "第五节 脏腑之间的关系 -> 三 腑与腑之间的关系"
+    },
+    {
+      "source": "第三章 气血津液",
+      "target": "第一节 气",
+      "relationship": "child_of",
+      "description": "第三章 气血津液 -> 第一节 气"
+    },
+    {
+      "source": "第一节 气",
+      "target": "一 气的概念",
+      "relationship": "child_of",
+      "description": "第一节 气 -> 一 气的概念"
+    },
+    {
+      "source": "第一节 气",
+      "target": "二 气的运动",
+      "relationship": "child_of",
+      "description": "第一节 气 -> 二 气的运动"
+    },
+    {
+      "source": "第一节 气",
+      "target": "三 气的生成",
+      "relationship": "child_of",
+      "description": "第一节 气 -> 三 气的生成"
+    },
+    {
+      "source": "第一节 气",
+      "target": "四 气的功能",
+      "relationship": "child_of",
+      "description": "第一节 气 -> 四 气的功能"
+    },
+    {
+      "source": "第一节 气",
+      "target": "五 气的分类",
+      "relationship": "child_of",
+      "description": "第一节 气 -> 五 气的分类"
+    },
+    {
+      "source": "第三章 气血津液",
+      "target": "第二节 血",
+      "relationship": "child_of",
+      "description": "第三章 气血津液 -> 第二节 血"
+    },
+    {
+      "source": "第二节 血",
+      "target": "一 血的概念",
+      "relationship": "child_of",
+      "description": "第二节 血 -> 一 血的概念"
+    },
+    {
+      "source": "第二节 血",
+      "target": "二 血的生成",
+      "relationship": "child_of",
+      "description": "第二节 血 -> 二 血的生成"
+    },
+    {
+      "source": "第二节 血",
+      "target": "三 血的运行",
+      "relationship": "child_of",
+      "description": "第二节 血 -> 三 血的运行"
+    },
+    {
+      "source": "第二节 血",
+      "target": "四 血的功能",
+      "relationship": "child_of",
+      "description": "第二节 血 -> 四 血的功能"
+    },
+    {
+      "source": "第三章 气血津液",
+      "target": "第三节 津液",
+      "relationship": "child_of",
+      "description": "第三章 气血津液 -> 第三节 津液"
+    },
+    {
+      "source": "第三节 津液",
+      "target": "一 津液的概念",
+      "relationship": "child_of",
+      "description": "第三节 津液 -> 一 津液的概念"
+    },
+    {
+      "source": "第三节 津液",
+      "target": "二 津液的代谢",
+      "relationship": "child_of",
+      "description": "第三节 津液 -> 二 津液的代谢"
+    },
+    {
+      "source": "第三节 津液",
+      "target": "三 津液的功能",
+      "relationship": "child_of",
+      "description": "第三节 津液 -> 三 津液的功能"
+    },
+    {
+      "source": "第三章 气血津液",
+      "target": "第四节 气血津液的关系",
+      "relationship": "child_of",
+      "description": "第三章 气血津液 -> 第四节 气血津液的关系"
+    },
+    {
+      "source": "第四节 气血津液的关系",
+      "target": "一 气与血的关系",
+      "relationship": "child_of",
+      "description": "第四节 气血津液的关系 -> 一 气与血的关系"
+    },
+    {
+      "source": "第四节 气血津液的关系",
+      "target": "二 气与津液的关系",
+      "relationship": "child_of",
+      "description": "第四节 气血津液的关系 -> 二 气与津液的关系"
+    },
+    {
+      "source": "第四节 气血津液的关系",
+      "target": "三 血与津液的关系",
+      "relationship": "child_of",
+      "description": "第四节 气血津液的关系 -> 三 血与津液的关系"
+    },
+    {
+      "source": "第四章 经络",
+      "target": "第一节 经络系统的概述",
+      "relationship": "child_of",
+      "description": "第四章 经络 -> 第一节 经络系统的概述"
+    },
+    {
+      "source": "第一节 经络系统的概述",
+      "target": "一 经络的概念",
+      "relationship": "child_of",
+      "description": "第一节 经络系统的概述 -> 一 经络的概念"
+    },
+    {
+      "source": "第一节 经络系统的概述",
+      "target": "二 经络系统的组成",
+      "relationship": "child_of",
+      "description": "第一节 经络系统的概述 -> 二 经络系统的组成"
+    },
+    {
+      "source": "第一节 经络系统的概述",
+      "target": "三 经络的生理功能",
+      "relationship": "child_of",
+      "description": "第一节 经络系统的概述 -> 三 经络的生理功能"
+    },
+    {
+      "source": "第四章 经络",
+      "target": "第二节 十二经脉",
+      "relationship": "child_of",
+      "description": "第四章 经络 -> 第二节 十二经脉"
+    },
+    {
+      "source": "第二节 十二经脉",
+      "target": "一 十二经脉的名称",
+      "relationship": "child_of",
+      "description": "第二节 十二经脉 -> 一 十二经脉的名称"
+    },
+    {
+      "source": "第二节 十二经脉",
+      "target": "二 十二经脉的走向、交接规律",
+      "relationship": "child_of",
+      "description": "第二节 十二经脉 -> 二 十二经脉的走向、交接规律"
+    },
+    {
+      "source": "第二节 十二经脉",
+      "target": "三 十二经脉的分布规律",
+      "relationship": "child_of",
+      "description": "第二节 十二经脉 -> 三 十二经脉的分布规律"
+    },
+    {
+      "source": "第二节 十二经脉",
+      "target": "四 十二经脉的表里关系",
+      "relationship": "child_of",
+      "description": "第二节 十二经脉 -> 四 十二经脉的表里关系"
+    },
+    {
+      "source": "第二节 十二经脉",
+      "target": "五 十二经脉气血的流注次序",
+      "relationship": "child_of",
+      "description": "第二节 十二经脉 -> 五 十二经脉气血的流注次序"
+    },
+    {
+      "source": "第二节 十二经脉",
+      "target": "六 十二经脉的循行",
+      "relationship": "child_of",
+      "description": "第二节 十二经脉 -> 六 十二经脉的循行"
+    },
+    {
+      "source": "第四章 经络",
+      "target": "第三节 奇经八脉",
+      "relationship": "child_of",
+      "description": "第四章 经络 -> 第三节 奇经八脉"
+    },
+    {
+      "source": "第三节 奇经八脉",
+      "target": "一 奇经八脉的概念",
+      "relationship": "child_of",
+      "description": "第三节 奇经八脉 -> 一 奇经八脉的概念"
+    },
+    {
+      "source": "第三节 奇经八脉",
+      "target": "二 督脉、任脉、冲脉、带脉的循行及生理功能",
+      "relationship": "child_of",
+      "description": "第三节 奇经八脉 -> 二 督脉、任脉、冲脉、带脉的循行及生理功能"
+    },
+    {
+      "source": "第四章 经络",
+      "target": "第四节 经络学说的应用",
+      "relationship": "child_of",
+      "description": "第四章 经络 -> 第四节 经络学说的应用"
+    },
+    {
+      "source": "第四节 经络学说的应用",
+      "target": "一 阐释疾病病理变化",
+      "relationship": "child_of",
+      "description": "第四节 经络学说的应用 -> 一 阐释疾病病理变化"
+    },
+    {
+      "source": "第四节 经络学说的应用",
+      "target": "二 指导疾病的诊断",
+      "relationship": "child_of",
+      "description": "第四节 经络学说的应用 -> 二 指导疾病的诊断"
+    },
+    {
+      "source": "第四节 经络学说的应用",
+      "target": "三 指导疾病的治疗",
+      "relationship": "child_of",
+      "description": "第四节 经络学说的应用 -> 三 指导疾病的治疗"
+    },
+    {
+      "source": "第四节 经络学说的应用",
+      "target": "四 指导养生、预防和康复",
+      "relationship": "child_of",
+      "description": "第四节 经络学说的应用 -> 四 指导养生、预防和康复"
+    },
+    {
+      "source": "第五章 体质",
+      "target": "第一节 体质学说的基本内容",
+      "relationship": "child_of",
+      "description": "第五章 体质 -> 第一节 体质学说的基本内容"
+    },
+    {
+      "source": "第一节 体质学说的基本内容",
+      "target": "一 体质的概念",
+      "relationship": "child_of",
+      "description": "第一节 体质学说的基本内容 -> 一 体质的概念"
+    },
+    {
+      "source": "第一节 体质学说的基本内容",
+      "target": "二 体质的特点",
+      "relationship": "child_of",
+      "description": "第一节 体质学说的基本内容 -> 二 体质的特点"
+    },
+    {
+      "source": "第一节 体质学说的基本内容",
+      "target": "三 体质的构成要素",
+      "relationship": "child_of",
+      "description": "第一节 体质学说的基本内容 -> 三 体质的构成要素"
+    },
+    {
+      "source": "第一节 体质学说的基本内容",
+      "target": "四 影响体质的因素",
+      "relationship": "child_of",
+      "description": "第一节 体质学说的基本内容 -> 四 影响体质的因素"
+    },
+    {
+      "source": "第一节 体质学说的基本内容",
+      "target": "五 体质的分类",
+      "relationship": "child_of",
+      "description": "第一节 体质学说的基本内容 -> 五 体质的分类"
+    },
+    {
+      "source": "第五章 体质",
+      "target": "第二节 体质学说的应用",
+      "relationship": "child_of",
+      "description": "第五章 体质 -> 第二节 体质学说的应用"
+    },
+    {
+      "source": "第二节 体质学说的应用",
+      "target": "一 说明对某些病邪的易感性",
+      "relationship": "child_of",
+      "description": "第二节 体质学说的应用 -> 一 说明对某些病邪的易感性"
+    },
+    {
+      "source": "第二节 体质学说的应用",
+      "target": "二 阐释发病原理",
+      "relationship": "child_of",
+      "description": "第二节 体质学说的应用 -> 二 阐释发病原理"
+    },
+    {
+      "source": "第二节 体质学说的应用",
+      "target": "三 解释病理变化",
+      "relationship": "child_of",
+      "description": "第二节 体质学说的应用 -> 三 解释病理变化"
+    },
+    {
+      "source": "第二节 体质学说的应用",
+      "target": "四 指导辨证",
+      "relationship": "child_of",
+      "description": "第二节 体质学说的应用 -> 四 指导辨证"
+    },
+    {
+      "source": "第二节 体质学说的应用",
+      "target": "五 指导治疗",
+      "relationship": "child_of",
+      "description": "第二节 体质学说的应用 -> 五 指导治疗"
+    },
+    {
+      "source": "第二节 体质学说的应用",
+      "target": "六 指导养生",
+      "relationship": "child_of",
+      "description": "第二节 体质学说的应用 -> 六 指导养生"
+    },
+    {
+      "source": "第六章 病因",
+      "target": "第一节 外感病因",
+      "relationship": "child_of",
+      "description": "第六章 病因 -> 第一节 外感病因"
+    },
+    {
+      "source": "第一节 外感病因",
+      "target": "一 六淫",
+      "relationship": "child_of",
+      "description": "第一节 外感病因 -> 一 六淫"
+    },
+    {
+      "source": "第一节 外感病因",
+      "target": "二 疫气",
+      "relationship": "child_of",
+      "description": "第一节 外感病因 -> 二 疫气"
+    },
+    {
+      "source": "第六章 病因",
+      "target": "第二节 内伤病因",
+      "relationship": "child_of",
+      "description": "第六章 病因 -> 第二节 内伤病因"
+    },
+    {
+      "source": "第二节 内伤病因",
+      "target": "一 七情内伤",
+      "relationship": "child_of",
+      "description": "第二节 内伤病因 -> 一 七情内伤"
+    },
+    {
+      "source": "第二节 内伤病因",
+      "target": "二 饮食失宜",
+      "relationship": "child_of",
+      "description": "第二节 内伤病因 -> 二 饮食失宜"
+    },
+    {
+      "source": "第二节 内伤病因",
+      "target": "三 劳逸过度",
+      "relationship": "child_of",
+      "description": "第二节 内伤病因 -> 三 劳逸过度"
+    },
+    {
+      "source": "第六章 病因",
+      "target": "第三节 病理产物性病因",
+      "relationship": "child_of",
+      "description": "第六章 病因 -> 第三节 病理产物性病因"
+    },
+    {
+      "source": "第三节 病理产物性病因",
+      "target": "一 痰饮",
+      "relationship": "child_of",
+      "description": "第三节 病理产物性病因 -> 一 痰饮"
+    },
+    {
+      "source": "第三节 病理产物性病因",
+      "target": "二 瘀血",
+      "relationship": "child_of",
+      "description": "第三节 病理产物性病因 -> 二 瘀血"
+    },
+    {
+      "source": "第三节 病理产物性病因",
+      "target": "三 结石",
+      "relationship": "child_of",
+      "description": "第三节 病理产物性病因 -> 三 结石"
+    },
+    {
+      "source": "第六章 病因",
+      "target": "第四节 其他病因",
+      "relationship": "child_of",
+      "description": "第六章 病因 -> 第四节 其他病因"
+    },
+    {
+      "source": "第四节 其他病因",
+      "target": "一 外伤",
+      "relationship": "child_of",
+      "description": "第四节 其他病因 -> 一 外伤"
+    },
+    {
+      "source": "第四节 其他病因",
+      "target": "二 寄生虫感染",
+      "relationship": "child_of",
+      "description": "第四节 其他病因 -> 二 寄生虫感染"
+    },
+    {
+      "source": "第四节 其他病因",
+      "target": "三 医过",
+      "relationship": "child_of",
+      "description": "第四节 其他病因 -> 三 医过"
+    },
+    {
+      "source": "第四节 其他病因",
+      "target": "四 药邪",
+      "relationship": "child_of",
+      "description": "第四节 其他病因 -> 四 药邪"
+    },
+    {
+      "source": "第四节 其他病因",
+      "target": "五 先天因素",
+      "relationship": "child_of",
+      "description": "第四节 其他病因 -> 五 先天因素"
+    },
+    {
+      "source": "第七章 病机",
+      "target": "第一节 发病原理",
+      "relationship": "child_of",
+      "description": "第七章 病机 -> 第一节 发病原理"
+    },
+    {
+      "source": "第一节 发病原理",
+      "target": "一 发病的基本原理",
+      "relationship": "child_of",
+      "description": "第一节 发病原理 -> 一 发病的基本原理"
+    },
+    {
+      "source": "第一节 发病原理",
+      "target": "二 影响发病的因素",
+      "relationship": "child_of",
+      "description": "第一节 发病原理 -> 二 影响发病的因素"
+    },
+    {
+      "source": "第一节 发病原理",
+      "target": "三 发病形式",
+      "relationship": "child_of",
+      "description": "第一节 发病原理 -> 三 发病形式"
+    },
+    {
+      "source": "第七章 病机",
+      "target": "第二节 基本病机",
+      "relationship": "child_of",
+      "description": "第七章 病机 -> 第二节 基本病机"
+    },
+    {
+      "source": "第二节 基本病机",
+      "target": "一 邪正盛衰",
+      "relationship": "child_of",
+      "description": "第二节 基本病机 -> 一 邪正盛衰"
+    },
+    {
+      "source": "第二节 基本病机",
+      "target": "二 阴阳失调",
+      "relationship": "child_of",
+      "description": "第二节 基本病机 -> 二 阴阳失调"
+    },
+    {
+      "source": "第二节 基本病机",
+      "target": "三 气血津液失常",
+      "relationship": "child_of",
+      "description": "第二节 基本病机 -> 三 气血津液失常"
+    },
+    {
+      "source": "第二节 基本病机",
+      "target": "四 “内生五邪”病机",
+      "relationship": "child_of",
+      "description": "第二节 基本病机 -> 四 “内生五邪”病机"
+    },
+    {
+      "source": "第七章 病机",
+      "target": "第二节 基本病机",
+      "relationship": "child_of",
+      "description": "第七章 病机 -> 第二节 基本病机"
+    },
+    {
+      "source": "第二节 基本病机",
+      "target": "一 邪正盛衰",
+      "relationship": "child_of",
+      "description": "第二节 基本病机 -> 一 邪正盛衰"
+    },
+    {
+      "source": "第二节 基本病机",
+      "target": "二 阴阳失调",
+      "relationship": "child_of",
+      "description": "第二节 基本病机 -> 二 阴阳失调"
+    },
+    {
+      "source": "第二节 基本病机",
+      "target": "三 气血津液失常",
+      "relationship": "child_of",
+      "description": "第二节 基本病机 -> 三 气血津液失常"
+    },
+    {
+      "source": "第八章 诊法",
+      "target": "第一节 望诊",
+      "relationship": "child_of",
+      "description": "第八章 诊法 -> 第一节 望诊"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "一 望神",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 一 望神"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "二 望色",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 二 望色"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "三 望形态",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 三 望形态"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "四 望头颈五官",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 四 望头颈五官"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "五 望皮肤",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 五 望皮肤"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "六 望二阴",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 六 望二阴"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "七 望舌",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 七 望舌"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "八 望排出物",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 八 望排出物"
+    },
+    {
+      "source": "第八章 诊法",
+      "target": "第一节 望诊",
+      "relationship": "child_of",
+      "description": "第八章 诊法 -> 第一节 望诊"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "一 望神",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 一 望神"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "二 望色",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 二 望色"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "三 望形态",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 三 望形态"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "四 望头颈五官",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 四 望头颈五官"
+    },
+    {
+      "source": "第一节 望诊",
+      "target": "五 望皮肤",
+      "relationship": "child_of",
+      "description": "第一节 望诊 -> 五 望皮肤"
+    },
+    {
+      "source": "第八章 诊法",
+      "target": "第二节 闻诊",
+      "relationship": "child_of",
+      "description": "第八章 诊法 -> 第二节 闻诊"
+    },
+    {
+      "source": "第二节 闻诊",
+      "target": "一 听声音",
+      "relationship": "child_of",
+      "description": "第二节 闻诊 -> 一 听声音"
+    },
+    {
+      "source": "第二节 闻诊",
+      "target": "二 嗅气味",
+      "relationship": "child_of",
+      "description": "第二节 闻诊 -> 二 嗅气味"
+    },
+    {
+      "source": "第八章 诊法",
+      "target": "第三节 问诊",
+      "relationship": "child_of",
+      "description": "第八章 诊法 -> 第三节 问诊"
+    },
+    {
+      "source": "第三节 问诊",
+      "target": "一 问诊的内容",
+      "relationship": "child_of",
+      "description": "第三节 问诊 -> 一 问诊的内容"
+    },
+    {
+      "source": "第三节 问诊",
+      "target": "二 问现在症",
+      "relationship": "child_of",
+      "description": "第三节 问诊 -> 二 问现在症"
+    },
+    {
+      "source": "第八章 诊法",
+      "target": "第三节 问诊",
+      "relationship": "child_of",
+      "description": "第八章 诊法 -> 第三节 问诊"
+    },
+    {
+      "source": "第三节 问诊",
+      "target": "一 问诊的内容",
+      "relationship": "child_of",
+      "description": "第三节 问诊 -> 一 问诊的内容"
+    },
+    {
+      "source": "第三节 问诊",
+      "target": "二 问现在症",
+      "relationship": "child_of",
+      "description": "第三节 问诊 -> 二 问现在症"
+    },
+    {
+      "source": "第八章 诊法",
+      "target": "第四节 切诊",
+      "relationship": "child_of",
+      "description": "第八章 诊法 -> 第四节 切诊"
+    },
+    {
+      "source": "第四节 切诊",
+      "target": "一 脉诊",
+      "relationship": "child_of",
+      "description": "第四节 切诊 -> 一 脉诊"
+    },
+    {
+      "source": "第四节 切诊",
+      "target": "二 按诊",
+      "relationship": "child_of",
+      "description": "第四节 切诊 -> 二 按诊"
+    },
+    {
+      "source": "第九章 辨证",
+      "target": "第一节 八纲辨证",
+      "relationship": "child_of",
+      "description": "第九章 辨证 -> 第一节 八纲辨证"
+    },
+    {
+      "source": "第一节 八纲辨证",
+      "target": "一 八纲基本证",
+      "relationship": "child_of",
+      "description": "第一节 八纲辨证 -> 一 八纲基本证"
+    },
+    {
+      "source": "第一节 八纲辨证",
+      "target": "二 八纲证之间的关系",
+      "relationship": "child_of",
+      "description": "第一节 八纲辨证 -> 二 八纲证之间的关系"
+    },
+    {
+      "source": "第九章 辨证",
+      "target": "第一节 八纲辨证",
+      "relationship": "child_of",
+      "description": "第九章 辨证 -> 第一节 八纲辨证"
+    },
+    {
+      "source": "第一节 八纲辨证",
+      "target": "一 八纲基本证",
+      "relationship": "child_of",
+      "description": "第一节 八纲辨证 -> 一 八纲基本证"
+    },
+    {
+      "source": "第一节 八纲辨证",
+      "target": "二 八纲证之间的关系",
+      "relationship": "child_of",
+      "description": "第一节 八纲辨证 -> 二 八纲证之间的关系"
+    },
+    {
+      "source": "第九章 辨证",
+      "target": "第二节 气血津液辨证",
+      "relationship": "child_of",
+      "description": "第九章 辨证 -> 第二节 气血津液辨证"
+    },
+    {
+      "source": "第二节 气血津液辨证",
+      "target": "一 气病辨证",
+      "relationship": "child_of",
+      "description": "第二节 气血津液辨证 -> 一 气病辨证"
+    },
+    {
+      "source": "第二节 气血津液辨证",
+      "target": "二 血病辨证",
+      "relationship": "child_of",
+      "description": "第二节 气血津液辨证 -> 二 血病辨证"
+    },
+    {
+      "source": "第二节 气血津液辨证",
+      "target": "三 气血同病辨证",
+      "relationship": "child_of",
+      "description": "第二节 气血津液辨证 -> 三 气血同病辨证"
+    },
+    {
+      "source": "第二节 气血津液辨证",
+      "target": "四 津液病辨证",
+      "relationship": "child_of",
+      "description": "第二节 气血津液辨证 -> 四 津液病辨证"
+    },
+    {
+      "source": "第九章 辨证",
+      "target": "第三节 脏腑辨证",
+      "relationship": "child_of",
+      "description": "第九章 辨证 -> 第三节 脏腑辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "一 心与小肠病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 一 心与小肠病辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "二 肺与大肠病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 二 肺与大肠病辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "三 脾胃病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 三 脾胃病辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "四 肝胆病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 四 肝胆病辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "五 肾与膀胱病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 五 肾与膀胱病辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "六 脏腑兼病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 六 脏腑兼病辨证"
+    },
+    {
+      "source": "第九章 辨证",
+      "target": "第三节 脏腑辨证",
+      "relationship": "child_of",
+      "description": "第九章 辨证 -> 第三节 脏腑辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "一 心与小肠病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 一 心与小肠病辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "二 肺与大肠病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 二 肺与大肠病辨证"
+    },
+    {
+      "source": "第三节 脏腑辨证",
+      "target": "三 脾胃病辨证",
+      "relationship": "child_of",
+      "description": "第三节 脏腑辨证 -> 三 脾胃病辨证"
+    },
+    {
+      "source": "第九章 辨证",
+      "target": "第四节 外感病辨证",
+      "relationship": "child_of",
+      "description": "第九章 辨证 -> 第四节 外感病辨证"
+    },
+    {
+      "source": "第四节 外感病辨证",
+      "target": "一 六经辨证",
+      "relationship": "child_of",
+      "description": "第四节 外感病辨证 -> 一 六经辨证"
+    },
+    {
+      "source": "第四节 外感病辨证",
+      "target": "二 卫气营血辨证",
+      "relationship": "child_of",
+      "description": "第四节 外感病辨证 -> 二 卫气营血辨证"
+    },
+    {
+      "source": "第四节 外感病辨证",
+      "target": "三 三焦辨证",
+      "relationship": "child_of",
+      "description": "第四节 外感病辨证 -> 三 三焦辨证"
+    },
+    {
+      "source": "第十章 预防、治则、养生、康复",
+      "target": "第一节 预防",
+      "relationship": "child_of",
+      "description": "第十章 预防、治则、养生、康复 -> 第一节 预防"
+    },
+    {
+      "source": "第一节 预防",
+      "target": "一 未病先防",
+      "relationship": "child_of",
+      "description": "第一节 预防 -> 一 未病先防"
+    },
+    {
+      "source": "第一节 预防",
+      "target": "二 既病防变",
+      "relationship": "child_of",
+      "description": "第一节 预防 -> 二 既病防变"
+    },
+    {
+      "source": "第一节 预防",
+      "target": "三 愈后防复",
+      "relationship": "child_of",
+      "description": "第一节 预防 -> 三 愈后防复"
+    },
+    {
+      "source": "第十章 预防、治则、养生、康复",
+      "target": "第二节 治则",
+      "relationship": "child_of",
+      "description": "第十章 预防、治则、养生、康复 -> 第二节 治则"
+    },
+    {
+      "source": "第二节 治则",
+      "target": "一 扶正祛邪",
+      "relationship": "child_of",
+      "description": "第二节 治则 -> 一 扶正祛邪"
+    },
+    {
+      "source": "第二节 治则",
+      "target": "二 标本先后",
+      "relationship": "child_of",
+      "description": "第二节 治则 -> 二 标本先后"
+    },
+    {
+      "source": "第二节 治则",
+      "target": "三 正治反治",
+      "relationship": "child_of",
+      "description": "第二节 治则 -> 三 正治反治"
+    },
+    {
+      "source": "第二节 治则",
+      "target": "四 调整阴阳",
+      "relationship": "child_of",
+      "description": "第二节 治则 -> 四 调整阴阳"
+    },
+    {
+      "source": "第二节 治则",
+      "target": "五 三因制宜",
+      "relationship": "child_of",
+      "description": "第二节 治则 -> 五 三因制宜"
+    },
+    {
+      "source": "第二节 治则",
+      "target": "六 调和脏腑",
+      "relationship": "child_of",
+      "description": "第二节 治则 -> 六 调和脏腑"
+    },
+    {
+      "source": "第二节 治则",
+      "target": "七 调理气血津液",
+      "relationship": "child_of",
+      "description": "第二节 治则 -> 七 调理气血津液"
+    },
+    {
+      "source": "第十章 预防、治则、养生、康复",
+      "target": "第三节 养生",
+      "relationship": "child_of",
+      "description": "第十章 预防、治则、养生、康复 -> 第三节 养生"
+    },
+    {
+      "source": "第三节 养生",
+      "target": "一 养生的基本原则",
+      "relationship": "child_of",
+      "description": "第三节 养生 -> 一 养生的基本原则"
+    },
+    {
+      "source": "第三节 养生",
+      "target": "二 养生的重要意义",
+      "relationship": "child_of",
+      "description": "第三节 养生 -> 二 养生的重要意义"
+    },
+    {
+      "source": "第十章 预防、治则、养生、康复",
+      "target": "第四节 康复",
+      "relationship": "child_of",
+      "description": "第十章 预防、治则、养生、康复 -> 第四节 康复"
+    },
+    {
+      "source": "第四节 康复",
+      "target": "一 中医康复学的基本观点",
+      "relationship": "child_of",
+      "description": "第四节 康复 -> 一 中医康复学的基本观点"
+    },
+    {
+      "source": "第四节 康复",
+      "target": "二 中医康复学的基本原则",
+      "relationship": "child_of",
+      "description": "第四节 康复 -> 二 中医康复学的基本原则"
+    },
+    {
+      "source": "第四节 康复",
+      "target": "三 常用的康复方法",
+      "relationship": "child_of",
+      "description": "第四节 康复 -> 三 常用的康复方法"
+    }
+  ],
+  "entity_count": 210,
+  "relation_count": 199
+}

@@ -26,6 +26,7 @@ export function selectNextKnowledgePoint(task, fallback = '') {
     .find((item) => item?.status !== 'completed' && String(item?.kp_name || '').trim());
   return pendingItem?.kp_name
     || task?.focus_knowledge_points?.[0]
+    || task?.knowledge_cards?.[0]?.title
     || fallback
     || '';
 }
@@ -118,34 +119,65 @@ export async function loadTextbookLearningSnapshot(book, route = 'textbook_14_5'
 
 const TEXTBOOK_SNAPSHOT_FRESH_MS = 60 * 1000;
 const textbookSnapshotCache = new Map();
+const learningOverviewCache = new Map();
 
-function snapshotTarget(book) {
+function snapshotTarget(book, cacheKey) {
   const name = normalizeBookName(book?.navigation?.book || book?.book || book?.name || book?.title);
   const route = book?.navigation?.route_id || book?.routeId || 'textbook_14_5';
-  return { name, route, key: `${route}:${name}` };
+  return { name, route, key: `${cacheKey}:${route}:${name}` };
+}
+
+export async function loadCachedTextbookLearningSnapshot(
+  book,
+  route = 'textbook_14_5',
+  { signal, cacheKey = 'anonymous', force = false } = {},
+) {
+  const target = snapshotTarget({ name: book, navigation: { route_id: route } }, cacheKey);
+  const cached = textbookSnapshotCache.get(target.key);
+  if (!force && cached?.data && Date.now() - cached.updatedAt < TEXTBOOK_SNAPSHOT_FRESH_MS) {
+    return cached.data;
+  }
+  try {
+    const snapshot = await loadTextbookLearningSnapshot(target.name, target.route, { signal });
+    textbookSnapshotCache.set(target.key, { data: snapshot, updatedAt: Date.now() });
+    return snapshot;
+  } catch (error) {
+    if (cached?.data && error?.name !== 'AbortError') return cached.data;
+    throw error;
+  }
 }
 
 export function clearTextbookSnapshotCache() {
   textbookSnapshotCache.clear();
+  learningOverviewCache.clear();
 }
 
-export function useTextbookLearningSnapshots({ books = [], taskBook = '' } = {}) {
+export function useTextbookLearningSnapshots({ books = [], taskBook = '', cacheKey = 'anonymous' } = {}) {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const targets = useMemo(() => {
     const unique = new Map();
     books.forEach((book) => {
-      const target = snapshotTarget(book);
+      const target = snapshotTarget(book, cacheKey);
       if (target.name) unique.set(target.key, target);
     });
     const normalizedTaskBook = normalizeBookName(taskBook);
     if (normalizedTaskBook) {
-      const target = snapshotTarget({ name: normalizedTaskBook });
+      const target = snapshotTarget({ name: normalizedTaskBook }, cacheKey);
       if (![...unique.values()].some((item) => item.name === normalizedTaskBook)) unique.set(target.key, target);
     }
     return [...unique.values()];
-  }, [books, taskBook]);
+  }, [books, cacheKey, taskBook]);
   const targetKey = targets.map((target) => target.key).join('|');
-  const [snapshots, setSnapshots] = useState({ loading: false, byBook: {} });
+  const [snapshots, setSnapshots] = useState(() => {
+    const byBook = {};
+    let missingCount = 0;
+    targets.forEach((target) => {
+      const cached = textbookSnapshotCache.get(target.key);
+      if (cached?.data) byBook[target.name] = cached.data;
+      else missingCount += 1;
+    });
+    return { loading: missingCount > 0, byBook };
+  });
 
   useEffect(() => {
     const refresh = () => setRefreshVersion((version) => version + 1);
@@ -178,8 +210,11 @@ export function useTextbookLearningSnapshots({ books = [], taskBook = '' } = {})
           const target = refreshTargets[nextIndex];
           nextIndex += 1;
           try {
-            const snapshot = await loadTextbookLearningSnapshot(target.name, target.route, { signal: controller.signal });
-            textbookSnapshotCache.set(target.key, { data: snapshot, updatedAt: Date.now() });
+            const snapshot = await loadCachedTextbookLearningSnapshot(target.name, target.route, {
+              signal: controller.signal,
+              cacheKey,
+              force: true,
+            });
             if (!controller.signal.aborted) {
               setSnapshots((current) => ({
                 ...current,
@@ -211,17 +246,22 @@ export function useTextbookLearningSnapshots({ books = [], taskBook = '' } = {})
   return snapshots;
 }
 
-export function useLearningPlanMetrics({ books = [], taskBook = '' } = {}) {
-  const [overview, setOverview] = useState({
-    loading: true,
-    totalFocusMinutes: null,
-    recommendedMinutes: null,
-  });
-  const snapshots = useTextbookLearningSnapshots({ books, taskBook });
+export function useLearningPlanMetrics({ books = [], taskBook = '', cacheKey = 'anonymous' } = {}) {
+  const [overview, setOverview] = useState(() => (
+    learningOverviewCache.get(cacheKey)?.data || {
+      loading: true,
+      totalFocusMinutes: null,
+      recommendedMinutes: null,
+    }
+  ));
+  const snapshots = useTextbookLearningSnapshots({ books, taskBook, cacheKey });
 
   useEffect(() => {
     let controller = null;
     let requestVersion = 0;
+    const cachedOverview = learningOverviewCache.get(cacheKey)?.data;
+    if (cachedOverview) setOverview(cachedOverview);
+    else setOverview({ loading: true, totalFocusMinutes: null, recommendedMinutes: null });
     const load = async () => {
       controller?.abort();
       controller = new AbortController();
@@ -232,13 +272,19 @@ export function useLearningPlanMetrics({ books = [], taskBook = '' } = {}) {
       ]);
       if (controller.signal.aborted || version !== requestVersion) return;
       const minutes = Number(policy.status === 'fulfilled' ? policy.value?.recommended_minutes : NaN);
-      setOverview({
+      const previous = learningOverviewCache.get(cacheKey)?.data;
+      const nextOverview = {
         loading: false,
         totalFocusMinutes: statistics.status === 'fulfilled'
           ? focusMinutesFromStatistics(statistics.value)
-          : null,
+          : previous?.totalFocusMinutes ?? null,
         recommendedMinutes: Number.isFinite(minutes) && minutes > 0 ? minutes : null,
-      });
+      };
+      if (policy.status !== 'fulfilled') {
+        nextOverview.recommendedMinutes = previous?.recommendedMinutes ?? null;
+      }
+      learningOverviewCache.set(cacheKey, { data: nextOverview, updatedAt: Date.now() });
+      setOverview(nextOverview);
     };
     load();
     window.addEventListener('focus', load);
@@ -247,7 +293,7 @@ export function useLearningPlanMetrics({ books = [], taskBook = '' } = {}) {
       controller?.abort();
       window.removeEventListener('focus', load);
     };
-  }, []);
+  }, [cacheKey]);
 
   return { ...overview, snapshots };
 }

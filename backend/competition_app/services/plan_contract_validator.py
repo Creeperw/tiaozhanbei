@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -82,9 +83,36 @@ class PlanContractValidator:
                 trusted_books = [str(item).strip() for item in trusted.get("books") or []]
                 if trusted_name and stage.stage_name.strip() != trusted_name:
                     issues.append(f"长期规划第{index + 1}阶段名称与可信路线不一致。")
-                if stage.books != trusted_books:
+                if len(stage.books) != len(trusted_books) or any(
+                    not PlanContractValidator._book_matches(actual, trusted)
+                    for actual, trusted in zip(stage.books, trusted_books)
+                ):
                     issues.append(f"长期规划第{index + 1}阶段书目与可信路线不一致。")
         return issues
+
+    @staticmethod
+    def _book_matches(candidate: str, trusted: str) -> bool:
+        """Compare semantic book titles without weakening route membership.
+
+        Compiler extraction may preserve or omit Chinese title marks.  Those
+        typography-only differences must not turn a route-valid plan into a
+        deterministic audit failure.  Keep the same narrow title equivalence
+        used by the planning validator; stage order and cardinality are still
+        checked separately above.
+        """
+
+        def base_title(value: str) -> str:
+            title = value.strip().removeprefix("《").removesuffix("》")
+            title = re.sub(r"[（(][^）)]*[）)]", "", title)
+            title = re.sub(r"\s+", "", title)
+            title = title.removesuffix("选读")
+            return {
+                "伤寒论": "伤寒",
+                "金匮要略": "金匮",
+                "温病学": "温病",
+            }.get(title, title)
+
+        return candidate == trusted or base_title(candidate) == base_title(trusted)
 
     @staticmethod
     def _validate_short_term(

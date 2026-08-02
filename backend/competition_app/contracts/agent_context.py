@@ -205,6 +205,77 @@ def _shared_user_portrait(context: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _shared_external_information(
+    context: dict[str, Any],
+    explicit_information: Any,
+) -> list[Any]:
+    """Build the concise, source-labelled external-information block.
+
+    Uploaded syllabus data is selected by ``UserSyllabusService`` against the
+    current request before it reaches this boundary.  Keep only the fields an
+    agent can act on and cap the list again here so every business agent gets
+    useful evidence without receiving the complete uploaded document.
+    """
+
+    if isinstance(explicit_information, list):
+        items = list(explicit_information)
+    elif explicit_information in (None, "", {}):
+        items = []
+    else:
+        items = [explicit_information]
+
+    syllabus = context.get("user_syllabus")
+    requirements = context.get("syllabus_requirements") or []
+    knowledge_points = context.get("syllabus_knowledge_points") or []
+    if isinstance(syllabus, dict) and syllabus:
+        # Reserve one of the eight external-information slots for the selected
+        # syllabus evidence.  Otherwise eight explicit retrieval results would
+        # make the final compaction silently discard the syllabus item.
+        items = items[:7]
+        requirement_briefs = []
+        for item in requirements[:8] if isinstance(requirements, list) else []:
+            if not isinstance(item, dict):
+                continue
+            requirement_briefs.append(
+                {
+                    key: _compact_value(value, max_text=320)
+                    for key, value in item.items()
+                    if key
+                    in {
+                        "requirement_id",
+                        "section_title",
+                        "title",
+                        "mastery_level",
+                        "details",
+                        "source_pages",
+                    }
+                    and value not in (None, "", [], {})
+                }
+            )
+        kp_briefs = []
+        for item in knowledge_points[:8] if isinstance(knowledge_points, list) else []:
+            if not isinstance(item, dict):
+                continue
+            kp_briefs.append(
+                {
+                    key: value
+                    for key, value in item.items()
+                    if key in {"kp_id", "kp_name", "confidence", "requirement_id"}
+                    and value not in (None, "", [], {})
+                }
+            )
+        items.append(
+            {
+                "source_type": "user_syllabus",
+                "trust_level": "user_uploaded_reference",
+                "syllabus": _compact_value(syllabus, max_items=8, max_text=320),
+                "relevant_requirements": requirement_briefs,
+                "matched_knowledge_points": kp_briefs,
+            }
+        )
+    return _compact_value(items, max_items=8, max_text=500)
+
+
 def _recent_dialogue(
     messages: list[dict[str, Any]],
     *,
@@ -319,6 +390,9 @@ def build_model_context(
     source_bounded_compiler = target_agent in _SOURCE_BOUNDED_COMPILERS or (
         "compiler" in target_agent.lower()
     )
+    explicit_external_information = enriched_payload.pop(
+        "external_information", []
+    )
     shared_context = {
         "original_user_request": original_request,
         "current_user_request": current_request,
@@ -330,7 +404,13 @@ def build_model_context(
             if source_bounded_compiler
             else _shared_user_portrait(context)
         ),
-        "external_information": enriched_payload.pop("external_information", []),
+        "external_information": (
+            []
+            if source_bounded_compiler
+            else _shared_external_information(
+                context, explicit_external_information
+            )
+        ),
         "source_bounded_compiler": source_bounded_compiler,
     }
     if source_bounded_compiler:
@@ -339,7 +419,7 @@ def build_model_context(
         shared_context["recent_conversation"] = []
         shared_context["compressed_conversation"] = ""
         shared_context["current_user_message"] = ""
-    if current_page_context:
+    if current_page_context and not source_bounded_compiler:
         shared_context["current_page"] = {
             "tool_name": "read_current_page",
             "trust_level": "untrusted_page_content",

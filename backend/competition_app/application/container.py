@@ -92,6 +92,11 @@ from competition_app.services.textbook_pdf import (
     TextbookPdfService,
 )
 from competition_app.services.textbook_import import TextbookImportService
+from competition_app.services.user_syllabus import UserSyllabusService
+from competition_app.services.textbook_pdf_ai import (
+    TextbookPdfAiService,
+    TextbookPdfAiSettings,
+)
 from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
@@ -107,9 +112,11 @@ class ApplicationContainer:
     workshop_library_service: WorkshopLibraryService
     textbook_pdf_service: TextbookPdfService
     textbook_import_service: TextbookImportService
+    user_syllabus_service: UserSyllabusService
     learning_plan_service: LearningPlanService
     daily_task_refresh_service: DailyTaskRefreshService
     daily_task_execution_coordinator: DailyTaskExecutionCoordinator | None = None
+    textbook_pdf_ai_service: TextbookPdfAiService | None = None
     writeback_executor: WritebackExecutor | None = None
     question_retrieval_tool: KnowledgeRetrievalTool | None = None
     knowledge_backend: KnowledgeDeliveryBackend | None = None
@@ -194,18 +201,19 @@ class ApplicationContainer:
             if "siliconflow.cn" in settings.chat_base_url.lower()
             else settings.dashscope_api_key
         )
-        textbook_import_service = TextbookImportService(
-            runtime_root=settings.runtime_root,
-            chat_base_url=settings.chat_base_url,
-            chat_model=settings.chat_model,
-            chat_api_key=chat_api_key,
-            mineru_token=settings.mineru_token,
-            mineru_pipeline_root=(
-                settings.knowledge_handoff_root
-                / "知识库管理组件"
-                / "knowledge_upload_pipeline"
-            ),
-            timeout_seconds=settings.llm_timeout_seconds,
+        textbook_pdf_ai_service = (
+            TextbookPdfAiService(
+                textbook_pdf_service,
+                TextbookPdfAiSettings(
+                    base_url=settings.chat_base_url,
+                    api_key=chat_api_key,
+                    model=settings.chat_model,
+                    timeout_seconds=settings.llm_timeout_seconds,
+                ),
+                conversation_repository=conversation_repository,
+            )
+            if settings.mode == "live" and chat_api_key
+            else None
         )
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
@@ -257,6 +265,55 @@ class ApplicationContainer:
             question_retriever = StubQuestionRetriever()
             textbook_retriever = None
             knowledge_backend = None
+        textbook_import_service = TextbookImportService(
+            runtime_root=settings.runtime_root,
+            chat_base_url=settings.chat_base_url,
+            chat_model=settings.chat_model,
+            chat_api_key=chat_api_key,
+            mineru_token=settings.mineru_token,
+            mineru_pipeline_root=(
+                settings.knowledge_handoff_root
+                / "知识库管理组件"
+                / "knowledge_upload_pipeline"
+            ),
+            timeout_seconds=settings.llm_timeout_seconds,
+            embedding_model=embedding_model,
+            vector_store_root=settings.question_vector_store_root,
+            knowledge_resolver=(
+                knowledge_backend.map if knowledge_backend is not None else repository
+            ),
+            vision_base_url=settings.vision_api_base_url,
+            vision_model=settings.vision_api_model,
+            vision_api_key=settings.vision_api_key or "",
+            treekg_root=settings.treekg_root,
+            treekg_python=settings.treekg_python,
+            treekg_api_key=settings.treekg_api_key or "",
+            treekg_api_base=settings.treekg_api_base,
+            treekg_model_name=settings.treekg_model_name,
+        )
+        from competition_app.tools.syllabus_matching import SyllabusVectorMatcher
+
+        user_syllabus_service = UserSyllabusService(
+            settings.runtime_root,
+            chat_base_url=settings.chat_base_url,
+            chat_model=settings.chat_model,
+            chat_api_key=chat_api_key or "",
+            timeout_seconds=settings.llm_timeout_seconds,
+            mineru_token=settings.mineru_token,
+            mineru_pipeline_root=(
+                settings.knowledge_handoff_root
+                / "知识库管理组件"
+                / "knowledge_upload_pipeline"
+            ),
+            knowledge_resolver=(
+                knowledge_backend.map if knowledge_backend is not None else repository
+            ),
+            vector_matcher=SyllabusVectorMatcher(
+                embedding_model,
+                embedding_model_name=settings.embedding_model,
+                vector_store_root=settings.question_vector_store_root,
+            ),
+        )
         backend_handoff_runtime = (
             load_backend_handoff(settings) if include_backend_handoff else None
         )
@@ -945,6 +1002,7 @@ class ApplicationContainer:
                 ),
                 profile_memory_extractor=None,
                 workshop_runtime=backend_handoff_runtime,
+                syllabus_context_loader=user_syllabus_service.load_context,
             ),
             review_service=review_service,
             authentication_service=authentication_service,
@@ -952,6 +1010,8 @@ class ApplicationContainer:
             workshop_library_service=workshop_library_service,
             textbook_pdf_service=textbook_pdf_service,
             textbook_import_service=textbook_import_service,
+            user_syllabus_service=user_syllabus_service,
+            textbook_pdf_ai_service=textbook_pdf_ai_service,
             learning_plan_service=learning_plan_service,
             daily_task_refresh_service=daily_task_refresh_service,
             daily_task_execution_coordinator=daily_task_execution_coordinator,

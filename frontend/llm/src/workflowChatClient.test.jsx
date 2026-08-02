@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  compactWorkflowHistoryContent,
   getResumableWorkflowRunId,
   runtimeEventToTrace,
   streamWorkflowTurn,
@@ -8,6 +9,18 @@ import {
 
 describe('workflow chat event adapter', () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps model traces out of formal assistant history', () => {
+    const raw = [
+      '<<EV:{"type":"model_call","input":{"large":"trace"}}>>',
+      '<think>内部推理</think>',
+      '这是最终可见回复。',
+      '<<REFS:[{"title":"教材"}]>>',
+    ].join('');
+
+    expect(compactWorkflowHistoryContent('assistant', raw)).toBe('这是最终可见回复。');
+    expect(compactWorkflowHistoryContent('user', '用户原始消息')).toBe('用户原始消息');
+  });
 
   it('maps authoritative backend steps to the existing execution timeline', () => {
     expect(runtimeEventToTrace({ event: 'step_started', step_id: 'planner', agent: 'planner_agent' })).toEqual({
@@ -108,7 +121,14 @@ describe('workflow chat event adapter', () => {
       conversationId: 'CONV_1',
       runId: 'THREAD_1',
       answer: '制定长期规划',
-      messages: [],
+      messages: [
+        { id: 'USER_0', role: 'user', content: '上一轮问题' },
+        {
+          id: 'ASSISTANT_0',
+          role: 'assistant',
+          content: '<<EV:{"type":"model_call","input":{"large":"trace"}}>>上一轮最终回答',
+        },
+      ],
       currentPage: {
         tool_name: 'read_current_page',
         page_type: 'knowledge',
@@ -133,6 +153,10 @@ describe('workflow chat event adapter', () => {
         page_type: 'knowledge',
         visible_text: '阴阳学说的基本内容',
       }),
+      messages: [
+        { message_id: 'USER_0', role: 'user', content: '上一轮问题' },
+        { message_id: 'ASSISTANT_0', role: 'assistant', content: '上一轮最终回答' },
+      ],
     }));
   });
 

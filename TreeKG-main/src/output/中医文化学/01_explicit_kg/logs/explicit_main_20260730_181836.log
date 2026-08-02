@@ -1,0 +1,10 @@
+2026-07-30 18:18:36,584 [INFO] explicit_main:67 - ExplicitKG pipeline started. cwd=D:\tree-KG\TreeKG-main\src, python=C:\Users\lizhe\.conda\envs\tcm\python.exe
+2026-07-30 18:18:36,584 [INFO] explicit_main:23 - Starting script: ExplicitKG/TextSegmentation.py
+2026-07-30 18:18:36,996 [INFO] explicit_main:50 - Finished script: ExplicitKG/TextSegmentation.py
+2026-07-30 18:18:36,997 [INFO] explicit_main:23 - Starting script: ExplicitKG/Summarize.py
+2026-07-30 18:22:17,517 [INFO] explicit_main:50 - Finished script: ExplicitKG/Summarize.py
+2026-07-30 18:22:17,517 [INFO] explicit_main:23 - Starting script: ExplicitKG/Extraction.py
+2026-07-30 18:29:17,149 [INFO] explicit_main:50 - Finished script: ExplicitKG/Extraction.py
+2026-07-30 18:29:17,151 [INFO] explicit_main:23 - Starting script: ExplicitKG/toc_graph.py
+2026-07-30 18:29:17,417 [INFO] explicit_main:50 - Finished script: ExplicitKG/toc_graph.py
+2026-07-30 18:29:17,417 [INFO] explicit_main:71 - ExplicitKG pipeline finished. log=D:\tree-KG\TreeKG-main\src\output\中医文化学\01_explicit_kg\logs\explicit_main_20260730_181836.log

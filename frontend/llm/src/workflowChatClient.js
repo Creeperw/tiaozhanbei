@@ -96,6 +96,22 @@ async function responseError(response) {
   return new Error(payload.detail || payload.message || `请求失败（HTTP ${response.status}）`);
 }
 
+export function compactWorkflowHistoryContent(role, content = '') {
+  let text = String(content || '');
+  if (role !== 'assistant') return text;
+
+  // Model traces and transport payloads are UI-only protocol data.  They can
+  // be hundreds of kilobytes and must never re-enter the formal conversation
+  // history on a later turn or regeneration.
+  const rollbacks = [...text.matchAll(/<<ROLLBACK:.*?>>/gs)];
+  const lastRollback = rollbacks.at(-1);
+  if (lastRollback) text = text.slice((lastRollback.index || 0) + lastRollback[0].length);
+  text = text.replace(/<think>[\s\S]*?<\/think>/g, '');
+  text = text.replace(/<think>[\s\S]*$/g, '');
+  text = text.replace(/<<(?:STATUS|EV|REFS|VIDEOS|PLAN|EXEC):[\s\S]*?>>/g, '');
+  return text.trim();
+}
+
 export async function streamWorkflowTurn({
   conversationId,
   runId,
@@ -119,11 +135,13 @@ export async function streamWorkflowTurn({
         user_request: answer,
         available_minutes: availableMinutes,
         ...(currentPage ? { current_page: currentPage } : {}),
-        messages: messages.map(({ id, role, content }) => ({
-          message_id: id || undefined,
-          role,
-          content: String(content || ''),
-        })),
+        messages: messages
+          .map(({ id, role, content }) => ({
+            message_id: id || undefined,
+            role,
+            content: compactWorkflowHistoryContent(role, content),
+          }))
+          .filter(message => message.role === 'user' || message.content),
       };
   const response = await fetchWithAuth(endpoint, {
     method: 'POST',

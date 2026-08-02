@@ -13,7 +13,7 @@ const emptyTemplate = { groups: [], questions: [], required_fields: ['learner_gr
 const emptyAnswers = { preferences: {}, goals: {}, background: {}, special_requirements: {}, locked_fields: [] };
 
 const fallbackGroups = [
-  { key: 'cross_professional', title: '跨专业进阶群体', resources: ['基础讲义'] },
+  { key: 'cross_professional', title: '跨专业进阶群体', resources: ['知识卡片', '基础讲义'] },
   { key: 'academic', title: '学历教育群体', resources: ['经典教材', '分阶测试题'] },
 ];
 
@@ -68,7 +68,7 @@ const profileQuestions = [
     eyebrow: '内容偏好 · 选填',
     title: '你更喜欢哪一种学习资源？',
     description: '这是最后一步。暂时不确定也可以直接跳过。',
-    options: ['讲义讲解', '分阶测试题', '案例训练'],
+    options: ['知识卡片', '讲义讲解', '分阶测试题', '案例训练'],
     mascotMessage: '最后一个问题。告诉我你更喜欢怎样学，我会优先安排同类内容。',
   },
 ];

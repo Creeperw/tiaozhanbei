@@ -283,6 +283,67 @@ def test_publish_agent_paper_forwards_optional_daily_task_item_id():
     assert calls[-1] == "closed"
 
 
+def test_knowledge_card_handoff_maps_external_user_for_list_get_and_save():
+    calls = []
+
+    class FakeDB:
+        def close(self):
+            calls.append("closed")
+
+    db = FakeDB()
+    service = SimpleNamespace(
+        list_knowledge_cards=lambda *args, **kwargs: (
+            calls.append(("list", args, kwargs)) or {"items": []}
+        ),
+        get_knowledge_card=lambda *args, **kwargs: (
+            calls.append(("get", args, kwargs)) or {"card_id": "CARD_1"}
+        ),
+        upsert_knowledge_card=lambda *args, **kwargs: (
+            calls.append(("save", args, kwargs)) or {"card_id": "CARD_1"}
+        ),
+    )
+    modules = {
+        "APP.backend.database": SimpleNamespace(SessionLocal=lambda: db),
+        "APP.backend.learning_workshop_service": service,
+    }
+    runtime = object.__new__(BackendHandoffRuntime)
+    runtime._workshop_user = lambda current_db, external_id: SimpleNamespace(id=7)
+
+    with patch.object(
+        backend_handoff.importlib,
+        "import_module",
+        side_effect=lambda name: modules[name],
+    ):
+        assert runtime.list_knowledge_cards("external-1", offset=3, limit=5) == {
+            "items": []
+        }
+        assert runtime.get_knowledge_card("external-1", "CARD_1") == {
+            "card_id": "CARD_1"
+        }
+        assert runtime.save_knowledge_card(
+            "external-1",
+            kp_id="KP_1",
+            title="阴阳学说",
+            resource_bundle={"summary": "核心概念"},
+            source_execution_id="EXEC_1",
+        ) == {"card_id": "CARD_1"}
+
+    assert calls[0] == ("list", (db,), {"user_id": 7, "offset": 3, "limit": 5})
+    assert calls[2] == ("get", (db,), {"user_id": 7, "card_id": "CARD_1"})
+    assert calls[4] == (
+        "save",
+        (db,),
+        {
+            "user_id": 7,
+            "kp_id": "KP_1",
+            "title": "阴阳学说",
+            "resource_bundle": {"summary": "核心概念"},
+            "source_execution_id": "EXEC_1",
+        },
+    )
+    assert calls.count("closed") == 3
+
+
 def test_memory_agent_drops_generic_planning_instruction_as_goal():
     assert _normalize_profile_memory_value(
         "learning_goal",

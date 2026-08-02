@@ -17,13 +17,19 @@ import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
 import LearningStageLanding from './learning-stage/LearningStageLanding';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import OnboardingSurveyPanel from './OnboardingSurveyPanel';
+import PageLoadingSpinner from './PageLoadingSpinner';
 import {
-  adaptClassicRouteBooks,
   adaptClassicRouteStage,
   adaptPlannedPathNode,
   loadClassicLearningRoute,
   loadPlannedLearningPath,
 } from './learning-tree/learningPathApi';
+import {
+  applyProgressToBookNodes,
+  classicBookNodesWithProgress,
+  loadClassicRouteProgress,
+  loadPlannedRouteProgress,
+} from './learning-tree/classicRouteProgress';
 import { loadLearningTarget } from './exam-atlas/examAtlasApi';
 import { loadAtlasDetail } from './knowledge-atlas/knowledgeAtlasApi';
 import {
@@ -74,6 +80,7 @@ function formatReviewDate(value) {
 const DEFAULT_EXAM_DATE = '2026-11-29T23:59:59+08:00';
 const LEARNING_TARGET_CHANGED_EVENT = 'shizhen:learning-target-changed';
 const CONTENT_FADE_DURATION = 480;
+const PAGE_REVEAL_DELAY = 120;
 
 function currentUserCacheKey(currentUser) {
   return String(currentUser?.id || currentUser?.user_id || currentUser?.username || currentUser?.display_name || 'anonymous');
@@ -107,7 +114,7 @@ function splitHeroTitle(value) {
   };
 }
 
-function HeroTypewriter({ title, subtitle }) {
+function HeroTypewriter({ title, subtitle, active }) {
   const [typedText, setTypedText] = useState('');
   const typedTextRef = useRef('');
   const fullWord = String(title || '').trim();
@@ -116,6 +123,11 @@ function HeroTypewriter({ title, subtitle }) {
     let cancelled = false;
     let timer;
     let cursor = 0;
+    if (!active) {
+      typedTextRef.current = '';
+      setTypedText('');
+      return undefined;
+    }
     const previousText = typedTextRef.current;
     const limit = Math.min(previousText.length, fullWord.length);
     while (cursor < limit && previousText[cursor] === fullWord[cursor]) cursor += 1;
@@ -136,16 +148,23 @@ function HeroTypewriter({ title, subtitle }) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [fullWord]);
+  }, [active, fullWord]);
 
-  const isTyping = typedText.length < fullWord.length;
+  const isTyping = active && typedText.length < fullWord.length;
+  const fullSegments = splitHeroTitle(fullWord);
   const typedSegments = splitHeroTitle(typedText);
   return (
     <div className="home-portal__hero-copy">
       <h1 className="home-portal__hero-title" id="home-portal-title" aria-label={fullWord}>
-        <span className="home-portal__hero-title-lead">{typedSegments.lead}</span>
-        <span className="home-portal__hero-title-accent">{typedSegments.title}</span>
-        {isTyping && <span className="home-portal__hero-caret" aria-hidden="true" />}
+        <span className="home-portal__hero-title-reserve" aria-hidden="true">
+          <span className="home-portal__hero-title-lead">{fullSegments.lead}</span>
+          <span className="home-portal__hero-title-accent">{fullSegments.title}</span>
+        </span>
+        <span className="home-portal__hero-title-typed" aria-hidden="true">
+          <span className="home-portal__hero-title-lead">{typedSegments.lead}</span>
+          <span className="home-portal__hero-title-accent">{typedSegments.title}</span>
+          {isTyping && <span className="home-portal__hero-caret" />}
+        </span>
       </h1>
       <span className="home-portal__hero-desc">{subtitle}</span>
     </div>
@@ -230,6 +249,7 @@ function CurrentLearningPlan({
   const total = Math.max(Number(currentTask?.progress?.total || 0), todayItems.length);
   const completed = Math.min(total, Math.max(Number(currentTask?.progress?.completed || 0), completedFromItems));
   const progress = total > 0 ? (completed / total) * 100 : 0;
+  const hasUnfinishedTodayTask = total > 0 && completed < total;
   const learnedDates = useMemo(() => new Set(studyDays), [studyDays]);
 
   const changeMonth = (offset) => {
@@ -255,13 +275,15 @@ function CurrentLearningPlan({
             const key = localDateKey(date);
             const learned = learnedDates.has(key);
             const isToday = key === today;
+            const taskIncompleteToday = isToday && hasUnfinishedTodayTask;
             const outside = date.getMonth() !== visibleMonth.getMonth();
-            const label = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${isToday ? '，今天' : learned ? '，已学习' : ''}`;
+            const label = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日${isToday ? '，今天' : learned ? '，已学习' : ''}${taskIncompleteToday ? '，今日任务未完成' : ''}`;
             return (
               <span
                 key={key}
                 data-learned={String(learned)}
                 data-today={String(isToday)}
+                data-task-incomplete={String(taskIncompleteToday)}
                 data-outside={String(outside)}
                 aria-label={label}
               >
@@ -272,7 +294,7 @@ function CurrentLearningPlan({
         </div>
         <footer className="home-study-calendar__legend">
           <span><i data-state="today" />今天</span>
-          <span><i data-state="learned" />已学习</span>
+          <span><i data-state="learned" />已签到</span>
         </footer>
       </aside>
 
@@ -400,6 +422,7 @@ function HomeLearningRoute({
 
   useEffect(() => {
     let cancelled = false;
+    const progressController = new AbortController();
     const useClassicRoute = routeMode === 'classic' && Boolean(selectedTarget?.textbook_route_id);
     const routeKey = useClassicRoute ? selectedTarget.textbook_route_id : '__planned__';
     const cacheKey = routeCacheKey(userCacheKey, routeKey);
@@ -419,12 +442,41 @@ function HomeLearningRoute({
     setSelectedNode(null);
     if (!cached?.state) setRouteState((current) => ({ ...current, loading: true, error: '' }));
     routeLoader
-      .then((payload) => {
+      .then(async (payload) => {
         if (cancelled) return;
         const nextState = buildLearningRouteState(payload);
-        updateQualificationRouteCache(cacheKey, { payload, state: nextState });
-        if (!cached || !samePayload(cached.payload, payload)) setRouteState(nextState);
+        const routeChanged = !cached || !samePayload(cached.payload, payload);
+        const stateForProgress = routeChanged ? nextState : cached.state;
+        if (routeChanged) {
+          updateQualificationRouteCache(cacheKey, { payload, state: nextState });
+          setRouteState(nextState);
+        }
         onReadyChange?.(routeKey);
+        const enrichedState = await (useClassicRoute
+          ? loadClassicRouteProgress(stateForProgress, {
+            signal: progressController.signal,
+            userCacheKey,
+            force: true,
+          })
+          : loadPlannedRouteProgress(stateForProgress, {
+            signal: progressController.signal,
+            userCacheKey,
+            force: true,
+          }));
+        if (cancelled || progressController.signal.aborted) return;
+        updateQualificationRouteCache(cacheKey, { payload, state: enrichedState });
+        setRouteState((current) => {
+          if (current.nodes.every((node) => node.node_type === 'stage')) return enrichedState;
+          if (current.nodes.every((node) => node.node_type === 'book')) {
+            return {
+              ...current,
+              nodes: applyProgressToBookNodes(current.nodes, enrichedState.bookProgress),
+              bookProgress: enrichedState.bookProgress,
+              stages: enrichedState.stages,
+            };
+          }
+          return current;
+        });
       })
       .catch((error) => {
         if (!cancelled) {
@@ -441,7 +493,10 @@ function HomeLearningRoute({
           onReadyChange?.(routeKey);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      progressController.abort();
+    };
   }, [onReadyChange, routeMode, routeRevision, selectedTarget?.textbook_route_id, userCacheKey]);
 
   useEffect(() => () => window.clearTimeout(routeTransitionTimerRef.current), []);
@@ -483,7 +538,12 @@ function HomeLearningRoute({
         const stageId = node?.navigation?.stage_id;
         const stage = routeState.classicRoute.stages.find((item) => String(item.stage_id) === String(stageId));
         const childNodes = stage
-          ? adaptClassicRouteBooks(routeState.classicRoute, stage, routeState.atlasRouteId)
+          ? classicBookNodesWithProgress(
+            routeState.classicRoute,
+            stage,
+            routeState.atlasRouteId,
+            routeState.bookProgress,
+          )
           : [];
         setRouteState((current) => ({ ...current, nodes: childNodes, error: '' }));
         setSelectedNode(null);
@@ -491,7 +551,10 @@ function HomeLearningRoute({
       }
       try {
         const childPage = await loadPlannedLearningPath(node.node_id);
-        const childNodes = Array.isArray(childPage.nodes) ? childPage.nodes.map(adaptPlannedPathNode) : [];
+        const childNodes = applyProgressToBookNodes(
+          Array.isArray(childPage.nodes) ? childPage.nodes.map(adaptPlannedPathNode) : [],
+          routeState.bookProgress,
+        );
         setRouteState((current) => ({ ...current, nodes: childNodes, error: '' }));
         setSelectedNode(null);
       } catch (error) {
@@ -680,6 +743,12 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const initialTarget = initialPageCache?.learningTarget || { name: '中医执业医师资格考试', examDate: '' };
   const initialRouteKey = initialTarget.textbook_route_id || '__planned__';
   const hasInitialRoute = Boolean(readQualificationRouteCache(routeCacheKey(userCacheKey, initialRouteKey)));
+  const hasInitialPageSnapshot = Boolean(
+    initialPageCache?.payload
+    && initialPageCache?.learningTarget
+    && initialPageCache?.currentProgress
+    && hasInitialRoute,
+  );
   const hasSummaryRef = useRef(Boolean(initialPageCache?.payload));
   const [payload, setPayload] = useState(initialPageCache?.payload || EMPTY_HOME_PAYLOAD);
   const [loading, setLoading] = useState(!initialPageCache?.payload);
@@ -692,7 +761,8 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const [learningTarget, setLearningTarget] = useState(initialTarget);
   const [learningTargetReady, setLearningTargetReady] = useState(Boolean(initialPageCache?.learningTarget));
   const [readyRouteKey, setReadyRouteKey] = useState(hasInitialRoute ? initialRouteKey : '');
-  const [welcomeRevealReady, setWelcomeRevealReady] = useState(false);
+  const [welcomeRevealReady, setWelcomeRevealReady] = useState(hasInitialPageSnapshot);
+  const [pageRevealReady, setPageRevealReady] = useState(hasInitialPageSnapshot);
   const [summaryRevision, setSummaryRevision] = useState(0);
   const [, setCountdownTick] = useState(0);
   const homeState = useMemo(() => buildHomePortalState(payload), [payload]);
@@ -897,8 +967,6 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     onNavigate?.(item.intent);
   };
 
-  // 今日任务的“看视频”任务不再打开独立的视频学习面板，
-  // 而是直接跳到教材学习里对应的小节（先通过 kp_id 解析教材位置）。
   const openDailyVideoItem = async (item) => {
     const raw = item?.raw || {};
     const kpId = raw?.resource_ref?.kp_id || raw?.kp_id || '';
@@ -907,9 +975,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       return;
     }
     try {
-      const payload = await loadAtlasDetail(kpId, { questionLimit: 1 });
-      const kp = payload?.kp || {};
-      const lv1 = kp?.lv1 || item?.raw?.resource_ref?.book || '';
+      const atlasPayload = await loadAtlasDetail(kpId, { questionLimit: 1 });
+      const kp = atlasPayload?.kp || {};
+      const lv1 = kp?.lv1 || raw?.resource_ref?.book || '';
       const chapterId = kp?.chapter_id || '';
       const sectionId = kp?.section_id || '';
       if (lv1 && sectionId) {
@@ -928,7 +996,8 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         return;
       }
     } catch (_) {
-      // 教材定位失败时回退到原始意图（视频学习面板）。
+      // Fall back to the standalone video panel when the atlas cannot locate
+      // an exact textbook section.
     }
     openActivityItem(item);
   };
@@ -939,11 +1008,9 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       return;
     }
     if (item?.source === 'daily_task' && item?.raw?.item_type === 'video_section') {
-      openDailyVideoItem(item);
+      void openDailyVideoItem(item);
       return;
     }
-    // 今日任务的“知识点练习”不再进入通用题目训练面板，
-    // 而是跳到专题训练（KnowledgePointTrainingHub）中对应的知识点。
     if (item?.source === 'daily_task' && item?.raw?.item_type === 'knowledge_practice') {
       const raw = item.raw || {};
       const kpId = raw?.kp_id || raw?.resource_ref?.kp_id || '';
@@ -975,12 +1042,25 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     && Boolean(readyRouteKey);
   useEffect(() => {
     if (!pageContentReady) {
+      setPageRevealReady(false);
       setWelcomeRevealReady(false);
       return undefined;
     }
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const timer = window.setTimeout(() => setWelcomeRevealReady(true), reduceMotion ? 0 : CONTENT_FADE_DURATION);
-    return () => window.clearTimeout(timer);
+    if (reduceMotion) {
+      setPageRevealReady(true);
+      setWelcomeRevealReady(true);
+      return undefined;
+    }
+    const revealTimer = window.setTimeout(() => setPageRevealReady(true), PAGE_REVEAL_DELAY);
+    const welcomeTimer = window.setTimeout(
+      () => setWelcomeRevealReady(true),
+      PAGE_REVEAL_DELAY + CONTENT_FADE_DURATION,
+    );
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(welcomeTimer);
+    };
   }, [pageContentReady]);
   const displayName = String(currentUser?.display_name || currentUser?.username || '同学').trim() || '同学';
   const hour = new Date().getHours();
@@ -996,11 +1076,18 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     : '';
 
   return (
-    <div className="home-portal" aria-busy={loading}>
-      <section className="home-portal__learning-area" aria-label="学习路线与学习进度">
+    <div className="home-portal" data-page-revealed={String(pageRevealReady)} aria-busy={!pageRevealReady}>
+      {!pageRevealReady && (
+        <PageLoadingSpinner className="learning-path-page__loading" label="正在加载学习路径" />
+      )}
+      <section
+        className="home-portal__learning-area"
+        aria-label="学习路线与学习进度"
+        inert={pageRevealReady ? undefined : true}
+      >
         <div className="home-portal__main-column">
           <section className="home-portal__hero" aria-labelledby="home-portal-title">
-            <div className="home-portal__hero-primary" data-content-ready={String(pageContentReady)}>
+            <div className="home-portal__hero-primary" data-content-ready={String(pageRevealReady)}>
               <div className="home-portal__hero-actions">
                 <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
                   <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
@@ -1010,7 +1097,8 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
                 </button>
               </div>
               <HeroTypewriter
-                title={welcomeRevealReady ? heroTitle : ''}
+                title={heroTitle}
+                active={welcomeRevealReady}
                 subtitle={learningTargetReady && countdown !== null
                   ? `距离${learningTarget.name}还有 ${countdown} 天，保持稳定节奏。`
                   : ''}
@@ -1029,13 +1117,13 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             onNavigate={onNavigate}
             onCurrentProgress={updateCurrentProgress}
             onReadyChange={setReadyRouteKey}
-            contentReady={pageContentReady}
+            contentReady={pageRevealReady}
             routeRevision={routeRevision}
             userCacheKey={userCacheKey}
             selectedTarget={learningTarget}
           />
         </div>
-        <aside className="home-portal__plan-rail" data-content-ready={String(pageContentReady)} aria-busy={!pageContentReady} aria-label="今日学习计划">
+        <aside className="home-portal__plan-rail" data-content-ready={String(pageRevealReady)} aria-busy={!pageRevealReady} aria-label="今日学习计划">
           <CurrentLearningPlan
             currentTask={currentTask}
             items={planItems}

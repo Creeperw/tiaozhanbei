@@ -58,9 +58,8 @@ describe('SimulatedPatientChat', () => {
     await waitFor(() => screen.getByText('开始今天的问诊吧'));
     await act(async () => { fireEvent.click(screen.getByText('开始今天的问诊吧')); });
     await waitFor(() => {
-      expect(screen.getByText('随心练')).toBeDefined();
-      expect(screen.getByText('针灸专练')).toBeDefined();
-      expect(screen.getByText('题型专练')).toBeDefined();
+      expect(screen.getByText('模拟坐诊')).toBeDefined();
+      expect(screen.getByText('针灸实训')).toBeDefined();
     });
   });
 
@@ -68,7 +67,7 @@ describe('SimulatedPatientChat', () => {
     await act(async () => { render(<SimulatedPatientChat />); });
     await waitFor(() => screen.getByText('开始今天的问诊吧'));
     await act(async () => { fireEvent.click(screen.getByText('开始今天的问诊吧')); });
-    await act(async () => { fireEvent.click(screen.getByText('针灸专练')); });
+    await act(async () => { fireEvent.click(screen.getByText('针灸实训')); });
     await act(async () => { fireEvent.click(screen.getByText('开始问诊')); });
 
     expect(screen.getByText('确认患者配合意愿')).toBeInTheDocument();
@@ -76,12 +75,25 @@ describe('SimulatedPatientChat', () => {
     expect(startRequest).toBeUndefined();
   });
 
+  it('passes the selected acupuncture case into the practice flow', async () => {
+    await act(async () => { render(<SimulatedPatientChat />); });
+    await waitFor(() => screen.getByText('开始今天的问诊吧'));
+    await act(async () => { fireEvent.click(screen.getByText('开始今天的问诊吧')); });
+    await act(async () => { fireEvent.click(screen.getByText('针灸实训')); });
+
+    const picker = screen.getByRole('combobox', { name: '选择训练病例' });
+    fireEvent.change(picker, { target: { value: 'acup_00002' } });
+    await act(async () => { fireEvent.click(screen.getByText('开始问诊')); });
+
+    expect(screen.getByRole('heading', { name: '膝关节痛（足太阴经证）' })).toBeInTheDocument();
+  });
+
   it('starts a session and shows first patient message', async () => {
     await act(async () => { render(<SimulatedPatientChat />); });
     await waitFor(() => screen.getByText('开始今天的问诊吧'));
     await act(async () => { fireEvent.click(screen.getByText('开始今天的问诊吧')); });
-    await waitFor(() => screen.getByText('随心练'));
-    await act(async () => { fireEvent.click(screen.getByText('随心练')); });
+    await waitFor(() => screen.getByText('模拟坐诊'));
+    await act(async () => { fireEvent.click(screen.getByText('模拟坐诊')); });
     await waitFor(() => screen.getByText('开始问诊'));
 
     // Intercept the start API call
@@ -124,7 +136,7 @@ describe('SimulatedPatientChat', () => {
   it('shows empty history in sidebar', async () => {
     await act(async () => { render(<SimulatedPatientChat />); });
     await waitFor(() => {
-      expect(screen.getByText('我的诊室')).toBeDefined();
+      expect(screen.getAllByText('我的诊室').length).toBeGreaterThan(0);
     });
   });
 });

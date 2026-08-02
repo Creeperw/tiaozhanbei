@@ -1,4 +1,8 @@
-const finiteNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
+const finiteNumber = (value) => (
+    value === null || value === undefined || value === '' || !Number.isFinite(Number(value))
+        ? null
+        : Number(value)
+);
 
 const getDepthValue = (needle) => finiteNumber(needle?.depthValue ?? needle?.depthMm ?? needle?.depth);
 const getRetentionValue = (needle) => finiteNumber(needle?.retentionMinutes ?? needle?.retentionTime);
@@ -13,36 +17,95 @@ const getDistance = (needle, standard, worldPositionConfigured) => {
     return Math.hypot(needle.x - standard.x, needle.y - standard.y);
 };
 
-const matchNeedlesToStandards = (standards, needles, tolerance, worldPositionConfigured) => {
-    const matches = [];
-    const usedNeedleIndexes = new Set();
+const getPositionTolerances = (standard, scoring, worldPositionConfigured) => {
+    const configuredPass = finiteNumber(
+        standard?.positionTolerance?.pass
+        ?? (worldPositionConfigured ? scoring.positionTolerancePass : scoring.positionTolerancePercent),
+    );
+    if (configuredPass === null || configuredPass <= 0) return null;
+    const configuredExcellent = finiteNumber(
+        standard?.positionTolerance?.excellent ?? scoring.positionToleranceExcellent,
+    );
+    const configuredOuter = finiteNumber(
+        standard?.positionTolerance?.outer ?? scoring.positionToleranceOuter,
+    );
+    return {
+        excellent: configuredExcellent !== null && configuredExcellent > 0
+            ? Math.min(configuredExcellent, configuredPass)
+            : configuredPass * 0.5,
+        pass: configuredPass,
+        outer: configuredOuter !== null && configuredOuter > configuredPass
+            ? configuredOuter
+            : configuredPass * 2,
+    };
+};
+
+const scorePositionDistance = (distance, tolerance) => {
+    if (distance === null || !tolerance) return 0;
+    if (distance <= tolerance.excellent) return 100;
+    if (distance <= tolerance.pass) {
+        const progress = (distance - tolerance.excellent) / (tolerance.pass - tolerance.excellent);
+        return Math.round(100 - progress * 40);
+    }
+    if (distance <= tolerance.outer) {
+        const progress = (distance - tolerance.pass) / (tolerance.outer - tolerance.pass);
+        return Math.round(60 - progress * 60);
+    }
+    return 0;
+};
+
+const matchNeedlesToStandards = (standards, needles, scoring, worldPositionConfigured) => {
+    const candidates = [];
     standards.forEach((standard, standardIndex) => {
-        let best = null;
         needles.forEach((needle, needleIndex) => {
-            if (usedNeedleIndexes.has(needleIndex)) return;
             const distance = getDistance(needle, standard, worldPositionConfigured);
-            if (distance === null || distance > tolerance || (best && distance >= best.distance)) return;
-            best = { standard, standardIndex, needle, needleIndex, distance };
+            if (distance !== null) candidates.push({ standard, standardIndex, needle, needleIndex, distance });
         });
-        if (best) {
-            usedNeedleIndexes.add(best.needleIndex);
-            matches.push(best);
-        }
+    });
+    candidates.sort((first, second) => first.distance - second.distance);
+
+    const matches = [];
+    const usedStandardIndexes = new Set();
+    const usedNeedleIndexes = new Set();
+    candidates.forEach((candidate) => {
+        if (usedStandardIndexes.has(candidate.standardIndex) || usedNeedleIndexes.has(candidate.needleIndex)) return;
+        usedStandardIndexes.add(candidate.standardIndex);
+        usedNeedleIndexes.add(candidate.needleIndex);
+        matches.push({
+            ...candidate,
+            positionScore: scorePositionDistance(
+                candidate.distance,
+                getPositionTolerances(candidate.standard, scoring, worldPositionConfigured),
+            ),
+        });
     });
     return matches;
 };
 
+const scoreMatchedRange = (standards, matches, field, readValue, fallbackRange) => {
+    const configured = standards
+        .map((standard, standardIndex) => {
+            const ownRange = standard?.[field];
+            const range = ownRange || (Array.isArray(fallbackRange)
+                ? { min: fallbackRange[0], max: fallbackRange[1] }
+                : null);
+            return { standard, standardIndex, range };
+        })
+        .filter(({ range }) => finiteNumber(range?.min) !== null && finiteNumber(range?.max) !== null);
+    if (!configured.length) return null;
+    const hits = configured.filter(({ standardIndex, range }) => {
+        const match = matches.find((item) => item.standardIndex === standardIndex);
+        const value = readValue(match?.needle);
+        return value !== null && value >= Number(range.min) && value <= Number(range.max);
+    }).length;
+    return Math.round((hits / configured.length) * 100);
+};
+
 export const scoreAcupunctureAttempt = (caseData, needles) => {
-    const standards = Array.isArray(caseData?.standardPoints) ? caseData.standardPoints : [];
+    const allStandards = Array.isArray(caseData?.standardPoints) ? caseData.standardPoints : [];
+    const standards = allStandards.filter((standard) => !['pricking', 'pricking_cupping'].includes(standard.procedureType));
     const attempts = Array.isArray(needles) ? needles : [];
     const scoring = caseData?.scoring || {};
-    const firstStandard = standards[0];
-    const depthRange = scoring.depthRange || scoring.depthRangeMm
-        || (firstStandard?.depthRange
-            && [finiteNumber(firstStandard.depthRange.min), finiteNumber(firstStandard.depthRange.max)]);
-    const retentionRange = scoring.retentionRangeMinutes
-        || (firstStandard?.retentionRange
-            && [finiteNumber(firstStandard.retentionRange.min), finiteNumber(firstStandard.retentionRange.max)]);
     const worldTolerance = finiteNumber(scoring.positionTolerancePass);
     const coordinateTolerance = finiteNumber(scoring.positionTolerancePercent);
     const worldPositionConfigured = standards.length > 0
@@ -52,37 +115,45 @@ export const scoreAcupunctureAttempt = (caseData, needles) => {
         && coordinateTolerance !== null
         && standards.every((standard) => Number.isFinite(standard.x) && Number.isFinite(standard.y));
     const positionConfigured = worldPositionConfigured || coordinatePositionConfigured;
-    const positionTolerance = worldPositionConfigured ? worldTolerance : coordinateTolerance;
     const matches = positionConfigured
-        ? matchNeedlesToStandards(standards, attempts, positionTolerance, worldPositionConfigured)
+        ? matchNeedlesToStandards(standards, attempts, scoring, worldPositionConfigured)
         : [];
+    const parameterMatches = positionConfigured
+        ? matches
+        : standards.slice(0, attempts.length).map((standard, standardIndex) => ({
+            standard,
+            standardIndex,
+            needle: attempts[standardIndex],
+            needleIndex: standardIndex,
+            positionScore: 0,
+        }));
     const position = positionConfigured && standards.length
-        ? Math.round((matches.length / standards.length) * 100)
+        ? Math.round(matches.reduce((sum, match) => sum + match.positionScore, 0)
+            / Math.max(standards.length, attempts.length, 1))
         : null;
 
-    const depthConfigured = Array.isArray(depthRange)
-        && depthRange.length === 2
-        && depthRange.every((value) => value !== null);
-    const retentionConfigured = Array.isArray(retentionRange)
-        && retentionRange.length === 2
-        && retentionRange.every((value) => value !== null);
-    const evaluatedNeedles = attempts;
-    const depthMatches = evaluatedNeedles.filter((needle) => {
-        const value = getDepthValue(needle);
-        return depthConfigured && value !== null && value >= depthRange[0] && value <= depthRange[1];
-    }).length;
-    const retentionMatches = evaluatedNeedles.filter((needle) => {
-        const value = getRetentionValue(needle);
-        return retentionConfigured && value !== null && value >= retentionRange[0] && value <= retentionRange[1];
-    }).length;
-    const measuredNeedles = evaluatedNeedles.length;
-    const depth = depthConfigured ? (measuredNeedles ? Math.round((depthMatches / measuredNeedles) * 100) : 0) : null;
-    const retention = retentionConfigured ? (measuredNeedles ? Math.round((retentionMatches / measuredNeedles) * 100) : 0) : null;
+    const depth = scoreMatchedRange(
+        standards,
+        parameterMatches,
+        'depthRange',
+        getDepthValue,
+        scoring.depthRange || scoring.depthRangeMm,
+    );
+    const retention = scoreMatchedRange(
+        standards,
+        parameterMatches,
+        'retentionRange',
+        getRetentionValue,
+        scoring.retentionRangeMinutes,
+    );
 
     const insertionStandards = standards.filter((standard) => standard.insertionType);
-    const insertionConfigured = positionConfigured && insertionStandards.length > 0;
-    const insertionMatches = matches.filter((match) => match.standard.insertionType === match.needle.insertionType).length;
-    const insertion = insertionConfigured ? Math.round((insertionMatches / insertionStandards.length) * 100) : null;
+    const insertionMatches = matches.filter((match) => (
+        match.positionScore > 0 && match.standard.insertionType === match.needle.insertionType
+    )).length;
+    const insertion = positionConfigured && insertionStandards.length
+        ? Math.round((insertionMatches / insertionStandards.length) * 100)
+        : null;
 
     const scoreParts = [position, depth, retention, insertion].filter((value) => value !== null);
     if (!scoreParts.length) {

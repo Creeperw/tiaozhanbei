@@ -30,7 +30,9 @@ function normalizeKnowledgePoint(value, fallback = {}) {
 }
 
 function dailyKnowledgePoints(task) {
-  const byId = new Map();
+  const cards = Array.isArray(task?.knowledge_cards) ? task.knowledge_cards : [];
+  const cardRows = cards.map((card) => normalizeKnowledgePoint(card, task?.learning_chapter || {})).filter(Boolean);
+  const byId = new Map(cardRows.map((item) => [item.kpId, item]));
   const items = Array.isArray(task?.items) ? task.items : [];
   items.forEach((item) => {
     const action = item?.action?.params || {};

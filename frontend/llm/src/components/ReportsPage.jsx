@@ -176,6 +176,7 @@ const matchSourceLabels = {
   content_type_default: '按资源类型的默认完成时长估算',
   question_type_default: '按题型的默认作答时长估算',
   user_response_time_mean_30d: '最近 30 天同题平均作答时长',
+  knowledge_card_bundle: '知识卡资源包记录',
   'teaching_resources.quality_score': '教学资源库质量评分',
   'question_bank_items.quality_score': '正式题库质量评分',
 };
@@ -184,6 +185,7 @@ function ResourceMatchCard({ item }) {
   const [basisOpen, setBasisOpen] = useState(false);
   const basisId = useId();
   const typeLabel = {
+    knowledge_card: '知识卡片',
     question: '配套题目',
     video: '视频资源',
   }[item.resource_type] || item.resource_type || '学习资源';

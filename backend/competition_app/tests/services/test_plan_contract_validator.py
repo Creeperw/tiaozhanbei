@@ -103,3 +103,36 @@ def test_long_term_content_must_name_each_structured_book() -> None:
 
     assert result.valid is False
     assert any("正文缺少具体书名：《中药学》" in issue for issue in result.issues)
+
+
+def test_long_term_route_validation_ignores_title_mark_typography() -> None:
+    contract = CompiledLongTermContract(
+        scope="long_term",
+        long_term_plan_content="第一阶段学习《中医学基础》和《医古文》。",
+        total_duration_days=60,
+        stages=[
+            CompiledLongTermStage(
+                stage=1,
+                stage_name="中医基础与文化语言",
+                books=["中医学基础", "医古文"],
+                goal="建立中医基础概念和医古文阅读基础。",
+                duration_days=60,
+                schedule_summary="先学习《中医学基础》，再学习《医古文》。",
+            )
+        ],
+    )
+
+    result = PlanContractValidator().validate(
+        contract,
+        trusted_route={
+            "stages": [
+                {
+                    "name": "中医基础与文化语言",
+                    "books": ["《中医学基础》", "《医古文》"],
+                }
+            ]
+        },
+    )
+
+    assert result.valid is True
+    assert result.issues == []

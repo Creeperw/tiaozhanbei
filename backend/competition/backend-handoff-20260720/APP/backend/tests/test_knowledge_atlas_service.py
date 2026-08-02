@@ -299,6 +299,35 @@ class KnowledgeAtlasServiceTests(unittest.TestCase):
         self.assertEqual(detail["questions"][0]["stem"], "折返形成需要什么条件？")
         self.assertEqual(detail["videos"][0]["bvid"], "BVfixture")
 
+    def test_unresolved_fallback_nodes_expose_complete_navigation_metadata(self):
+        kp_path = self.data_root / "04_knowledge_points" / "final_knowledge_points.json"
+        rows = json.loads(kp_path.read_text(encoding="utf-8"))
+        rows.append({"kp": {
+            "kp_id": "kp-unresolved",
+            "kp_lv1": "药理学",
+            "kp_lv2": "尚未映射的小节",
+            "kp_lv3": "待映射知识点",
+            "raw_content": [],
+        }})
+        kp_path.write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
+
+        store = self.make_store()
+        level_two = store.nodes(2, lv1="药理学", route_id="textbook_14_5")
+        unresolved_chapter = next(
+            row for row in level_two["nodes"] if row["id"].startswith("UNRESOLVED_CHAPTER::")
+        )
+        self.assertEqual(unresolved_chapter["review_status"], "needs_review")
+        self.assertEqual(unresolved_chapter["content_status"], "missing_chunks")
+
+        level_three = store.nodes(
+            3,
+            lv1="药理学",
+            chapter_id=unresolved_chapter["id"],
+            route_id="textbook_14_5",
+        )
+        self.assertEqual(level_three["nodes"][0]["review_status"], "needs_review")
+        self.assertEqual(level_three["nodes"][0]["content_status"], "missing_chunks")
+
     def test_video_catalog_signature_causes_hot_reload(self):
         store = self.make_store()
         self.assertEqual(store.detail("kp-reentry")["videos"][0]["start_seconds"], 12)

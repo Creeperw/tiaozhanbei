@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, BookOpen, FileUp, ImagePlus, LoaderCircle, Search, Upload, X } from 'lucide-react';
+import { ArrowRight, BookOpen, ChevronDown, FileUp, ImagePlus, LoaderCircle, Search, Upload, X } from 'lucide-react';
 import {
   filterTextbookViewModels,
   TEXTBOOK_FILTERS,
   textbookFilterCounts,
+  textbookSourceCounts,
 } from './textbookLibraryModel';
 import { loadTextbookCategories, uploadTextbook } from './textbookPdfApi';
 import './textbookLibrary.css';
@@ -14,6 +15,12 @@ const EMPTY_TEXT = {
   completed: '还没有完成整本教材',
   planned: '尚未加入长期学习计划',
 };
+
+const SOURCE_OPTIONS = [
+  { id: 'all', label: '全部教材' },
+  { id: 'uploaded', label: '用户上传' },
+  { id: 'platform', label: '平台自带' },
+];
 
 function progressSummary(book) {
   if (!book.statusKnown) return '进度待统计';
@@ -126,17 +133,25 @@ export default function TextbookLibrary({
 }) {
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [activeSource, setActiveSource] = useState('all');
+  const [sourceOpen, setSourceOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const normalizedQuery = query.trim();
   const filterSourceBooks = activeFilter === 'all' && !normalizedQuery ? books : catalogBooks;
   const filteredBooks = useMemo(() => filterTextbookViewModels(filterSourceBooks, {
     filter: activeFilter,
+    source: activeSource,
     query,
-  }), [activeFilter, filterSourceBooks, query]);
+  }), [activeFilter, activeSource, filterSourceBooks, query]);
   const counts = useMemo(
     () => textbookFilterCounts(catalogBooks, { progressLoading }),
     [catalogBooks, progressLoading],
   );
+  const sourceCounts = useMemo(
+    () => textbookSourceCounts(catalogBooks),
+    [catalogBooks],
+  );
+  const activeSourceLabel = SOURCE_OPTIONS.find((option) => option.id === activeSource)?.label || '全部教材';
   const learningCount = counts.learning === null ? '--' : counts.learning;
   const noResultsText = query.trim()
     ? '没有找到匹配的教材'
@@ -151,7 +166,34 @@ export default function TextbookLibrary({
           <input aria-label="搜索教材" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索教材" />
         </label>
         <div className="textbook-library__filters" aria-label="教材状态筛选">
-          {TEXTBOOK_FILTERS.map((filter) => {
+          <div className="textbook-library__source-menu">
+            <button
+              type="button"
+              className={`textbook-library__source-trigger${activeSource !== 'all' ? ' is-active' : ''}`}
+              aria-expanded={sourceOpen}
+              aria-haspopup="menu"
+              onClick={() => setSourceOpen((current) => !current)}
+            >
+              {activeSourceLabel}<span>{sourceCounts[activeSource]}</span><ChevronDown aria-hidden="true" size={14} />
+            </button>
+            {sourceOpen && (
+              <div className="textbook-library__source-menu__dropdown" role="menu" aria-label="教材来源筛选">
+                {SOURCE_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={activeSource === option.id}
+                    className={activeSource === option.id ? 'is-active' : ''}
+                    onClick={() => { setActiveSource(option.id); setSourceOpen(false); }}
+                  >
+                    {option.label}<span>{sourceCounts[option.id]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {TEXTBOOK_FILTERS.filter((filter) => filter.id !== 'all').map((filter) => {
             const count = counts[filter.id];
             return (
               <button

@@ -31,6 +31,7 @@ DEFAULT_FRONTEND_DIST_ROOT = REPOSITORY_ROOT / "frontend" / "llm" / "dist"
 DEFAULT_QUESTION_VECTOR_STORE_ROOT = BACKEND_ROOT / "competition" / "vdb_store"
 DEFAULT_KNOWLEDGE_VECTOR_STORE_ROOT = DEFAULT_QUESTION_VECTOR_STORE_ROOT
 DEFAULT_TEXTBOOK_PDF_ROOT = BACKEND_ROOT / "competition" / "textbook_pdfs"
+DEFAULT_TREEKG_ROOT = REPOSITORY_ROOT / "TreeKG-main"
 DEFAULT_TEXTBOOK_PDF_CATALOG_PATH = (
     PACKAGE_ROOT / "data" / "textbook_pdfs" / "catalog.v1.json"
 )
@@ -215,6 +216,11 @@ class Settings:
     official_exam_data_dir: Path = DEFAULT_KNOWLEDGE_HANDOFF_ROOT
     textbook_pdf_root: Path = DEFAULT_TEXTBOOK_PDF_ROOT
     textbook_pdf_catalog_path: Path = DEFAULT_TEXTBOOK_PDF_CATALOG_PATH
+    treekg_root: Path = DEFAULT_TREEKG_ROOT
+    treekg_python: str = ""
+    treekg_api_key: str | None = field(default=None, repr=False)
+    treekg_api_base: str = "https://api.deepseek.com"
+    treekg_model_name: str = "deepseek-v4-flash"
 
     # Transitional delivered-backend integration.
     backend_handoff_enabled: bool = False
@@ -253,7 +259,7 @@ class Settings:
     markitdown_extract_timeout_seconds: int = 120
     max_text_length: int = 3000
     vision_api_base_url: str = ""
-    vision_api_model: str = "qwen3-vl-flash"
+    vision_api_model: str = "Qwen/Qwen3-VL-8B-Instruct"
     vision_api_timeout_seconds: int = 30
     mail_username: str = ""
     mail_from: str = "noreply@example.com"
@@ -405,6 +411,20 @@ class Settings:
                 DEFAULT_TEXTBOOK_PDF_CATALOG_PATH,
                 base=REPOSITORY_ROOT,
             ),
+            treekg_root=_parse_path(
+                values,
+                "TREEKG_ROOT",
+                DEFAULT_TREEKG_ROOT,
+                base=REPOSITORY_ROOT,
+            ),
+            treekg_python=values.get("TREEKG_PYTHON", "").strip(),
+            treekg_api_key=values.get("TREEKG_API_KEY") or None,
+            treekg_api_base=values.get(
+                "TREEKG_API_BASE", "https://api.deepseek.com"
+            ).strip(),
+            treekg_model_name=values.get(
+                "TREEKG_MODEL_NAME", "deepseek-v4-flash"
+            ).strip(),
             backend_handoff_enabled=_parse_bool(
                 values, "BACKEND_HANDOFF_ENABLED", False
             ),
@@ -472,7 +492,9 @@ class Settings:
             ),
             max_text_length=_parse_int(values, "MAX_TEXT_LENGTH", 3000, minimum=1),
             vision_api_base_url=values.get("VISION_API_BASE_URL", ""),
-            vision_api_model=values.get("VISION_API_MODEL", "qwen3-vl-flash"),
+            vision_api_model=values.get(
+                "VISION_API_MODEL", "Qwen/Qwen3-VL-8B-Instruct"
+            ),
             vision_api_timeout_seconds=_parse_int(
                 values, "VISION_API_TIMEOUT_SECONDS", 30, minimum=1
             ),

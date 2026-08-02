@@ -24,6 +24,12 @@ vi.mock('../pageDataLoaders.js', () => ({
         enabled: true,
         badge: 'Available',
       }, {
+        key: 'knowledge_cards',
+        label: 'Knowledge cards',
+        description: 'Knowledge cards',
+        enabled: true,
+        badge: 'Available',
+      }, {
         key: 'paper_workspace',
         label: 'Paper workspace',
         description: 'Paper workspace',
@@ -85,6 +91,17 @@ vi.mock('./QuestionWorkspacePage', () => ({
   default: () => <div data-testid="question-workspace-page" />,
 }));
 
+vi.mock('./KnowledgeCardLibrary', () => ({
+  default: ({ initialResource, directVideo, taskItemId }) => (
+    <div
+      data-testid="knowledge-card-library"
+      data-resource={initialResource || ''}
+      data-video-title={directVideo?.title || ''}
+      data-task-item-id={taskItemId || ''}
+    />
+  ),
+}));
+
 vi.mock('./VideoLearningPanel', () => ({
   default: ({ video, taskItemId, kpName }) => (
     <div
@@ -126,16 +143,15 @@ describe('PracticePage training modules', () => {
     const trainingButtons = within(trainingModules).getAllByRole('button')
       .filter((button) => button.querySelector('strong'));
     expect(trainingButtons.map((button) => button.querySelector('strong')?.textContent)).toEqual([
-      '专项训练',
-      '专题训练',
-      '综合套题',
+      '专项特训',
+      '知识点特训',
       '智能组卷',
+      '真题模拟',
       '模拟病患',
       '错题重做',
     ]);
     expect(trainingButtons.every((button) => Boolean(button.querySelector('small')?.textContent?.trim()))).toBe(true);
-    expect(screen.getByRole('heading', { name: '功能入口' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /历史记录/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /收藏夹/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /笔记本/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
@@ -151,8 +167,8 @@ describe('PracticePage training modules', () => {
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['历史记录', '收藏夹', '笔记本', '上传题库']);
-    expect(within(learningTools).getByText('支持 PDF / 图片 / Markdown / TXT · 智能解析')).toBeInTheDocument();
+    ).toEqual(['错题库', '收藏夹', '笔记本', '上传资源']);
+    expect(within(learningTools).getByText('支持 PDF / 图片 / Word / Excel / Markdown / TXT · 智能解析')).toBeInTheDocument();
   });
 
   it('renders the local overview statistics contract without replacing main workshop modules', () => {
@@ -247,10 +263,10 @@ describe('PracticePage training modules', () => {
   it('opens training history from the workshop tools and returns to the workshop overview', async () => {
     render(<PracticePage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /历史记录/ }));
+    fireEvent.click(screen.getByRole('button', { name: /错题库/ }));
 
-    expect(await screen.findByRole('heading', { name: '历史记录' })).toBeInTheDocument();
-    expect(screen.getByTestId('training-history-panel')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '错题库' })).toBeInTheDocument();
+    expect(screen.getByTestId('mistake-variation-panel')).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '返回训练工坊' }));
@@ -258,9 +274,9 @@ describe('PracticePage training modules', () => {
   });
 
   it.each([
-    ['综合套题', 'atlas-practice-scope'],
+    ['真题模拟', 'atlas-practice-scope'],
     ['智能组卷', 'paper-generation-panel'],
-    ['专题训练', 'knowledge-point-training-hub'],
+    ['知识点特训', 'knowledge-point-training-hub'],
     ['模拟病患', 'simulated-patient-chat'],
   ])('opens %s from the overview as a single page', async (title, panelTestId) => {
     render(<PracticePage />);
@@ -289,10 +305,10 @@ describe('PracticePage training modules', () => {
   it('opens specialized training in the existing case-answer mode', async () => {
     render(<PracticePage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /专项训练/ }));
+    fireEvent.click(screen.getByRole('button', { name: /专项特训/ }));
 
     expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '案例简答' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '客观题' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('returns a deep-linked daily task to its caller instead of the generic workshop overview', () => {
@@ -329,16 +345,16 @@ describe('PracticePage training modules', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
+    fireEvent.click(screen.getByRole('button', { name: '返回训练工坊' }));
     expect(onNavigate).toHaveBeenCalledWith(returnTo);
   });
 
-  it('passes a direct daily video into the video learning panel', () => {
+  it('passes a direct daily video into the knowledge-card player', () => {
     render(
       <PracticePage
         navigationContext={{
           view: 'workspace',
-          taskType: 'video_learning',
+          taskType: 'knowledge_cards',
           taskItemId: 'ITEM_VIDEO',
           resourceView: 'videos',
           directVideo: { title: '章节精讲', url: 'https://example.test/video.mp4' },
@@ -346,8 +362,9 @@ describe('PracticePage training modules', () => {
       />,
     );
 
-    expect(screen.getByTestId('video-learning-panel')).toHaveAttribute('data-video-title', '章节精讲');
-    expect(screen.getByTestId('video-learning-panel')).toHaveAttribute('data-task-item-id', 'ITEM_VIDEO');
+    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-resource', 'videos');
+    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-video-title', '章节精讲');
+    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-task-item-id', 'ITEM_VIDEO');
   });
 
   it('binds a daily knowledge-practice item to its formal knowledge point', async () => {
@@ -359,6 +376,28 @@ describe('PracticePage training modules', () => {
     }} />);
 
     expect(await screen.findByTestId('knowledge-point-training-hub')).toHaveTextContent('KP_SIJUNZI:四君子汤:ITEM_1');
+  });
+
+  it('keeps the standalone video fallback for unresolved daily video tasks', () => {
+    render(
+      <PracticePage
+        navigationContext={{
+          view: 'workspace',
+          taskType: 'video_learning',
+          taskItemId: 'ITEM_VIDEO',
+          directVideo: { title: '章节精讲', url: 'https://example.test/video.mp4' },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId('video-learning-panel')).toHaveAttribute(
+      'data-video-title',
+      '章节精讲',
+    );
+    expect(screen.getByTestId('video-learning-panel')).toHaveAttribute(
+      'data-task-item-id',
+      'ITEM_VIDEO',
+    );
   });
 
   it('opens a single training page without the shared module tabs', async () => {
@@ -376,7 +415,7 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('tab', { name: 'AI 病患模拟' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '试卷生成' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '综合套题' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '真题模拟' })).toBeInTheDocument();
     expect(screen.queryByText('循证训练台')).not.toBeInTheDocument();
     expect(screen.queryByText('当前目标：')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Knowledge cards/ })).not.toBeInTheDocument();
@@ -406,7 +445,8 @@ describe('PracticePage training modules', () => {
   it('opens the upload question bank as its own page', async () => {
     render(<PracticePage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /上传题库/ }));
+    fireEvent.click(screen.getByRole('button', { name: /\u4e0a\u4f20\u8d44\u6e90/ }));
+    fireEvent.click(screen.getByRole('button', { name: /\u4e0a\u4f20\u9898\u5e93/ }));
 
     expect(await screen.findByTestId('question-workspace-page')).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
@@ -417,6 +457,7 @@ describe('PracticePage training modules', () => {
   it.each([
     ['practice_grading', 'atlas-practice-scope'],
     ['case_training', 'simulated-patient-chat'],
+    ['knowledge_cards', 'knowledge-card-library'],
   ])('keeps the legacy %s training intent functional', async (taskType, panelTestId) => {
     render(<PracticePage navigationContext={{ taskType }} />);
 
@@ -425,9 +466,9 @@ describe('PracticePage training modules', () => {
   });
 
   it('opens the training history module directly from its page intent', async () => {
-    render(<PracticePage navigationContext={{ taskType: 'training_history' }} />);
+    render(<PracticePage navigationContext={{ taskType: 'mistake_variation' }} />);
 
-    expect(await screen.findByTestId('training-history-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('mistake-variation-panel')).toBeInTheDocument();
   });
 
   it('opens the AI patient simulation directly from its page intent', async () => {

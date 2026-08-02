@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BookOpen,
+  BookOpenText,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -10,6 +11,7 @@ import {
   Film,
   Layers3,
   LoaderCircle,
+  Network,
   PlayCircle,
   Search,
   Undo2,
@@ -21,7 +23,8 @@ import {
   loadSectionQuestions,
   loadTextbookProgress,
 } from './textbookChapterApi';
-import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
+import { textbookCoverUrl, textbookIntroduction, textbookKnowledgeGraphUrl } from './textbookMetadata';
+import { cachedPromise } from './textbookCache';
 import SectionExamPanel from './SectionExamPanel';
 import TextbookPdfReader from './TextbookPdfReader';
 import { loadTextbookPdfMetadata } from './textbookPdfApi';
@@ -187,6 +190,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const book = navigationContext.lv1 || navigationContext.book || '';
   const bookId = navigationContext.bookId || '';
   const [uploadedBook, setUploadedBook] = useState(null);
+  const knowledgeGraphUrl = textbookKnowledgeGraphUrl(book);
   const [chapters, setChapters] = useState([]);
   const [sections, setSections] = useState([]);
   const [sectionsByChapter, setSectionsByChapter] = useState({});
@@ -205,9 +209,11 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [catalogQuery, setCatalogQuery] = useState('');
   const [catalogStatus, setCatalogStatus] = useState('all');
   const [searchCatalog, setSearchCatalog] = useState(null);
+  const [heroCollapsed, setHeroCollapsed] = useState(false);
   // PDF / 目录 / 作业与考试 模式
-  const [courseMode, setCourseMode] = useState('catalog');
+  const [courseMode, setCourseMode] = useState('pdf');
   const [sectionExamMode, setSectionExamMode] = useState(false);
+  const [examEnteredFromContent, setExamEnteredFromContent] = useState(false);
   const [pdfInitialPage, setPdfInitialPage] = useState(navigationContext.pdfPage || 1);
   const [pageNotesOpen, setPageNotesOpen] = useState(false);
   // 作业与考试独立数据
@@ -220,6 +226,17 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     setPdfInitialPage(navigationContext.pdfPage || 1);
     setPageNotesOpen(false);
   }, [book, navigationContext.openPdf, navigationContext.pdfPage]);
+
+  // 知识图谱 viewer 内「返回」按钮 → 回到电子教材
+  useEffect(() => {
+    const onMessage = (event) => {
+      if (event.data && event.data.type === 'treekg-back') {
+        setCourseMode('pdf');
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
 
   useEffect(() => {
     if (!book) {
@@ -261,11 +278,11 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       return () => controller.abort();
     }
     setUploadedBook(null);
-    const chapterPromise = loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal }).then(async (payload) => {
+    const chapterPromise = cachedPromise(`atlas-chapters-${route}-${book}`, () => loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal })).then(async (payload) => {
       const next = sortByHeadingNumber(Array.isArray(payload.nodes) ? payload.nodes : [], '章');
       setChapters(next); setSelectedChapter((current) => next.find((item) => item.id === current?.id) || next[0] || null);
       const results = await Promise.all(next.map(async (chapter) => {
-        const sectionPayload = await loadAtlasNodes({ level: 3, route, lv1: book, chapter: chapter.name, chapterId: chapter.id, signal: controller.signal });
+        const sectionPayload = await cachedPromise(`atlas-sections-${route}-${book}-${chapter.id}`, () => loadAtlasNodes({ level: 3, route, lv1: book, chapter: chapter.name, chapterId: chapter.id, signal: controller.signal }));
         return [chapter.id, sortByHeadingNumber(Array.isArray(sectionPayload.nodes) ? sectionPayload.nodes : [], '节')];
       }));
       setSectionsByChapter(Object.fromEntries(results));
@@ -535,24 +552,23 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     try { await completeTextbookSection({ book, route, chapter_id: chapter.id, chapter_name: chapter.name, section_id: section.id, section_name: section.name }); }
     catch (saveError) { if (saveError.name !== 'AbortError') setError((current) => current || saveError.message || '保存小节学习进度失败。'); }
   };
-
-  // 深链定位：从今日任务的“看视频”任务进入时，自动打开指定小节。
   const deepLinkSectionId = navigationContext.sectionId || navigationContext.section_id || '';
   const deepLinkHandledRef = useRef(false);
   useEffect(() => {
-    if (deepLinkSectionId) deepLinkHandledRef.current = false;
+    deepLinkHandledRef.current = false;
   }, [deepLinkSectionId, book, bookId, route]);
   useEffect(() => {
-    if (!deepLinkSectionId || deepLinkHandledRef.current) return undefined;
-    if (loading || !chapters.length) return undefined;
+    if (!deepLinkSectionId || deepLinkHandledRef.current || loading || !chapters.length) return;
     const location = findSectionLocation(deepLinkSectionId);
-    if (!location) return undefined;
+    if (!location) return;
     deepLinkHandledRef.current = true;
+    setSectionExamMode(false);
     setCourseMode('catalog');
-    openSection(location.section, location.chapter);
-    return undefined;
+    setPageNotesOpen(false);
+    void openSection(location.section, location.chapter);
   }, [deepLinkSectionId, loading, chapters, sectionsByChapter]);
   const startOrContinueLearning = () => {
+    setSectionExamMode(false); setCourseMode('catalog'); setPageNotesOpen(false);
     const location = progress > 0 ? findSectionLocation(lastSectionId) : null;
     const firstChapter = chapters[0]; const firstSection = firstChapter ? (sectionsByChapter[firstChapter.id] || [])[0] : null;
     const target = location || (firstChapter && firstSection ? { chapter: firstChapter, section: firstSection } : null);
@@ -579,32 +595,49 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     });
   };
 
+  const leaveTextbook = () => onNavigate?.(
+    navigationContext.returnTo || { page: 'practice', params: {} },
+  );
+
   return (
     <main className="textbook-chapter-learning">
-      <header className="textbook-chapter-learning__hero">
-        <div className="textbook-chapter-learning__cover">
-          <img src={uploadedBook?.cover_url || textbookCoverUrl(book)} alt={`《${book}》教材封面`} />
-        </div>
-        <div className="textbook-chapter-learning__intro">
-          <span>学习工坊 · 教材章节学习</span>
-          <h1>《{book || '教材章节'}》</h1>
-          <p>{uploadedBook?.description || textbookIntroduction(book)}</p>
-          <div className="textbook-chapter-learning__stats">
-            <span><BookOpen aria-hidden="true" size={14} />{chapters.length} 个章节</span>
-            <span><Film aria-hidden="true" size={14} />章节视频与知识点片段</span>
-          </div>
-        </div>
-        <div className="textbook-chapter-learning__actions">
-          <button className="textbook-chapter-learning__back" type="button" onClick={() => (navigationContext.returnTo ? onNavigate?.(navigationContext.returnTo) : onNavigate?.({ page: 'practice', params: {} }))}>
-            <ArrowLeft aria-hidden="true" size={14} />返回
-          </button>
-          <div className="textbook-chapter-learning__progress" aria-label="课程学习进度">
-            <div className="textbook-progress-ring" style={{ background: `conic-gradient(#3b936c ${progress}%, #dce6e1 0)` }}><div><strong>{progress}%</strong><span>学习进度</span></div></div>
-            <button type="button" className="textbook-start-learning" onClick={startOrContinueLearning} disabled={progressLoading || !allSections.length}>
-              <PlayCircle aria-hidden="true" size={18} />{progress > 0 ? '继续学习' : '开始学习'}
-            </button>
-          </div>
-        </div>
+      <header className={`textbook-chapter-learning__hero${heroCollapsed ? ' is-collapsed' : ''}`}>
+        {!heroCollapsed && (
+          <>
+            <div className="textbook-chapter-learning__cover">
+              <img src={uploadedBook?.cover_url || textbookCoverUrl(book)} alt={`《${book}》教材封面`} />
+            </div>
+            <div className="textbook-chapter-learning__intro">
+              <span>学习工坊 · 教材章节学习</span>
+              <h1>《{book || '教材章节'}》</h1>
+              <p>{uploadedBook?.description || textbookIntroduction(book)}</p>
+              <div className="textbook-chapter-learning__stats">
+                <span><BookOpen aria-hidden="true" size={14} />{chapters.length} 个章节</span>
+                <span><Film aria-hidden="true" size={14} />章节视频与知识点片段</span>
+              </div>
+            </div>
+            <div className="textbook-chapter-learning__actions">
+              <button className="textbook-chapter-learning__back" type="button" onClick={leaveTextbook}>
+                <ArrowLeft aria-hidden="true" size={14} />返回
+              </button>
+              <div className="textbook-chapter-learning__progress" aria-label="课程学习进度">
+                <div className="textbook-progress-ring" style={{ background: `conic-gradient(#3b936c ${progress}%, #dce6e1 0)` }}><div><strong>{progress}%</strong><span>学习进度</span></div></div>
+                <button type="button" className="textbook-start-learning" onClick={startOrContinueLearning} disabled={progressLoading || !allSections.length}>
+                  <PlayCircle aria-hidden="true" size={18} />{progress > 0 ? '继续学习' : '开始学习'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+        <button
+          type="button"
+          className="textbook-chapter-learning__collapse"
+          aria-label={heroCollapsed ? '展开教材信息' : '折叠教材信息'}
+          title={heroCollapsed ? '展开教材信息' : '折叠教材信息'}
+          onClick={() => setHeroCollapsed((current) => !current)}
+        >
+          {heroCollapsed ? <ChevronDown aria-hidden="true" size={16} /> : <ChevronUp aria-hidden="true" size={16} />}
+        </button>
       </header>
 
       {error && <div className="textbook-chapter-learning__error" role="alert">{error}</div>}
@@ -615,14 +648,20 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <button type="button" className={!sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(false); setCourseMode('catalog'); setPageNotesOpen(false); }}>
+            <button type="button" className={courseMode === 'pdf' && !sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(false); setCourseMode('pdf'); setPageNotesOpen(false); }}>
+              <BookOpenText aria-hidden="true" size={18} />电子教材
+            </button>
+            <button type="button" className={courseMode === 'catalog' && !sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(false); setCourseMode('catalog'); setPageNotesOpen(false); }}>
               <BookOpen aria-hidden="true" size={18} />课程内容
             </button>
             <button type="button" className={sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(true); setCourseMode('catalog'); setPageNotesOpen(false); }}>
               <Layers3 aria-hidden="true" size={18} />作业与考试
             </button>
-            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => setPageNotesOpen((current) => !current)}>
+            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen((current) => !current); setCourseMode('pdf'); }}>
               <BookOpen aria-hidden="true" size={18} />笔记本
+            </button>
+            <button type="button" className={courseMode === 'graph' && !sectionExamMode ? 'is-active' : ''} onClick={() => { setSectionExamMode(false); setCourseMode('graph'); setPageNotesOpen(false); }}>
+              <Network aria-hidden="true" size={18} />知识图谱
             </button>
           </aside>
           <div className="textbook-learning-main">
@@ -635,17 +674,27 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
               route={route}
               notesOpen={pageNotesOpen}
               onNotesOpenChange={setPageNotesOpen}
-              onClose={() => { setPageNotesOpen(false); setCourseMode('catalog'); }}
+              onClose={leaveTextbook}
             />
+          ) : !sectionExamMode && courseMode === 'graph' ? (
+            <section className="textbook-knowledge-graph" aria-label="中医知识图谱">
+              {knowledgeGraphUrl ? (
+                <iframe className="textbook-knowledge-graph__frame" title={`${book}知识图谱`} src={knowledgeGraphUrl} />
+              ) : (
+                <div className="textbook-knowledge-graph__empty" role="status">《{book || '本教材'}》的专用知识图谱正在配置中。</div>
+              )}
+            </section>
           ) : (
           <>
             {!sectionExamMode && (
             <div className="textbook-learning-main__toolbar">
-              <div><h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p></div>
-              <div className="textbook-learning-filters">
-                <button type="button" className="textbook-open-pdf" onClick={() => setCourseMode('pdf')}>
-                  <BookOpen aria-hidden="true" size={15} />阅读电子教材
+              <div>
+                <button type="button" className="textbook-view-back" onClick={leaveTextbook}>
+                  <ArrowLeft aria-hidden="true" size={15} />返回教材目录
                 </button>
+                <h2>课程内容</h2><p>共 {chapters.length} 个章节 · 章节视频与知识点片段</p>
+              </div>
+              <div className="textbook-learning-filters">
                 <label><Search aria-hidden="true" size={15} /><input aria-label="搜索章节、小节或知识点" value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="搜索章节、小节或知识点" /></label>
                 {[
                   ['all', '全部'],
@@ -659,130 +708,161 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
               </div>
             </div>
             )}
-          {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
-            <Directory
-              title="章节"
-              icon={BookOpen}
-              className="textbook-directory--chapters"
-              items={filteredChapters}
-              selectedId={selectedChapter?.id}
-              onSelect={(chapter) => {
-                if (!chapter) { setSelectedChapter(null); setSelectedSection(null); setDetail(null); setVideoHistory([]); return; }
-                setSelectedChapter(chapter); setSelectedSection(null); setDetail(null); setVideoHistory([]);
-              }}
-              emptyText={normalizedCatalogQuery ? '没有找到匹配的章节或小节。' : catalogStatus !== 'all' ? '当前筛选条件下没有章节。' : '该教材暂无章节数据。'}
-              unitLabel="个小节"
-              showCompletion
-              getItemStatus={getChapterCompletionStatus}
-              selectedExtra={selectedChapter ? (
-                <Directory
-                  title=""
-                  icon={Layers3}
-                  className="textbook-directory--sections"
-                  items={filteredSections}
-                  selectedId={selectedSection?.id}
-                  onSelect={(section) => {
-                    if (!section) { setSelectedSection(null); setDetail(null); setVideoHistory([]); return; }
-                    openSection(section, selectedChapter);
-                  }}
-                  emptyText={normalizedCatalogQuery ? '没有找到匹配的小节。' : '该章节暂无小节数据。'}
-                  unitLabel="个知识点"
-                  showCompletion
-                  getItemStatus={(section) => (isSectionCompleted(section) ? 'completed' : 'pending')}
-                />
-              ) : null}
-            />
-          </div>}
-
-          {selectedSection && sectionExamMode ? (
-            <div style={{padding:'20px 0'}}>
-              <SectionExamPanel
-                sectionName={selectedSection.name}
-                kpIds={sectionKpIdsMap[selectedSection.id] || []}
-                onBack={() => setSelectedSection(null)}
-              />
+          {sectionExamMode && !selectedSection && (
+            <div className="textbook-exam-toolbar">
+              <button type="button" className="textbook-view-back" onClick={leaveTextbook}>
+                <ArrowLeft aria-hidden="true" size={15} />返回教材目录
+              </button>
+              <h2>作业与考试</h2>
+              <p>选择章节后进入对应练习</p>
             </div>
-          ) : selectedSection && !sectionExamMode && (
-          <section className="textbook-section-content" aria-live="polite">
-            <header>
-              <div className="textbook-section-content__eyebrow">
-                <span>{selectedChapter?.name || '请选择章节'}</span>
-                <button type="button" onClick={() => setSelectedSection(null)}>
-                  <ArrowLeft aria-hidden="true" size={14} />返回小节目录
-                </button>
-              </div>
-              <h2>{selectedSection?.name || '请选择小节'}</h2>
-              {detail?.section && <p>{detail.section.book} / {detail.section.chapter} / {detail.section.name}</p>}
-            </header>
+          )}
 
-            {detailLoading ? (
-              <div className="textbook-section-content__loading" role="status">
-                <LoaderCircle aria-hidden="true" size={20} />正在加载小节学习内容…
-              </div>
-            ) : selectedSection && detail ? (
-              <div className="textbook-section-workspace">
-                <section className="textbook-section-content__kps">
-                  <div className="textbook-section-content__heading">
-                    <Layers3 aria-hidden="true" size={18} />
-                    <h2>本节知识点</h2>
-                    <span>{knowledgePoints.length}</span>
-                  </div>
-                  {knowledgePoints.length ? (
-                    <>
-                      <div className="textbook-knowledge-points-grid">
-                        {visibleKnowledgePoints.map((kp) => {
-                          const playable = Boolean(kp.timestamp_video);
-                          const active = activeKnowledgePoint?.kp_id === kp.kp_id;
-                          return (
-                            <button type="button" key={kp.kp_id} className={`${active ? 'is-active' : ''} ${playable ? 'has-timestamp' : ''}`.trim()} aria-disabled={!playable} onClick={playable ? () => playKnowledgePoint(kp) : undefined}>
-                              <strong>{kp.name || kp.kp_id}</strong>
-                              {kp.alias && <small>{kp.alias}</small>}
-                              {playable && <em><PlayCircle aria-hidden="true" size={12} />播放时间戳视频</em>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {hasFoldedKnowledgePoints && plainKnowledgePoints.length > 0 && (
-                        <button type="button" className="textbook-kp-fold-toggle" onClick={() => setKnowledgePointsExpanded((current) => !current)} aria-expanded={knowledgePointsExpanded}>
-                          <span>{knowledgePointsExpanded ? '收起' : `展开其余 ${plainKnowledgePoints.length} 个知识点`}</span>
-                          {knowledgePointsExpanded ? <ChevronUp aria-hidden="true" size={15} /> : <ChevronDown aria-hidden="true" size={15} />}
+          {!selectedSection && <div className={`textbook-catalog-stage ${selectedChapter ? 'has-chapter' : ''}`}>
+                  <Directory
+                    title="章节"
+                    icon={BookOpen}
+                    className="textbook-directory--chapters"
+                    items={filteredChapters}
+                    selectedId={selectedChapter?.id}
+                    onSelect={(chapter) => {
+                      if (!chapter) {
+                        setSelectedChapter(null);
+                        setSelectedSection(null);
+                        setDetail(null);
+                        setVideoHistory([]);
+                        return;
+                      }
+                      setSelectedChapter(chapter);
+                      setSelectedSection(null);
+                      setDetail(null);
+                      setVideoHistory([]);
+                    }}
+                    emptyText={
+                      normalizedCatalogQuery
+                        ? '没有找到匹配的章节或小节。'
+                        : catalogStatus !== 'all'
+                          ? '当前筛选条件下没有章节。'
+                          : '该教材暂无章节数据。'
+                    }
+                    unitLabel="个小节"
+                    showCompletion
+                    getItemStatus={getChapterCompletionStatus}
+                    selectedExtra={selectedChapter ? (
+                      <Directory
+                        title=""
+                        icon={Layers3}
+                        className="textbook-directory--sections"
+                        items={filteredSections}
+                        selectedId={selectedSection?.id}
+                        onSelect={(section) => {
+                          if (!section) { setSelectedSection(null); setDetail(null); setVideoHistory([]); return; }
+                          openSection(section, selectedChapter);
+                        }}
+                        emptyText={normalizedCatalogQuery ? '没有找到匹配的小节。' : '该章节暂无小节数据。'}
+                        unitLabel="个知识点"
+                        showCompletion
+                        getItemStatus={(section) => (isSectionCompleted(section) ? 'completed' : 'pending')}
+                      />
+                    ) : null}
+                  />
+                </div>}
+
+                {selectedSection && sectionExamMode ? (
+                  <SectionExamPanel
+                    sectionName={selectedSection.name}
+                    kpIds={sectionKpIdsMap[selectedSection.id] || []}
+                    onBack={() => {
+                      if (examEnteredFromContent) {
+                        setSectionExamMode(false);
+                        setExamEnteredFromContent(false);
+                      } else {
+                        setSelectedSection(null);
+                      }
+                    }}
+                    backLabel={examEnteredFromContent ? '返回学习' : undefined}
+                  />
+                ) : selectedSection && (
+                  <section className="textbook-section-content" aria-live="polite">
+                    <header>
+                      <div className="textbook-section-content__eyebrow">
+                        <span>{selectedChapter?.name || '请选择章节'}</span>
+                        <button type="button" onClick={() => setSelectedSection(null)}>
+                          <ArrowLeft aria-hidden="true" size={14} />返回小节目录
                         </button>
-                      )}
-                    </>
-                  ) : <p className="textbook-section-content__empty">该小节暂无知识点数据。</p>}
-                </section>
+                      </div>
+                      <h2>{selectedSection?.name || '请选择小节'}<button type="button" className="textbook-section-exam-btn" onClick={() => { setExamEnteredFromContent(true); setSectionExamMode(true); setCourseMode('catalog'); }}><Layers3 aria-hidden="true" size={14} />开始练习</button></h2>
+                      {detail?.section && <p>{detail.section.book} / {detail.section.chapter} / {detail.section.name}</p>}
+                    </header>
 
-                <section className="textbook-section-content__videos">
-                  <div className="textbook-section-content__heading">
-                    <Film aria-hidden="true" size={18} />
-                    <h2>{activeTimestampVideo ? `${activeTimestampName} · 知识点视频` : sectionVideo ? '小节视频' : '推荐视频'}</h2>
-                    <button type="button" className="textbook-return-video" onClick={returnPreviousVideo} disabled={videoBackDisabled}>
-                      <Undo2 aria-hidden="true" size={14} />返回上一个视频
-                    </button>
-                  </div>
-                  {activeTimestampVideo ? (
-                    <div className="textbook-video-grid">
-                      <VideoCard video={activeTimestampVideo} mode="timestamp" />
-                    </div>
-                  ) : sectionVideo ? (
-                    <div className="textbook-video-grid">
-                      <VideoCard video={sectionVideo} mode="section" displayTitle={`小节完整视频：${detail.section.name}`} />
-                    </div>
-                  ) : recommendedVideo ? (
-                    <div className="textbook-video-grid">
-                      <p className="textbook-section-content__recommendation-title">该小节暂无完整视频，当前展示推荐内容</p>
-                      <VideoCard video={recommendedVideo} mode="recommended" />
-                    </div>
-                  ) : (
-                    <p className="textbook-section-content__empty">该小节暂无可播放的视频内容。</p>
-                  )}
-                </section>
-              </div>
-            ) : <p className="textbook-section-content__empty">请先选择一个小节。</p>}
-          </section>
-          )}
-          </>
-          )}
+                    {detailLoading ? (
+                      <div className="textbook-section-content__loading" role="status">
+                        <LoaderCircle aria-hidden="true" size={20} />正在加载小节学习内容…
+                      </div>
+                    ) : selectedSection && detail ? (
+                      <div className="textbook-section-workspace">
+                        <section className="textbook-section-content__kps">
+                          <div className="textbook-section-content__heading">
+                            <Layers3 aria-hidden="true" size={18} />
+                            <h2>本节知识点</h2>
+                            <span>{knowledgePoints.length}</span>
+                          </div>
+                          {knowledgePoints.length ? (
+                            <>
+                              <div className="textbook-knowledge-points-grid">
+                                {visibleKnowledgePoints.map((kp) => {
+                                  const playable = Boolean(kp.timestamp_video);
+                                  const active = activeKnowledgePoint?.kp_id === kp.kp_id;
+                                  return (
+                                    <button type="button" key={kp.kp_id} className={`${active ? 'is-active' : ''} ${playable ? 'has-timestamp' : ''}`.trim()} aria-disabled={!playable} onClick={playable ? () => playKnowledgePoint(kp) : undefined}>
+                                      <strong>{kp.name || kp.kp_id}</strong>
+                                      {kp.alias && <small>{kp.alias}</small>}
+                                      {playable && <em><PlayCircle aria-hidden="true" size={12} />播放时间戳视频</em>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {hasFoldedKnowledgePoints && plainKnowledgePoints.length > 0 && (
+                                <button type="button" className="textbook-kp-fold-toggle" onClick={() => setKnowledgePointsExpanded((current) => !current)} aria-expanded={knowledgePointsExpanded}>
+                                  <span>{knowledgePointsExpanded ? '收起' : `展开其余 ${plainKnowledgePoints.length} 个知识点`}</span>
+                                  {knowledgePointsExpanded ? <ChevronUp aria-hidden="true" size={15} /> : <ChevronDown aria-hidden="true" size={15} />}
+                                </button>
+                              )}
+                            </>
+                          ) : <p className="textbook-section-content__empty">该小节暂无知识点数据。</p>}
+                        </section>
+
+                        <section className="textbook-section-content__videos">
+                          <div className="textbook-section-content__heading">
+                            <Film aria-hidden="true" size={18} />
+                            <h2>{activeTimestampVideo ? `${activeTimestampName} · 知识点视频` : sectionVideo ? '小节视频' : '推荐视频'}</h2>
+                            <button type="button" className="textbook-return-video" onClick={returnPreviousVideo} disabled={videoBackDisabled}>
+                              <Undo2 aria-hidden="true" size={14} />返回上一个视频
+                            </button>
+                          </div>
+                          {activeTimestampVideo ? (
+                            <div className="textbook-video-grid">
+                              <VideoCard video={activeTimestampVideo} mode="timestamp" />
+                            </div>
+                          ) : sectionVideo ? (
+                            <div className="textbook-video-grid">
+                              <VideoCard video={sectionVideo} mode="section" displayTitle={`小节完整视频：${detail.section.name}`} />
+                            </div>
+                          ) : recommendedVideo ? (
+                            <div className="textbook-video-grid">
+                              <p className="textbook-section-content__recommendation-title">该小节暂无完整视频，当前展示推荐内容</p>
+                              <VideoCard video={recommendedVideo} mode="recommended" />
+                            </div>
+                          ) : (
+                            <p className="textbook-section-content__empty">该小节暂无可播放的视频内容。</p>
+                          )}
+                        </section>
+                      </div>
+                    ) : <p className="textbook-section-content__empty">请先选择一个小节。</p>}
+                  </section>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

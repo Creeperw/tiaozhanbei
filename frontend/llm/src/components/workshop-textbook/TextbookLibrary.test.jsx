@@ -76,8 +76,30 @@ it('keeps unknown progress out of status filters and preserves the expand action
   />);
 
   expect(screen.getAllByText('进度待统计').length).toBeGreaterThan(0);
-  expect(within(screen.getByRole('button', { pressed: true })).getByText('3')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '全部教材3' })).toBeInTheDocument();
   expect(screen.getByText(/其中 1 本学习中/)).toBeInTheDocument();
   expect(screen.queryByText('--')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: '展开全部教材' })).toBeInTheDocument();
+});
+
+it('filters textbooks by uploaded and platform sources from the source menu', () => {
+  render(<TextbookLibrary books={[
+    textbook({ id: 'BOOK_1', origin: 'user_upload' }),
+    textbook({ id: 'BOOK_2', name: '中医诊断学', origin: 'platform', isCurrent: false, isPlanned: false }),
+  ]} />);
+
+  expect(screen.getByText('《中医学基础》')).toBeInTheDocument();
+  expect(screen.getByText('《中医诊断学》')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /全部教材/ }));
+  fireEvent.click(screen.getByRole('menuitemradio', { name: /用户上传/ }));
+
+  expect(screen.getByText('《中医学基础》')).toBeInTheDocument();
+  expect(screen.queryByText('《中医诊断学》')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /用户上传/ }));
+  fireEvent.click(screen.getByRole('menuitemradio', { name: /平台自带/ }));
+
+  expect(screen.queryByText('《中医学基础》')).not.toBeInTheDocument();
+  expect(screen.getByText('《中医诊断学》')).toBeInTheDocument();
 });

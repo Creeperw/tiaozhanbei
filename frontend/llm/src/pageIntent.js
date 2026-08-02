@@ -24,6 +24,7 @@ export function getIntentPage(intent) {
 
 const WORKSHOP_DESTINATIONS = {
   'workshop.paper': { taskType: 'paper_workspace' },
+  'workshop.knowledge_card': { taskType: 'knowledge_cards', resourceView: 'explanation' },
   'workshop.knowledge_video': { taskType: 'video_learning', resourceView: 'videos' },
   'workshop.question_training': { taskType: 'question_training' },
   'workshop.topic_training': { taskType: 'topic_training' },
@@ -53,6 +54,7 @@ export function workshopActionIntent(action, defaults = {}) {
     taskType: target.taskType,
     resourceView: rawParams.resourceView || rawParams.resource_view || target.resourceView,
     paperId: rawParams.paperId || rawParams.paper_id,
+    cardId: rawParams.cardId || rawParams.card_id,
     kpId: rawParams.kpId || rawParams.kp_id,
     kpName: rawParams.kpName || rawParams.kp_name,
     taskItemId: rawParams.taskItemId || rawParams.task_item_id,

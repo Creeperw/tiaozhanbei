@@ -1,0 +1,22 @@
+2026-07-30 19:39:15,119 [INFO] dedup:141 - Dedup started. entities_aggr=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\aggr_entities.json, entities_conv=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\conv_entities.json, selected=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\aggr_entities.json, embeddings=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\node_embeddings.pkl, output=D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\dedup_result.json
+2026-07-30 19:39:15,119 [INFO] dedup:145 - 📘 [1/5] 加载实体与嵌入文件...
+2026-07-30 19:39:15,544 [INFO] root:65 - 载入实体 4157 个：aggr_entities.json
+2026-07-30 19:39:15,618 [INFO] root:74 - 载入嵌入 4157 x 768：node_embeddings.pkl
+2026-07-30 19:39:15,636 [INFO] dedup:158 - ✅ 对齐后参与去重的实体数：4157
+2026-07-30 19:39:15,636 [INFO] dedup:161 - 📘 [2/5] 开始近邻检索（FAISS/Sklearn）...
+2026-07-30 19:39:29,862 [INFO] dedup:186 - 📘 [3/5] 候选对过滤（距离阈值 + 角色 + 名称Jaccard + 互近邻 + 排名/配额）...
+2026-07-30 19:39:30,035 [INFO] dedup:233 - 📌 候选对（通过初筛）：348 / 原始对数：22497
+2026-07-30 19:39:30,035 [INFO] dedup:234 - [诊断] 过滤统计: 距离=4 角色=7480 名称Jaccard=14635 互近邻=30 配额=0
+2026-07-30 19:39:30,040 [INFO] dedup:238 - [诊断] 初筛距离分位数 p5..p95: [0.0981 0.1074 0.1227 0.1439 0.1645 0.1791 0.1841]
+2026-07-30 19:39:30,041 [INFO] dedup:261 - 📘 [3.5] 跳过快速通道；进入 LLM 的对数：348
+2026-07-30 19:39:30,041 [INFO] dedup:264 - 📘 [4/5] LLM 并行判定（并发=10；按距离升序）...
+2026-07-30 19:40:13,337 [INFO] dedup:296 - 📘 [5/5] 构建等价类、合并并写出结果...
+2026-07-30 19:40:14,651 [INFO] dedup:421 - 
+—— 去重任务摘要 ——
+2026-07-30 19:40:14,651 [INFO] dedup:422 - 候选对原始数量：22497
+2026-07-30 19:40:14,651 [INFO] dedup:423 - 进入 LLM 判定的数量：348（已并行处理）
+2026-07-30 19:40:14,651 [INFO] dedup:424 - 成功合并的实体对：129
+2026-07-30 19:40:14,651 [INFO] dedup:425 - 实体数量变化：4157 -> 4028
+2026-07-30 19:40:14,651 [INFO] dedup:426 - 总耗时：58.43 秒
+2026-07-30 19:40:14,652 [INFO] dedup:427 - 结果文件：D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\dedup_result.json
+2026-07-30 19:40:14,652 [INFO] dedup:428 - Dedup log: D:\tree-KG\TreeKG-main\src\output\中医文化学\02_hidden_kg\logs\dedup_20260730_193915.log

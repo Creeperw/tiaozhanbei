@@ -118,6 +118,7 @@ class AuditAgent:
                             external_information_request
                         ),
                         "exam_constraints": context.get("exam_constraints", {}),
+                        "must_stay_within_user_syllabus": bool(context.get("user_syllabus")),
                     },
                     "output_schema": AuditModelOutput.model_json_schema(),
                     },

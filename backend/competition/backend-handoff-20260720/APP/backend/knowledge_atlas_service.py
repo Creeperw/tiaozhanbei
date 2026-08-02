@@ -728,6 +728,7 @@ class KnowledgeAtlasStore:
                         "order_index": 999999,
                         "review_status": "needs_review",
                         "unresolved_identifier": chapter_id,
+                        "content_status": "missing_chunks",
                         "sections": [],
                     }
                     chapter_by_id[chapter_id] = chapter
@@ -744,6 +745,8 @@ class KnowledgeAtlasStore:
                         "chapter_name": chapter["name"],
                         "chapter_order": chapter["order_index"],
                         "order_index": len(chapter["sections"]) + 1,
+                        "review_status": "needs_review",
+                        "content_status": "missing_chunks",
                         "source_section_ids": [section_id],
                         "kps": [],
                     }

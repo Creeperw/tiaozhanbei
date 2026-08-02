@@ -79,11 +79,12 @@ def _load_acupuncture_cases() -> list[dict]:
         return []
     for case in payload:
         case.setdefault("positionTolerance3d", {
-            "excellent": 0.005,
-            "pass": 0.01,
+            "excellent": 0.012,
+            "pass": 0.03,
+            "outer": 0.06,
             "unit": "model",
             "metric": "world_euclidean",
-            "reviewStatus": "approved",
+            "reviewStatus": "model_calibrated",
         })
     return payload
 
@@ -118,47 +119,123 @@ def _current_engine() -> SimulatedPatientEngine:
     return _engine
 
 
-def _score_acupuncture_case(case_data: dict, needles: list[dict], standard_positions: dict[str, list[float]]) -> dict:
-    standards = case_data.get("standardAcupoints") or []
+def _score_acupuncture_case(case_data: dict, needles: list[dict], standard_positions: dict[str, list[float]] | None = None) -> dict:
+    del standard_positions  # Retained in the signature only for compatibility with older callers.
     standards = [
-        {**point, "modelPosition": standard_positions.get(point.get("modelNodeName"))}
-        for point in standards
+        point
+        for point in (case_data.get("standardAcupoints") or [])
+        if point.get("procedureType") not in {"pricking", "pricking_cupping"}
     ]
     tolerance = case_data.get("positionTolerance3d") or {}
+    excellent_tolerance = tolerance.get("excellent")
     pass_tolerance = tolerance.get("pass")
+    outer_tolerance = tolerance.get("outer")
     position_configured = (
-        isinstance(pass_tolerance, (int, float))
-        and all(isinstance(point.get("modelPosition"), list) for point in standards)
+        isinstance(excellent_tolerance, (int, float))
+        and isinstance(pass_tolerance, (int, float))
+        and isinstance(outer_tolerance, (int, float))
+        and 0 < excellent_tolerance <= pass_tolerance < outer_tolerance
+        and bool(standards)
+        and all(isinstance(point.get("modelPosition"), list) and len(point["modelPosition"]) == 3 for point in standards)
     )
-    depth_range = standards[0].get("needleDepth") if standards else None
-    retention_range = standards[0].get("retentionTime") if standards else None
-    depth_configured = isinstance(depth_range, dict) and depth_range.get("unit") in {"寸", "mm"}
-    retention_configured = isinstance(retention_range, dict) and retention_range.get("unit") == "分钟"
-    if not any((position_configured, depth_configured, retention_configured)):
-        return {"available": False, "total": None, "position": None, "depth": None, "retention": None}
 
     def distance(first: list[float], second: list[float]) -> float:
         return sum((first[index] - second[index]) ** 2 for index in range(3)) ** 0.5
 
-    position_hits = 0
+    def position_score(value: float) -> int:
+        if value <= excellent_tolerance:
+            return 100
+        if value <= pass_tolerance:
+            progress = (value - excellent_tolerance) / (pass_tolerance - excellent_tolerance)
+            return round(100 - progress * 40)
+        if value <= outer_tolerance:
+            progress = (value - pass_tolerance) / (outer_tolerance - pass_tolerance)
+            return round(60 - progress * 60)
+        return 0
+
+    matches: list[dict] = []
     if position_configured:
-        position_hits = sum(
-            any(isinstance(needle.get("point"), list) and len(needle["point"]) == 3
-                and distance(needle["point"], point["modelPosition"]) <= pass_tolerance
-                for needle in needles)
-            for point in standards
-        )
-    position = round(position_hits / len(standards) * 100) if position_configured and standards else None
-    depth = None
-    if depth_configured:
-        hits = sum(depth_range["min"] <= needle.get("depthValue", -1) <= depth_range["max"] for needle in needles)
-        depth = round(hits / len(needles) * 100) if needles else 0
-    retention = None
-    if retention_configured:
-        hits = sum(retention_range["min"] <= needle.get("retentionMinutes", -1) <= retention_range["max"] for needle in needles)
-        retention = round(hits / len(needles) * 100) if needles else 0
-    parts = [value for value in (position, depth, retention) if value is not None]
-    return {"available": True, "total": round(sum(parts) / len(parts)), "position": position, "depth": depth, "retention": retention}
+        candidates = []
+        for standard_index, standard in enumerate(standards):
+            for needle_index, needle in enumerate(needles):
+                needle_point = needle.get("point")
+                if not isinstance(needle_point, list) or len(needle_point) != 3:
+                    continue
+                try:
+                    measured_distance = distance(needle_point, standard["modelPosition"])
+                except (TypeError, ValueError):
+                    continue
+                candidates.append((measured_distance, standard_index, needle_index))
+        used_standards: set[int] = set()
+        used_needles: set[int] = set()
+        for measured_distance, standard_index, needle_index in sorted(candidates):
+            if standard_index in used_standards or needle_index in used_needles:
+                continue
+            used_standards.add(standard_index)
+            used_needles.add(needle_index)
+            matches.append({
+                "standard_index": standard_index,
+                "needle_index": needle_index,
+                "position_score": position_score(measured_distance),
+            })
+
+    position = (
+        round(sum(match["position_score"] for match in matches) / max(len(standards), len(needles), 1))
+        if position_configured
+        else None
+    )
+
+    def matched_range_score(field: str, needle_field: str, required_unit: set[str]) -> int | None:
+        configured = [
+            (index, standard[field])
+            for index, standard in enumerate(standards)
+            if isinstance(standard.get(field), dict)
+            and standard[field].get("unit") in required_unit
+            and isinstance(standard[field].get("min"), (int, float))
+            and isinstance(standard[field].get("max"), (int, float))
+        ]
+        if not configured:
+            return None
+        hits = 0
+        for standard_index, value_range in configured:
+            match = next((item for item in matches if item["standard_index"] == standard_index), None)
+            value = needles[match["needle_index"]].get(needle_field) if match else None
+            if isinstance(value, (int, float)) and value_range["min"] <= value <= value_range["max"]:
+                hits += 1
+        return round(hits / len(configured) * 100)
+
+    depth = matched_range_score("needleDepth", "depthValue", {"寸", "mm"})
+    retention = matched_range_score("retentionTime", "retentionMinutes", {"分钟"})
+    insertion_standards = [
+        (index, standard["insertionType"])
+        for index, standard in enumerate(standards)
+        if standard.get("insertionType")
+    ]
+    insertion = None
+    if position_configured and insertion_standards:
+        insertion_hits = 0
+        for standard_index, expected_type in insertion_standards:
+            match = next((item for item in matches if item["standard_index"] == standard_index), None)
+            if match and match["position_score"] > 0 and needles[match["needle_index"]].get("insertionType") == expected_type:
+                insertion_hits += 1
+        insertion = round(insertion_hits / len(insertion_standards) * 100)
+
+    parts = [value for value in (position, insertion, depth, retention) if value is not None]
+    if not parts:
+        return {"available": False, "total": None, "position": None, "insertion": None, "depth": None, "retention": None}
+    total = round(sum(parts) / len(parts))
+    scripts = case_data.get("feedbackScripts") or {}
+    feedback_key = "excellent" if total >= 85 else "pass" if total >= 60 else "needsImprovement"
+    feedback = (scripts.get(feedback_key) or {}).get("message")
+    return {
+        "available": True,
+        "total": total,
+        "position": position,
+        "insertion": insertion,
+        "depth": depth,
+        "retention": retention,
+        "feedback": feedback,
+    }
 
 
 # ── 路由 ───────────────────────────────────────────────
@@ -202,10 +279,6 @@ async def simulated_patient_entry(request: Request, body: SPRequest):
 
 @router.get("/acupuncture-cases")
 async def get_acupuncture_cases(request: Request):
-    current_user = getattr(request.state, "current_user", None)
-    user_id = str(getattr(current_user, "user_id", "") or "").strip()
-    if not user_id:
-        return {"success": False, "error": "请先登录后继续", "data": {"cases": []}}
     return {
         "success": True,
         "data": {"cases": _load_acupuncture_cases()},
@@ -220,7 +293,7 @@ async def score_acupuncture_case(request: Request, body: AcupunctureScoreRequest
     case_data = next((item for item in _load_acupuncture_cases() if item.get("caseId") == body.case_id), None)
     if case_data is None:
         return {"success": False, "error": "病例不存在", "data": None}
-    return {"success": True, "data": _score_acupuncture_case(case_data, body.needles, body.standard_positions)}
+    return {"success": True, "data": _score_acupuncture_case(case_data, body.needles)}
 
 
 @router.get("/stats/{user_id}")
