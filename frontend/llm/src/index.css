@@ -7735,7 +7735,8 @@ textarea:focus-visible {
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-header h2 {
-  font-size: clamp(1.35rem, 2vw, 1.65rem);
+  font-size: clamp(1rem, 1.5vw, 1.5rem);
+  line-height: 1.24;
   white-space: nowrap;
 }
 
@@ -12893,16 +12894,16 @@ textarea:focus-visible {
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-kicker h2 {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-kicker .home-portal__route-detail-toggle {
-
   display: inline-flex;
   min-width: 0;
   height: 36px;
-  margin-left: clamp(28px, 3vw, 48px);
   align-items: center;
   justify-content: center;
   border: 1px solid #c7e5d8;
@@ -12920,7 +12921,8 @@ textarea:focus-visible {
 .app-shell__main[data-page="learning-path"] .home-portal__route-kicker .home-portal__route-detail-toggle:focus-visible {
   border-color: #8dc8b0;
   background: #e9f7f0;
-  color: #11533f;}
+  color: #11533f;
+}
 
 .app-shell__main[data-page="learning-path"] .home-portal__route-switch {
   margin-left: 10px;
@@ -13052,6 +13054,38 @@ textarea:focus-visible {
   .app-shell__main[data-page="learning-path"] .home-portal__route-header {
     flex: none;
     padding: 12px 16px 0;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header > div:first-child {
+    flex: 1 1 240px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-switch,
+  .app-shell__main[data-page="learning-path"] .home-portal__route-mode {
+    height: 36px;
+    flex-basis: 220px;
+    padding: 3px;
+  }
+
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-switch button,
+  .app-shell__main[data-page="learning-path"] .home-portal__route-header .home-portal__route-mode button {
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: .76rem;
+  }
+
+  @media (max-width: 1180px) {
+    .app-shell__main[data-page="learning-path"] .home-portal__route-header {
+      flex-wrap: wrap;
+    }
+
+    .app-shell__main[data-page="learning-path"] .home-portal__route-header > div:first-child {
+      flex: 1 0 100%;
+    }
+
+    .app-shell__main[data-page="learning-path"] .home-portal__route-switch {
+      margin-left: 0;
+    }
   }
 
   .app-shell__main[data-page="learning-path"] .home-portal__route-orbit-layout,
