@@ -29,6 +29,11 @@ export const loadTextbookPdfMetadata = (bookId, { signal } = {}) => request(
   { signal },
 );
 
+export const loadBookMatchedQuestions = (bookId, { signal } = {}) => request(
+  `/textbooks/pdfs/${encodeURIComponent(bookId)}/questions`,
+  { signal },
+);
+
 export const listKnowledgeGraphs = ({ signal } = {}) => request(
   '/textbooks/knowledge-graphs',
   { signal },

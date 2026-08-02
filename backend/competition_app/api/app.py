@@ -1526,6 +1526,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         return {"task_id": task_id, "status": "running",
                 "step": state["step"], "step_label": state["step_label"]}
 
+    @app.get("/api/v1/textbooks/pdfs/{book_id}/questions")
+    async def get_textbook_matched_questions(book_id: str, request: Request) -> dict:
+        user = current_user(request)
+        return await container.textbook_import_service.book_matched_questions(user.user_id, book_id)
+
     @app.get("/api/v1/textbooks/knowledge-graphs")
     async def list_textbook_knowledge_graphs(request: Request) -> dict:
         user = current_user(request)

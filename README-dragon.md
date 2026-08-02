@@ -163,6 +163,7 @@ mineru/ 或 rendered_pages/
 | GET/PUT | `/api/v1/textbooks/pdfs/{book_id}/reading-state` | 阅读进度 |
 | GET | `/api/v1/textbooks/knowledge-graphs` | 列出有图谱的上传教材 `{items:[{book_id,title,graph_id,node_count,edge_count}]}` |
 | GET | `/api/v1/textbooks/knowledge-graphs/{book_id}` | 图谱数据 `{nodes,edges,node_count,edge_count,book_title}` |
+| GET | `/api/v1/textbooks/pdfs/{book_id}/questions` | **本书匹配题目**（知识可迁移性）：返回该上传教材匹配到的题库题目 `{matched,total,items:[{question_id,stem,type,source,score}]}`；未生成匹配结果时会按需执行匹配再返回；无切片数据时 `matched=false` + `reason` |
 
 ### 4.2 考纲
 
@@ -219,6 +220,7 @@ TREEKG_PYTHON=D:/1---TZB/tiaozhanbei/TreeKG-main/.venv/Scripts/python.exe
    - 后端：`pytest backend/competition_app/tests/services/test_textbook_import.py`（含无目录平铺兜底用例）。
    - 前端：`npm --prefix frontend/llm run test:unit`；改 PracticePage 工具卡片顺序会连带 `PracticePage.test.jsx`。
 8. **已知取舍**：Qwen-VL-8B 目录识别对复杂书精度一般（换 32B 可提升）；TreeKG 图谱质量依赖目录质量；torch 为 CPU 版。
+9. **知识可迁移性（赛题要求）**：上传教材与题库的匹配接口必须保留且始终尝试执行——`GET /api/v1/textbooks/pdfs/{book_id}/questions`。即使一本书不在题库覆盖范围内（可能匹配 0 题），接口也必须返回已执行匹配的结果（`matched:true, items:[]`）；若上传时未勾选匹配，该接口会**按需补齐匹配**（读 `chunks/metadata.jsonl` → 向量检索题库 → 写 `chunk_matches.jsonl`）。
 
 ---
 

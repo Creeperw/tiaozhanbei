@@ -25,6 +25,7 @@ import {
 import { textbookCoverUrl, textbookIntroduction } from './textbookMetadata';
 import SectionExamPanel from './SectionExamPanel';
 import KnowledgeGraphPanel from '../KnowledgeGraphPanel';
+import BookMatchedQuestions from '../BookMatchedQuestions';
 import TextbookPdfReader from './TextbookPdfReader';
 import { loadTextbookPdfMetadata } from './textbookPdfApi';
 import './textbookChapterLearning.css';
@@ -209,6 +210,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const [searchCatalog, setSearchCatalog] = useState(null);
   const [courseMode, setCourseMode] = useState('pdf');
   const [graphOpen, setGraphOpen] = useState(false);
+  const [navView, setNavView] = useState('content');
   const [sectionExamMode, setSectionExamMode] = useState(false);
   const [sectionQuestionCounts, setSectionQuestionCounts] = useState({});
   const [sectionKpIdsBySection, setSectionKpIdsBySection] = useState({});
@@ -618,14 +620,16 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       ) : (
         <div className="textbook-chapter-learning__body">
           <aside className="textbook-learning-nav" aria-label="课程导航">
-            <button type="button" className={!pageNotesOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setGraphOpen(false); setCourseMode('pdf'); setSectionExamMode(false); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
-            <button type="button" onClick={() => { setPageNotesOpen(false); setGraphOpen(false); setCourseMode('catalog'); setSectionExamMode(true); }}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
-            <button type="button" className={graphOpen ? 'is-active' : ''} onClick={() => { setPageNotesOpen(false); setCourseMode('pdf'); setGraphOpen((current) => !current); }}><Network aria-hidden="true" size={18} />知识图谱</button>
-            <button type="button" className={pageNotesOpen ? 'is-active' : ''} onClick={() => { setGraphOpen(false); setPageNotesOpen((current) => !current); }}><BookOpen aria-hidden="true" size={18} />笔记本</button>
+            <button type="button" className={navView === 'content' ? 'is-active' : ''} onClick={() => { setNavView('content'); setPageNotesOpen(false); setGraphOpen(false); setCourseMode('pdf'); setSectionExamMode(false); }}><BookOpen aria-hidden="true" size={18} />课程内容</button>
+            <button type="button" className={navView === 'exam' ? 'is-active' : ''} onClick={() => { setNavView('exam'); setPageNotesOpen(false); setGraphOpen(false); setCourseMode('catalog'); setSectionExamMode(true); }}><Layers3 aria-hidden="true" size={18} />作业与考试</button>
+            <button type="button" className={navView === 'graph' ? 'is-active' : ''} onClick={() => { setNavView('graph'); setPageNotesOpen(false); setGraphOpen(true); setCourseMode('pdf'); }}><Network aria-hidden="true" size={18} />知识图谱</button>
+            <button type="button" className={navView === 'notes' ? 'is-active' : ''} onClick={() => { setNavView('notes'); setGraphOpen(false); setPageNotesOpen(true); }}><BookOpen aria-hidden="true" size={18} />笔记本</button>
           </aside>
           <div className="textbook-learning-main">
           {graphOpen ? (
             <KnowledgeGraphPanel initialBookId={bookId} />
+          ) : uploadedBook && sectionExamMode ? (
+            <BookMatchedQuestions bookId={uploadedBook.book_id} bookTitle={uploadedBook.title} />
           ) : courseMode === 'pdf' ? (
             <TextbookPdfReader
               bookTitle={book}
