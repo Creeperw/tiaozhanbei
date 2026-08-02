@@ -35,7 +35,7 @@ const template = {
       title: '跨专业进阶群体',
       default_profile: {
         learning_goal: '能力进阶',
-        resource_preference: ['知识卡片'],
+        resource_preference: ['讲义讲解'],
       },
     },
   ],
@@ -104,7 +104,7 @@ describe('OnboardingSurveyPanel', () => {
     expect(screen.getByRole('heading', { name: '你通常喜欢在什么时候学习？' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
     expect(screen.getByRole('heading', { name: '你更喜欢哪一种学习资源？' })).toBeInTheDocument();
-    choose('知识卡片');
+    choose('讲义讲解');
     fireEvent.click(screen.getByRole('button', { name: '完成并进入学习' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
@@ -118,7 +118,7 @@ describe('OnboardingSurveyPanel', () => {
       preferences: {
         daily_available_minutes: 45,
         preferred_time_slot: '',
-        resource_preference: '知识卡片',
+        resource_preference: '讲义讲解',
       },
       goals: {
         target_exam_or_course: target.official_name,
@@ -166,7 +166,7 @@ describe('OnboardingSurveyPanel', () => {
         qualification_target_id: target.target_id,
         daily_available_minutes: 45,
         preferred_time_slot: '晚间',
-        resource_preference: ['知识卡片'],
+        resource_preference: ['讲义讲解'],
       },
     });
 

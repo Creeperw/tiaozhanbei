@@ -122,9 +122,14 @@ class KnowledgeExplanationAgent:
                                     "直接输出完整自然语言学习支持正文；按用户问题自然组织，"
                                     "不要求固定标题或固定段落。"
                                     if flexible_support
-                                    else "直接输出完整自然语言讲解正文。"
+                                    else (
+                                        "直接输出完整自然语言讲解正文；采用启发式引导式结构："
+                                        "先结合用户学情定位说明为什么讲这个点，再讲解核心内容，"
+                                        "末尾提出 2-3 个开放式思考问题引导用户先自行思考。"
+                                    )
                                 ),
                                 "title": "可选标题。",
+                                "thinking_questions": "可选：启发式思考问题列表（2-3 个，只提问不含答案）。",
                                 "uncertainty": "可选待确认内容。",
                             },
                         },
@@ -149,6 +154,11 @@ class KnowledgeExplanationAgent:
             uncertainty = self._normalize_uncertainty(
                 raw_output.get("uncertainty", raw_output.get("notes", []))
             )
+            thinking_questions = self._normalize_thinking_questions(
+                raw_output.get("thinking_questions")
+                or raw_output.get("思考问题")
+                or raw_output.get("exploration_questions")
+            )
             body = (
                 raw_output.get("explanation_content")
                 or raw_output.get("explanation")
@@ -169,6 +179,7 @@ class KnowledgeExplanationAgent:
                         else f"{evidence_pack.query}知识讲解"
                     ),
                     "explanation_content": body,
+                    "thinking_questions": thinking_questions,
                     "uncertainty": uncertainty,
                 }
             )
@@ -221,6 +232,8 @@ class KnowledgeExplanationAgent:
             ]
         if output.uncertainty:
             content["待确认项"] = output.uncertainty
+        if output.thinking_questions:
+            content["思考问题"] = output.thinking_questions
         selected_question_ids = [item.question_id for item in selected_questions]
         draft = ResourceDraft(
             resource_draft_id=f"DRAFT_{uuid4().hex}",
@@ -248,6 +261,26 @@ class KnowledgeExplanationAgent:
             ),
         )
         return envelope(context, "expert_agent", "knowledge_explanation", draft)
+
+    @staticmethod
+    def _normalize_thinking_questions(value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            values = [line.strip() for line in value.splitlines() if line.strip()]
+        elif isinstance(value, (list, tuple)):
+            values = [str(item).strip() for item in value]
+        else:
+            return []
+        normalized: list[str] = []
+        for item in values:
+            text = " ".join(item.split()).strip()
+            text = text.strip("·-—•*#").strip()
+            if not text:
+                continue
+            if text not in normalized:
+                normalized.append(text)
+        return normalized[:3]
 
     @staticmethod
     def _normalize_uncertainty(value: Any) -> list[str]:

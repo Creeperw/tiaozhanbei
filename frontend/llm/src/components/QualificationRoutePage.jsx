@@ -25,6 +25,7 @@ import {
   loadPlannedLearningPath,
 } from './learning-tree/learningPathApi';
 import { loadLearningTarget } from './exam-atlas/examAtlasApi';
+import { loadAtlasDetail } from './knowledge-atlas/knowledgeAtlasApi';
 import {
   EMPTY_HOME_PAYLOAD,
   buildHomePortalState,
@@ -287,7 +288,11 @@ function CurrentLearningPlan({
         <div className="home-today-card__list">
           {todayItems.map((item) => {
             const itemCompleted = isCompletedPlanItem(item);
-            const minutes = Number(item.raw?.estimated_minutes || 0);
+            const rawMinutes = Number(item.raw?.estimated_minutes || 0);
+            const videoDurationSeconds = Number(item.raw?.resource_ref?.duration_seconds || 0);
+            const displayMinutes = item.raw?.item_type === 'video_section' && videoDurationSeconds > 0
+              ? Math.max(1, Math.ceil(videoDurationSeconds / 60))
+              : rawMinutes;
             return (
               <button
                 key={item.id}
@@ -300,7 +305,7 @@ function CurrentLearningPlan({
                   {itemCompleted ? <Check aria-hidden="true" size={15} /> : null}
                 </span>
                 <strong>{item.title}</strong>
-                <small><Clock3 aria-hidden="true" size={14} />{minutes > 0 ? `${minutes}分钟` : item.meta || '待安排'}</small>
+                <small><Clock3 aria-hidden="true" size={14} />{displayMinutes > 0 ? `${displayMinutes}分钟` : item.meta || '待安排'}</small>
               </button>
             );
           })}
@@ -819,13 +824,18 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             destination: 'workshop.knowledge_video',
             params: { video: item.resource_ref || {} },
           }
-          : { destination: 'workshop.practice', params: {} }
+          : item.item_type === 'knowledge_practice'
+            ? { destination: 'workshop.topic_training', params: {} }
+            : { destination: 'workshop.practice', params: {} }
       );
+      const videoDurationSeconds = Number(item.resource_ref?.duration_seconds || 0);
       return {
         id: `task-item:${item.task_item_id || item.title}`,
         title: item.title || currentTask.title || '今日学习任务',
         detail: item.kp_name || currentTask.learning_chapter?.title || currentTask.description || '继续完成当前学习任务',
-        meta: item.estimated_minutes ? `${item.estimated_minutes} 分钟` : currentTask.duration || '',
+        meta: item.item_type === 'video_section' && videoDurationSeconds > 0
+          ? `${Math.max(1, Math.ceil(videoDurationSeconds / 60))} 分钟`
+          : item.estimated_minutes ? `${item.estimated_minutes} 分钟` : currentTask.duration || '',
         progress: readProgress(item.progress, readProgress(item, readProgress(currentTask, progressFallback))),
         source: 'daily_task',
         dateKey: localDateKey(),
@@ -887,10 +897,73 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     onNavigate?.(item.intent);
   };
 
+  // 今日任务的“看视频”任务不再打开独立的视频学习面板，
+  // 而是直接跳到教材学习里对应的小节（先通过 kp_id 解析教材位置）。
+  const openDailyVideoItem = async (item) => {
+    const raw = item?.raw || {};
+    const kpId = raw?.resource_ref?.kp_id || raw?.kp_id || '';
+    if (!kpId) {
+      openActivityItem(item);
+      return;
+    }
+    try {
+      const payload = await loadAtlasDetail(kpId, { questionLimit: 1 });
+      const kp = payload?.kp || {};
+      const lv1 = kp?.lv1 || item?.raw?.resource_ref?.book || '';
+      const chapterId = kp?.chapter_id || '';
+      const sectionId = kp?.section_id || '';
+      if (lv1 && sectionId) {
+        onNavigate?.({
+          page: 'practice',
+          params: {
+            view: 'textbook-chapters',
+            route: 'textbook_14_5',
+            lv1,
+            chapterId,
+            sectionId,
+            taskItemId: raw?.task_item_id || raw?.taskItemId || '',
+            returnTo: { page: 'qualification-route', params: {} },
+          },
+        });
+        return;
+      }
+    } catch (_) {
+      // 教材定位失败时回退到原始意图（视频学习面板）。
+    }
+    openActivityItem(item);
+  };
+
   const openLearningItem = (item) => {
     if (item?.source === 'workshop_history' && item.raw?.resource_id) {
       onNavigate?.({ page: 'practice', params: { view: 'workspace', taskType: item.raw.task_type || 'question_training', taskId: item.raw.resource_id } });
       return;
+    }
+    if (item?.source === 'daily_task' && item?.raw?.item_type === 'video_section') {
+      openDailyVideoItem(item);
+      return;
+    }
+    // 今日任务的“知识点练习”不再进入通用题目训练面板，
+    // 而是跳到专题训练（KnowledgePointTrainingHub）中对应的知识点。
+    if (item?.source === 'daily_task' && item?.raw?.item_type === 'knowledge_practice') {
+      const raw = item.raw || {};
+      const kpId = raw?.kp_id || raw?.resource_ref?.kp_id || '';
+      const kpName = raw?.kp_name || raw?.knowledge_point_name
+        || String(raw?.title || '').replace(/^完成知识点\s*/, '').replace(/练习$/, '').trim()
+        || '';
+      if (kpId && kpName) {
+        onNavigate?.({
+          page: 'practice',
+          params: {
+            view: 'workspace',
+            taskType: 'topic_training',
+            kpId,
+            kpName,
+            taskItemId: raw?.task_item_id || raw?.taskItemId || '',
+            returnTo: { page: 'qualification-route', params: {} },
+          },
+        });
+        return;
+      }
     }
     openActivityItem(item);
   };

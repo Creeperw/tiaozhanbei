@@ -68,4 +68,43 @@ describe('AgentTimeline six-agent task desk', () => {
     expect(screen.getByText('get_kp_with_content')).toBeInTheDocument();
     expect(screen.getByText(/四君子汤/)).toBeInTheDocument();
   });
+
+  it('reveals model input/output payloads under the owning agent details', async () => {
+    const user = userEvent.setup();
+    render(<AgentTimeline nodes={[{
+      id: 'expert',
+      agent: 'expert_agent',
+      name: 'expert_agent',
+      status: 'done',
+      startTime: 100,
+      endTime: 220,
+      logs: ['expert_agent开始处理'],
+      tools: [],
+      intents: [],
+      modelCalls: [
+        {
+          id: 'MODEL_CALL_1-input-1',
+          kind: 'input',
+          agent: 'expert_agent',
+          input: { task_type: 'knowledge_explanation', topic: '气血' },
+          ts: 110,
+        },
+        {
+          id: 'MODEL_CALL_1-output-1',
+          kind: 'output',
+          agent: 'expert_agent',
+          output: { content: '气血是人体基本物质' },
+          ts: 210,
+        },
+      ],
+    }]} refs={[]} onClose={vi.fn()} />);
+
+    expect(screen.queryByText('模型调用详情')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /展开专家技术详情/ }));
+    expect(screen.getByText('模型调用详情')).toBeInTheDocument();
+    expect(screen.getByText('模型输入')).toBeInTheDocument();
+    expect(screen.getByText('模型输出')).toBeInTheDocument();
+    expect(screen.getByText(/knowledge_explanation/)).toBeInTheDocument();
+    expect(screen.getByText(/气血是人体基本物质/)).toBeInTheDocument();
+  });
 });

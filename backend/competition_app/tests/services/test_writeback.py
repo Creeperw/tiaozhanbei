@@ -146,10 +146,14 @@ def test_workshop_publication_is_enqueued_atomically_then_dispatched() -> None:
     )
     publication = WritebackIntent(
         intent_id="WWO", source_artifact_id="D", effect_type="enqueue_workshop_publication",
-        target_service="workshop_service", target_entity_type="knowledge_card",
+        target_service="workshop_service", target_entity_type="paper",
         payload={
-            "operation_id": "OP_CARD_1", "artifact_type": "knowledge_card", "learner_id": "L1", "audit_result_id": "AUO",
-            "publication": {"kp_id": "KP1", "title": "卡片", "resource_bundle": {"schema_version": "1.0"}},
+            "operation_id": "OP_PAPER_1", "artifact_type": "paper", "learner_id": "L1", "audit_result_id": "AUO",
+            "publication": {
+                "paper": {"paper_id": "P1"},
+                "blueprint": {"distribution": {}},
+                "evidence_pack": {"pack_id": "EP1"},
+            },
         },
         preconditions=["audit_pass"], idempotency_key="KWO",
     )
@@ -159,17 +163,17 @@ def test_workshop_publication_is_enqueued_atomically_then_dispatched() -> None:
     class Runtime:
         calls = 0
 
-        def save_knowledge_card(self, learner_id, **kwargs):
+        def publish_agent_paper(self, learner_id, *, execution_id, paper, blueprint, evidence_pack, daily_task_item_id=None):
             self.calls += 1
-            return {"card_id": "CARD1"}
+            return {"paper_id": "P1"}
 
     runtime = Runtime()
-    assert executor.dispatch_workshop_publication("OP_CARD_1", runtime) == {"card_id": "CARD1"}
+    assert executor.dispatch_workshop_publication("OP_PAPER_1", runtime) == {"paper_id": "P1"}
     with engine.connect() as connection:
         assert connection.execute(text("SELECT status FROM workshop_publication_outbox")).scalar_one() == "delivered"
     assert runtime.calls == 1
 
-    assert executor.dispatch_workshop_publication("OP_CARD_1", runtime) is None
+    assert executor.dispatch_workshop_publication("OP_PAPER_1", runtime) is None
     with engine.connect() as connection:
         row = connection.execute(text(
             "SELECT status, attempt_count FROM workshop_publication_outbox"
@@ -183,25 +187,25 @@ def test_pending_workshop_dispatcher_continues_after_failure() -> None:
     engine = build_engine()
     executor = WritebackExecutor(engine)
     with engine.begin() as connection:
-        for operation_id, kp_id in (("OP_FAIL", "FAIL"), ("OP_OK", "KP1")):
+        for operation_id, paper_id in (("OP_FAIL", "FAIL"), ("OP_OK", "P1")):
             connection.execute(text(
                 "INSERT INTO workshop_publication_outbox "
                 "(operation_id, artifact_type, learner_id, status, payload_json, attempt_count) "
-                "VALUES (:operation_id, 'knowledge_card', 'L1', 'pending', :payload_json, 0)"
+                "VALUES (:operation_id, 'paper', 'L1', 'pending', :payload_json, 0)"
             ), {
                 "operation_id": operation_id,
                 "payload_json": json.dumps({
-                    "kp_id": kp_id,
-                    "title": "卡片",
-                    "resource_bundle": {"schema_version": "1.0"},
+                    "paper": {"paper_id": paper_id},
+                    "blueprint": {},
+                    "evidence_pack": {},
                 }),
             })
 
     class Runtime:
-        def save_knowledge_card(self, learner_id, **kwargs):
-            if kwargs["kp_id"] == "FAIL":
+        def publish_agent_paper(self, learner_id, **kwargs):
+            if kwargs["paper"]["paper_id"] == "FAIL":
                 raise RuntimeError("temporary workshop outage")
-            return {"card_id": "CARD1"}
+            return {"paper_id": "P1"}
 
     assert executor.dispatch_pending_workshop_publications(Runtime()) == 1
     with engine.connect() as connection:

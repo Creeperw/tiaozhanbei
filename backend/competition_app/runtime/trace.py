@@ -45,11 +45,15 @@ class RepairTrace(BaseModel):
     repair_id: str
     trigger_step_id: str
     issue_types: list[str] = Field(default_factory=list)
+    issue_ids: list[str] = Field(default_factory=list)
+    location_labels: list[str] = Field(default_factory=list)
     rerun_step_ids: list[str] = Field(default_factory=list)
     preserved_step_ids: list[str] = Field(default_factory=list)
     round: Literal[1] = 1
     status: Literal["planned", "running", "completed", "stopped"]
     final_audit_decision: str | None = None
+    before_digest: str | None = Field(default=None, min_length=64, max_length=64)
+    after_digest: str | None = Field(default=None, min_length=64, max_length=64)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

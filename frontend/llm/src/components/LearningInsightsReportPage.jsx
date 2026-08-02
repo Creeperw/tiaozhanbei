@@ -270,7 +270,6 @@ function WeakPointsCard({ weakPoints, onNavigate }) {
 }
 
 const resourceTypeLabels = {
-  knowledge_card: '知识卡片',
   question: '配套题目',
   video: '视频资源',
 };
@@ -290,7 +289,6 @@ const matchSourceLabels = {
   content_type_default: '按资源类型的默认完成时长估算',
   question_type_default: '按题型的默认作答时长估算',
   user_response_time_mean_30d: '最近 30 天同题平均作答时长',
-  knowledge_card_bundle: '知识卡资源包记录',
   'teaching_resources.quality_score': '教学资源库质量评分',
   'question_bank_items.quality_score': '正式题库质量评分',
 };
@@ -298,24 +296,12 @@ const matchSourceLabels = {
 function resourceIntent(item) {
   const kpId = item.kp_ids?.[0] || '';
   const returnTo = { page: 'personalization', params: { view: 'reports' } };
-  if (item.resource_type === 'knowledge_card') {
-    return {
-      page: 'practice',
-      params: {
-        view: 'workspace',
-        taskType: 'knowledge_cards',
-        cardId: item.resource_id,
-        kpId,
-        returnTo,
-      },
-    };
-  }
   if (item.resource_type === 'video') {
     return {
       page: 'practice',
       params: {
         view: 'workspace',
-        taskType: 'knowledge_cards',
+        taskType: 'video_learning',
         resourceView: 'videos',
         kpId,
         returnTo,

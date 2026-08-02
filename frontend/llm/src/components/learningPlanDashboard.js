@@ -26,7 +26,6 @@ export function selectNextKnowledgePoint(task, fallback = '') {
     .find((item) => item?.status !== 'completed' && String(item?.kp_name || '').trim());
   return pendingItem?.kp_name
     || task?.focus_knowledge_points?.[0]
-    || task?.knowledge_cards?.[0]?.title
     || fallback
     || '';
 }

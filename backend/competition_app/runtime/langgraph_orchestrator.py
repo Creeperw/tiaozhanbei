@@ -578,8 +578,13 @@ class LangGraphOrchestrator(Orchestrator):
                 for key, value in dict(state.get("outputs", {})).items()
             }
             original_audit = outputs.get(audit_step_id)
-            repair_context = {**root_context, "audit_feedback": original_audit}
             rerun_step = steps_by_id[action.step_id]
+            repair_context = {
+                **root_context,
+                "audit_feedback": original_audit,
+                "repair_instruction": action.model_dump(mode="json"),
+                "previous_step_output": outputs.get(action.step_id),
+            }
             record_item = next(
                 (
                     item
@@ -647,6 +652,8 @@ class LangGraphOrchestrator(Orchestrator):
                     repair_context = {
                         **root_context,
                         "audit_feedback": original_audit,
+                        "repair_instruction": action.model_dump(mode="json"),
+                        "previous_step_output": outputs.get(action.step_id),
                     }
                     emit_runtime_event(
                         "graph_resumed",
@@ -701,6 +708,11 @@ class LangGraphOrchestrator(Orchestrator):
 
             decision = getattr(getattr(result, "payload", None), "decision", None)
             record.final_audit_decision = decision
+            record.after_digest = self.repair_controller._output_digest({
+                item.step_id: outputs.get(item.step_id)
+                for item in repair_plan.actions
+                if item.step_id != audit_step_id
+            })
             if decision == "pass":
                 record.status = "completed"
                 progress["status"] = "completed"
@@ -924,6 +936,12 @@ class LangGraphOrchestrator(Orchestrator):
                 repair_id=repair_plan.repair_id,
                 trigger_step_id=step.step_id,
                 issue_types=[issue.issue_type for issue in repair_plan.issues],
+                issue_ids=[issue.issue_id for issue in repair_plan.issues],
+                location_labels=list(dict.fromkeys(
+                    location.display_label
+                    for issue in repair_plan.issues
+                    for location in issue.locations
+                ))[:8],
                 rerun_step_ids=rerun_step_ids,
                 preserved_step_ids=sorted(
                     set(outputs).union(node_outputs) - set(rerun_step_ids)
@@ -938,12 +956,19 @@ class LangGraphOrchestrator(Orchestrator):
                     if repair_plan.status == "planned"
                     else "needs_human_review"
                 ),
+                before_digest=self.repair_controller._output_digest({
+                    action.step_id: outputs.get(action.step_id)
+                    for action in repair_plan.actions
+                    if action.step_id != step.step_id
+                }),
             )
             emit_runtime_event(
                 "repair_planned",
                 repair_id=record.repair_id,
                 trigger_step_id=step.step_id,
                 issue_types=record.issue_types,
+                issue_ids=record.issue_ids,
+                location_labels=record.location_labels,
                 rerun_step_ids=record.rerun_step_ids,
                 preserved_step_ids=record.preserved_step_ids,
                 status=repair_plan.status,

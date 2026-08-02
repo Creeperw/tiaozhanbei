@@ -86,6 +86,16 @@ class ExpertAgent:
             raise ValueError("expert agent requires a selected review task")
         audit_feedback = context.get("audit_feedback")
         feedback_findings = getattr(getattr(audit_feedback, "payload", audit_feedback), "findings", [])
+        repair_instruction = dict(context.get("repair_instruction") or {})
+        previous_step_output = context.get("previous_step_output")
+        previous_payload = getattr(previous_step_output, "payload", previous_step_output)
+        previous_resource = None
+        if previous_payload is not None:
+            previous_resource = {
+                "title": getattr(previous_payload, "title", None),
+                "content": getattr(previous_payload, "content", None),
+                "estimated_minutes": getattr(previous_payload, "estimated_minutes", None),
+            }
         question_details = list(evidence_pack._question_details)
         candidate_catalog = [
             {
@@ -129,6 +139,22 @@ class ExpertAgent:
                                 "diagnosis": learning_profile["summary"],
                                 "schedule": review_schedule_payload,
                             },
+                            **(
+                                {"repair_request": {
+                                    "issue_ids": repair_instruction.get("issue_ids", []),
+                                    "locations": repair_instruction.get("locations", []),
+                                    "instruction": repair_instruction.get(
+                                        "repair_instruction", ""
+                                    ),
+                                    "audit_findings": [
+                                        str(item)[:600]
+                                        for item in list(feedback_findings)[:8]
+                                    ],
+                                    "previous_resource": previous_resource,
+                                }}
+                                if repair_instruction
+                                else {}
+                            ),
                             "output_contract": {
                                 "body": "面向学习者直接生成完整知识卡正文，使用自然语言，不要嵌套结构。",
                                 "learning_tip": "可选的一句学习动作提示。",

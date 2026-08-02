@@ -138,15 +138,7 @@ class WritebackExecutor:
         if isinstance(payload, str):
             payload = json.loads(payload)
         try:
-            if row["artifact_type"] == "knowledge_card":
-                result = runtime.save_knowledge_card(
-                    row["learner_id"],
-                    kp_id=payload["kp_id"],
-                    title=payload["title"],
-                    resource_bundle=payload["resource_bundle"],
-                    source_execution_id=operation_id,
-                )
-            elif row["artifact_type"] == "paper":
+            if row["artifact_type"] == "paper":
                 result = runtime.publish_agent_paper(
                     row["learner_id"],
                     execution_id=operation_id,

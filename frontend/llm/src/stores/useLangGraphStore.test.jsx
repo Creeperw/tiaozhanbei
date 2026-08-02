@@ -82,4 +82,50 @@ describe('LangGraph six-agent trace state', () => {
     state = reduceLangGraphEvent(state, { type: 'workflow_done', ts: 30 });
     expect(state.nodes.find((node) => node.agent === 'audit_agent')?.status).toBe('done');
   });
+
+  it('attaches model input/output calls to the matching agent node', () => {
+    let state = reduceLangGraphEvent(emptyState, {
+      type: 'execution_start', agent: 'expert_agent', stepId: 'expert', text: '生成内容', ts: 10,
+    });
+    state = reduceLangGraphEvent(state, {
+      type: 'model_call',
+      kind: 'input',
+      agent: 'expert_agent',
+      stepId: 'expert',
+      callId: 'MODEL_CALL_1',
+      input: { task_type: 'knowledge_explanation', topic: '气血' },
+      ts: 11,
+    });
+    state = reduceLangGraphEvent(state, {
+      type: 'model_call',
+      kind: 'output',
+      agent: 'expert_agent',
+      stepId: 'expert',
+      callId: 'MODEL_CALL_1',
+      output: { content: '气血是人体基本物质' },
+      ts: 12,
+    });
+
+    const expertNode = state.nodes.find((node) => node.agent === 'expert_agent');
+    expect(expertNode.modelCalls).toHaveLength(2);
+    expect(expertNode.modelCalls[0].kind).toBe('input');
+    expect(expertNode.modelCalls[0].input.task_type).toBe('knowledge_explanation');
+    expect(expertNode.modelCalls[1].kind).toBe('output');
+    expect(expertNode.modelCalls[1].output.content).toBe('气血是人体基本物质');
+  });
+
+  it('creates a model node when no agent step has started yet', () => {
+    let state = reduceLangGraphEvent(emptyState, {
+      type: 'model_call',
+      kind: 'output',
+      agent: 'planner_agent',
+      callId: 'MODEL_CALL_0',
+      output: { task_type: 'knowledge_explanation' },
+      ts: 5,
+    });
+
+    expect(state.nodes).toHaveLength(1);
+    expect(state.nodes[0].agent).toBe('planner_agent');
+    expect(state.nodes[0].modelCalls).toHaveLength(1);
+  });
 });

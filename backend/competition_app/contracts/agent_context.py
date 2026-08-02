@@ -34,6 +34,206 @@ class ModelAgentContext(ContractModel):
     payload: dict[str, Any]
 
 
+_SOURCE_BOUNDED_COMPILERS = frozenset(
+    {
+        "plan_contract_compiler",
+        "paper_blueprint_compiler",
+        "paper_assembly_compiler",
+        "paper_audit_findings_compiler",
+        "audit_findings_compiler",
+    }
+)
+
+
+def _as_json_value(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    return value
+
+
+def _compact_value(
+    value: Any,
+    *,
+    depth: int = 0,
+    max_depth: int = 4,
+    max_items: int = 12,
+    max_text: int = 1_200,
+) -> Any:
+    """Bound shared context without losing the facts an agent needs.
+
+    Full typed artifacts remain available to the runtime and to explicit
+    role-specific payloads.  This helper is only for the common learner and
+    dialogue brief that every business agent receives.
+    """
+
+    value = _as_json_value(value)
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        return text if len(text) <= max_text else text[: max_text - 1] + "…"
+    if isinstance(value, (int, float, bool)):
+        return value
+    if depth >= max_depth:
+        if isinstance(value, (dict, list, tuple)):
+            return "已按上下文最小化策略省略明细"
+        return str(value)[:max_text]
+    if isinstance(value, dict):
+        compact: dict[str, Any] = {}
+        for index, (key, item) in enumerate(value.items()):
+            if index >= max_items:
+                compact["省略项数"] = max(0, len(value) - max_items)
+                break
+            if item in (None, "", [], {}):
+                continue
+            compact[str(key)] = _compact_value(
+                item,
+                depth=depth + 1,
+                max_depth=max_depth,
+                max_items=max_items,
+                max_text=max_text,
+            )
+        return compact
+    if isinstance(value, (list, tuple, set)):
+        items = list(value)
+        compact_items = [
+            _compact_value(
+                item,
+                depth=depth + 1,
+                max_depth=max_depth,
+                max_items=max_items,
+                max_text=max_text,
+            )
+            for item in items[:max_items]
+        ]
+        if len(items) > max_items:
+            compact_items.append(f"另省略{len(items) - max_items}项")
+        return compact_items
+    return str(value)[:max_text]
+
+
+def _plan_brief(value: Any) -> dict[str, Any]:
+    plan = _as_json_value(value)
+    if not isinstance(plan, dict) or not plan:
+        return {"exists": False}
+    keys = (
+        "status",
+        "title",
+        "plan_scope",
+        "goal",
+        "learning_goal",
+        "current_stage_id",
+        "current_stage",
+        "duration_days",
+        "total_duration_days",
+        "version",
+        "updated_at",
+    )
+    brief = {key: plan.get(key) for key in keys if plan.get(key) not in (None, "", [], {})}
+    content = (
+        plan.get("content")
+        or plan.get("natural_language_content")
+        or plan.get("task_content")
+    )
+    if content:
+        brief["content_summary"] = _compact_value(content, max_text=1_200)
+    stages = plan.get("stages") or plan.get("long_term_plan_stages")
+    if isinstance(stages, list) and stages:
+        current = next(
+            (
+                item for item in stages
+                if isinstance(item, dict) and item.get("status") in {"active", "current"}
+            ),
+            stages[0],
+        )
+        if isinstance(current, dict):
+            brief["current_stage"] = _compact_value(current, max_items=8, max_text=500)
+        brief["stage_count"] = len(stages)
+    return {"exists": True, **brief}
+
+
+def _shared_user_portrait(context: dict[str, Any]) -> dict[str, Any]:
+    """Create one concise, version-aware portrait for every business agent."""
+
+    monitoring = context.get("learning_monitoring") or {}
+    if hasattr(monitoring, "model_dump"):
+        monitoring = monitoring.model_dump(mode="json")
+    monitoring_brief = {}
+    if isinstance(monitoring, dict):
+        for key in (
+            "evidence_status",
+            "freshness_status",
+            "current_status",
+            "behavior_summary",
+            "calculated_at",
+            "window_days",
+        ):
+            if monitoring.get(key) not in (None, "", [], {}):
+                monitoring_brief[key] = monitoring[key]
+
+    learning_state = (
+        context.get("planner_multiscale_summary")
+        or context.get("multi_scale_learning_state")
+        or {}
+    )
+    return {
+        "basic_profile": _compact_value(
+            context.get("user_profile") or {}, max_items=18, max_text=800
+        ),
+        "learning_profile": _compact_value(
+            context.get("learning_profile") or {}, max_items=14, max_text=800
+        ),
+        "learning_state": _compact_value(
+            learning_state, max_items=14, max_text=800
+        ),
+        "learning_monitoring": _compact_value(
+            monitoring_brief, max_items=8, max_text=500
+        ),
+        "current_plans": {
+            "long_term": _plan_brief(context.get("current_long_term_plan")),
+            "short_term": _plan_brief(context.get("current_short_term_plan")),
+            "daily_task": _plan_brief(context.get("current_learning_task")),
+        },
+        "snapshot": {
+            "profile_updated_at": (context.get("user_profile") or {}).get("updated_at")
+            if isinstance(context.get("user_profile"), dict)
+            else None,
+            "learning_state_calculated_at": context.get(
+                "behavior_context_calculated_at"
+            ),
+        },
+    }
+
+
+def _recent_dialogue(
+    messages: list[dict[str, Any]],
+    *,
+    current_user_message: str,
+    max_turns: int = 8,
+    max_chars: int = 6_000,
+) -> list[dict[str, str]]:
+    normalized = [
+        {"role": str(item.get("role") or ""), "content": str(item.get("content") or "")}
+        for item in messages
+        if str(item.get("content") or "").strip()
+    ]
+    if current_user_message and (
+        not normalized
+        or normalized[-1].get("role") != "user"
+        or normalized[-1].get("content") != current_user_message
+    ):
+        normalized.append({"role": "user", "content": current_user_message})
+    selected: list[dict[str, str]] = []
+    used = 0
+    for item in reversed(normalized[-max_turns:]):
+        size = len(item["content"])
+        if selected and used + size > max_chars:
+            break
+        selected.append(item)
+        used += size
+    return list(reversed(selected))
+
+
 def build_model_context(
     context: dict[str, Any],
     *,
@@ -81,20 +281,64 @@ def build_model_context(
         }
         for item in sanitize_conversation_messages(context.get("messages") or [])
     ]
-    recent_messages = formal_messages[-2:] if compressed_history else formal_messages[-8:]
+    # A persisted dialogue ending in a user turn is the strongest indication
+    # of the message currently being processed. ``latest_resume_answer`` may
+    # remain in a restored checkpoint after another answer has already been
+    # appended, so it must not overwrite that newer user turn. When history
+    # ends with an assistant message, the current request has not yet been
+    # persisted and the explicit resume/original fields remain authoritative.
+    trailing_user_message = (
+        str(formal_messages[-1].get("content") or "").strip()
+        if formal_messages and formal_messages[-1].get("role") == "user"
+        else ""
+    )
+    latest_history_user_message = next(
+        (
+            str(item.get("content") or "").strip()
+            for item in reversed(formal_messages)
+            if item.get("role") == "user" and str(item.get("content") or "").strip()
+        ),
+        "",
+    )
+    latest_user_message = str(
+        trailing_user_message
+        or context.get("latest_resume_answer")
+        or original_request
+        or latest_history_user_message
+        or current_request
+    ).strip()
+    recent_messages = _recent_dialogue(
+        formal_messages,
+        current_user_message=latest_user_message or original_request,
+    )
 
     # This is the only automatically shared model context. Plans, monitoring,
     # mastery, review queues and retrieved evidence must be explicitly handed
     # off or fetched through an authorized tool by the responsible agent.
     current_page_context = context.get("current_page_context") or {}
+    source_bounded_compiler = target_agent in _SOURCE_BOUNDED_COMPILERS or (
+        "compiler" in target_agent.lower()
+    )
     shared_context = {
         "original_user_request": original_request,
         "current_user_request": current_request,
+        "current_user_message": latest_user_message or original_request,
         "recent_conversation": recent_messages,
         "compressed_conversation": compressed_history,
-        "user_profile": context.get("user_profile") or {},
+        "user_profile": (
+            {}
+            if source_bounded_compiler
+            else _shared_user_portrait(context)
+        ),
         "external_information": enriched_payload.pop("external_information", []),
+        "source_bounded_compiler": source_bounded_compiler,
     }
+    if source_bounded_compiler:
+        # Keep the same four-block prompt shape without allowing a compiler to
+        # infer missing contract fields from learner or conversation context.
+        shared_context["recent_conversation"] = []
+        shared_context["compressed_conversation"] = ""
+        shared_context["current_user_message"] = ""
     if current_page_context:
         shared_context["current_page"] = {
             "tool_name": "read_current_page",

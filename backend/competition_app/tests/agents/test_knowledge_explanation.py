@@ -20,12 +20,15 @@ class CapturingExplanationModel:
         return {
             "title": "感冒的常见证型",
             "explanation_content": (
-                "【先给结论】直接回答常见证型。"
-                "【核心概念】教材优先，网络与模型知识作标注补充。"
-                "【关键机制或辨析】不同教材口径可能不同。"
-                "【学习者易错点】不要把教学分类当成现实诊断。"
-                "【小结】结合来源层级理解。"
+                "【结合学情定位】感冒证型是辨证论治的基础，常考且容易混淆。"
+                "【讲解核心】教材优先，网络与模型知识作标注补充。"
+                "【启发式思考问题】试着用教材分型对比风寒与风热感冒。"
+                "【自然收尾】先说说你的判断，再继续引导。"
             ),
+            "thinking_questions": [
+                "如果患者发热重、恶寒轻，你会优先考虑哪个证型？",
+                "风寒与风热感冒的鉴别关键点是什么？",
+            ],
             "uncertainty": ["具体分类以所用教材为准。"],
         }
 
@@ -113,6 +116,32 @@ async def test_knowledge_explanation_receives_source_metadata_and_fallback_polic
     instructions = model.payload["task_instructions"]
     assert "模型自身知识" in instructions
     assert "不得伪造" in instructions
+
+
+@pytest.mark.asyncio
+async def test_knowledge_explanation_keeps_heuristic_thinking_questions() -> None:
+    result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(_context())
+
+    assert result.payload.content["思考问题"] == [
+        "如果患者发热重、恶寒轻，你会优先考虑哪个证型？",
+        "风寒与风热感冒的鉴别关键点是什么？",
+    ]
+    assert result.payload.content["知识讲解"].startswith("【结合学情定位】")
+
+
+@pytest.mark.asyncio
+async def test_knowledge_explanation_normalizes_string_thinking_questions() -> None:
+    class StringQuestionsModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            return {
+                "title": "气血讲解",
+                "explanation_content": "气与血的关系是中医基础的重要内容。",
+                "thinking_questions": "气能生血，血能载气，你能举一个生活中的例子吗？",
+            }
+
+    result = await KnowledgeExplanationAgent(StringQuestionsModel()).run(_context())
+
+    assert result.payload.content["思考问题"] == ["气能生血，血能载气，你能举一个生活中的例子吗？"]
 
 
 @pytest.mark.asyncio

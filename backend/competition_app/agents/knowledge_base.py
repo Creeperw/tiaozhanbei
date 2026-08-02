@@ -59,6 +59,7 @@ class KnowledgeBaseAgent:
         compressed_summary = str(getattr(context_summary, "summary", "") or "").strip()
         conversation_messages = list(context.get("messages", []))
         recent_messages = conversation_messages[-1:] if compressed_summary else conversation_messages[-8:]
+        repair_instruction = dict(context.get("repair_instruction") or {})
         try:
             if external_request:
                 # Current-fact retrieval has no textbook KP expression to
@@ -88,6 +89,20 @@ class KnowledgeBaseAgent:
                                 if isinstance(item, dict) and str(item.get("content", "")).strip()
                             ],
                             "compressed_conversation_summary": compressed_summary,
+                            "repair_request": (
+                                {
+                                    "issue_ids": repair_instruction.get("issue_ids", []),
+                                    "locations": repair_instruction.get("locations", []),
+                                    "instruction": repair_instruction.get(
+                                        "repair_instruction", ""
+                                    ),
+                                    "previous_retrieval_digest": repair_instruction.get(
+                                        "previous_output_digest"
+                                    ),
+                                }
+                                if repair_instruction
+                                else None
+                            ),
                             "task_type": str(context.get("task_type", "personalized_review_card")),
                             "available_tools": {
                                 "get_kp_with_content": "用模型生成的 kp_query 检索知识点及教材内容。",
@@ -249,6 +264,17 @@ class KnowledgeBaseAgent:
                         "user_request": user_request,
                         "evidence": semantic_facts,
                         "retrieval_plan": retrieval_plan.model_dump(mode="json"),
+                        "repair_request": (
+                            {
+                                "issue_ids": repair_instruction.get("issue_ids", []),
+                                "locations": repair_instruction.get("locations", []),
+                                "instruction": repair_instruction.get(
+                                    "repair_instruction", ""
+                                ),
+                            }
+                            if repair_instruction
+                            else None
+                        ),
                         "task_type": str(context.get("task_type", "personalized_review_card")),
                         "expected_uncertainty": [],
                         "output_schema": KnowledgeModelOutput.model_json_schema(),

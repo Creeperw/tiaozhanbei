@@ -3,6 +3,7 @@ import pytest
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.local_repair import RepairIssue
+from competition_app.contracts.audit_compilation import AuditLocation
 from competition_app.runtime.local_repair import LocalRepairController
 
 
@@ -130,6 +131,41 @@ def test_paper_missing_evidence_uses_real_question_pool_producer() -> None:
     assert [action.step_id for action in repair.actions] == [
         "question_pool", "paper_assembly", "audit"
     ]
+
+
+def test_located_paper_item_issue_reruns_only_assembly_and_audit() -> None:
+    repair = LocalRepairController().plan_repair(
+        plan=paper_or_resource_plan(),
+        audit_step_id="audit",
+        audit_findings=[],
+        structured_findings=[
+            RepairIssue(
+                issue_id="ISSUE_Q1_EXPLANATION",
+                issue_type="answer_or_explanation_invalid",
+                message="题目Q1缺少解析",
+                owner_step_id="paper_assembly",
+                affected_step_ids=["paper_assembly"],
+                origin="deterministic",
+                locations=[
+                    AuditLocation(
+                        location_key="paper:explanation:Q1",
+                        subject_type="exam_paper",
+                        location_type="explanation",
+                        display_label="题目Q1的解析",
+                    )
+                ],
+            )
+        ],
+        outputs=paper_outputs(),
+    )
+
+    assert [action.step_id for action in repair.actions] == [
+        "paper_assembly", "audit"
+    ]
+    assert repair.actions[0].issue_ids == ["ISSUE_Q1_EXPLANATION"]
+    assert repair.actions[0].locations[0].display_label == "题目Q1的解析"
+    assert "只修正以下已定位问题" in repair.actions[0].repair_instruction
+    assert repair.actions[0].previous_output_digest is not None
 
 
 def test_structured_findings_take_priority_over_legacy_strings() -> None:

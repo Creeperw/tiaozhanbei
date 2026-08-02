@@ -118,6 +118,14 @@ function meaningfulTools(tools = []) {
   });
 }
 
+function meaningfulModelCalls(modelCalls = []) {
+  return modelCalls.filter((call) => {
+    if (call?.kind === 'input') return hasMeaningfulValue(call.input);
+    if (call?.kind === 'output') return hasMeaningfulValue(call.output);
+    return hasMeaningfulValue(call.requestPayload) || hasMeaningfulValue(call.responseText);
+  });
+}
+
 function displayStatus(nodes) {
   if (!nodes.length) return 'skipped';
   return nodes.reduce((selected, node) => (
@@ -143,6 +151,7 @@ export function buildAgentPresentation(nodes = []) {
       node.logs || []
     )).map(sanitizeAgentLog));
     const tools = meaningfulTools(roleNodes.flatMap((node) => node.tools || []));
+    const modelCalls = meaningfulModelCalls(roleNodes.flatMap((node) => node.modelCalls || []));
     const startedAt = roleNodes.length
       ? Math.min(...roleNodes.map((node) => node.startTime || Number.MAX_SAFE_INTEGER))
       : null;
@@ -156,6 +165,7 @@ export function buildAgentPresentation(nodes = []) {
       summary: details.at(-1) || (status === 'skipped' ? '本次任务不需要这个智能体参与。' : role.description),
       details,
       tools,
+      modelCalls,
       nodes: roleNodes,
       startedAt: startedAt === Number.MAX_SAFE_INTEGER ? null : startedAt,
       endedAt,

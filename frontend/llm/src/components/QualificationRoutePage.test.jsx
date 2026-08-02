@@ -8,6 +8,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import QualificationRoutePage from './QualificationRoutePage';
 import { clearQualificationRoutePageCache } from './qualificationRoutePageCache';
 
+vi.mock('./knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasDetail: vi.fn() }));
+import { loadAtlasDetail } from './knowledge-atlas/knowledgeAtlasApi';
+
 function response(payload, ok = true, status = 200) {
   return { ok, status, text: async () => JSON.stringify(payload) };
 }
@@ -101,7 +104,10 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
 }
 
 describe('QualificationRoutePage', () => {
-  beforeEach(() => clearQualificationRoutePageCache());
+  beforeEach(() => {
+    clearQualificationRoutePageCache();
+    loadAtlasDetail.mockReset();
+  });
   afterEach(() => vi.unstubAllGlobals());
 
   it('keeps the welcome and route frames mounted while their data loads', async () => {
@@ -217,6 +223,10 @@ describe('QualificationRoutePage', () => {
   });
 
   it('renders the learning path by default with the current plan on the right', async () => {
+    const now = new Date();
+    const learnedDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const learnedDateKey = `${learnedDate.getFullYear()}-${String(learnedDate.getMonth() + 1).padStart(2, '0')}-${String(learnedDate.getDate()).padStart(2, '0')}`;
+    const learnedLabel = `${learnedDate.getFullYear()}年${learnedDate.getMonth() + 1}月${learnedDate.getDate()}日，已学习`;
     installHomeFetch({
       current_learning_task: {
         task_id: 'TASK_TODAY',
@@ -250,7 +260,11 @@ describe('QualificationRoutePage', () => {
       },
       learning_activity: {
         trends: {
-          series: [{ date: '2026-07-23', login_days: 1, focus_minutes: 12 }],
+          series: [{
+            date: learnedDateKey,
+            login_days: 1,
+            focus_minutes: 12,
+          }],
         },
         recent_activities: [],
       },
@@ -283,7 +297,7 @@ describe('QualificationRoutePage', () => {
     expect(screen.getByRole('complementary', { name: '学习日历' }).compareDocumentPosition(screen.getByRole('region', { name: '今日任务' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('button', { name: '学习与复习任务' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('今日任务完成 1/2')).toBeInTheDocument();
-    expect(screen.getByLabelText('2026年7月23日，已学习')).toBeInTheDocument();
+    expect(screen.getByLabelText(learnedLabel)).toBeInTheDocument();
     expect(screen.getByText('完成阴阳学说训练')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /添加新任务/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
@@ -443,7 +457,7 @@ describe('QualificationRoutePage', () => {
       page: 'practice',
       params: expect.objectContaining({
         view: 'workspace',
-        taskType: 'knowledge_cards',
+        taskType: 'video_learning',
         resourceView: 'videos',
         taskItemId: 'ITEM_VIDEO',
         directVideo: { title: '补气剂章节精讲', url: 'https://example.test/video.mp4' },
@@ -451,6 +465,173 @@ describe('QualificationRoutePage', () => {
       }),
     });
 
+  });
+
+  it('opens a video daily task into the textbook section instead of the video panel', async () => {
+    loadAtlasDetail.mockResolvedValue({
+      kp: {
+        lv1: '中医学基础',
+        chapter_id: 'CH_7941b46c46ff4070',
+        section_id: 'SEC_37c766305b00366f',
+      },
+    });
+    const onNavigate = vi.fn();
+    installHomeFetch({
+      current_learning_task: {
+        task_id: 'TASK_VIDEO',
+        title: '今日学习任务',
+        items: [
+          {
+            task_item_id: 'ITEM_VIDEO_DEEP',
+            item_type: 'video_section',
+            title: '观看《中医学基础》绪论章节"中医学的学科属性"小节章节视频',
+            estimated_minutes: 25,
+            resource_ref: {
+              bvid: 'BV1RR4y147uY',
+              kp_id: '003264',
+            },
+          },
+        ],
+      },
+    });
+
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
+
+    const plan = screen.getByLabelText('当前学习计划');
+    fireEvent.click(await within(plan).findByRole('button', { name: /中医学的学科属性/ }));
+
+    await waitFor(() => expect(loadAtlasDetail).toHaveBeenCalledWith('003264', expect.anything()));
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: {
+        view: 'textbook-chapters',
+        route: 'textbook_14_5',
+        lv1: '中医学基础',
+        chapterId: 'CH_7941b46c46ff4070',
+        sectionId: 'SEC_37c766305b00366f',
+        taskItemId: 'ITEM_VIDEO_DEEP',
+        returnTo: { page: 'qualification-route', params: {} },
+      },
+    });
+  });
+
+  it('falls back to the video panel when the textbook location cannot be resolved', async () => {
+    loadAtlasDetail.mockRejectedValue(new Error('atlas unavailable'));
+    const onNavigate = vi.fn();
+    installHomeFetch({
+      current_learning_task: {
+        task_id: 'TASK_VIDEO_FALLBACK',
+        title: '今日学习任务',
+        items: [
+          {
+            task_item_id: 'ITEM_VIDEO_FB',
+            item_type: 'video_section',
+            title: '观看章节视频',
+            estimated_minutes: 20,
+            resource_ref: {
+              bvid: 'BV_FALLBACK',
+              kp_id: 'KP_MISSING',
+            },
+            action: {
+              destination: 'workshop.knowledge_video',
+              params: {
+                taskItemId: 'ITEM_VIDEO_FB',
+                video: { bvid: 'BV_FALLBACK', title: '章节视频' },
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
+
+    const plan = screen.getByLabelText('当前学习计划');
+    fireEvent.click(await within(plan).findByRole('button', { name: /观看章节视频/ }));
+
+    await waitFor(() => expect(loadAtlasDetail).toHaveBeenCalled());
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: expect.objectContaining({
+        view: 'workspace',
+        taskType: 'video_learning',
+        taskItemId: 'ITEM_VIDEO_FB',
+      }),
+    });
+  });
+
+  it('opens a knowledge practice daily task into the matching topic training point', async () => {
+    const onNavigate = vi.fn();
+    installHomeFetch({
+      current_learning_task: {
+        task_id: 'TASK_PRACTICE',
+        title: '今日学习任务',
+        items: [
+          {
+            task_item_id: 'ITEM_KP_PRACTICE',
+            item_type: 'knowledge_practice',
+            title: '完成知识点 四君子汤 练习',
+            kp_id: 'KP_1',
+            kp_name: '四君子汤',
+            estimated_minutes: 6,
+            resource_ref: {},
+            action: {
+              destination: 'workshop.practice',
+              params: {
+                taskItemId: 'ITEM_KP_PRACTICE',
+                kpId: 'KP_1',
+                kpName: '四君子汤',
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={onNavigate} />);
+
+    const plan = screen.getByLabelText('当前学习计划');
+    fireEvent.click(await within(plan).findByRole('button', { name: /四君子汤/ }));
+
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType: 'topic_training',
+        kpId: 'KP_1',
+        kpName: '四君子汤',
+        taskItemId: 'ITEM_KP_PRACTICE',
+        returnTo: { page: 'qualification-route', params: {} },
+      },
+    });
+    expect(loadAtlasDetail).not.toHaveBeenCalled();
+  });
+
+  it('shows the real video duration as the video task estimate', async () => {
+    installHomeFetch({
+      current_learning_task: {
+        task_id: 'TASK_VIDEO_META',
+        title: '今日学习任务',
+        items: [
+          {
+            task_item_id: 'ITEM_VIDEO_META',
+            item_type: 'video_section',
+            title: '观看《中医学基础》绪论章节"中医学的学科属性"小节章节视频',
+            estimated_minutes: 25,
+            resource_ref: {
+              bvid: 'BV1RR4y147uY',
+              kp_id: '003264',
+              duration_seconds: 239,
+            },
+          },
+        ],
+      },
+    });
+
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    const plan = screen.getByLabelText('当前学习计划');
+    expect(await within(plan).findByRole('button', { name: /中医学的学科属性/ })).toHaveTextContent('4分钟');
   });
 
   it('shows persisted long and short planning narratives from the route header', async () => {

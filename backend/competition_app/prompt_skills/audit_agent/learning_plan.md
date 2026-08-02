@@ -40,6 +40,6 @@ task_type: learning_plan
 # 输出
 
 - `audit_report`：详细自然语言审核报告，说明审核依据、逐项结论和最终理由。
-- `findings`：`pass` 时保持空列表；`revise`、`reject` 或 `needs_human_review` 时仅保留可执行的问题。
+- `findings`：`pass` 时保持空列表；`revise`、`reject` 或 `needs_human_review` 时仅保留可执行的问题。每条问题必须先写明具体位置（阶段、推进节点、正文部分或合同字段），再说明影响和修改要求；无法细分时明确写“当前规划全文”。
 - `decision`：最小审核决定。
 - 不生成或重写规划，不输出系统摘要、ID、依赖关系或数据库字段。

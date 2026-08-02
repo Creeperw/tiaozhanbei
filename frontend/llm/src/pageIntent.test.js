@@ -59,7 +59,7 @@ describe('page intents', () => {
     });
   });
 
-  it('routes daily videos to the knowledge card video resource', () => {
+  it('routes daily videos to the video learning workspace', () => {
     const video = { title: '章节精讲', url: 'https://example.test/video.mp4' };
     expect(workshopActionIntent({
       destination: 'workshop.knowledge_video',
@@ -68,7 +68,7 @@ describe('page intents', () => {
       page: 'practice',
       params: {
         view: 'workspace',
-        taskType: 'knowledge_cards',
+        taskType: 'video_learning',
         resourceView: 'videos',
         taskItemId: 'ITEM_VIDEO',
         video,

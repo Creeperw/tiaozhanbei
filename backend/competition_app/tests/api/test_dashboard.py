@@ -46,7 +46,7 @@ def test_dashboard_home_is_derived_from_current_users_main_state(tmp_path: Path)
     }
 
 
-def test_dashboard_projects_current_task_chapter_and_knowledge_card_actions(tmp_path: Path) -> None:
+def test_dashboard_projects_current_task_chapter_and_resolved_points(tmp_path: Path) -> None:
     container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
     container.knowledge_backend = SimpleNamespace(
         map=SimpleNamespace(
@@ -103,18 +103,7 @@ def test_dashboard_projects_current_task_chapter_and_knowledge_card_actions(tmp_
         "title": "补益剂·补气",
         "source": "learning_task",
     }
-    assert current["knowledge_cards"] == [{
-        "kp_id": "KP_SIJUNZI",
-        "title": "四君子汤",
-        "book": "方剂学",
-        "chapter": "补益剂·补气",
-        "action": {
-            "action_type": "navigate",
-            "label": "学习知识卡",
-            "destination": "workshop.knowledge_card",
-            "params": {"kp_id": "KP_SIJUNZI"},
-        },
-    }]
+    assert current["focus_knowledge_points"] == ["四君子汤"]
     assert payload["daily_task_timer"]["policy"] == "rolling_24h"
     assert payload["daily_task_timer"]["available"] is True
     assert current["refresh_due_at"] is not None

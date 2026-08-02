@@ -2237,60 +2237,6 @@ class BackendHandoffRuntime:
             db, SimpleNamespace(user_id=external_user_id)
         )
 
-    def list_knowledge_cards(
-        self, external_user_id: str, *, offset: int = 0, limit: int = 50
-    ) -> dict[str, Any]:
-        database = importlib.import_module("APP.backend.database")
-        service = importlib.import_module("APP.backend.learning_workshop_service")
-        db = database.SessionLocal()
-        try:
-            user = self._workshop_user(db, external_user_id)
-            return service.list_knowledge_cards(
-                db, user_id=user.id, offset=offset, limit=limit
-            )
-        finally:
-            db.close()
-
-    def get_knowledge_card(
-        self, external_user_id: str, card_id: str
-    ) -> dict[str, Any] | None:
-        database = importlib.import_module("APP.backend.database")
-        service = importlib.import_module("APP.backend.learning_workshop_service")
-        db = database.SessionLocal()
-        try:
-            user = self._workshop_user(db, external_user_id)
-            return service.get_knowledge_card(db, user_id=user.id, card_id=card_id)
-        finally:
-            db.close()
-
-    def save_knowledge_card(
-        self,
-        external_user_id: str,
-        *,
-        kp_id: str,
-        title: str,
-        resource_bundle: dict[str, Any],
-        source_execution_id: str = "",
-    ) -> dict[str, Any]:
-        database = importlib.import_module("APP.backend.database")
-        service = importlib.import_module("APP.backend.learning_workshop_service")
-        db = database.SessionLocal()
-        try:
-            user = self._workshop_user(db, external_user_id)
-            return service.upsert_knowledge_card(
-                db,
-                user_id=user.id,
-                kp_id=kp_id,
-                title=title,
-                resource_bundle=resource_bundle,
-                source_execution_id=source_execution_id,
-            )
-        except Exception:
-            db.rollback()
-            raise
-        finally:
-            db.close()
-
     def publish_agent_paper(
         self,
         external_user_id: str,

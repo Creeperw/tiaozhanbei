@@ -202,9 +202,14 @@ def test_trusted_video_resolver_returns_only_published_canonical_segment(tmp_pat
         "page": 1,
         "start_seconds": 12.0,
         "end_seconds": 42.0,
+        "duration_seconds": 30,
         "video_title": "方剂学课程",
         "part_title": "四君子汤",
         "topic": "组成",
+        "kp_id": "KP_1",
+        "book": "方剂学",
+        "chapter": "补益剂",
+        "section": "四君子汤",
     }
     assert backend.map.resolve_trusted_video_resource({
         "provider": "bilibili",

@@ -43,6 +43,7 @@ from competition_app.services.writeback import WritebackExecutor
 from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.textbook_route import TextbookRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
+from competition_app.services.learning_path_projection import LearningPathProjectionService
 from competition_app.services.daily_task_refresh import DailyTaskRefreshService
 from competition_app.services.daily_task_execution import DailyTaskExecutionCoordinator
 from competition_app.services.plan_progress import build_plan_progress
@@ -572,6 +573,210 @@ class ApplicationContainer:
                 "task_load_policy": task_load_policy,
             }
 
+        def load_learning_path_progress(external_user_id: str) -> dict:
+            """Project the learner's current long-term plan into a stable
+            stage → book → chapter → section hierarchy.
+
+            Each section carries its per-learner status (mastery based) and the
+            trusted video bound to it when the knowledge map has one. Diagnosis
+            uses this to pin today's task to a concrete video section instead of
+            a generic "watch this chapter's video".
+            """
+
+            plans = plan_repository.get_current(external_user_id)
+            if plans is None or plans.long_term_plan is None:
+                return {
+                    "schema_version": "1.0",
+                    "learner_id": external_user_id,
+                    "availability": "requires_long_term_plan",
+                    "stages": [],
+                    "books": [],
+                    "current_section": None,
+                }
+            mastery_rows: list[dict] = []
+            if backend_handoff_runtime is not None:
+                try:
+                    behavior = backend_handoff_runtime.load_learning_context(
+                        external_user_id,
+                        days=7,
+                    )
+                    mastery_rows = behavior.get("mastery") or []
+                except Exception:
+                    mastery_rows = []
+            loader = (
+                knowledge_backend.map.learning_path_book_knowledge_points
+                if knowledge_backend is not None
+                else None
+            )
+            videos_by_kp: dict = {}
+            if knowledge_backend is not None:
+                try:
+                    knowledge_backend.map.ensure_videos()
+                    videos_by_kp = knowledge_backend.map.videos_by_kp
+                except Exception:
+                    videos_by_kp = {}
+            service = LearningPathProjectionService(loader)
+            try:
+                stage_page = service.page(
+                    learner_id=external_user_id,
+                    plan=plans.long_term_plan,
+                    parent_id=None,
+                    mastery_rows=mastery_rows,
+                    offset=0,
+                    limit=50,
+                )
+            except (KeyError, OSError, TypeError, ValueError):
+                return {
+                    "schema_version": "1.0",
+                    "learner_id": external_user_id,
+                    "availability": "unavailable",
+                    "stages": [],
+                    "books": [],
+                    "current_section": None,
+                }
+            stages: list[dict] = []
+            books: list[dict] = []
+            current_section: dict | None = None
+            for stage_node in stage_page.nodes:
+                try:
+                    book_page = service.page(
+                        learner_id=external_user_id,
+                        plan=plans.long_term_plan,
+                        parent_id=stage_node.node_id,
+                        mastery_rows=mastery_rows,
+                        offset=0,
+                        limit=50,
+                    )
+                except (KeyError, OSError, TypeError, ValueError):
+                    continue
+                stage_books: list[dict] = []
+                for book_node in book_page.nodes:
+                    book_name = str(book_node.title).strip().strip("《》")
+                    section_rows: list[dict] = []
+                    if (
+                        stage_node.status in {"in_progress", "completed"}
+                        and loader is not None
+                    ):
+                        try:
+                            knowledge = loader(book_name, 0, 500)
+                        except (KeyError, OSError, TypeError, ValueError):
+                            knowledge = {}
+                        mastery_by_kp = {
+                            str(row.get("kp_id")): float(row.get("mastery") or 0.0)
+                            for row in mastery_rows
+                            if row.get("kp_id")
+                        }
+                        for row in knowledge.get("items") or []:
+                            kp_id = str(row.get("kp_id") or row.get("id") or "").strip()
+                            if not kp_id:
+                                continue
+                            mastery = mastery_by_kp.get(kp_id)
+                            status = (
+                                "completed"
+                                if mastery is not None and mastery >= 0.8
+                                else "in_progress"
+                                if mastery is not None and mastery > 0
+                                else "unassessed"
+                            )
+                            video: dict | None = None
+                            rows = sorted(
+                                videos_by_kp.get(kp_id, []),
+                                key=lambda row: (
+                                    str(row.get("bvid") or ""),
+                                    int(row.get("page") or 0),
+                                    float(row.get("start_seconds") or 0),
+                                ),
+                            )
+                            if rows:
+                                first = rows[0]
+                                try:
+                                    video_duration = round(
+                                        float(first.get("end_seconds") or 0)
+                                        - float(first.get("start_seconds") or 0)
+                                    )
+                                except (TypeError, ValueError):
+                                    video_duration = 0
+                                video = {
+                                    "bvid": first.get("bvid"),
+                                    "aid": first.get("aid"),
+                                    "page": first.get("page"),
+                                    "start_seconds": first.get("start_seconds"),
+                                    "end_seconds": first.get("end_seconds"),
+                                    "duration_seconds": max(video_duration, 0) or None,
+                                    "video_title": first.get("video_title"),
+                                    "part_title": first.get("part_title"),
+                                    "topic": first.get("topic"),
+                                }
+                            section_rows.append(
+                                {
+                                    "kp_id": kp_id,
+                                    "name": str(
+                                        row.get("name")
+                                        or row.get("kp_lv3")
+                                        or kp_id
+                                    ),
+                                    "chapter": str(
+                                        row.get("chapter")
+                                        or row.get("kp_lv2")
+                                        or ""
+                                    ),
+                                    "status": status,
+                                    "mastery": mastery,
+                                    "video": video,
+                                }
+                            )
+                    stage_books.append(
+                        {
+                            "book": book_name,
+                            "node_id": book_node.node_id,
+                            "status": book_node.status,
+                            "sections": section_rows,
+                        }
+                    )
+                    if current_section is None:
+                        current_section = next(
+                            (
+                                section
+                                for section in section_rows
+                                if section["status"] != "completed"
+                            ),
+                            None,
+                        )
+                books.extend(stage_books)
+                stages.append(
+                    {
+                        "stage_id": stage_node.node_id,
+                        "name": stage_node.title,
+                        "status": stage_node.status,
+                        "order": stage_node.order,
+                        "books": [
+                            {
+                                "book": str(item["book"]),
+                                "node_id": item["node_id"],
+                                "status": item["status"],
+                            }
+                            for item in stage_books
+                        ],
+                    }
+                )
+            current_stage_name = next(
+                (
+                    str(stage.get("name") or "")
+                    for stage in stages
+                    if stage.get("status") == "in_progress"
+                ),
+                str(stages[0].get("name") or "") if stages else "",
+            )
+            return {
+                "schema_version": "1.0",
+                "learner_id": external_user_id,
+                "availability": "available" if stages else "unavailable",
+                "current_stage_name": current_stage_name or None,
+                "stages": stages,
+                "books": books,
+                "current_section": current_section,
+            }
+
         tool_registry.register(
             "get_recent_learning_summary",
             recent_learning_handler,
@@ -600,6 +805,11 @@ class ApplicationContainer:
         tool_registry.register(
             "get_learning_planning_context",
             load_learning_planning_context,
+            allowed_agents={"diagnosis_agent"},
+        )
+        tool_registry.register(
+            "get_learning_path_progress",
+            load_learning_path_progress,
             allowed_agents={"diagnosis_agent"},
         )
         tool_registry.register(

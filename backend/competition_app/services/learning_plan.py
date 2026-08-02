@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 import re
 from typing import Any, Callable
@@ -224,9 +225,36 @@ def materialize_daily_task_items(
     if estimated_minutes < len(semantics):
         raise ValueError("parent task budget cannot allocate one minute per atomic item")
 
-    base_minutes, remainder = divmod(estimated_minutes, len(semantics))
+    # 视频任务的预计时间以视频真实时长为准（resource_ref.duration_seconds，
+    # 由视频资源解析器从 end_seconds - start_seconds 计算），剩余预算均分给
+    # 其余原子项，避免“看视频”显示的时间与视频实际时长脱节。
+    video_minutes: dict[int, int] = {}
+    for index, semantic in enumerate(semantics):
+        if semantic["item_type"] != "video_section":
+            continue
+        try:
+            seconds = float(semantic["resource_ref"].get("duration_seconds") or 0)
+        except (TypeError, ValueError):
+            seconds = 0.0
+        if seconds > 0:
+            video_minutes[index] = max(1, math.ceil(seconds / 60))
+    non_video_indices = [
+        index for index in range(len(semantics)) if index not in video_minutes
+    ]
+    # 视频分钟数不能挤占每个非视频原子的最低 1 分钟预算。
+    video_total = min(
+        sum(video_minutes.values()),
+        max(0, estimated_minutes - len(non_video_indices)),
+    )
+    non_video_budget = estimated_minutes - video_total
+    base_minutes, remainder = divmod(non_video_budget, max(1, len(non_video_indices)))
+    non_video_item_minutes = {
+        index: base_minutes + (1 if position < remainder else 0)
+        for position, index in enumerate(non_video_indices)
+    }
+
     items: list[DailyTaskItemSpec] = []
-    for index, semantic in enumerate(semantics, start=1):
+    for index, semantic in enumerate(semantics):
         item_type = semantic["item_type"]
         resource_ref = semantic["resource_ref"]
         if item_type == "knowledge_practice":
@@ -248,10 +276,14 @@ def materialize_daily_task_items(
         items.append(
             DailyTaskItemSpec(
                 task_item_id=f"DTI_{uuid4().hex}",
-                ordinal=index,
+                ordinal=index + 1,
                 item_type=item_type,
                 title=semantic["title"],
-                estimated_minutes=base_minutes + (1 if index <= remainder else 0),
+                estimated_minutes=(
+                    video_minutes.get(index)
+                    if index in video_minutes
+                    else non_video_item_minutes[index]
+                ),
                 knowledge_point_name=semantic["knowledge_point_name"],
                 kp_id=semantic["kp_id"],
                 required_question_count=(

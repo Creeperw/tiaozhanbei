@@ -3,8 +3,9 @@ import { create } from 'zustand';
 /** @typedef {'idle'|'running'|'done'|'error'|'rollingBack'|'archived'} NodeStatus */
 /** @typedef {{ id:string, name:string, args?:object, resultSnippet?:string, status:NodeStatus, startTime:number, endTime?:number }} ToolCall */
 /** @typedef {{ id:string, label:string, intent:string, status:NodeStatus, startTime:number, endTime?:number, resultSnippet?:string }} IntentCall */
-/** @typedef {{ id:string, name:string, agent?:string, stepId?:string, status:NodeStatus, startTime:number, endTime?:number, logs:string[], tools:ToolCall[], intents:IntentCall[], outputSnippet?:string, error?:string, archived?:boolean }} ExecutionNode */
-/** @typedef {{ type:string, title?:string, text?:string, name?:string, query?:string, intent?:string, approved?:boolean }} LangGraphEvent */
+/** @typedef {{ id:string, callId?:string, stepId?:string, kind:'input'|'output'|'transport', agent?:string, input?:any, output?:any, requestPayload?:any, responseText?:string, ts:number }} ModelCall */
+/** @typedef {{ id:string, name:string, agent?:string, stepId?:string, status:NodeStatus, startTime:number, endTime?:number, logs:string[], tools:ToolCall[], intents:IntentCall[], modelCalls:ModelCall[], outputSnippet?:string, error?:string, archived?:boolean }} ExecutionNode */
+/** @typedef {{ type:string, title?:string, text?:string, name?:string, query?:string, intent?:string, approved?:boolean, kind?:string, input?:any, output?:any, requestPayload?:any, responseText?:string }} LangGraphEvent */
 
 const NODE_MAP = {
   context: 'InfoManager',
@@ -29,6 +30,7 @@ const newNode = (id, name, text = '', ts = now(), agent = '') => ({
   logs: text ? [text] : [],
   tools: [],
   intents: [],
+  modelCalls: [],
 });
 
 export const useLangGraphStore = create((set, get) => ({
@@ -227,6 +229,37 @@ export function reduceLangGraphEvent(state, ev) {
       nodes = finishNode(upsertNode(nodes, target.id, target.name, ev.text, 'running', ts, target.agent), target.id, {}, ts);
       isRollingBack = false;
     }
+  } else if (ev.type === 'model_call') {
+    const agent = ev.agent || '';
+    const stepId = ev.stepId || '';
+    const matchingNode = nodes.find((node) => (
+      (stepId && node.id === stepId) || (agent && node.agent === agent)
+    ));
+    const targetId = matchingNode?.id || (agent ? `model-${agent}-${ts}` : `model-${ts}`);
+    if (!matchingNode) {
+      nodes = upsertNode(nodes, targetId, agent || 'expert_agent', '', 'running', ts, agent || 'expert_agent');
+    }
+    const call = {
+      id: `${ev.callId || 'model_call'}-${ev.kind || 'call'}-${ts}`,
+      callId: ev.callId || '',
+      stepId,
+      kind: ev.kind || 'call',
+      agent,
+      input: ev.input,
+      output: ev.output,
+      requestPayload: ev.requestPayload,
+      responseText: ev.responseText,
+      ts,
+    };
+    nodes = nodes.map((node) => {
+      if (node.id !== targetId) return node;
+      return {
+        ...node,
+        modelCalls: [...(node.modelCalls || []), call],
+        status: node.status === 'pending' || node.status === 'skipped' ? 'running' : node.status,
+      };
+    });
+    if (!currentActiveNodeId) currentActiveNodeId = targetId;
   } else if (ev.type === 'human_review_waiting') {
     const requestedTarget = eventNode(ev, 'feedback', 'audit_agent', NODE_MAP.feedback);
     const matchingNode = nodes.find((node) => node.agent === requestedTarget.agent);

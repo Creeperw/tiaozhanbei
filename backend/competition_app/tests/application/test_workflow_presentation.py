@@ -142,6 +142,51 @@ def test_waiting_human_review_is_presented_as_a_review_request() -> None:
     assert "审核未能完成" not in message
 
 
+def test_waiting_human_review_shows_draft_content_and_audit_advice() -> None:
+    message = workflow_result_to_markdown({
+        "status": "waiting_human_review",
+        "review": {
+            "audit_report": "讲解结构符合要求，但证据引用需要人工确认。",
+            "findings": ["教材证据原文需要人工核验。"],
+        },
+        "agent_outputs": [
+            {
+                "producer": "expert_agent",
+                "payload": {
+                    "title": "气血知识讲解",
+                    "content": {
+                        "知识讲解": "气与血是人体基本物质。",
+                        "思考问题": ["气能生血，你能举例说明吗？"],
+                    },
+                },
+            },
+        ],
+    })
+
+    assert "### 待复核内容" in message
+    assert "「气血知识讲解」" in message
+    assert "气与血是人体基本物质。" in message
+    assert "### 审核意见" in message
+    assert "讲解结构符合要求，但证据引用需要人工确认。" in message
+    assert "### 需要确认的问题" in message
+    assert "教材证据原文需要人工核验。" in message
+    assert "确认后我会继续发布" in message
+
+
+def test_waiting_human_review_without_agent_outputs_still_lists_findings() -> None:
+    message = workflow_result_to_markdown({
+        "status": "waiting_human_review",
+        "review": {
+            "audit_report": "",
+            "findings": ["需要确认信息来源。"],
+        },
+    })
+
+    assert "### 待复核内容" not in message
+    assert "需要确认的问题" in message
+    assert "需要确认信息来源。" in message
+
+
 def test_waiting_human_review_execution_builds_a_normal_review_result() -> None:
     use_case = object.__new__(PersonalizedReviewCardUseCase)
     use_case.model_trace_recorder = None

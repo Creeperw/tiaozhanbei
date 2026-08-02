@@ -25,12 +25,7 @@ from competition_app.contracts.knowledge import (
 )
 
 from competition_app.contracts.workshop import (
-    KnowledgeCardDetail,
-    KnowledgeCardPage,
-    KnowledgeCardSummary,
-    KnowledgeResourceBundle,
     PaperTiming,
-    ResourceCoverage,
     UiAction,
     WorkshopModule,
     WorkshopOverview,
@@ -62,7 +57,6 @@ __all__ = [
     "QuestionDetail",
     "QuestionRetrievalMetadata",
     "QuestionSearchResult",
-    "ResourceCoverage",
     "RepairAction",
     "RepairIssue",
     "UiAction",

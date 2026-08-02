@@ -97,4 +97,64 @@ describe('six-agent presentation model', () => {
     expect(sanitizeAgentLog('audit_agent处理完成')).toBe('内容质量检查完成。');
     expect(sanitizeAgentLog('')).toBe('');
   });
+
+  it('aggregates model input/output/transport calls onto the owning seat', () => {
+    const roles = buildAgentPresentation([
+      {
+        id: 'expert',
+        agent: 'expert_agent',
+        status: 'done',
+        startTime: 40,
+        endTime: 80,
+        logs: ['expert_agent开始处理', '内容生成完成'],
+        tools: [],
+        intents: [],
+        modelCalls: [
+          {
+            id: 'MODEL_CALL_1-input-1',
+            callId: 'MODEL_CALL_1',
+            kind: 'input',
+            agent: 'expert_agent',
+            input: { task_type: 'knowledge_explanation', topic: '气血' },
+            ts: 41,
+          },
+          {
+            id: 'MODEL_CALL_1-output-1',
+            callId: 'MODEL_CALL_1',
+            kind: 'output',
+            agent: 'expert_agent',
+            output: { content: '气血是人体基本物质' },
+            ts: 79,
+          },
+        ],
+      },
+    ]);
+    const expert = roles.find((item) => item.key === 'expert');
+
+    expect(expert.modelCalls).toHaveLength(2);
+    expect(expert.modelCalls[0].kind).toBe('input');
+    expect(expert.modelCalls[1].kind).toBe('output');
+  });
+
+  it('drops model calls without meaningful payloads', () => {
+    const roles = buildAgentPresentation([
+      {
+        id: 'planner',
+        agent: 'planner_agent',
+        status: 'done',
+        startTime: 10,
+        endTime: 20,
+        logs: [],
+        tools: [],
+        intents: [],
+        modelCalls: [
+          { id: 'empty-1', kind: 'input', agent: 'planner_agent', input: null, ts: 11 },
+          { id: 'empty-2', kind: 'output', agent: 'planner_agent', output: '', ts: 12 },
+        ],
+      },
+    ]);
+    const planner = roles.find((item) => item.key === 'planner');
+
+    expect(planner.modelCalls).toHaveLength(0);
+  });
 });

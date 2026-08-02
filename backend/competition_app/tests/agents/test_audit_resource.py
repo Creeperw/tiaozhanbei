@@ -10,10 +10,20 @@ from competition_app.contracts.plan_compilation import (
     PlanCompilationEnvelope,
 )
 from competition_app.contracts.resource import ResourceClaim, ResourceDraft
+from competition_app.llm.stub import StubChatModel
+
+
+async def _compile_audit_findings(role, payload, on_delta=None):
+    if role != "audit_findings_compiler":
+        return None
+    return await StubChatModel().complete_json(role, payload, on_delta=on_delta)
 
 
 class EmptyRevisionAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
+        compiled = await _compile_audit_findings(role, payload, on_delta)
+        if compiled is not None:
+            return compiled
         return {
             "decision": "revise",
             "findings": [],
@@ -23,6 +33,9 @@ class EmptyRevisionAuditModel:
 
 class ActionableRevisionAuditModel:
     async def complete_json(self, role, payload, on_delta=None):
+        compiled = await _compile_audit_findings(role, payload, on_delta)
+        if compiled is not None:
+            return compiled
         return {
             "decision": "revise",
             "findings": [
@@ -36,6 +49,9 @@ class ActionableRevisionAuditModel:
 
 class AdvisoryPlanRevisionModel:
     async def complete_json(self, role, payload, on_delta=None):
+        compiled = await _compile_audit_findings(role, payload, on_delta)
+        if compiled is not None:
+            return compiled
         return {
             "decision": "revise",
             "findings": ["可以进一步润色第二个推进节点的表达。"],
@@ -48,6 +64,9 @@ class RejectThenPassPlanModel:
         self.calls = 0
 
     async def complete_json(self, role, payload, on_delta=None):
+        compiled = await _compile_audit_findings(role, payload, on_delta)
+        if compiled is not None:
+            return compiled
         self.calls += 1
         if self.calls == 1:
             return {
@@ -64,6 +83,9 @@ class RejectThenPassPlanModel:
 
 class RepairedPlanStillRejectedModel:
     async def complete_json(self, role, payload, on_delta=None):
+        compiled = await _compile_audit_findings(role, payload, on_delta)
+        if compiled is not None:
+            return compiled
         return {
             "decision": "reject",
             "findings": ["还可以进一步优化学习节奏。"],
@@ -232,7 +254,7 @@ async def test_repaired_short_plan_converges_when_deterministic_contract_passes(
 
     assert result.payload.decision == "pass"
     assert result.payload.structured_findings == []
-    assert any("非阻断建议" in item for item in result.payload.findings)
+    assert result.payload.findings == ["可以进一步润色第二个推进节点的表达。"]
 
 
 @pytest.mark.asyncio
@@ -256,4 +278,4 @@ async def test_repaired_plan_model_rejection_becomes_non_blocking_advice() -> No
 
     assert result.payload.decision == "pass"
     assert result.payload.structured_findings == []
-    assert any("非阻断建议" in item for item in result.payload.findings)
+    assert result.payload.findings == ["还可以进一步优化学习节奏。"]

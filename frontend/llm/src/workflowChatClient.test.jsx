@@ -38,6 +38,56 @@ describe('workflow chat event adapter', () => {
     });
   });
 
+  it('maps model-level events into model_call trace entries', () => {
+    expect(runtimeEventToTrace({
+      event: 'model_input',
+      agent: 'expert_agent',
+      step_id: 'expert',
+      call_id: 'MODEL_CALL_1',
+      raw_input: { task_type: 'knowledge_explanation', topic: '气血' },
+    })).toEqual({
+      type: 'model_call',
+      kind: 'input',
+      text: 'expert_agent 模型输入',
+      agent: 'expert_agent',
+      stepId: 'expert',
+      callId: 'MODEL_CALL_1',
+      input: { task_type: 'knowledge_explanation', topic: '气血' },
+    });
+    expect(runtimeEventToTrace({
+      event: 'model_output',
+      agent: 'expert_agent',
+      step_id: 'expert',
+      call_id: 'MODEL_CALL_1',
+      raw_output: { content: '气血是人体基本物质' },
+    })).toEqual({
+      type: 'model_call',
+      kind: 'output',
+      text: 'expert_agent 模型输出',
+      agent: 'expert_agent',
+      stepId: 'expert',
+      callId: 'MODEL_CALL_1',
+      output: { content: '气血是人体基本物质' },
+    });
+    expect(runtimeEventToTrace({
+      event: 'model_transport',
+      agent: 'diagnosis_agent',
+      step_id: 'diagnosis',
+      call_id: 'MODEL_CALL_2',
+      request_payload: { topic: '四君子汤' },
+      response_text: '掌握程度良好',
+    })).toEqual({
+      type: 'model_call',
+      kind: 'transport',
+      text: 'diagnosis_agent 模型传输',
+      agent: 'diagnosis_agent',
+      stepId: 'diagnosis',
+      callId: 'MODEL_CALL_2',
+      requestPayload: { topic: '四君子汤' },
+      responseText: '掌握程度良好',
+    });
+  });
+
   it('consumes the main LangGraph SSE contract and keeps conversation/run ids separate', async () => {
     const events = [
       { event: 'run_started', thread_id: 'THREAD_1' },

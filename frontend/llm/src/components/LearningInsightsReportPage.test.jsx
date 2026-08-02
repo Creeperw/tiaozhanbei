@@ -99,9 +99,9 @@ describe('LearningInsightsReportPage', () => {
           target: { kp_ids: ['KP_1'] },
           summary: { coverage: 1 },
           matches: [{
-            resource_id: 'CARD_1',
-            resource_type: 'knowledge_card',
-            title: '四君子汤知识卡',
+            resource_id: 'VIDEO_1',
+            resource_type: 'video',
+            title: '四君子汤讲解视频',
             kp_ids: ['KP_1'],
             score: 0.9,
             estimated_minutes: 12,
@@ -109,14 +109,14 @@ describe('LearningInsightsReportPage', () => {
             components: { knowledge_fit: 1, quality: 0.8, format_fit: 1, time_fit: 1 },
             component_sources: {
               knowledge_fit: 'resource.kp_ids intersect target.kp_ids',
-              quality: 'knowledge_card_bundle',
+              quality: 'teaching_resources.quality_score',
               format_fit: 'user_profiles.exercise_preferences/custom_needs',
               time_fit: 'content_type_default',
             },
             feedback: {
               recommendation_view_id: 'recommendation-view:1',
-              resource_id: 'CARD_1',
-              resource_type: 'knowledge_card',
+              resource_id: 'VIDEO_1',
+              resource_type: 'video',
               kp_ids: ['KP_1'],
               event_endpoint: '/api/v1/resource-recommendations/events',
               supported_events: ['impression', 'click', 'complete'],
@@ -158,7 +158,7 @@ describe('LearningInsightsReportPage', () => {
     expect(screen.queryByText('复习队列')).not.toBeInTheDocument();
     expect(screen.queryByText('多尺度学习状态')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: '资源匹配报告' })).toBeInTheDocument();
-    expect(screen.getByText('四君子汤知识卡')).toBeInTheDocument();
+    expect(screen.getByText('四君子汤讲解视频')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '资源推荐效果' })).toBeInTheDocument();
     await waitFor(() => expect(recordResourceRecommendationEvent).toHaveBeenCalledWith(expect.objectContaining({
       eventType: 'impression',
@@ -170,8 +170,8 @@ describe('LearningInsightsReportPage', () => {
       page: 'practice',
       params: {
         view: 'workspace',
-        taskType: 'knowledge_cards',
-        cardId: 'CARD_1',
+        taskType: 'video_learning',
+        resourceView: 'videos',
         kpId: 'KP_1',
         returnTo: { page: 'personalization', params: { view: 'reports' } },
       },

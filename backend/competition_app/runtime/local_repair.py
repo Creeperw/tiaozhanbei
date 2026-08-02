@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
@@ -15,6 +17,12 @@ IssueType = Literal[
     "content_quality",
     "paper_blueprint_mismatch",
     "plan_quality",
+    "plan_contract_invalid",
+    "plan_parent_constraint",
+    "question_pool_insufficient",
+    "paper_item_invalid",
+    "answer_or_explanation_invalid",
+    "safety_violation",
     "unresolved",
 ]
 
@@ -45,6 +53,12 @@ class LocalRepairController:
         "content_quality": "paper_assembly",
         "paper_blueprint_mismatch": "paper_assembly",
         "plan_quality": "diagnosis",
+        "plan_contract_invalid": "diagnosis",
+        "plan_parent_constraint": "diagnosis",
+        "question_pool_insufficient": "paper_assembly",
+        "paper_item_invalid": "paper_assembly",
+        "answer_or_explanation_invalid": "paper_assembly",
+        "safety_violation": "",
         "unresolved": "",
     }
     _ALLOWED_TARGETS: dict[IssueType, frozenset[str]] = {
@@ -55,6 +69,12 @@ class LocalRepairController:
         "content_quality": frozenset({"expert", "paper_assembly"}),
         "paper_blueprint_mismatch": frozenset({"paper_assembly"}),
         "plan_quality": frozenset({"diagnosis"}),
+        "plan_contract_invalid": frozenset({"diagnosis"}),
+        "plan_parent_constraint": frozenset({"diagnosis"}),
+        "question_pool_insufficient": frozenset({"paper_assembly"}),
+        "paper_item_invalid": frozenset({"paper_assembly"}),
+        "answer_or_explanation_invalid": frozenset({"paper_assembly"}),
+        "safety_violation": frozenset(),
         "unresolved": frozenset(),
     }
 
@@ -82,7 +102,10 @@ class LocalRepairController:
                 issues=issues,
             )
 
-        if not issues or any(issue.issue_type == "unresolved" for issue in issues):
+        if not issues or any(
+            issue.issue_type in {"unresolved", "safety_violation"}
+            for issue in issues
+        ):
             return self._human_review_plan(
                 repair_id=repair_id,
                 execution_id=execution_id,
@@ -150,8 +173,12 @@ class LocalRepairController:
             )
 
         preserve_outputs = sorted(set(outputs) - set(selected_steps))
-        reasons = {
-            step_id: [issue.message for issue, chain in zip(issues, resolved_chains) if step_id in chain]
+        issues_by_step = {
+            step_id: [
+                issue
+                for issue, chain in zip(issues, resolved_chains)
+                if step_id in chain
+            ]
             for step_id in selected_steps
         }
         actions = [
@@ -159,9 +186,19 @@ class LocalRepairController:
                 action_id=f"rerun:{step_id}",
                 action_type="rerun",
                 step_id=step_id,
-                reason="；".join(dict.fromkeys(reasons[step_id])),
+                reason="；".join(
+                    dict.fromkeys(issue.message for issue in issues_by_step[step_id])
+                ),
                 depends_on=[f"rerun:{dependency}" for dependency in dependency_steps[step_id]],
                 preserve_outputs=preserve_outputs,
+                issue_ids=list(
+                    dict.fromkeys(issue.issue_id for issue in issues_by_step[step_id])
+                ),
+                locations=self._locations_for(issues_by_step[step_id]),
+                repair_instruction=self._repair_instruction(
+                    step_id, issues_by_step[step_id], audit_step_id=audit_step_id
+                ),
+                previous_output_digest=self._output_digest(outputs.get(step_id)),
             )
             for step_id in selected_steps
         ]
@@ -242,8 +279,16 @@ class LocalRepairController:
                 "paper_assembly",
                 audit_step_id,
             )
-        if issue_type == "plan_quality":
+        if issue_type in {
+            "plan_quality",
+            "plan_contract_invalid",
+            "plan_parent_constraint",
+        }:
             return ("diagnosis", audit_step_id)
+        if issue_type == "question_pool_insufficient":
+            return ("question_pool", "paper_assembly", audit_step_id)
+        if issue_type in {"paper_item_invalid", "answer_or_explanation_invalid"}:
+            return ("paper_assembly", audit_step_id)
         return None
 
     def _affected_target(self, issue: RepairIssue) -> str | None:
@@ -325,6 +370,53 @@ class LocalRepairController:
             if isinstance(output, Mapping) and output.get("execution_id"):
                 return str(output["execution_id"])
         return fallback
+
+    @staticmethod
+    def _locations_for(issues: Sequence[RepairIssue]):
+        locations = []
+        seen: set[str] = set()
+        for issue in issues:
+            for location in issue.locations:
+                if location.location_key in seen:
+                    continue
+                seen.add(location.location_key)
+                locations.append(location)
+        return locations[:8]
+
+    @staticmethod
+    def _repair_instruction(
+        step_id: str,
+        issues: Sequence[RepairIssue],
+        *,
+        audit_step_id: str,
+    ) -> str:
+        if step_id == audit_step_id:
+            return (
+                "请对返修后的完整产物重新执行全部确定性门禁和语义审核；"
+                "不得沿用上一轮通过结论。"
+            )
+        details = []
+        for issue in issues:
+            labels = "、".join(
+                location.display_label for location in issue.locations
+            ) or "当前产物"
+            details.append(f"{labels}：{issue.message}")
+        return (
+            "只修正以下已定位问题，保留其他已经通过的内容和有效依赖，不扩大修改范围："
+            + "；".join(dict.fromkeys(details))
+        )[:4_000]
+
+    @staticmethod
+    def _output_digest(value: Any) -> str | None:
+        if value is None:
+            return None
+        if hasattr(value, "model_dump"):
+            value = value.model_dump(mode="json")
+        try:
+            raw = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+        except TypeError:
+            raw = str(value)
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _human_review_plan(

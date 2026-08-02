@@ -136,7 +136,9 @@ def test_overdue_task_applies_system_task_load_policy_without_filling_budget() -
     service = DailyTaskRefreshService(
         repository,
         video_resource_resolver=lambda resource_ref: (
-            resource_ref if resource_ref.get("trusted_resource_id") else None
+            dict(resource_ref, duration_seconds=120)
+            if resource_ref.get("trusted_resource_id")
+            else None
         ),
         task_load_policy_loader=lambda learner_id, **kwargs: (
             policy_calls.append((learner_id, kwargs))
@@ -152,6 +154,9 @@ def test_overdue_task_applies_system_task_load_policy_without_filling_budget() -
     stored = repository.get_current("learner-daily-refresh").learning_task
 
     assert stored.estimated_minutes == 20
+    # 视频原子项按真实时长占位（30s→150s，120 秒 = 2 分钟），
+    # 其余预算分配给配套复习项，总和不超过任务预算。
+    assert stored.items[0].estimated_minutes == 2
     assert sum(item.estimated_minutes for item in stored.items) == 20
     assert result["task_load_policy"]["direction"] == "decrease"
     assert policy_calls[0][1]["plan_context"]["learning_task"]["task_id"] == (

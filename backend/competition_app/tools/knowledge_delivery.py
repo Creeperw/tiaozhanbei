@@ -677,16 +677,21 @@ class DeliveryKnowledgeMapStore:
         if not bvid or page <= 0 or not all(map(math.isfinite, (start, end))) or end <= start:
             return None
 
+        self.ensure_hierarchy()
         self.ensure_videos()
-        matches = [
-            row
-            for rows in self.videos_by_kp.values()
-            for row in rows
-            if str(row.get("bvid") or "") == bvid
-            and int(row.get("page") or 0) == page
-            and math.isclose(float(row.get("start_seconds") or 0), start, abs_tol=1e-6)
-            and math.isclose(float(row.get("end_seconds") or 0), end, abs_tol=1e-6)
-        ]
+        matched_kp_id = ""
+        matches = []
+        for kp_id, rows in self.videos_by_kp.items():
+            for row in rows:
+                if (
+                    str(row.get("bvid") or "") == bvid
+                    and int(row.get("page") or 0) == page
+                    and math.isclose(float(row.get("start_seconds") or 0), start, abs_tol=1e-6)
+                    and math.isclose(float(row.get("end_seconds") or 0), end, abs_tol=1e-6)
+                ):
+                    matches.append(row)
+                    if not matched_kp_id:
+                        matched_kp_id = kp_id
         canonical = {
             (
                 str(row.get("bvid") or ""),
@@ -699,6 +704,9 @@ class DeliveryKnowledgeMapStore:
         if len(canonical) != 1:
             return None
         row = next(iter(canonical.values()))
+        kp_context = self.kps.get(matched_kp_id) or {}
+        start_seconds = float(row["start_seconds"])
+        end_seconds = float(row["end_seconds"])
         return {
             "source": "knowledge_atlas",
             "provider": "bilibili",
@@ -706,11 +714,16 @@ class DeliveryKnowledgeMapStore:
             "aid": row.get("aid"),
             "cid": row.get("cid"),
             "page": int(row["page"]),
-            "start_seconds": float(row["start_seconds"]),
-            "end_seconds": float(row["end_seconds"]),
+            "start_seconds": start_seconds,
+            "end_seconds": end_seconds,
+            "duration_seconds": round(end_seconds - start_seconds),
             "video_title": str(row.get("video_title") or ""),
             "part_title": str(row.get("part_title") or ""),
             "topic": str(row.get("topic") or "知识讲解"),
+            "kp_id": matched_kp_id or None,
+            "book": str(kp_context.get("kp_lv1") or "").strip() or None,
+            "chapter": str(kp_context.get("kp_lv2") or "").strip() or None,
+            "section": str(kp_context.get("kp_lv3") or "").strip() or None,
         }
 
     def detail(self, kp_id: str, question_limit: int = 30) -> dict[str, Any]:

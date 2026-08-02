@@ -184,6 +184,11 @@ async def test_paper_audit_revises_when_hard_question_count_is_short() -> None:
 
     assert result.payload.decision == "revise"
     assert any("20题" in finding and "19题" in finding for finding in result.payload.findings)
+    issue = result.payload.structured_findings[0]
+    assert issue.issue_type == "paper_item_invalid"
+    assert issue.owner_step_id == "paper_assembly"
+    assert issue.affected_step_ids == ["paper_assembly"]
+    assert issue.locations[0].location_key == "paper:whole"
 
 
 @pytest.mark.asyncio
@@ -234,6 +239,11 @@ async def test_paper_audit_revises_when_any_selected_question_lacks_explanation(
 
     assert result.payload.decision == "revise"
     assert any("缺少解析" in finding and "Q1" in finding for finding in result.payload.findings)
+    issue = result.payload.structured_findings[0]
+    assert issue.issue_type == "answer_or_explanation_invalid"
+    assert [item.location_key for item in issue.locations] == [
+        "paper:explanation:Q1"
+    ]
 
 
 @pytest.mark.asyncio

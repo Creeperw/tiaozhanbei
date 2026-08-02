@@ -75,6 +75,35 @@ def _markdown_value(value: Any, depth: int = 0) -> str:
     return json.dumps(value, ensure_ascii=False, default=str)
 
 
+def _human_review_draft(agent_outputs: Any) -> str:
+    """Extract the expert-generated resource draft for human review.
+
+    The waiting_human_review receipt carries ``agent_outputs`` including the
+    expert's ResourceDraft. Rendering its content lets the user actually
+    review what was generated, instead of only seeing the audit findings.
+    """
+    outputs = _plain(agent_outputs) or []
+    if not isinstance(outputs, list):
+        outputs = [outputs]
+    for output in outputs:
+        output = _plain(output) or {}
+        if output.get("producer") != "expert_agent":
+            continue
+        payload = _plain(output.get("payload")) or {}
+        content = payload.get("content")
+        if isinstance(content, dict):
+            rendered = _markdown_value(content)
+        elif isinstance(content, str) and content.strip():
+            rendered = str(content).strip()
+        else:
+            continue
+        if not rendered:
+            continue
+        title = str(payload.get("title") or "待复核内容").strip()
+        return f"「{title}」\n\n{rendered}"
+    return ""
+
+
 def _structured_stage_block(long_term: dict[str, Any]) -> str:
     stages = long_term.get("stages") or []
     if not isinstance(stages, list) or not stages:
@@ -105,20 +134,28 @@ def workflow_result_to_markdown(result: Any) -> str:
     body = _plain(result) or {}
     if body.get("status") == "waiting_human_review":
         review = _plain(body.get("review")) or {}
+        audit_report = str(review.get("audit_report") or "").strip()
         findings = [
             str(item).strip()
             for item in review.get("findings", [])
             if str(item).strip()
         ]
-        details = "\n".join(f"- {item}" for item in findings)
-        return "\n\n".join(
-            part
-            for part in (
-                "本次内容已进入人工复核，复核完成前不会发布。",
-                details,
+        review_content = _human_review_draft(body.get("agent_outputs") or [])
+        parts = ["本次内容已进入人工复核，复核完成前不会发布。"]
+        if review_content:
+            parts.append(f"### 待复核内容\n\n{review_content}")
+        if audit_report:
+            parts.append(f"### 审核意见\n\n{audit_report}")
+        if findings:
+            parts.append(
+                "### 需要确认的问题\n\n"
+                + "\n".join(f"- {item}" for item in findings)
             )
-            if part
+        parts.append(
+            "请核对待复核内容与审核意见：若内容无误，确认后我会继续发布；"
+            "如需调整，可以直接告诉我修改意见。"
         )
+        return "\n\n".join(part for part in parts if part)
 
     if body.get("status") == "interrupted":
         interruption = body.get("interrupt") or {}

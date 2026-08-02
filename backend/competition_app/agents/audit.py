@@ -7,6 +7,7 @@ from competition_app.agents.common import envelope
 from competition_app.agents.paper_audit_findings_compiler import (
     PaperAuditFindingsCompilerAgent,
 )
+from competition_app.agents.audit_findings_compiler import AuditFindingsCompilerAgent
 from competition_app.contracts.base import AgentEnvelope
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.resource import AuditResult
@@ -17,6 +18,8 @@ from competition_app.llm.schemas import AuditModelOutput
 from competition_app.services.plan_contract_validator import PlanContractValidator
 from competition_app.services.plan_audit import plan_audit_subject_digest
 from competition_app.contracts.local_repair import RepairIssue
+from competition_app.contracts.audit_compilation import AuditLocation
+from competition_app.runtime.audit_issue_resolver import AuditIssueResolver
 from pydantic import ValidationError
 
 
@@ -25,12 +28,17 @@ class AuditAgent:
         self,
         chat_model: ChatModel | None = None,
         paper_findings_compiler: PaperAuditFindingsCompilerAgent | None = None,
+        audit_findings_compiler: AuditFindingsCompilerAgent | None = None,
     ) -> None:
         self.chat_model = chat_model or StubChatModel()
         self.paper_findings_compiler = (
             paper_findings_compiler
             or PaperAuditFindingsCompilerAgent(self.chat_model)
         )
+        self.audit_findings_compiler = (
+            audit_findings_compiler or AuditFindingsCompilerAgent(self.chat_model)
+        )
+        self.audit_issue_resolver = AuditIssueResolver()
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[AuditResult]:
         prompt_skill = prompt_skill_registry.load(
@@ -87,6 +95,7 @@ class AuditAgent:
                 )
             )
         )
+        protocol_valid = True
         try:
             model_output = AuditModelOutput.model_validate(await self.chat_model.complete_json(
                 "audit_agent", build_model_context(
@@ -116,6 +125,7 @@ class AuditAgent:
                 ),
             ))
         except ValidationError:
+            protocol_valid = False
             model_output = AuditModelOutput(
                 decision="needs_human_review",
                 findings=["审核模型输出不符合协议，已转人工复核。"],
@@ -125,6 +135,44 @@ class AuditAgent:
         else:
             if context.get("terminal_trace"):
                 context["terminal_trace"].validation("audit_agent", valid=True, detail="AuditModelOutput")
+        resource_locations = self._resource_location_catalog(expert)
+        if protocol_valid:
+            compiled_model_issues = await self._compile_model_issues(
+                context,
+                subject_type="resource",
+                audit_report=model_output.audit_report,
+                findings=model_output.findings,
+                location_catalog=resource_locations,
+                issue_id_prefix="RESOURCE_MODEL_ISSUE",
+            )
+        else:
+            compiled_model_issues = [
+                RepairIssue(
+                    issue_id="RESOURCE_MODEL_ISSUE_PROTOCOL",
+                    issue_type="unresolved",
+                    message=model_output.findings[0],
+                    severity="high",
+                    origin="audit_model",
+                    blocking=True,
+                    locations=resource_locations[:1],
+                    policy_id="audit:invalid_protocol",
+                )
+            ]
+        # A finding attached to an explicit pass is an audit note, not a
+        # repair order. The compiler still locates it for traceability, while
+        # the system-owned decision boundary prevents it from opening a loop.
+        if model_output.decision == "pass":
+            compiled_model_issues = [
+                issue.model_copy(update={"blocking": False})
+                for issue in compiled_model_issues
+            ]
+        model_blocking_issues = [
+            issue for issue in compiled_model_issues if issue.blocking
+        ]
+        unsafe_or_unresolved = any(
+            issue.issue_type in {"safety_violation", "unresolved"}
+            for issue in model_blocking_issues
+        )
         deterministic_findings: list[str] = []
         selected_task = getattr(schedule, "selected_task", None)
         # A current-fact answer (weather, exam dates, etc.) is deliberately
@@ -139,7 +187,38 @@ class AuditAgent:
             if expert.estimated_minutes > int(context.get("available_minutes", 15)):
                 deterministic_findings.append("资源预计时长超过用户本次可用时间。")
         model_decision = model_output.decision
-        decision = "revise" if missing or deterministic_findings else model_decision
+        decision = (
+            "revise"
+            if missing or deterministic_findings
+            else (
+                model_decision
+                if model_decision in {"reject", "needs_human_review"}
+                else "needs_human_review"
+            )
+            if unsafe_or_unresolved
+            else "revise"
+            if model_blocking_issues
+            else "pass"
+            if model_decision == "revise"
+            else model_decision
+        )
+        if (
+            compiled_model_issues
+            and not model_blocking_issues
+            and not missing
+            and not deterministic_findings
+        ):
+            decision = "pass"
+        if (
+            context.get("audit_feedback") is None
+            and decision in {"reject", "needs_human_review"}
+            and model_blocking_issues
+            and all(
+                issue.issue_type not in {"safety_violation", "unresolved"}
+                for issue in model_blocking_issues
+            )
+        ):
+            decision = "revise"
         # External facts are already bounded by the web evidence pack and the
         # dedicated prompt.  Do not fail closed merely because a general audit
         # model asks for a pedagogical revision (for example, an exercise,
@@ -162,9 +241,10 @@ class AuditAgent:
                 }
             )
         if (
-            decision == "revise"
+            model_decision == "revise"
             and not missing
             and not deterministic_findings
+            and not model_blocking_issues
             and not model_output.findings
         ):
             # A repair workflow requires at least one actionable finding. When
@@ -180,26 +260,6 @@ class AuditAgent:
                     )[:8_000]
                 }
             )
-        if (
-            (
-                knowledge_explanation
-                or str(context.get("task_type"))
-                in {"personalized_review_card", "general_learning_support"}
-            )
-            and context.get("audit_feedback") is not None
-            and decision == "revise"
-            and not missing
-            and not deterministic_findings
-        ):
-            decision = "pass"
-            model_output = model_output.model_copy(
-                update={
-                    "findings": [
-                        *model_output.findings,
-                        "资源已完成一次受控修订；剩余教学范围、表达、负荷或教材口径建议作为非阻断建议保留。",
-                    ]
-                }
-            )
         if decision not in {"pass", "revise", "reject", "needs_human_review"}:
             decision = "needs_human_review"
         result = AuditResult(
@@ -209,13 +269,23 @@ class AuditAgent:
             findings=[
                 *([f"缺少证据的声明: {', '.join(missing)}"] if missing else []),
                 *deterministic_findings,
-                *([] if missing or deterministic_findings else model_output.findings),
+                *(
+                    []
+                    if missing or deterministic_findings
+                    else [
+                        f"非阻断建议：{finding}"
+                        for finding in model_output.findings
+                    ]
+                    if decision == "pass" and model_decision == "revise"
+                    else model_output.findings
+                ),
             ],
             structured_findings=(
                 self._resource_repair_issues(
                     missing_claim_ids=missing,
                     deterministic_findings=deterministic_findings,
-                    model_findings=model_output.findings,
+                    compiled_model_issues=compiled_model_issues,
+                    location_catalog=resource_locations,
                 )
                 if decision == "revise"
                 else []
@@ -226,11 +296,85 @@ class AuditAgent:
         return envelope(context, "audit_agent", "audit_result", result)
 
     @staticmethod
+    def _resource_location_catalog(expert: Any) -> list[AuditLocation]:
+        locations = [
+            AuditLocation(
+                location_key="resource:whole",
+                subject_type="resource",
+                location_type="whole_subject",
+                display_label="当前教学资源",
+            ),
+            AuditLocation(
+                location_key="resource:target_kp_id",
+                subject_type="resource",
+                location_type="field",
+                display_label="资源目标知识点",
+            ),
+            AuditLocation(
+                location_key="resource:estimated_minutes",
+                subject_type="resource",
+                location_type="field",
+                display_label="资源预计时长",
+            ),
+        ]
+        content = getattr(expert, "content", None)
+        if isinstance(content, dict):
+            for key in list(content)[:12]:
+                locations.append(
+                    AuditLocation(
+                        location_key=f"resource:content:{key}",
+                        subject_type="resource",
+                        location_type="section",
+                        display_label=f"资源正文 {key}",
+                    )
+                )
+        return locations
+
+    async def _compile_model_issues(
+        self,
+        context: dict[str, Any],
+        *,
+        subject_type: str,
+        audit_report: str,
+        findings: list[str],
+        location_catalog: list[AuditLocation],
+        issue_id_prefix: str,
+    ) -> list[RepairIssue]:
+        if not findings:
+            return []
+        compilation = await self.audit_findings_compiler.compile(
+            context,
+            subject_type=subject_type,
+            audit_report=audit_report,
+            findings=findings,
+            location_catalog=location_catalog,
+        )
+        if compilation.result.status != "compiled":
+            return [
+                RepairIssue(
+                    issue_id=f"{issue_id_prefix}_UNRESOLVED",
+                    issue_type="unresolved",
+                    message="审核问题无法可靠定位，自动返修已关闭。",
+                    severity="high",
+                    origin="audit_model",
+                    blocking=True,
+                    locations=location_catalog[:1],
+                    policy_id="audit:compiler_needs_revision",
+                )
+            ]
+        return self.audit_issue_resolver.resolve(
+            compilation.result.issues,
+            location_catalog=location_catalog,
+            issue_id_prefix=issue_id_prefix,
+        )
+
+    @staticmethod
     def _resource_repair_issues(
         *,
         missing_claim_ids: list[str],
         deterministic_findings: list[str],
-        model_findings: list[str],
+        compiled_model_issues: list[RepairIssue],
+        location_catalog: list[AuditLocation],
     ) -> list[RepairIssue]:
         """Compile resource audit prose into a bounded Expert repair contract.
 
@@ -245,7 +389,9 @@ class AuditAgent:
         issues: list[RepairIssue] = []
         seen: set[tuple[str, str]] = set()
 
-        def append(issue_type: str, message: str) -> None:
+        locations = {item.location_key: item for item in location_catalog}
+
+        def append(issue_type: str, message: str, location_key: str) -> None:
             normalized = str(message).strip()
             key = (issue_type, normalized)
             if not normalized or key in seen:
@@ -259,6 +405,9 @@ class AuditAgent:
                     owner_step_id="expert",
                     affected_step_ids=["expert"],
                     severity="high" if issue_type == "missing_evidence" else "medium",
+                    origin="deterministic",
+                    locations=[locations[location_key]] if location_key in locations else [],
+                    policy_id=f"resource:{issue_type}",
                 )
             )
 
@@ -266,20 +415,25 @@ class AuditAgent:
             append(
                 "missing_evidence",
                 f"缺少证据的声明: {', '.join(missing_claim_ids)}",
+                "resource:whole",
             )
         for finding in deterministic_findings:
-            append("content_quality", finding)
-        for finding in model_findings:
-            text = str(finding)
-            issue_type = (
-                "missing_evidence"
-                if "证据" in text
-                and any(word in text for word in ("缺少", "缺失", "不足", "无依据"))
-                else "conflicting_evidence"
-                if "证据" in text and any(word in text for word in ("冲突", "矛盾"))
-                else "content_quality"
+            location_key = (
+                "resource:target_kp_id"
+                if "目标知识点" in finding
+                else "resource:estimated_minutes"
+                if "预计时长" in finding
+                else "resource:whole"
             )
-            append(issue_type, text)
+            append("content_quality", finding, location_key)
+        for issue in compiled_model_issues:
+            if not issue.blocking:
+                continue
+            key = (issue.issue_type, issue.message)
+            if key in seen:
+                continue
+            seen.add(key)
+            issues.append(issue)
         return issues
 
     async def _audit_learning_plan(self, context: dict[str, Any], prompt_skill):
@@ -342,6 +496,7 @@ class AuditAgent:
             compiled_plan_contract=compilation,
             parent_plan_constraints=parent_plan_constraints,
         )
+        protocol_valid = True
         try:
             model_output = AuditModelOutput.model_validate(
                 await self.chat_model.complete_json(
@@ -375,63 +530,99 @@ class AuditAgent:
                 )
             )
         except ValidationError:
+            protocol_valid = False
             model_output = AuditModelOutput(
                 decision="needs_human_review",
                 findings=["规划审核模型输出不符合协议。"],
                 audit_report="规划审核模型输出不符合协议，已关闭自动发布并转人工复核。",
             )
-        decision = "revise" if deterministic_findings else model_output.decision
         if (
-            decision == "revise"
-            and not deterministic_findings
+            context.get("audit_feedback") is None
+            and model_output.decision in {"reject", "needs_human_review"}
             and not model_output.findings
         ):
+            model_output = model_output.model_copy(
+                update={
+                    "findings": [
+                        "当前规划未达到发布要求，请依据可信路线、父计划约束和用户条件重新生成。"
+                    ]
+                }
+            )
+        plan_locations = self._plan_location_catalog(plan_scope, proposal, contract)
+        if protocol_valid:
+            compiled_model_issues = await self._compile_model_issues(
+                context,
+                subject_type=(
+                    "long_term_plan" if plan_scope == "long_term" else "short_term_plan"
+                ),
+                audit_report=model_output.audit_report,
+                findings=model_output.findings,
+                location_catalog=plan_locations,
+                issue_id_prefix="PLAN_MODEL_ISSUE",
+            )
+        else:
+            compiled_model_issues = [
+                RepairIssue(
+                    issue_id="PLAN_MODEL_ISSUE_PROTOCOL",
+                    issue_type="unresolved",
+                    message=model_output.findings[0],
+                    severity="high",
+                    origin="audit_model",
+                    blocking=True,
+                    locations=plan_locations[:1],
+                    policy_id="audit:invalid_protocol",
+                )
+            ]
+        if model_output.decision == "pass":
+            compiled_model_issues = [
+                issue.model_copy(update={"blocking": False})
+                for issue in compiled_model_issues
+            ]
+        deterministic_issues = self._plan_deterministic_issues(
+            deterministic_findings,
+            location_catalog=plan_locations,
+        )
+        model_blocking_issues = [
+            issue for issue in compiled_model_issues if issue.blocking
+        ]
+        unsafe_or_unresolved = any(
+            issue.issue_type in {"safety_violation", "unresolved"}
+            for issue in model_blocking_issues
+        )
+        decision = (
+            "revise"
+            if deterministic_issues
+            else (
+                model_output.decision
+                if model_output.decision in {"reject", "needs_human_review"}
+                else "needs_human_review"
+            )
+            if unsafe_or_unresolved
+            else "revise"
+            if model_blocking_issues
+            else "pass"
+            if model_output.decision == "revise"
+            else model_output.decision
+        )
+        if compiled_model_issues and not model_blocking_issues and not deterministic_issues:
             decision = "pass"
         if (
-            not deterministic_findings
-            and context.get("audit_feedback") is None
+            context.get("audit_feedback") is None
             and decision in {"reject", "needs_human_review"}
+            and model_blocking_issues
+            and not unsafe_or_unresolved
         ):
             # A planning proposal is generated content. If its route/contract
             # gates are sound, a model-level rejection is actionable feedback
             # for Diagnosis rather than a terminal workflow state. Route it
             # through the existing bounded local-repair loop.
             decision = "revise"
-            if not model_output.findings:
-                model_output = model_output.model_copy(update={
-                    "findings": [
-                        "当前规划未达到发布要求，请依据可信路线、父计划约束和用户条件重新生成。"
-                    ]
-                })
-        if (
-            context.get("audit_feedback") is not None
-            and not deterministic_findings
-            and decision != "pass"
-        ):
-            # One bounded Diagnosis repair has already completed and every
-            # executable gate passes. A second model-only reject/revision would
-            # create a non-converging loop over wording preferences, so retain
-            # the comments as advisory findings and allow publication.
-            decision = "pass"
-            model_output = model_output.model_copy(
-                update={
-                    "findings": [
-                        *model_output.findings,
-                        "规划已完成一次受控修订；剩余表达或节奏建议作为非阻断建议保留。",
-                    ]
-                }
-            )
         findings = [*deterministic_findings, *model_output.findings]
-        structured_findings = [
-            RepairIssue(
-                issue_id=f"PLAN_ISSUE_{index}",
-                issue_type="plan_quality",
-                message=finding,
-                owner_step_id="diagnosis",
-                affected_step_ids=["diagnosis"],
-            )
-            for index, finding in enumerate(findings, start=1)
-        ] if decision == "revise" else []
+        structured_findings = (
+            [*deterministic_issues, *model_blocking_issues]
+            if decision == "revise"
+            else []
+        )
         result = AuditResult(
             audit_result_id=f"AUDIT_{uuid4().hex}",
             decision=decision,
@@ -459,6 +650,98 @@ class AuditAgent:
             plan_scope=plan_scope,
         )
         return envelope(context, "audit_agent", "audit_result", result)
+
+    @staticmethod
+    def _plan_location_catalog(
+        plan_scope: str,
+        proposal: Any,
+        contract: Any,
+    ) -> list[AuditLocation]:
+        subject_type = (
+            "long_term_plan" if plan_scope == "long_term" else "short_term_plan"
+        )
+        locations = [
+            AuditLocation(
+                location_key="plan:whole",
+                subject_type=subject_type,
+                location_type="whole_subject",
+                display_label="当前规划全文",
+            ),
+            AuditLocation(
+                location_key="plan:natural_language",
+                subject_type=subject_type,
+                location_type="section",
+                display_label="自然语言规划正文",
+            ),
+            AuditLocation(
+                location_key="plan:compiled_contract",
+                subject_type=subject_type,
+                location_type="field",
+                display_label="内部规划合同",
+            ),
+        ]
+        value = contract.model_dump(mode="json") if hasattr(contract, "model_dump") else {}
+        if isinstance(value, dict):
+            stages = value.get("stages") or value.get("long_term_plan_stages") or []
+            nodes = value.get("progression_nodes") or []
+            for index, item in enumerate(stages[:12], start=1):
+                key = str(item.get("stage_id") or index) if isinstance(item, dict) else str(index)
+                locations.append(
+                    AuditLocation(
+                        location_key=f"plan:stage:{key}",
+                        subject_type=subject_type,
+                        location_type="stage",
+                        display_label=f"规划第{index}阶段",
+                    )
+                )
+            for index, item in enumerate(nodes[:12], start=1):
+                key = str(item.get("node_id") or index) if isinstance(item, dict) else str(index)
+                locations.append(
+                    AuditLocation(
+                        location_key=f"plan:node:{key}",
+                        subject_type=subject_type,
+                        location_type="progression_node",
+                        display_label=f"短期计划第{index}个推进节点",
+                    )
+                )
+        return locations
+
+    @staticmethod
+    def _plan_deterministic_issues(
+        findings: list[str],
+        *,
+        location_catalog: list[AuditLocation],
+    ) -> list[RepairIssue]:
+        locations = {item.location_key: item for item in location_catalog}
+        issues = []
+        for index, finding in enumerate(findings, start=1):
+            parent_constraint = any(
+                marker in finding
+                for marker in ("父计划", "长期阶段", "所属长期", "阶段期限", "阶段书目")
+            )
+            issue_type = (
+                "plan_parent_constraint" if parent_constraint else "plan_contract_invalid"
+            )
+            location_key = (
+                "plan:whole" if parent_constraint else "plan:compiled_contract"
+            )
+            issues.append(
+                RepairIssue(
+                    issue_id=f"PLAN_SYSTEM_ISSUE_{index}",
+                    issue_type=issue_type,
+                    message=finding,
+                    owner_step_id="diagnosis",
+                    affected_step_ids=["diagnosis"],
+                    severity="high",
+                    origin="deterministic",
+                    blocking=True,
+                    locations=(
+                        [locations[location_key]] if location_key in locations else []
+                    ),
+                    policy_id=f"plan:{issue_type}",
+                )
+            )
+        return issues
 
     @staticmethod
     def _trusted_plan_route(context: dict[str, Any]) -> dict[str, Any]:
@@ -708,6 +991,7 @@ class AuditAgent:
                 self._paper_repair_issues(
                     deterministic_findings=deterministic_findings,
                     compiled_model_issues=compiled_model_issues,
+                    location_catalog=self._paper_location_catalog(blueprint, paper),
                 )
                 if decision == "revise"
                 else []
@@ -768,22 +1052,55 @@ class AuditAgent:
         *,
         deterministic_findings: list[str],
         compiled_model_issues: list[Any],
+        location_catalog: list[AuditLocation],
     ) -> list[RepairIssue]:
         issues: list[RepairIssue] = []
         seen: set[tuple[str, str]] = set()
+        locations = {item.location_key: item for item in location_catalog}
+
+        def matching_locations(message: str) -> list[AuditLocation]:
+            preferred_types = (
+                {"explanation"}
+                if "解析" in message
+                else {"answer_key"}
+                if any(marker in message for marker in ("标准答案", "答案键"))
+                else {"question"}
+                if any(marker in message for marker in ("题目", "题干", "题型", "重复题"))
+                else set()
+            )
+            matched = [
+                item
+                for key, item in locations.items()
+                if key != "paper:whole"
+                and (not preferred_types or item.location_type in preferred_types)
+                and (
+                    item.display_label in message
+                    or key.rsplit(":", 1)[-1] in message
+                )
+            ]
+            return matched[:8] or [locations["paper:whole"]]
+
         for message in deterministic_findings:
-            key = ("paper_blueprint_mismatch", message)
+            issue_type = (
+                "answer_or_explanation_invalid"
+                if any(marker in message for marker in ("答案", "解析", "答案键"))
+                else "paper_item_invalid"
+            )
+            key = (issue_type, message)
             if key in seen:
                 continue
             seen.add(key)
             issues.append(
                 RepairIssue(
                     issue_id=f"PAPER_SYSTEM_ISSUE_{len(issues) + 1}",
-                    issue_type="paper_blueprint_mismatch",
+                    issue_type=issue_type,
                     message=message,
                     owner_step_id="paper_assembly",
-                    affected_step_ids=["paper_blueprint", "question_pool", "paper_assembly"],
+                    affected_step_ids=["paper_assembly"],
                     severity="high",
+                    origin="deterministic",
+                    locations=matching_locations(message),
+                    policy_id=f"paper:{issue_type}",
                 )
             )
         for compiled in compiled_model_issues:
@@ -807,9 +1124,65 @@ class AuditAgent:
                     owner_step_id=owner,
                     affected_step_ids=([owner] if owner else []),
                     severity="medium",
+                    origin="audit_model",
+                    locations=matching_locations(compiled.message),
+                    source_anchors=[
+                        item.model_dump(mode="json")
+                        if hasattr(item, "model_dump")
+                        else item
+                        for item in list(
+                            getattr(compiled, "source_anchors", []) or []
+                        )
+                    ],
+                    policy_id=f"paper:{issue_type}",
                 )
             )
         return issues
+
+    @staticmethod
+    def _paper_location_catalog(blueprint: Any, paper: Any) -> list[AuditLocation]:
+        locations = [
+            AuditLocation(
+                location_key="paper:whole",
+                subject_type="exam_paper",
+                location_type="whole_subject",
+                display_label="当前试卷全文",
+            )
+        ]
+        for unit in list(getattr(blueprint, "units", []) or [])[:30]:
+            locations.append(
+                AuditLocation(
+                    location_key=f"paper:unit:{unit.unit_id}",
+                    subject_type="exam_paper",
+                    location_type="unit",
+                    display_label=f"蓝图单元{unit.unit_id}",
+                )
+            )
+        for item in list(getattr(paper, "items", []) or [])[:100]:
+            question_id = str(item.question.question_id)
+            locations.extend(
+                [
+                    AuditLocation(
+                        location_key=f"paper:question:{question_id}",
+                        subject_type="exam_paper",
+                        location_type="question",
+                        display_label=f"试卷题目{question_id}",
+                    ),
+                    AuditLocation(
+                        location_key=f"paper:answer:{question_id}",
+                        subject_type="exam_paper",
+                        location_type="answer_key",
+                        display_label=f"题目{question_id}的答案",
+                    ),
+                    AuditLocation(
+                        location_key=f"paper:explanation:{question_id}",
+                        subject_type="exam_paper",
+                        location_type="explanation",
+                        display_label=f"题目{question_id}的解析",
+                    ),
+                ]
+            )
+        return locations
 
     @staticmethod
     def _normalize_question_type(value: str) -> str:

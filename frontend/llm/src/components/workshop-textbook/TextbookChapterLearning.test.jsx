@@ -226,4 +226,44 @@ describe('TextbookChapterLearning', () => {
     fireEvent.click(screen.getByRole('button', { name: '全部' }));
     expect(screen.getAllByRole('button', { name: /第[一二三]章/ })).toHaveLength(3);
   });
+
+  it('deep-links from a daily video task into the matched section', async () => {
+    prepare();
+    const onNavigate = vi.fn();
+    render(
+      <TextbookChapterLearning
+        navigationContext={{
+          route: 'textbook_14_5',
+          lv1: '中医学基础',
+          sectionId: 'SEC_1',
+          taskItemId: 'ITEM_VIDEO',
+          returnTo: { page: 'qualification-route', params: {} },
+        }}
+        onNavigate={onNavigate}
+      />,
+    );
+    await openCatalog();
+
+    await waitFor(() => expect(completeTextbookSection).toHaveBeenCalledWith({
+      book: '中医学基础',
+      route: 'textbook_14_5',
+      chapter_id: 'CH_1',
+      chapter_name: '第一章 绪论',
+      section_id: 'SEC_1',
+      section_name: '第一节 基础概念',
+    }));
+    expect(await screen.findByTitle('小节完整视频：第一节 基础概念')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '章节' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '返回' }));
+    expect(onNavigate).toHaveBeenCalledWith({ page: 'qualification-route', params: {} });
+  });
+
+  it('does not deep-link when the section id is missing', async () => {
+    prepare();
+    render(<TextbookChapterLearning navigationContext={{ route: 'textbook_14_5', lv1: '中医学基础' }} />);
+    await openCatalog();
+    await screen.findByRole('button', { name: /第一节 基础概念/ });
+    expect(completeTextbookSection).not.toHaveBeenCalled();
+  });
 });

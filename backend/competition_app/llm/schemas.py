@@ -800,9 +800,33 @@ class KnowledgeExplanationModelOutput(StrictModelOutput):
     explanation_content: str = Field(
         min_length=1,
         max_length=8_000,
-        description="面向学习者的完整自然语言知识讲解；不得生成学习计划或复习任务。",
+        description=(
+            "面向学习者的完整自然语言知识讲解；采用启发式引导式结构，"
+            "先结合用户学情定位，再讲解核心，末尾提出开放式思考问题；"
+            "不得生成学习计划或复习任务。"
+        ),
+    )
+    thinking_questions: list[str] = Field(
+        default_factory=list,
+        max_length=8_000,
+        description="启发式引导的开放式思考问题（2-3 个，只提问不含答案），与配套练习题目不重复。",
     )
     uncertainty: list[str] = Field(default_factory=list)
+
+    @field_validator("thinking_questions", mode="before")
+    @classmethod
+    def normalize_thinking_questions(cls, value: object) -> object:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [line.strip(" -·\t") for line in value.splitlines() if line.strip()]
+        if isinstance(value, (list, tuple)):
+            return [
+                str(item).strip(" -·\t")
+                for item in value
+                if str(item).strip(" -·\t")
+            ]
+        return value
 
 
 class BlueprintUnitModelOutput(StrictModelOutput):

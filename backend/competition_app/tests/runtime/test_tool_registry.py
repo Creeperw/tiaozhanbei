@@ -60,6 +60,37 @@ async def test_learning_planning_context_is_diagnosis_only() -> None:
 
 
 @pytest.mark.asyncio
+async def test_learning_path_progress_is_diagnosis_only() -> None:
+    registry = ToolRegistry()
+    registry.register(
+        "get_learning_path_progress",
+        lambda external_user_id: {
+            "schema_version": "1.0",
+            "learner_id": external_user_id,
+            "availability": "available",
+            "stages": [],
+            "books": [],
+            "current_section": None,
+        },
+        allowed_agents={"diagnosis_agent"},
+    )
+
+    result = await registry.invoke(
+        "get_learning_path_progress",
+        "diagnosis_agent",
+        external_user_id="USER_1",
+    )
+    assert result["learner_id"] == "USER_1"
+    assert result["availability"] == "available"
+    with pytest.raises(ToolPermissionError):
+        await registry.invoke(
+            "get_learning_path_progress",
+            "planner_agent",
+            external_user_id="USER_1",
+        )
+
+
+@pytest.mark.asyncio
 async def test_tool_registry_records_safe_success_summary() -> None:
     registry = ToolRegistry()
     recorder = TraceRecorder()

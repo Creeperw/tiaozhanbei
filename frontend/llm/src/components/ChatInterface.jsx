@@ -1549,6 +1549,8 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       if (run.status === 'running') {
         markSessionRunActive(sessionId, runId);
         if (currentSessionIdRef.current === sessionId) {
+          const events = Array.isArray(run.progress_events) ? run.progress_events : [];
+          if (events.length > 0) rebuildRunningAssistantTrace(sessionId, events);
           window.setTimeout(() => restorePendingRun(sessionId), 2000);
         }
       }
@@ -1556,6 +1558,30 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
       console.error('restore workflow run failed', error);
     }
   }
+
+  // 刷新/断连后恢复进行中任务的协作回执：把后端轮询到的进度事件
+  // 重建为占位 assistant 消息的 <<EV:>> 标记，驱动"正在协作"回执按钮。
+  const rebuildRunningAssistantTrace = (sessionId, events) => {
+    const traceEvents = events.map(runtimeEventToTrace).filter(Boolean);
+    if (traceEvents.length === 0) return;
+    const tags = traceEvents.map(ev => `<<EV:${JSON.stringify(ev)}>>`).join('');
+    const restoredId = `restored-assistant-${sessionId}`;
+    const current = (liveSessionCacheRef.current[sessionId]?.messages
+      || sessionMessageCacheRef.current[sessionId] || []);
+    const existing = current.find(m => m.id === restoredId);
+    if (existing && existing.content === tags) return;
+    const base = current.filter(m => !(m.isPlaceholder && m.role === 'assistant'));
+    const assistant = {
+      id: restoredId,
+      role: 'assistant',
+      content: tags,
+      isPlaceholder: true,
+      timestamp: getCurrentTime(),
+    };
+    const updated = [...base, assistant];
+    liveSessionCacheRef.current[sessionId] = { messages: updated, isRunning: true };
+    if (currentSessionIdRef.current === sessionId) setMessages(updated);
+  };
 
   const handleWorkflowAction = (action) => {
     const intent = workshopActionIntent(action, {

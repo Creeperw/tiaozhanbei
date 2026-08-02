@@ -436,13 +436,17 @@ class DiagnosisAgent:
         memory_context_summary = getattr(memory_payload, "context_summary", None)
         audit_feedback = context.get("audit_feedback")
         audit_payload = getattr(audit_feedback, "payload", audit_feedback)
+        repair_instruction = context.get("repair_instruction")
         audit_revision = None
         if audit_payload is not None:
             audit_revision = {
                 "instruction": (
-                    "这是上一轮审核的强制修订项。只修正这些问题，"
+                    str((repair_instruction or {}).get("repair_instruction") or "")
+                    or "这是上一轮审核的强制修订项。只修正这些问题，"
                     "保留已经通过的内容，并确保自然语言正文与结构化合同一致。"
                 ),
+                "issue_ids": list((repair_instruction or {}).get("issue_ids") or []),
+                "locations": list((repair_instruction or {}).get("locations") or []),
                 "findings": [
                     str(item)[:600]
                     for item in list(
@@ -496,6 +500,16 @@ class DiagnosisAgent:
             },
             "learning_state": self._model_learning_state(
                 context.get("multi_scale_learning_state")
+            ),
+            "learning_path_progress": self._model_learning_path_progress(
+                context.get("learning_path_progress")
+            ),
+            "learning_path_progress_instruction": (
+                "当 plan_scope=daily_task 且 learning_path_progress 可用时，"
+                "当日任务正文必须具体到当前应学的小节："
+                "写明“观看《教材》第X章第X节视频《视频标题》”并绑定该小节的题目训练；"
+                "小节、章节和视频必须来自 learning_path_progress，不得虚构章节或链接。"
+                "没有已验证视频的小节只描述章节学习，不虚构视频。"
             ),
             "task_load_policy": {
                 key: value
@@ -969,20 +983,66 @@ class DiagnosisAgent:
         ):
             if key in planning_context:
                 candidate = planning_context[key]
-                # The bounded tool is authoritative for persisted data, but it
-                # may legitimately return an empty value when the caller has
-                # supplied an inline parent (or an older parent for a stale
-                # version check).  Do not erase that caller evidence before
-                # PlanningReadinessService evaluates it.
-                if key in {
-                    "current_long_term_plan",
-                    "current_short_term_plan",
-                    "current_learning_task",
-                } and not candidate and enriched.get(key):
+                # The bounded tool is authoritative for persisted data, but
+                # an older adapter may legitimately omit a slice already
+                # loaded by the application (plans, multi-scale state, path
+                # candidates, monitoring). Never replace useful authorized
+                # evidence with an empty compatibility response.
+                candidate_is_empty = not candidate or (
+                    isinstance(candidate, dict)
+                    and not any(
+                        value not in (None, "", [], {})
+                        for value in candidate.values()
+                    )
+                )
+                if candidate_is_empty and enriched.get(key):
                     continue
                 enriched[key] = candidate
         enriched["planning_context_source"] = planning_context.get("source")
+        path_progress = await self._load_learning_path_progress(context, registry)
+        if path_progress is not None:
+            enriched["learning_path_progress"] = path_progress
         return enriched
+
+    async def _load_learning_path_progress(
+        self,
+        context: dict[str, Any],
+        registry: Any,
+    ) -> dict[str, Any] | None:
+        """Fetch the stage→book→chapter→section projection with bound videos.
+
+        The tool is read-only and Diagnosis-only. Older deployments or unit
+        callers that do not register it simply fall back to the enriched
+        planning context already present on ``context``.
+        """
+
+        try:
+            path_progress = await registry.invoke(
+                "get_learning_path_progress",
+                "diagnosis_agent",
+                trace_recorder=context.get("trace_recorder"),
+                safe_input_summary={"current_learner": True},
+                safe_output_summary_factory=lambda result: {
+                    "availability": str(result.get("availability") or "unknown")
+                    if isinstance(result, dict)
+                    else "unknown",
+                    "stage_count": (
+                        len(result.get("stages") or [])
+                        if isinstance(result, dict)
+                        else 0
+                    ),
+                    "has_current_section": bool(
+                        isinstance(result, dict)
+                        and result.get("current_section")
+                    ),
+                },
+                external_user_id=str(context.get("learner_id") or ""),
+            )
+        except (KeyError, PermissionError):
+            return None
+        if not isinstance(path_progress, dict):
+            return None
+        return path_progress
 
     async def _assess_plan_change(
         self, context: dict[str, Any], plan_scope: str | None
@@ -1533,7 +1593,11 @@ class DiagnosisAgent:
         *,
         permission_note: str,
     ) -> dict[str, Any]:
-        """Ask Diagnosis for prose first, with legacy test-double fallback."""
+        """Ask Diagnosis for a tiny envelope whose only content is prose.
+
+        ``selected_path_candidate_id`` is the sole optional decision field.
+        All executable plan fields remain owned by PlanContractCompiler.
+        """
 
         model_context = build_model_context(
             context,
@@ -1542,27 +1606,9 @@ class DiagnosisAgent:
             payload=payload,
             permission_note=permission_note,
         )
-        complete_text = getattr(self.chat_model, "complete_text", None)
         # An omitted scope is a legacy full-output caller.  Keep that explicit
         # compatibility mode until the caller supplies one of the three
         # compiler-owned scopes; scoped production planning never enters it.
-        if payload.get("plan_scope") is None:
-            complete_text = None
-        if callable(complete_text):
-            try:
-                text = await complete_text("diagnosis_agent", model_context)
-            except (AttributeError, NotImplementedError, TypeError):
-                text = ""
-            except ModelResponseError:
-                # Natural-language streaming occasionally returns an empty
-                # stream on providers.  complete_json (structured mode) is the
-                # proven-stable path for this agent, so fall back to it instead
-                # of surfacing the empty-stream failure.
-                text = ""
-            if isinstance(text, str) and text.strip():
-                return {"plan_document": text.strip()}
-        # Older unit-test doubles implement only complete_json. Keep this
-        # fallback deliberately isolated; production models use complete_text.
         try:
             raw = await self.chat_model.complete_json("diagnosis_agent", model_context)
         except ModelResponseError as exc:
@@ -2889,6 +2935,97 @@ class DiagnosisAgent:
                 context.get("current_learning_task"), layer="daily_task"
             )
         return {key: value for key, value in plans.items() if value}
+
+    @classmethod
+    def _model_learning_path_progress(cls, value: Any) -> dict[str, Any]:
+        """Expose the path hierarchy in a model-sized, video-bound slice."""
+
+        if not isinstance(value, dict) or not value:
+            return {}
+        stages = list(value.get("stages") or [])
+        books = list(value.get("books") or [])
+        compact_books = []
+        for book in books[:4]:
+            if not isinstance(book, dict):
+                continue
+            sections = list(book.get("sections") or [])
+            compact_sections = []
+            for section in sections[:12]:
+                if not isinstance(section, dict):
+                    continue
+                video = section.get("video") if isinstance(section.get("video"), dict) else None
+                compact_sections.append(
+                    {
+                        key: cls._bounded_model_value(section.get(key), depth=0)
+                        for key in ("name", "chapter", "status", "mastery")
+                        if section.get(key) not in (None, "", [], {})
+                    }
+                    | (
+                        {
+                            "video": {
+                                key: video.get(key)
+                                for key in (
+                                    "bvid",
+                                    "video_title",
+                                    "part_title",
+                                    "start_seconds",
+                                    "end_seconds",
+                                    "duration_seconds",
+                                )
+                                if video.get(key) not in (None, "", [])
+                            }
+                        }
+                        if video
+                        else {}
+                    )
+                )
+            compact_books.append(
+                {
+                    "book": book.get("book"),
+                    "status": book.get("status"),
+                    "sections": compact_sections,
+                }
+            )
+        current_section_value = value.get("current_section")
+        current_section = {}
+        if isinstance(current_section_value, dict):
+            current_section = {
+                key: cls._bounded_model_value(
+                    current_section_value.get(key), depth=0
+                )
+                for key in ("name", "chapter", "status", "mastery")
+                if current_section_value.get(key) not in (None, "", [], {})
+            }
+            current_video = current_section_value.get("video")
+            if isinstance(current_video, dict):
+                current_section["video"] = {
+                    key: current_video.get(key)
+                    for key in (
+                        "bvid",
+                        "video_title",
+                        "part_title",
+                        "start_seconds",
+                        "end_seconds",
+                        "duration_seconds",
+                    )
+                    if current_video.get(key) not in (None, "", [])
+                }
+        return {
+            "availability": value.get("availability"),
+            "current_stage_name": (
+                str(value.get("current_stage_name") or "") or None
+            ),
+            "stages": [
+                {
+                    key: cls._bounded_model_value(stage.get(key), depth=0)
+                    for key in ("name", "status", "order", "books")
+                    if stage.get(key) not in (None, "", [], {})
+                }
+                for stage in stages[:6]
+            ],
+            "books": compact_books,
+            "current_section": current_section,
+        }
 
     @classmethod
     def _model_learning_state(cls, value: Any) -> dict[str, Any]:

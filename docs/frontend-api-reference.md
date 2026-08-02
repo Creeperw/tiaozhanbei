@@ -642,7 +642,8 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
             "bvid": "BV_xxx",
             "page": 1,
             "start_seconds": 0,
-            "end_seconds": 600
+            "end_seconds": 600,
+            "duration_seconds": 600
           }
         }
       ],
@@ -672,6 +673,22 @@ SSE 断开不代表任务停止。断线后轮询运行状态，不要立即创�
   }
 }
 ```
+
+视频原子项的 `resource_ref.duration_seconds` 是该视频片段的真实时长（秒），由服务端按
+`end_seconds - start_seconds` 计算。任务物化时，`video_section` 项的 `estimated_minutes`
+按真实时长向上取整（`ceil(duration_seconds / 60)`），其余练习原子项平分剩余预算；
+前端展示视频任务预计时间时也应优先使用 `resource_ref.duration_seconds` 而不是任务的
+`estimated_minutes`，避免“看视频”预估时间与视频实际时长脱节。诊断智能体生成任务正文时
+同样会收到学习路径进度中的 `duration_seconds` 并据此分配时间。
+
+今日任务原子项的点击行为与 `action.destination` 白名单一致，但学习路径页对两类原子项有
+固定导航语义：
+
+- `video_section`：点击后先按 `resource_ref.kp_id` 解析教材位置，进入教材章节学习页
+  （`view=textbook-chapters`）对应的“第 X 章第 X 节”，并携带 `taskItemId` 与
+  `returnTo={ page: 'qualification-route', params: {} }`，页面“返回”回到今日任务；
+- `knowledge_practice`：点击后进入专题训练（`workshop.topic_training`），并携带
+  `kpId`、`kpName`、`taskItemId` 与上述 `returnTo`，训练上下文直接锁定该知识点。
 
 `current_learning_task=null` 表示当前没有未完成的正式今日任务。点击知识卡时按 `action.destination` 白名单跳转，并把 `params.kp_id` 交给知识卡模块；知识卡模块会复用 `/api/v1/workshop/knowledge-cards/resolve` 完成生成或更新。
 
@@ -1900,6 +1917,8 @@ Content-Type: application/json
 合法目标：
 
 - `workshop.question_training`
+- `workshop.topic_training`
+- `workshop.knowledge_video`
 - `workshop.knowledge_card`
 - `workshop.paper`
 
@@ -1908,6 +1927,8 @@ Content-Type: application/json
 ```js
 const destinations = {
   'workshop.question_training': { page: 'practice', view: 'workspace', taskType: 'question_training' },
+  'workshop.topic_training': { page: 'practice', view: 'workspace', taskType: 'topic_training' },
+  'workshop.knowledge_video': { page: 'practice', view: 'workspace', taskType: 'video_learning', resourceView: 'videos' },
   'workshop.knowledge_card': { page: 'practice', view: 'workspace', taskType: 'knowledge_cards' },
   'workshop.paper': { page: 'practice', view: 'workspace', taskType: 'paper_workspace' },
 };

@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ChatInterface from './ChatInterface';
-import { fetchWithAuth } from '../utils/api';
+import { fetchWithAuth, readJsonResponse } from '../utils/api';
 import { formatMessageTime } from '../chatTime';
 
 vi.mock('../utils/api', () => ({
@@ -194,6 +194,57 @@ describe('ChatInterface session workspace', () => {
     expect(localStorage.getItem('lastSessionId')).toBe('session-newest');
   });
 
+  it('restores the collaboration receipt for a still-running task after refresh', async () => {
+    // 模拟刷新前的本地 pending run 记录（localStorage 持久化）。
+    localStorage.setItem('assistantPendingWorkflowRuns', JSON.stringify({
+      'session-a': 'THREAD_RUNNING_1',
+    }));
+    // getWorkflowRun 依赖 readJsonResponse 解析响应体。
+    readJsonResponse.mockImplementation(async (response) => response._payload ?? {});
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.endsWith('/conversations')) {
+        return Promise.resolve(jsonResponse([{ id: 'session-a', title: '会话 A' }]));
+      }
+      if (url.endsWith('/conversations/session-a/messages')) {
+        // 任务仍在运行：历史消息里还没有 assistant 回答。
+        return Promise.resolve(jsonResponse([
+          { id: 1, role: 'user', content: '给我一套试卷' },
+        ]));
+      }
+      if (url.endsWith('/review-cards/runs/THREAD_RUNNING_1')) {
+        // 后端修复 1：running 状态携带 progress_events。
+        return Promise.resolve({
+          ...jsonResponse({}),
+          _payload: {
+            status: 'running',
+            thread_id: 'THREAD_RUNNING_1',
+            progress_events: [
+              { event: 'step_started', agent: 'planner_agent', step_id: 'planner' },
+              { event: 'step_completed', agent: 'planner_agent', step_id: 'planner' },
+              { event: 'graph_compiled', nodes: [] },
+              { event: 'step_started', agent: 'audit_agent', step_id: 'audit' },
+            ],
+          },
+        });
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    const { container } = render(
+      <ChatInterface currentUser="alice" preferredSessionId="session-a" embedded />,
+    );
+
+    // 修复 2：轮询恢复出占位 assistant 的协作回执（"正在协作"）。
+    await waitFor(() => {
+      const receipt = container.querySelector('.agent-collaboration-receipt');
+      expect(receipt).toBeInTheDocument();
+      expect(receipt.getAttribute('aria-label')).toContain('协作');
+    });
+    expect(fetchWithAuth).toHaveBeenCalledWith(
+      expect.stringContaining('/review-cards/runs/THREAD_RUNNING_1'),
+    );
+  });
+
   it('renders assistant messages as readable articles with Chinese speaker labels', async () => {
     fetchWithAuth.mockImplementation((url) => {
       if (url.endsWith('/conversations')) {
@@ -349,7 +400,7 @@ describe('ChatInterface session workspace', () => {
     }));
   });
 
-  it('opens persisted video actions in the embedded knowledge-card player', async () => {
+  it('opens persisted video actions in the embedded video player', async () => {
     const onNavigate = vi.fn();
     fetchWithAuth.mockImplementation((url) => {
       if (url.endsWith('/conversations')) {
@@ -386,7 +437,7 @@ describe('ChatInterface session workspace', () => {
     expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({
       page: 'practice',
       params: expect.objectContaining({
-        taskType: 'knowledge_cards',
+        taskType: 'video_learning',
         resourceView: 'videos',
         taskItemId: 'ITEM_VIDEO',
         directVideo: { title: '章节精讲', url: 'https://example.test/video.mp4' },

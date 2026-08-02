@@ -24,12 +24,6 @@ vi.mock('../pageDataLoaders.js', () => ({
         enabled: true,
         badge: 'Available',
       }, {
-        key: 'knowledge_cards',
-        label: 'Knowledge cards',
-        description: 'Knowledge cards',
-        enabled: true,
-        badge: 'Available',
-      }, {
         key: 'paper_workspace',
         label: 'Paper workspace',
         description: 'Paper workspace',
@@ -91,13 +85,13 @@ vi.mock('./QuestionWorkspacePage', () => ({
   default: () => <div data-testid="question-workspace-page" />,
 }));
 
-vi.mock('./KnowledgeCardLibrary', () => ({
-  default: ({ initialResource, directVideo, taskItemId }) => (
+vi.mock('./VideoLearningPanel', () => ({
+  default: ({ video, taskItemId, kpName }) => (
     <div
-      data-testid="knowledge-card-library"
-      data-resource={initialResource || ''}
-      data-video-title={directVideo?.title || ''}
+      data-testid="video-learning-panel"
+      data-video-title={video?.title || ''}
       data-task-item-id={taskItemId || ''}
+      data-kp-name={kpName || ''}
     />
   ),
 }));
@@ -339,12 +333,12 @@ describe('PracticePage training modules', () => {
     expect(onNavigate).toHaveBeenCalledWith(returnTo);
   });
 
-  it('passes a direct daily video into the knowledge-card player', () => {
+  it('passes a direct daily video into the video learning panel', () => {
     render(
       <PracticePage
         navigationContext={{
           view: 'workspace',
-          taskType: 'knowledge_cards',
+          taskType: 'video_learning',
           taskItemId: 'ITEM_VIDEO',
           resourceView: 'videos',
           directVideo: { title: '章节精讲', url: 'https://example.test/video.mp4' },
@@ -352,9 +346,8 @@ describe('PracticePage training modules', () => {
       />,
     );
 
-    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-resource', 'videos');
-    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-video-title', '章节精讲');
-    expect(screen.getByTestId('knowledge-card-library')).toHaveAttribute('data-task-item-id', 'ITEM_VIDEO');
+    expect(screen.getByTestId('video-learning-panel')).toHaveAttribute('data-video-title', '章节精讲');
+    expect(screen.getByTestId('video-learning-panel')).toHaveAttribute('data-task-item-id', 'ITEM_VIDEO');
   });
 
   it('binds a daily knowledge-practice item to its formal knowledge point', async () => {
@@ -424,7 +417,6 @@ describe('PracticePage training modules', () => {
   it.each([
     ['practice_grading', 'atlas-practice-scope'],
     ['case_training', 'simulated-patient-chat'],
-    ['knowledge_cards', 'knowledge-card-library'],
   ])('keeps the legacy %s training intent functional', async (taskType, panelTestId) => {
     render(<PracticePage navigationContext={{ taskType }} />);
 

@@ -66,6 +66,18 @@ function durationLabel(role) {
   return `${(duration / 1000).toFixed(1)} 秒`;
 }
 
+function formatModelPayload(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+const MODEL_CALL_LABELS = { input: '模型输入', output: '模型输出', transport: '模型传输' };
+
 function TechnicalDetails({ role }) {
   const internalAgents = [...new Set(role.nodes.map((node) => node.agent || node.name).filter(Boolean))];
   return (
@@ -96,6 +108,27 @@ function TechnicalDetails({ role }) {
           ))}
         </div>
       )}
+      {role.modelCalls.length > 0 && (
+        <div className="agent-task__tools">
+          <div className="agent-task__technical-title"><Sparkles size={13} aria-hidden="true" />模型调用详情</div>
+          {role.modelCalls.map((call) => (
+            <details key={call.id}>
+              <summary>
+                <code>{call.agent || 'model'}</code>
+                <span>{MODEL_CALL_LABELS[call.kind] || call.kind}</span>
+              </summary>
+              {call.kind === 'input' && <pre>{formatModelPayload(call.input)}</pre>}
+              {call.kind === 'output' && <pre>{formatModelPayload(call.output)}</pre>}
+              {call.kind === 'transport' && (
+                <>
+                  {call.requestPayload != null && <pre>{formatModelPayload(call.requestPayload)}</pre>}
+                  {call.responseText && <p>{String(call.responseText)}</p>}
+                </>
+              )}
+            </details>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -104,7 +137,7 @@ function AgentTask({ role }) {
   const [open, setOpen] = useState(false);
   const Icon = ROLE_ICONS[role.key] || Sparkles;
   const duration = durationLabel(role);
-  const hasDetails = role.nodes.length > 0 || role.tools.length > 0;
+  const hasDetails = role.nodes.length > 0 || role.tools.length > 0 || role.modelCalls.length > 0;
 
   return (
     <article className="agent-task" data-status={role.status}>

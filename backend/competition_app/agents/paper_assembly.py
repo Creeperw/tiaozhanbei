@@ -71,6 +71,14 @@ class PaperAssemblyAgent:
             }
             for unit in candidate_pool.units
         ]
+        repair_instruction = dict(context.get("repair_instruction") or {})
+        previous_step_output = context.get("previous_step_output")
+        previous_payload = getattr(previous_step_output, "payload", previous_step_output)
+        previous_paper = (
+            self._compact_exam_paper_for_repair(previous_payload)
+            if previous_payload is not None
+            else None
+        )
         raw_output = await self.chat_model.complete_json(
             "expert_agent",
             build_model_context(
@@ -101,6 +109,18 @@ class PaperAssemblyAgent:
                             "findings",
                             [],
                         )
+                    ),
+                    "repair_request": (
+                        {
+                            "issue_ids": repair_instruction.get("issue_ids", []),
+                            "locations": repair_instruction.get("locations", []),
+                            "instruction": repair_instruction.get(
+                                "repair_instruction", ""
+                            ),
+                            "previous_paper": previous_paper,
+                        }
+                        if repair_instruction
+                        else None
                     ),
                     "output_contract": {
                         "assembly_document": (
@@ -916,6 +936,32 @@ class PaperAssemblyAgent:
                     continue
                 hints[bridge.kp_id] = tags[index] if index < len(tags) else tags[0]
         return hints
+
+    @staticmethod
+    def _compact_exam_paper_for_repair(paper: Any) -> dict[str, Any] | None:
+        """Expose only the current paper fields needed for a localized rewrite."""
+
+        if not isinstance(paper, ExamPaperDraft):
+            return None
+        return {
+            "title": paper.title,
+            "instructions": paper.instructions,
+            "duration_minutes": paper.duration_minutes,
+            "total_score": paper.total_score,
+            "items": [
+                {
+                    "sequence": item.sequence,
+                    "unit_id": item.unit_id,
+                    "score": item.score,
+                    "question_id": item.question.question_id,
+                    "question_type": item.question.question_type,
+                    "stem": item.question.stem,
+                }
+                for item in paper.items[:80]
+            ],
+            "answer_key": dict(paper.answer_key),
+            "explanations": dict(paper.explanations),
+        }
 
     @staticmethod
     def _normalize_stem(value: str) -> str:

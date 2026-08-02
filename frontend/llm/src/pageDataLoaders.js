@@ -92,14 +92,6 @@ export const emptyTrainingWorkspace = {
   modules: [],
 };
 
-export const emptyKnowledgeCardPage = {
-  schema_version: '1.0',
-  items: [],
-  total: 0,
-  offset: 0,
-  limit: 50,
-};
-
 export const emptyTrainingTaskResult = {
   task_id: '',
   task_type: '',
@@ -470,29 +462,6 @@ export const isPaperPagePayloadValid = (data) => (
   ))
 );
 
-export const isKnowledgeCardPageValid = (data) => (
-  data && typeof data === 'object'
-  && data.schema_version === '1.0'
-  && hasItemsArray(data.items)
-  && Number.isInteger(data.total)
-  && data.items.every((item) => (
-    item && typeof item === 'object'
-    && hasNonEmptyText(item.card_id)
-    && hasNonEmptyText(item.kp_id)
-    && hasNonEmptyText(item.title)
-    && item.learning_status === 'learned'
-  ))
-);
-
-export const isKnowledgeCardDetailValid = (data) => (
-  data && typeof data === 'object'
-  && data.schema_version === '1.0'
-  && hasNonEmptyText(data.card_id)
-  && hasNonEmptyText(data.kp_id)
-  && data.resource_bundle && typeof data.resource_bundle === 'object'
-  && data.resource_bundle.schema_version === '1.0'
-);
-
 export const isPaperSubmissionPayloadValid = (data) => (
   data && typeof data === 'object'
   && hasNonEmptyText(data.paper_id)
@@ -768,51 +737,6 @@ export async function loadTrainingWorkspaceModules({ fetcher }) {
       error: error.message || '训练工坊模块加载失败',
       source: null,
     };
-  }
-}
-
-export async function loadKnowledgeCards({ fetcher, offset = 0, limit = 50 }) {
-  try {
-    const { data, source } = await fetcher({
-      paths: [`/v1/workshop/knowledge-cards?offset=${offset}&limit=${limit}`],
-      fallback: emptyKnowledgeCardPage,
-      validator: isKnowledgeCardPageValid,
-    });
-    return { cards: { ...emptyKnowledgeCardPage, ...data }, error: '', source };
-  } catch (error) {
-    return { cards: { ...emptyKnowledgeCardPage }, error: error.message || '知识卡片加载失败', source: null };
-  }
-}
-
-export async function loadKnowledgeCard({ fetcher, cardId }) {
-  if (!hasNonEmptyText(cardId)) return { card: null, error: '知识卡 ID 不能为空', source: null };
-  try {
-    const { data, source } = await fetcher({
-      paths: [`/v1/workshop/knowledge-cards/${encodeURIComponent(cardId.trim())}`],
-      fallback: null,
-      validator: isKnowledgeCardDetailValid,
-    });
-    return { card: data, error: '', source };
-  } catch (error) {
-    return { card: null, error: error.message || '知识卡片加载失败', source: null };
-  }
-}
-
-export async function resolveKnowledgeCard({ fetcher, kpId, sourceExecutionId = '' }) {
-  if (!hasNonEmptyText(kpId)) return { card: null, error: '知识点 ID 不能为空', source: null };
-  try {
-    const { data, source } = await fetcher({
-      paths: ['/v1/workshop/knowledge-cards/resolve'],
-      fallback: null,
-      options: {
-        method: 'POST',
-        body: JSON.stringify({ kp_id: kpId.trim(), source_execution_id: sourceExecutionId }),
-      },
-      validator: isKnowledgeCardDetailValid,
-    });
-    return { card: data, error: '', source };
-  } catch (error) {
-    return { card: null, error: error.message || '知识卡片生成失败', source: null };
   }
 }
 

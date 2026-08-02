@@ -206,9 +206,20 @@ class Orchestrator:
             repair_id=repair_plan.repair_id,
             trigger_step_id=audit_step_id,
             issue_types=[issue.issue_type for issue in repair_plan.issues],
+            issue_ids=[issue.issue_id for issue in repair_plan.issues],
+            location_labels=list(dict.fromkeys(
+                location.display_label
+                for issue in repair_plan.issues
+                for location in issue.locations
+            ))[:8],
             rerun_step_ids=rerun_step_ids,
             preserved_step_ids=sorted(set(outputs) - set(rerun_step_ids)),
             status="planned",
+            before_digest=self.repair_controller._output_digest({
+                action.step_id: outputs.get(action.step_id)
+                for action in repair_plan.actions
+                if action.step_id != audit_step_id
+            }),
         )
         repair_trace.append(record)
         emit_runtime_event(
@@ -216,6 +227,8 @@ class Orchestrator:
             repair_id=record.repair_id,
             trigger_step_id=audit_step_id,
             issue_types=record.issue_types,
+            issue_ids=record.issue_ids,
+            location_labels=record.location_labels,
             rerun_step_ids=record.rerun_step_ids,
             preserved_step_ids=record.preserved_step_ids,
             status=repair_plan.status,
@@ -234,11 +247,16 @@ class Orchestrator:
 
         record.status = "running"
         repaired_outputs = dict(outputs)
-        repair_context = {**root_context, "audit_feedback": original_audit}
         steps_by_id = {step.step_id: step for step in plan.steps}
         try:
             for action in repair_plan.actions:
                 rerun_step = steps_by_id[action.step_id]
+                repair_context = {
+                    **root_context,
+                    "audit_feedback": original_audit,
+                    "repair_instruction": action.model_dump(mode="json"),
+                    "previous_step_output": repaired_outputs.get(action.step_id),
+                }
                 if action.step_id == audit_step_id:
                     emit_runtime_event(
                         "repair_reaudit_started",
@@ -279,6 +297,11 @@ class Orchestrator:
             getattr(repaired_outputs[audit_step_id], "payload", None), "decision", None
         )
         record.final_audit_decision = final_decision
+        record.after_digest = self.repair_controller._output_digest({
+            action.step_id: repaired_outputs.get(action.step_id)
+            for action in repair_plan.actions
+            if action.step_id != audit_step_id
+        })
         if final_decision == "pass":
             record.status = "completed"
             emit_runtime_event(

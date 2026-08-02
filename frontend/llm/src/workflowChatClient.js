@@ -54,6 +54,40 @@ export function runtimeEventToTrace(event) {
       text: event.message || '',
     };
   }
+  if (name === 'model_input') {
+    return {
+      type: 'model_call',
+      kind: 'input',
+      text: `${event.agent || 'model'} 模型输入`,
+      agent: event.agent || '',
+      stepId: event.step_id || '',
+      callId: event.call_id || '',
+      input: event.raw_input,
+    };
+  }
+  if (name === 'model_output') {
+    return {
+      type: 'model_call',
+      kind: 'output',
+      text: `${event.agent || 'model'} 模型输出`,
+      agent: event.agent || '',
+      stepId: event.step_id || '',
+      callId: event.call_id || '',
+      output: event.raw_output,
+    };
+  }
+  if (name === 'model_transport') {
+    return {
+      type: 'model_call',
+      kind: 'transport',
+      text: `${event.agent || 'model'} 模型传输`,
+      agent: event.agent || '',
+      stepId: event.step_id || '',
+      callId: event.call_id || '',
+      requestPayload: event.request_payload,
+      responseText: event.response_text,
+    };
+  }
   return null;
 }
 

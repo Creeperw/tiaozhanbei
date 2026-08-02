@@ -55,6 +55,13 @@ const executionEventLabels = {
 };
 
 function eventStepSummary(event) {
+  if (Array.isArray(event.location_labels) && event.location_labels.length > 0) {
+    const locations = event.location_labels.slice(0, 3).join('、');
+    const steps = Array.isArray(event.rerun_step_ids) && event.rerun_step_ids.length > 0
+      ? ` · ${event.rerun_step_ids.join(' → ')}`
+      : '';
+    return `${locations}${steps}`;
+  }
   if (Array.isArray(event.rerun_step_ids) && event.rerun_step_ids.length > 0) {
     return event.rerun_step_ids.join(' → ');
   }

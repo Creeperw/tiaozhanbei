@@ -944,6 +944,12 @@ class StubChatModel:
                     ),
                     "total_duration_days": max(30, 30 * len(phases)),
                     "duration_days": 14 if "两周" in request_text else 7,
+                    "selected_stage_id": str(
+                        (phases[0] if phases else {}).get("stage_id")
+                        or (phases[0] if phases else {}).get("phase_id")
+                        or ""
+                    ) or None,
+                    "selected_books": current_books,
                     "progression_nodes": (
                         ["第1周完成教材学习与遗漏整理", "第2周完成辨析、自测与验收"]
                         if "两周" in request_text
@@ -991,6 +997,16 @@ class StubChatModel:
                             "expected_output",
                             "completion_criteria",
                         )
+                    }
+                schema = business_payload.get("output_schema") or {}
+                properties = schema.get("properties") if isinstance(schema, dict) else {}
+                if (
+                    plan_scope in {"long_term", "short_term", "daily_task"}
+                    and isinstance(properties, dict)
+                    and "plan_document" in properties
+                ):
+                    response = {
+                        "plan_document": self._diagnosis_plan_document(response)
                     }
                 return self._emit(response, on_delta)
             current_long = business_payload.get("long_term_plan", {})
@@ -1508,6 +1524,84 @@ class StubChatModel:
                             "issue_type": "unresolved",
                             "message": finding,
                             "blocking": False,
+                            "source_anchors": [
+                                {
+                                    "source_field": "findings",
+                                    "source_quote": finding,
+                                }
+                            ],
+                        }
+                        for finding in findings
+                    ],
+                },
+                on_delta,
+            )
+        if role == "audit_findings_compiler":
+            findings = [
+                str(item).strip()
+                for item in business_payload.get("findings", [])
+                if str(item).strip()
+            ]
+            catalog = [
+                item
+                for item in business_payload.get("location_catalog", [])
+                if isinstance(item, dict) and str(item.get("location_key") or "")
+            ]
+            default_location = next(
+                (
+                    str(item["location_key"])
+                    for item in catalog
+                    if item.get("location_type") == "whole_subject"
+                ),
+                str(catalog[0]["location_key"]) if catalog else "subject:whole",
+            )
+
+            def issue_type(text: str) -> str:
+                if "证据" in text and any(word in text for word in ("缺少", "缺失", "不足", "无依据")):
+                    return "missing_evidence"
+                if "证据" in text and any(word in text for word in ("冲突", "矛盾")):
+                    return "conflicting_evidence"
+                if any(word in text for word in ("父计划", "长期阶段", "超出当前阶段")):
+                    return "plan_parent_constraint"
+                if any(word in text for word in ("合同", "来源锚点", "编译")):
+                    return "plan_contract_invalid"
+                if any(word in text for word in ("候选不足", "题库不足", "候选池不足")):
+                    return "question_pool_insufficient"
+                if any(word in text for word in ("答案", "解析", "答案键")):
+                    return "answer_or_explanation_invalid"
+                if any(word in text for word in ("题目", "题干", "重复题", "题型")):
+                    return "paper_item_invalid"
+                if any(word in text for word in ("诊疗", "处方", "剂量", "安全越界")):
+                    return "safety_violation"
+                if any(word in text for word in ("学情", "掌握状态", "学习者")):
+                    return "learner_mismatch"
+                return "content_quality"
+
+            def location_key(text: str) -> str:
+                for item in catalog:
+                    key = str(item["location_key"])
+                    label = str(item.get("display_label") or "")
+                    suffix = key.rsplit(":", 1)[-1]
+                    if (label and label in text) or (suffix and suffix in text):
+                        return key
+                return default_location
+
+            return self._emit(
+                {
+                    "status": "compiled",
+                    "contract_version": "1.0",
+                    "issues": [
+                        {
+                            "issue_type": issue_type(finding),
+                            "message": finding,
+                            "blocking": not any(
+                                word in finding
+                                for word in (
+                                    "建议", "可选", "可在", "可继续", "略", "后续",
+                                    "可以进一步", "表达偏好", "非阻断",
+                                )
+                            ),
+                            "location_keys": [location_key(finding)],
                             "source_anchors": [
                                 {
                                     "source_field": "findings",

@@ -29,7 +29,7 @@ import TrainingHistoryPanel from './TrainingHistoryPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
-import KnowledgeCardLibrary from './KnowledgeCardLibrary';
+import VideoLearningPanel from './VideoLearningPanel';
 import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
 import QuestionFavoritesPanel from './QuestionFavoritesPanel';
 import StudyNotesPanel from './StudyNotesPanel';
@@ -70,22 +70,6 @@ function contentSections(content) {
 
 function EmptyState({ children }) {
   return <p className="[overflow-wrap:anywhere] py-5 text-[15px] leading-6 text-slate-500">{children}</p>;
-}
-
-function KnowledgeCardContent({ content }) {
-  const front = content.front;
-  const back = content.back;
-  const memoryAnchor = content.memory_anchor;
-  const hasCardFields = front !== undefined || back !== undefined || memoryAnchor !== undefined;
-
-  if (!hasCardFields) return null;
-  return (
-    <div className="space-y-4">
-      {front !== undefined && <div><h4 className="text-sm font-semibold text-slate-900">正面</h4><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{displayValue(front)}</p></div>}
-      {back !== undefined && <div><h4 className="text-sm font-semibold text-slate-900">背面</h4><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{displayValue(back)}</p></div>}
-      {memoryAnchor !== undefined && <div className="border-l-2 border-emerald-300 pl-4"><h4 className="text-sm font-semibold text-slate-900">记忆锚点</h4><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{displayValue(memoryAnchor)}</p></div>}
-    </div>
-  );
 }
 
 function ArtifactResult({ taskResult }) {
@@ -154,24 +138,23 @@ function ArtifactResult({ taskResult }) {
     );
   }
 
-  if (artifactType === 'handout' || artifactType === 'knowledge_card') {
+  if (artifactType === 'handout') {
     const sections = contentSections(content);
     const fallback = content.body ?? content.content ?? content.full ?? content.summary;
-    const knowledgeCard = artifactType === 'knowledge_card' ? <KnowledgeCardContent content={content} /> : null;
     return (
       <div className="space-y-5">
         <div>
           <h3 className="text-lg font-semibold text-slate-950">{displayValue(artifact.title || taskResult?.title)}</h3>
           {taskResult?.summary && <p className="mt-2 text-sm leading-6 text-slate-600">{displayValue(taskResult.summary)}</p>}
         </div>
-        {knowledgeCard || (sections.length > 0 ? sections.map((section) => (
+        {sections.length > 0 ? sections.map((section) => (
           <div key={section.key} className="border-l-2 border-emerald-200 pl-4">
             <h4 className="text-sm font-semibold text-slate-900">{section.title}</h4>
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{section.body}</p>
           </div>
         )) : fallback !== undefined ? (
           <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{displayValue(fallback)}</p>
-        ) : <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{displayValue(content)}</p>)}
+        ) : <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{displayValue(content)}</p>}
       </div>
     );
   }
@@ -305,11 +288,6 @@ const resumableTrainingCards = [
   ...trainingCards,
   ...utilityCards,
   uploadQuestionBankCard,
-  {
-    key: 'knowledge_cards',
-    title: '知识卡片',
-    initialMode: 'knowledge_cards',
-  },
 ];
 
 function normalizeTrainingOverviewStats(stats = {}) {
@@ -395,7 +373,7 @@ const workspaceTitles = {
   mistake_redo: '错题重做',
   training_history: '历史记录',
   paper_workspace: '智能组卷',
-  knowledge_cards: '知识卡片',
+  video_learning: '视频学习',
   question_favorites: '收藏夹',
   study_notes: '笔记本',
 };
@@ -403,8 +381,6 @@ const workspaceTitles = {
 const legacyTaskTypes = {
   practice_grading: { taskType: 'question_training', initialMode: 'objective' },
   case_training: { taskType: 'ai_patient_simulation', initialMode: 'ai_patient_simulation' },
-  knowledge_cards: { taskType: 'knowledge_cards', initialMode: 'knowledge_cards' },
-  knowledge_card_generation: { taskType: 'knowledge_cards', initialMode: 'knowledge_cards' },
   paper_generation: { taskType: 'paper_workspace', initialMode: 'paper_workspace' },
 };
 
@@ -760,14 +736,11 @@ export default function PracticePage({
                 paperId={navigationContext.paperId || navigationContext.paper_id || ''}
                 taskItemId={taskItemId}
               />
-            ) : activeTaskType === 'knowledge_cards' ? (
-              <KnowledgeCardLibrary
-                cardId={navigationContext.cardId || navigationContext.card_id || ''}
-                kpId={navigationContext.kpId || navigationContext.kp_id || ''}
+            ) : activeTaskType === 'video_learning' ? (
+              <VideoLearningPanel
+                video={navigationContext.directVideo || navigationContext.video || null}
                 taskItemId={taskItemId}
-                initialResource={navigationContext.resourceView || navigationContext.resource_view || ''}
-                directVideo={navigationContext.directVideo || navigationContext.video || null}
-                directTitle={navigationContext.directTitle || navigationContext.kpName || navigationContext.kp_name || ''}
+                kpName={navigationContext.directTitle || navigationContext.kpName || navigationContext.kp_name || ''}
               />
             ) : activeTaskType === 'question_favorites' ? (
               <QuestionFavoritesPanel onNavigate={onNavigate} />

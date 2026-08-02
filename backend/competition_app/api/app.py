@@ -36,7 +36,6 @@ from competition_app.services.profile_readiness import ProfileReadinessService
 from competition_app.services.planning_readiness import PlanningReadinessService
 from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.learning_monitoring import LearningMonitoringService
-from competition_app.services.workshop import WorkshopKnowledgeService
 from competition_app.services.textbook_import import (
     TextbookImportError,
     TextbookTocNotFound,
@@ -57,6 +56,11 @@ _NON_TRACE_EVENT_TYPES = frozenset({
     "model_transport",
     "system_output",
 })
+# 进行中任务的实时进度事件（仅 trace 级，跳过 model 高音量事件）。
+# 与持久化回执 trace_events 口径一致：SSE 断开后，前端通过
+# GET /review-cards/runs/{thread_id} 轮询恢复"多智能体协作回执"。
+# 单进程部署下有效（SSE 与轮询请求共享该内存表）。
+_RUNTIME_PROGRESS: dict[str, dict[str, object]] = {}
 QUALIFICATION_TARGET_CATALOG = (
     Path(__file__).resolve().parents[1]
     / "data"
@@ -272,12 +276,6 @@ class ConversationCreateRequest(BaseModel):
 
 class ConversationUpdateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=120)
-
-
-class KnowledgeCardResolveRequest(BaseModel):
-    kp_id: str = Field(min_length=1, max_length=120)
-    question_limit: int = Field(default=10, ge=1, le=50)
-    source_execution_id: str = Field(default="", max_length=120)
 
 
 class WorkshopPaperAnswersRequest(BaseModel):
@@ -991,6 +989,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "repair_id",
                     "trigger_step_id",
                     "issue_types",
+                    "issue_ids",
+                    "location_labels",
                     "rerun_step_ids",
                     "preserved_step_ids",
                     "round",
@@ -3243,56 +3243,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         )
         return _sanitize_practice_question_labels(cached)
 
-    @app.get("/api/v1/workshop/knowledge-cards")
-    async def list_workshop_knowledge_cards(
-        request: Request,
-        offset: int = Query(default=0, ge=0),
-        limit: int = Query(default=50, ge=1, le=200),
-    ) -> dict:
-        user = current_user(request)
-        return await asyncio.to_thread(
-            require_workshop_runtime().list_knowledge_cards,
-            user.user_id,
-            offset=offset,
-            limit=limit,
-        )
-
-    @app.get("/api/v1/workshop/knowledge-cards/{card_id}")
-    async def get_workshop_knowledge_card(card_id: str, request: Request) -> dict:
-        user = current_user(request)
-        card = await asyncio.to_thread(
-            require_workshop_runtime().get_knowledge_card,
-            user.user_id,
-            card_id,
-        )
-        if card is None:
-            raise HTTPException(status_code=404, detail="知识卡不存在")
-        return card
-
-    @app.post("/api/v1/workshop/knowledge-cards/resolve")
-    async def resolve_workshop_knowledge_card(
-        payload: KnowledgeCardResolveRequest, request: Request
-    ) -> dict:
-        user = current_user(request)
-        if container.knowledge_backend is None or container.question_retrieval_tool is None:
-            raise HTTPException(status_code=503, detail="正式知识仓库未启用")
-        try:
-            bundle = await WorkshopKnowledgeService(
-                container.knowledge_backend,
-                container.question_retrieval_tool,
-            ).resolve(payload.kp_id, question_limit=payload.question_limit)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        card = await asyncio.to_thread(
-            require_workshop_runtime().save_knowledge_card,
-            user.user_id,
-            kp_id=str(bundle.knowledge_point.get("kp_id") or payload.kp_id),
-            title=str(bundle.knowledge_point.get("title") or payload.kp_id),
-            resource_bundle=bundle.model_dump(mode="json"),
-            source_execution_id=payload.source_execution_id,
-        )
-        return card
-
     @app.get("/api/v1/workshop/papers")
     async def list_workshop_papers(
         request: Request,
@@ -3514,12 +3464,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                                     "title": str(match.get("name") or kp_id),
                                     "book": str(kp.get("kp_lv1") or ""),
                                     "chapter": str(kp.get("kp_lv2") or ""),
-                                    "action": {
-                                        "action_type": "navigate",
-                                        "label": "学习知识卡",
-                                        "destination": "workshop.knowledge_card",
-                                        "params": {"kp_id": kp_id},
-                                    },
                                 }
                             )
                 chapter_match = re.match(r"^《([^》]+)》\s*(.*)$", task_chapter_text)
@@ -3631,7 +3575,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         [item["title"] for item in resolved_points]
                         or list(task.focus_knowledge_points)
                     ),
-                    "knowledge_cards": resolved_points,
                     "recommended_resources": {
                         "chapter_videos": [
                             {
@@ -4120,7 +4063,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     @app.get("/api/v1/review-cards/runs/{thread_id}")
     async def get_review_card_run(thread_id: str, request: Request):
         state = require_run_owner(request, thread_id)
-        return safe_run_status(state)
+        payload = safe_run_status(state)
+        if payload.get("status") == "running":
+            bucket = _RUNTIME_PROGRESS.get(thread_id) or {}
+            payload["progress_events"] = list(bucket.get("events") or [])
+        return payload
 
     @app.get("/api/v1/learners/{learner_id}/review-queue")
     async def get_review_queue(learner_id: str, request: Request, limit: int = 50):
@@ -4339,6 +4286,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             }
 
         def publish(event: dict[str, object]) -> None:
+            if event.get("event") not in _NON_TRACE_EVENT_TYPES:
+                bucket = _RUNTIME_PROGRESS.setdefault(thread_id, {"events": []})
+                bucket["events"].append(event)
             queue.put_nowait(event)
 
         async def run_workflow() -> None:
@@ -4384,6 +4334,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 await queue.put(failure)
             finally:
                 reset_event_sink(token)
+                _RUNTIME_PROGRESS.pop(thread_id, None)
                 await queue.put(None)
 
         async def event_source():

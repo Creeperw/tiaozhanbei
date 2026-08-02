@@ -715,6 +715,8 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "time_constraints",
         "learning_evidence",
             "learning_state",
+            "learning_path_progress",
+            "learning_path_progress_instruction",
             "task_load_policy",
             "task_load_policy_instruction",
             "path_candidates",
@@ -732,6 +734,8 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
     assert "learning_monitoring" not in diagnosis_payload["shared_context"]
     assert "current_long_term_plan" not in diagnosis_payload["shared_context"]
     assert diagnosis_payload["learning_state"] == {}
+    assert diagnosis_payload["learning_path_progress"] == {}
+    assert diagnosis_payload["learning_path_progress_instruction"]
     assert diagnosis_payload["path_candidates"] == {
         "eligible": [],
         "blocked": [],

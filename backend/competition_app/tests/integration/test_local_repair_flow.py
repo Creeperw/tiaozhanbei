@@ -2,6 +2,7 @@ import pytest
 
 from competition_app.contracts.execution import ExecutionPlan, ExecutionStep
 from competition_app.contracts.resource import AuditResult
+from competition_app.contracts.local_repair import RepairIssue
 from competition_app.runtime.agent_registry import AgentRegistry
 from competition_app.runtime.event_stream import bind_event_sink, reset_event_sink
 from competition_app.runtime.orchestrator import Orchestrator
@@ -43,6 +44,52 @@ class FailsDuringRepairAgent(RecordingAgent):
         if context.get("audit_feedback") is not None:
             raise RuntimeError("repair action failed")
         return {"producer": self.name}
+
+
+class ContextRecordingAgent(RecordingAgent):
+    def __init__(self, name: str, calls: list[str]) -> None:
+        super().__init__(name, calls)
+        self.contexts = []
+
+    async def run(self, context):
+        self.contexts.append(context)
+        return await super().run(context)
+
+
+class LocatedContentAuditAgent:
+    def __init__(self, calls: list[str]) -> None:
+        self.calls = calls
+        self.count = 0
+
+    async def run(self, context):
+        self.calls.append("audit")
+        self.count += 1
+        revise = self.count == 1
+        return type(
+            "AuditOutput",
+            (),
+            {
+                "payload": AuditResult(
+                    audit_result_id=f"LOCATED_{self.count}",
+                    decision="revise" if revise else "pass",
+                    findings=["资源正文表达不清"] if revise else [],
+                    structured_findings=(
+                        [
+                            RepairIssue(
+                                issue_id="RESOURCE_CONTENT_1",
+                                issue_type="content_quality",
+                                message="资源正文表达不清",
+                                owner_step_id="expert",
+                                affected_step_ids=["expert"],
+                                origin="audit_model",
+                            )
+                        ]
+                        if revise
+                        else []
+                    ),
+                )
+            },
+        )()
 
 
 class RevisingAuditAgent:
@@ -104,6 +151,29 @@ async def test_missing_evidence_reruns_only_knowledge_expert_and_audit() -> None
     assert calls == ["knowledge", "expert", "audit", "knowledge", "expert", "audit"]
     assert result.repair_trace[0].rerun_step_ids == ["knowledge", "expert", "audit"]
     assert result.repair_trace[0].status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_repair_agent_receives_only_its_located_instruction_and_previous_output() -> None:
+    calls: list[str] = []
+    registry = AgentRegistry()
+    registry.register("knowledge_agent", RecordingAgent("knowledge", calls))
+    expert = ContextRecordingAgent("expert", calls)
+    registry.register("expert_agent", expert)
+    registry.register("audit_agent", LocatedContentAuditAgent(calls))
+
+    result = await Orchestrator(registry).execute(_plan(), {})
+
+    assert result.status == "success"
+    assert calls == ["knowledge", "expert", "audit", "expert", "audit"]
+    repair_context = expert.contexts[1]
+    assert repair_context["repair_instruction"]["issue_ids"] == [
+        "RESOURCE_CONTENT_1"
+    ]
+    assert "只修正以下已定位问题" in repair_context["repair_instruction"][
+        "repair_instruction"
+    ]
+    assert repair_context["previous_step_output"] == {"producer": "expert"}
 
 
 @pytest.mark.asyncio

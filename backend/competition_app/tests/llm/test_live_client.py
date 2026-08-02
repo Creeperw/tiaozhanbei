@@ -263,7 +263,10 @@ async def test_chat_client_includes_nested_agent_schema_and_common_rules() -> No
     assert "additionalProperties" not in system_prompt
     assert "详细说明诊断依据。" not in user_message
     assert "payload" not in user_message
-    assert "用户请求和相关资料：" in user_message
+    assert user_message.startswith("请依据系统中的任务 Skill")
+    assert user_message.index("【用户画像】") < user_message.index("【压缩历史对话】")
+    assert user_message.index("【压缩历史对话】") < user_message.index("【近期历史对话】")
+    assert user_message.index("【近期历史对话】") < user_message.index("【外部信息】")
     assert "上下文标识" not in user_message
     assert "trace_id" not in user_message
 
@@ -447,7 +450,7 @@ async def test_chat_client_describes_nullable_numbers_and_anchor_maps() -> None:
                 "existing_plan_state": {"has_long_term_plan": True},
                 "hard_routing_rules": ["讲解任务需要知识、专家和审核智能体。"],
             },
-            ["## 本次任务", "## 编排依据"],
+            ["【用户画像】", "【压缩历史对话】", "【近期历史对话】", "【外部信息】"],
             ["请讲解四君子汤", "has_long_term_plan：True"],
         ),
         (
@@ -458,7 +461,7 @@ async def test_chat_client_describes_nullable_numbers_and_anchor_maps() -> None:
                 "retrieval_context": {"user_short_term_goal": "本周掌握补气类方剂"},
                 "available_tools": {"get_kp_with_content": "检索教材内容"},
             },
-            ["## 本次任务", "## 检索范围"],
+            ["【用户画像】", "【压缩历史对话】", "【近期历史对话】", "【外部信息】"],
             ["本周掌握补气类方剂", "检索教材内容"],
         ),
         (
@@ -494,7 +497,7 @@ async def test_chat_client_describes_nullable_numbers_and_anchor_maps() -> None:
                     }
                 },
             },
-            ["## 本次任务", "## 学习状态与证据", "## 已确认路线", "## 当前有效计划"],
+            ["【用户画像】", "【压缩历史对话】", "【近期历史对话】", "【外部信息】"],
             ["节奏恢复", "学习任务完成率：0.45", "《医古文》", "中医诊断学", "【最终目标】"],
         ),
         (
@@ -505,7 +508,7 @@ async def test_chat_client_describes_nullable_numbers_and_anchor_maps() -> None:
                 "semantic_evidence": [{"text": "四君子汤由人参、白术、茯苓、甘草组成。"}],
                 "user_preference": {"communication_style": "任务清单式"},
             },
-            ["## 本次任务", "## 证据材料", "## 学习者信息"],
+            ["【用户画像】", "【压缩历史对话】", "【近期历史对话】", "【外部信息】"],
             ["四君子汤", "人参、白术、茯苓、甘草", "任务清单式"],
         ),
         (
@@ -524,7 +527,7 @@ async def test_chat_client_describes_nullable_numbers_and_anchor_maps() -> None:
                     }
                 },
             },
-            ["## 本次任务", "## 试卷约束", "## 当前学习规划"],
+            ["【用户画像】", "【压缩历史对话】", "【近期历史对话】", "【外部信息】"],
             ["用户指定阶段：3", "经典辨证体系与现代医学基础", "当前长期规划"],
         ),
         (
@@ -534,7 +537,7 @@ async def test_chat_client_describes_nullable_numbers_and_anchor_maps() -> None:
                 "semantic_evidence": [{"text": "教材证据"}],
                 "acceptance_criteria": {"teaching_only": True},
             },
-            ["## 审核对象", "## 证据材料", "## 审核依据"],
+            ["【用户画像】", "【压缩历史对话】", "【近期历史对话】", "【外部信息】"],
             ["四君子汤讲解", "教材证据", "teaching_only：True"],
         ),
     ],

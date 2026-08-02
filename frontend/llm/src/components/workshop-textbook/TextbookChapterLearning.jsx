@@ -535,6 +535,23 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     try { await completeTextbookSection({ book, route, chapter_id: chapter.id, chapter_name: chapter.name, section_id: section.id, section_name: section.name }); }
     catch (saveError) { if (saveError.name !== 'AbortError') setError((current) => current || saveError.message || '保存小节学习进度失败。'); }
   };
+
+  // 深链定位：从今日任务的“看视频”任务进入时，自动打开指定小节。
+  const deepLinkSectionId = navigationContext.sectionId || navigationContext.section_id || '';
+  const deepLinkHandledRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkSectionId) deepLinkHandledRef.current = false;
+  }, [deepLinkSectionId, book, bookId, route]);
+  useEffect(() => {
+    if (!deepLinkSectionId || deepLinkHandledRef.current) return undefined;
+    if (loading || !chapters.length) return undefined;
+    const location = findSectionLocation(deepLinkSectionId);
+    if (!location) return undefined;
+    deepLinkHandledRef.current = true;
+    setCourseMode('catalog');
+    openSection(location.section, location.chapter);
+    return undefined;
+  }, [deepLinkSectionId, loading, chapters, sectionsByChapter]);
   const startOrContinueLearning = () => {
     const location = progress > 0 ? findSectionLocation(lastSectionId) : null;
     const firstChapter = chapters[0]; const firstSection = firstChapter ? (sectionsByChapter[firstChapter.id] || [])[0] : null;
@@ -578,7 +595,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
           </div>
         </div>
         <div className="textbook-chapter-learning__actions">
-          <button className="textbook-chapter-learning__back" type="button" onClick={() => onNavigate?.({ page: 'practice', params: {} })}>
+          <button className="textbook-chapter-learning__back" type="button" onClick={() => (navigationContext.returnTo ? onNavigate?.(navigationContext.returnTo) : onNavigate?.({ page: 'practice', params: {} }))}>
             <ArrowLeft aria-hidden="true" size={14} />返回
           </button>
           <div className="textbook-chapter-learning__progress" aria-label="课程学习进度">

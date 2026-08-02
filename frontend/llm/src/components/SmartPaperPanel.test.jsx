@@ -50,12 +50,13 @@ describe('SmartPaperPanel', () => {
     render(<SmartPaperPanel />);
 
     expect(await screen.findByText('待办一')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '试卷存档' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '试卷列表' })).toBeInTheDocument();
     expect(screen.getByLabelText('专项练主题')).toBeInTheDocument();
-    expect(screen.getByText('待办试卷')).toBeInTheDocument();
-    expect(screen.getByText('历史存档')).toBeInTheDocument();
     expect(screen.getByText('历史一')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /错题集重做/ })).toBeInTheDocument();
+    expect(screen.getByText('未完成')).toBeInTheDocument();
+    expect(screen.getByText('已完成')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /开始答题/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /查看试卷/ })).toBeInTheDocument();
     expect(screen.getByLabelText('单选题')).toHaveAttribute('type', 'text');
   });
   it('returns a task-bound paper to the current smart-paper archive', async () => {

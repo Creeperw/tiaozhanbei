@@ -1729,6 +1729,8 @@ class PersonalizedReviewCardUseCase:
                 "event": "audit_revision_completed",
                 "status": item.get("status", "completed"),
                 "audit_step_id": item.get("trigger_step_id", "audit"),
+                "location_labels": list(item.get("location_labels") or [])[:8],
+                "rerun_step_ids": list(item.get("rerun_step_ids") or [])[:12],
             })
         return events
 
@@ -2480,14 +2482,6 @@ class PersonalizedReviewCardUseCase:
             audit_result_id=audit.audit_result_id,
             published_at=datetime.now(timezone.utc),
         )
-        workshop_operation_id = f"WORKSHOP_CARD_{execution_id}"
-        card_payload = self._build_knowledge_card_publication(
-            request=request,
-            execution_id=execution_id,
-            execution=execution,
-            resource=resource,
-        )
-        card_publication: dict[str, Any] | None = None
         writeback_intents = [
             WritebackIntent(
                 intent_id=f"WBI_{uuid4().hex}",
@@ -2515,38 +2509,9 @@ class PersonalizedReviewCardUseCase:
                 ),
             ),
         ]
-        if card_payload is not None and self.writeback_executor:
-            writeback_intents.append(
-                WritebackIntent(
-                    intent_id=f"WBI_{uuid4().hex}",
-                    source_artifact_id=resource.resource_draft_id,
-                    effect_type="enqueue_workshop_publication",
-                    target_service="workshop_service",
-                    target_entity_type="knowledge_card",
-                    payload={
-                        "operation_id": workshop_operation_id,
-                        "artifact_type": "knowledge_card",
-                        "learner_id": request.learner_id,
-                        "audit_result_id": audit.audit_result_id,
-                        "publication": card_payload,
-                    },
-                    preconditions=["audit_pass"],
-                    idempotency_key=f"{workshop_operation_id}:enqueue",
-                )
-            )
         _FAILURE_STEP_CONTEXT.set("persistence")
         if self.writeback_executor:
             self.writeback_executor.execute_batch(writeback_intents)
-            if card_payload is not None:
-                card_publication = self.writeback_executor.dispatch_workshop_publication(
-                    workshop_operation_id, self.workshop_runtime
-                )
-        elif card_payload is not None and self.workshop_runtime is not None:
-            card_publication = self.workshop_runtime.save_knowledge_card(
-                request.learner_id,
-                source_execution_id=workshop_operation_id,
-                **card_payload,
-            )
         _FAILURE_STEP_CONTEXT.set("snapshot")
         snapshot_path = self.snapshot_exporter.export(
             case_id,
@@ -2577,124 +2542,8 @@ class PersonalizedReviewCardUseCase:
             writeback_intents=writeback_intents,
             model_trace=self._model_trace(),
             coordination=self._execution_coordination(execution),
-            ui_actions=(
-                [
-                    UiAction(
-                        label="查看知识卡",
-                        destination="workshop.knowledge_card",
-                        params={"card_id": str(card_publication["card_id"])},
-                    )
-                ]
-                if card_publication and card_publication.get("card_id")
-                else []
-            ),
+            ui_actions=[],
         )
-
-    def _build_knowledge_card_publication(
-        self,
-        *,
-        request: ReviewCardRequest,
-        execution_id: str,
-        execution,
-        resource: ResourceDraft,
-    ) -> dict[str, Any] | None:
-        if self.workshop_runtime is None:
-            return None
-        knowledge_output = execution.outputs.get("knowledge")
-        evidence_pack = getattr(knowledge_output, "payload", None)
-        kp_ids = list(getattr(evidence_pack, "resolved_kp_ids", []) or [])
-        if not kp_ids:
-            return None
-        self.data_permission_gateway.authorize(
-            agent="expert_agent",
-            domain="knowledge_card",
-            action="write",
-            fields={"kp_id", "title", "resource_bundle", "source_execution_id"},
-        )
-        evidence_items = list(getattr(evidence_pack, "evidence_items", []) or [])
-        textbook_slices: list[dict[str, Any]] = []
-        videos: list[dict[str, Any]] = []
-        questions: list[dict[str, Any]] = []
-        provenance: list[dict[str, Any]] = []
-        for item in evidence_items:
-            value = item.model_dump(mode="json") if hasattr(item, "model_dump") else {}
-            resource_type = str(value.get("resource_type") or "")
-            normalized = {
-                "source_id": value.get("source_id"),
-                "summary": value.get("content_summary"),
-                "url": value.get("source_url"),
-                "origin": "web_search" if str(value.get("authority_level", "")).startswith("web_") else "knowledge_repository",
-            }
-            if resource_type == "video":
-                videos.append(normalized)
-            elif resource_type == "question":
-                questions.append(normalized)
-            elif resource_type == "textbook":
-                textbook_slices.append(normalized)
-            provenance.append({
-                "kind": resource_type or "reference",
-                "source_id": value.get("source_id"),
-                "origin": normalized["origin"],
-            })
-        for question in list(getattr(evidence_pack, "_question_details", []) or []):
-            value = (
-                question.model_dump(mode="json")
-                if hasattr(question, "model_dump")
-                else {}
-            )
-            question_id = str(value.get("question_id") or "").strip()
-            if question_id and any(
-                str(item.get("question_id") or item.get("source_id") or "")
-                == question_id
-                for item in questions
-            ):
-                continue
-            questions.append(
-                {
-                    "question_id": question_id,
-                    "question_type": value.get("question_type"),
-                    "stem": value.get("stem"),
-                    "options": value.get("options") or [],
-                    "reference_answer": value.get("reference_answer"),
-                    "analysis": value.get("analysis"),
-                    "tags": value.get("tags") or [],
-                    "origin": (
-                        "web_search"
-                        if value.get("source_tier") == "web_reference"
-                        else "knowledge_repository"
-                    ),
-                }
-            )
-            provenance.append(
-                {
-                    "kind": "question",
-                    "source_id": question_id,
-                    "origin": questions[-1]["origin"],
-                }
-            )
-        bundle = {
-            "schema_version": "1.0",
-            "bundle_id": f"KRB_{execution_id}",
-            "knowledge_point": {"kp_id": kp_ids[0], "title": resource.title},
-            "explanation": {"title": resource.title, "content": resource.content, "source": "expert_agent"},
-            "textbook_slices": textbook_slices,
-            "videos": videos,
-            "questions": questions,
-            "coverage": {
-                "knowledge_point": True,
-                "explanation": True,
-                "textbook_slices": bool(textbook_slices),
-                "videos": bool(videos),
-                "questions": bool(questions),
-                "fallback_used": [],
-            },
-            "provenance": provenance,
-        }
-        return {
-            "kp_id": kp_ids[0],
-            "title": resource.title,
-            "resource_bundle": bundle,
-        }
 
     async def _read_current_page_context(
         self,

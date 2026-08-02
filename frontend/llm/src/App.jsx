@@ -79,9 +79,13 @@ export default function App() {
   const [showHomeGuide, setShowHomeGuide] = useState(false);
   const authRequestId = useRef(0);
   const currentPage = getIntentPage(pageIntent);
+  // 'qualification-route' 是 QualificationRoutePage（今日任务/学习路径）的内部页名，
+  // App 外壳只识别 'learning-path'，这里归一化以保证返回等导航能正确落到学习路径页。
   const shellPage = currentPage === 'practice' && pageIntent.params.view === 'workspace'
     ? 'training-workshop'
-    : currentPage;
+    : currentPage === 'qualification-route'
+      ? 'learning-path'
+      : currentPage;
   const selectedSessionId = pageIntent.params.sessionId || null;
 
   useEffect(() => {

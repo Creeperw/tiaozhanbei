@@ -202,6 +202,12 @@ class PlannerAgent:
                 model_context["payload"]["plan_scope_hint"] = context.get(
                     "plan_scope_hint"
                 )
+            if context.get("planner_multiscale_summary") is not None:
+                # Planner receives only the application-owned compact summary,
+                # never the full multi-scale state or source identifiers.
+                model_context["payload"]["multi_scale_learning_state"] = (
+                    context.get("planner_multiscale_summary") or {}
+                )
             if context.get("continued_plan_scope") is not None:
                 model_context["payload"]["continued_plan_scope"] = context.get(
                     "continued_plan_scope"
