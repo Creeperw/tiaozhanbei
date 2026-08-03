@@ -49,7 +49,7 @@ function installHomeFetch(dashboardPayload = {}, options = {}) {
     }
     if (path.includes('/learning-path')) {
       if (options.learningPathPromise) return options.learningPathPromise;
-      return Promise.resolve(response(routePayload));
+      return Promise.resolve(response(options.learningPathPayload || routePayload));
     }
     if (path.includes('/learning-routes/textbook-integrated')) {
       return Promise.resolve(response({
@@ -316,15 +316,15 @@ describe('QualificationRoutePage', () => {
 
     const pathViewButton = screen.getByRole('button', { name: '学习路径' });
     const cardViewButton = screen.getByRole('button', { name: '学习阶段' });
-    expect(cardViewButton).toHaveAttribute('aria-pressed', 'true');
-    expect(pathViewButton).toHaveAttribute('aria-pressed', 'false');
-    fireEvent.click(screen.getByRole('button', { name: '学习路径' }));
+    expect(cardViewButton).toHaveAttribute('aria-pressed', 'false');
     expect(pathViewButton).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: '中医类别执业医师资格考试' })).toBeInTheDocument();
   });
 
-  it('restores classic and personalized route choices with the learner survey entry', async () => {
-    const fetchMock = installHomeFetch({});
+  it('opens the learner survey only from the empty personalized route entry', async () => {
+    const fetchMock = installHomeFetch({}, {
+      learningPathPayload: { ...routePayload, nodes: [], availability: 'requires_long_term_plan' },
+    });
     render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
 
     const routeSource = await screen.findByRole('group', { name: '学习路径类型' });
@@ -337,10 +337,38 @@ describe('QualificationRoutePage', () => {
     expect(personalizedButton).toHaveAttribute('aria-pressed', 'true');
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/learning-path'))).toBe(true));
 
-    fireEvent.click(screen.getByRole('button', { name: '学情调研' }));
+    expect(screen.queryByRole('button', { name: '学情调研' })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: '去制定个性化路径' }));
     expect(screen.getByRole('dialog', { name: '学情调研' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '退出调研' }));
     expect(screen.queryByRole('dialog', { name: '学情调研' })).not.toBeInTheDocument();
+  });
+
+  it('does not reuse another qualification target personalized plan', async () => {
+    installHomeFetch({}, {
+      qualificationTarget: {
+        target_id: 'target-pharmacist',
+        exam_track_id: 'track-pharmacist',
+        official_name: '执业药师职业资格考试（中药学类）',
+        textbook_route_id: 'textbook-tcm-pharmacy',
+      },
+      learningContext: {
+        long_term_plan: {
+          content: '中医执业医师长期规划',
+          planning_route: {
+            goal_name: '中医执业医师资格考试',
+            textbook_route: { route: { route_id: 'textbook-tcm-physician' } },
+          },
+        },
+        short_term_plan: null,
+      },
+    });
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '个性化路径' }));
+
+    expect(await screen.findByTestId('personalized-path-empty')).toHaveTextContent('还没有当前考试的个性化路径');
+    expect(screen.queryByText('中医基础与文化语言')).not.toBeInTheDocument();
   });
 
   it('keeps a loading state visible while the personalized route is requested', async () => {

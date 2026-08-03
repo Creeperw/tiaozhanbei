@@ -8,15 +8,12 @@ import {
   CirclePlay,
   ClipboardCheck,
   Clock3,
-  FileText,
   Files,
   FolderHeart,
   HeartPulse,
   NotebookPen,
   Stethoscope,
   Target,
-  TrendingUp,
-  UploadCloud,
 } from 'lucide-react';
 import { createLearningFocusTracker } from '../learningFocusTracker.js';
 import { fetchJsonWithAuthFallback } from '../utils/api';
@@ -28,7 +25,7 @@ import MistakeVariationPanel from './MistakeVariationPanel';
 import PaperGenerationPanel from './PaperGenerationPanel';
 import SmartPaperPanel from './SmartPaperPanel';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
-import UserSyllabusPage from './UserSyllabusPage';
+import ResourceUploadPage from './ResourceUploadPage';
 import KnowledgeCardLibrary from './KnowledgeCardLibrary';
 import VideoLearningPanel from './VideoLearningPanel';
 import KnowledgePointTrainingHub from './KnowledgePointTrainingHub';
@@ -234,14 +231,6 @@ const trainingCards = [
   },
 ];
 
-const uploadQuestionBankCard = {
-  key: 'resource_upload',
-  title: '上传资源',
-  description: '上传题库或考纲，沉淀个人学习资源。',
-  icon: UploadCloud,
-  tone: 'amber',
-};
-
 const utilityCards = [
   {
     key: 'mistake_variation',
@@ -297,7 +286,6 @@ const resumableTrainingCards = [
   ...featuredCards,
   ...trainingCards,
   ...utilityCards,
-  uploadQuestionBankCard,
   {
     key: 'knowledge_cards',
     title: '知识卡片',
@@ -433,19 +421,6 @@ function TrainingBannerIllustration() {
   );
 }
 
-function OverviewMetricCard({ icon: Icon, label, value, hint, tone = 'green' }) {
-  return (
-    <div className={`practice-overview__hero-metric practice-overview__hero-metric--${tone}`}>
-      <span className="practice-overview__metric-icon">{React.createElement(Icon, { 'aria-hidden': true, size: 21 })}</span>
-      <span className="practice-overview__metric-copy">
-        <small>{label}</small>
-        <strong>{value}</strong>
-        <em>{hint}</em>
-      </span>
-    </div>
-  );
-}
-
 function OverviewSummaryMetric({ icon: Icon, label, value, hint, tone = 'green', progress }) {
   return (
     <div className={`practice-overview__summary-metric practice-overview__summary-metric--${tone}`}>
@@ -476,7 +451,6 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
   const recentCard = resumableTrainingCards
     .find((card) => card.key === stats.recentTaskKey) || trainingCards[2];
   const formatPercent = (value) => value === null ? '--' : `${value}%`;
-  const formatDays = (value) => value === null ? '--' : `${value} 天`;
   const formatHours = (value) => value === null ? '--' : `${value} 小时`;
   const formatQuestions = (value) => value === null ? '累计练习待接入' : `累计练习 ${value} 题`;
 
@@ -496,19 +470,25 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
             </button>
           </div>
         </div>
-        <div className="practice-overview__hero-metrics">
-          <OverviewMetricCard
+        <div className="practice-overview__hero-metrics" role="region" aria-label="学习概览">
+          <OverviewSummaryMetric
             icon={CalendarDays}
-            label="连续学习"
-            value={formatDays(stats.streakDays)}
-            hint="再接再厉，保持节奏"
+            label="近 30 天练习"
+            value={stats.windowPracticeCount === null ? '--' : `${stats.windowPracticeCount} 题`}
+            hint="正式审核完成题目"
           />
-          <OverviewMetricCard
-            icon={TrendingUp}
-            label="今日正确率"
-            value={formatPercent(stats.todayAccuracy)}
-            hint="稳保持，稳步提升"
-            tone="mint"
+          <OverviewSummaryMetric
+            icon={Target}
+            label="平均正确率"
+            value={formatPercent(stats.averageAccuracy)}
+            hint={stats.averageAccuracy === null ? '暂无数据' : '继续保持'}
+          />
+          <OverviewSummaryMetric
+            icon={Clock3}
+            label="累计学习"
+            value={formatHours(stats.totalHours)}
+            hint={formatQuestions(stats.totalQuestions)}
+            tone="purple"
           />
         </div>
         <TrainingBannerIllustration />
@@ -555,27 +535,6 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
             })}
           </div>
 
-          <section className="practice-overview__summary" role="region" aria-label="学习概览">
-            <OverviewSummaryMetric
-              icon={CalendarDays}
-              label="近 30 天练习"
-              value={stats.windowPracticeCount === null ? '--' : `${stats.windowPracticeCount} 题`}
-              hint="正式审核完成题目"
-            />
-            <OverviewSummaryMetric
-              icon={Target}
-              label="平均正确率"
-              value={formatPercent(stats.averageAccuracy)}
-              hint={stats.averageAccuracy === null ? '暂无数据' : '继续保持'}
-            />
-            <OverviewSummaryMetric
-              icon={Clock3}
-              label="累计学习"
-              value={formatHours(stats.totalHours)}
-              hint={formatQuestions(stats.totalQuestions)}
-              tone="purple"
-            />
-          </section>
         </section>
 
         <aside className="practice-overview__utilities" aria-label="学习工具">
@@ -595,14 +554,6 @@ function TrainingOverview({ onOpenModule, overviewStats }) {
                 </button>
               );
             })}
-            <button
-              type="button"
-              className="practice-overview__utility-card practice-overview__utility-card--upload"
-              onClick={() => onOpenModule(uploadQuestionBankCard)}
-            >
-              <span className="practice-overview__utility-icon"><UploadCloud aria-hidden="true" size={22} /></span>
-              <span><strong>上传资源</strong><small>上传题库或考纲，沉淀个人学习资源。</small><em>支持 PDF / 图片 / Word / Excel / Markdown / TXT · 智能解析</em></span>              <ChevronRight aria-hidden="true" size={18} />
-            </button>
           </div>
         </aside>
       </div>
@@ -619,7 +570,6 @@ export default function PracticePage({
   const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
   const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
   const [activeInitialMode, setActiveInitialMode] = useState(() => initialTaskIntent.initialMode);
-  const [resourceView, setResourceView] = useState('chooser');
   const [view, setView] = useState(() => (navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'));
   const [loadedOverviewStats, setLoadedOverviewStats] = useState(DEFAULT_TRAINING_OVERVIEW_STATS);
   const taskItemId = navigationContext.taskItemId || navigationContext.task_item_id || '';
@@ -701,11 +651,8 @@ export default function PracticePage({
   const openWorkshopModule = ({ key, initialMode }) => {
     setActiveTaskType(key);
     setActiveInitialMode(initialMode || key);
-    if (key === 'resource_upload') setResourceView('chooser');
     setView('workspace');
   };
-
-  const openResourceView = (nextView) => setResourceView(nextView);
 
   if (view === 'overview') {
     return (
@@ -730,43 +677,7 @@ export default function PracticePage({
   }
 
   if (activeTaskType === 'resource_upload') {
-    if (resourceView === 'question') {
-      return (
-        <div className="question-workspace-shell space-y-5 text-slate-800">
-          <div className="practice-workspace__heading question-workspace-shell__toolbar flex items-center gap-4 border-b border-slate-200 pb-4">
-            <button type="button" className="practice-workspace__back" onClick={() => openResourceView('chooser')}><ArrowLeft aria-hidden="true" size={16} />返回</button>
-            <h1 className="text-2xl font-bold text-slate-950">上传题库</h1>
-          </div>
-          <QuestionWorkspacePage />
-        </div>
-      );
-    }
-    if (resourceView === 'syllabus') {
-      return (
-        <div className="question-workspace-shell space-y-5 text-slate-800">
-          <div className="practice-workspace__heading question-workspace-shell__toolbar flex items-center gap-4 border-b border-slate-200 pb-4">
-            <button type="button" className="practice-workspace__back" onClick={() => openResourceView('chooser')}><ArrowLeft aria-hidden="true" size={16} />返回</button>
-            <h1 className="text-2xl font-bold text-slate-950">上传考纲</h1>
-          </div>
-          <UserSyllabusPage />
-        </div>
-      );
-    }
-    return (
-      <div className="question-workspace-shell space-y-5 text-slate-800">
-        <div className="practice-workspace__heading question-workspace-shell__toolbar flex items-center gap-4 border-b border-slate-200 pb-4">
-          <button type="button" className="practice-workspace__back" onClick={leaveWorkspace}><ArrowLeft aria-hidden="true" size={16} />返回</button>
-          <h1 className="text-2xl font-bold text-slate-950">上传资源</h1>
-        </div>
-        <section className="question-workspace__section" aria-label="选择上传资源类型">
-          <header><div><span>资源入口</span><h3>选择上传类型</h3></div></header>
-          <div className="grid gap-3 md:grid-cols-2">
-            <button type="button" className="practice-overview__utility-card" onClick={() => openResourceView('question')}><UploadCloud size={22} /><span><strong>上传题库</strong><small>解析个人题目并进入题库审核流程。</small></span></button>
-            <button type="button" className="practice-overview__utility-card" onClick={() => openResourceView('syllabus')}><FileText size={22} /><span><strong>上传考纲</strong><small>用多模态模型结构化考纲并绑定当前激活考纲。</small></span></button>
-          </div>
-        </section>
-      </div>
-    );
+    return <ResourceUploadPage onBack={leaveWorkspace} />;
   }
 
   const isSP = activeTaskType === 'ai_patient_simulation';

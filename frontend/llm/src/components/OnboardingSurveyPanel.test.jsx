@@ -193,4 +193,32 @@ describe('OnboardingSurveyPanel', () => {
     expect(await screen.findByRole('button', { name: '退出调研' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '退出注册' })).not.toBeInTheDocument();
   });
+
+  it('uses the current exam target without asking the learner to choose it again', async () => {
+    const requests = installRequests();
+    const onSaved = vi.fn();
+    render(<OnboardingSurveyPanel lockedTarget={target} onSaved={onSaved} />);
+
+    await screen.findByRole('radio', { name: /学历教育群体/ });
+    choose('学历教育群体');
+    continueStep();
+    expect(screen.queryByRole('heading', { name: '你准备学习或参加哪项考试？' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '你的学历或专业背景是？' })).toBeInTheDocument();
+
+    choose('非医学专业');
+    continueStep();
+    choose('零基础');
+    continueStep();
+    choose('30–60 分钟');
+    continueStep();
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    const surveyRequest = requests.find(({ url }) => url.endsWith('/training/onboarding/survey'));
+    expect(JSON.parse(surveyRequest.options.body)).toMatchObject({
+      exam_track_id: target.exam_track_id,
+      goals: { target_exam_or_course: target.official_name },
+    });
+  });
 });

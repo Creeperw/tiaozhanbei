@@ -11,6 +11,7 @@ vi.mock('./PersonalizationPage', () => ({
 vi.mock('./LearningInsightsReportPage', () => ({ default: () => <div>reports-task</div> }));
 vi.mock('./ProfileConflictList', () => ({ default: () => <div>conflicts-task</div> }));
 vi.mock('./ReviewDashboardPanel', () => ({ default: () => <div>review-task</div> }));
+vi.mock('./ResourceUploadPage', () => ({ default: () => <div>resource-upload-task</div> }));
 
 describe('PersonalizationHubPage task routing', () => {
   it('opens the user profile and keeps the persistent text navigation visible', () => {
@@ -56,5 +57,12 @@ describe('PersonalizationHubPage task routing', () => {
 
     expect(screen.getByTestId('personalization-task')).toHaveTextContent('memory');
     expect(screen.getByRole('button', { name: '学习记忆' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('opens resource upload inside personal data', () => {
+    render(<PersonalizationHubPage navigationContext={{ view: 'resources' }} onNavigate={vi.fn()} />);
+
+    expect(screen.getByText('resource-upload-task')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '上传资源' })).toHaveAttribute('aria-current', 'page');
   });
 });

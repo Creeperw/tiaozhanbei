@@ -6,6 +6,7 @@ export const REGISTRATION_TOTAL_STEPS = 8;
 
 export default function RegistrationJourneyFrame({
   step,
+  totalSteps = REGISTRATION_TOTAL_STEPS,
   eyebrow,
   title,
   description,
@@ -14,7 +15,7 @@ export default function RegistrationJourneyFrame({
   exitLabel = '返回展示页',
   children,
 }) {
-  const progress = Math.round((step / REGISTRATION_TOTAL_STEPS) * 100);
+  const progress = Math.round((step / totalSteps) * 100);
 
   return (
     <div className="registration-journey">
@@ -48,12 +49,12 @@ export default function RegistrationJourneyFrame({
               role="progressbar"
               aria-label="注册与学情调查进度"
               aria-valuemin="1"
-              aria-valuemax={REGISTRATION_TOTAL_STEPS}
+              aria-valuemax={totalSteps}
               aria-valuenow={step}
             >
               <span style={{ width: `${progress}%` }} />
             </div>
-            <strong>{step} / {REGISTRATION_TOTAL_STEPS}</strong>
+            <strong>{step} / {totalSteps}</strong>
           </div>
           <div className="registration-journey__heading">
             <span>{eyebrow}</span>

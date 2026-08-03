@@ -14215,3 +14215,111 @@ textarea:focus-visible {
 .sp-acu-review-actions { display:flex; justify-content:center; padding:0 18px 10px; }
 .sp-acu-review-fav-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid #cfe0d7; border-radius:8px; padding:6px 14px; color:#47685a; background:#f8fbf9; font-size:12px; font-weight:600; cursor:pointer; }
 .sp-acu-review-fav-btn:hover { border-color:#8abca3; color:#176e50; background:#e8f5ed; }
+
+/* Personalized route creation keeps the Agent workflow in place while the
+   learning-path page owns only progress presentation and recovery actions. */
+.home-portal__personalized-empty {
+  display: grid;
+  width: min(520px, calc(100% - 32px));
+  min-height: 300px;
+  place-content: center;
+  justify-items: center;
+  margin: auto;
+  padding: 36px;
+  color: #587268;
+  text-align: center;
+}
+.home-portal__personalized-empty-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #ddf9eb, #eefbf5);
+  color: #119765;
+  box-shadow: 0 12px 30px rgb(16 145 96 / 14%);
+}
+.home-portal__personalized-empty h3 { margin: 18px 0 0; color: #163b2e; font-size: 1.15rem; }
+.home-portal__personalized-empty p { max-width: 440px; margin: 10px 0 20px; font-size: .86rem; line-height: 1.75; }
+.home-portal__personalized-empty button,
+.home-portal__planning-actions button {
+  min-height: 42px;
+  border: 1px solid #0f9f68;
+  border-radius: 12px;
+  background: #0f9f68;
+  padding: 0 20px;
+  color: #fff;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgb(15 159 104 / 18%);
+}
+.home-portal__personalized-empty button:disabled { opacity: .65; cursor: wait; }
+.home-portal__planning-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(17 45 36 / 48%);
+  backdrop-filter: blur(9px);
+}
+.home-portal__planning-progress {
+  display: grid;
+  width: min(560px, 100%);
+  justify-items: center;
+  border: 1px solid rgb(196 230 214 / 88%);
+  border-radius: 28px;
+  background: linear-gradient(145deg, #fff, #f2fbf7);
+  padding: 42px 36px 36px;
+  text-align: center;
+  box-shadow: 0 34px 90px rgb(10 49 35 / 28%);
+}
+.home-portal__planning-progress > span { margin-top: 18px; color: #159364; font-size: .74rem; font-weight: 800; letter-spacing: .08em; }
+.home-portal__planning-progress h2 { margin: 7px 0 0; color: #143c2e; font-size: 1.35rem; }
+.home-portal__planning-progress p { width: 100%; max-height: 150px; overflow: auto; margin: 13px 0 0; color: #60786f; font-size: .86rem; line-height: 1.7; white-space: pre-wrap; }
+.home-portal__planning-progress p.is-error { color: #a44343; }
+.home-portal__planning-animation { position: relative; display: grid; width: 96px; height: 96px; place-items: center; color: #0f9f68; }
+.home-portal__planning-animation span { position: absolute; inset: 4px; border: 2px solid rgb(15 159 104 / 22%); border-radius: 50%; animation: personalized-path-pulse 1.8s ease-out infinite; }
+.home-portal__planning-animation span:nth-child(2) { inset: 16px; animation-delay: .5s; }
+.home-portal__planning-animation svg { position: relative; z-index: 1; animation: personalized-path-spin 1.15s linear infinite; }
+.home-portal__planning-animation[data-complete="true"] svg { animation: none; }
+.home-portal__planning-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 24px; }
+.home-portal__planning-actions button.is-secondary { border-color: #cbded5; background: #fff; color: #3d6355; box-shadow: none; }
+@keyframes personalized-path-pulse { from { opacity: .8; transform: scale(.72); } to { opacity: 0; transform: scale(1.12); } }
+@keyframes personalized-path-spin { to { transform: rotate(360deg); } }
+
+/* The former bottom summary now occupies the hero metric position. */
+.practice-overview__banner { grid-template-columns: minmax(250px, .82fr) minmax(480px, 1.5fr) 150px; }
+.practice-overview__hero-metrics { grid-template-columns: repeat(3, minmax(145px, 1fr)); gap: 10px; }
+.practice-overview__hero-metrics .practice-overview__summary-metric {
+  grid-template-columns: 48px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 112px;
+  gap: 8px;
+  border: 1px solid #dcebe4;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 82%);
+  padding: 12px;
+}
+.practice-overview__hero-metrics .practice-overview__summary-metric + .practice-overview__summary-metric { border-left: 1px solid #dcebe4; }
+.practice-overview__hero-metrics .practice-overview__summary-icon { width: 44px; height: 44px; }
+.practice-overview__hero-metrics .practice-overview__summary-copy strong { font-size: 1.15rem; }
+
+.resource-upload-page { width: min(1080px, 100%); margin: 0 auto; }
+.resource-upload-page__eyebrow { color: #119765; font-size: .72rem; font-weight: 800; letter-spacing: .08em; }
+
+@media (max-width: 1120px) {
+  .practice-overview__banner { grid-template-columns: minmax(240px, .8fr) minmax(420px, 1.2fr); }
+  .practice-overview__illustration { display: none; }
+}
+@media (max-width: 760px) {
+  .practice-overview__banner { grid-template-columns: 1fr; }
+  .practice-overview__hero-metrics { grid-template-columns: 1fr; }
+  .practice-overview__hero-metrics .practice-overview__summary-metric { min-height: 88px; }
+  .home-portal__planning-progress { padding: 34px 22px 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-portal__planning-animation span,
+  .home-portal__planning-animation svg { animation: none; }
+}

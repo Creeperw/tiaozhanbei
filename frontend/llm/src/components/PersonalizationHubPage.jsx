@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import PersonalizationPage from './PersonalizationPage';
 import LearningInsightsReportPage from './LearningInsightsReportPage';
 import ReviewDashboardPanel from './ReviewDashboardPanel';
+import ResourceUploadPage from './ResourceUploadPage';
 
-const validTaskKeys = new Set(['user-profile', 'reports', 'review', 'memory']);
+const validTaskKeys = new Set(['user-profile', 'reports', 'review', 'memory', 'resources']);
 const normalizeTask = (value) => (
   validTaskKeys.has(value) ? value : 'reports'
 );
@@ -38,6 +39,7 @@ export default function PersonalizationHubPage({ navigationContext = {}, onNavig
     { key: 'user-profile', label: '学习画像' },
     { key: 'review', label: '复习与掌握' },
     { key: 'memory', label: '学习记忆' },
+    { key: 'resources', label: '上传资源' },
   ];
 
   return (
@@ -63,6 +65,7 @@ export default function PersonalizationHubPage({ navigationContext = {}, onNavig
         {renderedTab === 'reports' && <LearningInsightsReportPage onNavigate={onNavigate} currentUser={currentUser} />}
         {renderedTab === 'review' && <ReviewDashboardPanel />}
         {renderedTab === 'memory' && <PersonalizationPage onBackHome={null} embedded view="memory" />}
+        {renderedTab === 'resources' && <ResourceUploadPage />}
       </main>
     </div>
   );

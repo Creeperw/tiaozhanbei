@@ -161,6 +161,14 @@ function LearningTargetNavigationMenu({ menuState, onOpen, onRequestClose, onClo
     return () => { cancelled = true; };
   }, [enabled]);
   useEffect(() => {
+    const handleTargetChanged = (event) => {
+      const selected = event?.detail || {};
+      setCurrentTargetName(selected.official_name || selected.exam_name || '');
+    };
+    window.addEventListener(LEARNING_TARGET_CHANGED_EVENT, handleTargetChanged);
+    return () => window.removeEventListener(LEARNING_TARGET_CHANGED_EVENT, handleTargetChanged);
+  }, []);
+  useEffect(() => {
     const closeOutside = (event) => { if (mounted && !ref.current?.contains(event.target)) onRequestClose('learning-target', 0); };
     document.addEventListener('mousedown', closeOutside);
     return () => document.removeEventListener('mousedown', closeOutside);

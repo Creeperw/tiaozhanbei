@@ -13,6 +13,7 @@ const PRIMARY_NAV = [
       { label: '学习画像', intent: intent('personalization', { view: 'user-profile' }) },
       { label: '复习与掌握', intent: intent('personalization', { view: 'review' }) },
       { label: '学习记忆', intent: intent('personalization', { view: 'memory' }) },
+      { label: '上传资源', intent: intent('personalization', { view: 'resources' }) },
     ],
   },
 ];

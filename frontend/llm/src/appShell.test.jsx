@@ -126,6 +126,7 @@ test('uses learning reports as the personalization default and exposes its views
     { label: '学习画像', intent: { page: 'personalization', params: { view: 'user-profile' } } },
     { label: '复习与掌握', intent: { page: 'personalization', params: { view: 'review' } } },
     { label: '学习记忆', intent: { page: 'personalization', params: { view: 'memory' } } },
+    { label: '上传资源', intent: { page: 'personalization', params: { view: 'resources' } } },
   ]);
 });
 

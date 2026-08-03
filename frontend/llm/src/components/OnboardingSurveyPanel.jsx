@@ -7,7 +7,7 @@ import {
   fetchWithAuth,
   readJsonResponse,
 } from '../utils/api';
-import RegistrationJourneyFrame, { REGISTRATION_TOTAL_STEPS } from './RegistrationJourneyFrame';
+import RegistrationJourneyFrame from './RegistrationJourneyFrame';
 
 const emptyTemplate = { groups: [], questions: [], required_fields: ['learner_group'] };
 const emptyAnswers = { preferences: {}, goals: {}, background: {}, special_requirements: {}, locked_fields: [] };
@@ -101,6 +101,7 @@ function optionLabel(option) {
 
 export default function OnboardingSurveyPanel({
   onSaved,
+  lockedTarget = null,
   required = false,
   stepOffset = 0,
   onBackToAccount,
@@ -137,13 +138,18 @@ export default function OnboardingSurveyPanel({
         const targetItems = Array.isArray(routesData.items) ? routesData.items : [];
         setRoutes(targetItems);
         const savedSurvey = statusData.survey_answers || {};
+        const lockedRoute = targetItems.find((item) => (
+          item.target_id === lockedTarget?.target_id
+          || item.exam_track_id === lockedTarget?.exam_track_id
+        ));
+        if (lockedRoute) setSelectedRouteId(lockedRoute.target_id);
         if (Object.keys(savedSurvey).length > 0) {
           setSelectedGroup(savedSurvey.learner_group || '');
           const savedTarget = targetItems.find(
             (item) => item.target_id === savedSurvey.qualification_target_id
               || item.official_name === savedSurvey.target_exam_or_course,
           );
-          setSelectedRouteId(savedTarget?.target_id || '');
+          if (!lockedRoute) setSelectedRouteId(savedTarget?.target_id || '');
           setAnswers(restoreSurveyAnswers(savedSurvey));
         }
       } catch (reason) {
@@ -154,7 +160,7 @@ export default function OnboardingSurveyPanel({
     };
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [lockedTarget?.exam_track_id, lockedTarget?.target_id]);
 
   const groups = useMemo(() => (
     template.groups.length > 0
@@ -179,7 +185,7 @@ export default function OnboardingSurveyPanel({
         ? `好，根据你这一情况，我优先推荐你学习${selectedTemplate.resources.join('、')}。`
         : '先告诉我你属于哪一类学习者，我会据此调整推荐内容。',
     },
-    {
+    ...(!lockedTarget ? [{
       type: 'route',
       eyebrow: '确定目标',
       title: '你准备学习或参加哪项考试？',
@@ -187,7 +193,7 @@ export default function OnboardingSurveyPanel({
       options: routes.map((route) => ({ value: route.target_id, label: route.official_name || route.target_id })),
       required: true,
       mascotMessage: '目标清楚，学习路线才不会绕远。请选择你当前最主要的考试方向。',
-    },
+    }] : []),
     ...profileQuestions.map((question) => ({
       ...question,
       type: 'profile',
@@ -195,7 +201,8 @@ export default function OnboardingSurveyPanel({
     })),
   ];
   const current = surveyQuestions[step];
-  const absoluteStep = Math.min(stepOffset + step + 1, REGISTRATION_TOTAL_STEPS);
+  const totalSteps = stepOffset + surveyQuestions.length;
+  const absoluteStep = Math.min(stepOffset + step + 1, totalSteps);
 
   const currentValue = current.type === 'group'
     ? selectedGroup
@@ -323,6 +330,7 @@ export default function OnboardingSurveyPanel({
   return (
     <RegistrationJourneyFrame
       step={absoluteStep}
+      totalSteps={totalSteps}
       eyebrow={current.eyebrow}
       title={current.title}
       description={current.description}

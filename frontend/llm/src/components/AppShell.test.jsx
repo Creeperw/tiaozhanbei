@@ -225,6 +225,10 @@ describe('AppShell', () => {
       },
     });
     expect(targetChanged).toHaveBeenCalledWith(expect.objectContaining({ detail: expect.objectContaining({ target_id: 'target-b' }) }));
+    window.dispatchEvent(new CustomEvent('shizhen:learning-target-changed', {
+      detail: { official_name: '执业药师职业资格考试（中药学类）' },
+    }));
+    await waitFor(() => expect(screen.getByText('当前 · 执业药师职业资格考试（中药学类）')).toBeInTheDocument());
     window.removeEventListener('shizhen:learning-target-changed', targetChanged);
   });
 

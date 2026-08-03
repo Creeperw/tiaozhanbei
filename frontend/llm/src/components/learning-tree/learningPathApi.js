@@ -14,6 +14,51 @@ export async function loadPlannedLearningPath(parentId = '') {
   return payload;
 }
 
+function normalizeGoalName(value) {
+  return String(value || '')
+    .replace(/\s+/g, '')
+    .replace('中医类别', '中医')
+    .trim();
+}
+
+function currentPlanMatchesTarget(context, target) {
+  const route = context?.long_term_plan?.planning_route;
+  if (!route || !target) return true;
+
+  const plannedGoal = normalizeGoalName(route.goal_name);
+  const selectedGoal = normalizeGoalName(target.official_name || target.name);
+  if (plannedGoal && selectedGoal && plannedGoal !== selectedGoal) return false;
+
+  const plannedTextbookRoute = String(route.textbook_route?.route?.route_id || '');
+  const selectedTextbookRoute = String(target.textbook_route_id || '');
+  if (
+    plannedTextbookRoute
+    && selectedTextbookRoute
+    && plannedTextbookRoute !== selectedTextbookRoute
+  ) return false;
+
+  return true;
+}
+
+export async function loadPlannedLearningPathForTarget(target) {
+  const [payload, context] = await Promise.all([
+    loadPlannedLearningPath(),
+    fetchWithAuth(`${MAIN_API_BASE}/learning-plans/current/context`)
+      .then((response) => readJsonResponse(response, {}))
+      .catch(() => null),
+  ]);
+  if (currentPlanMatchesTarget(context, target)) return payload;
+  return {
+    ...payload,
+    current_node_id: null,
+    nodes: [],
+    total: 0,
+    has_more: false,
+    availability: 'requires_target_plan',
+    message: '当前考试还没有个性化学习路径。',
+  };
+}
+
 async function loadLearningRoutePayload(path) {
   const response = await fetchWithAuth(`${MAIN_API_BASE}${path}`);
   const payload = await readJsonResponse(response, {});

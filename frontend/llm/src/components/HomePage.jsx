@@ -4,7 +4,6 @@ import {
   BrainCircuit,
 } from 'lucide-react';
 import { PLATFORM_CAPABILITIES } from '../platformCapabilities';
-import { loadLearningTarget } from './exam-atlas/examAtlasApi';
 import ScrollTextReveal from './originkit/ScrollTextReveal';
 import QualificationTargetDialog from './QualificationTargetDialog';
 import './PlatformHome.css';
@@ -32,8 +31,6 @@ function useReducedMotion() {
 export default function HomePage({ currentUser, onNavigate, onLoginRequested }) {
   const [videoFailed, setVideoFailed] = useState(false);
   const [targetDialogOpen, setTargetDialogOpen] = useState(false);
-  const [targetChecking, setTargetChecking] = useState(false);
-  const [startError, setStartError] = useState('');
   const videoRef = useRef(null);
   const reducedMotion = useReducedMotion();
 
@@ -42,27 +39,12 @@ export default function HomePage({ currentUser, onNavigate, onLoginRequested }) 
   }, [reducedMotion]);
 
   const navigate = (intent) => onNavigate?.(intent);
-  const startLearning = async () => {
+  const startLearning = () => {
     if (currentUser === null) {
       onLoginRequested?.();
       return;
     }
-    if (targetChecking) return;
-    setTargetChecking(true);
-    setStartError('');
-    try {
-      const payload = await loadLearningTarget();
-      const target = payload?.target || payload || null;
-      if (target?.exam_track_id) {
-        navigate({ page: 'learning-path', params: {} });
-      } else {
-        setTargetDialogOpen(true);
-      }
-    } catch (reason) {
-      setStartError(reason.message || '暂时无法确认考试类别，请稍后重试');
-    } finally {
-      setTargetChecking(false);
-    }
+    setTargetDialogOpen(true);
   };
   const handleVideoCanPlay = () => {
     if (reducedMotion) {
@@ -90,14 +72,12 @@ export default function HomePage({ currentUser, onNavigate, onLoginRequested }) 
             <button
               type="button"
               className="platform-home__primary-action"
-              disabled={targetChecking}
               onClick={startLearning}
             >
-              {targetChecking ? '正在准备…' : '开始学习'}
+              开始学习
               <ArrowRight aria-hidden="true" size={19} />
             </button>
           </div>
-          {startError && <div className="platform-home__start-error" role="alert">{startError}</div>}
         </div>
 
         <div className="platform-home__visual" aria-label="多智能体协同学习演示">
@@ -163,7 +143,10 @@ export default function HomePage({ currentUser, onNavigate, onLoginRequested }) 
       {targetDialogOpen && (
         <QualificationTargetDialog
           onCancel={() => setTargetDialogOpen(false)}
-          onSaved={() => {
+          onSaved={(selected) => {
+            window.dispatchEvent(new CustomEvent('shizhen:learning-target-changed', {
+              detail: selected,
+            }));
             setTargetDialogOpen(false);
             navigate({ page: 'learning-path', params: {} });
           }}

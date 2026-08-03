@@ -8,9 +8,11 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
+  CircleCheckBig,
   Clock3,
+  LoaderCircle,
   Plus,
+  Sparkles,
 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DailyTaskCountdown from './daily-task/DailyTaskCountdown';
@@ -23,6 +25,7 @@ import {
   adaptPlannedPathNode,
   loadClassicLearningRoute,
   loadPlannedLearningPath,
+  loadPlannedLearningPathForTarget,
 } from './learning-tree/learningPathApi';
 import {
   applyProgressToBookNodes,
@@ -37,7 +40,9 @@ import {
   buildHomePortalState,
 } from '../homePortal';
 import { workshopActionIntent } from '../pageIntent';
+import { buildPersonalizedLearningPath } from '../personalizedPathPlanner';
 import {
+  clearQualificationRoutePageCache,
   readQualificationPageCache,
   readQualificationRouteCache,
   updateQualificationPageCache,
@@ -92,6 +97,10 @@ function updatePageCache(key, patch) {
 
 function routeCacheKey(userKey, routeKey) {
   return `${userKey}:${routeKey}`;
+}
+
+function plannedRouteKey(target) {
+  return `__planned__:${target?.exam_track_id || target?.target_id || 'current'}`;
 }
 
 function samePayload(left, right) {
@@ -384,14 +393,16 @@ function HomeLearningRoute({
   routeRevision,
   userCacheKey,
   selectedTarget,
+  onCreatePersonalizedPath,
+  planningActive = false,
 }) {
   const [routeMode, setRouteMode] = useState('classic');
-  const [routeView, setRouteView] = useState('cards');
-  const [renderedRouteView, setRenderedRouteView] = useState('cards');
+  const [routeView, setRouteView] = useState('orbit');
+  const [renderedRouteView, setRenderedRouteView] = useState('orbit');
   const [routeTransitionPhase, setRouteTransitionPhase] = useState('idle');
   const routeTransitionTimerRef = useRef(null);
   const [routeState, setRouteState] = useState(() => {
-    const initialRouteKey = selectedTarget?.textbook_route_id || '__planned__';
+    const initialRouteKey = selectedTarget?.textbook_route_id || plannedRouteKey(selectedTarget);
     const cached = readQualificationRouteCache(routeCacheKey(userCacheKey, initialRouteKey));
     return cached?.state || {
       loading: true,
@@ -411,6 +422,8 @@ function HomeLearningRoute({
     longTerm: '',
     shortTerm: '',
   });
+  const selectedTextbookRouteId = selectedTarget?.textbook_route_id || '';
+  const selectedPlannedRouteKey = plannedRouteKey(selectedTarget);
 
   useEffect(() => {
     if (routeState.loading) return;
@@ -423,21 +436,19 @@ function HomeLearningRoute({
   useEffect(() => {
     let cancelled = false;
     const progressController = new AbortController();
-    const useClassicRoute = routeMode === 'classic' && Boolean(selectedTarget?.textbook_route_id);
-    const routeKey = useClassicRoute ? selectedTarget.textbook_route_id : '__planned__';
+    const useClassicRoute = routeMode === 'classic' && Boolean(selectedTextbookRouteId);
+    const routeKey = useClassicRoute ? selectedTextbookRouteId : selectedPlannedRouteKey;
     const cacheKey = routeCacheKey(userCacheKey, routeKey);
     const cached = readQualificationRouteCache(cacheKey);
     const routeLoader = useClassicRoute
-      ? loadClassicLearningRoute(selectedTarget.textbook_route_id)
-      : loadPlannedLearningPath();
+      ? loadClassicLearningRoute(selectedTextbookRouteId)
+      : loadPlannedLearningPathForTarget(selectedTarget);
     if (cached?.state) {
       setRouteState(cached.state);
       onReadyChange?.(routeKey);
     } else {
       onReadyChange?.('');
     }
-    setRouteView('cards');
-    setRenderedRouteView('cards');
     setRouteTransitionPhase('idle');
     setSelectedNode(null);
     if (!cached?.state) setRouteState((current) => ({ ...current, loading: true, error: '' }));
@@ -497,7 +508,15 @@ function HomeLearningRoute({
       cancelled = true;
       progressController.abort();
     };
-  }, [onReadyChange, routeMode, routeRevision, selectedTarget?.textbook_route_id, userCacheKey]);
+  }, [
+    onReadyChange,
+    routeMode,
+    routeRevision,
+    selectedPlannedRouteKey,
+    selectedTextbookRouteId,
+    selectedTarget,
+    userCacheKey,
+  ]);
 
   useEffect(() => () => window.clearTimeout(routeTransitionTimerRef.current), []);
 
@@ -611,8 +630,24 @@ function HomeLearningRoute({
   };
 
   const selectRouteMode = (nextMode) => {
-    if (nextMode !== routeMode) setRouteMode(nextMode);
+    if (nextMode !== routeMode) {
+      setRouteMode(nextMode);
+      changeRouteView('orbit');
+    }
   };
+
+  const emptyPersonalizedPath = routeMode === 'personalized' && !routeState.loading
+    && (Boolean(routeState.error) || routeState.stages.length === 0);
+  const emptyPathContent = emptyPersonalizedPath ? (
+    <div className="home-portal__personalized-empty" data-testid="personalized-path-empty">
+      <span className="home-portal__personalized-empty-icon"><Sparkles aria-hidden="true" size={28} /></span>
+      <h3>还没有当前考试的个性化路径</h3>
+      <p>完成学情调研后，智能助教将依次制定长期规划、短期计划和今日任务。</p>
+      <button type="button" onClick={onCreatePersonalizedPath} disabled={planningActive}>
+        {planningActive ? '正在为您规划学习路径…' : '去制定个性化路径'}
+      </button>
+    </div>
+  ) : null;
 
   return (
       <section
@@ -677,9 +712,13 @@ function HomeLearningRoute({
       <div className="home-portal__route-view-content" data-view={renderedRouteView} data-phase={routeTransitionPhase}>
       {renderedRouteView === 'orbit' && (
         <div className="home-portal__route-orbit-layout">
-          {routeState.loading && <div className="home-portal__route-state" aria-hidden="true" />}
-          {!routeState.loading && routeState.error && <div className="home-portal__route-state">{routeState.error}</div>}
-          {!routeState.loading && !routeState.error && routeState.stages.length === 0 && <div className="home-portal__route-state">尚未生成学习路径</div>}
+          {routeState.loading && (
+            <div className="home-portal__route-state" aria-live="polite">
+              正在读取{routeMode === 'personalized' ? '个性化' : '经典'}学习路径…
+            </div>
+          )}
+          {!routeState.loading && routeState.error && (emptyPathContent || <div className="home-portal__route-state">{routeState.error}</div>)}
+          {!routeState.loading && !routeState.error && routeState.stages.length === 0 && (emptyPathContent || <div className="home-portal__route-state">尚未生成学习路径</div>)}
           {!routeState.loading && !routeState.error && routeState.stages.length > 0 && (
             <LearningPathOverview
               nodes={routeState.nodes}
@@ -701,9 +740,9 @@ function HomeLearningRoute({
             正在读取{routeMode === 'personalized' ? '个性化' : '经典'}学习路径…
           </div>
         ) : routeState.error ? (
-          <div className="home-portal__route-state" role="alert">{routeState.error}</div>
+          emptyPathContent || <div className="home-portal__route-state" role="alert">{routeState.error}</div>
         ) : routeState.stages.length === 0 ? (
-          <div className="home-portal__route-state">尚未生成学习路径</div>
+          emptyPathContent || <div className="home-portal__route-state">尚未生成学习路径</div>
         ) : (
           <LearningStageLanding
             compact
@@ -741,7 +780,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const initialPageCacheRef = useRef(readQualificationPageCache(userCacheKey));
   const initialPageCache = initialPageCacheRef.current;
   const initialTarget = initialPageCache?.learningTarget || { name: '中医执业医师资格考试', examDate: '' };
-  const initialRouteKey = initialTarget.textbook_route_id || '__planned__';
+  const initialRouteKey = initialTarget.textbook_route_id || plannedRouteKey(initialTarget);
   const hasInitialRoute = Boolean(readQualificationRouteCache(routeCacheKey(userCacheKey, initialRouteKey)));
   const hasInitialPageSnapshot = Boolean(
     initialPageCache?.payload
@@ -756,6 +795,14 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [checkinMessage, setCheckinMessage] = useState('');
   const [surveyOpen, setSurveyOpen] = useState(false);
+  const [pathPlanning, setPathPlanning] = useState({
+    active: false,
+    stage: '',
+    detail: '',
+    error: '',
+    sessionId: '',
+    complete: false,
+  });
   const [routeRevision, setRouteRevision] = useState(0);
   const [currentProgress, setCurrentProgress] = useState(initialPageCache?.currentProgress || '');
   const [learningTarget, setLearningTarget] = useState(initialTarget);
@@ -881,6 +928,48 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     }
   };
 
+  const startPersonalizedPathPlanning = async () => {
+    setSurveyOpen(false);
+    setPathPlanning({
+      active: true,
+      stage: '正在为您规划学习路径',
+      detail: '正在准备用户画像与学情调研结果…',
+      error: '',
+      sessionId: '',
+      complete: false,
+    });
+    try {
+      const result = await buildPersonalizedLearningPath({
+        target: learningTarget,
+        onStage: (stage) => setPathPlanning((current) => ({
+          ...current,
+          stage: stage.label,
+          detail: '',
+        })),
+        onUpdate: (detail) => setPathPlanning((current) => ({ ...current, detail })),
+      });
+      clearQualificationRoutePageCache();
+      setRouteRevision((value) => value + 1);
+      setSummaryRevision((value) => value + 1);
+      setPathPlanning({
+        active: true,
+        stage: '个性化学习路径已生成',
+        detail: '长期规划、短期计划和今日任务均已完成。',
+        error: '',
+        sessionId: result.sessionId,
+        complete: true,
+      });
+    } catch (reason) {
+      setPathPlanning((current) => ({
+        ...current,
+        active: true,
+        error: reason.visible || reason.message || '学习路径规划未完成',
+        sessionId: reason.sessionId || current.sessionId,
+        complete: false,
+      }));
+    }
+  };
+
   const progressFallback = payload?.status_cards
     ?.map((card) => normalizePercent(card?.value))
     .find((value) => value !== null) ?? null;
@@ -995,7 +1084,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         });
         return;
       }
-    } catch (_) {
+    } catch {
       // Fall back to the standalone video panel when the atlas cannot locate
       // an exact textbook section.
     }
@@ -1092,9 +1181,6 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
                 <button type="button" className="home-portal__checkin" onClick={submitCheckin} disabled={checkinLoading || checkinStatus.checked_in_today} aria-label={checkinStatus.checked_in_today ? `今日已签到，连续${checkinStatus.streak || 0}天` : '今日签到'}>
                   <CalendarCheck2 aria-hidden="true" size={18} />{checkinStatus.checked_in_today ? `已签到 ${checkinStatus.streak || 0} 天` : checkinLoading ? '签到中…' : '签到'}
                 </button>
-                <button type="button" className="home-portal__survey-trigger" onClick={() => setSurveyOpen(true)}>
-                  <ClipboardList aria-hidden="true" size={16} />学情调研
-                </button>
               </div>
               <HeroTypewriter
                 title={heroTitle}
@@ -1121,6 +1207,8 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             routeRevision={routeRevision}
             userCacheKey={userCacheKey}
             selectedTarget={learningTarget}
+            onCreatePersonalizedPath={() => setSurveyOpen(true)}
+            planningActive={pathPlanning.active && !pathPlanning.complete && !pathPlanning.error}
           />
         </div>
         <aside className="home-portal__plan-rail" data-content-ready={String(pageRevealReady)} aria-busy={!pageRevealReady} aria-label="今日学习计划">
@@ -1145,13 +1233,39 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         <div className="home-portal__survey-backdrop">
           <section className="home-portal__survey-dialog" role="dialog" aria-modal="true" aria-label="学情调研">
             <OnboardingSurveyPanel
+              lockedTarget={learningTarget}
               exitLabel="退出调研"
               onExit={() => setSurveyOpen(false)}
-              onSaved={() => {
-                setSurveyOpen(false);
-                setRouteRevision((value) => value + 1);
-              }}
+              onSaved={() => { void startPersonalizedPathPlanning(); }}
             />
+          </section>
+        </div>
+      )}
+      {pathPlanning.active && (
+        <div className="home-portal__planning-backdrop">
+          <section className="home-portal__planning-progress" role="dialog" aria-modal="true" aria-label="正在为您规划学习路径">
+            <div className="home-portal__planning-animation" aria-hidden="true" data-complete={String(pathPlanning.complete)}>
+              {pathPlanning.complete
+                ? <CircleCheckBig size={46} />
+                : <><span /><span /><LoaderCircle size={34} /></>}
+            </div>
+            <span>个性化学习路径</span>
+            <h2>{pathPlanning.error ? '规划需要你补充信息' : pathPlanning.stage}</h2>
+            <p className={pathPlanning.error ? 'is-error' : ''}>
+              {pathPlanning.error || pathPlanning.detail || '智能助教正在调用多智能体协作完成规划，请稍候。'}
+            </p>
+            {(pathPlanning.complete || pathPlanning.error) && (
+              <div className="home-portal__planning-actions">
+                {pathPlanning.error && pathPlanning.sessionId && (
+                  <button type="button" onClick={() => onNavigate?.({ page: 'assistant', params: { sessionId: pathPlanning.sessionId } })}>
+                    打开智能助教继续
+                  </button>
+                )}
+                <button type="button" className="is-secondary" onClick={() => setPathPlanning((current) => ({ ...current, active: false }))}>
+                  {pathPlanning.complete ? '查看学习路径' : '暂时关闭'}
+                </button>
+              </div>
+            )}
           </section>
         </div>
       )}

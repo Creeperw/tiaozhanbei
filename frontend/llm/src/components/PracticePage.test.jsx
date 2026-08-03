@@ -158,17 +158,18 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
   });
 
-  it('keeps the local workshop summary under training modules and upload as the last learning tool', () => {
+  it('moves the learning summary into the hero and removes upload from training tools', () => {
     render(<PracticePage />);
 
     const trainingModules = screen.getByRole('region', { name: '训练模块' });
-    expect(within(trainingModules).getByRole('region', { name: '学习概览' })).toBeInTheDocument();
+    expect(within(trainingModules).queryByRole('region', { name: '学习概览' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '学习概览' })).toBeInTheDocument();
 
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['错题库', '收藏夹', '笔记本', '上传资源']);
-    expect(within(learningTools).getByText('支持 PDF / 图片 / Word / Excel / Markdown / TXT · 智能解析')).toBeInTheDocument();
+    ).toEqual(['错题库', '收藏夹', '笔记本']);
+    expect(within(learningTools).queryByText('上传资源')).not.toBeInTheDocument();
   });
 
   it('renders the local overview statistics contract without replacing main workshop modules', () => {
@@ -183,8 +184,6 @@ describe('PracticePage training modules', () => {
     }} />);
 
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
-    expect(screen.getByText('8 天')).toBeInTheDocument();
-    expect(screen.getByText('76%')).toBeInTheDocument();
     expect(within(learningOverview).getByText('6 题')).toBeInTheDocument();
     expect(within(learningOverview).getByText('82%')).toBeInTheDocument();
     expect(within(learningOverview).getByText('46 小时')).toBeInTheDocument();
@@ -239,8 +238,7 @@ describe('PracticePage training modules', () => {
 
     render(<PracticePage />);
 
-    expect(await screen.findByText('5 天')).toBeInTheDocument();
-    expect(await screen.findByText('75%')).toBeInTheDocument();
+    await screen.findByText('7 题');
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
     expect(within(learningOverview).getByText('近 30 天练习')).toBeInTheDocument();
     expect(within(learningOverview).getByText('7 题')).toBeInTheDocument();
@@ -442,10 +440,9 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('button', { name: '提交模拟答案' })).not.toBeInTheDocument();
   });
 
-  it('opens the upload question bank as its own page', async () => {
-    render(<PracticePage />);
+  it('keeps old upload links functional after moving the entry to personal data', async () => {
+    render(<PracticePage navigationContext={{ taskType: 'resource_upload' }} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /\u4e0a\u4f20\u8d44\u6e90/ }));
     fireEvent.click(screen.getByRole('button', { name: /\u4e0a\u4f20\u9898\u5e93/ }));
 
     expect(await screen.findByTestId('question-workspace-page')).toBeInTheDocument();

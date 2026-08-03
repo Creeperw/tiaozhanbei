@@ -226,9 +226,10 @@ export default function TextbookLibrary({
   onToggleHidden,
   progressLoading = false,
   catalogBooks = books,
+  initialFilter = 'all',
 }) {
   const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [activeSource, setActiveSource] = useState('all');
   const [sourceOpen, setSourceOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);

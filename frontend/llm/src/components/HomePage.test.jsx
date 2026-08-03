@@ -114,17 +114,21 @@ describe('HomePage', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('routes users with a saved qualification target directly to the learning path', async () => {
+  it('always asks users to confirm the exam category before entering the learning path', async () => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
-    await waitFor(() => expect(onNavigate).toHaveBeenLastCalledWith({ page: 'learning-path', params: {} }));
+    expect(await screen.findByRole('dialog', { name: '选择资格考试' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '中医执业医师资格考试' })).toHaveAttribute('aria-checked', 'true');
+    expect(onNavigate).not.toHaveBeenCalled();
   });
 
   it('asks first-time learners to choose and save a qualification target before entering', async () => {
     const fetchMock = installLearningTargetApi({ savedTarget: null });
     const onNavigate = vi.fn();
+    const targetChanged = vi.fn();
+    window.addEventListener('shizhen:learning-target-changed', targetChanged);
     render(<HomePage onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
@@ -137,7 +141,11 @@ describe('HomePage', () => {
     await waitFor(() => expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} }));
     const saveRequest = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT');
     expect(JSON.parse(saveRequest[1].body)).toMatchObject({ exam_track_id: 'track-b' });
+    expect(targetChanged).toHaveBeenCalledWith(expect.objectContaining({
+      detail: expect.objectContaining({ exam_track_id: 'track-b' }),
+    }));
     expect(screen.queryByRole('dialog', { name: '选择资格考试' })).not.toBeInTheDocument();
+    window.removeEventListener('shizhen:learning-target-changed', targetChanged);
   });
 
   it('keeps the first-time target dialog open when saving fails', async () => {

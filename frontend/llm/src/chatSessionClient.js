@@ -68,7 +68,7 @@ export async function getAssistantPendingRun(sessionId) {
   return run ? { ...run, runId } : null;
 }
 
-export async function streamAssistantMessage(sessionId, content, {
+export async function streamAssistantMessageOutcome(sessionId, content, {
   onUpdate,
   signal,
   currentPage = null,
@@ -109,5 +109,10 @@ export async function streamAssistantMessage(sessionId, content, {
   if (outcome.status !== 'interrupted') rememberPendingRun(sessionId, null);
   const visible = compactAssistantContent(outcome.message);
   onUpdate?.(visible);
-  return visible;
+  return { ...outcome, visible, runId };
+}
+
+export async function streamAssistantMessage(sessionId, content, options = {}) {
+  const outcome = await streamAssistantMessageOutcome(sessionId, content, options);
+  return outcome.visible;
 }

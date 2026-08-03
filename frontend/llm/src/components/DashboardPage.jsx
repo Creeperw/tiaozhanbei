@@ -835,6 +835,7 @@ export default function DashboardPage({
                   </section>}
                   <TextbookLibrary
                     books={textbookViewModels}
+                    initialFilter="planned"
                     emptyText="当前计划暂未匹配到教材"
                     onOpen={openTextbook}
                     progressLoading={catalogProgressLoading}

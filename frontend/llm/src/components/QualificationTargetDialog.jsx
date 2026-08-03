@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Loader2, X } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
-import { saveLearningTarget } from './exam-atlas/examAtlasApi';
+import { loadLearningTarget, saveLearningTarget } from './exam-atlas/examAtlasApi';
 
 export default function QualificationTargetDialog({ onCancel, onSaved }) {
   const [options, setOptions] = useState([]);
@@ -16,14 +16,19 @@ export default function QualificationTargetDialog({ onCancel, onSaved }) {
       setLoading(true);
       setError('');
       try {
-        const response = await fetchWithAuth(`${MAIN_API_BASE}/qualification-targets`);
+        const [response, activePayload] = await Promise.all([
+          fetchWithAuth(`${MAIN_API_BASE}/qualification-targets`),
+          loadLearningTarget().catch(() => ({})),
+        ]);
         const payload = await readJsonResponse(response, { items: [] });
         if (!response.ok) throw new Error(payload.detail || '资格考试目录加载失败');
         const items = Array.isArray(payload.items) ? payload.items : [];
         if (!items.length) throw new Error('暂无可选择的资格考试');
         if (!cancelled) {
+          const active = activePayload?.target || activePayload || {};
+          const current = items.find((item) => item.exam_track_id === active.exam_track_id);
           setOptions(items);
-          setSelectedId(items[0].target_id);
+          setSelectedId(current?.target_id || items[0].target_id);
         }
       } catch (reason) {
         if (!cancelled) setError(reason.message || '资格考试目录加载失败');
@@ -67,7 +72,7 @@ export default function QualificationTargetDialog({ onCancel, onSaved }) {
           <X aria-hidden="true" size={19} />
         </button>
         <header>
-          <span>首次学习设置</span>
+          <span>学习目标</span>
           <h2 id="qualification-target-dialog-title">选择资格考试</h2>
           <p>你的选择将用于匹配考试大纲、经典教材和后续个性化学习路径。</p>
         </header>
