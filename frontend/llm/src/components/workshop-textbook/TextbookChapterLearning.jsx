@@ -24,7 +24,6 @@ import {
   loadTextbookProgress,
 } from './textbookChapterApi';
 import { textbookCoverUrl, textbookIntroduction, textbookKnowledgeGraphUrl } from './textbookMetadata';
-import { cachedPromise } from './textbookCache';
 import SectionExamPanel from './SectionExamPanel';
 import BookMatchedQuestions from '../BookMatchedQuestions';
 import TextbookPdfReader from './TextbookPdfReader';
@@ -190,6 +189,10 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
   const route = navigationContext.route || 'textbook_14_5';
   const book = navigationContext.lv1 || navigationContext.book || '';
   const bookId = navigationContext.bookId || '';
+  // 内置教材（catalog.v1.json）也有 book_id（TBPDF_...），但没有 toc。
+  // 只有用户上传的教材才从 manifest 的 toc 读取章节目录；内置教材必须走
+  // Atlas 章节目录（App.jsx openTextbook 已传 uploaded: origin === 'user_upload'）。
+  const isUploadedBook = navigationContext.uploaded === true;
   const [uploadedBook, setUploadedBook] = useState(null);
   const knowledgeGraphUrl = textbookKnowledgeGraphUrl(book);
   const [chapters, setChapters] = useState([]);
@@ -250,7 +253,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     setLoading(true); setProgressLoading(true); setError('');
     setChapters([]); setSections([]); setSectionsByChapter({}); setSelectedChapter(null); setSelectedSection(null);
     setCompletedSectionIds(new Set()); setLastSectionId('');
-    if (bookId) {
+    if (isUploadedBook) {
       loadTextbookPdfMetadata(bookId, { signal: controller.signal })
         .then((payload) => {
           const item = payload.book || null;
@@ -279,11 +282,14 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
       return () => controller.abort();
     }
     setUploadedBook(null);
-    const chapterPromise = cachedPromise(`atlas-chapters-${route}-${book}`, () => loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal })).then(async (payload) => {
+    // 注意：不要用 cachedPromise 包装 Atlas 章节请求。React StrictMode 会
+    // mount → unmount → remount，第一次请求被 abort 后其 promise 已被缓存，
+    // 第二次挂载会命中同一个已 abort 的 promise，导致章节永远为空。
+    const chapterPromise = loadAtlasNodes({ level: 2, route, lv1: book, signal: controller.signal }).then(async (payload) => {
       const next = sortByHeadingNumber(Array.isArray(payload.nodes) ? payload.nodes : [], '章');
       setChapters(next); setSelectedChapter((current) => next.find((item) => item.id === current?.id) || next[0] || null);
       const results = await Promise.all(next.map(async (chapter) => {
-        const sectionPayload = await cachedPromise(`atlas-sections-${route}-${book}-${chapter.id}`, () => loadAtlasNodes({ level: 3, route, lv1: book, chapter: chapter.name, chapterId: chapter.id, signal: controller.signal }));
+        const sectionPayload = await loadAtlasNodes({ level: 3, route, lv1: book, chapter: chapter.name, chapterId: chapter.id, signal: controller.signal });
         return [chapter.id, sortByHeadingNumber(Array.isArray(sectionPayload.nodes) ? sectionPayload.nodes : [], '节')];
       }));
       setSectionsByChapter(Object.fromEntries(results));
@@ -294,7 +300,7 @@ export default function TextbookChapterLearning({ navigationContext = {}, onNavi
     }).catch((loadError) => { if (loadError.name !== 'AbortError') setError((current) => current || loadError.message || '教材学习进度加载失败。'); });
     Promise.allSettled([chapterPromise, progressPromise]).then(() => { if (!controller.signal.aborted) { setLoading(false); setProgressLoading(false); } });
     return () => controller.abort();
-  }, [book, bookId, route]);
+  }, [book, bookId, route, isUploadedBook]);
 
   useEffect(() => {
     if (!selectedChapter) { setSections([]); setSelectedSection(null); return; }

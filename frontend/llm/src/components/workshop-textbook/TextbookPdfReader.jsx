@@ -52,6 +52,17 @@ import './textbookPdfReader.css';
 
 if (typeof Worker !== 'undefined') GlobalWorkerOptions.workerPort = new PdfWorker();
 
+// PDF.js worker 销毁是异步的（destroy() 返回 Promise）。组件卸载/教材切换时若
+// 上一个 task 的 worker 尚未销毁完（_pendingDestroy），下一次 getDocument() 会
+// 抛 "PDFWorker.create - the worker is being destroyed"。
+// 这里用模块级 Promise 串行化「销毁 → 下次加载」，并吞掉销毁期的 rejection。
+let pendingPdfDestroy = Promise.resolve();
+const settlePdfDestroy = (task) => {
+  if (typeof task?.destroy !== 'function') return pendingPdfDestroy;
+  pendingPdfDestroy = Promise.resolve(task.destroy()).catch(() => {});
+  return pendingPdfDestroy;
+};
+
 const PAGE_FAVORITES = '教材页收藏';
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
 const annotationId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -378,6 +389,9 @@ export default function TextbookPdfReader({ bookTitle, bookId = '', toc = [], in
       const state = await loadPdfReadingState(payload.book.book_id, { signal: controller.signal });
       if (!initialPage || Number(initialPage) <= 1) setPageNumber(Math.max(1, Number(state.page_number) || 1));
       setZoom(clamp(Number(state.zoom) || 1, 0.5, 2.5));
+      // 等待上一次 PDF 销毁完成后再创建新加载任务，避免 worker 销毁竞态
+      await pendingPdfDestroy;
+      if (controller.signal.aborted) return;
       documentTask = getDocument({ url: payload.book.file_url, withCredentials: true });
       const document = await documentTask.promise;
       if (controller.signal.aborted) return;
@@ -432,7 +446,11 @@ export default function TextbookPdfReader({ bookTitle, bookId = '', toc = [], in
     }).catch((reason) => {
       if (reason.name !== 'AbortError') setError(reason.message || '电子教材加载失败');
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => { controller.abort(); documentTask?.destroy?.(); };
+    return () => {
+      controller.abort();
+      const task = documentTask;
+      if (task) settlePdfDestroy(task);
+    };
   }, [bookId, bookTitle, initialPage]);
 
   // 加载 Atlas 章节目录（仅当 PDF 无内嵌书签时作为回退）
