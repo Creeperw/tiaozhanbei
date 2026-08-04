@@ -1634,6 +1634,101 @@ class TrainingRoutesBehaviorTests(unittest.TestCase):
         self.assertEqual(second.status_code, 200)
         self.assertEqual(second.json()["question"]["question_id"], "Q_SEQUENCE_2")
 
+    def test_next_practice_filters_by_difficulty_and_exposes_difficulty_metadata(self):
+        with self.Session() as db:
+            db.add(database.KnowledgePoint(kp_id="KP_DIFF", name="难度筛选", status="active"))
+            db.add_all([
+                database.QuestionBankItem(
+                    question_id="Q_DIFF_2",
+                    stem="难度2题",
+                    answer="A",
+                    analysis="难度2解析",
+                    kp_ids_json='["KP_DIFF"]',
+                    question_type="single_choice",
+                    difficulty=2,
+                    difficulty_source="formal-content:diff-test",
+                    quality_score=1.0,
+                    status="active",
+                ),
+                database.QuestionBankItem(
+                    question_id="Q_DIFF_4",
+                    stem="难度4题",
+                    answer="B",
+                    analysis="难度4解析",
+                    kp_ids_json='["KP_DIFF"]',
+                    question_type="single_choice",
+                    difficulty=4,
+                    difficulty_source="formal-content:diff-test",
+                    quality_score=0.9,
+                    status="active",
+                ),
+                database.QuestionBankItem(
+                    question_id="Q_DIFF_UNLABELED",
+                    stem="无难度标注题",
+                    answer="C",
+                    analysis="无难度解析",
+                    kp_ids_json='["KP_DIFF"]',
+                    question_type="single_choice",
+                    difficulty=None,
+                    quality_score=0.8,
+                    status="active",
+                ),
+            ])
+            db.commit()
+
+        level_two = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"kp_id": "KP_DIFF", "difficulty": 2},
+        )
+        self.assertEqual(level_two.status_code, 200)
+        body = level_two.json()
+        self.assertTrue(body["available"])
+        self.assertEqual(body["question"]["question_id"], "Q_DIFF_2")
+        self.assertEqual(body["question"]["difficulty"], 2)
+        self.assertEqual(body["question"]["difficulty_source"], "formal-content:diff-test")
+        self.assertNotIn("answer", body["question"])
+
+        range_request = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"kp_id": "KP_DIFF", "difficulty_min": 3, "difficulty_max": 5},
+        )
+        self.assertEqual(range_request.status_code, 200)
+        self.assertTrue(range_request.json()["available"])
+        self.assertEqual(range_request.json()["question"]["question_id"], "Q_DIFF_4")
+        self.assertEqual(range_request.json()["question"]["difficulty"], 4)
+
+        missing = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"kp_id": "KP_DIFF", "difficulty": 5},
+        )
+        self.assertEqual(missing.status_code, 200)
+        self.assertFalse(missing.json()["available"])
+        self.assertIsNone(missing.json()["question"])
+        self.assertEqual(missing.json()["unavailable_reason"], "no_question_matches_difficulty")
+
+        conflict = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"kp_id": "KP_DIFF", "difficulty": 2, "difficulty_min": 1},
+        )
+        self.assertEqual(conflict.status_code, 422)
+
+        invalid_range = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"kp_id": "KP_DIFF", "difficulty_min": 4, "difficulty_max": 2},
+        )
+        self.assertEqual(invalid_range.status_code, 422)
+
+        no_filter = self.client.get(
+            "/v1/workshop/practice/next",
+            params={"kp_id": "KP_DIFF"},
+        )
+        self.assertEqual(no_filter.status_code, 200)
+        self.assertTrue(no_filter.json()["available"])
+        self.assertIn(
+            no_filter.json()["question"]["question_id"],
+            {"Q_DIFF_2", "Q_DIFF_4", "Q_DIFF_UNLABELED"},
+        )
+
     def test_mistake_history_lists_all_owned_mistakes_and_marks_variation_eligibility(self):
         with self.Session() as db:
             db.add(database.UserModel(id=2, username="other-learner", email="other@example.com", hashed_password="x"))

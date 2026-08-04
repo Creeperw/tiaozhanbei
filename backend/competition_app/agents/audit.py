@@ -1066,6 +1066,50 @@ class AuditAgent:
             )
         if set(paper.answer_key) != set(selected_ids):
             deterministic_findings.append("答案键与入卷题目不一致。")
+        # 难度真实性确定性审核：仅真实标注参与匹配；生成题无真实难度标注。
+        hard_difficulty_units = [
+            unit
+            for unit in blueprint.units
+            if getattr(unit, "target_difficulty", None) is not None
+            and getattr(unit, "difficulty_is_hard_constraint", False)
+        ]
+        if hard_difficulty_units:
+            fabricated = [
+                item.question.question_id
+                for item in paper.items
+                if item.question.origin == "generated"
+                and item.question.difficulty is not None
+            ]
+            if fabricated:
+                deterministic_findings.append(
+                    "生成补充题不得携带难度标注（系统无真实难度证据）: "
+                    + ", ".join(fabricated)
+                )
+            unlabeled_generated = [
+                item.question.question_id
+                for item in paper.items
+                if item.question.origin == "generated"
+            ]
+            summary = getattr(paper, "difficulty_source_summary", None)
+            if unlabeled_generated and (
+                summary is None or summary.generated_count != len(unlabeled_generated)
+            ):
+                deterministic_findings.append(
+                    "试卷难度来源统计与生成题数量不一致，用户无法获知补充题来源。"
+                )
+            for unit in hard_difficulty_units:
+                unit_items = selected_by_unit.get(unit.unit_id, [])
+                wrong_difficulty = [
+                    item.question.question_id
+                    for item in unit_items
+                    if item.question.origin != "generated"
+                    and item.question.difficulty not in (None, unit.target_difficulty)
+                ]
+                if wrong_difficulty:
+                    deterministic_findings.append(
+                        f"蓝图单元{unit.unit_id}要求难度{unit.target_difficulty}，"
+                        f"入卷正式题存在其他难度：{', '.join(wrong_difficulty)}。"
+                    )
         compiled_model_issues: list[Any] = []
         if model_output.findings:
             findings_compilation = await self.paper_findings_compiler.compile(
@@ -1185,6 +1229,22 @@ class AuditAgent:
             marker in text
             for marker in ("补齐题量", "补足题量", "建议题量", "题数不足", "题量不足")
         ):
+            return True
+        summary = getattr(paper, "difficulty_source_summary", None)
+        if (
+            summary is not None
+            and any(
+                marker in text
+                for marker in ("难度不匹配", "难度不足", "难度不符合", "难度要求未满足")
+            )
+            and (
+                summary.unlabeled_official_count > 0
+                or summary.generated_count > 0
+                or summary.unmet_count > 0
+            )
+        ):
+            # 系统已按“指定难度正式题→未标注正式题→网络参考→生成补充题”
+            # 降级补足并向用户透明说明来源；模型对难度的笼统抱怨不阻断该合规降级。
             return True
         generated = [
             item.question

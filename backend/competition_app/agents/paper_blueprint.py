@@ -410,6 +410,8 @@ class PaperBlueprintAgent:
                         "required_question_count": 1,
                         "candidate_limit": 10,
                         "selection_rules": [f"只选择与{topic}直接相关的题目"],
+                        "target_difficulty": None,
+                        "difficulty_is_hard_constraint": False,
                     }
                 )
                 continue
@@ -566,6 +568,43 @@ class PaperBlueprintAgent:
         }
 
     @staticmethod
+    def _explicit_difficulty(context: dict[str, Any]) -> int | None:
+        """Extract the user's explicit numeric difficulty (1-5) if any.
+
+        仅接受用户明确写出的数字难度（阿拉伯或汉字数字均可）；
+        “简单/中等/困难”等模糊词或画像中的旧难度偏好一律不推断、不默认。
+        """
+        request = str(context.get("user_request") or "")
+        patterns = (
+            r"难度\s*([1-5一二三四五])\s*(?:级|星|档)?",
+            r"([1-5一二三四五])\s*(?:级|星)\s*难度",
+        )
+        for pattern in patterns:
+            match = re.search(pattern, request)
+            if match:
+                return PaperBlueprintAgent._chinese_digit(match.group(1))
+        constraints = context.get("exam_constraints", {}) or {}
+        for key in ("difficulty", "target_difficulty", "difficulty_level"):
+            value = constraints.get(key)
+            if isinstance(value, bool):
+                continue
+            if isinstance(value, int) and 1 <= value <= 5:
+                return value
+            if isinstance(value, str):
+                match = re.search(r"[1-5一二三四五]", value)
+                if match:
+                    return PaperBlueprintAgent._chinese_digit(match.group())
+        return None
+
+    @staticmethod
+    def _chinese_digit(value: str) -> int | None:
+        mapping = {
+            "一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5,
+        }
+        return mapping.get(str(value).strip())
+
+    @staticmethod
     def _normalize_blueprint(raw_output: Any, context: dict[str, Any]) -> dict[str, Any]:
         raw = dict(raw_output) if isinstance(raw_output, dict) else {}
         constraints = context.get("exam_constraints", {}) or {}
@@ -582,6 +621,7 @@ class PaperBlueprintAgent:
             else "user_provided_unverified"
         )
         units = raw.get("units") or raw.get("blueprint") or []
+        explicit_difficulty = PaperBlueprintAgent._explicit_difficulty(context)
         normalized_units = []
         for index, item in enumerate(
             units[:20] if isinstance(units, list) else [],
@@ -612,6 +652,17 @@ class PaperBlueprintAgent:
                 default=max(10, required_count),
                 maximum=50,
             )
+            unit_target_difficulty = PaperBlueprintAgent._normalize_difficulty_value(
+                unit.get("target_difficulty")
+            )
+            target_difficulty = (
+                unit_target_difficulty
+                if unit_target_difficulty is not None
+                else explicit_difficulty
+            )
+            difficulty_is_hard_constraint = bool(
+                unit.get("difficulty_is_hard_constraint")
+            ) or target_difficulty is not None
             normalized_units.append({
                 "knowledge_module": knowledge_module,
                 "learning_objective": PaperBlueprintAgent._bounded_text(
@@ -634,6 +685,8 @@ class PaperBlueprintAgent:
                 "selection_rules": PaperBlueprintAgent._string_list(
                     unit.get("selection_rules") or unit.get("selection_rule")
                 ),
+                "target_difficulty": target_difficulty,
+                "difficulty_is_hard_constraint": difficulty_is_hard_constraint,
             })
         assumptions = raw.get("assumptions", [])
         if isinstance(assumptions, dict):
@@ -713,6 +766,20 @@ class PaperBlueprintAgent:
         except (TypeError, ValueError):
             return None
         return parsed if parsed > 0 else None
+
+    @staticmethod
+    def _normalize_difficulty_value(value: Any) -> int | None:
+        """Normalize an explicit 1-5 difficulty; anything else stays None."""
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value if 1 <= value <= 5 else None
+        match = re.search(r"[1-5一二三四五]", str(value))
+        if not match:
+            return None
+        return PaperBlueprintAgent._chinese_digit(match.group())
 
     @staticmethod
     def _normalize_hard_count_units(

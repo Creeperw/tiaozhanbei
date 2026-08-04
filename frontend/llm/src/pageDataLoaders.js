@@ -827,7 +827,7 @@ export async function submitTrainingWorkspaceTask({ fetcher, task }) {
   });
 }
 
-export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribution, answerMode = 'practice', durationMinutes = null, taskItemId = '' }) {
+export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribution, answerMode = 'practice', durationMinutes = null, taskItemId = '', difficulty = null }) {
   const boundTaskItemId = hasNonEmptyText(taskItemId) ? taskItemId.trim() : '';
   const activeDistribution = Object.fromEntries(
     Object.entries(distribution || {}).filter(([, count]) => Number.isInteger(count) && count > 0),
@@ -852,6 +852,9 @@ export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribu
   const typeRequirement = Object.entries(activeDistribution)
     .map(([type, count]) => `${typeLabels[type] || type}${count}题`)
     .join('、');
+  const difficultyRequirement = Number.isInteger(difficulty) && difficulty >= 1 && difficulty <= 5
+    ? `，全部题目要求难度${difficulty}星`
+    : '';
   try {
     const { data, source } = await fetcher({
       paths: ['/v1/review-cards'],
@@ -865,7 +868,7 @@ export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribu
           available_minutes: 60,
         } : {
           learner_id: 'authenticated-user',
-          user_request: `请围绕“${topic.trim()}”生成一份${answerMode === 'test' ? `测试模式（${durationMinutes}分钟）` : '练习模式'}试卷，共${questionCount}题，其中${typeRequirement}。完成审核后发布到学习工坊，不要在对话中展开试卷正文。`,
+          user_request: `请围绕“${topic.trim()}”生成一份${answerMode === 'test' ? `测试模式（${durationMinutes}分钟）` : '练习模式'}试卷，共${questionCount}题，其中${typeRequirement}${difficultyRequirement}。完成审核后发布到学习工坊，不要在对话中展开试卷正文。`,
           available_minutes: 60,
           exam_constraints: {
             question_count: questionCount,
@@ -873,6 +876,7 @@ export async function generateWorkshopPaperWithAgents({ fetcher, topic, distribu
             question_type_distribution: activeDistribution,
             answer_mode: answerMode,
             duration_minutes: answerMode === 'test' ? durationMinutes : null,
+            difficulty: Number.isInteger(difficulty) && difficulty >= 1 && difficulty <= 5 ? difficulty : null,
           },
         }),
       },
@@ -1042,10 +1046,13 @@ export async function loadVariationSources({ fetcher }) {
   }
 }
 
-export async function loadPracticeQuestion({ fetcher, mode = 'objective', kpId = '', topic = '', scope = 'public' }) {
+export async function loadPracticeQuestion({ fetcher, mode = 'objective', kpId = '', topic = '', scope = 'public', difficulty = null }) {
   const params = new URLSearchParams({ mode, scope });
   if (hasNonEmptyText(kpId)) params.set('kp_id', kpId.trim());
   if (hasNonEmptyText(topic)) params.set('topic', topic.trim());
+  if (Number.isInteger(difficulty) && difficulty >= 1 && difficulty <= 5) {
+    params.set('difficulty', String(difficulty));
+  }
   const legacyParams = new URLSearchParams();
   if (hasNonEmptyText(kpId)) legacyParams.set('kp_id', kpId.trim());
   legacyParams.set('scope', scope);

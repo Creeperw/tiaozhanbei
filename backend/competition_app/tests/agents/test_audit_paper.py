@@ -8,6 +8,7 @@ from competition_app.contracts.paper import (
     ExamPaperDraft,
     ExamPaperItem,
     PaperBlueprint,
+    PaperDifficultySourceSummary,
     QuestionCandidatePool,
     UnitQuestionCandidates,
 )
@@ -358,3 +359,64 @@ async def test_valid_paper_uses_deterministic_gate_when_audit_format_drifts() ->
 
     assert result.payload.decision == "pass"
     assert any("格式" in finding for finding in result.payload.findings)
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_revises_when_generated_question_carries_fabricated_difficulty() -> None:
+    context = _audit_context(2, required_count=2)
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    blueprint.units[0].target_difficulty = 3
+    blueprint.units[0].difficulty_is_hard_constraint = True
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.items[0].question = paper.items[0].question.model_copy(
+        update={"origin": "generated", "difficulty": 3}
+    )
+
+    result = await AuditAgent(PassingAuditModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert any("难度标注" in finding for finding in result.payload.findings)
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_revises_when_selected_question_violates_hard_difficulty() -> None:
+    context = _audit_context(2, required_count=2)
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    blueprint.units[0].target_difficulty = 3
+    blueprint.units[0].difficulty_is_hard_constraint = True
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.items[0].question = paper.items[0].question.model_copy(
+        update={"origin": "formal", "difficulty": 5}
+    )
+
+    result = await AuditAgent(PassingAuditModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert any("难度3" in finding and "其他难度" in finding for finding in result.payload.findings)
+
+
+@pytest.mark.asyncio
+async def test_paper_audit_passes_legitimate_difficulty_downgrade_with_disclosure() -> None:
+    context = _audit_context(2, required_count=2)
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    blueprint.units[0].target_difficulty = 3
+    blueprint.units[0].difficulty_is_hard_constraint = True
+    paper = context["dependency_outputs"]["paper_assembly"].payload
+    paper.items[0].question = paper.items[0].question.model_copy(
+        update={"origin": "formal", "difficulty": 3}
+    )
+    paper.items[1].question = paper.items[1].question.model_copy(
+        update={"origin": "formal", "difficulty": None}
+    )
+    paper.difficulty_source_summary = PaperDifficultySourceSummary(
+        target_difficulty=3,
+        difficulty_is_hard_constraint=True,
+        total_questions=2,
+        exact_difficulty_count=1,
+        unlabeled_official_count=1,
+        notice="本卷共2题；其中难度3的正式题1道；未标注难度的正式题1道。",
+    )
+
+    result = await AuditAgent(PassingAuditModel()).run(context)
+
+    assert result.payload.decision == "pass"

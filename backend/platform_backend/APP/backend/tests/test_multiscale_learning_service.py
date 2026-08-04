@@ -773,6 +773,68 @@ class MultiScaleLearningServiceTests(unittest.TestCase):
         self.assertFalse(task["score_components"]["difficulty_fit"]["available"])
         self.assertIsNone(task["score_components"]["difficulty_fit"]["value"])
 
+    def test_difficulty_fit_is_available_with_real_annotation_and_evidence(
+        self,
+    ) -> None:
+        now = datetime.utcnow()
+        self.db.add_all(
+            [
+                database.QuestionBankItem(
+                    question_id="Q_ANNOTATED_2",
+                    stem="标注难度2的题",
+                    difficulty=2,
+                    difficulty_source="curated_question_bank",
+                    kp_ids_json='["KP_1"]',
+                    source="curated_question_bank",
+                    status="active",
+                ),
+                database.QuestionBankItem(
+                    question_id="Q_NO_ANNOTATION",
+                    stem="未标注难度的题",
+                    difficulty=None,
+                    kp_ids_json='["KP_1"]',
+                    source="curated_question_bank",
+                    status="active",
+                ),
+            ]
+        )
+        for index in range(4):
+            self.db.add(
+                database.LearningQuestionAttempt(
+                    attempt_id=f"ATTEMPT_D2_{index}",
+                    user_id=1,
+                    question_id="Q_ANNOTATED_2",
+                    is_correct=index < 3,
+                    response_time_seconds=90,
+                    answered_at=now - timedelta(days=1),
+                )
+            )
+        self.db.commit()
+        context = approved_plan_context()
+        state = build_multiscale_state(self.db, 1, context)
+        candidates = build_path_candidates(
+            self.db, 1, state=state, scope="daily_task", plan_context=context
+        )
+        annotated = next(
+            item
+            for item in candidates["items"]
+            if "question:Q_ANNOTATED_2" in item["source_refs"]
+        )
+        unannotated = next(
+            item
+            for item in candidates["items"]
+            if "question:Q_NO_ANNOTATION" in item["source_refs"]
+        )
+
+        self.assertEqual(annotated["score_components"]["difficulty_fit"]["value"], 0.5)
+        self.assertTrue(annotated["score_components"]["difficulty_fit"]["available"])
+        self.assertIn(
+            "question_attempt:difficulty:2",
+            annotated["score_components"]["difficulty_fit"]["source_refs"],
+        )
+        self.assertFalse(unannotated["score_components"]["difficulty_fit"]["available"])
+        self.assertIsNone(unannotated["score_components"]["difficulty_fit"]["value"])
+
     def test_missing_goal_cannot_be_overridden_as_aligned(self) -> None:
         context = approved_plan_context()
         context["goal_route_aligned"] = True

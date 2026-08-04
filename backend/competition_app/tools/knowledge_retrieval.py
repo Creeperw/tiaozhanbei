@@ -263,6 +263,10 @@ class KnowledgeRetrievalTool:
         limit: int = 10,
         owner_id: str | None = None,
         scope: str = "all",
+        *,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ):
         if self.delivery_backend is not None:
             return await self.delivery_backend.search_questions(
@@ -271,13 +275,23 @@ class KnowledgeRetrievalTool:
                 limit,
                 owner_id=owner_id,
                 scope=scope,
+                difficulty=difficulty,
+                difficulty_min=difficulty_min,
+                difficulty_max=difficulty_max,
             )
         if self.question_retriever is None:
             raise RuntimeError("question retrieval is not configured")
         resolved_kp_ids = kp_ids or [match.kp_id for match in self.repository.resolve_topic(query)]
         if not resolved_kp_ids:
             raise LookupError(f"knowledge point could not be resolved for query: {query}")
-        return await self.question_retriever.search(query, resolved_kp_ids, limit)
+        return await self.question_retriever.search(
+            query,
+            resolved_kp_ids,
+            limit,
+            difficulty=difficulty,
+            difficulty_min=difficulty_min,
+            difficulty_max=difficulty_max,
+        )
 
     async def get_question_with_content(
         self,
@@ -286,6 +300,10 @@ class KnowledgeRetrievalTool:
         limit: int = 10,
         owner_id: str | None = None,
         scope: str = "all",
+        *,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ):
         """Retrieve question candidates with content for controlled downstream use."""
         return await self.search_question_candidates(
@@ -294,4 +312,7 @@ class KnowledgeRetrievalTool:
             limit=limit,
             owner_id=owner_id,
             scope=scope,
+            difficulty=difficulty,
+            difficulty_min=difficulty_min,
+            difficulty_max=difficulty_max,
         )

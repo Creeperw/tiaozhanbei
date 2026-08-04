@@ -342,3 +342,78 @@ async def test_question_schema_keeps_answer_options_and_owner_isolation(tmp_path
     assert public.reference_answer == "A, B"
     assert public.options == ["A. 人参", "B. 白术"]
     assert public.source_metadata["raw_answer"] == ["A", "B"]
+
+
+@pytest.mark.asyncio
+async def test_search_questions_filters_by_difficulty_and_exposes_label(tmp_path: Path) -> None:
+    backend = build_backend(tmp_path)
+    bank_path = backend.paths.public_data / "01_question_bank" / "formatted_questions.json"
+    existing = json.loads(bank_path.read_text(encoding="utf-8"))
+    existing.extend(
+        [
+            {
+                "question_id": "Q_DIFF_2",
+                "question_type": "单项选择题",
+                "question_content": "四君子汤难度2题",
+                "answer": ["A"],
+                "explanation": "难度2解析",
+                "kp_ids": ["KP_1"],
+                "tokenized_content": ["四君子汤", "人参"],
+                "difficulty": 2,
+                "difficulty_source": "formal-content:diff-test",
+            },
+            {
+                "question_id": "Q_DIFF_4",
+                "question_type": "单项选择题",
+                "question_content": "四君子汤难度4题",
+                "answer": ["A"],
+                "explanation": "难度4解析",
+                "kp_ids": ["KP_1"],
+                "tokenized_content": ["四君子汤", "白术"],
+                "difficulty": 4,
+            },
+            {
+                "question_id": "Q_DIFF_UNLABELED",
+                "question_type": "单项选择题",
+                "question_content": "四君子汤无标注题",
+                "answer": ["A"],
+                "explanation": "无标注解析",
+                "kp_ids": ["KP_1"],
+                "tokenized_content": ["四君子汤", "甘草"],
+            },
+        ]
+    )
+    write_json(bank_path, existing)
+
+    level_two = await backend.search_questions(
+        "四君子汤", ["KP_1"], limit=10, difficulty=2
+    )
+    assert {item.question_id for item in level_two.items} == {"Q_DIFF_2"}
+    matched = next(item for item in level_two.items if item.question_id == "Q_DIFF_2")
+    assert matched.difficulty == 2
+    assert matched.difficulty_source == "formal-content:diff-test"
+
+    ranged = await backend.search_questions(
+        "四君子汤", ["KP_1"], limit=10, difficulty_min=3, difficulty_max=5
+    )
+    assert {item.question_id for item in ranged.items} == {"Q_DIFF_4"}
+    assert next(iter(ranged.items)).difficulty == 4
+
+    none_matching = await backend.search_questions(
+        "四君子汤", ["KP_1"], limit=10, difficulty=5
+    )
+    assert none_matching.items == []
+
+    unlabeled = await backend.search_questions(
+        "四君子汤", ["KP_1"], limit=10, difficulty=1
+    )
+    assert unlabeled.items == []
+
+    with pytest.raises(ValueError, match="cannot be combined"):
+        await backend.search_questions(
+            "四君子汤", ["KP_1"], limit=10, difficulty=2, difficulty_min=1
+        )
+    with pytest.raises(ValueError, match="must not exceed"):
+        await backend.search_questions(
+            "四君子汤", ["KP_1"], limit=10, difficulty_min=4, difficulty_max=2
+        )

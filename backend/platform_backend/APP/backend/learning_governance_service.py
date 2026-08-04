@@ -135,10 +135,11 @@ def _dimension(
 
 def _weighted_match_score(components: dict[str, float | None]) -> float:
     weights = {
-        "knowledge_fit": 0.45,
-        "quality": 0.20,
-        "format_fit": 0.20,
-        "time_fit": 0.15,
+        "knowledge_fit": 0.40,
+        "quality": 0.15,
+        "format_fit": 0.15,
+        "time_fit": 0.10,
+        "difficulty_fit": 0.20,
     }
     available = [(weights[key], value) for key, value in components.items() if value is not None]
     denominator = sum(weight for weight, _value in available)
@@ -471,6 +472,45 @@ def build_resource_match_report(
     for attempt in response_rows:
         if attempt.response_time_seconds is not None and attempt.response_time_seconds > 0:
             response_seconds.setdefault(str(attempt.question_id), []).append(int(attempt.response_time_seconds))
+    # Aggregate real answer evidence per difficulty level (1..5). Only
+    # attempts on questions with a real difficulty annotation count, and
+    # difficulty_fit stays unavailable until enough attempts are observed.
+    attempted_ids = {
+        str(attempt.question_id)
+        for attempt in response_rows
+        if str(attempt.question_id or "").strip()
+    }
+    difficulty_by_qid: dict[str, int] = {}
+    if attempted_ids:
+        bank_rows = (
+            db.query(QuestionBankItem)
+            .filter(QuestionBankItem.question_id.in_(attempted_ids))
+            .all()
+        )
+        for row in bank_rows:
+            if (
+                row.difficulty is not None
+                and str(row.difficulty_source or "").strip()
+                and int(row.difficulty) in {1, 2, 3, 4, 5}
+            ):
+                difficulty_by_qid[str(row.question_id)] = int(row.difficulty)
+    difficulty_evidence: dict[int, dict[str, Any]] = {}
+    for attempt in response_rows:
+        level = difficulty_by_qid.get(str(attempt.question_id))
+        if level is None:
+            continue
+        bucket = difficulty_evidence.setdefault(
+            level, {"attempt_count": 0, "correct_count": 0}
+        )
+        bucket["attempt_count"] += 1
+        if attempt.is_correct:
+            bucket["correct_count"] += 1
+    for level in list(difficulty_evidence):
+        bucket = difficulty_evidence[level]
+        difficulty_evidence[level] = {
+            "attempt_count": bucket["attempt_count"],
+            "accuracy": round(bucket["correct_count"] / bucket["attempt_count"], 4),
+        }
     candidates: list[dict[str, Any]] = []
     cards = (
         db.query(KnowledgeCardRecord)
@@ -522,6 +562,16 @@ def build_resource_match_report(
             "quality_basis": "question_bank_items.quality_score",
             "estimated_minutes": observed_minutes,
             "estimated_minutes_basis": "user_response_time_mean_30d" if observed_times else "question_type_default",
+            "difficulty": (
+                int(row.difficulty)
+                if (
+                    row.difficulty is not None
+                    and str(row.difficulty_source or "").strip()
+                    and int(row.difficulty) in {1, 2, 3, 4, 5}
+                )
+                else None
+            ),
+            "difficulty_evidence": difficulty_evidence,
             "source": row.source or "unknown",
             "action": {"type": "navigate", "page": "workshop", "params": {"question_id": row.question_id}},
         })
@@ -540,11 +590,25 @@ def build_resource_match_report(
         coverage = len(candidate_kps & target_set) / len(target_set) if target_set else 0.0
         format_fit = 1.0 if not preferred_types or candidate["resource_type"] in preferred_types else 0.45
         time_fit = 1.0 if candidate["estimated_minutes"] <= available_minutes else max(0.2, available_minutes / candidate["estimated_minutes"])
+        difficulty_fit = None
+        difficulty_source_note = "candidate_has_no_real_difficulty_annotation"
+        candidate_difficulty = candidate.get("difficulty")
+        candidate_evidence = candidate.get("difficulty_evidence") or {}
+        if isinstance(candidate_difficulty, int) and candidate_difficulty in {1, 2, 3, 4, 5}:
+            evidence = candidate_evidence.get(candidate_difficulty)
+            if isinstance(evidence, dict) and int(evidence.get("attempt_count") or 0) >= 3:
+                normalized_difficulty = _clamp((float(candidate_difficulty) - 1.0) / 4.0)
+                learner_level = _clamp(float(evidence["accuracy"]))
+                difficulty_fit = 1.0 - abs(normalized_difficulty - learner_level)
+                difficulty_source_note = f"question_attempt:difficulty:{candidate_difficulty}"
+            else:
+                difficulty_source_note = "insufficient_difficulty_attempt_evidence"
         components: dict[str, float | None] = {
             "knowledge_fit": coverage,
             "quality": candidate["quality"],
             "format_fit": format_fit,
             "time_fit": time_fit,
+            "difficulty_fit": difficulty_fit,
         }
         total = _weighted_match_score(components) if target_set else 0.0
         reasons = []
@@ -554,6 +618,8 @@ def build_resource_match_report(
             reasons.append("符合已确认的资源偏好")
         if time_fit == 1.0:
             reasons.append("可在当前任务时间内完成")
+        if difficulty_fit is not None:
+            reasons.append("难度与个人作答能力匹配")
         matches.append({
             **candidate,
             "score": round(total, 4),
@@ -562,12 +628,17 @@ def build_resource_match_report(
                 "quality": round(candidate["quality"], 4),
                 "format_fit": round(format_fit, 4),
                 "time_fit": round(time_fit, 4),
+                "difficulty_fit": (
+                    round(difficulty_fit, 4)
+                    if difficulty_fit is not None else None
+                ),
             },
             "component_sources": {
                 "knowledge_fit": "resource.kp_ids intersect target.kp_ids",
                 "quality": candidate["quality_basis"],
                 "format_fit": "user_profiles.exercise_preferences/custom_needs",
                 "time_fit": candidate["estimated_minutes_basis"],
+                "difficulty_fit": difficulty_source_note,
             },
             "reasons": reasons or ["作为补充资源使用"],
         })
@@ -643,11 +714,12 @@ def build_resource_match_report(
         ],
         "methodology": {
             "version": METHODOLOGY_VERSION,
-            "formula": "weighted mean of available components: knowledge .45, quality .20, format .20, time .15",
+            "formula": "weighted mean of available components: knowledge .40, quality .15, format .15, time .10, difficulty .20",
             "missing_feature_policy": "exclude_missing_component_and_renormalize_weights",
             "limitations": [
                 "当前权重是公开的工程基线，尚未通过真实学习增益校准。",
                 "没有目标知识点时不生成推荐。",
+                "difficulty_fit 仅在题目有真实难度标注且作答证据充分时启用；缺失时自动重新归一化其余权重。",
             ],
             "recommended_validation_metrics": ["Precision@K", "Recall@K", "NDCG@K", "task_completion_rate", "post_test_learning_gain"],
             "references": [REFERENCE_LINKS[-1]],

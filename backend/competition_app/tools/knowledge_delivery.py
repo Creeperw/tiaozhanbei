@@ -26,6 +26,7 @@ from competition_app.contracts.knowledge import (
     QuestionRetrievalMetadata,
     QuestionSearchResult,
 )
+from competition_app.contracts.difficulty import parse_difficulty
 from competition_app.services.knowledge_recognition_review import (
     KnowledgeRecognitionReportReader,
 )
@@ -919,9 +920,20 @@ class KnowledgeDeliveryBackend:
         *,
         owner_id: str | None = None,
         scope: Literal["all", "public", "user"] = "all",
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ) -> QuestionSearchResult:
         if scope not in {"all", "public", "user"}:
             raise ValueError("scope must be all, public or user")
+        if difficulty is not None and (difficulty_min is not None or difficulty_max is not None):
+            raise ValueError("difficulty cannot be combined with difficulty_min/difficulty_max")
+        if (
+            difficulty_min is not None
+            and difficulty_max is not None
+            and difficulty_min > difficulty_max
+        ):
+            raise ValueError("difficulty_min must not exceed difficulty_max")
         owner = _safe_owner(owner_id) if owner_id else None
         if scope == "user" and owner is None:
             raise ValueError("user scope requires owner_id")
@@ -932,6 +944,9 @@ class KnowledgeDeliveryBackend:
             limit,
             owner,
             scope,
+            difficulty,
+            difficulty_min,
+            difficulty_max,
         )
 
     def _search_questions(
@@ -941,6 +956,9 @@ class KnowledgeDeliveryBackend:
         limit: int,
         owner_id: str | None,
         scope: str,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ) -> QuestionSearchResult:
         module = self._module("retrieval.hybrid_question_retrieval")
         embedder = self._sync_embedder()
@@ -995,12 +1013,28 @@ class KnowledgeDeliveryBackend:
                             "metadata": source.get("metadata") or {},
                         }
                     )
+                    if "difficulty" in source:
+                        question["difficulty"] = source.get("difficulty")
+                    if "difficulty_source" in source:
+                        question["difficulty_source"] = source.get("difficulty_source")
+        raw_items = raw.get("items") or []
+        if difficulty is not None or difficulty_min is not None or difficulty_max is not None:
+            raw_items = [
+                item
+                for item in raw_items
+                if self._question_difficulty_matches(
+                    parse_difficulty(((item.get("question") or {}).get("difficulty"))),
+                    level=difficulty,
+                    minimum=difficulty_min,
+                    maximum=difficulty_max,
+                )
+            ]
         resolved = [
             str(row.get("raw_kp_id") or row.get("kp_id") or "")
             for row in (raw.get("query") or {}).get("resolved_kps") or []
             if row.get("raw_kp_id") or row.get("kp_id")
         ]
-        items = [self._question_detail(item) for item in raw.get("items") or []]
+        items = [self._question_detail(item) for item in raw_items]
         return QuestionSearchResult(
             query=query,
             resolved_kp_ids=list(dict.fromkeys(resolved)),
@@ -1011,6 +1045,25 @@ class KnowledgeDeliveryBackend:
             ),
             items=items,
         )
+
+    @staticmethod
+    def _question_difficulty_matches(
+        difficulty: int | None,
+        *,
+        level: int | None,
+        minimum: int | None,
+        maximum: int | None,
+    ) -> bool:
+        """难度匹配：仅真实标注参与严格匹配；无标注题永不冒充指定难度。"""
+        if level is None and minimum is None and maximum is None:
+            return True
+        if difficulty is None:
+            return False
+        if level is not None:
+            return difficulty == level
+        low = minimum if minimum is not None else 1
+        high = maximum if maximum is not None else 5
+        return low <= difficulty <= high
 
     @staticmethod
     def _question_detail(item: dict[str, Any]) -> QuestionDetail:
@@ -1067,6 +1120,8 @@ class KnowledgeDeliveryBackend:
             stem=str(question.get("question_content") or question.get("题目内容") or question.get("stem") or ""),
             reference_answer=answer,
             analysis=str(question.get("explanation") or question.get("题目解析") or question.get("analysis") or "") or None,
+            difficulty=parse_difficulty(question.get("difficulty")),
+            difficulty_source=str(question.get("difficulty_source") or "") or None,
             options=options,
             tags=[value for value in dict.fromkeys(tags) if value],
             source_metadata={

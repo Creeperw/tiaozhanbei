@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -880,6 +881,8 @@ class BlueprintUnitModelOutput(StrictModelOutput):
     score_total: float | None = Field(default=None, gt=0)
     candidate_limit: int = Field(default=10, ge=1, le=50)
     selection_rules: list[str] = Field(default_factory=list)
+    target_difficulty: int | None = Field(default=None, ge=1, le=5)
+    difficulty_is_hard_constraint: bool = False
 
     @field_validator("required_question_count", "candidate_limit", mode="before")
     @classmethod
@@ -899,6 +902,20 @@ class BlueprintUnitModelOutput(StrictModelOutput):
                 return float(value.strip().replace("分", ""))
             except ValueError:
                 return value
+        return value
+
+    @field_validator("target_difficulty", mode="before")
+    @classmethod
+    def normalize_difficulty(cls, value: object) -> object:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, str):
+            chinese = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5}
+            match = re.search(r"[1-5一二三四五]", value)
+            if not match:
+                return None
+            digit = match.group()
+            return chinese.get(digit, int(digit))
         return value
 
 

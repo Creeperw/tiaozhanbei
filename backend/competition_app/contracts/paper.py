@@ -19,6 +19,13 @@ class BlueprintUnit(ContractModel):
     score_total: float | None = Field(default=None, gt=0)
     candidate_limit: int = Field(default=10, ge=1, le=50)
     selection_rules: list[str] = Field(default_factory=list)
+    # 难度约束：target_difficulty 为用户明确的 1-5；
+    # difficulty_is_hard_constraint=True 时严格匹配，缺口按 fallback 降级。
+    target_difficulty: int | None = Field(default=None, ge=1, le=5)
+    difficulty_is_hard_constraint: bool = False
+    difficulty_fallback_policy: Literal[
+        "strict", "unlabeled_official", "web_reference", "generated"
+    ] = "strict"
 
 
 class PaperBlueprint(ContractModel):
@@ -50,6 +57,13 @@ class UnitQuestionCandidates(ContractModel):
     items: list[QuestionDetail] = Field(default_factory=list)
     external_question_references: list[EvidenceItem] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    # 难度与来源统计（Phase 3 降级链路）
+    target_difficulty: int | None = Field(default=None, ge=1, le=5)
+    difficulty_is_hard_constraint: bool = False
+    exact_difficulty_count: int = Field(default=0, ge=0)
+    unlabeled_official_count: int = Field(default=0, ge=0)
+    web_reference_count: int = Field(default=0, ge=0)
+    unmet_required_count: int = Field(default=0, ge=0)
 
 
 class QuestionCandidatePool(ContractModel):
@@ -58,6 +72,20 @@ class QuestionCandidatePool(ContractModel):
     units: list[UnitQuestionCandidates] = Field(min_length=1)
     retrieval_round: int = Field(default=1, ge=1, le=2)
     retrieval_summary: list[str] = Field(default_factory=list)
+
+
+class PaperDifficultySourceSummary(ContractModel):
+    """整卷的难度与来源统计，用于向用户透明说明补题来源。"""
+
+    target_difficulty: int | None = Field(default=None, ge=1, le=5)
+    difficulty_is_hard_constraint: bool = False
+    total_questions: int = Field(default=0, ge=0)
+    exact_difficulty_count: int = Field(default=0, ge=0)
+    unlabeled_official_count: int = Field(default=0, ge=0)
+    web_reference_count: int = Field(default=0, ge=0)
+    generated_count: int = Field(default=0, ge=0)
+    unmet_count: int = Field(default=0, ge=0)
+    notice: str = ""
 
 
 class SelectedPaperItem(ContractModel):
@@ -89,6 +117,7 @@ class ExamPaperDraft(ContractModel):
     explanations: dict[str, str | None]
     coverage_summary: dict[str, object] = Field(default_factory=dict)
     unresolved_constraints: list[str] = Field(default_factory=list)
+    difficulty_source_summary: PaperDifficultySourceSummary | None = None
     status: Literal["pending_review"] = "pending_review"
 
     def learner_questions(self) -> list[LearnerQuestionView]:

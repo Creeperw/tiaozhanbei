@@ -302,6 +302,62 @@ def _matches_practice_mode(question_type: str | None, mode: str) -> bool:
     return True
 
 
+def _difficulty_matches(
+    difficulty: int | None,
+    *,
+    level: int | None,
+    minimum: int | None,
+    maximum: int | None,
+) -> bool:
+    """难度匹配：仅真实标注参与严格匹配；无标注题永不冒充指定难度。
+
+    - 指定 level 时：只有标注难度等于 level 的题通过。
+    - 指定范围时：只有标注难度在 [minimum, maximum] 内的题通过。
+    - 无任何难度约束时：不排除未标注题（未标注题可正常训练）。
+    """
+    if level is None and minimum is None and maximum is None:
+        return True
+    if difficulty is None:
+        return False
+    if level is not None:
+        return difficulty == level
+    low = minimum if minimum is not None else 1
+    high = maximum if maximum is not None else 5
+    return low <= difficulty <= high
+
+
+def _practice_difficulty_coverage(
+    db: Session, *, user_id: int, scope: str
+) -> tuple[bool, list[int]]:
+    """返回当前训练作用域是否存在真实难度标注及其可用难度集合。
+
+    仅统计带 difficulty_source 的真实标注；未标注题不计入。
+    前端据此决定是否显示难度筛选控件（无真实标注时隐藏）。
+    """
+    if scope in {"user", "all"}:
+        rows = db.query(UserQuestionItem.difficulty).filter(
+            UserQuestionItem.owner_user_id == user_id,
+            UserQuestionItem.status == "active",
+            UserQuestionItem.difficulty.is_not(None),
+            UserQuestionItem.difficulty_source.is_not(None),
+        ).all()
+    else:
+        rows = db.query(QuestionBankItem.difficulty).filter(
+            QuestionBankItem.status == "active",
+            QuestionBankItem.difficulty.is_not(None),
+            QuestionBankItem.difficulty_source.is_not(None),
+        ).all()
+    levels = sorted(
+        {
+            int(level)
+            for (level,) in rows
+            if isinstance(level, (int, float)) and int(level) in {1, 2, 3, 4, 5}
+        }
+    )
+    return bool(levels), levels
+
+
+
 def _decode_options(value: str | None) -> list[Any]:
     try:
         decoded = json.loads(value or "[]")
@@ -325,9 +381,37 @@ def next_practice_question(
     kp_id: str | None = Query(default=None, min_length=1, max_length=120),
     scope: str = Query(default="public", pattern="^(public|user|all)$"),
     mode: str = Query(default="all", pattern="^(all|objective|case)$"),
+    difficulty: int | None = Query(default=None, ge=1, le=5),
+    difficulty_min: int | None = Query(default=None, ge=1, le=5),
+    difficulty_max: int | None = Query(default=None, ge=1, le=5),
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    difficulty_requested = any(
+        value is not None for value in (difficulty, difficulty_min, difficulty_max)
+    )
+    if (
+        difficulty is not None
+        and (difficulty_min is not None or difficulty_max is not None)
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="difficulty cannot be combined with difficulty_min/difficulty_max",
+        )
+    if (
+        difficulty_min is not None
+        and difficulty_max is not None
+        and difficulty_min > difficulty_max
+    ):
+        raise HTTPException(status_code=422, detail="difficulty_min must not exceed difficulty_max")
+    difficulty_constraints = {
+        "level": difficulty,
+        "minimum": difficulty_min,
+        "maximum": difficulty_max,
+    }
+    difficulty_available, available_difficulties = _practice_difficulty_coverage(
+        db, user_id=current_user.id, scope=scope
+    )
     if scope in {"user", "all"}:
         claim_cutoff = _now() - timedelta(minutes=30)
         active_user_claims = {
@@ -351,8 +435,22 @@ def next_practice_question(
             question_kp_ids = json.loads(question.kp_ids_json or "[]")
             if (not kp_id or kp_id in question_kp_ids) and _matches_practice_mode(
                 question.question_type, mode
+            ) and _difficulty_matches(
+                question.difficulty, **difficulty_constraints
             ):
                 user_candidates.append((question, question_kp_ids))
+        if difficulty_requested and not user_candidates:
+            return {
+                "available": False,
+                "kp_id": kp_id,
+                "question": None,
+                "difficulty": difficulty,
+                "difficulty_min": difficulty_min,
+                "difficulty_max": difficulty_max,
+                "difficulty_available": difficulty_available,
+                "available_difficulties": available_difficulties,
+                "unavailable_reason": "no_question_matches_difficulty",
+            }
         user_candidates.sort(key=lambda item: (
             item[0].question_id in active_user_claims,
             item[0].question_id in attempted_user_question_ids,
@@ -379,10 +477,20 @@ def next_practice_question(
                     "kp_names": _knowledge_point_names(db, question_kp_ids),
                     "request_id": request_id,
                     "source_scope": "user",
+                    "difficulty": question.difficulty,
+                    "difficulty_source": question.difficulty_source,
                 },
+                "difficulty_available": difficulty_available,
+                "available_difficulties": available_difficulties,
             }
         if scope == "user":
-            return {"available": False, "kp_id": kp_id, "question": None}
+            return {
+                "available": False,
+                "kp_id": kp_id,
+                "question": None,
+                "difficulty_available": difficulty_available,
+                "available_difficulties": available_difficulties,
+            }
     registered_kp_ids = {
         row.kp_id
         for row in db.query(KnowledgePoint).filter(
@@ -397,6 +505,10 @@ def next_practice_question(
         if kp_id and kp_id not in question_kp_ids:
             continue
         if not _matches_practice_mode(question.question_type, mode):
+            continue
+        if not _difficulty_matches(
+            question.difficulty, **difficulty_constraints
+        ):
             continue
         if not question_kp_ids or not set(question_kp_ids) <= registered_kp_ids:
             continue
@@ -428,7 +540,21 @@ def next_practice_question(
         item[0].question_id,
     ))
     if not candidates:
-        return {"available": False, "kp_id": kp_id, "question": None}
+        return {
+            "available": False,
+            "kp_id": kp_id,
+            "question": None,
+            "difficulty": difficulty,
+            "difficulty_min": difficulty_min,
+            "difficulty_max": difficulty_max,
+            "difficulty_available": difficulty_available,
+            "available_difficulties": available_difficulties,
+            "unavailable_reason": (
+                "no_question_matches_difficulty"
+                if difficulty_requested
+                else "no_question_available"
+            ),
+        }
 
     question, question_kp_ids = candidates[0]
     request_id = str(uuid.uuid4())
@@ -456,7 +582,11 @@ def next_practice_question(
             "kp_names": _knowledge_point_names(db, question_kp_ids),
             "request_id": request_id,
             "source_scope": "public",
+            "difficulty": question.difficulty,
+            "difficulty_source": question.difficulty_source,
         },
+        "difficulty_available": difficulty_available,
+        "available_difficulties": available_difficulties,
     }
 
 

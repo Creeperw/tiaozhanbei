@@ -2,7 +2,11 @@ import pytest
 
 from competition_app.agents.paper_assembly import PaperAssemblyAgent
 from competition_app.contracts.base import AgentEnvelope
-from competition_app.contracts.knowledge import QuestionDetail, QuestionRetrievalMetadata
+from competition_app.contracts.knowledge import (
+    EvidenceItem,
+    QuestionDetail,
+    QuestionRetrievalMetadata,
+)
 from competition_app.contracts.paper import (
     BlueprintUnit,
     ExamPaperItem,
@@ -717,3 +721,117 @@ async def test_paper_assembly_enforces_exact_mixed_question_type_quotas() -> Non
     assert len(result.payload.items) == 15
     assert counts == {"单项选择题": 10, "多项选择题": 5}
     assert all(call["required_question_type"] == "多项选择题" for call in model.gap_calls)
+
+
+class DifficultyGapAssemblyModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        business = payload["payload"]
+        if business.get("phase") == "paper_gap_generation":
+            return {
+                "generated_items": [
+                    {
+                        "unit_id": business["unit_id"],
+                        "question_type": "单项选择题",
+                        "stem": f"难度降级补充题{index}",
+                        "options": ["A. 甲", "B. 乙"],
+                        "reference_answer": "A",
+                        "analysis": "补充缺口。",
+                        "selection_rationale": "补足指定题量。",
+                        "source_tier": "model_knowledge",
+                    }
+                    for index in range(1, int(business["gap_count"]) + 1)
+                ]
+            }
+        return {
+            "title": "难度组卷",
+            "instructions": "请作答。",
+            "selected_items": [],
+            "generated_items": [],
+            "coverage_summary": {},
+            "unresolved_constraints": [],
+        }
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_reports_difficulty_source_breakdown_transparently() -> None:
+    context = _assembly_context()
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    blueprint.required_total_question_count = 3
+    blueprint.units[0].required_question_count = 3
+    blueprint.units[0].target_difficulty = 3
+    blueprint.units[0].difficulty_is_hard_constraint = True
+    pool = context["dependency_outputs"]["question_pool"].payload
+    pool.units[0].required_question_count = 3
+    base = pool.units[0].items[0]
+    pool.units[0].items = [
+        base.model_copy(
+            update={
+                "question_id": "Q_EXACT",
+                "stem": "难度3正式题",
+                "difficulty": 3,
+                "difficulty_source": "formal-content:diff-test",
+            }
+        ),
+        base.model_copy(
+            update={
+                "question_id": "Q_UNLABELED",
+                "stem": "未标注难度正式题",
+                "difficulty": None,
+            }
+        ),
+    ]
+    pool.units[0].external_question_references = [
+        EvidenceItem(
+            evidence_id="E_WEB_1",
+            source_id="web:q1",
+            content_summary="网络参考题",
+            authority_level="web_question",
+            confidence=0.9,
+            bridge_layer="external",
+            source_url="https://example.test/q1",
+            resource_type="question",
+        )
+    ]
+    pool.units[0].exact_difficulty_count = 1
+    pool.units[0].unlabeled_official_count = 1
+    pool.units[0].web_reference_count = 1
+
+    result = await PaperAssemblyAgent(DifficultyGapAssemblyModel()).run(context)
+
+    summary = result.payload.difficulty_source_summary
+    assert summary is not None
+    assert summary.target_difficulty == 3
+    assert summary.difficulty_is_hard_constraint is True
+    assert summary.total_questions == 3
+    assert summary.exact_difficulty_count == 1
+    assert summary.unlabeled_official_count == 1
+    assert summary.generated_count == 1
+    assert summary.web_reference_count == 1
+    assert summary.unmet_count == 0
+    assert "难度3" in summary.notice
+    assert "未标注难度的正式题1道" in summary.notice
+    assert "系统生成的补充题1道" in summary.notice
+    assert "网络参考题1条" in summary.notice
+    assert "不会将其伪装为指定难度" in summary.notice
+
+
+@pytest.mark.asyncio
+async def test_paper_assembly_summary_without_difficulty_still_discloses_sources() -> None:
+    context = _assembly_context()
+    blueprint = context["dependency_outputs"]["paper_blueprint"].payload
+    blueprint.required_total_question_count = 1
+    blueprint.units[0].required_question_count = 1
+    pool = context["dependency_outputs"]["question_pool"].payload
+    pool.units[0].required_question_count = 1
+
+    result = await PaperAssemblyAgent(AssemblyModel()).run(context)
+
+    summary = result.payload.difficulty_source_summary
+    assert summary is not None
+    assert summary.target_difficulty is None
+    assert summary.difficulty_is_hard_constraint is False
+    assert summary.total_questions == 1
+    assert summary.exact_difficulty_count == 0
+    assert summary.unlabeled_official_count == 1
+    assert summary.generated_count == 0
+    assert "未标注难度1道" in summary.notice

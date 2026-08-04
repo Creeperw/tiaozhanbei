@@ -33,6 +33,16 @@ def _coerce_blueprint(raw: dict) -> dict:
                 if "score_total" in unit and unit["score_total"] is not None:
                     try: unit["score_total"] = float(unit["score_total"])
                     except (ValueError, TypeError): unit["score_total"] = None
+                if unit.get("target_difficulty") is not None:
+                    try:
+                        parsed_difficulty = int(str(unit["target_difficulty"]).strip())
+                    except (ValueError, TypeError):
+                        parsed_difficulty = 0
+                    if not 1 <= parsed_difficulty <= 5:
+                        unit["target_difficulty"] = None
+                    else:
+                        unit["target_difficulty"] = parsed_difficulty
+                        unit["difficulty_is_hard_constraint"] = True
                 for key in ("unit_key", "knowledge_module", "learning_objective", "retrieval_query"):
                     if not unit.get(key): unit[key] = unit.get("unit_key") or unit.get("knowledge_module") or "学习单元"
                 for key in ("question_type_preferences", "selection_rules"):
@@ -201,6 +211,10 @@ class PaperBlueprintCompilerAgent:
             if unit.score_total is not None:
                 verbatim_values.append(
                     (f"{unit_path}/score_total", format(unit.score_total, "g"))
+                )
+            if unit.target_difficulty is not None:
+                verbatim_values.append(
+                    (f"{unit_path}/target_difficulty", str(unit.target_difficulty))
                 )
         for field_path, value in verbatim_values:
             if value and not PaperBlueprintCompilerAgent._source_contains(

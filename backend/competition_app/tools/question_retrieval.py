@@ -14,8 +14,28 @@ from competition_app.contracts.knowledge import (
     QuestionRetrievalMetadata,
     QuestionSearchResult,
 )
+from competition_app.contracts.difficulty import parse_difficulty
 from competition_app.embeddings.base import EmbeddingModel
 from competition_app.tools.knowledge_repository import KnowledgeRepository
+
+
+def _difficulty_matches(
+    difficulty: int | None,
+    *,
+    level: int | None,
+    minimum: int | None,
+    maximum: int | None,
+) -> bool:
+    """难度匹配：仅真实标注参与严格匹配；无标注题永不冒充指定难度。"""
+    if level is None and minimum is None and maximum is None:
+        return True
+    if difficulty is None:
+        return False
+    if level is not None:
+        return difficulty == level
+    low = minimum if minimum is not None else 1
+    high = maximum if maximum is not None else 5
+    return low <= difficulty <= high
 
 
 class QuestionVectorIndexError(RuntimeError):
@@ -60,7 +80,16 @@ class QuestionHybridRetriever:
         self.embedding_model_name = embedding_model_name
         self.vector_store_root = vector_store_root
 
-    async def search(self, query: str, resolved_kp_ids: list[str], limit: int) -> QuestionSearchResult:
+    async def search(
+        self,
+        query: str,
+        resolved_kp_ids: list[str],
+        limit: int,
+        *,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
+    ) -> QuestionSearchResult:
         if limit < 1:
             raise ValueError("limit must be positive")
         hits: dict[str, dict[str, float | set[str]]] = {}
@@ -103,6 +132,17 @@ class QuestionHybridRetriever:
             entry["channels"].add("vector")
             entry["vector"] = score * 0.85
         items = [self._detail(question_id, entry) for question_id, entry in hits.items()]
+        if difficulty is not None or difficulty_min is not None or difficulty_max is not None:
+            items = [
+                item
+                for item in items
+                if _difficulty_matches(
+                    item.difficulty,
+                    level=difficulty,
+                    minimum=difficulty_min,
+                    maximum=difficulty_max,
+                )
+            ]
         items.sort(key=self._sort_key)
         index_path = self._index_path()
         return QuestionSearchResult(query=query, resolved_kp_ids=resolved_kp_ids, embedding_model=self.embedding_model_name, vector_index_path=str(index_path), items=items[:limit])
@@ -147,6 +187,8 @@ class QuestionHybridRetriever:
                 if row.get("explanation") is not None or row.get("题目答案解析") is not None
                 else None
             ),
+            difficulty=parse_difficulty(row.get("difficulty")),
+            difficulty_source=str(row.get("difficulty_source") or "") or None,
             options=[str(option) for option in (row.get("options") or [])],
             tags=list(row.get("kp_ids") or row.get("标签", [])),
             source_metadata={

@@ -21,6 +21,9 @@ class CompiledBlueprintUnit(ContractModel):
     required_question_count: int = Field(gt=0, le=100)
     score_total: float | None = Field(default=None, gt=0)
     selection_rules: list[str] = Field(default_factory=list)
+    # Compiler 只可逐字提取用户明确写出的难度要求；未提及时保持 None。
+    target_difficulty: int | None = Field(default=None, ge=1, le=5)
+    difficulty_is_hard_constraint: bool = False
 
 
 class CompiledPaperBlueprintContract(ContractModel):

@@ -28,6 +28,7 @@ from competition_app.contracts.auth import (
     LoginRequest,
     RegisterRequest,
 )
+from competition_app.contracts.difficulty import parse_difficulty, parse_difficulty_source
 from competition_app.repositories.auth import UsernameTakenError
 from competition_app.services.auth import InvalidCredentialsError
 from competition_app.services.learning_path_projection import LearningPathProjectionService
@@ -224,21 +225,16 @@ def _formal_question_payload(question: dict, kp_names: dict[str, str]) -> dict:
         if str(value).strip()
     ))
     raw_difficulty = question.get("difficulty", question.get("难度"))
-    try:
-        if raw_difficulty is None or isinstance(raw_difficulty, bool):
-            raise ValueError("difficulty is absent")
-        parsed_difficulty = float(raw_difficulty)
-        if not parsed_difficulty.is_integer() or not 1 <= parsed_difficulty <= 5:
-            raise ValueError("difficulty must be an integer from 1 to 5")
-        difficulty = int(parsed_difficulty)
-        difficulty_source = str(
+    difficulty = parse_difficulty(raw_difficulty)
+    difficulty_source = (
+        parse_difficulty_source(
             question.get("difficulty_source")
             or question.get("难度来源")
             or "source_metadata"
-        ).strip()
-    except (TypeError, ValueError):
-        difficulty = None
-        difficulty_source = None
+        )
+        if difficulty is not None
+        else None
+    )
     return {
         "question_id": str(question.get("question_id") or question.get("题目id") or "").strip(),
         "question_type": _practice_question_type(

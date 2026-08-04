@@ -21,6 +21,7 @@ from APP.backend.database import UserQuestionImportJob, UserQuestionItem
 from APP.backend.health_llm import build_llm_client
 from APP.backend.mineru_pdf_service import MinerUPdfParser
 from APP.backend.time_utils import utc_now
+from competition_app.contracts.difficulty import parse_difficulty
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 ALLOWED_EXTENSIONS = {".pdf", ".md", ".txt", *IMAGE_EXTENSIONS}
@@ -76,7 +77,7 @@ def _extract_structured_questions(markdown: str) -> list[dict[str, Any]]:
     for block in blocks[1:]:
         fields: dict[str, str] = {}
         matches = list(re.finditer(
-            r"(?m)^[-*]?\s*(题型|题干|选项|答案|解析|知识点)\s*[:：]\s*",
+            r"(?m)^[-*]?\s*(题型|题干|选项|答案|解析|知识点|难度)\s*[:：]\s*",
             block,
         ))
         for index, match in enumerate(matches):
@@ -100,6 +101,7 @@ def _extract_structured_questions(markdown: str) -> list[dict[str, Any]]:
                 value for value in re.split(r"[,，\s]+", fields.get("知识点", ""))
                 if value
             ],
+            "difficulty": _normalize_text(fields.get("难度", "")) or None,
         })
     if not rows:
         raise QuestionWorkspaceError(
@@ -140,6 +142,7 @@ def _normalize_llm_row(value: Any) -> dict[str, Any] | None:
     raw_kp_ids = value.get("kp_ids") or value.get("知识点") or []
     if isinstance(raw_kp_ids, str):
         raw_kp_ids = re.split(r"[,，\s]+", raw_kp_ids)
+    raw_difficulty = value.get("difficulty") or value.get("难度")
     return {
         "question_type": _normalize_text(str(value.get("question_type") or value.get("题型") or "未分类")),
         "stem": stem,
@@ -147,6 +150,7 @@ def _normalize_llm_row(value: Any) -> dict[str, Any] | None:
         "answer": _normalize_text(str(value.get("answer") or value.get("答案") or "")),
         "analysis": _normalize_text(str(value.get("analysis") or value.get("解析") or "")),
         "kp_ids": [_normalize_text(str(item)) for item in raw_kp_ids if _normalize_text(str(item))],
+        "difficulty": str(raw_difficulty).strip() if raw_difficulty is not None else None,
     }
 
 
@@ -161,7 +165,7 @@ def _llm_extract_questions(markdown: str) -> list[dict[str, Any]]:
         "已有答案和解析必须原样保留，不得改写。材料没有答案时，结合医学知识生成可靠答案和解析。"
         "输出格式：{\"items\":[{\"question_type\":\"单项选择题/简答题/病例分析题\","
         "\"stem\":\"题干\",\"options\":[\"A. ...\"],\"answer\":\"答案\","
-        "\"analysis\":\"解析\",\"kp_ids\":[]}]}。"
+        "\"analysis\":\"解析\",\"kp_ids\":[],\"difficulty\":\"1-5或D1-D5之一，材料未标注时省略\"}]}。"
     )
     chunks: list[str] = []
     current = ""
@@ -308,6 +312,8 @@ def _public_item(item: UserQuestionItem) -> dict[str, Any]:
         "explanation": item.analysis,
         "options": json.loads(item.options_json or "[]"),
         "kp_ids": json.loads(item.kp_ids_json or "[]"),
+        "difficulty": item.difficulty,
+        "difficulty_source": item.difficulty_source,
         "status": item.status,
         "review_reason": item.review_reason,
     }
@@ -392,6 +398,12 @@ async def create_import(
             analysis=row["analysis"],
             options_json=json.dumps(row["options"], ensure_ascii=False),
             kp_ids_json=json.dumps(row["kp_ids"], ensure_ascii=False),
+            difficulty=parse_difficulty(row.get("difficulty")),
+            difficulty_source=(
+                f"user-import:{job_id[:16]}"
+                if parse_difficulty(row.get("difficulty")) is not None
+                else None
+            ),
             content_hash=_content_hash(row["stem"], row["answer"], row["question_type"]),
             status="preview_ready" if ready else "needs_human_review",
             review_reason=review_reason,

@@ -64,6 +64,9 @@ export default function AtlasPracticePanel({
   const [error, setError] = useState('');
   const [progress, setProgress] = useState(null);
   const [generation, setGeneration] = useState(0);
+  const [difficultyFilter, setDifficultyFilter] = useState(null);
+  const [difficultyAvailable, setDifficultyAvailable] = useState(false);
+  const [availableDifficulties, setAvailableDifficulties] = useState([]);
   const operationGenerationRef = useRef(0);
   const kpId = knowledgePoint?.kpId || knowledgePoint?.kp_id || '';
   const kpName = knowledgePoint?.kpName || knowledgePoint?.kp_name || '';
@@ -86,16 +89,27 @@ export default function AtlasPracticePanel({
       setLoadingQuestion(true);
       const loaded = taskItemId
         ? await loadDailyTaskPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, taskItemId })
-        : await loadPracticeQuestion({ fetcher: fetchJsonWithAuthFallback, mode, kpId, topic: kpName, scope });
+        : await loadPracticeQuestion({
+            fetcher: fetchJsonWithAuthFallback,
+            mode,
+            kpId,
+            topic: kpName,
+            scope,
+            difficulty: difficultyFilter,
+          });
       if (cancelled || operation !== operationGenerationRef.current) return;
       setQuestion(loaded.practice.available ? loaded.practice.question : null);
       setProgress(loaded.practice.progress || null);
+      setDifficultyAvailable(loaded.practice.difficulty_available === true);
+      if (Array.isArray(loaded.practice.available_difficulties)) {
+        setAvailableDifficulties(loaded.practice.available_difficulties);
+      }
       if (loaded.error) setError(loaded.error);
       setLoadingQuestion(false);
     };
     load();
     return () => { cancelled = true; };
-  }, [generation, kpId, kpName, mode, scope, taskItemId]);
+  }, [generation, kpId, kpName, mode, scope, taskItemId, difficultyFilter]);
 
   const questionOptions = useMemo(() => {
     const options = Array.isArray(question?.options) ? question.options : [];
@@ -182,10 +196,40 @@ export default function AtlasPracticePanel({
             </div>
           </header>
 
+          {difficultyAvailable && !taskItemId && (
+            <section className="practice-difficulty-filter" aria-label="难度筛选">
+              <span className="practice-difficulty-filter__label">难度</span>
+              <div className="practice-difficulty-filter__options">
+                <button
+                  type="button"
+                  className={difficultyFilter === null ? 'is-active' : ''}
+                  onClick={() => setDifficultyFilter(null)}
+                >
+                  不限
+                </button>
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    className={difficultyFilter === level ? 'is-active' : ''}
+                    disabled={availableDifficulties.length > 0 && !availableDifficulties.includes(level)}
+                    onClick={() => setDifficultyFilter(level)}
+                    title={`难度 ${level}${availableDifficulties.length > 0 && !availableDifficulties.includes(level) ? '（当前题库暂无该难度标注）' : ''}`}
+                  >
+                    {level}星
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           <article className="practice-question-card">
             <div className="practice-question-meta">
               <span>{question.source_scope === 'user' ? '我的题目' : '正式题库'}</span>
               <span>{typeLabel}</span>
+              {question.difficulty !== undefined && question.difficulty !== null && (
+                <span>难度 {question.difficulty}星</span>
+              )}
             </div>
             <p id="practice-question">{question.stem}</p>
           </article>

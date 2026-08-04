@@ -56,6 +56,9 @@ class QuestionDetail(ContractModel):
     options: list[str] = Field(default_factory=list)
     origin: Literal["retrieved", "generated"] = "retrieved"
     source_tier: Literal["textbook", "web_reference", "model_knowledge"] = "textbook"
+    # 仅真实标注难度：1-5；无标注时保持 None，绝不推断默认值。
+    difficulty: int | None = Field(default=None, ge=1, le=5)
+    difficulty_source: str | None = None
     tags: list[str]
     source_metadata: dict[str, object]
     bridges: list[QuestionBridge]

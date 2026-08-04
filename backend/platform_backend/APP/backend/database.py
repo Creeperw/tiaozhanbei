@@ -1491,12 +1491,35 @@ def _ensure_optional_difficulty_columns(bind):
 
     inspector = inspect(bind)
     difficulty_columns = {
+        "question_bank_items": ("difficulty", "INTEGER NULL"),
+        "question_version_records": "difficulty_source",
+        "question": ("difficulty", "INTEGER NULL"),
+        "user_question_items": ("difficulty", "INTEGER NULL"),
+    }
+    source_columns = {
         "question_bank_items": "difficulty_source",
         "question_version_records": "difficulty_source",
         "question": "difficulty_source",
+        "user_question_items": "difficulty_source",
     }
     with bind.begin() as connection:
-        for table_name, column_name in difficulty_columns.items():
+        for table_name, column_spec in difficulty_columns.items():
+            if table_name not in inspector.get_table_names():
+                continue
+            columns = {
+                column["name"] for column in inspector.get_columns(table_name)
+            }
+            for column_name, ddl in (
+                ((column_spec,) if isinstance(column_spec, tuple) else ())
+            ):
+                if column_name not in columns:
+                    _add_column_if_missing_after_race(
+                        connection,
+                        table_name,
+                        column_name,
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {ddl}",
+                    )
+        for table_name, column_name in source_columns.items():
             if table_name not in inspector.get_table_names():
                 continue
             columns = {
@@ -1677,6 +1700,9 @@ class UserQuestionItem(Base):
     analysis = Column(Text, nullable=False, default="")
     options_json = Column(Text, nullable=False, default="[]")
     kp_ids_json = Column(Text, nullable=False, default="[]")
+    # 用户导入题也允许携带可空难度与来源（仅真实标注）。
+    difficulty = Column(Integer, nullable=True, default=None)
+    difficulty_source = Column(String(160), nullable=True, default=None)
     content_hash = Column(String(64), nullable=False, index=True)
     status = Column(String(40), nullable=False, default="needs_human_review", index=True)
     review_reason = Column(Text, nullable=False, default="")

@@ -55,6 +55,9 @@ POSITIVE_WEIGHTS = {
 }
 REPETITION_WEIGHT = 0.10
 UNCERTAINTY_WEIGHT = 0.15
+# Minimum real attempt evidence per difficulty level before difficulty_fit
+# is considered available. Mirrors the low-data protection used elsewhere.
+MIN_DIFFICULTY_ATTEMPTS = 3
 _ACTIVE_PLAN_STATUSES = {"active", "approved", "current", "pending"}
 _TRUSTED_SOURCE_PREFIXES = (
     "approved_",
@@ -1102,6 +1105,92 @@ def _score_metric(
     )
 
 
+def _difficulty_attempt_evidence(
+    db: Session,
+    user_id: int,
+    now: datetime,
+    *,
+    window_days: int = 30,
+) -> dict[int, dict[str, Any]]:
+    """Aggregate real answer evidence per difficulty level.
+
+    Only attempts on questions with a real difficulty annotation
+    (difficulty_source present) count. Returns:
+        {level: {"attempt_count", "accuracy", "avg_response_time_seconds"}}
+    for levels 1..5 that have at least one real attempt.
+    """
+    window_start = now - timedelta(days=window_days)
+    attempts = (
+        db.query(LearningQuestionAttempt)
+        .filter(
+            LearningQuestionAttempt.user_id == user_id,
+            LearningQuestionAttempt.answered_at >= window_start,
+            LearningQuestionAttempt.answered_at <= now,
+        )
+        .all()
+    )
+    if not attempts:
+        return {}
+    attempted_ids = {
+        str(row.question_id)
+        for row in attempts
+        if str(row.question_id or "").strip()
+    }
+    difficulty_by_qid: dict[str, int] = {}
+    if attempted_ids:
+        for row in (
+            db.query(LearningQuestion)
+            .filter(LearningQuestion.question_id.in_(attempted_ids))
+            .all()
+        ):
+            if (
+                row.difficulty is not None
+                and str(row.difficulty_source or "").strip()
+                and int(row.difficulty) in {1, 2, 3, 4, 5}
+            ):
+                difficulty_by_qid[str(row.question_id)] = int(row.difficulty)
+        for row in (
+            db.query(QuestionBankItem)
+            .filter(QuestionBankItem.question_id.in_(attempted_ids))
+            .all()
+        ):
+            if (
+                str(row.question_id) not in difficulty_by_qid
+                and row.difficulty is not None
+                and str(row.difficulty_source or "").strip()
+                and int(row.difficulty) in {1, 2, 3, 4, 5}
+            ):
+                difficulty_by_qid[str(row.question_id)] = int(row.difficulty)
+    if not difficulty_by_qid:
+        return {}
+    buckets: dict[int, list[tuple[bool, int | None]]] = {}
+    for attempt in attempts:
+        qid = str(attempt.question_id or "").strip()
+        level = difficulty_by_qid.get(qid)
+        if level is None:
+            continue
+        buckets.setdefault(int(level), []).append(
+            (bool(attempt.is_correct), attempt.response_time_seconds)
+        )
+    result: dict[int, dict[str, Any]] = {}
+    for level, rows in sorted(buckets.items()):
+        correct = sum(1 for is_correct, _seconds in rows if is_correct)
+        times = [
+            int(seconds)
+            for _is_correct, seconds in rows
+            if seconds is not None and seconds >= 0
+        ]
+        result[int(level)] = {
+            "attempt_count": len(rows),
+            "accuracy": round(correct / len(rows), 4),
+            "avg_response_time_seconds": (
+                round(sum(times) / len(times), 1) if times else None
+            ),
+        }
+    return result
+
+
+
 def _score(components: dict[str, dict[str, Any]]) -> float:
     available_positive = [
         (POSITIVE_WEIGHTS[key], float(components[key]["value"]))
@@ -1456,18 +1545,22 @@ def _build_score_components(
     difficulty = descriptor.get("difficulty")
     difficulty_fit = None
     difficulty_sources: list[str] = []
-    if isinstance(difficulty, (int, float)) and mastery_values:
-        normalized_difficulty = _clamp((float(difficulty) - 1.0) / 4.0)
-        learner_level = _clamp(sum(mastery_values) / len(mastery_values))
-        difficulty_fit = 1.0 - abs(normalized_difficulty - learner_level)
-        difficulty_sources = _unique(
-            descriptor["source_refs"]
-            + [
-                mastery_ref_by_kp[item]
-                for item in kp_set
-                if item in mastery_ref_by_kp
-            ]
-        )
+    difficulty_evidence = descriptor.get("difficulty_evidence") or {}
+    if isinstance(difficulty, (int, float)):
+        level = int(difficulty)
+        if level in {1, 2, 3, 4, 5}:
+            evidence = difficulty_evidence.get(level)
+            if (
+                isinstance(evidence, dict)
+                and int(evidence.get("attempt_count") or 0) >= MIN_DIFFICULTY_ATTEMPTS
+            ):
+                normalized_difficulty = _clamp((float(difficulty) - 1.0) / 4.0)
+                learner_level = _clamp(float(evidence["accuracy"]))
+                difficulty_fit = 1.0 - abs(normalized_difficulty - learner_level)
+                difficulty_sources = _unique(
+                    descriptor["source_refs"]
+                    + [f"question_attempt:difficulty:{level}"]
+                )
     preferences = profile.get("preferences")
     preferences = preferences if isinstance(preferences, dict) else {}
     preferred_types = preferences.get("resource_preference")
@@ -1552,7 +1645,11 @@ def _build_score_components(
             reason=(
                 "difficulty_metadata_missing"
                 if not isinstance(difficulty, (int, float))
-                else "mastery_or_accuracy_missing_for_difficulty_fit"
+                else (
+                    "insufficient_difficulty_attempt_evidence"
+                    if difficulty_evidence.get(int(difficulty)) is None
+                    else "insufficient_difficulty_attempt_count"
+                )
             ),
         ),
         "autonomy_support": _score_metric(
@@ -1735,6 +1832,9 @@ def build_path_candidates(
     }
     recent_kp_ids = set(
         state.get("micro", {}).get("recent_knowledge_point_ids", [])
+    )
+    difficulty_evidence = _difficulty_attempt_evidence(
+        db, user_id, now, window_days=30
     )
     descriptors: list[dict[str, Any]] = []
 
@@ -1992,6 +2092,11 @@ def build_path_candidates(
                         row.difficulty
                         if str(row.difficulty_source or "").strip()
                         else None
+                    ),
+                    "difficulty_evidence": (
+                        difficulty_evidence
+                        if isinstance(difficulty_evidence, dict)
+                        else {}
                     ),
                 }
             )

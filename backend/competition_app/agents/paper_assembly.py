@@ -14,7 +14,12 @@ from competition_app.contracts.knowledge import (
     QuestionDetail,
     QuestionRetrievalMetadata,
 )
-from competition_app.contracts.paper import ExamPaperDraft, ExamPaperItem, QuestionCandidatePool
+from competition_app.contracts.paper import (
+    ExamPaperDraft,
+    ExamPaperItem,
+    PaperDifficultySourceSummary,
+    QuestionCandidatePool,
+)
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.schemas import (
@@ -477,6 +482,12 @@ class PaperAssemblyAgent:
             blueprint.duration_minutes
             or self._recommended_duration_minutes(items)
         )
+        difficulty_summary = self._build_difficulty_source_summary(
+            blueprint=blueprint,
+            items=items,
+            candidate_pool=candidate_pool,
+            required_total=required_total,
+        )
         draft = ExamPaperDraft(
             paper_draft_id=f"PAPER_DRAFT_{uuid4().hex}",
             blueprint_id=blueprint.blueprint_id,
@@ -497,8 +508,91 @@ class PaperAssemblyAgent:
                 *system_constraints,
                 *[warning for unit in candidate_pool.units for warning in unit.warnings],
             ],
+            difficulty_source_summary=difficulty_summary,
         )
         return envelope(context, "expert_agent", "exam_paper_draft", draft)
+
+    @classmethod
+    def _build_difficulty_source_summary(
+        cls,
+        *,
+        blueprint: Any,
+        items: list[ExamPaperItem],
+        candidate_pool: QuestionCandidatePool,
+        required_total: int | None,
+    ) -> PaperDifficultySourceSummary:
+        """向用户透明说明入卷题的难度与来源构成。
+
+        - 仅真实难度标注参与“精确难度”统计；未标注正式题单独计数。
+        - 网络参考题不直接入卷（仅支撑出题），单独计数并写入说明。
+        - 生成的补充题没有真实难度标注，永不伪装为指定难度。
+        """
+        targets = {
+            unit.target_difficulty
+            for unit in blueprint.units
+            if getattr(unit, "target_difficulty", None) is not None
+        }
+        target_difficulty = next(iter(targets)) if len(targets) == 1 else None
+        hard = bool(
+            any(
+                getattr(unit, "difficulty_is_hard_constraint", False)
+                for unit in blueprint.units
+            )
+        )
+        total = len(items)
+        exact = 0
+        unlabeled = 0
+        for item in items:
+            if item.question.origin == "generated":
+                continue
+            if item.question.difficulty is None:
+                unlabeled += 1
+            elif (
+                target_difficulty is not None
+                and item.question.difficulty == target_difficulty
+            ):
+                exact += 1
+        generated = sum(1 for item in items if item.question.origin == "generated")
+        web_reference = sum(
+            len(unit.external_question_references)
+            for unit in candidate_pool.units
+        )
+        unmet = (
+            max(0, required_total - total)
+            if required_total is not None
+            else 0
+        )
+        parts = [f"本卷共{total}题"]
+        if target_difficulty is not None:
+            parts.append(f"其中难度{target_difficulty}的正式题{exact}道")
+            if unlabeled:
+                parts.append(f"未标注难度的正式题{unlabeled}道")
+            if generated:
+                parts.append(f"系统生成的补充题{generated}道")
+        else:
+            parts.append(f"其中正式题{total - generated}道")
+            if generated:
+                parts.append(f"系统生成的补充题{generated}道")
+            if unlabeled:
+                parts.append(f"正式题中未标注难度{unlabeled}道")
+        if web_reference:
+            parts.append(f"检索到网络参考题{web_reference}条，仅用于支撑出题，不直接入卷")
+        if unmet:
+            parts.append(f"仍有{unmet}题缺口未满足")
+        notice = "；".join(parts) + "。"
+        if target_difficulty is not None and generated:
+            notice += "补充题没有真实难度标注，系统不会将其伪装为指定难度。"
+        return PaperDifficultySourceSummary(
+            target_difficulty=target_difficulty,
+            difficulty_is_hard_constraint=hard,
+            total_questions=total,
+            exact_difficulty_count=exact,
+            unlabeled_official_count=unlabeled,
+            web_reference_count=web_reference,
+            generated_count=generated,
+            unmet_count=unmet,
+            notice=notice,
+        )
 
     @staticmethod
     def _has_complete_solution(question: QuestionDetail) -> bool:

@@ -434,15 +434,53 @@ class KnowledgeBaseAgent:
                         20,
                     ),
                 )
+                target_difficulty = getattr(unit, "target_difficulty", None)
+                difficulty_requested = target_difficulty is not None
                 result = await self._search_question_candidates(
                     unit.retrieval_query,
                     evidence_pack.resolved_kp_ids,
                     context,
                     limit=retrieval_limit,
+                    difficulty=target_difficulty if difficulty_requested else None,
                 )
                 eligible_items = self._eligible_unit_candidates(
                     result.items, unit, evidence_pack
                 )
+                if (
+                    difficulty_requested
+                    and len(eligible_items) < unit.required_question_count
+                ):
+                    # 指定难度且精确难度正式题不足时，放宽到“未标注难度正式题”
+                    # 补足候选池；其他难度的正式题仍不进入候选池（严格匹配，
+                    # 不伪装指定难度）。
+                    try:
+                        relaxed_result = await self._search_question_candidates(
+                            unit.retrieval_query,
+                            evidence_pack.resolved_kp_ids,
+                            context,
+                            limit=retrieval_limit,
+                        )
+                        result = QuestionSearchResult(
+                            query=unit.retrieval_query,
+                            resolved_kp_ids=list(dict.fromkeys(
+                                [*result.resolved_kp_ids, *relaxed_result.resolved_kp_ids]
+                            )),
+                            embedding_model=relaxed_result.embedding_model,
+                            vector_index_path=relaxed_result.vector_index_path,
+                            items=[*result.items, *relaxed_result.items],
+                        )
+                        warnings.append(
+                            f"难度{target_difficulty}正式题候选不足，已纳入未标注难度的"
+                            "正式题补足；其他难度题目不会冒充指定难度。"
+                        )
+                    except (LookupError, RuntimeError, TimeoutError, ValueError) as exc:
+                        warnings.append(
+                            "难度补足检索暂不可用："
+                            f"{type(exc).__name__}；已保留首轮难度候选继续组卷。"
+                        )
+                    eligible_items = self._eligible_unit_candidates(
+                        result.items, unit, evidence_pack
+                    )
                 # A first formal-index pass is not enough evidence for a hard
                 # paper count. Broaden the web/question query once before the
                 # Expert is asked to create variants. External hits remain
@@ -496,6 +534,11 @@ class KnowledgeBaseAgent:
                         items=[],
                         external_question_references=[],
                         warnings=warnings,
+                        target_difficulty=getattr(unit, "target_difficulty", None),
+                        difficulty_is_hard_constraint=bool(
+                            getattr(unit, "difficulty_is_hard_constraint", False)
+                        ),
+                        unmet_required_count=unit.required_question_count,
                     )
                 )
                 emit_runtime_event(
@@ -527,6 +570,17 @@ class KnowledgeBaseAgent:
                     continue
                 unit_seen.add(item.question_id)
                 raw_candidates.append(item)
+            if difficulty_requested:
+                # 严格难度匹配：指定难度时只保留精确难度正式题与未标注难度正式题，
+                # 其他难度正式题不进入候选池（不伪装、不近似）。
+                raw_candidates = [
+                    item
+                    for item in raw_candidates
+                    if item.difficulty == target_difficulty or item.difficulty is None
+                ]
+                raw_candidates.sort(
+                    key=lambda item: item.difficulty != target_difficulty
+                )
             scope_candidates = [
                 item
                 for item in raw_candidates
@@ -572,6 +626,30 @@ class KnowledgeBaseAgent:
                     items=deduplicated,
                     external_question_references=external_question_references,
                     warnings=warnings,
+                    target_difficulty=target_difficulty,
+                    difficulty_is_hard_constraint=bool(
+                        getattr(unit, "difficulty_is_hard_constraint", False)
+                    ),
+                    exact_difficulty_count=(
+                        sum(
+                            1 for item in deduplicated
+                            if item.difficulty == target_difficulty
+                        )
+                        if difficulty_requested
+                        else 0
+                    ),
+                    unlabeled_official_count=(
+                        sum(
+                            1 for item in deduplicated
+                            if item.difficulty is None
+                        )
+                        if difficulty_requested
+                        else 0
+                    ),
+                    web_reference_count=len(external_question_references),
+                    unmet_required_count=max(
+                        0, unit.required_question_count - len(deduplicated)
+                    ),
                 )
             )
             emit_runtime_event(
@@ -781,7 +859,15 @@ class KnowledgeBaseAgent:
         return await handler(topic)
 
     async def _search_question_candidates(
-        self, topic: str, kp_ids: list[str], context: dict[str, Any], limit: int = 10
+        self,
+        topic: str,
+        kp_ids: list[str],
+        context: dict[str, Any],
+        limit: int = 10,
+        *,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ) -> QuestionSearchResult:
         owner_id = str(
             context.get("learner_id")
@@ -804,6 +890,9 @@ class KnowledgeBaseAgent:
                 limit=limit,
                 owner_id=owner_id,
                 scope="all",
+                difficulty=difficulty,
+                difficulty_min=difficulty_min,
+                difficulty_max=difficulty_max,
             )
             if not isinstance(result, QuestionSearchResult):
                 raise ValueError("question search result must be QuestionSearchResult")
@@ -837,6 +926,9 @@ class KnowledgeBaseAgent:
             limit=limit,
             owner_id=owner_id,
             scope="all",
+            difficulty=difficulty,
+            difficulty_min=difficulty_min,
+            difficulty_max=difficulty_max,
         )
         if not isinstance(result, QuestionSearchResult):
             raise ValueError("question search result must be QuestionSearchResult")

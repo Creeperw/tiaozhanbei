@@ -27,6 +27,8 @@ class QuestionWorkspaceItem(ContractModel):
     explanation: str = ""
     options: list[str] = Field(default_factory=list)
     kp_ids: list[str] = Field(default_factory=list)
+    difficulty: int | None = Field(default=None, ge=1, le=5)
+    difficulty_source: str | None = None
     status: QuestionStatus
     review_reason: str = ""
 

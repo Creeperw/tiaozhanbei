@@ -18,6 +18,7 @@ from APP.backend.database import (
     QuestionKPLinkRecord,
     QuestionVersionRecord,
 )
+from competition_app.contracts.difficulty import parse_difficulty
 
 _SOURCE_PREFIX = "formal-content:"
 _QUESTION_TYPES = {
@@ -39,17 +40,9 @@ _QUESTION_TYPES = {
 }
 
 
-def _optional_difficulty(value: Any) -> float | None:
-    if value is None or isinstance(value, bool):
-        return None
-    text = str(value).strip().upper()
-    if text.startswith("D"):
-        text = text[1:]
-    try:
-        rating = float(text)
-    except (TypeError, ValueError):
-        return None
-    return rating if 1 <= rating <= 5 else None
+def _optional_difficulty(value: Any) -> int | None:
+    """统一难度解析：仅接受整数 1-5 或 D1-D5，其余返回 None。"""
+    return parse_difficulty(value)
 
 
 @dataclass(frozen=True)

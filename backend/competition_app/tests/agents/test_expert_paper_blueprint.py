@@ -506,3 +506,100 @@ def test_choice_specialty_distributes_explicit_twenty_across_blueprint_units() -
         for unit in units
     )
     assert all(unit["candidate_limit"] > unit["required_question_count"] for unit in units)
+
+
+def test_explicit_difficulty_accepts_only_clear_numeric_requests() -> None:
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"user_request": "请出5道难度3的题", "exam_constraints": {}}
+    ) == 3
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"user_request": "来一套四星难度的卷子", "exam_constraints": {}}
+    ) == 4
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"user_request": "给我一套中等难度的卷子", "exam_constraints": {}}
+    ) is None
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"user_request": "组一套卷", "exam_constraints": {"difficulty": 2}}
+    ) == 2
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"user_request": "组一套卷", "exam_constraints": {}}
+    ) is None
+    assert PaperBlueprintAgent._explicit_difficulty(
+        {"user_request": "组一套卷", "exam_constraints": {"difficulty": "5级"}}
+    ) == 5
+
+
+def test_blueprint_normalize_propagates_explicit_difficulty_to_all_units() -> None:
+    normalized = PaperBlueprintAgent._normalize_blueprint(
+        {
+            "title": "难度卷",
+            "source_status": "practice_sample",
+            "scope_summary": "测试",
+            "units": [
+                {
+                    "knowledge_module": "单元一",
+                    "learning_objective": "目标",
+                    "retrieval_query": "四君子汤",
+                    "required_question_count": 2,
+                },
+                {
+                    "knowledge_module": "单元二",
+                    "learning_objective": "目标",
+                    "retrieval_query": "理中丸",
+                    "required_question_count": 2,
+                },
+            ],
+        },
+        {"user_request": "出难度3的题", "exam_constraints": {}},
+    )
+
+    assert all(unit["target_difficulty"] == 3 for unit in normalized["units"])
+    assert all(unit["difficulty_is_hard_constraint"] for unit in normalized["units"])
+
+
+def test_blueprint_normalize_keeps_unit_level_difficulty_over_context() -> None:
+    normalized = PaperBlueprintAgent._normalize_blueprint(
+        {
+            "title": "难度卷",
+            "source_status": "practice_sample",
+            "scope_summary": "测试",
+            "units": [
+                {
+                    "knowledge_module": "单元一",
+                    "learning_objective": "目标",
+                    "retrieval_query": "四君子汤",
+                    "required_question_count": 2,
+                    "target_difficulty": 5,
+                    "difficulty_is_hard_constraint": True,
+                },
+            ],
+        },
+        {"user_request": "出难度3的题", "exam_constraints": {}},
+    )
+
+    unit = normalized["units"][0]
+    assert unit["target_difficulty"] == 5
+    assert unit["difficulty_is_hard_constraint"] is True
+
+
+def test_blueprint_normalize_rejects_invalid_difficulty_values() -> None:
+    normalized = PaperBlueprintAgent._normalize_blueprint(
+        {
+            "title": "难度卷",
+            "source_status": "practice_sample",
+            "scope_summary": "测试",
+            "units": [
+                {
+                    "knowledge_module": "单元一",
+                    "learning_objective": "目标",
+                    "retrieval_query": "四君子汤",
+                    "required_question_count": 2,
+                    "target_difficulty": "中等",
+                },
+            ],
+        },
+        {"user_request": "组一套卷", "exam_constraints": {}},
+    )
+
+    assert normalized["units"][0]["target_difficulty"] is None
+    assert normalized["units"][0]["difficulty_is_hard_constraint"] is False

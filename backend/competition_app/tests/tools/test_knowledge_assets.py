@@ -79,9 +79,24 @@ async def test_retrieval_tool_rejects_unresolved_topic() -> None:
 class RecordingQuestionRetriever:
     def __init__(self) -> None:
         self.arguments: tuple[str, list[str], int] | None = None
+        self.difficulty_arguments: dict[str, object] | None = None
 
-    async def search(self, query: str, kp_ids: list[str], limit: int):
+    async def search(
+        self,
+        query: str,
+        kp_ids: list[str],
+        limit: int,
+        *,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
+    ):
         self.arguments = (query, kp_ids, limit)
+        self.difficulty_arguments = {
+            "difficulty": difficulty,
+            "difficulty_min": difficulty_min,
+            "difficulty_max": difficulty_max,
+        }
         return {"query": query, "kp_ids": kp_ids, "limit": limit}
 
 

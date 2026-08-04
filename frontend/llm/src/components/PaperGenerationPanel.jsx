@@ -95,6 +95,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
     short_answer: 0,
     case_quiz: 0,
   });
+  const [difficultyFilter, setDifficultyFilter] = useState(null);
   const [paper, setPaper] = useState(null);
   const [answers, setAnswers] = useState({});
   const [submissionRequestId, setSubmissionRequestId] = useState('');
@@ -200,6 +201,7 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
         topic: boundPaper ? '打开今日任务绑定试卷' : topic.trim(),
         distribution: boundPaper ? {} : Object.fromEntries(types.map((key) => [key, distribution[key]])),
         taskItemId,
+        difficulty: boundPaper ? null : difficultyFilter,
       });
       if (response.error) {
         setError(response.error);
@@ -474,6 +476,14 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
           </label>)}
           </div>
         </fieldset>}
+        {!boundPaper && <fieldset>
+          <legend className="text-sm font-medium text-slate-700">难度要求 <span className="font-normal text-slate-400">（可选，仅使用真实难度标注）</span></legend>
+          <p className="mt-1 text-[15px] leading-5 text-slate-500">指定难度时优先选用该难度的正式题；不足时依次补入未标注难度的正式题、网络参考题，最后才生成补充题。系统会如实标注每题来源，不会把补充题伪装成指定难度。</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setDifficultyFilter(null)} disabled={loading} className={difficultyFilter === null ? 'rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700'}>不限</button>
+            {[1, 2, 3, 4, 5].map((level) => <button key={level} type="button" onClick={() => setDifficultyFilter(level)} disabled={loading} className={difficultyFilter === level ? 'rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700'}>难度 {level}</button>)}
+          </div>
+        </fieldset>}
         {!boundPaper && <button type="button" onClick={generate} disabled={loading || !canGenerate} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">
           {loading && <Loader2 size={16} className="animate-spin" />}{loading ? '正在组卷并审核…' : '生成试卷'}
         </button>}
@@ -526,6 +536,32 @@ export default function PaperGenerationPanel({ enabled, paperId = '', taskItemId
 
         {!paperSubmitted && timerPaused && <p role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm leading-6 text-amber-800">计时已暂停，答案保留在当前页面。继续作答时请恢复计时。</p>}
         {!paperSubmitted && timeExpired && <p role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm leading-6 text-amber-800">答题时间已结束，答案已锁定，请按当前答案交卷。</p>}
+
+        {paper?.difficulty_source_summary && (
+          <section className="border-b border-slate-200 bg-slate-50 px-5 py-4" aria-label="题目来源与难度说明">
+            <div className="mx-auto max-w-3xl space-y-2 text-sm leading-6 text-slate-700">
+              <p className="font-medium text-slate-900">题目来源与难度说明</p>
+              <ul className="list-inside list-disc space-y-1">
+                {Number(paper.difficulty_source_summary.exact_difficulty_count || 0) > 0 && (
+                  <li>符合指定难度（{paper.difficulty_source_summary.target_difficulty}星）的正式题：<strong>{paper.difficulty_source_summary.exact_difficulty_count}</strong> 题</li>
+                )}
+                {Number(paper.difficulty_source_summary.unlabeled_official_count || 0) > 0 && (
+                  <li>未标注难度的正式题（补充）：<strong>{paper.difficulty_source_summary.unlabeled_official_count}</strong> 题</li>
+                )}
+                {Number(paper.difficulty_source_summary.web_reference_count || 0) > 0 && (
+                  <li>网络参考题（补充）：<strong>{paper.difficulty_source_summary.web_reference_count}</strong> 题</li>
+                )}
+                {Number(paper.difficulty_source_summary.generated_count || 0) > 0 && (
+                  <li>系统生成补充题（无真实难度标注）：<strong>{paper.difficulty_source_summary.generated_count}</strong> 题</li>
+                )}
+                {Number(paper.difficulty_source_summary.unmet_count || 0) > 0 && (
+                  <li>未能满足的指定难度数量：<strong>{paper.difficulty_source_summary.unmet_count}</strong> 题</li>
+                )}
+              </ul>
+              {paper.difficulty_source_summary.notice && <p className="text-slate-500">{paper.difficulty_source_summary.notice}</p>}
+            </div>
+          </section>
+        )}
 
         <article className="mx-auto max-w-3xl px-5 py-8 sm:py-10">
           <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold">

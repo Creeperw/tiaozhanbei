@@ -93,6 +93,7 @@ class LearningGovernanceServiceTests(unittest.TestCase):
                 stem="四君子汤的君药是什么？",
                 kp_ids_json='["KP_FJ_001"]',
                 difficulty=2,
+                difficulty_source="curated_question_bank",
                 quality_score=0.85,
                 source="curated_question_bank",
                 status="active",
@@ -134,6 +135,17 @@ class LearningGovernanceServiceTests(unittest.TestCase):
         self.engine.dispose()
 
     def test_builds_explainable_insights_and_resource_report(self):
+        now = datetime.utcnow()
+        for index in range(4):
+            self.db.add(database.LearningQuestionAttempt(
+                attempt_id=f"ATTEMPT_Q0_{index}",
+                user_id=1,
+                question_id="QUESTION_0",
+                is_correct=index < 3,
+                response_time_seconds=90,
+                answered_at=now,
+            ))
+        self.db.commit()
         insights = build_learning_insights(self.db, 1, days=7)
         report = build_resource_match_report(
             self.db,
@@ -158,7 +170,7 @@ class LearningGovernanceServiceTests(unittest.TestCase):
         self.assertEqual(insights["mastery_heatmap"][0]["retention_source"], "dynamic_exponential")
         self.assertEqual(insights["mistake_distribution"][0]["error_type"], "配伍关系混淆")
         self.assertNotIn("不应进入七日窗口", [item["error_type"] for item in insights["mistake_distribution"]])
-        self.assertEqual(insights["data_quality"]["attempt_count"], 5)
+        self.assertEqual(insights["data_quality"]["attempt_count"], 9)
         self.assertGreater(insights["data_quality"]["sample_count"], 0)
         self.assertEqual(insights["overview"]["confidence_interpretation"], "data_coverage_score_not_statistical_confidence")
         self.assertTrue(insights["data_sources"])
@@ -166,7 +178,13 @@ class LearningGovernanceServiceTests(unittest.TestCase):
         card_match = next(item for item in report["matches"] if item["resource_id"] == "CARD_1")
         self.assertGreater(card_match["components"]["knowledge_fit"], 0)
         question_match = next(item for item in report["matches"] if item["resource_id"] == "QUESTION_0")
-        self.assertNotIn("difficulty_fit", question_match["components"])
+        self.assertIn("difficulty_fit", question_match["components"])
+        self.assertEqual(question_match["difficulty"], 2)
+        self.assertIsNotNone(question_match["components"]["difficulty_fit"])
+        self.assertEqual(
+            question_match["component_sources"]["difficulty_fit"],
+            "question_attempt:difficulty:2",
+        )
         self.assertEqual(question_match["estimated_minutes_basis"], "user_response_time_mean_30d")
         self.assertEqual(report["summary"]["coverage"], 1.0)
         self.assertTrue(report["data_sources"])
