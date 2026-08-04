@@ -407,7 +407,12 @@ describe('QualificationRoutePage', () => {
     fireEvent.click(await screen.findByRole('button', { name: '个性化路径' }));
 
     expect(await screen.findByTestId('personalized-path-empty')).toHaveTextContent('还没有当前考试的个性化路径');
-    expect(screen.queryByText('中医基础与文化语言')).not.toBeInTheDocument();
+    // The route panel flips to the empty state synchronously with the route
+    // state update, while the hero progress line updates in a follow-up effect.
+    // Wait for the stale progress title to be cleared before asserting.
+    await waitFor(() => {
+      expect(screen.queryByText('中医基础与文化语言')).not.toBeInTheDocument();
+    });
   });
 
   it('keeps a loading state visible while the personalized route is requested', async () => {
