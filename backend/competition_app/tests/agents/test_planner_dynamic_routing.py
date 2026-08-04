@@ -94,7 +94,7 @@ class CasualPlannerModel:
 class CurrentPageTextModel:
     def __init__(self, answers: list[str] | None = None) -> None:
         self.answers = list(answers or ["多智能体协同"])
-        self.text_payloads = []
+        self.json_payloads = []
         self.json_calls = 0
 
     async def complete_text(self, role, payload, on_delta=None):
@@ -103,7 +103,18 @@ class CurrentPageTextModel:
 
     async def complete_json(self, role, payload, on_delta=None):
         self.json_calls += 1
-        raise AssertionError("standalone current-page query must not enter JSON routing")
+        self.json_payloads.append(payload)
+        return {
+            "task_type": "casual_conversation",
+            "plan_scope": None,
+            "plan_action": None,
+            "query_kind": None,
+            "selected_agents": [],
+            "routing_reason": "模型根据页面上下文判断为只读页面问答。",
+            "risk_level": "low",
+            "requires_audit": False,
+            "casual_response": self.answers.pop(0),
+        }
 
 
 @pytest.mark.asyncio
@@ -130,19 +141,19 @@ async def test_standalone_current_page_query_uses_focused_natural_language_answe
     assert result.payload.task_type == "casual_conversation"
     assert result.payload.casual_response == "多智能体协同"
     assert result.payload.selected_agents == []
-    assert model.json_calls == 0
-    assert model.text_payloads[0]["prompt_skill_id"] == "planner.read_current_page"
+    assert model.json_calls == 1
+    assert model.json_payloads[0]["prompt_skill_id"] == "planner.route_request"
     assert (
-        model.text_payloads[0]["payload"]["shared_context"]["current_page"]
+        model.json_payloads[0]["payload"]["shared_context"]["current_page"]
         ["result"]["visible_text"]
         == "平台核心能力\n多智能体协同\n个性化学习"
     )
 
 
 @pytest.mark.asyncio
-async def test_current_page_answer_retries_generic_page_access_denial() -> None:
+async def test_current_page_answer_uses_one_semantic_planner_call() -> None:
     model = CurrentPageTextModel(
-        ["抱歉，我无法直接读取您的页面内容。", "当前选中项是学习工作台。"]
+        ["当前选中项是学习工作台。"]
     )
     context = {
         "case_id": "C_PAGE_RETRY",
@@ -162,52 +173,52 @@ async def test_current_page_answer_retries_generic_page_access_denial() -> None:
     result = await PlannerAgent(model).run(context)
 
     assert result.payload.casual_response == "当前选中项是学习工作台。"
-    assert len(model.text_payloads) == 2
-    assert "correction" in model.text_payloads[1]["payload"]
+    assert model.json_calls == 1
 
 
-def test_page_content_used_for_business_action_stays_in_multi_agent_routing() -> None:
-    context = {
-        "user_request": "请结合当前页面内容制定短期学习计划",
-        "current_page_context": {"available": True, "visible_text": "学习进度"},
-    }
+def test_planner_has_no_keyword_current_page_pre_router() -> None:
+    assert not hasattr(PlannerAgent, "_is_standalone_current_page_query")
 
-    assert PlannerAgent._is_standalone_current_page_query(context) is False
+
+def test_memory_extraction_runs_parallel_when_compression_is_not_required() -> None:
+    decision = PlannerDecision(
+        task_type="knowledge_explanation",
+        selected_agents=[
+            "memory_agent", "knowledge_base_agent", "expert_agent", "audit_agent"
+        ],
+        routing_reason="模型语义判定为知识讲解。",
+        requires_audit=True,
+    )
+
+    parallel = PlannerAgent.build_plan(decision, memory_required=False)
+    compressed = PlannerAgent.build_plan(decision, memory_required=True)
+
+    assert parallel.topological_levels()[0] == ["memory", "knowledge"]
+    parallel_expert = next(step for step in parallel.steps if step.step_id == "expert")
+    compressed_expert = next(step for step in compressed.steps if step.step_id == "expert")
+    assert "memory" not in parallel_expert.depends_on
+    assert compressed.topological_levels()[0] == ["memory"]
+    assert compressed.topological_levels()[1] == ["knowledge"]
+    assert "memory" in compressed_expert.depends_on
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("user_request", "hint"),
-    [
-        ("你好，请制定长期规划", "long_term"),
-        ("你好，请制定短期计划", "short_term"),
-        ("谢谢，再安排今天任务", "daily_task"),
-        ("您好，讲解阴阳学说", None),
-        ("再见前帮我组一份试卷", None),
-        ("你好，帮我制定一个学习规划", None),
-        ("你好，给我生成学习卡", None),
-        ("谢谢，帮我安排一下学习", None),
-        ("再见前给我一些可以直接学习的资源", None),
-    ],
-)
-async def test_mixed_business_request_cannot_be_swallowed_as_casual(
-    user_request: str,
-    hint: str | None,
-) -> None:
-    with pytest.raises(ValueError, match="planner output validation failed"):
-        await PlannerAgent(CasualPlannerModel()).run(
-            {
-                "case_id": "C_MIXED",
-                "trace_id": "T_MIXED",
-                "request_id": "R_MIXED",
-                "execution_id": "E_MIXED",
-                "step_id": "planner",
-                "learner_id": "L_MIXED",
-                "user_request": user_request,
-                "plan_scope_hint": hint,
-                "messages": [{"role": "user", "content": user_request}],
-            }
-        )
+async def test_planner_does_not_keyword_override_model_semantic_route() -> None:
+    user_request = "您好，讲解阴阳学说"
+    result = await PlannerAgent(CasualPlannerModel()).run(
+        {
+            "case_id": "C_MIXED",
+            "trace_id": "T_MIXED",
+            "request_id": "R_MIXED",
+            "execution_id": "E_MIXED",
+            "step_id": "planner",
+            "learner_id": "L_MIXED",
+            "user_request": user_request,
+            "messages": [{"role": "user", "content": user_request}],
+        }
+    )
+
+    assert result.payload.task_type == "casual_conversation"
 
 
 class LongTermPlanWithoutKnowledgeModel:
@@ -235,12 +246,32 @@ class PlanWithoutScopeModel:
 
 class GenericPlanIncorrectlyDefaultsToLongTermModel:
     async def complete_json(self, role, payload, on_delta=None):
+        explicit_scope = payload["payload"].get("plan_scope")
+        if explicit_scope in {"long_term", "short_term", "daily_task"}:
+            return {
+                "task_type": "learning_plan",
+                "plan_scope": explicit_scope,
+                "plan_action": "create_or_update",
+                "selected_agents": [
+                    "diagnosis_agent",
+                    *(["audit_agent"] if explicit_scope != "daily_task" else []),
+                    "learning_plan_service",
+                ],
+                "routing_reason": "模型根据显式层级决定重新评估该层规划。",
+                "risk_level": "medium",
+                "requires_audit": explicit_scope != "daily_task",
+            }
         return {
             "task_type": "learning_plan",
-            "plan_scope": "long_term",
-            "plan_action": "create_or_update",
-            "selected_agents": ["diagnosis_agent", "audit_agent", "learning_plan_service"],
-            "routing_reason": "模型错误地把泛化请求理解成重新制定长期规划。",
+            "plan_scope": "unspecified",
+            "plan_action": "clarify",
+            "requires_clarification": True,
+            "clarification_question": (
+                "你当前已经有有效的长期规划、短期计划。"
+                "这次希望制定或调整哪一层：长期规划、短期计划，还是当日任务？"
+            ),
+            "selected_agents": ["learning_plan_service"],
+            "routing_reason": "模型结合已有计划判断需要先确认目标层级。",
             "risk_level": "medium",
             "requires_audit": True,
         }
@@ -283,9 +314,23 @@ class DailyTaskSemanticPlannerModel:
 
 class LearnerDataPlannerModel:
     async def complete_json(self, role, payload, on_delta=None):
+        request = str(payload["payload"].get("user_request") or "")
+        query_kind = (
+            "next_learning"
+            if any(marker in request for marker in ("需要学习", "接下来", "下一步"))
+            else "progress_summary"
+            if "多少题" in request
+            else "mastery_status"
+            if "掌握" in request
+            else "review_status"
+            if "复习" in request
+            else "plan_progress"
+            if any(marker in request for marker in ("计划", "规划"))
+            else "recent_learning"
+        )
         return {
             "task_type": "learner_data_query",
-            "query_kind": "recent_learning",
+            "query_kind": query_kind,
             "selected_agents": ["diagnosis_agent"],
             "routing_reason": "用户只询问本人近期完成的学习内容。",
             "risk_level": "low",

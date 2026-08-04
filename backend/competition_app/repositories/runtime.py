@@ -13,6 +13,8 @@ from sqlalchemy import Engine, text
 from competition_app.services.conversation_history import (
     sanitize_conversation_messages,
 )
+from competition_app.contracts.exam_scope import LEGACY_EXAM_SCOPE
+from competition_app.exam_scope import current_exam_scope
 
 
 def _json_default(value: Any) -> Any:
@@ -225,6 +227,7 @@ class InMemoryConversationRepository:
         self._lock = RLock()
 
     def create_session(self, session_id: str, learner_id: str, title: str) -> None:
+        scope = current_exam_scope(learner_id)
         with self._lock:
             existing = self.sessions.get(session_id)
             if existing is not None and existing["learner_id"] != learner_id:
@@ -233,6 +236,7 @@ class InMemoryConversationRepository:
                 session_id,
                 {
                     "learner_id": learner_id,
+                    "exam_track_id": scope,
                     "title": title,
                     "messages": {},
                     "created_at": datetime.utcnow().isoformat(),
@@ -240,6 +244,7 @@ class InMemoryConversationRepository:
             )
 
     def list_sessions(self, learner_id: str) -> list[dict[str, Any]]:
+        scope = current_exam_scope(learner_id)
         with self._lock:
             rows = [
                 {
@@ -249,13 +254,19 @@ class InMemoryConversationRepository:
                 }
                 for session_id, session in self.sessions.items()
                 if session["learner_id"] == learner_id
+                and session.get("exam_track_id", LEGACY_EXAM_SCOPE) == scope
             ]
         return list(reversed(rows))
 
     def get_messages(self, session_id: str, learner_id: str) -> list[dict[str, Any]]:
+        scope = current_exam_scope(learner_id)
         with self._lock:
             session = self.sessions.get(session_id)
-            if session is None or session["learner_id"] != learner_id:
+            if (
+                session is None
+                or session["learner_id"] != learner_id
+                or session.get("exam_track_id", LEGACY_EXAM_SCOPE) != scope
+            ):
                 return []
             messages = [
                 {"message_id": message_id, **_copy_json(message)}
@@ -264,17 +275,27 @@ class InMemoryConversationRepository:
             return sanitize_conversation_messages(messages)
 
     def rename_session(self, session_id: str, learner_id: str, title: str) -> bool:
+        scope = current_exam_scope(learner_id)
         with self._lock:
             session = self.sessions.get(session_id)
-            if session is None or session["learner_id"] != learner_id:
+            if (
+                session is None
+                or session["learner_id"] != learner_id
+                or session.get("exam_track_id", LEGACY_EXAM_SCOPE) != scope
+            ):
                 return False
             session["title"] = title
             return True
 
     def delete_session(self, session_id: str, learner_id: str) -> bool:
+        scope = current_exam_scope(learner_id)
         with self._lock:
             session = self.sessions.get(session_id)
-            if session is None or session["learner_id"] != learner_id:
+            if (
+                session is None
+                or session["learner_id"] != learner_id
+                or session.get("exam_track_id", LEGACY_EXAM_SCOPE) != scope
+            ):
                 return False
             del self.sessions[session_id]
             return True
@@ -285,17 +306,22 @@ class InMemoryConversationRepository:
         learner_id: str,
         messages: list[dict[str, Any]],
     ) -> None:
+        scope = current_exam_scope(learner_id)
         with self._lock:
             session = self.sessions.setdefault(
                 session_id,
                 {
                     "learner_id": learner_id,
+                    "exam_track_id": scope,
                     "title": "新对话",
                     "messages": {},
                     "created_at": datetime.utcnow().isoformat(),
                 },
             )
-            if session["learner_id"] != learner_id:
+            if (
+                session["learner_id"] != learner_id
+                or session.get("exam_track_id", LEGACY_EXAM_SCOPE) != scope
+            ):
                 raise ValueError("conversation session belongs to another learner")
             for index, message in enumerate(sanitize_conversation_messages(messages)):
                 message_id = _message_id(session_id, index, message)
@@ -307,44 +333,48 @@ class SqlConversationRepository:
         self.engine = engine
 
     def create_session(self, session_id: str, learner_id: str, title: str) -> None:
+        scope = current_exam_scope(learner_id)
         with self.engine.begin() as connection:
-            owner = connection.execute(
-                text("SELECT learner_id FROM conversation_sessions WHERE session_id=:session_id"),
-                {"session_id": session_id},
-            ).scalar_one_or_none()
+            owner = self._session_owner(connection, session_id, scope)
             if owner is not None:
-                if owner != learner_id:
+                if owner["learner_id"] != learner_id or not self._scope_matches(
+                    owner.get("exam_track_id"), scope
+                ):
                     raise ValueError("conversation session belongs to another learner")
                 return
-            connection.execute(
-                text(
-                    "INSERT INTO conversation_sessions (session_id, learner_id, title) "
-                    "VALUES (:session_id, :learner_id, :title)"
-                ),
-                {"session_id": session_id, "learner_id": learner_id, "title": title},
-            )
+            self._insert_session(connection, session_id, learner_id, title, scope)
 
     def list_sessions(self, learner_id: str) -> list[dict[str, Any]]:
+        scope = current_exam_scope(learner_id)
         with self.engine.connect() as connection:
-            rows = connection.execute(
-                text(
+            if scope == LEGACY_EXAM_SCOPE:
+                query = (
                     "SELECT session_id, title, created_at FROM conversation_sessions "
                     "WHERE learner_id=:learner_id ORDER BY created_at DESC"
-                ),
-                {"learner_id": learner_id},
-            ).mappings().all()
+                )
+                params = {"learner_id": learner_id}
+            else:
+                query = (
+                    "SELECT session_id, title, created_at FROM conversation_sessions "
+                    "WHERE learner_id=:learner_id AND exam_track_id=:exam_track_id "
+                    "ORDER BY created_at DESC"
+                )
+                params = {"learner_id": learner_id, "exam_track_id": scope}
+            rows = connection.execute(text(query), params).mappings().all()
         return [
             {"id": row["session_id"], "title": row["title"] or "新对话", "created_at": row["created_at"]}
             for row in rows
         ]
 
     def get_messages(self, session_id: str, learner_id: str) -> list[dict[str, Any]]:
+        scope = current_exam_scope(learner_id)
         with self.engine.connect() as connection:
-            owner = connection.execute(
-                text("SELECT learner_id FROM conversation_sessions WHERE session_id=:session_id"),
-                {"session_id": session_id},
-            ).scalar_one_or_none()
-            if owner != learner_id:
+            owner = self._session_owner(connection, session_id, scope)
+            if (
+                owner is None
+                or owner["learner_id"] != learner_id
+                or not self._scope_matches(owner.get("exam_track_id"), scope)
+            ):
                 return []
             rows = connection.execute(
                 text(
@@ -379,26 +409,38 @@ class SqlConversationRepository:
         return sanitize_conversation_messages(messages)
 
     def rename_session(self, session_id: str, learner_id: str, title: str) -> bool:
+        scope = current_exam_scope(learner_id)
         with self.engine.begin() as connection:
-            result = connection.execute(
-                text(
+            if scope == LEGACY_EXAM_SCOPE:
+                query = (
                     "UPDATE conversation_sessions SET title=:title "
                     "WHERE session_id=:session_id AND learner_id=:learner_id"
-                ),
-                {"session_id": session_id, "learner_id": learner_id, "title": title},
-            )
+                )
+                params = {"session_id": session_id, "learner_id": learner_id, "title": title}
+            else:
+                query = (
+                    "UPDATE conversation_sessions SET title=:title "
+                    "WHERE session_id=:session_id AND learner_id=:learner_id "
+                    "AND exam_track_id=:exam_track_id"
+                )
+                params = {
+                    "session_id": session_id,
+                    "learner_id": learner_id,
+                    "title": title,
+                    "exam_track_id": scope,
+                }
+            result = connection.execute(text(query), params)
         return bool(result.rowcount)
 
     def delete_session(self, session_id: str, learner_id: str) -> bool:
+        scope = current_exam_scope(learner_id)
         with self.engine.begin() as connection:
-            owner = connection.execute(
-                text(
-                    "SELECT learner_id FROM conversation_sessions "
-                    "WHERE session_id=:session_id"
-                ),
-                {"session_id": session_id},
-            ).scalar_one_or_none()
-            if owner != learner_id:
+            owner = self._session_owner(connection, session_id, scope)
+            if (
+                owner is None
+                or owner["learner_id"] != learner_id
+                or not self._scope_matches(owner.get("exam_track_id"), scope)
+            ):
                 return False
             connection.execute(
                 text("DELETE FROM conversation_messages WHERE session_id=:session_id"),
@@ -416,24 +458,33 @@ class SqlConversationRepository:
         learner_id: str,
         messages: list[dict[str, Any]],
     ) -> None:
+        scope = current_exam_scope(learner_id)
         with self.engine.begin() as connection:
-            owner = connection.execute(
-                text(
-                    "SELECT learner_id FROM conversation_sessions "
-                    "WHERE session_id=:session_id"
-                ),
-                {"session_id": session_id},
-            ).scalar_one_or_none()
+            owner = self._session_owner(connection, session_id, scope)
             if owner is None:
-                connection.execute(
-                    text(
-                        "INSERT INTO conversation_sessions (session_id, learner_id, title) "
-                        "VALUES (:session_id, :learner_id, :title)"
-                    ),
-                    {"session_id": session_id, "learner_id": learner_id, "title": "新对话"},
-                )
-            elif owner != learner_id:
+                self._insert_session(connection, session_id, learner_id, "新对话", scope)
+            elif owner["learner_id"] != learner_id:
                 raise ValueError("conversation session belongs to another learner")
+            elif not self._scope_matches(owner.get("exam_track_id"), scope):
+                # A session may have been created before the learner's exam
+                # workspace was resolved (legacy rows have exam_track_id NULL).
+                # Once the workflow resolves the real exam scope, adopt it for
+                # this same-learner session instead of rejecting the write, so
+                # planning runs can persist their outcome.
+                if owner.get("exam_track_id") is None and scope != LEGACY_EXAM_SCOPE:
+                    connection.execute(
+                        text(
+                            "UPDATE conversation_sessions SET exam_track_id=:scope "
+                            "WHERE session_id=:session_id AND learner_id=:learner_id"
+                        ),
+                        {
+                            "scope": scope,
+                            "session_id": session_id,
+                            "learner_id": learner_id,
+                        },
+                    )
+                else:
+                    raise ValueError("conversation session belongs to another learner")
             next_sequence = int(connection.execute(
                 text(
                     "SELECT COUNT(*) FROM conversation_messages "
@@ -475,6 +526,56 @@ class SqlConversationRepository:
                     },
                 )
                 next_sequence += 1
+
+    @staticmethod
+    def _scope_matches(stored_scope: str | None, requested_scope: str) -> bool:
+        if requested_scope == LEGACY_EXAM_SCOPE:
+            return True
+        return str(stored_scope or "") == requested_scope
+
+    @staticmethod
+    def _session_owner(connection, session_id: str, scope: str):
+        if scope == LEGACY_EXAM_SCOPE:
+            owner = connection.execute(
+                text(
+                    "SELECT learner_id FROM conversation_sessions "
+                    "WHERE session_id=:session_id"
+                ),
+                {"session_id": session_id},
+            ).mappings().first()
+            return ({**owner, "exam_track_id": None} if owner is not None else None)
+        return connection.execute(
+            text(
+                "SELECT learner_id, exam_track_id FROM conversation_sessions "
+                "WHERE session_id=:session_id"
+            ),
+            {"session_id": session_id},
+        ).mappings().first()
+
+    @staticmethod
+    def _insert_session(connection, session_id: str, learner_id: str, title: str, scope: str) -> None:
+        if scope == LEGACY_EXAM_SCOPE:
+            connection.execute(
+                text(
+                    "INSERT INTO conversation_sessions (session_id, learner_id, title) "
+                    "VALUES (:session_id, :learner_id, :title)"
+                ),
+                {"session_id": session_id, "learner_id": learner_id, "title": title},
+            )
+            return
+        connection.execute(
+            text(
+                "INSERT INTO conversation_sessions "
+                "(session_id, learner_id, title, exam_track_id) "
+                "VALUES (:session_id, :learner_id, :title, :exam_track_id)"
+            ),
+            {
+                "session_id": session_id,
+                "learner_id": learner_id,
+                "title": title,
+                "exam_track_id": scope,
+            },
+        )
 
 
 def _message_id(session_id: str, index: int, message: dict[str, Any]) -> str:

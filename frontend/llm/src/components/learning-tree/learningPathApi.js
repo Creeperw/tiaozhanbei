@@ -25,17 +25,26 @@ function currentPlanMatchesTarget(context, target) {
   const route = context?.long_term_plan?.planning_route;
   if (!route || !target) return true;
 
-  const plannedGoal = normalizeGoalName(route.goal_name);
-  const selectedGoal = normalizeGoalName(target.official_name || target.name);
-  if (plannedGoal && selectedGoal && plannedGoal !== selectedGoal) return false;
-
+  // 教材路线 ID（如 textbook_tcm_physician）是系统生成的权威标识，前后端
+  // 处于同一 ID 空间。两侧都有 ID 时，由 ID 直接决定，不做任何文本猜测——
+  // 文本子串匹配可能因 goal_name 写法差异（任务前缀、别名、措辞不同）推翻
+  // ID 的权威结论，把已发布的路径误判为“没有个性化路径”。
   const plannedTextbookRoute = String(route.textbook_route?.route?.route_id || '');
   const selectedTextbookRoute = String(target.textbook_route_id || '');
-  if (
-    plannedTextbookRoute
-    && selectedTextbookRoute
-    && plannedTextbookRoute !== selectedTextbookRoute
-  ) return false;
+  if (plannedTextbookRoute && selectedTextbookRoute) {
+    return plannedTextbookRoute === selectedTextbookRoute;
+  }
+
+  // 仅当一侧缺失 ID（如 provisional 计划或旧数据）时，才退化到目标名宽松
+  // 兜底：双向包含 + 归一化。方向是“尽量匹配”，宁可多展示（用户可再制定）
+  // 也不误藏已发布路径。
+  const plannedGoal = normalizeGoalName(route.goal_name);
+  const selectedGoal = normalizeGoalName(target.official_name || target.name);
+  if (plannedGoal && selectedGoal) {
+    return plannedGoal === selectedGoal
+      || plannedGoal.includes(selectedGoal)
+      || selectedGoal.includes(plannedGoal);
+  }
 
   return true;
 }

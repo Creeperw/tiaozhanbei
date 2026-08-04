@@ -398,6 +398,7 @@ def test_registration_survey_becomes_agent_ready_profile_context():
             "daily_available_minutes": 45,
             "preferred_time_slot": "晚间",
             "resource_preference": ["知识卡片", "分阶测试题"],
+            "custom_requirements": "希望侧重方剂背诵，每天只学 30 分钟",
         },
         "l0_baseline": {
             "stage_id": "L0",
@@ -415,6 +416,8 @@ def test_registration_survey_becomes_agent_ready_profile_context():
     assert profile["learning_background"] == "零基础；非医学专业"
     assert profile["daily_available_minutes"] == 45
     assert profile["user_major_or_profession"] == "非医学专业"
+    assert profile["custom_requirements"] == "希望侧重方剂背诵，每天只学 30 分钟"
+    assert profile["user_preference"]["custom_requirements"] == "希望侧重方剂背诵，每天只学 30 分钟"
     assert profile["goals"] == {
         "goal_type": "credential",
         "goal_name": "中医执业医师",

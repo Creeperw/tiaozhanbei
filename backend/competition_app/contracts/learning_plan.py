@@ -296,6 +296,12 @@ class PlanChangeDecision(ContractModel):
     reason: str = Field(min_length=1)
     replan_requested: bool = False
     changed_facts: list[str] = Field(default_factory=list)
+    decision_mode: Literal[
+        "reuse_fast_path",
+        "bounded_update_fast_path",
+        "full_replan",
+        "clarify",
+    ] = "full_replan"
 
 
 class LearningPlanClarificationResult(ContractModel):

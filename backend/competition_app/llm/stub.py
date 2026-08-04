@@ -396,6 +396,25 @@ class StubChatModel:
                 keyword in request_text
                 for keyword in ("讲一讲", "讲讲", "解释", "介绍", "是什么", "为什么", "原理", "区别")
             ) and not requests_resource and not requests_paper
+            external_information_request = any(
+                keyword in request_text
+                for keyword in (
+                    "天气", "气温", "考试日期", "考试时间", "报名时间",
+                    "截止日期", "最新消息", "现在几点", "今天几号", "距离下次",
+                )
+            )
+            question_explanation_request = any(
+                keyword in request_text
+                for keyword in ("这题", "这道题", "怎么答", "不会", "看不懂")
+            )
+            emotional_support_request = any(
+                keyword in request_text
+                for keyword in ("焦虑", "紧张", "害怕", "压力大", "没信心")
+            )
+            requests_explanation = bool(
+                (requests_explanation or question_explanation_request)
+                and not external_information_request
+            )
             casual_request = PlannerLikeCasualBoundary.matches(request_text)
             # Stub mode is an offline fixture, so it cannot perform the live
             # Planner's semantic inference.  Still preserve the production
@@ -404,11 +423,65 @@ class StubChatModel:
             # layer.  Keep this boundary inside the stub rather than making it
             # an application router; live mode remains model-led.
             normalized_request = "".join(request_text.split())
+            recent_turns = (
+                business_payload.get("conversation_context", {}).get("recent_turns", [])
+                if isinstance(business_payload.get("conversation_context"), dict)
+                else []
+            )
+            recent_text = "".join(
+                str(item.get("content") or "")
+                for item in recent_turns
+                if isinstance(item, dict)
+            )
+            continued_scope = (
+                "daily_task"
+                if any(marker in recent_text for marker in ("当日任务", "今日任务"))
+                else "short_term"
+                if any(marker in recent_text for marker in ("短期计划", "本周学习计划"))
+                else "long_term"
+                if any(marker in recent_text for marker in ("长期计划", "长期规划"))
+                else None
+            )
+            semantic_continuation = bool(
+                continued_scope
+                and any(
+                    marker in normalized_request
+                    for marker in ("不对", "改成", "更正", "补充", "我想", "我要")
+                )
+            )
+            daily_task_request = (
+                any(marker in normalized_request for marker in ("今日", "当日", "今天", "今晚"))
+                and any(marker in normalized_request for marker in ("任务", "学习", "安排"))
+            )
             requests_existing_plan = (
                 any(layer in normalized_request for layer in ("长期计划", "长期学习计划", "长期规划", "短期计划", "短期学习计划", "短期规划"))
                 and any(intent in normalized_request for intent in ("看看", "查看", "看下", "是什么", "什么样", "内容", "进展", "进度"))
                 and not any(intent in normalized_request for intent in ("制定", "生成", "安排", "修改", "调整", "重新", "更新"))
             )
+            learner_query_kind = None
+            if requests_existing_plan:
+                learner_query_kind = "plan_progress"
+            elif not any(
+                intent in normalized_request
+                for intent in (
+                    "制定", "生成", "安排", "修改", "调整", "重新", "更新",
+                    "讲解", "解释", "组卷", "试卷", "学习卡", "复习卡",
+                )
+            ):
+                if any(marker in normalized_request for marker in ("接下来", "下一步", "最近需要", "近期需要")):
+                    learner_query_kind = "next_learning"
+                elif any(marker in normalized_request for marker in ("做了多少题", "学习进度", "完成情况")):
+                    learner_query_kind = "progress_summary"
+                elif any(marker in normalized_request for marker in ("没掌握", "薄弱点", "掌握情况")):
+                    learner_query_kind = "mastery_status"
+                elif any(marker in normalized_request for marker in ("复习到期", "到期复习", "复习状态")):
+                    learner_query_kind = "review_status"
+                elif any(marker in normalized_request for marker in ("计划进展", "规划进展", "计划进度")):
+                    learner_query_kind = "plan_progress"
+                elif any(marker in normalized_request for marker in ("学习状态", "学习情况", "学情")):
+                    learner_query_kind = "progress_summary"
+                elif any(marker in normalized_request for marker in ("最近学", "近期学", "学了些什么")):
+                    learner_query_kind = "recent_learning"
             is_plan = not requests_resource and (
                 plan_scope in {"long_term", "short_term", "daily_task", "unspecified"}
                 or plan_scope_hint in {"long_term", "short_term", "daily_task", "unspecified"}
@@ -421,11 +494,22 @@ class StubChatModel:
                     "今晚学习什么", "今天学什么",
                 )
                 )
+                or daily_task_request
+                or semantic_continuation
             )
-            status_only = any(
-                keyword in request_text for keyword in ("学习状态", "状态如何", "学情")
-            ) and not any(
-                keyword in request_text for keyword in ("制定", "调整", "修改", "计划", "规划")
+            status_only = learner_query_kind is not None
+            plan_needs_knowledge = bool(
+                is_plan
+                and any(
+                    marker in request_text
+                    for marker in (
+                        "四君子汤",
+                        "理中丸",
+                        "感冒",
+                        "教材",
+                        "知识点",
+                    )
+                )
             )
             existing_state = business_payload.get("existing_plan_state") or {}
             effective_scope = plan_scope or plan_scope_hint
@@ -437,15 +521,16 @@ class StubChatModel:
             if not effective_scope and is_plan:
                 if routing_correction and plan_scope_hint == "daily_task":
                     effective_scope = "daily_task"
-                elif any(
-                    phrase in request_text
-                    for phrase in ("我今天有哪些学习任务", "我今天要学习什么", "今天安排什么", "今晚学习什么", "今天学什么")
-                ):
-                    effective_scope = "daily_task"
-                elif existing_state.get("has_short_term_plan"):
-                    effective_scope = "short_term"
-                elif existing_state.get("has_long_term_plan"):
+                elif "长期" in request_text:
                     effective_scope = "long_term"
+                elif any(marker in request_text for marker in ("短期", "本周", "下周", "未来一周", "未来两周")):
+                    effective_scope = "short_term"
+                elif daily_task_request:
+                    effective_scope = "daily_task"
+                elif semantic_continuation:
+                    effective_scope = continued_scope
+                elif any(existing_state.values()):
+                    effective_scope = "unspecified"
             has_existing_scope = bool(
                 effective_scope
                 and existing_state.get({
@@ -476,7 +561,7 @@ class StubChatModel:
                 else "reuse"
                 if is_plan and has_existing_scope
                 else "clarify"
-                if is_plan and (plan_scope or plan_scope_hint) == "unspecified"
+                if is_plan and effective_scope == "unspecified"
                 else "create_or_update"
                 if is_plan
                 else None
@@ -484,12 +569,33 @@ class StubChatModel:
             emitted_scope = effective_scope or plan_scope or plan_scope_hint
             if is_plan and emitted_scope is None:
                 emitted_scope = "unspecified"
+            existing_labels = "、".join(
+                label
+                for key, label in (
+                    ("has_long_term_plan", "长期规划"),
+                    ("has_short_term_plan", "短期计划"),
+                    ("has_daily_task", "当日任务"),
+                )
+                if existing_state.get(key)
+            )
+            clarification_question = (
+                (
+                    f"你当前已经有有效的{existing_labels}。"
+                    "这次希望制定或调整哪一层：长期规划、短期计划，还是当日任务？"
+                )
+                if plan_action == "clarify" and existing_labels
+                else "你这次希望先制定长期规划、短期计划，还是安排当日任务？"
+                if plan_action == "clarify"
+                else None
+            )
             return self._emit({
                 "task_type": (
                     "casual_conversation"
-                    if casual_request
+                    if casual_request or emotional_support_request
                     else "learner_data_query"
-                    if requests_existing_plan
+                    if learner_query_kind is not None
+                    else "general_learning_support"
+                    if external_information_request
                     else "paper_generation"
                     if requests_paper
                     else "knowledge_explanation" if requests_explanation
@@ -497,9 +603,16 @@ class StubChatModel:
                 ),
                 "selected_agents": (
                     []
-                    if casual_request
+                    if casual_request or emotional_support_request
                     else ["memory_agent", "diagnosis_agent"]
-                    if requests_existing_plan
+                    if learner_query_kind is not None
+                    else [
+                        "memory_agent",
+                        "knowledge_base_agent",
+                        "expert_agent",
+                        "audit_agent",
+                    ]
+                    if external_information_request
                     else [
                         "memory_agent",
                         "knowledge_base_agent",
@@ -516,7 +629,11 @@ class StubChatModel:
                     if requests_explanation
                     else [
                         "memory_agent",
-                        *([] if status_only else ["knowledge_base_agent"]),
+                        *(
+                            ["knowledge_base_agent"]
+                            if plan_needs_knowledge
+                            else []
+                        ),
                         "diagnosis_agent",
                         "learning_plan_service",
                     ]
@@ -531,9 +648,11 @@ class StubChatModel:
                         "audit_agent",
                     ]
                 ),
-                "plan_scope": None if requests_existing_plan else emitted_scope,
-                "plan_action": None if requests_existing_plan else plan_action,
-                "query_kind": "plan_progress" if requests_existing_plan else None,
+                "plan_scope": None if learner_query_kind is not None else emitted_scope,
+                "plan_action": None if learner_query_kind is not None else plan_action,
+                "query_kind": learner_query_kind,
+                "requires_clarification": plan_action == "clarify",
+                "clarification_question": clarification_question,
                 "casual_response": (
                     (
                         "我能理解你明天要考试时的焦虑，紧张并不代表你准备得不好。现在先不要试图把所有内容重学一遍："
@@ -542,12 +661,14 @@ class StubChatModel:
                         if "焦虑" in request_text or "紧张" in request_text
                         else "你好！我是时珍智训智能助教。你想先聊聊当前学习情况，还是直接开始一项学习任务？"
                     )
-                    if casual_request or "焦虑" in request_text or "紧张" in request_text
+                    if casual_request or emotional_support_request
                     else None
                 ),
                 "routing_reason": (
                     "用户本轮是在进行日常交流，不需要启动学习业务流程。"
-                    if casual_request
+                    if casual_request or emotional_support_request
+                    else "用户查询外部当前事实，需要检索时效来源后自然语言回答。"
+                    if external_information_request
                     else "用户要求生成试卷蓝图，需要知识检索、专家蓝图生成和审核。"
                     if requests_paper
                     else "用户要求知识讲解，需要教材检索、专家讲解和审核，不生成学习规划。"
@@ -561,7 +682,19 @@ class StubChatModel:
                     else "用户同时需要学习计划和可直接学习的资源，需要完成计划落地、专家生成和审核。"
                 ),
                 "risk_level": "low",
-                "requires_audit": not casual_request,
+                "requires_audit": not (
+                    casual_request or emotional_support_request
+                ),
+                "requires_learning_plan_output": bool(
+                    requests_resource
+                    and any(
+                        marker in request_text
+                        for marker in ("制定计划", "学习计划", "复习计划", "规划")
+                    )
+                ),
+                "external_information_request": external_information_request,
+                "question_explanation_request": question_explanation_request,
+                "emotional_support_request": emotional_support_request,
                 "fallback_policy": "fail_closed",
             }, on_delta)
         if role == "knowledge_base_agent":
@@ -841,12 +974,25 @@ class StubChatModel:
                     if weekly_text
                     else "每周最低学习投入和缓冲时间待用户确认。"
                 )
+                prerequisite_planning = ""
+                prerequisite_names = "、".join(
+                    str(rule.get("course") or "")
+                    for rule in (textbook_route.get("prerequisites") or [])
+                    if str(rule.get("course") or "").strip()
+                )
+                if prerequisite_names:
+                    prerequisite_planning = (
+                        f"\n## 前置训练安排\n在进入对应后续阶段前，"
+                        f"先安排{prerequisite_names}基础训练，为期30天，"
+                        "使用配套练习，以完成基础辨析为验收标准。\n"
+                    )
                 generated_long = (
                     f"## 目标契约\n最终目标是系统掌握{topic}；{deadline_text}\n"
                     "## 能力图谱摘要\n围绕基础识记、理解辨析和应用反馈逐步推进。\n"
                     "## 长期阶段路径\n| 阶段 | 具体教材 | 阶段目标 | 验收证据 | 晋级条件 | 个性化状态 |\n"
                     "|---|---|---|---|---|---|\n"
                     + "\n".join(phase_rows)
+                    + prerequisite_planning
                     + "\n## 长期维护与恢复\n中断时保留一次短时主动回忆，复盘后回到当前阶段。\n"
                     f"## 资源预算\n{budget_text}\n"
                     "## 长期重规划触发器\n目标、期限、路线教材或稳定能力证据持续变化时调整。"
@@ -1180,6 +1326,7 @@ class StubChatModel:
                         "【核心概念】依据教材证据说明其定义、范围和主要表现。"
                         "【关键机制或辨析】结合教材梳理病因病机、证候关系及容易混淆的边界。"
                         "【学习者易错点】不要把教学知识直接用于自我诊断，也不要混淆相近概念。"
+                        "【思考问题】请先用自己的话概括核心概念，并说明它与相近概念的主要区别。"
                         "【小结】先记核心定义，再理解机制和辨析要点。"
                     ),
                     "uncertainty": [],

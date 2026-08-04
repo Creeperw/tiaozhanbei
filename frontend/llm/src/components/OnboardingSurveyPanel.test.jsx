@@ -105,6 +105,9 @@ describe('OnboardingSurveyPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
     expect(screen.getByRole('heading', { name: '你更喜欢哪一种学习资源？' })).toBeInTheDocument();
     choose('知识卡片');
+    continueStep();
+    expect(screen.getByRole('heading', { name: '你还有什么特别的学习需求或偏好？' })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '希望侧重方剂背诵，每天只学 30 分钟' } });
     fireEvent.click(screen.getByRole('button', { name: '完成并进入学习' }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
@@ -127,6 +130,7 @@ describe('OnboardingSurveyPanel', () => {
       },
       target_type: 'certification',
       exam_track_id: target.exam_track_id,
+      custom_requirements: '希望侧重方剂背诵，每天只学 30 分钟',
     });
   });
 
@@ -151,8 +155,9 @@ describe('OnboardingSurveyPanel', () => {
     await completeRequiredSteps();
     fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
     fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ user: completionUser }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ user: completionUser }, ''));
     expect(requests.some(({ url }) => url.endsWith('/api/v1/auth/onboarding/complete'))).toBe(true);
   });
 
@@ -179,6 +184,39 @@ describe('OnboardingSurveyPanel', () => {
     expect(await screen.findByRole('radio', { name: new RegExp(target.official_name) })).toHaveAttribute('aria-checked', 'true');
     continueStep();
     expect(screen.getByRole('radio', { name: /非医学专业/ })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('restores and saves free-text custom requirements', async () => {
+    const requests = installRequests({
+      savedSurvey: {
+        learner_group: 'academic',
+        custom_requirements: '希望侧重方剂背诵',
+      },
+    });
+    const onSaved = vi.fn();
+    render(<OnboardingSurveyPanel lockedTarget={target} onSaved={onSaved} />);
+
+    await screen.findByRole('radio', { name: /学历教育群体/ });
+    choose('学历教育群体');
+    continueStep();
+    choose('非医学专业');
+    continueStep();
+    choose('零基础');
+    continueStep();
+    choose('30–60 分钟');
+    continueStep();
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+
+    expect(screen.getByRole('heading', { name: '你还有什么特别的学习需求或偏好？' })).toBeInTheDocument();
+    const input = screen.getByRole('textbox');
+    expect(input.value).toBe('希望侧重方剂背诵');
+    fireEvent.change(input, { target: { value: '希望侧重方剂背诵，每天只学 30 分钟' } });
+    fireEvent.click(screen.getByRole('button', { name: '完成并进入学习' }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    const surveyRequest = requests.find(({ url }) => url.endsWith('/training/onboarding/survey'));
+    expect(JSON.parse(surveyRequest.options.body).custom_requirements).toBe('希望侧重方剂背诵，每天只学 30 分钟');
   });
 
   it('uses a page-specific exit label when embedded as an editable survey', async () => {
@@ -211,6 +249,7 @@ describe('OnboardingSurveyPanel', () => {
     continueStep();
     choose('30–60 分钟');
     continueStep();
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
     fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
     fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
 

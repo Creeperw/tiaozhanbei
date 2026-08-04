@@ -10,6 +10,8 @@ from uuid import uuid4
 from sqlalchemy import Engine, text
 
 from competition_app.contracts.learning_plan import LearningPlanResult
+from competition_app.contracts.exam_scope import LEGACY_EXAM_SCOPE
+from competition_app.exam_scope import current_exam_scope
 
 
 class PlanWriteConflictError(RuntimeError):
@@ -67,13 +69,13 @@ class LearningPlanRepository(Protocol):
 
 class InMemoryLearningPlanRepository:
     def __init__(self) -> None:
-        self._current: dict[str, LearningPlanResult] = {}
+        self._current: dict[tuple[str, str], LearningPlanResult] = {}
         self._invalidation_events: list[dict[str, str]] = []
         self._lock = RLock()
 
     def get_current(self, learner_id: str) -> LearningPlanResult | None:
         with self._lock:
-            value = self._current.get(learner_id)
+            value = self._current.get((learner_id, current_exam_scope(learner_id)))
             return value.model_copy(deep=True) if value is not None else None
 
     @contextmanager
@@ -97,13 +99,15 @@ class InMemoryLearningPlanRepository:
         if not learner_id:
             raise ValueError("learner_id is required")
         self._validate_owner(learner_id, value)
+        scope = current_exam_scope(learner_id)
+        key = (learner_id, scope)
         with self._lock:
             if expected_heads is not None and not _heads_match(
-                self._current.get(learner_id), expected_heads
+                self._current.get(key), expected_heads
             ):
                 return False
             if expected_task_id is not None or expected_task_version is not None:
-                current_task = self._current.get(learner_id)
+                current_task = self._current.get(key)
                 current_task = current_task.learning_task if current_task else None
                 if (
                     current_task is None
@@ -111,12 +115,13 @@ class InMemoryLearningPlanRepository:
                     or current_task.version != expected_task_version
                 ):
                     return False
-            self._current[learner_id] = value.model_copy(deep=True)
+            self._current[key] = value.model_copy(deep=True)
             for layer in invalidated_layers or []:
                 self._invalidation_events.append(
                     {
                         "event_id": f"PIE_{uuid4().hex}",
                         "learner_id": learner_id,
+                        "exam_track_id": scope,
                         "layer": layer,
                     }
                 )
@@ -135,15 +140,51 @@ class SqlLearningPlanRepository:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
-    def get_current(self, learner_id: str) -> LearningPlanResult | None:
-        with self.engine.connect() as connection:
-            payload = connection.execute(
+    def infer_active_scope(self, learner_id: str) -> str | None:
+        """Return the learner's most recently used exam scope, if any.
+
+        Used by the request boundary to bind the exam workspace for pure read
+        APIs (learning path, plan context) that never run a planning workflow.
+        Falls back to None when the learner has no scoped plan rows yet.
+        """
+
+        with self.engine.begin() as connection:
+            exam_track_id = connection.execute(
                 text(
-                    "SELECT payload_json FROM learner_plan_states "
-                    "WHERE learner_id=:learner_id"
+                    "SELECT exam_track_id FROM learner_exam_plan_states "
+                    "WHERE learner_id=:learner_id "
+                    "ORDER BY updated_at DESC LIMIT 1"
                 ),
                 {"learner_id": learner_id},
             ).scalar_one_or_none()
+        if exam_track_id is None:
+            return None
+        return str(exam_track_id)
+
+    def get_current(self, learner_id: str) -> LearningPlanResult | None:
+        scope = current_exam_scope(learner_id)
+        with self.engine.begin() as connection:
+            if scope == LEGACY_EXAM_SCOPE:
+                payload = connection.execute(
+                    text(
+                        "SELECT payload_json FROM learner_plan_states "
+                        "WHERE learner_id=:learner_id"
+                    ),
+                    {"learner_id": learner_id},
+                ).scalar_one_or_none()
+            else:
+                payload = connection.execute(
+                    text(
+                        "SELECT payload_json FROM learner_exam_plan_states "
+                        "WHERE learner_id=:learner_id "
+                        "AND exam_track_id=:exam_track_id"
+                    ),
+                    {"learner_id": learner_id, "exam_track_id": scope},
+                ).scalar_one_or_none()
+                if payload is None:
+                    payload = self._migrate_matching_legacy_head(
+                        connection, learner_id=learner_id, requested_scope=scope
+                    )
         if payload is None:
             return None
         if isinstance(payload, (bytes, bytearray)):
@@ -161,7 +202,8 @@ class SqlLearningPlanRepository:
             # expected_heads below still provides stale-snapshot protection.
             yield
             return
-        digest = hashlib.sha256(learner_id.encode("utf-8")).hexdigest()[:40]
+        lock_identity = f"{learner_id}:{current_exam_scope(learner_id)}"
+        digest = hashlib.sha256(lock_identity.encode("utf-8")).hexdigest()[:40]
         lock_name = f"competition:plan:{digest}"
         with self.engine.connect() as connection:
             acquired = connection.execute(
@@ -197,17 +239,27 @@ class SqlLearningPlanRepository:
             raise ValueError("sync_event_type must be publish or replace")
         InMemoryLearningPlanRepository._validate_owner(learner_id, value)
         serialized = value.model_dump_json()
+        scope = current_exam_scope(learner_id)
+        scoped = scope != LEGACY_EXAM_SCOPE
         with self.engine.begin() as connection:
-            head_query = (
-                "SELECT payload_json FROM learner_plan_states "
-                "WHERE learner_id=:learner_id"
-            )
+            if scoped:
+                head_query = (
+                    "SELECT payload_json FROM learner_exam_plan_states "
+                    "WHERE learner_id=:learner_id AND exam_track_id=:exam_track_id"
+                )
+                head_params = {"learner_id": learner_id, "exam_track_id": scope}
+            else:
+                head_query = (
+                    "SELECT payload_json FROM learner_plan_states "
+                    "WHERE learner_id=:learner_id"
+                )
+                head_params = {"learner_id": learner_id}
             if self.engine.dialect.name == "mysql":
                 # InnoDB row-level X lock: readers can keep using their MVCC
                 # snapshot, while competing publishers serialize here.
                 head_query += " FOR UPDATE"
             current_payload = connection.execute(
-                text(head_query), {"learner_id": learner_id}
+                text(head_query), head_params
             ).scalar_one_or_none()
             if isinstance(current_payload, (bytes, bytearray)):
                 current_payload = current_payload.decode("utf-8")
@@ -232,7 +284,34 @@ class SqlLearningPlanRepository:
                 ):
                     return False
             task_version_created = self._save_versions(connection, value)
-            if current_payload is not None:
+            if scoped and current_payload is not None:
+                connection.execute(
+                    text(
+                        "UPDATE learner_exam_plan_states "
+                        "SET payload_json=:payload_json, migrated_from_legacy=FALSE, "
+                        "updated_at=CURRENT_TIMESTAMP WHERE learner_id=:learner_id "
+                        "AND exam_track_id=:exam_track_id"
+                    ),
+                    {
+                        "learner_id": learner_id,
+                        "exam_track_id": scope,
+                        "payload_json": serialized,
+                    },
+                )
+            elif scoped:
+                connection.execute(
+                    text(
+                        "INSERT INTO learner_exam_plan_states "
+                        "(learner_id, exam_track_id, payload_json, migrated_from_legacy) "
+                        "VALUES (:learner_id, :exam_track_id, :payload_json, FALSE)"
+                    ),
+                    {
+                        "learner_id": learner_id,
+                        "exam_track_id": scope,
+                        "payload_json": serialized,
+                    },
+                )
+            elif current_payload is not None:
                 connection.execute(
                     text(
                         "UPDATE learner_plan_states SET payload_json=:payload_json, "
@@ -281,6 +360,76 @@ class SqlLearningPlanRepository:
                     },
                 )
         return True
+
+    def _migrate_matching_legacy_head(
+        self,
+        connection,
+        *,
+        learner_id: str,
+        requested_scope: str,
+    ):
+        """Quarantine legacy singleton state unless its exam is unambiguous.
+
+        A target switch may already have happened before this migration.  The
+        active target therefore cannot be used to label the old plan.  Infer
+        only from the persisted plan itself; ambiguous state stays in the old
+        table and is deliberately invisible to every scoped workspace.
+        """
+
+        legacy_payload = connection.execute(
+            text(
+                "SELECT payload_json FROM learner_plan_states "
+                "WHERE learner_id=:learner_id"
+            ),
+            {"learner_id": learner_id},
+        ).scalar_one_or_none()
+        if legacy_payload is None:
+            return None
+        parsed = self._decode_payload(legacy_payload)
+        inferred_scope = self._infer_exam_track_id(parsed)
+        if inferred_scope is None:
+            return None
+        serialized = json.dumps(parsed, ensure_ascii=False)
+        prefix = (
+            "INSERT OR IGNORE"
+            if self.engine.dialect.name == "sqlite"
+            else "INSERT IGNORE"
+        )
+        connection.execute(
+            text(
+                f"{prefix} INTO learner_exam_plan_states "
+                "(learner_id, exam_track_id, payload_json, migrated_from_legacy) "
+                "VALUES (:learner_id, :exam_track_id, :payload_json, TRUE)"
+            ),
+            {
+                "learner_id": learner_id,
+                "exam_track_id": inferred_scope,
+                "payload_json": serialized,
+            },
+        )
+        return legacy_payload if inferred_scope == requested_scope else None
+
+    @staticmethod
+    def _decode_payload(payload):
+        if isinstance(payload, (bytes, bytearray)):
+            payload = payload.decode("utf-8")
+        return json.loads(payload) if isinstance(payload, str) else payload
+
+    @staticmethod
+    def _infer_exam_track_id(payload: object) -> str | None:
+        try:
+            text_value = json.dumps(payload, ensure_ascii=False)
+        except (TypeError, ValueError):
+            return None
+        mappings = (
+            ("中西医结合执业助理", "EXAM_2025_INTEGRATED_ASSISTANT"),
+            ("中西医结合执业医师", "EXAM_2025_INTEGRATED_PHYSICIAN"),
+            ("中医执业助理", "EXAM_2025_TCM_ASSISTANT"),
+            ("中医执业医师", "EXAM_2025_TCM_PHYSICIAN"),
+            ("执业药师", "EXAM_TCM_LICENSED_PHARMACIST"),
+        )
+        matches = {track for marker, track in mappings if marker in text_value}
+        return next(iter(matches)) if len(matches) == 1 else None
 
     def _claim_refresh(
         self,

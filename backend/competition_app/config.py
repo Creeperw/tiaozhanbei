@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Mapping, cast
 
+from competition_app.asset_layout import AssetLayout, resolve_platform_backend_root
+
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 BACKEND_ROOT = PACKAGE_ROOT.parent
@@ -39,10 +41,10 @@ DEFAULT_KNOWLEDGE_HANDOFF_ROOT = (
     BACKEND_ROOT / "competition" / "知识星球视频知识库_前端交接包_2026-07-18"
 )
 DEFAULT_KNOWLEDGE_RUNTIME_ROOT = (
-    DEFAULT_KNOWLEDGE_HANDOFF_ROOT / "知识库管理组件" / "runtime"
+    DEFAULT_RUNTIME_ROOT / "knowledge"
 )
 DEFAULT_BACKEND_HANDOFF_ROOT = (
-    BACKEND_ROOT / "competition" / "backend-handoff-20260720"
+    BACKEND_ROOT / "platform_backend"
 )
 DEFAULT_BACKEND_HANDOFF_RUNTIME_ROOT = DEFAULT_RUNTIME_ROOT / "frontend_backend"
 
@@ -136,7 +138,12 @@ def _parse_path(
     *,
     base: Path = BACKEND_ROOT,
 ) -> Path:
-    raw_value = values.get(name, str(default)).strip()
+    configured = values.get(name)
+    raw_value = (
+        str(default)
+        if configured is None or not str(configured).strip()
+        else str(configured).strip()
+    )
     # Keep POSIX absolute paths stable when configuration tests or deployment
     # tooling inspect them from Windows.
     if raw_value.startswith("/") and os.name == "nt":
@@ -175,6 +182,9 @@ class Settings:
     api_port: int = 7860
     runtime_root: Path = DEFAULT_RUNTIME_ROOT
     frontend_dist_root: Path = DEFAULT_FRONTEND_DIST_ROOT
+    asset_root: Path = REPOSITORY_ROOT / "assets"
+    asset_manifest_path: Path | None = None
+    asset_release_id: str = "2026-07-18"
 
     # Main model stack. These fields remain compatible with existing callers.
     chat_base_url: str = CHAT_BASE_URL
@@ -212,6 +222,7 @@ class Settings:
     knowledge_atlas_asset_version: str = "2026-07-18"
     knowledge_atlas_data_root: Path = DEFAULT_KNOWLEDGE_HANDOFF_ROOT
     knowledge_atlas_video_root: Path = DEFAULT_KNOWLEDGE_HANDOFF_ROOT
+    knowledge_atlas_chapter_root: Path = REPOSITORY_ROOT / "assets" / "knowledge-atlas" / "chapters" / "releases" / "2026-07-22"
     knowledge_atlas_contract_path: Path | None = None
     official_exam_data_dir: Path = DEFAULT_KNOWLEDGE_HANDOFF_ROOT
     textbook_pdf_root: Path = DEFAULT_TEXTBOOK_PDF_ROOT
@@ -302,14 +313,14 @@ class Settings:
                     "Missing required environment variables: " + ", ".join(missing)
                 )
 
-        runtime_root = _parse_path(
-            values, "RUNTIME_ROOT", DEFAULT_RUNTIME_ROOT, base=REPOSITORY_ROOT
-        )
-        knowledge_handoff_root = _parse_path(
+        asset_layout = AssetLayout.resolve(
             values,
-            "KNOWLEDGE_HANDOFF_ROOT",
-            DEFAULT_KNOWLEDGE_HANDOFF_ROOT,
+            repository_root=REPOSITORY_ROOT,
+            backend_root=BACKEND_ROOT,
+            package_runtime_root=DEFAULT_RUNTIME_ROOT,
         )
+        runtime_root = asset_layout.runtime_root
+        knowledge_handoff_root = asset_layout.knowledge_delivery_root
         knowledge_component = knowledge_handoff_root / "知识库管理组件"
         atlas_contract_raw = values.get("KNOWLEDGE_ATLAS_CONTRACT_PATH", "").strip()
         embedding_model_path_raw = values.get("EMBEDDING_MODEL_PATH", "").strip()
@@ -321,6 +332,9 @@ class Settings:
             api_host=values.get("API_HOST", "127.0.0.1"),
             api_port=_parse_int(values, "API_PORT", 7860, minimum=1),
             runtime_root=runtime_root,
+            asset_root=asset_layout.asset_root,
+            asset_manifest_path=asset_layout.manifest_path,
+            asset_release_id=asset_layout.release_id,
             frontend_dist_root=_parse_path(
                 values,
                 "FRONTEND_DIST_ROOT",
@@ -353,22 +367,10 @@ class Settings:
             llm_timeout_seconds=_parse_float(
                 values, "LLM_TIMEOUT_SECONDS", 180.0, minimum=1.0
             ),
-            question_vector_store_root=_parse_path(
-                values,
-                "QUESTION_VECTOR_STORE_ROOT",
-                DEFAULT_QUESTION_VECTOR_STORE_ROOT,
-            ),
-            knowledge_vector_store_root=_parse_path(
-                values,
-                "KNOWLEDGE_VECTOR_STORE_ROOT",
-                DEFAULT_KNOWLEDGE_VECTOR_STORE_ROOT,
-            ),
+            question_vector_store_root=asset_layout.question_vector_store_root,
+            knowledge_vector_store_root=asset_layout.knowledge_vector_store_root,
             knowledge_handoff_root=knowledge_handoff_root,
-            knowledge_runtime_root=_parse_path(
-                values,
-                "KNOWLEDGE_RUNTIME_ROOT",
-                DEFAULT_KNOWLEDGE_RUNTIME_ROOT,
-            ),
+            knowledge_runtime_root=asset_layout.knowledge_runtime_root,
             knowledge_atlas_enabled=_parse_bool(
                 values, "KNOWLEDGE_ATLAS_ENABLED", True
             ),
@@ -385,6 +387,7 @@ class Settings:
                 "KNOWLEDGE_ATLAS_VIDEO_ROOT",
                 knowledge_handoff_root / "bilibili_video_page" / "runtime",
             ),
+            knowledge_atlas_chapter_root=asset_layout.knowledge_atlas_chapter_root,
             knowledge_atlas_contract_path=(
                 _parse_path(
                     {"KNOWLEDGE_ATLAS_CONTRACT_PATH": atlas_contract_raw},
@@ -402,9 +405,7 @@ class Settings:
                 / "backend_delivery"
                 / "08_exam_learning_path_2025",
             ),
-            textbook_pdf_root=_parse_path(
-                values, "TEXTBOOK_PDF_ROOT", DEFAULT_TEXTBOOK_PDF_ROOT
-            ),
+            textbook_pdf_root=asset_layout.textbook_pdf_root,
             textbook_pdf_catalog_path=_parse_path(
                 values,
                 "TEXTBOOK_PDF_CATALOG_PATH",
@@ -428,8 +429,8 @@ class Settings:
             backend_handoff_enabled=_parse_bool(
                 values, "BACKEND_HANDOFF_ENABLED", False
             ),
-            backend_handoff_root=_parse_path(
-                values, "BACKEND_HANDOFF_ROOT", DEFAULT_BACKEND_HANDOFF_ROOT
+            backend_handoff_root=resolve_platform_backend_root(
+                values, backend_root=BACKEND_ROOT
             ),
             backend_handoff_runtime_root=_parse_path(
                 values,

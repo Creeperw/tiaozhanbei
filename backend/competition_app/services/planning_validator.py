@@ -269,6 +269,41 @@ class PlanningValidator:
                             + "、".join(omitted_unmet)
                             + "。"
                         )
+                    # 长期路径完整性门禁：当长期规划覆盖到需要前置课程的阶段时，
+                    # 正文必须为未确认完成的前置课程落具体训练安排。
+                    # 纯“另行确认/后续计划”式推迟或完全缺失是确定性缺陷，
+                    # 不能只靠（非确定性的）审核模型兜底。
+                    before_order_by_stage = {
+                        str(self._field(stage, "stage_id")): int(
+                            self._field(stage, "order") or 0
+                        )
+                        for stage in textbook_stages
+                    }
+                    planned_stage_count = len(structured_stages)
+                    for rule in (
+                        self._field(textbook_route, "prerequisites") or []
+                    ):
+                        course = str(self._field(rule, "course") or "").strip()
+                        if not course:
+                            continue
+                        if self._normalized_book_name(course) in confirmed:
+                            continue
+                        before_order = before_order_by_stage.get(
+                            str(self._field(rule, "before_stage_id") or "")
+                        ) or 0
+                        if not before_order or before_order > planned_stage_count:
+                            # 路径尚未到达需要该前置的阶段，暂不强制安排。
+                            continue
+                        if not self._prerequisite_scheduled_in_body(
+                            output.long_term_plan_content, course
+                        ):
+                            issues.append(
+                                "长期规划已覆盖到需要前置课程“"
+                                + course
+                                + "”的阶段，但正文未给出该前置训练的具体安排"
+                                "（训练范围、安排阶段或时长、教材或练习、验收标准），"
+                                "不得以“另行确认/后续计划”推迟，也不得只声明前置条件。"
+                            )
 
         if (
             available_minutes is not None
@@ -434,3 +469,28 @@ class PlanningValidator:
             "",
             value.strip().removeprefix("《").removesuffix("》"),
         ).casefold()
+
+    @staticmethod
+    def _prerequisite_scheduled_in_body(body: str, course: str) -> bool:
+        """True 当正文对前置课程给出了具体训练安排：
+        存在一个提及该课程的句子，不含推迟措辞且含训练安排元素。
+        完全未提及、或仅在“另行确认/后续计划”等推迟语境中出现则返回 False。
+        """
+        if not course or course not in body:
+            return False
+        deferral_markers = (
+            "另行确认", "后续计划", "后续安排", "后续再", "以后再",
+            "待确认", "待安排", "暂不安排", "后续补充", "待补充",
+        )
+        arrangement_markers = (
+            "训练", "学习", "天", "周", "教材", "练习", "测评",
+            "验收", "达标", "完成标准", "掌握", "巩固", "安排",
+        )
+        for sentence in re.split(r"[。；;\n]", body):
+            if course not in sentence:
+                continue
+            if any(marker in sentence for marker in deferral_markers):
+                continue
+            if any(marker in sentence for marker in arrangement_markers):
+                return True
+        return False

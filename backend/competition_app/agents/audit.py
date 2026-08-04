@@ -20,6 +20,7 @@ from competition_app.services.plan_audit import plan_audit_subject_digest
 from competition_app.contracts.local_repair import RepairIssue
 from competition_app.contracts.audit_compilation import AuditLocation
 from competition_app.runtime.audit_issue_resolver import AuditIssueResolver
+from competition_app.services.audit_policy import build_resource_acceptance_policy
 from pydantic import ValidationError
 
 
@@ -81,6 +82,31 @@ class AuditAgent:
         ]
         diagnosis = getattr(context["dependency_outputs"].get("diagnosis"), "payload", None)
         schedule = getattr(context["dependency_outputs"].get("schedule"), "payload", None)
+        plan_payload = getattr(
+            context["dependency_outputs"].get("learning_plan"), "payload", None
+        )
+        formal_learning_task = getattr(plan_payload, "learning_task", None)
+        acceptance_policy = build_resource_acceptance_policy(
+            context,
+            formal_learning_task=formal_learning_task,
+        )
+        semantic_resource["question_consumption"] = (
+            expert.question_consumption.model_dump(mode="json")
+            if expert.question_consumption is not None
+            else None
+        )
+        semantic_resource["provenance"] = {
+            "question_origin": expert.provenance.question_origin,
+            "selected_question_count": len(expert.provenance.selected_question_ids),
+            "selected_video_count": len(
+                expert.provenance.selected_video_evidence_ids
+            ),
+            "selected_reference_count": len(
+                expert.provenance.selected_reference_evidence_ids
+            ),
+            "generated_sections": expert.provenance.generated_sections,
+            "materialized_sections": expert.provenance.materialized_sections,
+        }
         knowledge_explanation = str(context.get("task_type")) == "knowledge_explanation"
         paper_generation = str(context.get("task_type")) == "paper_generation"
         external_information_request = bool(
@@ -95,6 +121,64 @@ class AuditAgent:
                 )
             )
         )
+        # Run system-owned hard gates before asking the semantic auditor.  A
+        # deterministic failure already has an exact repair owner; spending a
+        # model call first can only add conflicting prose and latency.
+        preflight_findings: list[str] = []
+        formal_question_ids = {
+            item.question_id for item in getattr(evidence, "_question_details", [])
+        }
+        if not set(expert.provenance.selected_question_ids).issubset(
+            formal_question_ids
+        ):
+            preflight_findings.append(
+                "资源包含无法在正式候选池中验证来源的练习题。"
+            )
+        evidence_resource_ids = {
+            item.evidence_id
+            for item in evidence.evidence_items
+            if item.resource_type in {"video", "reference"}
+        }
+        if not {
+            *expert.provenance.selected_video_evidence_ids,
+            *expert.provenance.selected_reference_evidence_ids,
+        }.issubset(evidence_resource_ids):
+            preflight_findings.append(
+                "资源包含无法在本次证据中验证来源的视频或参考资料。"
+            )
+        selected_task = getattr(schedule, "selected_task", None)
+        if not external_information_request:
+            if selected_task and expert.target_kp_id != selected_task.primary_kp_id:
+                preflight_findings.append("资源目标知识点与复习调度任务不一致。")
+            if expert.estimated_minutes > int(context.get("available_minutes", 15)):
+                preflight_findings.append("资源预计时长超过用户本次可用时间。")
+        if missing or preflight_findings:
+            resource_locations = self._resource_location_catalog(expert)
+            findings = [
+                *([f"缺少证据的声明: {', '.join(missing)}"] if missing else []),
+                *preflight_findings,
+            ]
+            result = AuditResult(
+                audit_result_id=f"AUDIT_{uuid4().hex}",
+                decision="revise",
+                audit_report=(
+                    "系统确定性硬门禁发现可定位问题，已跳过语义审核并直接进入最小范围返修。"
+                ),
+                findings=findings,
+                structured_findings=self._resource_repair_issues(
+                    missing_claim_ids=missing,
+                    deterministic_findings=preflight_findings,
+                    compiled_model_issues=[],
+                    location_catalog=resource_locations,
+                ),
+                verified_claim_ids=[
+                    claim.claim_id
+                    for claim in expert.claims
+                    if claim.claim_id not in missing
+                ],
+                subject_type="resource",
+            )
+            return envelope(context, "audit_agent", "audit_result", result)
         protocol_valid = True
         try:
             model_output = AuditModelOutput.model_validate(await self.chat_model.complete_json(
@@ -105,19 +189,14 @@ class AuditAgent:
                     payload={
                     "semantic_resource": semantic_resource,
                     "semantic_evidence": semantic_evidence,
-                    "learning_profile": {
-                        "summary": getattr(diagnosis, "summary", ""),
-                        "risk_flags": getattr(diagnosis, "risk_flags", []),
-                    },
-                    "acceptance_criteria": {
-                        "available_minutes": context.get("available_minutes"),
-                        "teaching_only": True,
+                    "learning_profile": acceptance_policy.learner_fit_facts,
+                    "acceptance_policy": acceptance_policy.model_dump(mode="json"),
+                    "formal_learning_task": acceptance_policy.formal_learning_task,
+                    "formal_task_available": acceptance_policy.formal_task_available,
+                    "task_specific_flags": {
                         "paper_generation": paper_generation,
                         "knowledge_explanation": knowledge_explanation,
-                        "external_information_request": bool(
-                            external_information_request
-                        ),
-                        "exam_constraints": context.get("exam_constraints", {}),
+                        "external_information_request": bool(external_information_request),
                         "must_stay_within_user_syllabus": bool(context.get("user_syllabus")),
                     },
                     "output_schema": AuditModelOutput.model_json_schema(),
@@ -175,6 +254,23 @@ class AuditAgent:
             for issue in model_blocking_issues
         )
         deterministic_findings: list[str] = []
+        formal_question_ids = {
+            item.question_id for item in getattr(evidence, "_question_details", [])
+        }
+        selected_question_ids = set(expert.provenance.selected_question_ids)
+        if not selected_question_ids.issubset(formal_question_ids):
+            deterministic_findings.append("资源包含无法在正式候选池中验证来源的练习题。")
+        evidence_resource_ids = {
+            item.evidence_id
+            for item in evidence.evidence_items
+            if item.resource_type in {"video", "reference"}
+        }
+        selected_resource_ids = {
+            *expert.provenance.selected_video_evidence_ids,
+            *expert.provenance.selected_reference_evidence_ids,
+        }
+        if not selected_resource_ids.issubset(evidence_resource_ids):
+            deterministic_findings.append("资源包含无法在本次证据中验证来源的视频或参考资料。")
         selected_task = getattr(schedule, "selected_task", None)
         # A current-fact answer (weather, exam dates, etc.) is deliberately
         # independent of the learner's currently scheduled knowledge point.
@@ -263,24 +359,31 @@ class AuditAgent:
             )
         if decision not in {"pass", "revise", "reject", "needs_human_review"}:
             decision = "needs_human_review"
+        final_findings = [
+            *([f"缺少证据的声明: {', '.join(missing)}"] if missing else []),
+            *deterministic_findings,
+            *(
+                [
+                    finding
+                    if str(finding).startswith("非阻断建议：")
+                    else f"非阻断建议：{finding}"
+                    for finding in model_output.findings
+                ]
+                if decision == "pass"
+                else model_output.findings
+            ),
+        ]
+        audit_report = model_output.audit_report
+        if decision == "pass" and any(
+            marker in audit_report
+            for marker in ("必须修订", "不能发布", "不可发布", "阻断性问题")
+        ):
+            audit_report = "系统确定性门禁与统一验收策略均已通过；模型原阻断措辞已降为非阻断建议。"
         result = AuditResult(
             audit_result_id=f"AUDIT_{uuid4().hex}",
             decision=decision,
-            audit_report=model_output.audit_report,
-            findings=[
-                *([f"缺少证据的声明: {', '.join(missing)}"] if missing else []),
-                *deterministic_findings,
-                *(
-                    []
-                    if missing or deterministic_findings
-                    else [
-                        f"非阻断建议：{finding}"
-                        for finding in model_output.findings
-                    ]
-                    if decision == "pass" and model_decision == "revise"
-                    else model_output.findings
-                ),
-            ],
+            audit_report=audit_report,
+            findings=final_findings,
             structured_findings=(
                 self._resource_repair_issues(
                     missing_claim_ids=missing,
@@ -304,6 +407,18 @@ class AuditAgent:
                 subject_type="resource",
                 location_type="whole_subject",
                 display_label="当前教学资源",
+            ),
+            AuditLocation(
+                location_key="resource:questions",
+                subject_type="resource",
+                location_type="section",
+                display_label="练习资源选择",
+            ),
+            AuditLocation(
+                location_key="resource:references",
+                subject_type="resource",
+                location_type="section",
+                display_label="视频与参考资料选择",
             ),
             AuditLocation(
                 location_key="resource:target_kp_id",
@@ -521,6 +636,9 @@ class AuditAgent:
                             "deterministic_findings": deterministic_findings,
                             "trusted_route": trusted_route,
                             "parent_plan_constraints": parent_plan_constraints,
+                            "producer_evidence": dict(
+                                getattr(diagnosis, "audit_evidence", {}) or {}
+                            ),
                             "output_schema": AuditModelOutput.model_json_schema(),
                         },
                         permission_note=(
@@ -618,7 +736,39 @@ class AuditAgent:
             # for Diagnosis rather than a terminal workflow state. Route it
             # through the existing bounded local-repair loop.
             decision = "revise"
+        if (
+            context.get("audit_feedback") is not None
+            and decision == "reject"
+            and not unsafe_or_unresolved
+        ):
+            # This is the second audit after one bounded repair.  A model-level
+            # reject at this point almost always reflects a hard conflict that
+            # cannot be removed by rewriting the plan (for example a user-claimed
+            # deadline that differs from a system display).  Failing the whole
+            # workflow here is equivalent to human review without the recovery
+            # path, so downgrade the terminal decision to a recoverable
+            # needs_human_review instead of reject.
+            decision = "needs_human_review"
+            model_output = model_output.model_copy(
+                update={
+                    "audit_report": (
+                        str(model_output.audit_report or "")
+                        + " 已完成一轮受控返修，剩余阻断问题无法仅靠重写规划消除，"
+                        "已转为人工复核。"
+                    )[:8_000]
+                }
+            )
         findings = [*deterministic_findings, *model_output.findings]
+        audit_report = self._decision_consistent_report(
+            decision, model_output.audit_report
+        )
+        if decision == "pass":
+            findings = [
+                finding
+                if str(finding).startswith("非阻断建议：")
+                else f"非阻断建议：{finding}"
+                for finding in findings
+            ]
         structured_findings = (
             [*deterministic_issues, *model_blocking_issues]
             if decision == "revise"
@@ -627,7 +777,7 @@ class AuditAgent:
         result = AuditResult(
             audit_result_id=f"AUDIT_{uuid4().hex}",
             decision=decision,
-            audit_report=model_output.audit_report,
+            audit_report=audit_report,
             findings=findings,
             structured_findings=structured_findings,
             subject_digest=subject_digest,
@@ -928,6 +1078,16 @@ class AuditAgent:
                 if findings_compilation.result.status == "compiled"
                 else []
             )
+        compiled_model_issues = [
+            issue.model_copy(update={"blocking": False})
+            if self._paper_issue_contradicts_system_policy(
+                issue.message,
+                blueprint=blueprint,
+                paper=paper,
+            )
+            else issue
+            for issue in compiled_model_issues
+        ]
         model_blocking_findings = [
             issue.message for issue in compiled_model_issues if issue.blocking
         ]
@@ -983,11 +1143,21 @@ class AuditAgent:
             # violation. This prevents model-assumed question counts from making
             # an otherwise valid practice paper impossible to publish.
             decision = "pass"
+        paper_findings = [*deterministic_findings, *model_output.findings]
+        if decision == "pass":
+            paper_findings = [
+                finding
+                if str(finding).startswith("非阻断建议：")
+                else f"非阻断建议：{finding}"
+                for finding in paper_findings
+            ]
         result = AuditResult(
             audit_result_id=f"AUDIT_{uuid4().hex}",
             decision=decision,
-            audit_report=model_output.audit_report,
-            findings=[*deterministic_findings, *model_output.findings],
+            audit_report=self._decision_consistent_report(
+                decision, model_output.audit_report
+            ),
+            findings=paper_findings,
             structured_findings=(
                 self._paper_repair_issues(
                     deterministic_findings=deterministic_findings,
@@ -1000,6 +1170,62 @@ class AuditAgent:
             verified_claim_ids=[],
         )
         return envelope(context, "audit_agent", "audit_result", result)
+
+    @staticmethod
+    def _paper_issue_contradicts_system_policy(
+        message: str,
+        *,
+        blueprint: Any,
+        paper: Any,
+    ) -> bool:
+        """Downgrade model requirements that contradict system hard/soft policy."""
+
+        text = "".join(str(message or "").split())
+        if not blueprint.question_count_is_hard_constraint and any(
+            marker in text
+            for marker in ("补齐题量", "补足题量", "建议题量", "题数不足", "题量不足")
+        ):
+            return True
+        generated = [
+            item.question
+            for item in paper.items
+            if item.question.origin == "generated"
+        ]
+        generated_complete = bool(generated) and all(
+            question.reference_answer.strip()
+            and (question.analysis or "").strip()
+            and (
+                "选择" not in question.question_type
+                or len(question.options) >= 2
+            )
+            for question in generated
+        )
+        rejects_generated_origin = any(
+            marker in text
+            for marker in (
+                "不在正式候选池", "候选池之外", "必须来自正式候选",
+                "模型生成题不允许", "model_knowledge不允许",
+            )
+        )
+        identifies_real_item_error = any(
+            marker in text
+            for marker in ("偏离主题", "题型错误", "答案错误", "解析错误", "重复题")
+        )
+        return bool(
+            generated_complete
+            and rejects_generated_origin
+            and not identifies_real_item_error
+        )
+
+    @staticmethod
+    def _decision_consistent_report(decision: str, report: str) -> str:
+        report = str(report or "").strip()
+        if decision == "pass" and any(
+            marker in report
+            for marker in ("必须修订", "不能发布", "不可发布", "阻断性问题")
+        ):
+            return "系统确定性门禁与任务验收策略均已通过；模型原阻断措辞已作为非阻断建议处理。"
+        return report or "审核已依据系统确定性门禁与任务验收策略完成。"
 
     @staticmethod
     def _compact_exam_paper_for_audit(paper: Any) -> dict[str, Any]:

@@ -673,11 +673,9 @@ class OpenAICompatibleChatModel(ChatModel):
                     json_mode=True,
                 )
             except ModelResponseError as exc:
-                # An empty stream/response is transient: treat it like invalid
-                # JSON and let the repair loop issue the identical request once
-                # more instead of letting it escape complete_json entirely.
-                if exc.reason in {"empty_stream", "empty_response"} and attempt < 1:
-                    continue
+                # The transport layer already performs the single allowed
+                # empty-response retry.  Do not restart the JSON repair loop
+                # with the same large prompt after that budget is exhausted.
                 raise
             try:
                 parsed = _normalize_common_output(_parse_json_object(content), role)
@@ -712,6 +710,12 @@ class OpenAICompatibleChatModel(ChatModel):
                 }
                 if json_mode:
                     request_payload["response_format"] = {"type": "json_object"}
+                # DeepSeek V4 defaults to thinking mode. The official V4 API
+                # accepts an explicit per-request toggle; keep thinking
+                # enabled so multi-agent reasoning benefits from the model's
+                # CoT budget instead of emitting shallow first-pass answers.
+                if self.model.lower().startswith("deepseek-v4"):
+                    request_payload["thinking"] = {"type": "enabled"}
                 # Qwen 3 variants expose different thinking capabilities.  The
                 # 2026-05-17 max endpoint rejects requests unless thinking is
                 # enabled; other currently supported variants stay in
@@ -795,7 +799,7 @@ class OpenAICompatibleChatModel(ChatModel):
                 "status_code": status_code,
                 "retry_count": _retry_count,
             }
-            max_retries = 3 if status_code == 429 else 1
+            max_retries = 2 if status_code == 429 else 1
             if _retry_count < max_retries and (
                 status_code in {408, 409, 425, 429} or status_code >= 500
             ):
@@ -840,16 +844,20 @@ class OpenAICompatibleChatModel(ChatModel):
                 } or status_code >= 500,
             ) from exc
         except ModelResponseError as exc:
-            # Transient empty streams occasionally occur on providers; the
-            # identical request usually succeeds on a short retry.  complete_json
-            # repairs invalid JSON but never sees an empty stream, and with a
-            # single candidate there is no failover target, so retry empty
-            # responses here (twice) before surfacing to failover.
+            # Some compatible providers occasionally finish a successful SSE
+            # response with reasoning/usage but no content. Retrying the same
+            # streaming mode reproduced the same empty response in live runs.
+            # Make the bounded retries non-streaming so the provider returns
+            # the complete message body; the parsed final output is still
+            # emitted through model_output even though there are no deltas.
+            # Live DeepSeek-compatible endpoints have occasionally returned
+            # two consecutive empty successes, so allow at most three total
+            # attempts for this one failure class only.
             if exc.reason in {"empty_stream", "empty_response"} and _retry_count < 2:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.5 * (_retry_count + 1))
                 return await self._request(
                     messages,
-                    on_delta=on_delta,
+                    on_delta=None,
                     _retry_count=_retry_count + 1,
                     json_mode=json_mode,
                 )

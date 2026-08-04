@@ -54,6 +54,11 @@ class GenericQueryModel:
         }
 
 
+class QuestionTimeoutRetrievalTool(FakeRetrievalTool):
+    async def get_question_with_content(self, *args, **kwargs):
+        raise TimeoutError("question embedding timed out")
+
+
 def context() -> dict[str, object]:
     return {
         "case_id": "CASE_1",
@@ -84,6 +89,15 @@ async def test_knowledge_agent_falls_back_to_concrete_user_topic() -> None:
 
     assert retrieval.queries == ["中医药基础知识点", "感冒"]
     assert output.payload.query == "感冒"
+
+
+@pytest.mark.asyncio
+async def test_knowledge_agent_keeps_evidence_when_optional_question_search_times_out() -> None:
+    output = await KnowledgeBaseAgent(QuestionTimeoutRetrievalTool()).run(context())
+
+    assert output.payload.resolved_kp_ids == ["KP_FJ_018"]
+    assert output.payload.question_candidates == []
+    assert any("题目候选检索暂不可用" in note for note in output.payload.risk_notes)
 
 
 @pytest.mark.asyncio
@@ -288,6 +302,7 @@ async def test_review_expert_context_is_compact_and_has_line_breaks() -> None:
     assert set(business) <= {
         "topic", "retrieval_summary", "evidence", "candidate_questions", "task",
         "output_contract",
+        "personalization", "acceptance_policy", "candidate_resources",
         "shared_context", "user_request", "original_user_request", "request_context",
     }
     assert "semantic_evidence" not in business

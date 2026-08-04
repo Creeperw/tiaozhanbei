@@ -795,6 +795,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [checkinMessage, setCheckinMessage] = useState('');
   const [surveyOpen, setSurveyOpen] = useState(false);
+  const [customRequirementsDraft, setCustomRequirementsDraft] = useState('');
   const [pathPlanning, setPathPlanning] = useState({
     active: false,
     stage: '',
@@ -928,7 +929,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     }
   };
 
-  const startPersonalizedPathPlanning = async () => {
+  const startPersonalizedPathPlanning = async (customRequirementsOverride) => {
     setSurveyOpen(false);
     setPathPlanning({
       active: true,
@@ -941,6 +942,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     try {
       const result = await buildPersonalizedLearningPath({
         target: learningTarget,
+        customRequirements: customRequirementsOverride ?? customRequirementsDraft,
         onStage: (stage) => setPathPlanning((current) => ({
           ...current,
           stage: stage.label,
@@ -1236,7 +1238,11 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
               lockedTarget={learningTarget}
               exitLabel="退出调研"
               onExit={() => setSurveyOpen(false)}
-              onSaved={() => { void startPersonalizedPathPlanning(); }}
+              onSaved={(data, customText) => {
+                const savedCustomText = String(customText || '');
+                setCustomRequirementsDraft(savedCustomText);
+                void startPersonalizedPathPlanning(savedCustomText);
+              }}
             />
           </section>
         </div>

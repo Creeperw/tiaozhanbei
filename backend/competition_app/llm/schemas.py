@@ -90,6 +90,25 @@ class PlannerModelOutput(BaseModel):
         description="仅表示编排风险；知识对象含糊、诉求冲突或安全边界不清时不得标为low。"
     )
     requires_audit: bool = True
+    requires_learning_plan_output: bool = Field(
+        default=False,
+        description=(
+            "仅当用户同一请求同时要求创建/调整学习计划和生成学习卡、复习卡或可直接学习资源时为true；"
+            "必须依据完整语义判断，不得由代码关键词匹配。"
+        ),
+    )
+    external_information_request: bool = Field(
+        default=False,
+        description="完整语义是否要求检索天气、日期、时效政策等外部当前事实。",
+    )
+    question_explanation_request: bool = Field(
+        default=False,
+        description="完整语义是否是在请求讲解当前题目或定位答题卡点。",
+    )
+    emotional_support_request: bool = Field(
+        default=False,
+        description="完整语义是否主要需要情绪支持而非启动学习业务写入流程。",
+    )
     fallback_policy: Literal["fail_closed", "needs_human_review"] = "fail_closed"
 
     @field_validator("selected_agents")
@@ -109,6 +128,22 @@ class PlannerModelOutput(BaseModel):
             raise ValueError("learner data query requires query_kind")
         if self.task_type != "learner_data_query" and self.query_kind is not None:
             raise ValueError("query_kind is only valid for learner data queries")
+        if self.requires_learning_plan_output and self.task_type != "personalized_review_card":
+            raise ValueError(
+                "requires_learning_plan_output is only valid for personalized review cards"
+            )
+        if self.external_information_request and self.task_type != "general_learning_support":
+            raise ValueError(
+                "external_information_request requires general_learning_support"
+            )
+        if self.question_explanation_request and self.task_type != "knowledge_explanation":
+            raise ValueError(
+                "question_explanation_request requires knowledge_explanation"
+            )
+        if self.emotional_support_request and self.task_type != "casual_conversation":
+            raise ValueError(
+                "emotional_support_request requires casual_conversation"
+            )
         return self
 
 
@@ -765,6 +800,13 @@ class ExpertModelOutput(StrictModelOutput):
     use_question_candidates: bool = False
     usage_reason: str = Field(default="", max_length=500)
     selected_question_ids: list[str] = Field(default_factory=list)
+    selected_resource_candidate_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "只选择输入 candidate_resources 中确实适合当前学习者、任务和时间预算的候选ID；"
+            "没有合适候选时保持空数组。"
+        ),
+    )
     resource_type: Literal["none", "practice", "variant", "grading_support"] = "none"
     blueprint_content: str | None = Field(
         default=None,
@@ -958,7 +1000,10 @@ class AuditModelOutput(StrictModelOutput):
     )
     findings: list[str] = Field(
         default_factory=list,
-        description="逐项指出问题位置、证据或缺口、影响和修改要求；通过时概括已核验维度。",
+        description=(
+            "逐项指出问题位置、证据或缺口、影响和修改要求；通过时默认保持空数组，"
+            "只有任务验收策略明确允许时才保留带‘非阻断建议’标识的建议。已核验维度写入audit_report。"
+        ),
     )
     audit_report: str = Field(
         default="审核模型未提供额外说明，系统将以确定性门禁结果为准。",

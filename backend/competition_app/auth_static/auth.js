@@ -10,8 +10,8 @@ const submitButton = document.querySelector('#submit-button');
 let mode = 'login';
 
 function safeNext() {
-  const next = new URLSearchParams(window.location.search).get('next') || '/chat/';
-  return next.startsWith('/') && !next.startsWith('//') ? next : '/chat/';
+  const next = new URLSearchParams(window.location.search).get('next') || '/';
+  return next.startsWith('/') && !next.startsWith('//') ? next : '/';
 }
 
 function setMode(nextMode) {

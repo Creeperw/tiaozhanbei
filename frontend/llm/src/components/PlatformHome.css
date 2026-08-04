@@ -758,6 +758,30 @@
   color: #13805e;
 }
 
+.qualification-target-dialog__option {
+  display: grid;
+  gap: 6px;
+}
+
+.qualification-target-dialog__option > button {
+  width: 100%;
+}
+
+.qualification-target-dialog__option > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  margin-left: 12px;
+  color: #4f6f64;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.qualification-target-dialog__option > label input {
+  accent-color: #13805e;
+}
+
 .qualification-target-dialog__error {
   margin-top: 14px;
   border-radius: 12px;

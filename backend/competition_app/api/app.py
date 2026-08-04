@@ -7,7 +7,6 @@ import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Literal
-from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
@@ -36,6 +35,7 @@ from competition_app.services.profile_readiness import ProfileReadinessService
 from competition_app.services.planning_readiness import PlanningReadinessService
 from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.learning_monitoring import LearningMonitoringService
+from competition_app.exam_scope import bind_exam_workspace
 from competition_app.services.workshop import WorkshopKnowledgeService
 from competition_app.services.textbook_import import (
     TextbookImportError,
@@ -435,7 +435,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     app = FastAPI(title="Competition App", version="0.1.0", lifespan=lifespan)
     static_root = Path(__file__).parents[1] / "static"
     platform_assets_root = static_root / "platform-assets"
-    chat_root = Path(__file__).parents[1] / "chat_static"
     auth_root = Path(__file__).parents[1] / "auth_static"
     frontend_root = container.frontend_dist_root
     frontend_index = frontend_root / "index.html" if frontend_root else None
@@ -499,8 +498,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         name="platform_assets",
     )
     app.mount("/auth", StaticFiles(directory=auth_root, html=True), name="auth")
-    app.mount("/demo", StaticFiles(directory=static_root, html=True), name="demo")
-    app.mount("/chat", StaticFiles(directory=chat_root, html=True), name="chat")
 
     # ── 模拟病患模块 ────────────────────────────────────
     try:
@@ -520,7 +517,58 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         raw_token = request.cookies.get(SESSION_COOKIE)
         current_user = container.authentication_service.authenticate(raw_token)
         request.state.current_user = current_user
+        if current_user is not None:
+            active_exam: dict[str, Any] = {}
+            if (
+                backend_handoff is not None
+                and hasattr(backend_handoff, "load_active_exam_scope")
+            ):
+                try:
+                    active_exam = await asyncio.to_thread(
+                        backend_handoff.load_active_exam_scope,
+                        current_user.user_id,
+                    )
+                except Exception:
+                    active_exam = {}
+            if not active_exam:
+                # Fallback for handoffs without an active-exam lookup: infer the
+                # learner's most recently used exam scope from the plan store so
+                # pure read APIs resolve the same scoped tables that planning
+                # workflows publish into.
+                plan_repository = getattr(
+                    container, "learning_plan_service", None
+                )
+                plan_repository = (
+                    plan_repository.plan_repository
+                    if plan_repository is not None
+                    else None
+                )
+                infer = getattr(plan_repository, "infer_active_scope", None)
+                if callable(infer):
+                    try:
+                        scope = await asyncio.to_thread(
+                            infer, current_user.user_id
+                        )
+                    except Exception:
+                        scope = None
+                    if scope:
+                        active_exam = {"exam_track_id": scope}
+            bind_exam_workspace(current_user.user_id, active_exam)
         path = request.url.path
+        retired_ui_paths = {
+            "/chat",
+            "/chat/",
+            "/chat/chat.css",
+            "/chat/chat.js",
+            "/chat/plan_scope.js",
+            "/demo",
+            "/demo/",
+            "/demo/app.js",
+            "/demo/styles.css",
+            "/demo-app",
+        }
+        if path in retired_ui_paths:
+            return Response(status_code=404)
         # Mounted business routes share the main cookie identity. Their internal
         # dependency maps request.state.current_user to a domain-local user row.
         public_path = (
@@ -548,12 +596,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             or path.startswith("/api/v1/auth/")
         )
         if auth_required and current_user is None and not public_path:
-            if request.method == "GET" and (
-                path == "/" or path == "/demo-app" or path.startswith(("/demo", "/chat"))
-            ):
-                return RedirectResponse(
-                    url=f"/auth/?next={quote(path, safe='/')}", status_code=303
-                )
             return JSONResponse(
                 status_code=401,
                 content={"detail": "请先登录后继续"},
@@ -610,14 +652,14 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 # The authoritative answer has already been committed. A later
                 # context/queue read retries this idempotent projection.
                 pass
-        if path.startswith(("/demo", "/chat", "/auth")):
+        if path.startswith("/auth"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         return response
 
     @app.middleware("http")
-    async def disable_demo_cache(request: Request, call_next):
+    async def disable_auth_cache(request: Request, call_next):
         response = await call_next(request)
-        if request.url.path.startswith(("/demo", "/chat", "/auth")):
+        if request.url.path.startswith("/auth"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         return response
 
@@ -2104,10 +2146,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             return Response(status_code=404)
         return FileResponse(hero_word_path, media_type="text/plain; charset=utf-8")
 
-    @app.get("/demo-app", include_in_schema=False)
-    async def demo_app() -> FileResponse:
-        return FileResponse(static_root / "index.html")
-
     @app.get("/health")
     async def health() -> dict[str, str]:
         payload = {
@@ -3454,17 +3492,34 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         candidates.append(payload)
         if not candidates:
             return None
-        # Ensure variety by shuffling candidates
+        # Keep variety within one priority tier without discarding the current
+        # task / due-review / low-mastery ordering supplied by the learner
+        # context. The previous unconditional shuffle made personalization
+        # probabilistic and could pick an unrelated low-mastery question first.
         import random as _random
         _random.shuffle(candidates)
-        return next(
-            (
-                question
-                for question in candidates
-                if question["question_id"] not in attempted_question_ids
-            ),
-            candidates[0],
-        )
+        if preferred_kp_ids:
+            priority = {
+                str(value): index
+                for index, value in enumerate(preferred_kp_ids)
+                if str(value).strip()
+            }
+            candidates.sort(
+                key=lambda question: min(
+                    (
+                        priority[value]
+                        for value in question.get("kp_ids") or []
+                        if value in priority
+                    ),
+                    default=len(priority),
+                )
+            )
+        unattempted = [
+            question
+            for question in candidates
+            if question["question_id"] not in attempted_question_ids
+        ]
+        return unattempted[0] if unattempted else candidates[0]
 
     @app.get("/api/v1/workshop/practice/next")
     async def next_workshop_practice_question(
@@ -4667,6 +4722,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "plan contract" in normalized
                     or "规划合同" in message
                     or "规划正文" in message
+                    or "编译为合同" in message
                 )
             ):
                 error_code = "plan_compilation_failed"

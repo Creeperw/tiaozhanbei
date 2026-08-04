@@ -316,6 +316,36 @@
   gap: 9px;
 }
 
+.registration-journey__custom {
+  margin-top: 18px;
+}
+
+.registration-journey__custom-input {
+  display: block;
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  border: 1.5px solid #dce9e2;
+  border-radius: 15px;
+  background: #fff;
+  padding: 13px 15px;
+  color: #334155;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  font-family: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.registration-journey__custom-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(167, 243, 208, 0.4);
+}
+
+.registration-journey__custom-input::placeholder {
+  color: #94a3b8;
+}
+
 .registration-journey__option {
   display: grid;
   width: 100%;

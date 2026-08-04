@@ -73,6 +73,7 @@ class DiagnosisResult(BaseModel):
     plan_scope: str | None = None
     prerequisite_scope: str | None = None
     learner_data: dict[str, Any] = Field(default_factory=dict)
+    audit_evidence: dict[str, Any] = Field(default_factory=dict)
 
 
 class DiagnosisAgent:
@@ -470,6 +471,11 @@ class DiagnosisAgent:
                 "learning_background": user_profile.get("learning_background"),
                 "completed_courses": user_profile.get("completed_courses"),
                 "learner_group": user_profile.get("learner_group") or user_profile.get("user_group"),
+                "custom_requirements": (
+                    user_profile.get("custom_requirements")
+                    or (user_profile.get("user_preference") or {}).get("custom_requirements")
+                    or ""
+                ),
             },
             "time_constraints": {
                 "available_minutes_today": context.get("available_minutes"),
@@ -498,6 +504,15 @@ class DiagnosisAgent:
                     unmet_prerequisite_courses
                 ),
             },
+            "prerequisite_training_policy": (
+                "当 unmet_prerequisite_courses 或其他未确认完成的前置课程非空，"
+                "且本规划覆盖到其 before_stage_id 及之后的阶段时："
+                "长期规划正文必须在到达该阶段之前为前置课程安排具体训练——"
+                "写明训练范围、安排所在阶段或过渡期、大致时长或节奏、"
+                "使用的教材或练习资源、以及可验收的完成标准。"
+                "禁止使用“另行确认”“后续计划”“后续安排”“待确认”等推迟措辞，"
+                "也不得只声明前置条件而不给出训练安排。"
+            ),
             "learning_state": self._model_learning_state(
                 context.get("multi_scale_learning_state")
             ),
@@ -918,6 +933,12 @@ class DiagnosisAgent:
             compiled_plan_contract=compiled_plan_contract,
             trusted_plan_route=self._compiler_route_context(route_context),
             parent_plan_constraints=self._parent_plan_constraints(context, plan_scope),
+            audit_evidence={
+                "time_constraints": planning_payload.get("time_constraints", {}),
+                "learning_evidence": planning_payload.get("learning_evidence", {}),
+                "learning_state": planning_payload.get("learning_state", {}),
+                "task_load_policy": planning_payload.get("task_load_policy", {}),
+            },
         )
         return envelope(context, "diagnosis_agent", "diagnosis_result", result)
 
@@ -1056,18 +1077,30 @@ class DiagnosisAgent:
         """
         current_request = str(context.get("user_request") or "").strip()
         existing = {
-            "long_term": context.get("current_long_term_plan") or {},
-            "short_term": context.get("current_short_term_plan") or {},
-            "daily_task": context.get("current_learning_task") or {},
+            "long_term": self._plan_change_brief(
+                context.get("current_long_term_plan")
+            ),
+            "short_term": self._plan_change_brief(
+                context.get("current_short_term_plan")
+            ),
+            "daily_task": self._plan_change_brief(
+                context.get("current_learning_task")
+            ),
         }
         skill = prompt_skill_registry.load("diagnosis_agent", "plan_change")
         payload = {
             "user_request": current_request,
             "plan_scope": plan_scope,
             "existing_plans": existing,
-            "learner_profile": context.get("user_profile") or {},
-            "learning_state": context.get("multi_scale_learning_state") or {},
-            "learning_monitoring": context.get("learning_monitoring") or {},
+            "learner_profile": self._plan_change_profile_brief(
+                context.get("user_profile")
+            ),
+            "learning_state": self._plan_change_state_brief(
+                context.get("multi_scale_learning_state")
+            ),
+            "learning_monitoring": self._plan_change_monitoring_brief(
+                context.get("learning_monitoring")
+            ),
             "plan_change_context": context.get("plan_change_context"),
             "explicit_flags": {
                 "long_term": bool(context.get("explicit_long_term_change")),
@@ -1084,7 +1117,7 @@ class DiagnosisAgent:
                 "diagnosis_plan_change",
                 build_model_context(
                     context,
-                    target_agent="diagnosis_agent",
+                    target_agent="diagnosis_plan_change",
                     prompt_skill=skill,
                     payload=payload,
                     permission_note=(
@@ -1113,6 +1146,7 @@ class DiagnosisAgent:
                     or context.get("route_changed")
                 ),
                 reason="由系统已确认的规划事实决定；未使用词法推断。",
+                decision_mode="bounded_update_fast_path",
             )
 
 
@@ -1241,6 +1275,98 @@ class DiagnosisAgent:
             },
         )
         return envelope(context, "diagnosis_agent", "learner_data_result", result)
+
+    @staticmethod
+    def _plan_change_brief(value: Any) -> dict[str, Any]:
+        value = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+        if not isinstance(value, dict) or not value:
+            return {"exists": False}
+        brief = {
+            key: value.get(key)
+            for key in (
+                "status", "version", "title", "plan_scope", "goal",
+                "learning_goal", "duration_days", "total_duration_days",
+                "current_stage_id", "updated_at",
+            )
+            if value.get(key) not in (None, "", [], {})
+        }
+        content = str(
+            value.get("content")
+            or value.get("task_content")
+            or value.get("natural_language_content")
+            or ""
+        ).strip()
+        if content:
+            brief["content_summary"] = content[:1_500]
+        return {"exists": True, **brief}
+
+    @staticmethod
+    def _plan_change_profile_brief(value: Any) -> dict[str, Any]:
+        value = value if isinstance(value, dict) else {}
+        result: dict[str, Any] = {}
+        for key in (
+            "learner_group", "learning_goal", "learning_background",
+            "completed_courses", "daily_available_minutes",
+            "weekly_available_minutes", "time_constraints",
+        ):
+            if value.get(key) not in (None, "", [], {}):
+                result[key] = value[key]
+        for nested_key in ("goals", "preferences", "user_preference"):
+            nested = value.get(nested_key)
+            if isinstance(nested, dict) and nested:
+                result[nested_key] = {
+                    key: DiagnosisAgent._compact_change_value(item)
+                    for key, item in list(nested.items())[:10]
+                    if item not in (None, "", [], {})
+                }
+        return result
+
+    @staticmethod
+    def _plan_change_state_brief(value: Any) -> dict[str, Any]:
+        value = value if isinstance(value, dict) else {}
+        return {
+            key: DiagnosisAgent._compact_change_value(item)
+            for key, item in list(value.items())[:10]
+            if key in {
+                "current_stage", "current_status", "weak_kp_ids", "weaknesses",
+                "recent_accuracy", "completion_rate", "macro", "meso", "micro",
+            }
+            and item not in (None, "", [], {})
+        }
+
+    @staticmethod
+    def _compact_change_value(value: Any, depth: int = 0) -> Any:
+        if isinstance(value, str):
+            return value[:500]
+        if isinstance(value, (int, float, bool)) or value is None:
+            return value
+        if depth >= 2:
+            return "已省略明细"
+        if isinstance(value, dict):
+            return {
+                str(key): DiagnosisAgent._compact_change_value(item, depth + 1)
+                for key, item in list(value.items())[:8]
+                if item not in (None, "", [], {})
+            }
+        if isinstance(value, (list, tuple)):
+            return [
+                DiagnosisAgent._compact_change_value(item, depth + 1)
+                for item in list(value)[:8]
+            ]
+        return str(value)[:500]
+
+    @staticmethod
+    def _plan_change_monitoring_brief(value: Any) -> dict[str, Any]:
+        value = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+        value = value if isinstance(value, dict) else {}
+        return {
+            key: DiagnosisAgent._compact_change_value(value[key])
+            for key in (
+                "evidence_status", "freshness_status", "current_status",
+                "behavior_summary", "calculated_at", "window_days",
+            )
+            if value.get(key) not in (None, "", [], {})
+        }
 
     @staticmethod
     def _learner_query_window(request: str, query_kind: str) -> int:

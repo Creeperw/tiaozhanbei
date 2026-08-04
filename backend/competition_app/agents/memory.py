@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from uuid import uuid4
 
@@ -86,108 +87,82 @@ class MemoryAgent:
         should_compress = bool(context.get("memory_required", False))
         summary = None
         compression_candidates: list[str] = []
-        if should_compress:
-            prompt_skill = prompt_skill_registry.load("memory_agent", "conversation_compression")
-            try:
-                raw_output = await self.chat_model.complete_json(
-                    "memory_agent",
-                    build_model_context(
-                        context,
-                        target_agent="memory_agent",
-                        prompt_skill=prompt_skill,
-                        payload={
-                            "user_profile": {
-                                "user_preference": context.get("profile", {}).get(
-                                    "confirmed_preferences", {}
-                                )
-                            },
-                            "messages": [
-                                {"role": item["role"], "content": item.get("content", "")}
-                                for item in messages
-                            ],
-                            "temporary_constraints": context.get("temporary_constraints", []),
-                            "expected_uncertainty": [],
-                            "output_schema": MemoryModelOutput.model_json_schema(),
-                        },
-                        permission_note="只处理当前会话、已确认偏好和临时约束；不得生成掌握度、计划或知识库事实。",
-                    ),
-                )
-                if isinstance(raw_output, dict) and isinstance(raw_output.get("summary"), str):
-                    raw_output = {
-                        **raw_output,
-                        "summary": sanitize_compressed_dialogue_summary(raw_output["summary"]),
-                    }
-                model_output = validate_training_style_output(
-                    MemoryModelOutput,
-                    raw_output,
-                    [],
-                )
-            except ValueError as exc:
-                if context.get("terminal_trace"):
-                    context["terminal_trace"].validation("memory_agent", valid=False, detail=str(exc))
-                raise
-            summary = ConversationContextSummary(
-                summary=model_output.summary,
-                source_refs=source_refs,
-                preserved_facts=model_output.preserved_facts,
-                unresolved_questions=model_output.unresolved_questions,
-                temporary_constraints=model_output.temporary_constraints,
-            ) if source_refs else None
-            compression_candidates = list(model_output.memory_candidates)
+        compression_task = (
+            asyncio.create_task(
+                self._compress_context(context, messages, source_refs)
+            )
+            if should_compress
+            else None
+        )
 
         governance_skill = prompt_skill_registry.load(
             "memory_agent", "learning_memory_governance"
         )
         try:
+            model_context = build_model_context(
+                context,
+                target_agent="memory_agent",
+                prompt_skill=governance_skill,
+                payload={
+                    "current_user_request": context.get("user_request", ""),
+                    "current_user_message": next(
+                        (
+                            item.get("content", "")
+                            for item in reversed(messages)
+                            if item.get("role") == "user"
+                        ),
+                        "",
+                    ),
+                    "relevant_memories": context.get(
+                        "relevant_personalization_memories", []
+                    ),
+                    "memory_interpretation_rules": [
+                        "字段缺失、空数组、未填写或暂无记录只表示没有证据，不表示相反事实。",
+                        "用户本轮明确陈述并用于当前规划的学习事实，应直接作为当前事实传递；只有旧记忆明确记录相反事实才构成冲突。",
+                    ],
+                    "retrieval_degraded": bool(
+                        context.get("memory_retrieval_degraded")
+                    ),
+                    "memory_conflict_answer": context.get(
+                        "memory_conflict_answer"
+                    ),
+                    "temporary_constraints": context.get("temporary_constraints", []),
+                    "output_schema": MemoryGovernanceModelOutput.model_json_schema(),
+                },
+                permission_note=(
+                    "只提取用户明确陈述并判断相关记忆是否真正冲突；"
+                    "空字段或缺失记录不等于相反事实；用户明确陈述并要求据此规划时，"
+                    "除非旧记忆明确记录相反事实，不要为二次确认而阻断流程；"
+                    "不得覆盖记忆、写画像、生成计划或通过关键词直接下结论。"
+                ),
+            )
+            # Validate inside the model call so that a business-schema
+            # mismatch (e.g. memory_candidates containing objects instead of
+            # strings) triggers the failover candidate instead of failing the
+            # whole workflow.
+            model_context["_result_validator"] = lambda result: validate_training_style_output(
+                MemoryGovernanceModelOutput,
+                result,
+                [],
+            ).model_dump(mode="json")
             raw_output = await self.chat_model.complete_json(
                 "memory_agent",
-                build_model_context(
-                    context,
-                    target_agent="memory_agent",
-                    prompt_skill=governance_skill,
-                    payload={
-                        "current_user_request": context.get("user_request", ""),
-                        "current_user_message": next(
-                            (
-                                item.get("content", "")
-                                for item in reversed(messages)
-                                if item.get("role") == "user"
-                            ),
-                            "",
-                        ),
-                        "relevant_memories": context.get(
-                            "relevant_personalization_memories", []
-                        ),
-                        "memory_interpretation_rules": [
-                            "字段缺失、空数组、未填写或暂无记录只表示没有证据，不表示相反事实。",
-                            "用户本轮明确陈述并用于当前规划的学习事实，应直接作为当前事实传递；只有旧记忆明确记录相反事实才构成冲突。",
-                        ],
-                        "retrieval_degraded": bool(
-                            context.get("memory_retrieval_degraded")
-                        ),
-                        "memory_conflict_answer": context.get(
-                            "memory_conflict_answer"
-                        ),
-                        "temporary_constraints": context.get("temporary_constraints", []),
-                        "output_schema": MemoryGovernanceModelOutput.model_json_schema(),
-                    },
-                    permission_note=(
-                        "只提取用户明确陈述并判断相关记忆是否真正冲突；"
-                        "空字段或缺失记录不等于相反事实；用户明确陈述并要求据此规划时，"
-                        "除非旧记忆明确记录相反事实，不要为二次确认而阻断流程；"
-                        "不得覆盖记忆、写画像、生成计划或通过关键词直接下结论。"
-                    ),
-                ),
+                model_context,
             )
             governance_output = validate_training_style_output(
                 MemoryGovernanceModelOutput,
                 raw_output,
                 [],
             )
-        except ValueError as exc:
-            if context.get("terminal_trace"):
+        except BaseException as exc:
+            if compression_task is not None:
+                compression_task.cancel()
+                await asyncio.gather(compression_task, return_exceptions=True)
+            if isinstance(exc, ValueError) and context.get("terminal_trace"):
                 context["terminal_trace"].validation("memory_agent", valid=False, detail=str(exc))
             raise
+        if compression_task is not None:
+            summary, compression_candidates = await compression_task
         if context.get("terminal_trace"):
             context["terminal_trace"].validation(
                 "memory_agent", valid=True, detail="MemoryGovernanceModelOutput"
@@ -266,3 +241,72 @@ class MemoryAgent:
             input_refs=source_refs,
             confidence=0.9,
         )
+
+    async def _compress_context(
+        self,
+        context: dict[str, Any],
+        messages: list[dict[str, Any]],
+        source_refs: list[ArtifactReference],
+    ) -> tuple[ConversationContextSummary | None, list[str]]:
+        """Compress independently from user-fact extraction/governance."""
+
+        prompt_skill = prompt_skill_registry.load(
+            "memory_agent", "conversation_compression"
+        )
+        try:
+            raw_output = await self.chat_model.complete_json(
+                "memory_agent",
+                build_model_context(
+                    context,
+                    target_agent="memory_agent",
+                    prompt_skill=prompt_skill,
+                    payload={
+                        "user_profile": {
+                            "user_preference": context.get("profile", {}).get(
+                                "confirmed_preferences", {}
+                            )
+                        },
+                        "messages": [
+                            {"role": item["role"], "content": item.get("content", "")}
+                            for item in messages
+                        ],
+                        "temporary_constraints": context.get("temporary_constraints", []),
+                        "expected_uncertainty": [],
+                        "output_schema": MemoryModelOutput.model_json_schema(),
+                    },
+                    permission_note=(
+                        "只压缩当前会话、已确认偏好和临时约束；"
+                        "不得生成掌握度、计划或知识库事实。"
+                    ),
+                ),
+            )
+            if isinstance(raw_output, dict) and isinstance(raw_output.get("summary"), str):
+                raw_output = {
+                    **raw_output,
+                    "summary": sanitize_compressed_dialogue_summary(
+                        raw_output["summary"]
+                    ),
+                }
+            model_output = validate_training_style_output(
+                MemoryModelOutput,
+                raw_output,
+                [],
+            )
+        except ValueError as exc:
+            if context.get("terminal_trace"):
+                context["terminal_trace"].validation(
+                    "memory_agent", valid=False, detail=str(exc)
+                )
+            raise
+        summary = (
+            ConversationContextSummary(
+                summary=model_output.summary,
+                source_refs=source_refs,
+                preserved_facts=model_output.preserved_facts,
+                unresolved_questions=model_output.unresolved_questions,
+                temporary_constraints=model_output.temporary_constraints,
+            )
+            if source_refs
+            else None
+        )
+        return summary, list(model_output.memory_candidates)

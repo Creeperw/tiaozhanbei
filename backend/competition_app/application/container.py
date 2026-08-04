@@ -1048,7 +1048,6 @@ class StreamingChatModel:
         stream: bool = True,
     ) -> None:
         self.inner = inner
-        self._terminal_lock = asyncio.Lock()
         self.terminal_trace = terminal_trace or TerminalTrace(enabled=False)
         self.model_trace_recorder = model_trace_recorder or ModelTraceRecorder()
         self.stream = stream
@@ -1126,6 +1125,20 @@ class StreamingChatModel:
             return str(result)
         except BaseException as exc:
             self.model_trace_recorder.fail(trace_index, exc)
+            emit_runtime_event(
+                "model_failed",
+                agent=role,
+                call_id=call_id,
+                output_kind=output_kind,
+                step_id=workflow_step_id,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                reason=getattr(exc, "reason", None),
+                status_code=getattr(exc, "status_code", None),
+                transport_error=_sanitize(
+                    getattr(self.inner, "last_error_details", None)
+                ),
+            )
             raise
 
     async def complete_json(self, role, payload, on_delta=None):
@@ -1172,30 +1185,63 @@ class StreamingChatModel:
                 return result
             except BaseException as exc:
                 self.model_trace_recorder.fail(trace_index, exc)
-                raise
-        async with self._terminal_lock:
-            terminal_agent_started(role)
-            printer = on_delta
-            if printer is None and self.terminal_trace.level in {"model", "full"}:
-                printer = terminal_delta_printer(role)
-            try:
-                self.terminal_trace.model_input(role, observable_payload)
-                if has_event_sink():
-                    printer = stream_callback
-                result = await self.inner.complete_json(role, payload, on_delta=printer)
-                self.terminal_trace.model_output(role, result)
-                self._record_transport(
-                    trace_index, call_id, workflow_step_id, observable_payload, result
-                )
-                self.model_trace_recorder.succeed(trace_index, result)
                 emit_runtime_event(
-                    "model_output", agent=role, call_id=call_id,
+                    "model_failed",
+                    agent=role,
+                    call_id=call_id,
                     output_kind=output_kind,
-                    step_id=workflow_step_id, raw_output=_sanitize(result),
+                    step_id=workflow_step_id,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                    reason=getattr(exc, "reason", None),
+                    status_code=getattr(exc, "status_code", None),
+                    transport_error=_sanitize(
+                        getattr(self.inner, "last_error_details", None)
+                    ),
                 )
-                return result
-            except BaseException as exc:
-                self.model_trace_recorder.fail(trace_index, exc)
                 raise
-            finally:
-                terminal_agent_finished(role)
+        # Do not hold a process-wide terminal lock while awaiting the provider.
+        # The lock used to serialize every model call, so DAG levels advertised
+        # as parallel (and even unrelated conversations) actually queued behind
+        # one slow request and could hit their step deadlines before starting.
+        # Every runtime/model event already carries call_id + step_id, which is
+        # the correct way to keep concurrent output attributable.
+        terminal_agent_started(role)
+        printer = on_delta
+        if printer is None and self.terminal_trace.level in {"model", "full"}:
+            printer = terminal_delta_printer(role)
+        try:
+            self.terminal_trace.model_input(role, observable_payload)
+            if has_event_sink():
+                printer = stream_callback
+            result = await self.inner.complete_json(role, payload, on_delta=printer)
+            self.terminal_trace.model_output(role, result)
+            self._record_transport(
+                trace_index, call_id, workflow_step_id, observable_payload, result
+            )
+            self.model_trace_recorder.succeed(trace_index, result)
+            emit_runtime_event(
+                "model_output", agent=role, call_id=call_id,
+                output_kind=output_kind,
+                step_id=workflow_step_id, raw_output=_sanitize(result),
+            )
+            return result
+        except BaseException as exc:
+            self.model_trace_recorder.fail(trace_index, exc)
+            emit_runtime_event(
+                "model_failed",
+                agent=role,
+                call_id=call_id,
+                output_kind=output_kind,
+                step_id=workflow_step_id,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                reason=getattr(exc, "reason", None),
+                status_code=getattr(exc, "status_code", None),
+                transport_error=_sanitize(
+                    getattr(self.inner, "last_error_details", None)
+                ),
+            )
+            raise
+        finally:
+            terminal_agent_finished(role)

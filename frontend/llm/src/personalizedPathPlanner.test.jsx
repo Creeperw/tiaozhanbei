@@ -31,6 +31,19 @@ describe('personalizedPathPlanner', () => {
     expect(onStage).toHaveBeenCalledTimes(3);
   });
 
+  it('attaches custom requirements to every planning message when provided', async () => {
+    await buildPersonalizedLearningPath({
+      target: { official_name: '中医执业医师资格考试' },
+      customRequirements: '希望侧重方剂背诵，每天只学 30 分钟',
+    });
+
+    const contents = streamAssistantMessageOutcome.mock.calls.map(([, content]) => content);
+    expect(contents.length).toBe(3);
+    expect(contents.every(
+      (content) => content.includes('【自定义需求】希望侧重方剂背诵，每天只学 30 分钟'),
+    )).toBe(true);
+  });
+
   it('stops before child plans when an upstream layer needs clarification', async () => {
     streamAssistantMessageOutcome.mockResolvedValueOnce({
       status: 'interrupted',

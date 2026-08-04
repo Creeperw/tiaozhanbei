@@ -64,6 +64,33 @@ describe('CompactAssistant', () => {
     expect(onOpenFull).toHaveBeenCalledWith('session-saved');
   });
 
+  it('reloads only the newly selected exam workspace conversation', async () => {
+    listAssistantSessions.mockResolvedValueOnce([
+      { id: 'session-tcm', title: '中医执业医师规划' },
+    ]);
+    loadAssistantMessages.mockResolvedValueOnce([
+      { id: 1, role: 'assistant', content: '这是中医执业医师工作区。' },
+    ]);
+    render(<CompactAssistant currentUser="admin" onOpenFull={vi.fn()} />);
+
+    expect(await screen.findByText('这是中医执业医师工作区。')).toBeInTheDocument();
+
+    listAssistantSessions.mockResolvedValueOnce([
+      { id: 'session-integrated', title: '中西医结合执业医师规划' },
+    ]);
+    loadAssistantMessages.mockResolvedValueOnce([
+      { id: 2, role: 'assistant', content: '这是中西医结合执业医师工作区。' },
+    ]);
+    window.dispatchEvent(new CustomEvent('shizhen:learning-target-changed', {
+      detail: { exam_track_id: 'EXAM_2025_INTEGRATED_PHYSICIAN' },
+    }));
+
+    expect(await screen.findByText('这是中西医结合执业医师工作区。')).toBeInTheDocument();
+    expect(screen.queryByText('这是中医执业医师工作区。')).not.toBeInTheDocument();
+    expect(loadAssistantMessages).toHaveBeenLastCalledWith('session-integrated');
+    expect(localStorage.getItem('lastSessionId')).toBe('session-integrated');
+  });
+
   it('renders the collapsed assistant as one framed control instead of nested frames', () => {
     render(<CompactAssistant initiallyCollapsed onOpenFull={vi.fn()} />);
 

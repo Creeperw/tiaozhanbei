@@ -68,15 +68,14 @@ class PlanContractValidator:
                     + "、".join(missing_in_content)
                     + "。"
                 )
-            missing_in_schedule = [
-                book for book in stage.books if book not in stage.schedule_summary
-            ]
-            if missing_in_schedule:
-                issues.append(
-                    f"长期规划第{index + 1}阶段详细安排缺少具体书名："
-                    + "、".join(missing_in_schedule)
-                    + "。"
-                )
+            # Book completeness is enforced by ``stage.books`` (non-empty),
+            # the verbatim content check above, and the trusted-route book
+            # comparison below.  ``schedule_summary`` is a compressed summary
+            # of the stage schedule; requiring every book title to appear
+            # verbatim inside it over-constrains legitimate summarisation
+            # (e.g. an 8-book stage) without protecting any front-end render.
+            # Front-end book nodes are projected from ``stage.book``, not from
+            # this summary text.
             if trusted_stages:
                 trusted = trusted_stages[index]
                 trusted_name = str(trusted.get("name") or "").strip()

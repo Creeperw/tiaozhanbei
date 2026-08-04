@@ -714,6 +714,7 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "learner_context",
         "time_constraints",
         "learning_evidence",
+        "prerequisite_training_policy",
             "learning_state",
             "learning_path_progress",
             "learning_path_progress_instruction",
@@ -748,6 +749,7 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "learning_background",
         "completed_courses",
         "learner_group",
+        "custom_requirements",
     }
     assert diagnosis_payload["time_constraints"]["available_minutes_today"] == 15
     assert evidence["evidence_summaries"] == ["四君子汤由人参、白术、茯苓、甘草组成。"]
@@ -1102,6 +1104,10 @@ async def test_scoped_plan_discards_stale_persisted_textbook_selection() -> None
         "route_resolution": textbook_route_output(),
     }
     diagnosis_context["plan_scope"] = "long_term"
+    diagnosis_context["user_profile"] = {
+        "learning_goals": ["掌握方剂组成与配伍"],
+        "completed_courses": ["中医诊断学"],
+    }
     diagnosis_context["current_long_term_plan"] = {
         "content": "旧长期规划",
         "textbook_selection": {

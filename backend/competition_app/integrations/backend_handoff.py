@@ -87,6 +87,9 @@ def _onboarding_profile_context(onboarding: dict[str, Any] | None) -> dict[str, 
         for item in (survey.get("learned_courses") or [])
         if str(item).strip()
     ]
+    custom_requirements = str(
+        survey.get("custom_requirements") or ""
+    ).strip()
     background_parts = [
         value
         for value in (foundation, major)
@@ -126,6 +129,7 @@ def _onboarding_profile_context(onboarding: dict[str, Any] | None) -> dict[str, 
         "user_major_or_profession": major,
         "completed_courses": learned_courses,
         "daily_available_minutes": daily_minutes,
+        "custom_requirements": custom_requirements,
         "goals": {
             "goal_type": goal_type,
             "goal_name": target or long_term_goal,
@@ -137,6 +141,7 @@ def _onboarding_profile_context(onboarding: dict[str, Any] | None) -> dict[str, 
         "user_preference": {
             "resource_preference": resources,
             "learning_periods": survey.get("preferred_time_slot") or "",
+            "custom_requirements": custom_requirements,
         },
         "onboarding_survey": survey,
         "l0_baseline": baseline,

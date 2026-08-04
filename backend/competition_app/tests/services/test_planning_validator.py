@@ -209,6 +209,51 @@ def test_validator_accepts_stage_schedule_time_windows() -> None:
         ),
         short_term_action="reuse",
         daily_task_action="reuse",
+        confirmed_prerequisite_courses={"中医诊断学"},
+    )
+
+    assert result.valid, result.issues
+
+
+def test_validator_rejects_deferred_prerequisite_training_in_long_plan() -> None:
+    value = output(
+        long_term_plan_content=(
+            output().long_term_plan_content
+            + "\n中医诊断学前置训练将在后续计划中另行确认。"
+        ),
+        selected_textbook_route_id="textbook_formula",
+        selected_stage_id="stage-1",
+        selected_books=["《中药学》"],
+        selection_reason="从基础中药阶段开始，逐步推进。",
+    )
+
+    result = PlanningValidator().validate(
+        value,
+        textbook_bound_route(),
+        unmet_prerequisite_courses={"中医诊断学"},
+    )
+
+    assert not result.valid
+    assert any("前置训练" in issue and "中医诊断学" in issue for issue in result.issues)
+
+
+def test_validator_accepts_scheduled_prerequisite_training_in_long_plan() -> None:
+    value = output(
+        long_term_plan_content=(
+            output().long_term_plan_content
+            + "\n阶段一先安排中医诊断学基本证候识别训练，为期30天，"
+            + "使用《中医诊断学》配套练习，以完成基本证候辨析为验收标准。"
+        ),
+        selected_textbook_route_id="textbook_formula",
+        selected_stage_id="stage-1",
+        selected_books=["《中药学》"],
+        selection_reason="先补中医诊断学前置训练，再进入方剂阶段。",
+    )
+
+    result = PlanningValidator().validate(
+        value,
+        textbook_bound_route(),
+        unmet_prerequisite_courses={"中医诊断学"},
     )
 
     assert result.valid, result.issues

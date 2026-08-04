@@ -22,6 +22,7 @@ task_type: plan_change
 - requires_clarification：只有影响层级或变化事实确实无法判断时才为 true；
 - clarification_questions：最多3个问题，一次只问最关键的缺口；
 - reason：简要说明依据。
+- decision_mode：由你根据完整语义判断执行方式，不得由代码按关键词决定。只是查看或沿用时返回 `reuse_fast_path`；变化事实和层级都明确、可直接限定更新时返回 `bounded_update_fast_path`；确需重新生成规划正文时返回 `full_replan`；关键语义仍无法确定时返回 `clarify`。
 
 层级关系是硬约束：长期规划 update 必须同时让短期计划和当日任务 update；短期计划 update 必须让当日任务 update。已有长期/短期/当日任务时，若用户只是查看或沿用，不要触发重规划。不要把普通问候、知识讲解或单次答题错误当成长短期重规划。
 

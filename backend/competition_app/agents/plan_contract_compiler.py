@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from copy import deepcopy
 from typing import Any
 
@@ -1202,20 +1203,43 @@ class PlanContractCompilerAgent:
                     return False
                 source = searchable_sources.get(str(entry.get("source_field")))
                 quote = entry.get("source_quote")
-                if source is None or not isinstance(quote, str) or quote not in source:
+                if (
+                    source is None
+                    or not isinstance(quote, str)
+                    or not cls._quote_grounded(quote, source, path)
+                ):
                     return False
             return True
 
-        for field_path in required:
-            if _anchors_verbatim(field_path):
-                continue
-            field = field_path.lstrip("/")
-            value = rebuilt_contract.get(field)
+        def _resolve_path(path: str) -> Any:
+            """Resolve a JSON-pointer style field path against the contract.
+
+            Supports nested stage paths such as ``/stages/0/schedule_summary``
+            so the backfill below can re-anchor stage-level fields whose
+            extracted value appears verbatim in the diagnosis output.
+            """
+            if not path.startswith("/"):
+                return None
+            node: Any = rebuilt_contract
+            for part in path[1:].split("/"):
+                if isinstance(node, dict) and part in node:
+                    node = node[part]
+                elif isinstance(node, list) and part.isdigit():
+                    index = int(part)
+                    node = node[index] if index < len(node) else None
+                else:
+                    return None
+            return node
+
+        def _backfill(path: str) -> None:
+            if _anchors_verbatim(path):
+                return
+            value = _resolve_path(path)
             if value is None:
-                continue
+                return
             candidates = value if isinstance(value, list) else [value]
             if not candidates:
-                continue
+                return
             recovered: list[dict[str, str]] = []
             for item in candidates:
                 if item is None:
@@ -1228,7 +1252,7 @@ class PlanContractCompilerAgent:
                     (
                         key
                         for key, source in searchable_sources.items()
-                        if quote in source
+                        if cls._quote_grounded(quote, source, path)
                     ),
                     None,
                 )
@@ -1239,7 +1263,17 @@ class PlanContractCompilerAgent:
                     {"source_field": source_field, "source_quote": quote}
                 )
             if recovered:
-                rebuilt_anchors[field_path] = recovered
+                rebuilt_anchors[path] = recovered
+
+        # Top-level required paths first, then every nested field path the
+        # compiler anchored (e.g. ``/stages/0/schedule_summary``).  A stage
+        # field whose value is a verbatim excerpt of the plan document is
+        # re-anchored instead of failing strict source validation.
+        for field_path in required:
+            _backfill(field_path)
+        for field_path in list(anchors):
+            if field_path not in required:
+                _backfill(field_path)
         return rebuilt
 
     @classmethod
@@ -1325,7 +1359,9 @@ class PlanContractCompilerAgent:
                 continue
             for anchor in anchors:
                 source = searchable_sources.get(anchor.source_field)
-                if source is None or anchor.source_quote not in source:
+                if source is None or not cls._quote_grounded(
+                    anchor.source_quote, source, field_path
+                ):
                     issues.append(
                         {
                             "code": "source_anchor_invalid",
@@ -1391,6 +1427,42 @@ class PlanContractCompilerAgent:
         if isinstance(value, str):
             return value
         return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+    # Field paths whose values are summarised prose rather than verbatim
+    # extracts.  The compiler legitimately compresses, rephrases or elides
+    # interstitial sentences when extracting these; source validation
+    # degrades to per-sentence grounding so legitimate summaries pass while
+    # fabricated sentences still fail.  Fact/constraint fields (books,
+    # duration_days, stage_name, ...) keep strict verbatim anchoring.
+    _SUMMARY_ANCHOR_HINTS = (
+        "schedule_summary",
+        "expected_output",
+        "completion_criteria",
+        "goal",
+    )
+    _SENTENCE_SPLIT = re.compile(r"[。；;！？!?\n]+")
+
+    @classmethod
+    def _quote_grounded(cls, quote: str, source: str, field_path: str) -> bool:
+        """True when a quote is grounded in the source text.
+
+        Verbatim membership always counts.  For summarised prose fields the
+        quote may skip non-essential sentences, so every sentence must appear
+        verbatim as a contiguous substring of the source; any fabricated or
+        rewritten sentence still fails.
+        """
+        if quote in source:
+            return True
+        if not any(hint in field_path for hint in cls._SUMMARY_ANCHOR_HINTS):
+            return False
+        sentences = [
+            sentence
+            for sentence in cls._SENTENCE_SPLIT.split(quote)
+            if sentence.strip()
+        ]
+        if not sentences:
+            return False
+        return all(sentence in source for sentence in sentences)
 
     @staticmethod
     def _required_anchor_paths(scope: str) -> set[str]:

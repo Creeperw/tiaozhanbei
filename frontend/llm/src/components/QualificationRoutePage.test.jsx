@@ -11,6 +11,29 @@ import { clearQualificationRoutePageCache } from './qualificationRoutePageCache'
 vi.mock('./knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasDetail: vi.fn() }));
 import { loadAtlasDetail } from './knowledge-atlas/knowledgeAtlasApi';
 
+vi.mock('../personalizedPathPlanner', () => ({
+  buildPersonalizedLearningPath: vi.fn(() => Promise.resolve({ sessionId: 'CONV_TEST' })),
+  PLANNING_STAGES: [
+    { key: 'long_term', label: '正在制定长期规划' },
+    { key: 'short_term', label: '正在生成短期计划' },
+    { key: 'daily_task', label: '正在安排今日任务' },
+  ],
+}));
+import { buildPersonalizedLearningPath } from '../personalizedPathPlanner';
+
+vi.mock('./OnboardingSurveyPanel', () => ({
+  __esModule: true,
+  default: function MockOnboardingSurveyPanel({ onSaved }) {
+    return (
+      <div data-testid="mock-survey">
+        <button type="button" onClick={() => onSaved?.({}, 'CUSTOM_TEST_0829：希望侧重方剂背诵。')}>
+          模拟保存调研
+        </button>
+      </div>
+    );
+  },
+}));
+
 function response(payload, ok = true, status = 200) {
   return { ok, status, text: async () => JSON.stringify(payload) };
 }
@@ -339,9 +362,25 @@ describe('QualificationRoutePage', () => {
 
     expect(screen.queryByRole('button', { name: '学情调研' })).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: '去制定个性化路径' }));
-    expect(screen.getByRole('dialog', { name: '学情调研' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '退出调研' }));
-    expect(screen.queryByRole('dialog', { name: '学情调研' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('mock-survey')).toBeInTheDocument();
+  });
+
+  it('passes the survey custom requirements into the personalized path planner', async () => {
+    installHomeFetch({}, {
+      learningPathPayload: { ...routePayload, nodes: [], availability: 'requires_long_term_plan' },
+    });
+    buildPersonalizedLearningPath.mockClear();
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '个性化路径' }));
+    fireEvent.click(await screen.findByRole('button', { name: '去制定个性化路径' }));
+    expect(screen.getByTestId('mock-survey')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '模拟保存调研' }));
+
+    await waitFor(() => expect(buildPersonalizedLearningPath).toHaveBeenCalledTimes(1));
+    const callArgs = buildPersonalizedLearningPath.mock.calls[0][0];
+    expect(callArgs.customRequirements).toBe('CUSTOM_TEST_0829：希望侧重方剂背诵。');
   });
 
   it('does not reuse another qualification target personalized plan', async () => {

@@ -57,6 +57,7 @@ from competition_app.services.conversation_history import (
     sanitize_conversation_content,
     sanitize_conversation_messages,
 )
+from competition_app.exam_scope import bind_exam_workspace, current_exam_workspace
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 
 
@@ -324,6 +325,17 @@ class PersonalizedReviewCardUseCase:
             or persisted_messages[-1].get("content") != clean_user_request
         ):
             persisted_messages.append({"role": "user", "content": clean_user_request})
+        _FAILURE_STEP_CONTEXT.set("behavior_context")
+        behavior_context = await self._load_behavior_context(request.learner_id)
+        # Freeze the server-owned exam workspace before persisting any
+        # conversation rows or reading mutable learning state.  Later browser
+        # target switches cannot redirect this running workflow into another
+        # certificate's plan hierarchy.
+        bind_exam_workspace(
+            request.learner_id,
+            behavior_context.get("learning_target"),
+        )
+        _FAILURE_STEP_CONTEXT.set("conversation")
         self.conversation_repository.save_messages(
             conversation_id, request.learner_id, persisted_messages
         )
@@ -334,8 +346,6 @@ class PersonalizedReviewCardUseCase:
                 request.learner_id,
                 request.user_request.strip().replace("\n", " ")[:40] or "新对话",
             )
-        _FAILURE_STEP_CONTEXT.set("behavior_context")
-        behavior_context = await self._load_behavior_context(request.learner_id)
         _FAILURE_STEP_CONTEXT.set("memory")
         memory_retrieval = (
             await self.memory_retriever.retrieve(
@@ -440,13 +450,11 @@ class PersonalizedReviewCardUseCase:
         # Explicit scope is user/system authority. Text classifiers only provide
         # a hint; Planner owns the semantic decision and may override that hint.
         explicit_plan_scope = request.plan_scope
-        plan_scope_hint = request.plan_scope_hint or infer_plan_scope(
-            effective_user_request
-        )
-        continued_plan_scope = infer_continued_plan_scope(
-            effective_user_request,
-            persisted_messages,
-        )
+        # Scope hints are accepted only as explicit structured UI/workflow
+        # input. Free-text scope and continuation semantics belong to Planner;
+        # the application must not pre-route them with keyword rules.
+        plan_scope_hint = request.plan_scope_hint
+        continued_plan_scope = None
         candidate_scope = next(
             (
                 value
@@ -539,6 +547,18 @@ class PersonalizedReviewCardUseCase:
         ]
         effective_goals = effective_user_profile.get("goals")
         effective_goals = effective_goals if isinstance(effective_goals, dict) else {}
+        effective_preferences = next(
+            (
+                value
+                for value in (
+                    effective_user_profile.get("preferences"),
+                    effective_user_profile.get("user_preference"),
+                    effective_user_profile.get("preference"),
+                )
+                if isinstance(value, dict) and value
+            ),
+            {},
+        )
         current_page_context = await self._read_current_page_context(
             request.current_page,
             agent="planner_agent",
@@ -614,6 +634,11 @@ class PersonalizedReviewCardUseCase:
             "behavior_context_calculated_at": behavior_context.get("calculated_at"),
             "learning_monitoring": learning_monitoring.model_dump(mode="json"),
             "learning_target": behavior_context.get("learning_target"),
+            "exam_scope_id": (
+                current_exam_workspace(request.learner_id).storage_scope
+                if current_exam_workspace(request.learner_id) is not None
+                else None
+            ),
             "current_long_term_plan": current_long_term_plan,
             "current_short_term_plan": current_short_term_plan,
             "current_learning_task": current_learning_task,
@@ -637,10 +662,9 @@ class PersonalizedReviewCardUseCase:
             "explicit_short_term_change": bool(
                 plan_change and "short_term" in plan_change.target_layers
             ),
-            "requires_learning_plan_output": (
-                any(word in effective_user_request for word in ("学习计划", "复习计划", "制定计划", "规划"))
-                and any(word in effective_user_request for word in ("学习卡", "学习卡片", "复习卡", "学习资源"))
-            ),
+            # Planner owns this semantic decision.  The initial value is only
+            # a neutral placeholder and is replaced after model routing.
+            "requires_learning_plan_output": False,
             "conversation_requires_compression": (
                 total_message_chars > self.conversation_compression_threshold_chars
             ),
@@ -650,9 +674,7 @@ class PersonalizedReviewCardUseCase:
                 total_message_chars > self.conversation_compression_threshold_chars
             ),
             "profile": {
-                "confirmed_preferences": effective_user_profile.get(
-                    "user_preference", {}
-                ),
+                "confirmed_preferences": effective_preferences,
             },
             "terminal_trace": self.terminal_trace,
             "current_page_context": current_page_context,
@@ -715,7 +737,10 @@ class PersonalizedReviewCardUseCase:
             # the orchestrator, but it is still a real two-node workflow. Emit
             # the compiled graph before running the nodes so the browser sees
             # the same authoritative execution-path contract as normal runs.
-            reuse_plan = PlannerAgent.build_plan(planner_output.payload)
+            reuse_plan = PlannerAgent.build_plan(
+                planner_output.payload,
+                memory_required=bool(context.get("memory_required")),
+            )
             self._emit_compiled_graph(reuse_plan)
             context["task_type"] = "learning_plan"
             context["plan_scope"] = planner_output.payload.plan_scope
@@ -838,7 +863,10 @@ class PersonalizedReviewCardUseCase:
             )
             return result
         _FAILURE_STEP_CONTEXT.set("planner")
-        execution_plan = PlannerAgent.build_plan(planner_output.payload)
+        execution_plan = PlannerAgent.build_plan(
+            planner_output.payload,
+            memory_required=bool(context.get("memory_required")),
+        )
         context["task_type"] = planner_output.payload.task_type
         context["plan_scope"] = planner_output.payload.plan_scope
         # Keep the scope selected for the original business request separate
@@ -847,6 +875,18 @@ class PersonalizedReviewCardUseCase:
         # after its parent has been materialized.
         context["requested_plan_scope"] = planner_output.payload.plan_scope
         context["planner_plan_action"] = planner_output.payload.plan_action
+        context["requires_learning_plan_output"] = bool(
+            planner_output.payload.requires_learning_plan_output
+        )
+        context["external_information_request"] = bool(
+            planner_output.payload.external_information_request
+        )
+        context["question_explanation_request"] = bool(
+            planner_output.payload.question_explanation_request
+        )
+        context["emotional_support_request"] = bool(
+            planner_output.payload.emotional_support_request
+        )
         context["learner_data_query_kind"] = planner_output.payload.query_kind
         context["planner_requires_clarification"] = (
             planner_output.payload.requires_clarification
@@ -1377,7 +1417,10 @@ class PersonalizedReviewCardUseCase:
             parent_decision = PlannerAgent.complete_required_selection(
                 parent_decision.model_copy(deep=True)
             )
-            plan = PlannerAgent.build_plan(parent_decision)
+            plan = PlannerAgent.build_plan(
+                parent_decision,
+                memory_required=bool(context.get("memory_required")),
+            )
             run_thread = f"{continuation.execution_id}:prerequisite:{scope}"
             parent_context["plan_scope"] = scope
             parent_context["requested_plan_scope"] = scope
@@ -1868,7 +1911,12 @@ class PersonalizedReviewCardUseCase:
             return "knowledge_step_failed"
         if (
             failed_step in {"diagnosis", "diagnosis_agent", "diagnosis_long", "diagnosis_short"}
-            and ("plan contract" in message or "规划合同" in message or "规划正文" in message)
+            and (
+                "plan contract" in message
+                or "规划合同" in message
+                or "规划正文" in message
+                or "编译为合同" in message
+            )
         ):
             return "plan_compilation_failed"
         if (

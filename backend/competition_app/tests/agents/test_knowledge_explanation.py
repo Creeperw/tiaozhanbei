@@ -182,7 +182,7 @@ async def test_general_learning_support_keeps_free_form_natural_language() -> No
 
     assert "知识讲解" not in result.payload.content
     assert result.payload.content["学习支持"].startswith("先抓住阴阳")
-    assert result.payload.content["配套练习"]
+    assert "配套练习" not in result.payload.content
 
 
 @pytest.mark.asyncio
@@ -228,7 +228,7 @@ async def test_knowledge_explanation_drops_generic_uncertainty_placeholders() ->
 
     assert result.payload.content["知识讲解"] == "四君子汤以益气健脾为主要功用。"
     assert "待确认项" not in result.payload.content
-    assert result.payload.content["配套练习"]
+    assert "配套练习" not in result.payload.content
 
 
 @pytest.mark.asyncio
@@ -253,34 +253,26 @@ async def test_knowledge_explanation_keeps_only_specific_uncertainty() -> None:
 
 
 @pytest.mark.asyncio
-async def test_knowledge_explanation_uses_retrieved_questions_without_answers() -> None:
+async def test_knowledge_explanation_does_not_force_retrieved_questions() -> None:
     result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(
         _add_question_candidates(_context())
     )
 
-    assert result.payload.content["配套练习"] == [
-        {
-            "题型": "单项选择题",
-            "题目": "风寒感冒的常用治法是？",
-            "选项": ["A. 辛温解表", "B. 益气健脾"],
-        }
-    ]
+    assert "配套练习" not in result.payload.content
     assert result.payload.question_consumption is not None
-    assert result.payload.question_consumption.selected_question_ids == ["Q_1"]
-    assert "reference_answer" not in str(result.payload.content["配套练习"])
-    assert "analysis" not in str(result.payload.content["配套练习"])
+    assert result.payload.question_consumption.use_question_candidates is False
+    assert result.payload.question_consumption.selected_question_ids == []
 
 
 @pytest.mark.asyncio
-async def test_knowledge_explanation_falls_back_to_open_self_check_questions() -> None:
+async def test_knowledge_explanation_keeps_open_questions_in_prose_contract() -> None:
     result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(_context())
 
-    questions = result.payload.content["配套练习"]
-    assert len(questions) == 1
-    assert all(item["选项"] == [] for item in questions)
+    assert "配套练习" not in result.payload.content
+    assert result.payload.content["思考问题"]
     assert result.payload.question_consumption is not None
     assert result.payload.question_consumption.use_question_candidates is False
-    assert result.payload.question_consumption.resource_type == "practice"
+    assert result.payload.question_consumption.resource_type == "none"
 
 
 @pytest.mark.asyncio
@@ -295,5 +287,4 @@ async def test_knowledge_explanation_rejects_off_topic_question_candidate() -> N
 
     assert result.payload.question_consumption.use_question_candidates is False
     assert result.payload.question_consumption.selected_question_ids == []
-    assert result.payload.content["配套练习"][0]["题型"] == "简答题"
-    assert "感冒证型" in result.payload.content["配套练习"][0]["题目"]
+    assert "配套练习" not in result.payload.content

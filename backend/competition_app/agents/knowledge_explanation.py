@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import re
 from datetime import date
 from typing import Any
@@ -11,12 +10,12 @@ from pydantic import ValidationError
 from competition_app.agents.common import envelope
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.contracts.base import AgentEnvelope
-from competition_app.contracts.knowledge import QuestionDetail
 from competition_app.contracts.resource import (
     QuestionConsumptionDecision,
     ResourceClaim,
     ResourceDraft,
 )
+from competition_app.contracts.audit_policy import ResourceProvenance
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.schemas import KnowledgeExplanationModelOutput
@@ -201,40 +200,14 @@ class KnowledgeExplanationAgent:
             "学习支持" if flexible_support else "知识讲解":
                 output.explanation_content
         }
-        selected_questions = [] if external_information_request else [
-            item
-            for item in evidence_pack._question_details
-            if self._is_safe_practice_question(item.question_type)
-            and self._is_relevant_practice_question(
-                item,
-                evidence_pack.query,
-                str(context.get("user_request") or ""),
-            )
-        ][:1]
-        if selected_questions:
-            content["配套练习"] = [
-                {
-                    "题型": item.question_type,
-                    "题目": item.stem,
-                    "选项": self._learner_options(item.options),
-                }
-                for item in selected_questions
-            ]
-        elif not external_information_request:
-            # A knowledge explanation should still end with an actionable
-            # self-check when the formal question index has no usable match.
-            content["配套练习"] = [
-                {
-                    "题型": "简答题",
-                    "题目": f"请用自己的话概括“{evidence_pack.query}”的核心结论，并说明判断依据。",
-                    "选项": [],
-                },
-            ]
+        # The prose-producing Expert does not own a structured resource
+        # selection contract.  Do not append a question after generation: an
+        # Audit repair could not remove or replace that system-added item.
+        # Open self-check questions stay in the natural-language explanation.
         if output.uncertainty:
             content["待确认项"] = output.uncertainty
         if output.thinking_questions:
             content["思考问题"] = output.thinking_questions
-        selected_question_ids = [item.question_id for item in selected_questions]
         draft = ResourceDraft(
             resource_draft_id=f"DRAFT_{uuid4().hex}",
             title=output.title,
@@ -250,14 +223,15 @@ class KnowledgeExplanationAgent:
             safety_notes=evidence_pack.risk_notes
             or ["仅用于中医药教学，不构成现实诊疗建议。"],
             question_consumption=QuestionConsumptionDecision(
-                use_question_candidates=bool(selected_question_ids),
-                usage_reason=(
-                    "系统从本次检索到的正式候选题中选择配套练习。"
-                    if selected_question_ids
-                    else "正式题库未检索到安全候选，系统提供不含答案的开放式自测题。"
-                ),
-                selected_question_ids=selected_question_ids,
-                resource_type="practice",
+                use_question_candidates=False,
+                usage_reason="知识讲解以自然语言思考问题完成自检，本节点不自动追加正式题目。",
+                selected_question_ids=[],
+                resource_type="none",
+            ),
+            provenance=ResourceProvenance(
+                question_origin="none",
+                selected_evidence_ids=[primary.evidence_id],
+                generated_sections=list(content),
             ),
         )
         return envelope(context, "expert_agent", "knowledge_explanation", draft)
@@ -312,74 +286,5 @@ class KnowledgeExplanationAgent:
             if not token or token in placeholders:
                 continue
             if text not in normalized:
-                normalized.append(text)
-        return normalized
-
-    @staticmethod
-    def _is_safe_practice_question(question_type: str) -> bool:
-        normalized = str(question_type).replace(" ", "")
-        return normalized in {
-            "单选题",
-            "单项选择题",
-            "多选题",
-            "多项选择题",
-            "判断题",
-        }
-
-    @staticmethod
-    def _is_relevant_practice_question(
-        question: QuestionDetail,
-        *topic_texts: str,
-    ) -> bool:
-        """Reject safe-but-off-topic retrieval candidates before publication."""
-
-        source = " ".join(str(value or "") for value in topic_texts)
-        source = re.sub(r"《[^》]+》", " ", source)
-        for phrase in (
-            "你先给我讲讲", "请给我讲讲", "给我讲讲", "请结合教材证据",
-            "学习要点", "学习重点", "阅读重点", "知识点", "相关的",
-            "相关", "章节", "这一章", "这部分", "帮我梳理", "带我梳理",
-            "有哪些", "是什么", "为什么", "怎么学", "如何学习",
-        ):
-            source = source.replace(phrase, " ")
-        anchors: list[str] = []
-        for segment in re.findall(r"[\u4e00-\u9fffA-Za-z0-9]{2,16}", source):
-            normalized = segment.strip().lower()
-            if normalized in {"中医", "教材", "理论", "内容", "介绍"}:
-                continue
-            anchors.append(normalized)
-            for suffix in ("学说", "理论", "证型", "辨析"):
-                if normalized.endswith(suffix) and len(normalized) > len(suffix) + 1:
-                    anchors.append(normalized[:-len(suffix)])
-        anchors = list(dict.fromkeys(anchor for anchor in anchors if len(anchor) >= 2))
-        if not anchors:
-            return False
-        searchable = " ".join(
-            [
-                str(question.stem or ""),
-                *[str(option or "") for option in question.options],
-            ]
-        ).replace(" ", "").lower()
-        return any(anchor in searchable for anchor in anchors)
-
-    @staticmethod
-    def _learner_options(options: list[str]) -> list[str]:
-        normalized: list[str] = []
-        for option in options:
-            value: object = option
-            if isinstance(option, str) and option.strip().startswith("{"):
-                try:
-                    value = ast.literal_eval(option)
-                except (SyntaxError, ValueError):
-                    value = option
-            if isinstance(value, dict):
-                label = str(value.get("option_id") or value.get("label") or "").strip()
-                content = str(value.get("content") or value.get("text") or "").strip()
-                if not content:
-                    continue
-                text = f"{label}. {content}" if label else content
-            else:
-                text = str(value).strip()
-            if text and text not in normalized:
                 normalized.append(text)
         return normalized

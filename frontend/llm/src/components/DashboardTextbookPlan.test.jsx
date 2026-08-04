@@ -91,6 +91,11 @@ describe('DashboardPage textbook plan library', () => {
     const firstPlannedCard = within(library).getByRole('button', { name: /继续学习《中医学基础》/ });
     const secondPlannedCard = within(library).getByRole('button', { name: /继续学习《方剂学》/ });
     expect(within(library).queryByRole('button', { name: /继续学习《针灸学》/ })).not.toBeInTheDocument();
+
+    // 教学资源页默认只显示“已加入计划”，用户切换为全部状态后才
+    // 提供展开其余教材的入口。
+    fireEvent.click(within(library).getByRole('button', { name: /已加入计划/ }));
+    fireEvent.click(within(library).getByRole('menuitemradio', { name: /全部状态/ }));
     expect(within(library).getByRole('button', { name: /展开全部教材/ })).toBeInTheDocument();
 
     fireEvent.click(within(library).getByRole('button', { name: /展开全部教材/ }));

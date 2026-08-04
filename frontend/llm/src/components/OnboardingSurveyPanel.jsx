@@ -117,6 +117,7 @@ export default function OnboardingSurveyPanel({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [customRequirements, setCustomRequirements] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +152,7 @@ export default function OnboardingSurveyPanel({
           );
           if (!lockedRoute) setSelectedRouteId(savedTarget?.target_id || '');
           setAnswers(restoreSurveyAnswers(savedSurvey));
+          setCustomRequirements(String(savedSurvey.custom_requirements || ''));
         }
       } catch (reason) {
         if (!cancelled) setError(reason.message || '学情调查模板加载失败');
@@ -199,6 +201,14 @@ export default function OnboardingSurveyPanel({
       type: 'profile',
       required: required && question.requiredWhenRegistering,
     })),
+    {
+      type: 'custom_requirements',
+      eyebrow: '自定义需求 · 选填',
+      title: '你还有什么特别的学习需求或偏好？',
+      description: '选填。这些内容会作为后续制定学习规划的参考。',
+      required: false,
+      mascotMessage: '例如侧重方剂背诵、每天只学 30 分钟、需要大量重复练习、想同时准备其他考试等。',
+    },
   ];
   const current = surveyQuestions[step];
   const totalSteps = stepOffset + surveyQuestions.length;
@@ -208,7 +218,9 @@ export default function OnboardingSurveyPanel({
     ? selectedGroup
     : current.type === 'route'
       ? selectedRouteId
-      : answers[current.bucket]?.[current.key] || '';
+      : current.type === 'custom_requirements'
+        ? customRequirements
+        : answers[current.bucket]?.[current.key] || '';
 
   const setCurrentValue = (value) => {
     setError('');
@@ -259,6 +271,7 @@ export default function OnboardingSurveyPanel({
         method: 'POST',
         body: JSON.stringify({
           ...submittedAnswers,
+          custom_requirements: customRequirements.trim(),
           goals: {
             ...(submittedAnswers.goals || {}),
             target_exam_or_course: selectedRoute.official_name,
@@ -280,7 +293,7 @@ export default function OnboardingSurveyPanel({
           throw new Error(completionData.detail || '学情调查已保存，但注册初始化未完成');
         }
       }
-      onSaved?.(completionData);
+      onSaved?.(completionData, customRequirements.trim());
     } catch (reason) {
       setError(reason.message || '学情调查保存失败');
     } finally {
@@ -302,6 +315,9 @@ export default function OnboardingSurveyPanel({
   };
 
   const skip = async () => {
+    if (current.type === 'custom_requirements') {
+      setCustomRequirements('');
+    }
     const nextAnswers = {
       ...answers,
       [current.bucket]: {
@@ -344,6 +360,17 @@ export default function OnboardingSurveyPanel({
             <Loader2 className="animate-spin" size={22} />
             <div><strong>正在准备问题</strong><span>马上就好</span></div>
           </div>
+        </div>
+      ) : current.type === 'custom_requirements' ? (
+        <div className="registration-journey__custom" aria-label={current.title}>
+          <textarea
+            className="registration-journey__custom-input"
+            value={customRequirements}
+            onChange={(event) => setCustomRequirements(event.target.value)}
+            placeholder="例如：希望侧重方剂背诵、每天只学 30 分钟、需要大量重复练习、想同时准备其他考试…"
+            rows={5}
+            maxLength={500}
+          />
         </div>
       ) : (
         <div className="registration-journey__options" role="radiogroup" aria-label={current.title}>

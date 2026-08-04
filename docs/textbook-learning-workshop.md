@@ -84,7 +84,7 @@
 最终教材结构数据位于：
 
 ```text
-backend/competition/knowledge_atlas_chapters/2026-07-22/final/
+assets/knowledge-atlas/chapters/releases/2026-07-22/final/
 ```
 
 主要文件：
@@ -94,7 +94,7 @@ backend/competition/knowledge_atlas_chapters/2026-07-22/final/
 - `publish-report.json`：最终发布数量和完整性报告。
 - `section_video_matches.jsonl`：视频分 P 到教材小节完整视频的正式映射。
 
-同一日期目录下还保留了生成、审核和修复过程资料，例如 `reviewed-v2/`、`reviewed-v3/`、`audit_data/` 和若干处理脚本。运行时章节服务优先选择配置的章节根目录；未配置时优先选择仓库内 `reviewed-v3/`，再回退到 `final/`。这些目录都属于版本化数据，部署时不能只复制前端代码而遗漏章节文件。
+同一版本目录下还可保留生成、审核和修复过程资料，例如 `reviewed-v2/`、`reviewed-v3/`、`audit_data/` 和若干处理脚本。运行时章节服务优先选择配置的章节根目录；未配置时从统一资产目录选择 `reviewed-v3/`，再回退到 `final/`。旧 `backend/competition/knowledge_atlas_chapters/2026-07-22` 只作迁移期兼容来源。部署时不能只复制前端代码而遗漏章节文件。
 
 ### 2. 原始教材切片
 
@@ -189,7 +189,7 @@ publish-report.json
 运行目录未部署该文件时，后端回退读取章节正式发布目录中的同名文件：
 
 ```text
-backend/competition/knowledge_atlas_chapters/2026-07-22/final/section_video_matches.jsonl
+assets/knowledge-atlas/chapters/releases/2026-07-22/final/section_video_matches.jsonl
 ```
 
 `GET /api/knowledge/atlas/status` 的 `coverage` 字段分别报告教材切片映射、知识点视频和小节完整视频覆盖情况；缺少可选的小节视频映射时同时写入 `warnings`，不再伪装成已有完整视频覆盖。
@@ -198,7 +198,7 @@ backend/competition/knowledge_atlas_chapters/2026-07-22/final/section_video_matc
 
 1. 视频运行目录中的 OCR 映射，适用于独立发布新视频资产；
 2. `KNOWLEDGE_ATLAS_CHAPTER_ROOT` 中的正式映射；
-3. 仓库内置的 `2026-07-22/final/section_video_matches.jsonl`。
+3. 统一资产目录中的 `2026-07-22/final/section_video_matches.jsonl`。
 
 因此，合并本分支后不需要在服务器上手工寻找作者本机文件；只要仓库内置正式发布目录存在，小节完整视频就能加载。知识点时间戳视频仍依赖 `KNOWLEDGE_ATLAS_VIDEO_ROOT` 下的 `full_batch_results`。
 
@@ -209,7 +209,7 @@ backend/competition/knowledge_atlas_chapters/2026-07-22/final/section_video_matc
 ```text
 backend/competition_app/data/                 # 用户和业务运行数据
 backend/competition/vdb_store/                # 向量索引生成物
-backend/competition/backend-handoff-20260720/.run/  # 本地运行状态
+backend/platform_backend/.run/  # 本地运行状态
 runtime/                                      # PID、日志和临时状态
 frontend/llm/node_modules/                    # 前端依赖安装目录
 ```
@@ -386,7 +386,7 @@ book
 更新视频资产时执行：
 
 1. 生成或取得新的 `section_video_matches.jsonl`；
-2. 将正式文件放入 `backend/competition/knowledge_atlas_chapters/2026-07-22/final/`；
+2. 将正式文件放入 `assets/knowledge-atlas/chapters/releases/2026-07-22/final/`；
 3. 更新 `publish-report.json` 中的小节视频行数、解析数、未匹配数、覆盖小节数和 SHA-256；
 4. 调用状态接口确认 `coverage.section_full_videos.mapping_file_available=true`；
 5. 运行后端接口测试和学习工坊前端测试。
@@ -394,7 +394,7 @@ book
 校验文件：
 
 ```powershell
-Get-FileHash -Algorithm SHA256 backend/competition/knowledge_atlas_chapters/2026-07-22/final/section_video_matches.jsonl
+Get-FileHash -Algorithm SHA256 assets/knowledge-atlas/chapters/releases/2026-07-22/final/section_video_matches.jsonl
 ```
 
 ## 开发验证
@@ -423,7 +423,7 @@ python -m pytest competition_app/tests/services/test_knowledge_recognition_revie
 学习工坊后端接口测试需要从交接后端目录运行：
 
 ```powershell
-Set-Location backend/competition/backend-handoff-20260720
+Set-Location backend/platform_backend
 python -m pytest APP/backend/tests/test_knowledge_atlas_service.py APP/backend/tests/test_knowledge_atlas_routes.py APP/backend/tests/test_knowledge_atlas_video_pipeline.py APP/backend/tests/test_knowledge_atlas_asset_import.py -q
 ```
 

@@ -56,7 +56,9 @@ async def test_deepseek_chat_client_uses_standard_structured_output_shape() -> N
     )
 
     assert await client.complete_json("audit_agent", {}) == {"decision": "pass"}
-    assert "enable_thinking" not in json.loads(requests[0].content)
+    request_body = json.loads(requests[0].content)
+    assert "enable_thinking" not in request_body
+    assert request_body["thinking"] == {"type": "enabled"}
 
 
 @pytest.mark.asyncio
@@ -814,8 +816,17 @@ async def test_chat_client_rejects_empty_success_response(body) -> None:
 
 
 @pytest.mark.asyncio
-async def test_chat_client_rejects_stream_without_content() -> None:
+async def test_chat_client_retries_empty_stream_once_without_streaming() -> None:
+    stream_modes: list[bool] = []
+
     def handler(request: httpx.Request) -> httpx.Response:
+        is_stream = bool(json.loads(request.content).get("stream"))
+        stream_modes.append(is_stream)
+        if not is_stream:
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": '{"status":"ok"}'}}]},
+            )
         return httpx.Response(
             200,
             text='data: {"choices":[],"usage":{"total_tokens":1}}\n\ndata: [DONE]\n\n',
@@ -829,8 +840,46 @@ async def test_chat_client_rejects_stream_without_content() -> None:
         transport=httpx.MockTransport(handler),
     )
 
-    with pytest.raises(ModelResponseError, match="no content"):
-        await client.complete_json("planner_agent", {}, on_delta=lambda _: None)
+    assert await client.complete_json(
+        "planner_agent", {}, on_delta=lambda _: None
+    ) == {"status": "ok"}
+    assert stream_modes == [True, False]
+
+
+@pytest.mark.asyncio
+async def test_chat_client_allows_one_more_nonstream_retry_for_consecutive_empty_successes() -> None:
+    stream_modes: list[bool] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        is_stream = bool(json.loads(request.content).get("stream"))
+        stream_modes.append(is_stream)
+        if len(stream_modes) < 3:
+            if is_stream:
+                return httpx.Response(
+                    200,
+                    text='data: {"choices":[]}\n\ndata: [DONE]\n\n',
+                    headers={"content-type": "text/event-stream"},
+                )
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": ""}}]},
+            )
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": '{"status":"ok"}'}}]},
+        )
+
+    client = OpenAICompatibleChatModel(
+        base_url="https://example.test/v1",
+        api_key="secret-value",
+        model="deepseek-v4-flash",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert await client.complete_json(
+        "planner_agent", {}, on_delta=lambda _: None
+    ) == {"status": "ok"}
+    assert stream_modes == [True, False, False]
 
 
 @pytest.mark.asyncio

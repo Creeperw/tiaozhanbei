@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from uuid import uuid4
 
 from competition_app.contracts.knowledge import EvidenceItem, EvidencePack
@@ -31,11 +32,12 @@ class KnowledgeRetrievalTool:
     async def build_evidence_pack(self, query: str) -> EvidencePack:
         web_items = []
         if self.exa_retriever is not None:
-            web_items = [
-                *await self.exa_retriever.search_videos(query, limit=3),
-                *await self.exa_retriever.search_references(query, limit=3),
-                *await self.exa_retriever.search_questions(query, limit=3),
-            ]
+            videos, references, questions = await asyncio.gather(
+                self.exa_retriever.search_videos(query, limit=3),
+                self.exa_retriever.search_references(query, limit=3),
+                self.exa_retriever.search_questions(query, limit=3),
+            )
+            web_items = [*videos, *references, *questions]
         if self.delivery_backend is not None:
             pack = await self.delivery_backend.build_local_evidence_pack(query)
             external = [

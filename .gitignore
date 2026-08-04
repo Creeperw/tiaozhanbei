@@ -208,6 +208,9 @@ backend/competition_app/runtime/frontend_backend/
 backend/competition/backend-handoff-20260720/APP/backend/runtime/
 backend/competition/backend-handoff-20260720/APP/backend/user_questions/
 backend/competition/backend-handoff-20260720/.run/
+backend/platform_backend/APP/backend/runtime/
+backend/platform_backend/APP/backend/user_questions/
+backend/platform_backend/.run/
 *.db
 *.db-journal
 *.sqlite
@@ -215,6 +218,7 @@ backend/competition/backend-handoff-20260720/.run/
 
 # Large knowledge assets are mounted outside Git
 /runtime/
+/assets/
 /vdb_store/
 /知识星球视频知识库_前端交接包_2026-07-18/
 backend/competition/vdb_store

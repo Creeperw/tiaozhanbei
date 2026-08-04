@@ -33,7 +33,7 @@ npm run build
 
 ### 3.1 Stub 联调
 
-Stub 不调用外部模型，适合检查页面、接口和认证流程。若不需要兼容业务页面，可关闭交接模块：
+Stub 不调用外部模型，适合检查页面、接口和认证流程。若不需要平台业务模块，可关闭它：
 
 ```dotenv
 COMPETITION_APP_MODE=stub
@@ -72,15 +72,24 @@ BACKEND_HANDOFF_SECRET_KEY=填写另一随机值
 AUTH_COOKIE_SECURE=false
 ```
 
-Live 模式还需配置知识资产路径。相对路径以 `backend/` 为基准；跨机器部署推荐写绝对路径：
+Live 模式还需配置只读公共资产和可写 runtime。跨机器部署推荐写绝对路径：
 
 ```dotenv
-QUESTION_VECTOR_STORE_ROOT=/srv/tiaozhanbei-assets/vdb_store
-KNOWLEDGE_VECTOR_STORE_ROOT=/srv/tiaozhanbei-assets/vdb_store
-KNOWLEDGE_HANDOFF_ROOT=/srv/tiaozhanbei-assets/知识星球视频知识库_前端交接包_2026-07-18
-KNOWLEDGE_RUNTIME_ROOT=/srv/tiaozhanbei-runtime/knowledge
-# 可选；不配置时读取仓库内 backend/competition/knowledge_atlas_chapters/2026-07-22
-KNOWLEDGE_ATLAS_CHAPTER_ROOT=/srv/tiaozhanbei-assets/knowledge-atlas-chapters
+SHIZHEN_ASSET_ROOT=/srv/tiaozhanbei/assets
+SHIZHEN_RUNTIME_ROOT=/srv/tiaozhanbei/runtime
+SHIZHEN_ASSET_MANIFEST=/srv/tiaozhanbei/assets/manifests/asset-manifest.json
+SHIZHEN_ASSET_RELEASE=2026-07-18
+SHIZHEN_ATLAS_CHAPTER_RELEASE=2026-07-22
+BACKEND_HANDOFF_ROOT=platform_backend
+# 可选；不配置时读取统一资产根下的版本目录
+KNOWLEDGE_ATLAS_CHAPTER_ROOT=/srv/tiaozhanbei/assets/knowledge-atlas/chapters/releases/2026-07-22
+```
+
+旧的细粒度资产环境变量仍可覆盖 manifest。目录安装和迁移方式见
+[`data-layout.md`](data-layout.md)。部署前运行：
+
+```bash
+python scripts/validate_deployment_layout.py --require-live-assets
 ```
 
 `MINERU_TOKEN` 也兼容旧变量名 `MINERU_API_KEY`。密钥只放在服务端配置，不传给浏览器。
@@ -145,7 +154,7 @@ curl --fail http://127.0.0.1:7860/openapi.json >/dev/null
 
 ```powershell
 $env:BACKEND_PYTHON = "D:\anaconda3\python.exe" # 按本机环境调整
-powershell -ExecutionPolicy Bypass -File backend/competition/backend-handoff-20260720/run.ps1 start
+powershell -ExecutionPolicy Bypass -File backend/platform_backend/run.ps1 start
 ```
 
 访问 `http://127.0.0.1:7860`。本地验收不再启动独立 Vite 端口。

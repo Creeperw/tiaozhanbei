@@ -93,6 +93,22 @@ class RepairedPlanStillRejectedModel:
         }
 
 
+class PolicyCapturingAuditModel:
+    def __init__(self) -> None:
+        self.payload = None
+
+    async def complete_json(self, role, payload, on_delta=None):
+        compiled = await _compile_audit_findings(role, payload, on_delta)
+        if compiled is not None:
+            return compiled
+        self.payload = payload
+        return {
+            "decision": "pass",
+            "findings": [],
+            "audit_report": "事实、来源、正式任务和时间预算均已核验。",
+        }
+
+
 def _resource_context() -> dict:
     evidence = EvidencePack(
         evidence_pack_id="EVIDENCE_PACK_1",
@@ -203,6 +219,46 @@ async def test_empty_model_revision_passes_when_deterministic_gates_pass() -> No
 
 
 @pytest.mark.asyncio
+async def test_resource_audit_receives_the_same_formal_task_and_provenance_policy() -> None:
+    context = _resource_context()
+    context["dependency_outputs"]["learning_plan"] = SimpleNamespace(
+        payload=SimpleNamespace(
+            learning_task={
+                "task_content": "复习四君子汤组成与功用",
+                "estimated_minutes": 10,
+                "expected_output": "一份闭卷复述",
+                "completion_criteria": "组成和功用复述完整",
+            }
+        )
+    )
+    model = PolicyCapturingAuditModel()
+
+    result = await AuditAgent(model).run(context)
+
+    business = model.payload["payload"]
+    assert result.payload.decision == "pass"
+    assert business["formal_task_available"] is True
+    assert business["formal_learning_task"]["task_content"] == "复习四君子汤组成与功用"
+    assert business["acceptance_policy"]["formal_task_available"] is True
+    assert "evidence_id" not in str(business["semantic_resource"]["provenance"])
+
+
+@pytest.mark.asyncio
+async def test_unrelated_persisted_task_is_not_an_audit_blocking_contract() -> None:
+    context = _resource_context()
+    context["current_learning_task"] = {
+        "task_content": "昨天的无关任务",
+        "estimated_minutes": 60,
+    }
+    model = PolicyCapturingAuditModel()
+
+    result = await AuditAgent(model).run(context)
+
+    assert result.payload.decision == "pass"
+    assert model.payload["payload"]["formal_task_available"] is False
+
+
+@pytest.mark.asyncio
 async def test_resource_revision_compiles_every_finding_to_expert_repair() -> None:
     result = await AuditAgent(ActionableRevisionAuditModel()).run(
         _resource_context()
@@ -254,7 +310,7 @@ async def test_repaired_short_plan_converges_when_deterministic_contract_passes(
 
     assert result.payload.decision == "pass"
     assert result.payload.structured_findings == []
-    assert result.payload.findings == ["可以进一步润色第二个推进节点的表达。"]
+    assert result.payload.findings == ["非阻断建议：可以进一步润色第二个推进节点的表达。"]
 
 
 @pytest.mark.asyncio
@@ -278,4 +334,4 @@ async def test_repaired_plan_model_rejection_becomes_non_blocking_advice() -> No
 
     assert result.payload.decision == "pass"
     assert result.payload.structured_findings == []
-    assert result.payload.findings == ["还可以进一步优化学习节奏。"]
+    assert result.payload.findings == ["非阻断建议：还可以进一步优化学习节奏。"]

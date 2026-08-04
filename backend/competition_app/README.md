@@ -33,16 +33,13 @@ MySQL/SQLite、Qwen 与 FAISS，负责用户认证、学习行为汇总、三层
 
 ```text
 backend/
-├── competition_app/                    # 当前主后端
-│   ├── data/textbook_pdfs/catalog.v1.json # 可提交的内置教材 PDF 索引，不含大文件
-│   └── runtime/textbook_uploads/        # 用户教材、封面、目录 JSON 与 MinerU 产物（不提交 Git）
-└── competition/
-    ├── backend-handoff-20260720/        # 已并入同一 FastAPI 进程的业务接口包
-    ├── textbook_pdfs/                   # 本地教材 PDF（当前 94 本，不提交 Git）
-    │   ├── 十三五/
-    │   └── 十四五/
-    ├── vdb_store/                       # 本地题库/知识库向量索引（不提交 Git）
-    └── 知识星球视频知识库_前端交接包_2026-07-18/ # 正式知识库交付包（不提交 Git）
+├── competition_app/                    # 当前主后端和多智能体框架
+│   └── data/textbook_pdfs/catalog.v1.json # 可提交的教材索引，不含 PDF
+├── platform_backend/                   # 同进程装载的活动业务后端
+└── competition/                        # 章节映射和旧路径兼容入口
+
+SHIZHEN_ASSET_ROOT/                     # 公共只读资产，不提交 Git
+SHIZHEN_RUNTIME_ROOT/                   # 数据库、上传、个人索引和日志
 ```
 
 所有命令都从 `backend/` 目录执行。不要从 `competition_app/` 内部直接启动，否则 Python
@@ -108,20 +105,19 @@ Live 模式还需要团队共享盘中的正式知识资产。大体积题库、
 数据库不提交 Git，路径通过以下变量挂载：
 
 ```bash
-export QUESTION_VECTOR_STORE_ROOT='/absolute/path/to/vdb_store'
-export KNOWLEDGE_VECTOR_STORE_ROOT='/absolute/path/to/vdb_store'
-export KNOWLEDGE_HANDOFF_ROOT='/absolute/path/to/知识星球视频知识库_前端交接包_2026-07-18'
-export KNOWLEDGE_RUNTIME_ROOT='/absolute/path/to/知识库管理组件/runtime'
-export TEXTBOOK_PDF_ROOT='/absolute/path/to/textbook_pdfs'
+export SHIZHEN_ASSET_ROOT='/absolute/path/to/shizhen-assets'
+export SHIZHEN_RUNTIME_ROOT='/absolute/path/to/shizhen-runtime'
+export SHIZHEN_ASSET_MANIFEST='/absolute/path/to/shizhen-assets/manifests/asset-manifest.json'
 export TEXTBOOK_PDF_CATALOG_PATH='/absolute/path/to/catalog.v1.json'
 ```
 
-如已有旧项目资产，可直接使用上述绝对路径；也可将 `vdb_store`、知识库交付包和
-`textbook_pdfs` 解压或软链接到 `backend/competition/` 下。不要提交 FAISS 索引、知识库交付包
-或 PDF 大文件。教材目录由 `scripts/build_textbook_pdf_catalog.py` 扫描生成，索引文件可提交；
+旧部署的 `QUESTION_VECTOR_STORE_ROOT`、`KNOWLEDGE_HANDOFF_ROOT`、`TEXTBOOK_PDF_ROOT` 等变量
+继续有效。新目录、manifest 和迁移脚本见 [`../../docs/data-layout.md`](../../docs/data-layout.md)。
+不要提交 FAISS 索引、知识库交付包或 PDF 大文件。教材目录由
+`scripts/build_textbook_pdf_catalog.py` 扫描生成，索引文件可提交；
 同名教材优先解析“十四五”，未匹配教材返回“暂无电子教材”，不会错误关联其他 PDF。
 
-用户教材上传保存在 `competition_app/runtime/textbook_uploads/<用户>/<教材 ID>/`。每本教材含
+用户教材上传保存在 `SHIZHEN_RUNTIME_ROOT/competition_app/textbook_uploads/<用户>/<教材 ID>/`。每本教材含
 `textbook.pdf`、`cover.*`、`manifest.json`、`toc.json` 和 `mineru/`。`manifest.json` 的
 `category` 为必填分类；内置教材未显式写分类时按 `中医药` 读取。目录定位与层级提取只调用
 `CHAT_BASE_URL` / `CHAT_MODEL` 配置的多模态模型；目录缺失时接口返回稳定错误码

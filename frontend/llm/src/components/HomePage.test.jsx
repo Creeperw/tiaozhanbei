@@ -1,7 +1,7 @@
 import React from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import HomePage from './HomePage';
@@ -29,15 +29,20 @@ function installLearningTargetApi({ savedTarget = { exam_track_id: 'track-a' }, 
     if (path.endsWith('/qualification-targets')) {
       return Promise.resolve(response({ items: qualificationTargets }));
     }
-    if (path.endsWith('/personalization/learning-target')) {
-      if (options.method === 'PUT') {
+    if (path.endsWith('/personalization/learning-targets')) {
+      if (options.method === 'POST') {
         const body = JSON.parse(options.body);
         return Promise.resolve(response(
-          saveOk ? { target: { exam_track_id: body.exam_track_id } } : { detail: '保存失败' },
+          saveOk ? { target: { exam_track_id: body.current_exam_track_id } } : { detail: '保存失败' },
           saveOk,
           saveOk ? 200 : 500,
         ));
       }
+      return Promise.resolve(response({
+        items: savedTarget ? [{ ...savedTarget, is_active: true }] : [],
+      }));
+    }
+    if (path.endsWith('/personalization/learning-target')) {
       return Promise.resolve(response({ target: savedTarget }));
     }
     throw new Error(`Unexpected request: ${path}`);
@@ -120,7 +125,7 @@ describe('HomePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
     expect(await screen.findByRole('dialog', { name: '选择资格考试' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: '中医执业医师资格考试' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('checkbox', { name: '中医执业医师资格考试' })).toHaveAttribute('aria-checked', 'true');
     expect(onNavigate).not.toHaveBeenCalled();
   });
 
@@ -135,12 +140,17 @@ describe('HomePage', () => {
 
     expect(await screen.findByRole('dialog', { name: '选择资格考试' })).toBeInTheDocument();
     expect(onNavigate).not.toHaveBeenCalled();
-    fireEvent.click(await screen.findByRole('radio', { name: '中西医结合执业医师资格考试' }));
+    const integratedOption = await screen.findByRole('checkbox', { name: '中西医结合执业医师资格考试' });
+    fireEvent.click(integratedOption);
+    fireEvent.click(within(integratedOption.closest('.qualification-target-dialog__option')).getByRole('radio'));
     fireEvent.click(screen.getByRole('button', { name: '确认并开始学习' }));
 
     await waitFor(() => expect(onNavigate).toHaveBeenCalledWith({ page: 'learning-path', params: {} }));
-    const saveRequest = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT');
-    expect(JSON.parse(saveRequest[1].body)).toMatchObject({ exam_track_id: 'track-b' });
+    const saveRequest = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST');
+    expect(JSON.parse(saveRequest[1].body)).toMatchObject({
+      exam_track_ids: ['track-a', 'track-b'],
+      current_exam_track_id: 'track-b',
+    });
     expect(targetChanged).toHaveBeenCalledWith(expect.objectContaining({
       detail: expect.objectContaining({ exam_track_id: 'track-b' }),
     }));
@@ -154,7 +164,7 @@ describe('HomePage', () => {
     render(<HomePage onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByRole('button', { name: '开始学习' }));
-    await screen.findByRole('radio', { name: '中医执业医师资格考试' });
+    await screen.findByRole('checkbox', { name: '中医执业医师资格考试' });
     fireEvent.click(screen.getByRole('button', { name: '确认并开始学习' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('保存失败');

@@ -14,10 +14,12 @@ from competition_app.contracts.resource import (
     ResourceClaim,
     ResourceDraft,
 )
+from competition_app.contracts.audit_policy import ResourceProvenance
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
 from competition_app.llm.schemas import ExpertModelOutput, PaperBlueprintModelOutput
+from competition_app.services.audit_policy import build_resource_acceptance_policy
 
 
 class ExpertAgent:
@@ -44,28 +46,18 @@ class ExpertAgent:
         diagnosis_payload = getattr(dependency_outputs.get("diagnosis"), "payload", None)
         formal_plan = getattr(dependency_outputs.get("learning_plan"), "payload", None)
         review_schedule = getattr(dependency_outputs.get("schedule"), "payload", None)
+        profile = context.get("user_profile") if isinstance(context.get("user_profile"), dict) else {}
         learner_preferences = (
             memory_payload.learner_context.confirmed_preferences if memory_payload else {}
-        )
+        ) or profile.get("preferences") or profile.get("user_preference") or profile
         learning_profile = {
             "summary": getattr(diagnosis_payload, "summary", ""),
             "risk_flags": getattr(diagnosis_payload, "risk_flags", []),
         }
-        formal_short_term_plan = getattr(formal_plan, "short_term_plan", None)
-        short_term_plan = (
-            formal_short_term_plan.content if formal_short_term_plan else ""
-        )
         formal_learning_task = getattr(formal_plan, "learning_task", None)
-        learning_task = (
-            formal_learning_task.model_dump(mode="json")
-            if formal_learning_task
-            else {
-                "task_type": "review_resource",
-                "task_content": getattr(diagnosis_payload, "summary", "完成本次复习任务"),
-                "estimated_minutes": context.get("available_minutes", 15),
-                "expected_output": "完成知识卡片学习与练习反馈。",
-                "completion_criteria": "完成知识卡片、自测题和复习反馈。",
-            }
+        acceptance_policy = build_resource_acceptance_policy(
+            context,
+            formal_learning_task=formal_learning_task,
         )
         review_schedule_payload = (
             {
@@ -97,6 +89,18 @@ class ExpertAgent:
                 "estimated_minutes": getattr(previous_payload, "estimated_minutes", None),
             }
         question_details = list(evidence_pack._question_details)
+        if task_type != "paper_generation" and evidence_pack.resolved_kp_ids:
+            resolved_kp_ids = set(evidence_pack.resolved_kp_ids)
+            # Broad BM25 retrieval can return a formally indexed question that
+            # belongs to an unrelated KP. Exclude it before the model boundary
+            # instead of paying for an inevitable Audit rejection and repair.
+            question_details = [
+                item
+                for item in question_details
+                if resolved_kp_ids.intersection(
+                    bridge.kp_id for bridge in item.bridges if bridge.kp_id
+                )
+            ]
         candidate_catalog = [
             {
                 "question_id": item.question_id,
@@ -108,6 +112,25 @@ class ExpertAgent:
             }
             for item in question_details
         ]
+        resource_candidates = [
+            item
+            for item in evidence_pack.evidence_items
+            if item.resource_type in {"video", "reference"} and item.source_url
+        ][:8]
+        candidate_resources = [
+            {
+                "candidate_id": f"RESOURCE_CANDIDATE_{index}",
+                "title": item.source_id,
+                "summary": " ".join(str(item.content_summary).split())[:500],
+                "resource_type": item.resource_type,
+                "authority": item.authority_level,
+            }
+            for index, item in enumerate(resource_candidates, start=1)
+        ]
+        resource_candidate_map = {
+            f"RESOURCE_CANDIDATE_{index}": item.evidence_id
+            for index, item in enumerate(resource_candidates, start=1)
+        }
         paper_generation = task_type == "paper_generation"
         exam_constraints = context.get("exam_constraints", {}) if paper_generation else {}
         try:
@@ -126,6 +149,8 @@ class ExpertAgent:
                                 {
                                     "question_id": item["question_id"],
                                     "question_type": item["question_type"],
+                                    "tags": item["tags"],
+                                    "kp_ids": item["kp_ids"],
                                     "stem": next(
                                         q.stem for q in question_details
                                         if q.question_id == item["question_id"]
@@ -138,7 +163,15 @@ class ExpertAgent:
                                 "available_minutes": context.get("available_minutes", 15),
                                 "diagnosis": learning_profile["summary"],
                                 "schedule": review_schedule_payload,
+                                "formal_learning_task": (
+                                    acceptance_policy.formal_learning_task
+                                    if acceptance_policy.formal_task_available
+                                    else None
+                                ),
                             },
+                            "personalization": acceptance_policy.learner_fit_facts,
+                            "acceptance_policy": acceptance_policy.model_dump(mode="json"),
+                            "candidate_resources": candidate_resources,
                             **(
                                 {"repair_request": {
                                     "issue_ids": repair_instruction.get("issue_ids", []),
@@ -160,6 +193,10 @@ class ExpertAgent:
                                 "learning_tip": "可选的一句学习动作提示。",
                                 "use_question_candidates": "是否使用候选题。",
                                 "selected_question_ids": "只能填写 candidate_questions 中的 ID。",
+                                "selected_resource_candidate_ids": (
+                                    "只能填写 candidate_resources 中适合当前用户偏好、学情、任务和时间预算的 candidate_id；"
+                                    "没有合适项时返回空数组。"
+                                ),
                                 "resource_type": "none 或 practice。",
                             },
                         }
@@ -202,7 +239,6 @@ class ExpertAgent:
                     "use_question_candidates": use_candidates and bool(available_ids),
                     "selected_question_ids": (
                         [item for item in requested_ids if item in available_ids]
-                        or available_ids[:1]
                         if use_candidates and available_ids
                         else []
                     ),
@@ -240,6 +276,9 @@ class ExpertAgent:
                     "use_question_candidates": bool(raw_output.get("use_question_candidates", False)),
                     "usage_reason": str(raw_output.get("usage_reason", "")),
                     "selected_question_ids": raw_output.get("selected_question_ids") or [],
+                    "selected_resource_candidate_ids": raw_output.get(
+                        "selected_resource_candidate_ids"
+                    ) or [],
                     "resource_type": raw_output.get("resource_type") or "none",
                     "blueprint_content": raw_output.get("blueprint_content"),
                 }
@@ -265,17 +304,14 @@ class ExpertAgent:
                     or raw_dict.get("exp")
                     or "请完成本次知识点复习。"
                 )
-                safe_ids = [
-                    item.question_id
-                    for item in question_details
-                    if self._is_review_question_type(item.question_type)
-                ][:3]
+                safe_ids: list[str] = []
                 model_output = ExpertModelOutput.model_validate({
                     "learning_tip": fallback_tip,
-                    "use_question_candidates": bool(safe_ids),
-                    "usage_reason": "系统已将检索到的安全题型候选加入复习资源。",
+                    "use_question_candidates": False,
+                    "usage_reason": "模型选择合同不可用，系统不自动追加候选资源。",
                     "selected_question_ids": safe_ids,
-                    "resource_type": "practice" if safe_ids else "none",
+                    "selected_resource_candidate_ids": [],
+                    "resource_type": "none",
                     "blueprint_content": None,
                 })
         except ValidationError as exc:
@@ -298,20 +334,13 @@ class ExpertAgent:
             for question_id in model_output.selected_question_ids
             if question_id in candidate_ids and question_id in safe_review_ids
         ]
-        question_recommendation = (
-            not paper_generation
-            and self._asks_for_question_recommendations(
-                str(context.get("user_request") or "")
-            )
-        )
-        if question_recommendation:
-            selected_ids = list(
-                dict.fromkeys([*selected_ids, *safe_review_ids])
-            )[:3]
-        if not paper_generation and not selected_ids and safe_review_ids:
-            selected_ids = safe_review_ids[:3]
         if not paper_generation:
-            uses_questions = bool(selected_ids)
+            # Resource selection belongs to Expert.  The materializer must not
+            # silently add candidates the model explicitly declined, otherwise
+            # an Audit repair can never remove an unsuitable question.
+            uses_questions = bool(model_output.use_question_candidates and selected_ids)
+            if not uses_questions:
+                selected_ids = []
             model_output = model_output.model_copy(
                 update={
                     "use_question_candidates": uses_questions,
@@ -324,22 +353,6 @@ class ExpertAgent:
                             if uses_questions
                             else "当前没有可安全展示的题目候选。"
                         )
-                    ),
-                }
-            )
-        if not paper_generation and question_details and not selected_ids:
-            selected_ids = [
-                item.question_id
-                for item in question_details
-                if self._is_review_question_type(item.question_type)
-            ][:3]
-            model_output = model_output.model_copy(
-                update={
-                    "use_question_candidates": True,
-                    "resource_type": "practice",
-                    "usage_reason": (
-                        model_output.usage_reason
-                        or "系统根据检索到的正式候选题提供巩固练习。"
                     ),
                 }
             )
@@ -367,15 +380,23 @@ class ExpertAgent:
                 if str(tag).strip()
             )
         )[:6]
+        selected_resource_ids = [
+            resource_candidate_map[item]
+            for item in dict.fromkeys(model_output.selected_resource_candidate_ids)
+            if item in resource_candidate_map
+        ]
         video_resources = [
             {
+                "evidence_id": item.evidence_id,
                 "title": item.source_id,
                 "summary": item.content_summary,
                 "url": item.source_url,
                 "resource_type": item.resource_type,
             }
             for item in evidence_pack.evidence_items
-            if item.resource_type in {"video", "reference"} and item.source_url
+            if item.evidence_id in selected_resource_ids
+            and item.resource_type in {"video", "reference"}
+            and item.source_url
         ]
         consumption = QuestionConsumptionDecision(
             use_question_candidates=model_output.use_question_candidates,
@@ -387,23 +408,13 @@ class ExpertAgent:
             content: dict[str, object] = {
                 "试卷蓝图": model_output.blueprint_content,
             }
-        elif question_recommendation:
-            content = {
-                "训练重点": training_focus or [topic],
-                "推荐说明": (
-                    "以下题目依据当前学习状态、优先巩固主题与正式题库候选匹配；"
-                    "完成作答后，系统才会把结果计入掌握度与复习调度。"
-                ),
-                "练习资源": [],
-            }
         else:
             # Evidence is an internal grounding source, not learner-facing
             # copy. The Expert's learning tip is the card content; provenance
             # remains in claims/audit/snapshot boundaries.
-            learning_prompt = (
+            learning_prompt = model_output.learning_tip or (
                 f"【本次目标】围绕{topic}完成主动回忆。\n"
-                "【执行步骤】先闭卷写出核心定义、关键关系、判断依据和一个易错点；"
-                "再对照知识卡片自查，记录遗漏或不确定内容；最后完成练习资源并提交反馈。"
+                "【执行步骤】先闭卷复述，再对照正文自查并提交反馈。"
             )
             content = {
                 "知识卡片": {
@@ -421,10 +432,12 @@ class ExpertAgent:
                 },
                 "学习提示": learning_prompt,
                 "视频资源": [
-                    item for item in video_resources if item["resource_type"] == "video"
+                    {key: value for key, value in item.items() if key != "evidence_id"}
+                    for item in video_resources if item["resource_type"] == "video"
                 ],
                 "参考资料": [
-                    item for item in video_resources if item["resource_type"] == "reference"
+                    {key: value for key, value in item.items() if key != "evidence_id"}
+                    for item in video_resources if item["resource_type"] == "reference"
                 ],
                 "练习资源": [],
             }
@@ -435,8 +448,6 @@ class ExpertAgent:
             title=(
                 f"{topic}试卷蓝图"
                 if paper_generation
-                else f"{topic}个性化练习"
-                if question_recommendation
                 else f"{topic}个性化复习卡"
             ),
             content=content,
@@ -451,6 +462,27 @@ class ExpertAgent:
             safety_notes=evidence_pack.risk_notes
             or ["仅用于中医药教学训练，不构成诊疗建议。"],
             question_consumption=consumption,
+            provenance=ResourceProvenance(
+                question_origin=("formal_candidate" if selected_ids else "none"),
+                selected_question_ids=selected_ids,
+                selected_evidence_ids=[primary_evidence.evidence_id],
+                selected_video_evidence_ids=[
+                    item["evidence_id"]
+                    for item in video_resources
+                    if item["resource_type"] == "video"
+                ],
+                selected_reference_evidence_ids=[
+                    item["evidence_id"]
+                    for item in video_resources
+                    if item["resource_type"] == "reference"
+                ],
+                generated_sections=["知识卡片", "学习提示"],
+                materialized_sections=[
+                    *(["练习资源"] if selected_ids else []),
+                    *(["视频资源"] if any(item["resource_type"] == "video" for item in video_resources) else []),
+                    *(["参考资料"] if any(item["resource_type"] == "reference" for item in video_resources) else []),
+                ],
+            ),
             target_kp_id=(
                 review_schedule.selected_task.primary_kp_id
                 if review_schedule and review_schedule.selected_task
@@ -458,17 +490,6 @@ class ExpertAgent:
             ),
         )
         return envelope(context, "expert_agent", "resource_draft", draft)
-
-    @staticmethod
-    def _asks_for_question_recommendations(request: str) -> bool:
-        text = "".join(str(request or "").split())
-        return any(
-            marker in text
-            for marker in (
-                "做哪些题", "该做什么题", "该做哪些题", "需要做什么题",
-                "需要做哪些题", "推荐题目", "推荐练习", "练习题",
-            )
-        )
 
     @staticmethod
     def _build_knowledge_card(topic: str, evidence_items: list[Any], learning_tip: str) -> str:

@@ -153,6 +153,58 @@ export default function CompactAssistant({
   }, [preferredSessionId]);
 
   useEffect(() => {
+    let cancelled = false;
+    const handleExamWorkspaceChanged = async () => {
+      // Detaching the browser stream does not cancel the server-owned run.  It
+      // only prevents another certificate's conversation from remaining
+      // visible after the user switches workspaces.
+      sessionGenerationRef.current += 1;
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setSending(false);
+      setLoading(true);
+      setError('');
+      setHistoryOpen(false);
+      try {
+        const items = await listAssistantSessions();
+        if (cancelled) return;
+        const nextSessions = Array.isArray(items) ? items : [];
+        setSessions(nextSessions);
+        const restoredId = resolveAssistantSessionId(
+          nextSessions,
+          null,
+          localStorage.getItem('lastSessionId'),
+        );
+        if (restoredId) {
+          const history = await loadAssistantMessages(restoredId);
+          if (cancelled) return;
+          setSessionId(restoredId);
+          setMessages(Array.isArray(history) ? history : []);
+          localStorage.setItem('lastSessionId', restoredId);
+        } else {
+          const fresh = createNewAssistantState();
+          setSessionId(fresh.sessionId);
+          setMessages(fresh.messages);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          const fresh = createNewAssistantState();
+          setSessionId(fresh.sessionId);
+          setMessages(fresh.messages);
+          setError(loadError.message || '当前考试的聊天记录加载失败');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    window.addEventListener('shizhen:learning-target-changed', handleExamWorkspaceChanged);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('shizhen:learning-target-changed', handleExamWorkspaceChanged);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!sessionId) return undefined;
     let cancelled = false;
     let timer = null;

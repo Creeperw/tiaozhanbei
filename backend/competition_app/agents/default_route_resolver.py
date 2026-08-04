@@ -595,8 +595,24 @@ class DefaultRouteResolverAgent:
                 classified_type = self._classify_goal(user_request)
             return classified_type or "literacy", goal_name or user_request, classified_type is None
 
+        # 未找到结构化目标时，优先使用持久化的 active learning target 的
+        # 考试名称作为权威目标名，避免 replan 场景把整段任务 prompt
+        # （如【当前考试】…【当前任务】…）当作 goal_name 污染计划元数据。
+        target_goal = self._active_target_goal_name(context)
+        if target_goal is not None:
+            return self._classify_goal(target_goal) or "learning", target_goal, False
+
         goal_type = self._classify_goal(user_request)
         return goal_type or "literacy", user_request, goal_type is None
+
+    @classmethod
+    def _active_target_goal_name(cls, context: dict[str, Any]) -> str | None:
+        target = context.get("learning_target")
+        if not isinstance(target, dict):
+            return None
+        if target.get("is_active") is False:
+            return None
+        return cls._optional_text(target.get("exam_name"))
 
     @classmethod
     def _has_explicit_target_change(cls, context: dict[str, Any]) -> bool:

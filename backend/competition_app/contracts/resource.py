@@ -5,6 +5,7 @@ from pydantic import Field
 
 from competition_app.contracts.base import ContractModel
 from competition_app.contracts.local_repair import RepairIssue
+from competition_app.contracts.audit_policy import ResourceProvenance
 
 
 class ResourceClaim(ContractModel):
@@ -29,6 +30,7 @@ class ResourceDraft(ContractModel):
     claims: list[ResourceClaim] = Field(default_factory=list)
     safety_notes: list[str] = Field(default_factory=list)
     question_consumption: QuestionConsumptionDecision | None = None
+    provenance: ResourceProvenance = Field(default_factory=ResourceProvenance)
     status: Literal["pending_review"] = "pending_review"
 
 

@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "release_id": "2026-07-18",
+  "description": "时珍智训只读公共资产清单；所有路径相对于 SHIZHEN_ASSET_ROOT。",
+  "assets": {
+    "knowledge_delivery": "knowledge/releases/2026-07-18",
+    "question_vector_store": "vectors/public/2026-07-18",
+    "knowledge_vector_store": "vectors/public/2026-07-18",
+    "knowledge_atlas_chapters": "knowledge-atlas/chapters/releases/2026-07-22",
+    "textbook_pdfs": "textbooks/public"
+  },
+  "source_manifests": {
+    "knowledge_delivery": "knowledge/releases/2026-07-18/DATA_MANIFEST.json"
+  }
+}

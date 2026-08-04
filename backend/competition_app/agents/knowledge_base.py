@@ -185,21 +185,44 @@ class KnowledgeBaseAgent:
                 }
             )
         query = pack.query
-        question_result = (
-            QuestionSearchResult(
+        question_retrieval_notes: list[str] = []
+        if external_request:
+            question_result = QuestionSearchResult(
                 query=retrieval_plan.question_query,
                 resolved_kp_ids=[],
                 embedding_model="not_applicable",
                 vector_index_path="",
                 items=[],
             )
-            if external_request
-            else await self._search_question_candidates(
-                retrieval_plan.question_query,
-                pack.resolved_kp_ids,
-                context,
-            )
-        )
+        else:
+            try:
+                question_result = await self._search_question_candidates(
+                    retrieval_plan.question_query,
+                    pack.resolved_kp_ids,
+                    context,
+                )
+            except (LookupError, RuntimeError, TimeoutError) as exc:
+                # Question candidates enrich a review card but are not a
+                # prerequisite for explaining/recommending the successfully
+                # retrieved textbook and video resources.  A slow embedding
+                # provider used to abort and then repeat the complete Agent,
+                # including its already-finished model and web searches.
+                question_retrieval_notes.append(
+                    "题目候选检索暂不可用，本次保留教材与资源推荐结果，不自动补造练习题。"
+                )
+                emit_runtime_event(
+                    "question_retrieval_degraded",
+                    agent="knowledge_base_agent",
+                    error_type=type(exc).__name__,
+                    error_message=str(exc)[:300],
+                )
+                question_result = QuestionSearchResult(
+                    query=retrieval_plan.question_query,
+                    resolved_kp_ids=list(pack.resolved_kp_ids),
+                    embedding_model="degraded",
+                    vector_index_path="",
+                    items=[],
+                )
         if not pack.resolved_kp_ids:
             bridge_kp_ids = list(
                 dict.fromkeys(
@@ -363,7 +386,11 @@ class KnowledgeBaseAgent:
             # quality_labels are an internal retrieval assessment, not learner-facing
             # safety notes. Only uncertainty is allowed to flow into downstream
             # resource safety metadata.
-            "risk_notes": [*pack.risk_notes, *model_output.uncertainty],
+            "risk_notes": [
+                *pack.risk_notes,
+                *question_retrieval_notes,
+                *model_output.uncertainty,
+            ],
             "retrieval_summary": (
                 model_output.retrieval_summary.strip()
                 or self._fallback_retrieval_summary(semantic_facts)

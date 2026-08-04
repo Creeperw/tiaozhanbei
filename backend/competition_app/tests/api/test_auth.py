@@ -50,17 +50,16 @@ def test_current_user_readiness_monitoring_and_review_contracts(tmp_path: Path) 
     assert queue.json()["admission_policy"] == "completed_graded_kp_question_v1"
 
 
-def test_protected_pages_and_api_require_login(tmp_path: Path) -> None:
+def test_retired_pages_are_absent_and_business_api_requires_login(tmp_path: Path) -> None:
     client = build_client(tmp_path)
 
-    page = client.get("/chat/", follow_redirects=False)
+    retired_pages = [client.get(path) for path in ("/chat/", "/demo/", "/demo-app")]
     api = client.post(
         "/api/v1/review-cards",
         json={"learner_id": "forged", "user_request": "生成复习卡"},
     )
 
-    assert page.status_code == 303
-    assert page.headers["location"].startswith("/auth/?next=/chat/")
+    assert all(page.status_code == 404 for page in retired_pages)
     assert api.status_code == 401
     assert client.get("/auth/").status_code == 200
     assert client.get("/health").status_code == 200

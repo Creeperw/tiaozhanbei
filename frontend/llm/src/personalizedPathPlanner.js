@@ -27,17 +27,19 @@ function targetDescription(target = {}) {
   return `${name}${examTrackId ? `（考试标识：${examTrackId}）` : ''}`;
 }
 
-export async function buildPersonalizedLearningPath({ target, onStage, onUpdate } = {}) {
+export async function buildPersonalizedLearningPath({ target, onStage, onUpdate, customRequirements = '' } = {}) {
   const targetText = targetDescription(target);
   const created = await createAssistantSession(`${targetText}个性化学习路径`);
   const sessionId = created?.conversation_id || created?.session_id || created?.id;
   if (!sessionId) throw new Error('无法创建学习规划会话');
+  const requirementsText = String(customRequirements || '').trim();
+  const requirementsBlock = requirementsText ? `\n【自定义需求】${requirementsText}` : '';
 
   for (const stage of PLANNING_STAGES) {
     onStage?.(stage);
     const outcome = await streamAssistantMessageOutcome(
       sessionId,
-      `【当前考试】${targetText}\n【当前任务】${stage.request}\n【执行要求】优先使用刚完成的学情调研和已有用户画像；不得改为其他考试。如果仍缺少会导致计划无法可靠制定的必要信息，请明确追问，不要臆造。`,
+      `【当前考试】${targetText}\n【当前任务】${stage.request}\n【执行要求】优先使用刚完成的学情调研、用户画像和自定义需求；不得改为其他考试。如果仍缺少会导致计划无法可靠制定的必要信息，请明确追问，不要臆造。${requirementsBlock}`,
       { onUpdate },
     );
     if (outcome.status !== 'completed') {

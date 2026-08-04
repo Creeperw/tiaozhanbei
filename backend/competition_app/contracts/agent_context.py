@@ -44,6 +44,27 @@ _SOURCE_BOUNDED_COMPILERS = frozenset(
     }
 )
 
+# Page snapshots are read on demand by agents that need to resolve a user's
+# reference to the current page (for example "这道题" / "这个表格").  Review
+# and audit agents judge generated content against the trusted route, parent
+# plan and producer evidence; an untrusted UI page snapshot (such as a
+# front-end exam countdown) must not leak into their evidence, so it is not
+# auto-injected here.  The tool remains registered for on-demand calls when a
+# page reference genuinely applies to the audited subject.
+_PAGE_AWARE_AGENTS = frozenset(
+    {
+        "planner_agent",
+        "diagnosis_agent",
+        "knowledge_explanation_agent",
+        "knowledge_base_agent",
+        "expert_agent",
+        "memory_agent",
+        "default_route_resolver",
+        "paper_blueprint_agent",
+        "paper_assembly_agent",
+    }
+)
+
 
 def _as_json_value(value: Any) -> Any:
     if hasattr(value, "model_dump"):
@@ -152,7 +173,9 @@ def _plan_brief(value: Any) -> dict[str, Any]:
     return {"exists": True, **brief}
 
 
-def _shared_user_portrait(context: dict[str, Any]) -> dict[str, Any]:
+def _shared_user_portrait(
+    context: dict[str, Any], *, target_agent: str = ""
+) -> dict[str, Any]:
     """Create one concise, version-aware portrait for every business agent."""
 
     monitoring = context.get("learning_monitoring") or {}
@@ -190,9 +213,20 @@ def _shared_user_portrait(context: dict[str, Any]) -> dict[str, Any]:
             monitoring_brief, max_items=8, max_text=500
         ),
         "current_plans": {
-            "long_term": _plan_brief(context.get("current_long_term_plan")),
-            "short_term": _plan_brief(context.get("current_short_term_plan")),
-            "daily_task": _plan_brief(context.get("current_learning_task")),
+            scope: (
+                {
+                    key: value
+                    for key, value in brief.items()
+                    if key in {"exists", "status", "version", "updated_at"}
+                }
+                if target_agent == "diagnosis_plan_change"
+                else brief
+            )
+            for scope, brief in {
+                "long_term": _plan_brief(context.get("current_long_term_plan")),
+                "short_term": _plan_brief(context.get("current_short_term_plan")),
+                "daily_task": _plan_brief(context.get("current_learning_task")),
+            }.items()
         },
         "snapshot": {
             "profile_updated_at": (context.get("user_profile") or {}).get("updated_at")
@@ -378,9 +412,20 @@ def build_model_context(
         or latest_history_user_message
         or current_request
     ).strip()
+    dialogue_limits = {
+        "memory_agent": (8, 6_000),
+        "planner_agent": (6, 3_500),
+        "diagnosis_agent": (6, 4_000),
+        "knowledge_base_agent": (4, 3_000),
+        "expert_agent": (4, 3_000),
+        "audit_agent": (4, 3_000),
+    }
+    max_turns, max_chars = dialogue_limits.get(target_agent, (4, 3_000))
     recent_messages = _recent_dialogue(
         formal_messages,
         current_user_message=latest_user_message or original_request,
+        max_turns=max_turns,
+        max_chars=max_chars,
     )
 
     # This is the only automatically shared model context. Plans, monitoring,
@@ -402,7 +447,7 @@ def build_model_context(
         "user_profile": (
             {}
             if source_bounded_compiler
-            else _shared_user_portrait(context)
+            else _shared_user_portrait(context, target_agent=target_agent)
         ),
         "external_information": (
             []
@@ -419,7 +464,11 @@ def build_model_context(
         shared_context["recent_conversation"] = []
         shared_context["compressed_conversation"] = ""
         shared_context["current_user_message"] = ""
-    if current_page_context and not source_bounded_compiler:
+    if (
+        current_page_context
+        and not source_bounded_compiler
+        and target_agent in _PAGE_AWARE_AGENTS
+    ):
         shared_context["current_page"] = {
             "tool_name": "read_current_page",
             "trust_level": "untrusted_page_content",

@@ -79,7 +79,6 @@ async def test_stub_review_card_runs_mastery_review_agents_and_exports_snapshot(
         output for output in result.agent_outputs if output.producer == "review_scheduler"
     )
     assert {ref.purpose for ref in scheduler_output.input_refs} == {
-        "dependency:memory",
         "dependency:diagnosis",
         "dependency:knowledge",
         "agent_handoff",

@@ -423,7 +423,8 @@ async def test_planner_routes_plain_explanation_without_learning_plan(tmp_path) 
     assert result.resource_binding is None
     assert result.resource is not None
     assert "知识讲解" in result.resource.content
-    assert result.resource.content["配套练习"]
+    assert "配套练习" not in result.resource.content
+    assert "思考" in result.resource.content["知识讲解"]
     assert {intent.effect_type for intent in result.writeback_intents} == {
         "record_audit", "publish_resource"
     }

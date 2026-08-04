@@ -13,6 +13,20 @@ export function loadLearningTarget() {
   return request('/personalization/learning-target');
 }
 
+export function loadLearningTargets() {
+  return request('/personalization/learning-targets');
+}
+
+export function enrollLearningTargets(examTrackIds, currentExamTrackId) {
+  return request('/personalization/learning-targets', {
+    method: 'POST',
+    body: JSON.stringify({
+      exam_track_ids: examTrackIds,
+      current_exam_track_id: currentExamTrackId,
+    }),
+  });
+}
+
 export function saveLearningTarget(examTrackId) {
   return request('/personalization/learning-target', {
     method: 'PUT',

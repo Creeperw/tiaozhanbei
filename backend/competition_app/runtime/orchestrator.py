@@ -23,6 +23,7 @@ from competition_app.runtime.trace import (
 from competition_app.runtime.tool_registry import ToolRegistry
 from competition_app.runtime.event_stream import emit_runtime_event
 from competition_app.runtime.snapshot import _sanitize
+from competition_app.llm.openai_compatible import ModelResponseError
 
 
 class ExecutionResult(BaseModel):
@@ -475,6 +476,12 @@ class Orchestrator:
                 trace.record(step.step_id, step.agent, "failed", attempt, "AgentHandoffBlocked")
                 raise
             except Exception as exc:
+                # Model adapters already own transport retry, structured-output
+                # repair and provider failover.  Re-running the whole Agent here
+                # multiplies those attempts and repeats completed tool work.
+                if isinstance(exc, ModelResponseError):
+                    trace.record(step.step_id, step.agent, "failed", attempt, type(exc).__name__)
+                    raise
                 if attempt <= step.max_retries:
                     emit_runtime_event(
                         "step_retrying",

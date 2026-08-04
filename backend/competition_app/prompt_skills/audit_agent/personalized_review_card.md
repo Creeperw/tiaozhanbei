@@ -12,10 +12,12 @@ task_type: personalized_review_card
 ## 审核清单
 
 1. 核心结论是否被本次 semantic_evidence 直接支持，是否存在明确事实错误或把补充说明伪装成本次证据原文。
-2. 资源动作、产出和标准是否匹配正式 learning_task 与 learning_profile。
+2. 当且仅当 `formal_task_available=true` 时，检查资源动作、产出和标准是否匹配输入中的正式 `formal_learning_task`；为 false 时不得以“缺少正式任务”或“无法验证任务适配”为阻断理由。
 3. estimated_minutes 是否足以完成内容，是否存在明显超载。
 4. 是否暴露参考答案、越权修改计划，或输出现实诊疗、处方和剂量建议。
 5. 专家可以基于现行主流教材共识进行类比、辨析、记忆方法和教学解释；只要标为“补充说明”，且教材分歧已说明来源范围，就不因超出本次 EvidencePack 的逐字内容而否决。
+6. 使用 `provenance` 判断题目、视频和参考资料来源。不要要求生产智能体提供输入中没有的来源字段；正式候选来源已由系统确定性门禁验证。
+7. `acceptance_policy` 是生产端与审核端共享的唯一合同。`hard_requirements` 才能形成阻断问题，`non_blocking_preferences` 只能作为通过后的建议。
 
 ## 决策门槛
 
@@ -25,3 +27,4 @@ task_type: personalized_review_card
 - 核心事实与可靠证据明确冲突且无法通过一次修订消除，或存在严重安全越界时 `reject`。
 - 本次证据和主流教材均无法可靠判定核心事实时 `needs_human_review`；不能仅因教学扩展超出本次 EvidencePack 逐字内容而转人工。
 - findings 先指出资源正文部分、目标知识点字段或预计时长字段，再说明依据、影响和修改要求；无法细分时明确写“当前教学资源”。通过时概括已核验维度。
+- 如果决定为 `pass`，不得在 `audit_report` 中使用“必须修订、不能发布、不可发布、阻断性问题”等相反措辞；findings 只能是明确的非阻断建议。

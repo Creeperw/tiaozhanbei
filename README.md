@@ -30,8 +30,8 @@
 tiaozhanbei/
 ├── backend/
 │   ├── competition_app/                 # FastAPI + LangGraph 主后端
-│   └── competition/
-│       └── backend-handoff-20260720/     # 已装配到主进程的业务接口包
+│   ├── platform_backend/                # 已装配到主进程的业务接口包
+│   └── competition/                     # 章节映射和旧路径兼容入口
 ├── frontend/llm/                         # React + Vite 正式前端
 ├── .gitignore
 └── README.md
@@ -39,6 +39,8 @@ tiaozhanbei/
 
 后端完整环境、数据库、接口、SSE、中断恢复和测试说明见
 [backend/competition_app/README.md](backend/competition_app/README.md)。
+全部当前文档及历史资料边界见 [文档索引](docs/index.md)，代码与数据边界见
+[当前架构](docs/architecture.md) 和 [数据目录规范](docs/data-layout.md)。
 
 团队部署与运维请阅读 [部署与升级指南](docs/deployment.md) 和
 [数据库运维指南](docs/database-operations.md)。两份文档覆盖无 Docker 安装、双库初始化、迁移、备份恢复、生产启动、升级回滚和常见故障。
@@ -78,7 +80,7 @@ COMPETITION_APP_MODE=stub python -m competition_app.cli.app serve
 - 健康检查：`http://127.0.0.1:7860/health`
 - OpenAPI：`http://127.0.0.1:7860/docs`
 
-`/chat/` 与 `/demo/` 只作为迁移期回归入口保留，不再是产品入口。
+`/chat/`、`/demo/` 旧静态界面已经删除；正式产品与智能助教统一从 `/` 进入。
 
 Stub 模式不需要外部模型、向量库或数据库，适合前端先完成接口联调。完整应用固定启用
 `BACKEND_HANDOFF_ENABLED=true`，由同一个 FastAPI 进程挂载交接业务域。
@@ -116,7 +118,7 @@ python -m competition_app.cli.app serve
 
 ```powershell
 $env:BACKEND_PYTHON = "D:\anaconda3\python.exe" # 按本机环境调整
-powershell -ExecutionPolicy Bypass -File backend/competition/backend-handoff-20260720/run.ps1 start
+powershell -ExecutionPolicy Bypass -File backend/platform_backend/run.ps1 start
 ```
 
 打开 `http://127.0.0.1:7860`。登录、会话、首页、LangGraph 对话和交接业务均由该端口提供。
@@ -128,7 +130,7 @@ powershell -ExecutionPolicy Bypass -File backend/competition/backend-handoff-202
 
 ## Live 环境与大体积数据
 
-Live 模式使用 `qwen3.7-max-2026-06-08`、`Qwen/Qwen3-Embedding-4B` 和正式知识库。下列内容
+Live 模式使用环境中配置的聊天模型、`Qwen/Qwen3-Embedding-4B` 和正式知识库。下列内容
 不进入 Git，由项目共享盘提供并通过环境变量指向绝对路径：
 
 - 题库与知识点原始交付包；
@@ -144,8 +146,9 @@ Live 模式使用 `qwen3.7-max-2026-06-08`、`Qwen/Qwen3-Embedding-4B` 和正式
 ```bash
 QUESTION_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
 KNOWLEDGE_VECTOR_STORE_ROOT=/absolute/path/to/competition/vdb_store
-KNOWLEDGE_HANDOFF_ROOT=/absolute/path/to/知识星球视频知识库_前端交接包_2026-07-18
-# 可选；留空时使用仓库内置的 2026-07-22 章节映射
+SHIZHEN_ASSET_ROOT=/absolute/path/to/shizhen-assets
+SHIZHEN_RUNTIME_ROOT=/absolute/path/to/shizhen-runtime
+# 可选；留空时使用统一资产目录中的 2026-07-22 章节映射
 KNOWLEDGE_ATLAS_CHAPTER_ROOT=/absolute/path/to/chapter-mapping
 EMBEDDING_MODE=enabled
 # 可选本地模型；留空时使用 SILICONFLOW_API_KEY 对应的远程服务
@@ -153,13 +156,14 @@ EMBEDDING_MODEL_PATH=
 MINERU_TOKEN=服务端密钥
 ```
 
-仓库内 `backend/competition/knowledge_atlas_chapters/2026-07-22` 保存章节顺序映射，
-不复制原始教材和切片正文。知识星球据此按“教材 → 章节 → 小节 → 知识点”四级展示；
+标准目录 `assets/knowledge-atlas/chapters/releases/2026-07-22` 保存章节顺序映射；旧目录
+`backend/competition/knowledge_atlas_chapters/2026-07-22` 仅作为迁移期兼容来源。该资产不复制
+原始教材和切片正文。知识星球据此按“教材 → 章节 → 小节 → 知识点”四级展示；
 同章同名的重复切片区间会合并为一个小节入口，底层 `chunk_uid` 关联保持不变。
 
-也可以把这两个资产软链接到 `backend/competition/` 下的同名目录；这些入口已被
-`.gitignore` 排除。启动时可通过 `/health` 和 `/api/v1/platform/status` 检查主框架与交接
-后端，通过知识库状态接口检查索引是否可读。
+新部署不再要求把资产软链接到源码目录。资产安装、版本 manifest、旧目录迁移和部署前校验见
+[数据目录规范](docs/data-layout.md)。启动时可通过 `/health` 和
+`/api/v1/platform/status` 检查主框架与平台业务后端，通过知识库状态接口检查索引是否可读。
 
 ## 数据库
 
