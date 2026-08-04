@@ -22,7 +22,6 @@ from competition_app.application.personalized_review_card import PersonalizedRev
 from competition_app.config import Settings
 from competition_app.llm.stub import StubChatModel
 from competition_app.llm.openai_compatible import OpenAICompatibleChatModel
-from competition_app.llm.failover import FailoverChatModel
 from competition_app.embeddings.stub import StubEmbeddingModel
 from competition_app.embeddings.siliconflow import SiliconFlowEmbeddingModel
 from competition_app.db.bootstrap import DatabaseBootstrap
@@ -218,16 +217,13 @@ class ApplicationContainer:
         if settings.mode == "live":
             if not settings.dashscope_api_key or not settings.siliconflow_api_key:
                 raise ValueError("live mode requires configured model API keys")
-            chat_model = FailoverChatModel(
-                [
-                    OpenAICompatibleChatModel(
-                        settings.chat_base_url,
-                        chat_api_key,
-                        model_name,
-                        timeout_seconds=settings.llm_timeout_seconds,
-                    )
-                    for model_name in settings.chat_models
-                ]
+            # 不使用 failover 候选切换：固定使用配置的第一个模型（如 deepseek-v4-flash），
+            # 空响应/瞬态失败由传输层 bounded 重试与可重试错误码兜底。
+            chat_model = OpenAICompatibleChatModel(
+                settings.chat_base_url,
+                chat_api_key,
+                settings.chat_models[0],
+                timeout_seconds=settings.llm_timeout_seconds,
             )
             embedding_model = SiliconFlowEmbeddingModel(
                 settings.embedding_base_url,

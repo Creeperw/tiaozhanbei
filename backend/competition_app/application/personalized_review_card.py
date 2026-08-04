@@ -1419,7 +1419,7 @@ class PersonalizedReviewCardUseCase:
             )
             plan = PlannerAgent.build_plan(
                 parent_decision,
-                memory_required=bool(context.get("memory_required")),
+                memory_required=bool(parent_context.get("memory_required")),
             )
             run_thread = f"{continuation.execution_id}:prerequisite:{scope}"
             parent_context["plan_scope"] = scope
@@ -1897,6 +1897,10 @@ class PersonalizedReviewCardUseCase:
             if "model" in message or "transport" in message:
                 return "model_timeout"
             return "workflow_timeout"
+        # 模型返回空内容（空响应/空流）属于瞬态模型问题，可重试；
+        # 单模型场景下这是最需要清晰提示与重试入口的一类失败。
+        if "empty" in message or "no content" in message:
+            return "model_empty_response"
         if (
             failed_step in {"learning_plan", "learning_plan_service"}
             and "dailytaskprogresserror" in message
@@ -1962,6 +1966,8 @@ class PersonalizedReviewCardUseCase:
                 "temporarily",
                 "connection",
                 "transport",
+                "empty",
+                "no content",
                 "database",
                 "mysql",
                 "知识检索",

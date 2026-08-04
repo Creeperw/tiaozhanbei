@@ -1203,6 +1203,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             "daily_task_publication_failed": "今日任务发布未能完成，请稍后重试。",
             "paper_generation_failed": "试卷生成未能完成，请稍后重试。",
             "persistence_failed": "结果保存失败，请稍后重试。",
+            "model_empty_response": "模型暂时没有返回内容，请再试一次。",
         }
         return messages.get(
             str(error_code or ""),
@@ -4824,6 +4825,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     error_code = "model_timeout"
                 else:
                     error_code = "workflow_timeout"
+                retryable = True
+            elif "empty" in normalized or "no content" in normalized:
+                error_code = "model_empty_response"
                 retryable = True
             elif failed_step in {"conversation", "persistence", "snapshot", "profile_writeback"}:
                 error_code = "persistence_failed"
