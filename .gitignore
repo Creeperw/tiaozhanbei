@@ -275,3 +275,9 @@ TreeKG-main/src/HiddenKG/model/*
 *conv_entities.json
 *final_knowledge_points_merged.json
 TreeKG-main/integration/runtime/
+
+# ===== evaluation_delivery 评测环境 =====
+# 运行产物（JSONL/报告/快照）不入库
+evaluation_delivery/outputs/
+# 评测判定通道密钥
+evaluation_delivery/eval.env

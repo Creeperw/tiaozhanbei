@@ -1,0 +1,20 @@
+[
+  {
+    "case_id": "smoke_1",
+    "user_request": "中药四气的含义是什么？A. 寒热温凉四种药性 B. 酸苦甘辛咸五味 C. 升降浮沉四种趋势 D. 药物的毒性强弱\n请给出答案选项字母，并简要说明依据。",
+    "expected": "A",
+    "meta": {"smoke": true}
+  },
+  {
+    "case_id": "smoke_2",
+    "user_request": "归经是指药物作用的什么？A. 作用部位的选择性 B. 作用速度 C. 作用强度 D. 毒性大小\n请给出答案选项字母，并简要说明依据。",
+    "expected": "A",
+    "meta": {"smoke": true}
+  },
+  {
+    "case_id": "smoke_3",
+    "user_request": "麻黄汤的组成药物是？A. 麻黄、桂枝、杏仁、甘草 B. 麻黄、石膏、杏仁、甘草 C. 桂枝、白芍、生姜、大枣 D. 麻黄、附子、细辛\n请给出答案选项字母，并简要说明依据。",
+    "expected": "A",
+    "meta": {"smoke": true}
+  }
+]
