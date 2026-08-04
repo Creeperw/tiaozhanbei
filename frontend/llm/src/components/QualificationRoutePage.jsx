@@ -12,6 +12,7 @@ import {
   Clock3,
   LoaderCircle,
   Plus,
+  RotateCcw,
   Sparkles,
 } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
@@ -244,6 +245,7 @@ function isCompletedPlanItem(item) {
 function CurrentLearningPlan({
   currentTask,
   items,
+  reviewItems,
   studyDays,
   timer,
   onExpire,
@@ -251,14 +253,18 @@ function CurrentLearningPlan({
   onAddTask,
 }) {
   const today = localDateKey();
+  const [activeTaskKind, setActiveTaskKind] = useState('learning');
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const calendarDays = useMemo(() => calendarDaysForMonth(visibleMonth), [visibleMonth]);
-  const todayItems = items.filter((item) => item.source === 'daily_task');
-  const completedFromItems = todayItems.filter(isCompletedPlanItem).length;
-  const total = Math.max(Number(currentTask?.progress?.total || 0), todayItems.length);
-  const completed = Math.min(total, Math.max(Number(currentTask?.progress?.completed || 0), completedFromItems));
+  const learningItems = items.filter((item) => item.source === 'daily_task');
+  const activeItems = activeTaskKind === 'review' ? reviewItems : learningItems;
+  const completedFromItems = activeItems.filter(isCompletedPlanItem).length;
+  const taskProgress = activeTaskKind === 'learning' ? currentTask?.progress : null;
+  const total = Math.max(Number(taskProgress?.total || 0), activeItems.length);
+  const completed = Math.min(total, Math.max(Number(taskProgress?.completed || 0), completedFromItems));
   const progress = total > 0 ? (completed / total) * 100 : 0;
-  const hasUnfinishedTodayTask = total > 0 && completed < total;
+  const allTodayItems = [...learningItems, ...reviewItems];
+  const hasUnfinishedTodayTask = allTodayItems.some((item) => !isCompletedPlanItem(item));
   const learnedDates = useMemo(() => new Set(studyDays), [studyDays]);
 
   const changeMonth = (offset) => {
@@ -307,17 +313,46 @@ function CurrentLearningPlan({
         </footer>
       </aside>
 
-      <section className="home-today-card" aria-label="今日任务" data-task-count={todayItems.length}>
+      <section className="home-today-card" aria-label="今日任务" data-task-count={activeItems.length}>
         <header className="home-today-card__header">
           <h3><CalendarCheck2 aria-hidden="true" size={22} />今日任务</h3>
-          <div className="home-today-card__progress" aria-label={`今日任务完成 ${completed}/${total}`}>
+          <div className="home-today-card__progress" aria-label={`${activeTaskKind === 'review' ? '复习任务' : '学习任务'}完成 ${completed}/${total}`}>
             <strong>{completed}/{total}</strong>
             <span><i style={{ width: `${progress}%` }} /></span>
           </div>
         </header>
 
-        <div className="home-today-card__list">
-          {todayItems.map((item) => {
+        <div className="home-today-card__tabs" role="tablist" aria-label="今日任务类型">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTaskKind === 'learning'}
+            className={activeTaskKind === 'learning' ? 'is-active' : ''}
+            onClick={() => setActiveTaskKind('learning')}
+          >
+            <BookOpenText aria-hidden="true" size={15} />
+            学习任务
+            <small>{learningItems.length}</small>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTaskKind === 'review'}
+            className={activeTaskKind === 'review' ? 'is-active' : ''}
+            onClick={() => setActiveTaskKind('review')}
+          >
+            <RotateCcw aria-hidden="true" size={15} />
+            复习任务
+            <small>{reviewItems.length}</small>
+          </button>
+        </div>
+
+        <div
+          className="home-today-card__list"
+          role="tabpanel"
+          aria-label={activeTaskKind === 'review' ? '复习任务' : '学习任务'}
+        >
+          {activeItems.map((item) => {
             const itemCompleted = isCompletedPlanItem(item);
             const rawMinutes = Number(item.raw?.estimated_minutes || 0);
             const videoDurationSeconds = Number(item.raw?.resource_ref?.duration_seconds || 0);
@@ -340,18 +375,22 @@ function CurrentLearningPlan({
               </button>
             );
           })}
-          {todayItems.length === 0 && (
+          {activeItems.length === 0 && (
             <div className="home-today-card__empty">
-              <BookOpenText aria-hidden="true" size={22} />
-              <strong>今天还没有学习任务</strong>
-              <p>可让智能助教结合当前阶段安排任务。</p>
+              {activeTaskKind === 'review'
+                ? <RotateCcw aria-hidden="true" size={22} />
+                : <BookOpenText aria-hidden="true" size={22} />}
+              <strong>{activeTaskKind === 'review' ? '今天没有待复习知识点' : '今天还没有学习任务'}</strong>
+              <p>{activeTaskKind === 'review' ? '系统会按掌握度和遗忘曲线自动推送。' : '可让智能助教结合当前阶段安排任务。'}</p>
             </div>
           )}
         </div>
 
-        <button type="button" className="home-today-card__add" onClick={onAddTask}>
-          <Plus aria-hidden="true" size={17} />添加新任务
-        </button>
+        {activeTaskKind === 'learning' && (
+          <button type="button" className="home-today-card__add" onClick={onAddTask}>
+            <Plus aria-hidden="true" size={17} />添加新任务
+          </button>
+        )}
         <DailyTaskCountdown timer={timer} onExpire={onExpire} className="home-plan__refresh-timer" />
       </section>
     </div>
@@ -1043,6 +1082,45 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     : [];
   const planItems = [...currentTaskItems, ...activityItems]
     .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
+  const reviewItems = (Array.isArray(payload.review_queue?.entries) ? payload.review_queue.entries : [])
+    .filter((entry) => {
+      const taskStatus = String(entry?.task?.status || '').toLowerCase();
+      return entry?.is_due || ['awaiting_attempt', 'pending', 'bound', 'overdue'].includes(taskStatus);
+    })
+    .map((entry, index) => {
+      const memory = entry?.memory_unit || {};
+      const task = entry?.task || {};
+      const kpId = String(memory.kp_id || task.primary_kp_id || '').trim();
+      const kpName = String(memory.prompt_abstract || entry?.kp_name || '').trim() || '知识点复习';
+      const status = String(task.status || (entry?.is_due ? 'pending' : 'scheduled')).toLowerCase();
+      const retention = Number(entry?.retention_estimate);
+      return {
+        id: `review:${task.review_task_id || memory.memory_unit_id || kpId || index}`,
+        title: kpName,
+        detail: entry?.is_due ? '今日到期复习' : '已推送复习',
+        meta: Number.isFinite(retention) ? `记忆保持率 ${Math.round(retention * 100)}%` : '知识点特训',
+        progress: status === 'completed' ? 100 : 0,
+        source: 'review_queue',
+        dateKey: localDateKey(),
+        raw: {
+          ...entry,
+          status,
+          estimated_minutes: 10,
+        },
+        intent: kpId ? {
+          page: 'practice',
+          params: {
+            view: 'workspace',
+            taskType: 'topic_training',
+            kpId,
+            kpName,
+            reviewTaskId: task.review_task_id || '',
+            returnTo: { page: 'qualification-route', params: {} },
+          },
+        } : null,
+      };
+    })
+    .filter((item, index, items) => item.intent && items.findIndex((candidate) => candidate.id === item.id) === index);
   const studyDays = Array.isArray(payload.learning_activity?.trends?.series)
     ? payload.learning_activity.trends.series
       .filter((day) => Number(day?.login_days || 0) > 0
@@ -1217,6 +1295,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
           <CurrentLearningPlan
             currentTask={currentTask}
             items={planItems}
+            reviewItems={reviewItems}
             studyDays={studyDays}
             timer={payload.daily_task_timer}
             onExpire={refreshDailyTask}

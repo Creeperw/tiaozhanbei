@@ -301,16 +301,36 @@ describe('QualificationRoutePage', () => {
         recent_activities: [],
       },
       review_queue: {
-        entries: [{
-          is_due: true,
-          memory_unit: {
-            memory_unit_id: 'memory-1',
-            kp_id: 'KP_1',
-            prompt_abstract: '四君子汤配伍',
-            mastery_score: 45,
+        entries: [
+          {
+            is_due: true,
+            memory_unit: {
+              memory_unit_id: 'memory-1',
+              kp_id: 'KP_1',
+              prompt_abstract: '四君子汤配伍',
+              mastery_score: 45,
+            },
+            task: { review_task_id: 'review-1' },
           },
-          task: { review_task_id: 'review-1' },
-        }],
+          {
+            is_due: false,
+            memory_unit: {
+              memory_unit_id: 'memory-2',
+              kp_id: 'KP_2',
+              prompt_abstract: '君臣佐使原则',
+            },
+            task: { review_task_id: 'review-2', status: 'awaiting_attempt' },
+          },
+          {
+            is_due: false,
+            memory_unit: {
+              memory_unit_id: 'memory-future',
+              kp_id: 'KP_FUTURE',
+              prompt_abstract: '未来复习知识点',
+            },
+            task: null,
+          },
+        ],
       },
     });
 
@@ -331,11 +351,20 @@ describe('QualificationRoutePage', () => {
     expect(within(calendar).getByText('已签到')).toBeInTheDocument();
     expect(within(calendar).getByLabelText(/，今天，今日任务未完成$/)).toHaveAttribute('data-task-incomplete', 'true');
     expect(screen.queryByRole('button', { name: '学习与复习任务' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('今日任务完成 1/2')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /学习任务/ })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /复习任务/ })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByLabelText('学习任务完成 1/2')).toBeInTheDocument();
     expect(screen.getByLabelText(learnedDateLabel)).toBeInTheDocument();
     expect(screen.getByText('完成阴阳学说训练')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /添加新任务/ })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: '复习任务' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /复习任务/ }));
+    expect(screen.getByRole('tab', { name: /复习任务/ })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('复习任务完成 0/2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /四君子汤配伍/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /君臣佐使原则/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /未来复习知识点/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /添加新任务/ })).not.toBeInTheDocument();
 
     const pathViewButton = screen.getByRole('button', { name: '学习路径' });
     const cardViewButton = screen.getByRole('button', { name: '学习阶段' });
@@ -549,6 +578,20 @@ describe('QualificationRoutePage', () => {
         directVideo: { title: '补气剂章节精讲', url: 'https://example.test/video.mp4' },
         returnTo: { page: 'qualification-route', params: {} },
       }),
+    });
+
+    fireEvent.click(within(plan).getByRole('tab', { name: /复习任务/ }));
+    fireEvent.click(within(plan).getByRole('button', { name: /四君子汤配伍/ }));
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType: 'topic_training',
+        kpId: 'KP_1',
+        kpName: '四君子汤配伍',
+        reviewTaskId: 'review-1',
+        returnTo: { page: 'qualification-route', params: {} },
+      },
     });
 
   });

@@ -12169,6 +12169,68 @@ textarea:focus-visible {
   transition: width 260ms ease;
 }
 
+.home-today-card__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 16px;
+  border-radius: 13px;
+  background: #eef3ef;
+  padding: 4px;
+}
+
+.home-today-card__tabs button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 10px;
+  color: #667a70;
+  background: transparent;
+  font-size: .62rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.home-today-card__tabs button:hover {
+  color: #2f6848;
+  background: rgba(255, 255, 255, .58);
+}
+
+.home-today-card__tabs button:active { transform: translateY(1px); }
+
+.home-today-card__tabs button:focus-visible {
+  outline: 2px solid rgba(42, 129, 88, .42);
+  outline-offset: 2px;
+}
+
+.home-today-card__tabs button.is-active {
+  color: #176443;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(37, 91, 65, .09);
+}
+
+.home-today-card__tabs small {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 6px;
+  color: #6e8177;
+  background: #e4ebe6;
+  font-size: .52rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-today-card__tabs button.is-active small {
+  color: #fff;
+  background: #4f8957;
+}
+
 .home-today-card__list {
   display: grid;
   gap: 10px;
