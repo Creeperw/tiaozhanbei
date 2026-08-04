@@ -54,6 +54,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDe
   });
   const [answerMode, setAnswerMode] = useState('practice');
   const [duration, setDuration] = useState(60);
+  const [difficultyFilter, setDifficultyFilter] = useState(null);
   const [activePaperId, setActivePaperId] = useState(paperId);
   const [activeTaskItemId, setActiveTaskItemId] = useState(taskItemId);
   const [loading, setLoading] = useState(false);
@@ -172,6 +173,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDe
         distribution: Object.fromEntries(Object.entries(distribution).filter(([, value]) => value > 0)),
         answerMode,
         durationMinutes: answerMode === 'test' ? duration : null,
+        difficulty: difficultyFilter,
         taskItemId: activeTaskItemId,
       });
       if (response.error) throw new Error(response.error);
@@ -269,6 +271,16 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDe
               <span className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2"><input aria-label="测试时长" type="number" min="10" max="300" value={duration} onChange={(event) => setDuration(Math.max(10, Math.min(300, Number(event.target.value) || 60)))} className="w-14 bg-transparent text-right font-semibold tabular-nums outline-none" /><span className="ml-1 text-slate-500">分钟</span></span>
             </label>}
           </section>
+
+          <section aria-labelledby="paper-difficulty-title">
+            <div><h3 id="paper-difficulty-title" className="text-base font-semibold text-slate-950">4. 难度要求 <span className="text-sm font-normal text-slate-400">（可选，仅使用真实难度标注）</span></h3><p className="mt-1 text-[15px] leading-6 text-slate-500">指定难度时优先选用该难度的正式题；不足时依次补入未标注难度的正式题、网络参考题，最后才生成补充题。系统会如实标注每题来源，不会把补充题伪装成指定难度。</p></div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button type="button" aria-pressed={difficultyFilter === null} onClick={() => setDifficultyFilter(null)} disabled={loading} className={`rounded-xl border px-4 py-2 text-sm font-semibold transition duration-200 ${difficultyFilter === null ? 'border-emerald-500 bg-emerald-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50'}`}>不限</button>
+              {[1, 2, 3, 4, 5].map((level) => (
+                <button key={level} type="button" aria-pressed={difficultyFilter === level} onClick={() => setDifficultyFilter(level)} disabled={loading} className={`rounded-xl border px-4 py-2 text-sm font-semibold transition duration-200 ${difficultyFilter === level ? 'border-emerald-500 bg-emerald-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50'}`}>难度 {level}</button>
+              ))}
+            </div>
+          </section>
         </main>
 
         <aside className="border-t border-slate-200 bg-slate-50/70 p-5 xl:border-l xl:border-t-0" aria-label="组卷预览">
@@ -279,6 +291,7 @@ export default function SmartPaperPanel({ paperId = '', taskItemId = '', guideDe
               <div className="flex items-start justify-between gap-3"><dt className="text-slate-500">范围</dt><dd className="max-w-40 text-right font-medium text-slate-800">{kind === 'plus' ? '基于学情智能选择' : topic.trim() || '尚未填写主题'}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">题型</dt><dd className="font-medium text-slate-800">{selectedTypes.length || 0} 种</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">模式</dt><dd className="font-medium text-slate-800">{answerMode === 'test' ? `测试 · ${duration} 分钟` : '练习'}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">难度</dt><dd className="font-medium text-slate-800">{difficultyFilter === null ? '不限' : `难度 ${difficultyFilter} 星`}</dd></div>
               <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">发布门禁</dt><dd className="font-medium text-emerald-700">智能体审核</dd></div>
             </dl>
             <button type="button" onClick={generate} disabled={loading || !total || total > 50 || (kind === 'special' && !topic.trim())} className={`${sectionButton} mt-5 w-full border-emerald-700 bg-emerald-700 px-4 py-3 text-white shadow-[0_10px_24px_rgba(22,101,52,0.16)] hover:-translate-y-0.5 hover:bg-emerald-800`}>

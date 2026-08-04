@@ -197,6 +197,30 @@ def _sanitize_practice_question_labels(payload: dict) -> dict:
     return payload
 
 
+def _candidate_matches_difficulty_filter(
+    candidate: dict,
+    *,
+    difficulty: int | None = None,
+    difficulty_min: int | None = None,
+    difficulty_max: int | None = None,
+) -> bool:
+    """Strict difficulty matching on real labels only.
+
+    A candidate without a real difficulty annotation never matches any
+    difficulty filter; no inference or default is applied.
+    """
+    level = candidate.get("difficulty")
+    if not isinstance(level, int):
+        return False
+    if difficulty is not None and level != difficulty:
+        return False
+    if difficulty_min is not None and level < difficulty_min:
+        return False
+    if difficulty_max is not None and level > difficulty_max:
+        return False
+    return True
+
+
 def _profile_practice_query(context: dict) -> str:
     profile = context.get("user_profile") if isinstance(context, dict) else {}
     profile = profile if isinstance(profile, dict) else {}
@@ -3396,6 +3420,31 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             raise HTTPException(status_code=503, detail="学习工坊持久化服务未启用")
         return backend_handoff
 
+    def _practice_difficulty_coverage() -> tuple[bool, list[int]]:
+        """Report difficulty support from the formal bank using real labels only.
+
+        Returns (has_any_real_difficulty_label, sorted available levels). A bank
+        without difficulty annotations reports (False, []) so the UI can hide
+        difficulty controls instead of presenting unusable filters.
+        """
+        backend = container.knowledge_backend
+        if backend is None or getattr(backend, "map", None) is None:
+            return False, []
+        store = backend.map
+        try:
+            store.ensure_questions()
+        except Exception:
+            return False, []
+        levels: set[int] = set()
+        for questions in store.questions_by_kp.values():
+            for question in questions:
+                parsed = parse_difficulty(
+                    question.get("difficulty", question.get("难度"))
+                )
+                if parsed is not None:
+                    levels.add(parsed)
+        return bool(levels), sorted(levels)
+
     @app.get("/api/v1/workshop")
     async def workshop_overview(request: Request) -> dict:
         current_user(request)
@@ -3408,6 +3457,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         mode: str,
         attempted_question_ids: set[str],
         preferred_kp_ids: list[str] | None = None,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ) -> dict | None:
         backend = container.knowledge_backend
         if backend is None:
@@ -3486,6 +3538,24 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     )
                     if payload["standard_answer"] and payload["kp_ids"]:
                         candidates.append(payload)
+
+        difficulty_requested = any(
+            value is not None
+            for value in (difficulty, difficulty_min, difficulty_max)
+        )
+        if difficulty_requested:
+            # Strict matching on real labels only: an unlabelled question never
+            # satisfies a difficulty filter (no inference, no default).
+            candidates = [
+                candidate
+                for candidate in candidates
+                if _candidate_matches_difficulty_filter(
+                    candidate,
+                    difficulty=difficulty,
+                    difficulty_min=difficulty_min,
+                    difficulty_max=difficulty_max,
+                )
+            ]
         if not candidates:
             return None
         # Keep variety within one priority tier without discarding the current
@@ -3524,18 +3594,53 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         topic: str | None = Query(default=None, min_length=1, max_length=500),
         scope: str = Query(default="public", pattern="^(public|user|all)$"),
         mode: str = Query(default="objective", pattern="^(all|objective|case)$"),
+        difficulty: int | None = Query(default=None, ge=1, le=5),
+        difficulty_min: int | None = Query(default=None, ge=1, le=5),
+        difficulty_max: int | None = Query(default=None, ge=1, le=5),
     ) -> dict:
         user = current_user(request)
         runtime = require_workshop_runtime()
+        if (
+            difficulty is not None
+            and (difficulty_min is not None or difficulty_max is not None)
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="difficulty cannot be combined with difficulty_min/difficulty_max",
+            )
+        if (
+            difficulty_min is not None
+            and difficulty_max is not None
+            and difficulty_min > difficulty_max
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="difficulty_min must not exceed difficulty_max",
+            )
+        difficulty_available, available_difficulties = _practice_difficulty_coverage()
+        difficulty_kwargs = {
+            "difficulty": difficulty,
+            "difficulty_min": difficulty_min,
+            "difficulty_max": difficulty_max,
+        }
+
+        def _with_difficulty_meta(payload: dict) -> dict:
+            payload["difficulty_available"] = difficulty_available
+            payload["available_difficulties"] = available_difficulties
+            return payload
+
         if scope in {"user", "all"}:
             personal = await asyncio.to_thread(
                 runtime.issue_personal_practice,
                 user.user_id,
                 kp_id=kp_id,
                 mode=mode,
+                **difficulty_kwargs,
             )
             if personal.get("available") or scope == "user":
-                return _sanitize_practice_question_labels(personal)
+                return _with_difficulty_meta(
+                    _sanitize_practice_question_labels(personal)
+                )
 
         context: dict = {}
         try:
@@ -3566,10 +3671,19 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             and int(history.get("attempt_count") or 0) > 0
         )
 
+        difficulty_requested = any(
+            value is not None
+            for value in (difficulty, difficulty_min, difficulty_max)
+        )
         has_explicit_target = bool(kp_id or str(topic or "").strip())
         latest_claim = selection_context.get("latest_active_claim")
         resume_claim = getattr(runtime, "resume_formal_practice_claim", None)
-        if not has_explicit_target and isinstance(latest_claim, dict) and callable(resume_claim):
+        if (
+            not has_explicit_target
+            and not difficulty_requested
+            and isinstance(latest_claim, dict)
+            and callable(resume_claim)
+        ):
             question_id = str(latest_claim.get("question_id") or "").strip()
             request_id = str(latest_claim.get("request_id") or "").strip()
             if question_id and request_id:
@@ -3591,7 +3705,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                         "strategy": "current_learning_adaptive_v1",
                         "reason": "active_claim",
                     }
-                    return _sanitize_practice_question_labels(resumed)
+                    return _with_difficulty_meta(
+                        _sanitize_practice_question_labels(resumed)
+                    )
 
         current_task_kp_ids = [
             str(value).strip()
@@ -3624,6 +3740,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 mode=mode,
                 attempted_question_ids=attempted_ids,
                 preferred_kp_ids=preferred_kp_ids if not has_explicit_target else None,
+                difficulty=difficulty,
+                difficulty_min=difficulty_min,
+                difficulty_max=difficulty_max,
             )
             if candidate is not None:
                 issued = await asyncio.to_thread(
@@ -3644,7 +3763,17 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "strategy": "current_learning_adaptive_v1",
                     "reason": reason,
                 }
-                return _sanitize_practice_question_labels(issued)
+                issued_question = issued.get("question")
+                if isinstance(issued_question, dict) and issued_question.get(
+                    "difficulty"
+                ) is None:
+                    issued_question["difficulty"] = candidate.get("difficulty")
+                    issued_question["difficulty_source"] = candidate.get(
+                        "difficulty_source"
+                    )
+                return _with_difficulty_meta(
+                    _sanitize_practice_question_labels(issued)
+                )
         except Exception:
             # Keep projected formal questions usable while the read-only bank
             # is temporarily unavailable; never reinterpret this as an empty bank.
@@ -3654,8 +3783,9 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             user.user_id,
             kp_id=kp_id,
             mode=mode,
+            **difficulty_kwargs,
         )
-        return _sanitize_practice_question_labels(cached)
+        return _with_difficulty_meta(_sanitize_practice_question_labels(cached))
 
     @app.get("/api/v1/workshop/knowledge-cards")
     async def list_workshop_knowledge_cards(

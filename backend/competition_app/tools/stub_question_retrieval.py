@@ -12,8 +12,25 @@ class StubQuestionRetriever:
     """Deterministic offline candidate source for exercising the question-search flow."""
 
     async def search(
-        self, query: str, resolved_kp_ids: list[str], limit: int
+        self,
+        query: str,
+        resolved_kp_ids: list[str],
+        limit: int,
+        *,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ) -> QuestionSearchResult:
+        # The stub bank carries no real difficulty labels, so a difficulty
+        # filter can never match here: strict matching on real labels only.
+        if difficulty is not None or difficulty_min is not None or difficulty_max is not None:
+            return QuestionSearchResult(
+                query=query,
+                resolved_kp_ids=resolved_kp_ids,
+                embedding_model="stub",
+                vector_index_path="stub://question-index",
+                items=[],
+            )
         kp_id = resolved_kp_ids[0] if resolved_kp_ids else "KP_DEMO_001"
         item = QuestionDetail(
             question_id="Q_DEMO_FJ_001",

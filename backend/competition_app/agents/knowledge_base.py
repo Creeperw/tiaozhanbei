@@ -876,6 +876,23 @@ class KnowledgeBaseAgent:
         ).strip() or None
         registry = context.get("tool_registry")
         if registry is not None:
+            invoke_kwargs: dict[str, Any] = {
+                "query": topic,
+                "kp_ids": kp_ids,
+                "limit": limit,
+                "owner_id": owner_id,
+                "scope": "all",
+            }
+            if (
+                difficulty is not None
+                or difficulty_min is not None
+                or difficulty_max is not None
+            ):
+                # Forward difficulty only when actually requested so tools
+                # without difficulty support keep working unchanged.
+                invoke_kwargs["difficulty"] = difficulty
+                invoke_kwargs["difficulty_min"] = difficulty_min
+                invoke_kwargs["difficulty_max"] = difficulty_max
             result = await registry.invoke(
                 "get_question_with_content",
                 "knowledge_base_agent",
@@ -885,14 +902,7 @@ class KnowledgeBaseAgent:
                     "candidate_count": len(result.items),
                     "channels": sorted({channel for item in result.items for channel in item.retrieval.channels}),
                 },
-                query=topic,
-                kp_ids=kp_ids,
-                limit=limit,
-                owner_id=owner_id,
-                scope="all",
-                difficulty=difficulty,
-                difficulty_min=difficulty_min,
-                difficulty_max=difficulty_max,
+                **invoke_kwargs,
             )
             if not isinstance(result, QuestionSearchResult):
                 raise ValueError("question search result must be QuestionSearchResult")

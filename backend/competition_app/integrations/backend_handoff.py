@@ -212,6 +212,29 @@ def _temporary_environment(values: dict[str, str]):
                 os.environ[name] = value
 
 
+def _real_difficulty_label(question: dict[str, Any]) -> tuple[Any, Any]:
+    """Return (difficulty, difficulty_source) using only real annotations.
+
+    Never infers or defaults a difficulty: an unlabelled question keeps NULL
+    (None, None) so downstream consumers can distinguish labelled content from
+    manufactured values.
+    """
+    difficulty_module = importlib.import_module(
+        "competition_app.contracts.difficulty"
+    )
+    raw = question.get("difficulty", question.get("难度"))
+    if raw is None:
+        return None, None
+    parsed = difficulty_module.parse_difficulty(raw)
+    if parsed is None:
+        return None, None
+    source = question.get("difficulty_source") or question.get("难度来源")
+    difficulty_source = difficulty_module.parse_difficulty_source(
+        source or "source_metadata"
+    )
+    return parsed, difficulty_source
+
+
 @dataclass
 class BackendHandoffRuntime:
     """Loaded frontend-backend contract hosted inside the main ASGI process."""
@@ -1632,6 +1655,9 @@ class BackendHandoffRuntime:
         *,
         kp_id: str | None,
         mode: str,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ) -> dict[str, Any]:
         """Issue an owned uploaded question through the existing controlled route."""
 
@@ -1644,6 +1670,9 @@ class BackendHandoffRuntime:
                 kp_id=kp_id,
                 scope="user",
                 mode=mode,
+                difficulty=difficulty,
+                difficulty_min=difficulty_min,
+                difficulty_max=difficulty_max,
                 current_user=user,
                 db=db,
             )
@@ -1824,6 +1853,9 @@ class BackendHandoffRuntime:
         *,
         kp_id: str | None,
         mode: str,
+        difficulty: int | None = None,
+        difficulty_min: int | None = None,
+        difficulty_max: int | None = None,
     ) -> dict[str, Any]:
         """Fallback for stub mode and already projected formal questions."""
 
@@ -1836,6 +1868,9 @@ class BackendHandoffRuntime:
                 kp_id=kp_id,
                 scope="public",
                 mode=mode,
+                difficulty=difficulty,
+                difficulty_min=difficulty_min,
+                difficulty_max=difficulty_max,
                 current_user=user,
                 db=db,
             )
@@ -1974,7 +2009,11 @@ class BackendHandoffRuntime:
                 bank.analysis = analysis
             bank.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
             bank.question_type = question_type
-            bank.difficulty = None
+            difficulty_value, difficulty_source_value = _real_difficulty_label(
+                question
+            )
+            bank.difficulty = difficulty_value
+            bank.difficulty_source = difficulty_source_value
             bank.quality_score = 1.0
             bank.source = "formal_question_bank"
             bank.status = "active"
@@ -1993,7 +2032,8 @@ class BackendHandoffRuntime:
             )
             if analysis or not str(core.explanation or "").strip():
                 core.explanation = analysis
-            core.difficulty = None
+            core.difficulty = difficulty_value
+            core.difficulty_source = difficulty_source_value
             core.kp_ids_json = json.dumps(kp_ids, ensure_ascii=False)
 
             version = db.query(database.QuestionVersionRecord).filter_by(
@@ -2011,7 +2051,8 @@ class BackendHandoffRuntime:
             version.answer = answer
             if analysis or not str(version.analysis or "").strip():
                 version.analysis = analysis
-            version.standard_difficulty = None
+            version.standard_difficulty = difficulty_value
+            version.difficulty_source = difficulty_source_value
             version.source_kind = "formal_question_bank"
             version.status = "active"
             db.flush()
@@ -2059,6 +2100,8 @@ class BackendHandoffRuntime:
                     )),
                     "request_id": request_id,
                     "source_scope": "formal_question_bank",
+                    "difficulty": difficulty_value,
+                    "difficulty_source": difficulty_source_value,
                 },
             }
         except Exception:

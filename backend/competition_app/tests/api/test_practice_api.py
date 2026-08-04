@@ -158,7 +158,16 @@ class StrictTargetPracticeRuntime(PracticeRuntime):
         super().__init__()
         self.cached_requests = []
 
-    def issue_cached_public_practice(self, learner_id: str, *, kp_id, mode) -> dict:
+    def issue_cached_public_practice(
+        self,
+        learner_id: str,
+        *,
+        kp_id,
+        mode,
+        difficulty=None,
+        difficulty_min=None,
+        difficulty_max=None,
+    ) -> dict:
         self.cached_requests.append((learner_id, kp_id, mode))
         return {"available": False, "kp_id": kp_id, "question": None}
 
@@ -190,7 +199,10 @@ def test_practice_next_uses_complete_formal_bank_without_exposing_answer(tmp_pat
     assert body["question"]["question_type"] == "single_choice"
     assert body["question"]["options"][0]["option_id"] == "A"
     assert body["question"]["source_scope"] == "formal_question_bank"
-    assert "difficulty" not in body["question"]
+    assert body["question"]["difficulty"] is None
+    assert body["question"]["difficulty_source"] is None
+    assert body["difficulty_available"] is False
+    assert body["available_difficulties"] == []
     assert "answer" not in body["question"]
     assert runtime.issued[0][1]["standard_answer"] == "A"
     assert runtime.issued[0][1]["difficulty"] is None
@@ -219,7 +231,12 @@ def test_practice_next_does_not_fall_back_to_another_kp_for_explicit_target(tmp_
 
     assert registered.status_code == 201
     assert response.status_code == 200
-    assert response.json() == {"available": False, "kp_id": "KP_1", "question": None}
+    body = response.json()
+    assert body["available"] is False
+    assert body["kp_id"] == "KP_1"
+    assert body["question"] is None
+    assert body["difficulty_available"] is False
+    assert body["available_difficulties"] == []
     assert runtime.issued == []
     assert len(runtime.cached_requests) == 1
     assert runtime.cached_requests[0][1:] == ("KP_1", "case")
@@ -319,3 +336,151 @@ def test_practice_next_resumes_latest_unfinished_claim_on_refresh(tmp_path: Path
     assert response.json()["question"]["request_id"] == "claim-1"
     assert response.json()["question"]["kp_names"] == ["知识点一"]
     assert runtime.issued == []
+
+
+class LabeledDifficultyQuestionStore:
+    """Formal bank with real difficulty labels on some questions."""
+
+    def __init__(self) -> None:
+        self.kps = {
+            "KP_1": {"kp_id": "KP_1", "kp_lv3": "知识点一"},
+            "KP_2": {"kp_id": "KP_2", "kp_lv3": "知识点二"},
+        }
+        self.questions_by_kp = {
+            "KP_1": [
+                {
+                    "question_id": "FORMAL_D2",
+                    "question_type": "单项选择题",
+                    "question_content": "难度二题",
+                    "options": [{"option_id": "A", "content": "甲"}],
+                    "answer": ["A"],
+                    "kp_ids": ["KP_1"],
+                    "difficulty": 2,
+                    "difficulty_source": "curated_question_bank",
+                },
+                {
+                    "question_id": "FORMAL_D3",
+                    "question_type": "单项选择题",
+                    "question_content": "难度三题",
+                    "options": [{"option_id": "B", "content": "乙"}],
+                    "answer": ["B"],
+                    "kp_ids": ["KP_1"],
+                    "difficulty": 3,
+                    "difficulty_source": "curated_question_bank",
+                },
+            ],
+            "KP_2": [
+                {
+                    "question_id": "FORMAL_NOLABEL",
+                    "question_type": "单项选择题",
+                    "question_content": "未标注难度题",
+                    "options": [{"option_id": "C", "content": "丙"}],
+                    "answer": ["C"],
+                    "kp_ids": ["KP_2"],
+                },
+            ],
+        }
+
+    def ensure_hierarchy(self) -> None:
+        return None
+
+    def ensure_questions(self) -> None:
+        return None
+
+    def resolve_topic(self, query: str, limit: int = 8) -> list[dict]:
+        return [{"kp_id": "KP_1", "kp": self.kps["KP_1"]}][:limit]
+
+
+def test_practice_next_reports_difficulty_coverage_and_filters_by_level(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = PersonalizedPracticeRuntime({
+        "attempt_history": {},
+        "active_claims": [],
+    })
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=LabeledDifficultyQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "labeled-practice", "password": "correct-horse-2026"},
+        )
+        response = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public", "difficulty": 2},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["difficulty_available"] is True
+    assert body["available_difficulties"] == [2, 3]
+    assert body["question"]["question_id"] == "FORMAL_D2"
+    assert body["question"]["difficulty"] == 2
+    assert body["question"]["difficulty_source"] == "curated_question_bank"
+    assert runtime.issued[0][1]["difficulty"] == 2
+    assert runtime.issued[0][1]["difficulty_source"] == "curated_question_bank"
+
+
+def test_practice_next_difficulty_range_matches_real_labels_only(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = PersonalizedPracticeRuntime({
+        "attempt_history": {},
+        "active_claims": [],
+    })
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=LabeledDifficultyQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "range-practice", "password": "correct-horse-2026"},
+        )
+        response = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public", "difficulty_min": 3, "difficulty_max": 3},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["question"]["question_id"] == "FORMAL_D3"
+    # The unlabelled question never satisfies a difficulty filter.
+    assert body["question"]["question_id"] != "FORMAL_NOLABEL"
+
+
+def test_practice_next_rejects_combined_or_inverted_difficulty(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(
+        Settings(mode="stub"),
+        snapshot_root=tmp_path,
+        include_backend_handoff=False,
+    )
+    runtime = PersonalizedPracticeRuntime({
+        "attempt_history": {},
+        "active_claims": [],
+    })
+    container.backend_handoff_runtime = runtime
+    container.knowledge_backend = SimpleNamespace(map=LabeledDifficultyQuestionStore())
+
+    with TestClient(create_app(container, auth_required=True)) as client:
+        client.post(
+            "/api/v1/auth/register",
+            json={"username": "invalid-difficulty", "password": "correct-horse-2026"},
+        )
+        combined = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public", "difficulty": 2, "difficulty_min": 1},
+        )
+        inverted = client.get(
+            "/api/v1/workshop/practice/next",
+            params={"mode": "objective", "scope": "public", "difficulty_min": 4, "difficulty_max": 2},
+        )
+
+    assert combined.status_code == 422
+    assert inverted.status_code == 422
