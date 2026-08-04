@@ -17,6 +17,7 @@
 | 学情监测口径 | [`learning-monitoring-methodology.md`](learning-monitoring-methodology.md) |
 | 教材学习与训练工坊 | [`textbook-learning-workshop.md`](textbook-learning-workshop.md) |
 | 题目难度现状与保留边界 | [`题目难度相关功能现状报告.md`](题目难度相关功能现状报告.md) |
+| 题目难度模块实施完成报告（Phase 1-6） | [`2026-08-04-difficulty-module-implementation.md`](2026-08-04-difficulty-module-implementation.md) |
 
 ## 功能与研究专题
 
