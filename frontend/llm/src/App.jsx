@@ -20,6 +20,7 @@ import HomeOnboardingGuide from './components/HomeOnboardingGuide';
 import { AUTH_API_BASE, fetchWithAuth, readJsonResponse } from './utils/api';
 import { getAppShellConfig } from './appShell';
 import { createPageIntent, getIntentPage } from './pageIntent';
+import { intentToPath, pathToIntent } from './urlRouting';
 import { legacyPersonalizationSettingsView } from './settingsNavigation';
 import { readCurrentPage } from './pageContext';
 
@@ -36,13 +37,24 @@ const normalizeInitialIntent = (intent) => {
     : nextIntent;
 };
 
+/**
+ * 从浏览器 URL 解析初始页面意图。URL 路由改造后优先于 sessionStorage，
+ * 支持直接访问 /practice 等路径；解析失败时回退到历史持久化逻辑。
+ */
 const initialPageIntent = () => {
   try {
+    // 一次性跨页跳转命令仍然优先（外部脚本写入后刷新场景）
     const stored = sessionStorage.getItem(pendingNavigationKey);
     if (stored) {
       sessionStorage.removeItem(pendingNavigationKey);
       return normalizeInitialIntent(JSON.parse(stored));
     }
+    // URL 路由：/practice、/practice/special-training 等。
+    // 根路径 '/' 只是默认入口，不代表明确的页面意图，
+    // 此时仍回退到 sessionStorage 的刷新恢复逻辑。
+    const urlIntent = pathToIntent(window.location.pathname);
+    const isExplicitPath = window.location.pathname !== '/';
+    if (urlIntent && isExplicitPath) return createPageIntent(urlIntent);
     const persisted = sessionStorage.getItem(persistedPageIntentKey);
     if (persisted) {
       const restored = JSON.parse(persisted);
@@ -88,6 +100,18 @@ export default function App() {
       : currentPage;
   const selectedSessionId = pageIntent.params.sessionId || null;
 
+  /**
+   * 统一的页面意图应用入口：更新 state 并同步浏览器 URL（pushState）。
+   * updateUrl=false 用于 popstate 恢复等场景，避免产生多余历史记录。
+   */
+  const applyPageIntent = useCallback((intent, { updateUrl = true } = {}) => {
+    setPageIntent(intent);
+    if (updateUrl) {
+      const path = intentToPath(intent);
+      if (path) window.history.pushState({ pageIntent: intent }, '', path);
+    }
+  }, []);
+
   useEffect(() => {
     try {
       sessionStorage.setItem(
@@ -124,7 +148,7 @@ export default function App() {
       setCurrentUser(null);
       setAuthRequested(false);
       setShowHomeGuide(false);
-      setPageIntent(createPageIntent('dashboard'));
+      applyPageIntent(createPageIntent('dashboard'));
     };
     window.addEventListener('competition:unauthorized', clearSession);
     verifySession();
@@ -132,7 +156,7 @@ export default function App() {
       active = false;
       window.removeEventListener('competition:unauthorized', clearSession);
     };
-  }, []);
+  }, [applyPageIntent]);
 
   const handleLogin = (user) => {
     setCurrentUser(user);
@@ -147,7 +171,7 @@ export default function App() {
     } finally {
       setCurrentUser(null);
       setKnowledgeNavigationContext(null);
-      setPageIntent(createPageIntent('dashboard'));
+      applyPageIntent(createPageIntent('dashboard'));
       setShowHomeGuide(false);
       sessionStorage.removeItem(persistedPageIntentKey);
     }
@@ -163,6 +187,16 @@ export default function App() {
       return createPageIntent({ ...current, params });
     });
   }, []);
+
+  // 浏览器前进/后退：从 history state（优先）或 URL 路径恢复页面意图
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const restored = event.state?.pageIntent || pathToIntent(window.location.pathname);
+      if (restored) applyPageIntent(createPageIntent(restored), { updateUrl: false });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [applyPageIntent]);
 
   const shellConfig = getAppShellConfig({ currentUser, currentPage: shellPage, selectedSessionId });
   const readAssistantPageContext = useCallback(() => readCurrentPage({
@@ -182,7 +216,7 @@ export default function App() {
           : knowledgeNavigationContext?.trackId
             ? knowledgeNavigationContext
             : { route: 'textbook_14_5' };
-        setPageIntent(createPageIntent({
+        applyPageIntent(createPageIntent({
           ...destination,
           params: { view: 'atlas', source: 'navigation', ...preferredContext, ...params },
         }));
@@ -191,10 +225,10 @@ export default function App() {
       if (destination.page === 'personalization') {
         const settingsView = legacyPersonalizationSettingsView(params.view);
         if (settingsView) {
-          setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
+          applyPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
           return;
         }
-        setPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'reports' }));
+        applyPageIntent(createPageIntent(destination.page, { ...params, view: params.view || 'reports' }));
         return;
       }
       if (
@@ -204,7 +238,7 @@ export default function App() {
       ) {
         setNavigationRevision((value) => value + 1);
       }
-      setPageIntent(createPageIntent(destination));
+      applyPageIntent(createPageIntent(destination));
       return;
     }
     const params = typeof context === 'string' ? { sessionId: context } : (context || {});
@@ -217,7 +251,7 @@ export default function App() {
         : knowledgeNavigationContext?.trackId
           ? knowledgeNavigationContext
           : { route: 'textbook_14_5' };
-      setPageIntent(createPageIntent(destination, {
+      applyPageIntent(createPageIntent(destination, {
         view: 'atlas', source: 'navigation', ...preferredContext, ...params,
       }));
       return;
@@ -225,10 +259,10 @@ export default function App() {
     if (destination === 'personalization') {
       const settingsView = legacyPersonalizationSettingsView(params.view);
       if (settingsView) {
-        setPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
+        applyPageIntent(createPageIntent('settings', { ...params, view: settingsView }));
         return;
       }
-      setPageIntent(createPageIntent(destination, { ...params, view: params.view || 'reports' }));
+      applyPageIntent(createPageIntent(destination, { ...params, view: params.view || 'reports' }));
       return;
     }
     if (
@@ -238,7 +272,7 @@ export default function App() {
     ) {
       setNavigationRevision((value) => value + 1);
     }
-    setPageIntent(createPageIntent(destination, params));
+    applyPageIntent(createPageIntent(destination, params));
   };
 
   const startStageTransition = useCallback((selection) => {

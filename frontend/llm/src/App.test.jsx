@@ -131,6 +131,9 @@ describe('authenticated application shell', () => {
     localStorage.clear();
     sessionStorage.clear();
     document.body.style.overflow = '';
+    // URL 路由改造后 initialPageIntent 优先从 URL 恢复页面，
+    // 每个用例前重置 pathname，避免上一个用例 pushState 留下的路径泄漏进来。
+    window.history.replaceState({}, '', '/');
   });
 
   it('enters the system directly even when an existing session still carries the legacy onboarding flag', async () => {

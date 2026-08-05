@@ -595,6 +595,16 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             return Response(status_code=404)
         # Mounted business routes share the main cookie identity. Their internal
         # dependency maps request.state.current_user to a domain-local user row.
+        spa_page_paths = (
+            "/practice",
+            "/learning-path",
+            "/assistant",
+            "/knowledge",
+            "/personalization",
+            "/settings",
+            "/resources",
+            "/dashboard",
+        )
         public_path = (
             path == "/"
             or path == "/favicon.ico"
@@ -618,6 +628,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             )
             or path.startswith(("/auth", "/docs", "/redoc"))
             or path.startswith("/api/v1/auth/")
+            # SPA 页面路径：未登录也返回 index.html，由前端引导登录
+            or path.startswith(spa_page_paths)
         )
         if auth_required and current_user is None and not public_path:
             return JSONResponse(
@@ -5016,6 +5028,47 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         # must exist when FastAPI serves the built frontend directly. Main
         # `/api/v1/*` routes were registered above and remain authoritative.
         app.mount("/api", backend_handoff.app, name="frontend_backend_api")
+
+    # ── SPA 前端页面路由（URL 路由改造）──────────────────
+    # 练习工坊 /practice、专项特训 /practice/special-training 等前端页面路径
+    # 需要返回 index.html 由 React 接管；非页面前缀（API/静态/文档）保持 404。
+    # 注意：必须注册在 /api mount 之后（优先让后端 API 处理）、根 mount 之前。
+    _SPA_NON_PAGE_PREFIXES = (
+        "api/",
+        "auth",
+        "assets/",
+        "design-images/",
+        "assistant-character/",
+        "learning-stage/",
+        "textbook-covers/",
+        "textbook-status-icons/",
+        "acupuncture",
+        "acupuncture-models/",
+        "knowledge-graph/",
+        "platform-assets/",
+        "docs",
+        "redoc",
+        "openapi.json",
+        "health",
+        "treekg",
+        "register",
+        "reset-password",
+        "send-code",
+        "token",
+        "users",
+        "favicon.svg",
+        "hero_word.txt",
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_frontend_fallback(full_path: str):
+        if full_path.startswith(_SPA_NON_PAGE_PREFIXES):
+            raise HTTPException(status_code=404, detail="Not Found")
+        if frontend_index is not None and frontend_index.is_file():
+            return FileResponse(frontend_index)
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    if backend_handoff is not None:
         # Keep this catch-all mount last for legacy direct business routes.
         app.mount("/", backend_handoff.app, name="frontend_backend")
 

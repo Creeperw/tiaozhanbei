@@ -14,12 +14,12 @@ export default function PracticePage({
   overviewStats,
   onNavigate,
 }) {
-  const initialTaskIntent = normalizeTaskIntent(navigationContext.taskType);
-  const [activeTaskType, setActiveTaskType] = useState(() => initialTaskIntent.taskType);
-  const [activeInitialMode, setActiveInitialMode] = useState(() => initialTaskIntent.initialMode);
-  const [view, setView] = useState(() => (
-    navigationContext.taskType || navigationContext.view === 'workspace' ? 'workspace' : 'overview'
-  ));
+  // 受控组件：当前模块/视图完全由 navigationContext（即 App 的 pageIntent）派生，
+  // 不持有本地视图 state，popstate 恢复或 URL 直访时都能正确渲染。
+  const rawTaskType = navigationContext.taskType;
+  const taskType = normalizeTaskIntent(rawTaskType).taskType;
+  const initialMode = navigationContext.initialMode || taskType;
+  const showWorkspace = Boolean(rawTaskType) || navigationContext.view === 'workspace';
   const [loadedOverviewStats, setLoadedOverviewStats] = useState(DEFAULT_TRAINING_OVERVIEW_STATS);
 
   useEffect(() => {
@@ -68,12 +68,19 @@ export default function PracticePage({
   }, []);
 
   const openWorkshopModule = ({ key, initialMode }) => {
-    setActiveTaskType(key);
-    setActiveInitialMode(initialMode || key);
-    setView('workspace');
+    // 模块切换通过 App 导航完成：更新 pageIntent 并同步 URL（/practice/<slug>），
+    // App 端会递增 navigationRevision 触发本组件重挂载，用新 navigationContext 初始化。
+    onNavigate?.({
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType: key,
+        initialMode: initialMode || key,
+      },
+    });
   };
 
-  if (view === 'overview') {
+  if (!showWorkspace) {
     return (
       <TrainingOverview
         onOpenModule={openWorkshopModule}
@@ -86,12 +93,12 @@ export default function PracticePage({
     <TrainingWorkspace
       navigationContext={{
         ...navigationContext,
-        taskType: activeTaskType,
-        initialMode: activeInitialMode,
+        taskType,
+        initialMode,
         view: 'workspace',
       }}
       onNavigate={onNavigate}
-      onBack={() => setView('overview')}
+      onBack={() => onNavigate?.({ page: 'training-workshop', params: {} })}
     />
   );
 }

@@ -13,6 +13,7 @@ export default defineConfig({
     include: [
       'src/pageIntent.test.js',
       'src/videoTaskEvidence.test.js',
+      'src/urlRouting.test.js',
       'src/**/*.test.jsx',
     ],
     css: true,
