@@ -26,3 +26,9 @@ task_type: general_learning_support
 - “讲讲阴阳的含义和相互关系”属于 `knowledge_explanation`。
 - “梳理《中医学基础》阴阳学说章节的学习要点”属于 `general_learning_support`。
 - “给阴阳学说章节安排本周计划”属于 `learning_plan`。
+
+## 输出方式
+
+输出必须是且只能是符合给定 JSON Schema 的对象，字段严格限定为：`task_type`、`query_kind`、`plan_scope`、`plan_action`、`requires_clarification`、`clarification_question`、`casual_response`、`selected_agents`、`routing_reason`、`risk_level`、`requires_audit`、`requires_learning_plan_output`、`external_information_request`、`question_explanation_request`、`emotional_support_request`。
+
+除上述字段外，严禁输出任何其他字段（例如 result、plan、reply、agents、reason 等均不允许）。系统对输出做严格字段校验，多出的任何字段都会导致本次路由被判定为失败。本任务用不到的字段一律返回 `null` 或字段说明中的默认值，不要自创字段，也不要把内容塞进其他字段。

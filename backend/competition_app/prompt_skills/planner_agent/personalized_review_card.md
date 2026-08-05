@@ -39,3 +39,9 @@ task_type: personalized_review_card
 
 输入：“结合前面对话给我做一张理中丸错题复习卡。”且 `conversation_context.requires_compression=true`
 输出要点：在完整资源链基础上选择 Memory；理由中说明长对话摘要将为后续学情和资源适配提供约束。
+
+## 输出方式
+
+输出必须是且只能是符合给定 JSON Schema 的对象，字段严格限定为：`task_type`、`query_kind`、`plan_scope`、`plan_action`、`requires_clarification`、`clarification_question`、`casual_response`、`selected_agents`、`routing_reason`、`risk_level`、`requires_audit`、`requires_learning_plan_output`、`external_information_request`、`question_explanation_request`、`emotional_support_request`。
+
+除上述字段外，严禁输出任何其他字段（例如 result、plan、reply、agents、reason 等均不允许）。系统对输出做严格字段校验，多出的任何字段都会导致本次路由被判定为失败。本任务用不到的字段一律返回 `null` 或字段说明中的默认值，不要自创字段，也不要把内容塞进其他字段。

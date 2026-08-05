@@ -21,3 +21,5 @@ task_type: conversation_compression
 - `unresolved_questions` 指出缺少什么，以及缺失会影响哪个后续决策。
 - `memory_candidates` 只是待确认候选，不得当作正式长期记忆。
 - 不生成学情评分、知识库结论、学习计划或系统状态。
+
+输出必须是且只能是符合给定 JSON Schema 的对象，字段严格限定为：`summary`、`preserved_facts`、`unresolved_questions`、`temporary_constraints`、`memory_candidates`。除上述字段外，严禁输出任何其他字段；系统对输出做严格字段校验，多出的任何字段都会导致本次压缩被判定为失败。用不到的字段一律返回空数组，不要自创字段。

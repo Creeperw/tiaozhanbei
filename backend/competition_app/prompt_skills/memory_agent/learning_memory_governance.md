@@ -46,3 +46,5 @@ task_type: learning_memory_governance
 - `governance_notes` 应详细解释证据、冲突或候选原因。
 - `memory_candidates` 只保留用户明确表达且有长期复用价值的自然语言事实。
 - 不输出系统 ID、版本、数据库状态、学习计划或掌握度。
+
+输出必须是且只能是符合给定 JSON Schema 的对象，字段严格限定为：`governance_notes`、`memory_candidates`、`conflicts`、`requires_clarification`、`clarification_questions`、`resolution`。除上述字段外，严禁输出任何其他字段；系统对输出做严格字段校验，多出的任何字段都会导致本次记忆治理被判定为失败。无冲突时 `conflicts` 返回空数组、`requires_clarification=false`、`resolution=none`，不要自创字段。

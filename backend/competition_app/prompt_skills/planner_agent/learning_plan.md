@@ -46,3 +46,9 @@ task_type: learning_plan
 
 输入：“我今天要学习些什么东西？”且 `plan_scope=daily_task`
 输出要点：`task_type=learning_plan`、`plan_scope=daily_task`；路由理由明确这是基于已有长短期计划和当前学情生成当日任务，不得描述为短期计划。
+
+## 输出方式
+
+输出必须是且只能是符合给定 JSON Schema 的对象，字段严格限定为：`task_type`、`query_kind`、`plan_scope`、`plan_action`、`requires_clarification`、`clarification_question`、`casual_response`、`selected_agents`、`routing_reason`、`risk_level`、`requires_audit`、`requires_learning_plan_output`、`external_information_request`、`question_explanation_request`、`emotional_support_request`。
+
+除上述字段外，严禁输出任何其他字段（例如 result、plan、reply、agents、reason 等均不允许）。系统对输出做严格字段校验，多出的任何字段都会导致本次路由被判定为失败。本任务用不到的字段一律返回 `null` 或字段说明中的默认值，不要自创字段，也不要把内容塞进其他字段。
