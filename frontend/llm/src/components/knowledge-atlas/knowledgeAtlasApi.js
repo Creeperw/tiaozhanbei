@@ -13,7 +13,7 @@ async function readAtlasResponse(path, { signal, method = 'GET' } = {}) {
   const response = await fetchWithAuth(`${API_BASE}${path}`, options);
   const payload = await readJsonResponse(response, {});
   if (!response.ok || payload?.ok === false) {
-    throw new Error(atlasErrorMessage(payload, `知识星球请求失败 (${response.status || 'unknown'})`));
+    throw new Error(atlasErrorMessage(payload, `知识库请求失败 (${response.status || 'unknown'})`));
   }
   return payload;
 }

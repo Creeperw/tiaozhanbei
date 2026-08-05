@@ -37,7 +37,7 @@ export const HOME_ACTIONS = [
     key: 'knowledge-graph',
     title: '知识图谱',
     image: `${HOME_IMAGE_BASE}/knowledge-graph.png`,
-    intent: { page: 'knowledge', params: { view: 'atlas', source: 'dashboard' } },
+    intent: { page: 'practice', params: { view: 'textbook-chapters', route: 'textbook_14_5', lv1: '中医学基础', source: 'knowledge-graph' } },
   },
   {
     key: 'question-workspace',

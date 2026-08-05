@@ -309,7 +309,7 @@ export default function LearningPathOverview({
             <button
               key={id}
               type="button"
-              aria-label={directDrill ? `进入${node.title}（第 ${index + 1} 阶段）` : `选择${node.title}，第 ${index + 1} 阶段，双击进入知识星球`}
+              aria-label={directDrill ? `进入${node.title}（第 ${index + 1} 阶段）` : `选择${node.title}，第 ${index + 1} 阶段，双击进入教材`}
               aria-pressed={selected}
               data-current={String(current)}
               data-stage={stage}

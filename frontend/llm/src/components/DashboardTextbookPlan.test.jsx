@@ -10,7 +10,6 @@ import {
 import { loadExamTracks, loadLearningTarget } from './exam-atlas/examAtlasApi';
 
 vi.mock('./knowledge-atlas/knowledgeAtlasApi', () => ({ loadAtlasNodes: vi.fn() }));
-vi.mock('./knowledge-atlas/knowledgeAtlasFeature', () => ({ resolveKnowledgeAtlasEnabled: vi.fn() }));
 vi.mock('./exam-atlas/examAtlasApi', () => ({
   loadExamNodes: vi.fn(),
   loadExamTracks: vi.fn(),

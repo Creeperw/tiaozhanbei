@@ -17,33 +17,8 @@ import { API_BASE, MAIN_API_BASE, fetchJsonWithAuthFallback, fetchWithAuth } fro
 import { knowledgeQueryFromContext } from './exam-atlas/examAtlasPageContext';
 import { getKnowledgeScopeNotice, getSearchFeedback } from '../knowledgePageState';
 import QuestionWorkspacePage from './QuestionWorkspacePage';
-import { isKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import KnowledgeWorkspaceNav from './knowledge-atlas/KnowledgeWorkspaceNav';
 import KnowledgeRecognitionReports from './knowledge-reports/KnowledgeRecognitionReports';
-
-const KnowledgeAtlas = React.lazy(() => import('./knowledge-atlas/KnowledgeAtlas'));
-
-class KnowledgeAtlasErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { error };
-  }
-
-  render() {
-    if (!this.state.error) return this.props.children;
-    return (
-      <section className="m-4 grid min-h-[420px] place-content-center justify-items-center gap-3 rounded-3xl border border-rose-100 bg-white p-8 text-center" role="alert">
-        <h2 className="text-xl font-bold text-slate-900">知识星球暂时无法显示</h2>
-        <p className="max-w-lg text-sm text-slate-600">{this.state.error.message || '可视化模块发生异常，资料与题目工作区不受影响。'}</p>
-        <button type="button" className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white" onClick={() => this.setState({ error: null })}>重新加载模块</button>
-      </section>
-    );
-  }
-}
 
 const scopeLabel = {
   personal: '个人',
@@ -52,14 +27,9 @@ const scopeLabel = {
 
 const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   const isAdmin = currentUser?.role === 'admin';
-  const atlasEnabled = isKnowledgeAtlasEnabled();
   const [activeScope, setActiveScope] = useState('personal');
   const [activeWorkspace, setActiveWorkspace] = useState(
-    navigationContext.view === 'questions'
-      ? 'questions'
-      : ['sources', 'personal', 'public'].includes(navigationContext.view)
-        ? 'sources'
-        : atlasEnabled ? 'atlas' : 'sources',
+    navigationContext.view === 'questions' ? 'questions' : 'sources',
   );
   const [stats, setStats] = useState({
     total_documents: 0,
@@ -89,8 +59,6 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   const dragCounter = useRef(0);
 
   useEffect(() => {
-    if ((!navigationContext.view || navigationContext.view === 'atlas') && atlasEnabled) setActiveWorkspace('atlas');
-    if ((!navigationContext.view || navigationContext.view === 'atlas') && !atlasEnabled) setActiveWorkspace('sources');
     if (navigationContext.view === 'questions') setActiveWorkspace('questions');
     if (navigationContext.view === 'personal') {
       setActiveScope('personal');
@@ -100,7 +68,7 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
       setActiveScope('public');
       setActiveWorkspace('sources');
     }
-  }, [atlasEnabled, navigationContext.view]);
+  }, [navigationContext.view]);
 
   const fetchStats = useCallback(async () => {
     setStatusError('');
@@ -149,8 +117,6 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   useEffect(() => {
     let cancelled = false;
 
-    if (activeWorkspace === 'atlas') return () => { cancelled = true; };
-
     const loadContextBrief = async () => {
       try {
         const { data } = await fetchJsonWithAuthFallback({ paths: ['/agent/context/brief'], fallback: null });
@@ -174,7 +140,6 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   }, [activeWorkspace, fetchCatalog, fetchStats, fetchFiles]);
 
   useEffect(() => {
-    if (activeWorkspace === 'atlas') return undefined;
     let interval = null;
     if (stats.is_processing) {
       interval = window.setInterval(() => fetchStats(), 1000);
@@ -358,7 +323,6 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   };
 
   const canWriteActiveScope = activeScope === 'personal' || isAdmin;
-  const handleAtlasDisabled = useCallback(() => setActiveWorkspace('sources'), []);
   const scopeNotice = getKnowledgeScopeNotice(activeScope, isAdmin);
   const searchFeedback = getSearchFeedback({
     isSearching,
@@ -372,24 +336,10 @@ const KnowledgePage = ({ currentUser, navigationContext = {} }) => {
   };
   const workspaceNavigation = (
       <KnowledgeWorkspaceNav
-      atlasEnabled={atlasEnabled}
       activeWorkspace={activeWorkspace}
       onSelect={selectWorkspace}
-      className={activeWorkspace === 'atlas' ? 'knowledge-page__workspace-nav--embedded' : ''}
     />
   );
-
-  if (activeWorkspace === 'atlas') {
-    return (
-      <div className="knowledge-page__atlas-shell" data-workspace="knowledge-atlas">
-        <KnowledgeAtlasErrorBoundary>
-          <React.Suspense fallback={<div className="grid min-h-[520px] place-content-center text-sm text-slate-500" role="status">正在加载知识星球…</div>}>
-            <KnowledgeAtlas initialContext={navigationContext} onDisabled={handleAtlasDisabled} workspaceNavigation={workspaceNavigation} />
-          </React.Suspense>
-        </KnowledgeAtlasErrorBoundary>
-      </div>
-    );
-  }
 
   if (activeWorkspace === 'questions') {
     return (

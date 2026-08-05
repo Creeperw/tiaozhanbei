@@ -16,16 +16,6 @@ vi.mock('./QuestionWorkspacePage', () => ({
   default: () => <div>题目内容已并入知识库</div>,
 }));
 
-vi.mock('./knowledge-atlas/KnowledgeAtlas', () => ({
-  default: ({ initialContext, workspaceNavigation }) => (
-    <section data-testid="knowledge-atlas">
-      <header aria-label="知识星球顶栏">{workspaceNavigation}</header>
-      知识星球：{initialContext.trackId || 'default'}
-    </section>
-  ),
-  KnowledgeAtlasErrorBoundary: ({ children }) => children,
-}));
-
 describe('KnowledgePage workspace navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,7 +36,7 @@ describe('KnowledgePage workspace navigation', () => {
     }));
   });
 
-  it('opens the teammate Atlas by default and keeps it as the primary workspace', async () => {
+  it('opens the sources workspace by default and keeps it as the primary workspace', async () => {
     render(
       <KnowledgePage
         onBackHome={vi.fn()}
@@ -55,11 +45,9 @@ describe('KnowledgePage workspace navigation', () => {
       />,
     );
 
-    expect(await screen.findByTestId('knowledge-atlas')).toHaveTextContent('track-a');
-    expect(screen.getByRole('button', { name: '知识星球' })).toHaveClass('is-active');
-    expect(screen.getByRole('button', { name: '知识资料与个性化数据' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '知识资料与个性化数据' })).toHaveClass('is-active');
     expect(screen.getByRole('button', { name: '题目数据' })).toBeInTheDocument();
-    expect(within(screen.getByRole('banner', { name: '知识星球顶栏' })).getByRole('navigation', { name: '知识库内容' })).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: '知识库内容' }))).toBeTruthy();
   });
 
   it('hosts source, personalized data, and question data in one knowledge workspace', async () => {

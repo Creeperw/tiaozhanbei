@@ -8,13 +8,11 @@ import {
   loadLearningTarget,
   loadNodeLearnerSummary,
 } from './exam-atlas/examAtlasApi';
-import KnowledgeTreeDrilldown from './learning-tree/KnowledgeTreeDrilldown';
 import LearningPathOverview from './learning-tree/LearningPathOverview';
 import PageLoadingSpinner from './PageLoadingSpinner';
 import TextbookLibrary from './workshop-textbook/TextbookLibrary';
 import { deleteUploadedTextbook, loadTextbookPdfCatalog, setUploadedTextbookHidden } from './workshop-textbook/textbookPdfApi';
 import { buildTextbookViewModels } from './workshop-textbook/textbookLibraryModel';
-import { resolveKnowledgeAtlasEnabled } from './knowledge-atlas/knowledgeAtlasFeature';
 import { loadAtlasNodes } from './knowledge-atlas/knowledgeAtlasApi';
 import {
   adaptClassicRouteBooks,
@@ -151,7 +149,6 @@ export default function DashboardPage({
   const error = '';
   const [track, setTrack] = useState(() => initialTeachingResourcesCache?.track || { id: '', label: '' });
   const [nodes, setNodes] = useState(() => initialTeachingResourcesCache?.nodes || []);
-  const [legacyDrilldown, setLegacyDrilldown] = useState(null);
   const [plannedPath, setPlannedPath] = useState(() => initialTeachingResourcesCache?.plannedPath || null);
   const [classicRoutes, setClassicRoutes] = useState(() => initialTeachingResourcesCache?.classicRoutes || []);
   const [classicRouteId, setClassicRouteId] = useState(() => (
@@ -374,7 +371,6 @@ export default function DashboardPage({
             plannedPath: planned,
             currentStageId: nextCurrentStageId,
           });
-          setLegacyDrilldown(null);
           onKnowledgeContextChange?.({ trackId, planId: planned.plan_ref?.plan_id });
           return;
         } catch {
@@ -424,7 +420,6 @@ export default function DashboardPage({
           plannedPath: null,
           currentStageId: nextCurrentStageId,
         });
-        setLegacyDrilldown(null);
         onKnowledgeContextChange?.({ trackId });
       } catch {
         if (!cancelled && !hasCachedPath) {
@@ -635,7 +630,7 @@ export default function DashboardPage({
     return () => controller.abort();
   }, [currentBookSnapshot?.nextSectionId, taskKnowledgePoint]);
 
-  const openKnowledgePlanet = async (node) => {
+  const openKnowledgePlanet = (node) => {
     if (pathMode === 'classic') {
       if (node.node_type === 'book') {
         onNavigate?.({
@@ -665,19 +660,16 @@ export default function DashboardPage({
       return;
     }
     if (!track.id) return;
-    if (await resolveKnowledgeAtlasEnabled()) {
-      onNavigate?.({
-        page: 'knowledge',
-        params: {
-          view: 'atlas',
-          trackId: track.id,
-          membershipId: node.membership_id,
-          source: 'dashboard',
-        },
-      });
-      return;
-    }
-    setLegacyDrilldown(node);
+    // 知识星球已下线，非教材节点直接进入教材知识图谱。
+    onNavigate?.({
+      page: 'practice',
+      params: {
+        view: 'textbook-chapters',
+        route: node.navigation?.route_id || 'textbook_14_5',
+        lv1: node.navigation?.book || String(node.title || '').replace(/[《》]/g, ''),
+        source: 'dashboard',
+      },
+    });
   };
 
   const openTextbook = (node) => {
@@ -749,17 +741,6 @@ export default function DashboardPage({
       },
     });
   };
-
-  if (legacyDrilldown) {
-    return (
-      <KnowledgeTreeDrilldown
-        trackId={track.id}
-        rootNode={legacyDrilldown}
-        onBack={() => setLegacyDrilldown(null)}
-        onNavigate={onNavigate}
-      />
-    );
-  }
 
   return (
     <>

@@ -26,6 +26,23 @@ import { readCurrentPage } from './pageContext';
 
 const pendingNavigationKey = 'competition.pending-navigation';
 const persistedPageIntentKey = 'competition.current-page-intent';
+const homeGuideSeenKey = 'competition.home-guide.seen';
+
+const hasSeenHomeGuide = () => {
+  try {
+    return localStorage.getItem(homeGuideSeenKey) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const markHomeGuideSeen = () => {
+  try {
+    localStorage.setItem(homeGuideSeenKey, '1');
+  } catch {
+    // 引导状态是便利功能，存储不可用时不能阻塞应用。
+  }
+};
 
 const normalizeInitialIntent = (intent) => {
   const nextIntent = createPageIntent(intent);
@@ -85,7 +102,6 @@ export default function App() {
   const [authRequested, setAuthRequested] = useState(false);
   const [pageIntent, setPageIntent] = useState(initialPageIntent);
   const [navigationRevision, setNavigationRevision] = useState(0);
-  const [knowledgeNavigationContext, setKnowledgeNavigationContext] = useState(null);
   const [stageTransition, setStageTransition] = useState(null);
   const [floatingAssistantSessionId, setFloatingAssistantSessionId] = useState(null);
   const [showHomeGuide, setShowHomeGuide] = useState(false);
@@ -134,7 +150,7 @@ export default function App() {
         if (active && requestId === authRequestId.current) {
           const verifiedUser = res.ok ? data.user || null : null;
           setCurrentUser(verifiedUser);
-          setShowHomeGuide(Boolean(verifiedUser));
+          setShowHomeGuide(Boolean(verifiedUser) && !hasSeenHomeGuide());
         }
       } catch {
         if (active && requestId === authRequestId.current) setCurrentUser(null);
@@ -161,7 +177,7 @@ export default function App() {
   const handleLogin = (user) => {
     setCurrentUser(user);
     setAuthRequested(false);
-    setShowHomeGuide(true);
+    setShowHomeGuide(!hasSeenHomeGuide());
     navigateToPage('dashboard');
   };
 
@@ -170,7 +186,6 @@ export default function App() {
       await fetchWithAuth(`${AUTH_API_BASE}/logout`, { method: 'POST' });
     } finally {
       setCurrentUser(null);
-      setKnowledgeNavigationContext(null);
       applyPageIntent(createPageIntent('dashboard'));
       setShowHomeGuide(false);
       sessionStorage.removeItem(persistedPageIntentKey);
@@ -208,17 +223,9 @@ export default function App() {
     if (typeof destination === 'object') {
       const params = destination.params || {};
       if (destination.page === 'knowledge') {
-        const carriesAtlasContext = Boolean(
-          params.trackId || params.membershipId || params.route || params.lv1 || params.lv2 || params.kpId || params.kp_id,
-        );
-        const preferredContext = carriesAtlasContext
-          ? {}
-          : knowledgeNavigationContext?.trackId
-            ? knowledgeNavigationContext
-            : { route: 'textbook_14_5' };
         applyPageIntent(createPageIntent({
           ...destination,
-          params: { view: 'atlas', source: 'navigation', ...preferredContext, ...params },
+          params: { view: 'sources', ...params },
         }));
         return;
       }
@@ -243,16 +250,8 @@ export default function App() {
     }
     const params = typeof context === 'string' ? { sessionId: context } : (context || {});
     if (destination === 'knowledge') {
-      const carriesAtlasContext = Boolean(
-        params.trackId || params.membershipId || params.route || params.lv1 || params.lv2 || params.kpId || params.kp_id,
-      );
-      const preferredContext = carriesAtlasContext
-        ? {}
-        : knowledgeNavigationContext?.trackId
-          ? knowledgeNavigationContext
-          : { route: 'textbook_14_5' };
       applyPageIntent(createPageIntent(destination, {
-        view: 'atlas', source: 'navigation', ...preferredContext, ...params,
+        view: 'sources', ...params,
       }));
       return;
     }
@@ -376,7 +375,6 @@ export default function App() {
             currentUser={currentUser}
             navigationContext={pageIntent.params}
             onNavigate={navigateToPage}
-            onKnowledgeContextChange={setKnowledgeNavigationContext}
           />
         );
       case 'training-workshop':
@@ -446,7 +444,9 @@ export default function App() {
           }}
         />
       )}
-      {showHomeGuide && <HomeOnboardingGuide onClose={() => setShowHomeGuide(false)} />}
+      {showHomeGuide && (
+        <HomeOnboardingGuide onClose={() => { markHomeGuideSeen(); setShowHomeGuide(false); }} />
+      )}
     </AppShell>
   );
 }

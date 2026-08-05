@@ -1,18 +1,12 @@
 import React from 'react';
 
 export default function KnowledgeWorkspaceNav({
-  atlasEnabled = true,
   activeWorkspace,
   onSelect,
   className = '',
 }) {
   return (
     <nav className={`knowledge-page__workspace-nav ${className}`.trim()} aria-label="知识库内容">
-      {atlasEnabled && (
-        <button type="button" className={activeWorkspace === 'atlas' ? 'is-active' : ''} onClick={() => onSelect('atlas')}>
-          知识星球
-        </button>
-      )}
       <button
         type="button"
         className={activeWorkspace === 'sources' ? 'is-active' : ''}

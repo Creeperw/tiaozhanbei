@@ -110,7 +110,7 @@ vi.mock('./components/AppShell', () => ({
       <span>{currentUser ? currentUser.username : '未登录'}</span>
       {!currentUser && <button type="button" onClick={onLoginRequested}>登录</button>}
       <button type="button" onClick={() => onNavigate({ page: 'assistant', params: {} })}>Go assistant</button>
-      <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: { view: 'atlas' } })}>Go knowledge</button>
+      <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: { view: 'sources' } })}>Go knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'knowledge', params: {} })}>Go default knowledge</button>
       <button type="button" onClick={() => onNavigate({ page: 'dashboard', params: {} })}>Go dashboard</button>
       <button type="button" onClick={() => onNavigate({ page: 'practice', params: {} })}>Go learning workshop</button>
@@ -334,15 +334,12 @@ describe('authenticated application shell', () => {
     expect(screen.getByTestId('practice-local-view')).toHaveTextContent('overview');
   });
 
-  it('uses a textbook fallback for primary knowledge navigation', async () => {
+  it('opens the sources workspace for primary knowledge navigation', async () => {
     render(<App />);
     expect(await screen.findByText('Home portal')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Go default knowledge' }));
-    expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-view', 'atlas');
-    expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-route', 'textbook_14_5');
-    expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-source', 'navigation');
-
+    expect(screen.getByTestId('knowledge-page')).toHaveAttribute('data-view', 'sources');
   });
 
   it('routes learning memory into personal data and governance into system notifications', async () => {

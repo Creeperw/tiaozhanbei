@@ -34,7 +34,7 @@ test('maps home feature actions to existing first- and second-level pages', () =
     params: { view: 'workspace', taskType: 'mistake_variation' },
   });
   assert.deepEqual(getHomeActionIntent('knowledge-graph'), {
-    page: 'knowledge',
-    params: { view: 'atlas', source: 'dashboard' },
+    page: 'practice',
+    params: { view: 'textbook-chapters', route: 'textbook_14_5', lv1: '中医学基础', source: 'knowledge-graph' },
   });
 });
