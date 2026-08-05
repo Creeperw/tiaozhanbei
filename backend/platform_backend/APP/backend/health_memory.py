@@ -473,6 +473,44 @@ def save_extracted_memories(
     return persisted_extracted
 
 
+def _sync_profile_time_from_memory_replacement(
+    db: Session,
+    user_id: int,
+    existing: PersonalizationMemory,
+    proposed_content: str,
+) -> None:
+    """Keep ``user_profiles.diet_restrictions`` in sync after a confirmed
+    replacement of an onboarding time memory (e.g. daily_available_minutes)."""
+
+    old_content = str(existing.content or "")
+    if "daily_available_minutes" not in old_content:
+        return  # 被替换记忆与可投入时间无关，无需同步画像
+    old_match = re.search(r'"daily_available_minutes"\s*:\s*(\d+)', old_content)
+    if old_match is None:
+        return
+    new_match = re.search(
+        r"(?:改为|调整为|正式改为|设定为|每天)\D{0,6}(\d+)\s*分钟",
+        proposed_content,
+    )
+    if new_match is None:
+        new_match = re.search(r"(\d+)\s*分钟", proposed_content)
+    if new_match is None:
+        return
+    new_minutes = int(new_match.group(1))
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    if profile is None:
+        return
+    current = str(profile.diet_restrictions or "")
+    slot_match = re.search(r"偏好时段\s*([^；;，,]+)", current)
+    if slot_match is None:
+        survey_match = re.search(r'"preferred_time_slot"\s*:\s*"([^"]+)"', old_content)
+        slot = survey_match.group(1) if survey_match else "晚间"
+    else:
+        slot = slot_match.group(1).strip()
+    profile.diet_restrictions = f"每天 {new_minutes} 分钟；偏好时段 {slot}"
+    profile.updated_at = utc_now()
+
+
 def apply_confirmed_memory_replacements(
     db: Session,
     user_id: int,
@@ -501,9 +539,11 @@ def apply_confirmed_memory_replacements(
             ).first()
             if successor is None or str(successor.content or "").strip() != proposed_content:
                 raise ValueError("memory was already superseded by a different value")
+            _sync_profile_time_from_memory_replacement(db, user_id, existing, proposed_content)
             replaced.append({"memory_id": existing.id, "successor_id": successor.id})
             continue
         if existing.is_active and str(existing.content or "").strip() == proposed_content:
+            _sync_profile_time_from_memory_replacement(db, user_id, existing, proposed_content)
             replaced.append({"memory_id": existing.id, "successor_id": existing.id})
             continue
         successor = db.query(PersonalizationMemory).filter(
@@ -527,6 +567,7 @@ def apply_confirmed_memory_replacements(
         existing.superseded_by = successor.id
         existing.superseded_at = utc_now()
         existing.updated_at = utc_now()
+        _sync_profile_time_from_memory_replacement(db, user_id, existing, proposed_content)
         replaced.append({"memory_id": existing.id, "successor_id": successor.id})
     db.flush()
     return {"replaced": replaced}

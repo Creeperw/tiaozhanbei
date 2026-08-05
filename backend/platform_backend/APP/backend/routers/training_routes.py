@@ -259,6 +259,7 @@ def _user_question_payload(question: UserQuestionItem, submission: dict[str, Any
         "rubric": question.analysis,
         "question_type": question.question_type,
         "knowledge_points": json.loads(question.kp_ids_json or "[]"),
+        "options": _decode_options(question.options_json),
     }
 
 
@@ -631,6 +632,7 @@ def grade_practice(
             "standard_answer": daily_snapshot.answer_snapshot,
             "rubric": daily_snapshot.rubric_snapshot,
             "knowledge_points": json.loads(daily_snapshot.kp_snapshot_json or "[]"),
+            "options": json.loads(daily_snapshot.options_snapshot_json or "[]"),
         }
         if daily_snapshot is not None
         else resolve_controlled_practice_submission(db, submission)
@@ -728,6 +730,7 @@ def grade_practice(
                 "rubric": grading_submission["rubric"],
                 "knowledge_points": grading_submission["knowledge_points"],
                 "knowledge_point_names": grading_submission["knowledge_point_names"],
+                "options": grading_submission.get("options"),
             },
         )
         raw_grading = runner_payload.get("grading", runner_payload)

@@ -47,6 +47,7 @@ class GradePracticeCommand:
     kp_names: tuple[str, ...] = ()
     attempt_type: str = "practice"
     daily_task_item_id: str | None = None
+    options: tuple[Any, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,7 @@ def _command(
         rubric=str(data.get("rubric") or ""),
         kp_ids=tuple(data.get("kp_ids") or data.get("knowledge_points") or ()),
         kp_names=tuple(data.get("knowledge_point_names") or ()),
+        options=tuple(data.get("options") or ()),
         duration_sec=data.get("duration_sec"),
         hint_used=bool(data.get("hint_used", False)),
         profile=dict(profile),
@@ -141,6 +143,7 @@ def _submission(command: GradePracticeCommand) -> dict[str, Any]:
         "rubric": command.rubric,
         "knowledge_points": list(command.kp_ids),
         "knowledge_point_names": list(command.kp_names),
+        "options": list(command.options),
     }
 
 

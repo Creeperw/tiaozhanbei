@@ -98,6 +98,39 @@ def _choice_tokens(value: str) -> set[str]:
     return set(parts)
 
 
+def _choice_tokens_mapped(value: str, options: list[Any] | None) -> set[str]:
+    """Normalize choice answers to option labels.
+
+    The student may submit either the option label (``C``) or the option
+    text itself (``春善病鼽衄``); the bank stores labels (``["C"]``).  When
+    options are available, map plain-text answers back to their labels so
+    both sides compare on the same space.
+    """
+    tokens = _choice_tokens(value)
+    if not options:
+        return tokens
+    has_label = any(re.fullmatch(r"[A-H]", token) for token in tokens)
+    if has_label:
+        return tokens
+    labels_by_text: dict[str, str] = {}
+    for index, option in enumerate(options):
+        if isinstance(option, dict):
+            label = str(option.get("key") or option.get("label") or chr(ord("A") + index)).strip()
+            text = str(option.get("value") or option.get("text") or option.get("content") or "")
+        else:
+            label = chr(ord("A") + index)
+            text = str(option)
+        compact_text = re.sub(r"[\s\[\]()（）{}'\"]", "", text)
+        if compact_text:
+            labels_by_text[compact_text] = label
+    compact_value = re.sub(r"[\s\[\]()（）{}'\"]", "", value or "")
+    mapped: set[str] = set()
+    for text, label in labels_by_text.items():
+        if text and text in compact_value:
+            mapped.add(label)
+    return mapped or tokens
+
+
 def _true_false_token(value: str) -> bool | None:
     """Normalize the common UI, import and textbook representations."""
 
@@ -109,7 +142,7 @@ def _true_false_token(value: str) -> bool | None:
     return None
 
 
-def _objective_grading_payload(submission: dict[str, Any]) -> dict[str, Any]:
+def _objective_grading_payload(submission: dict[str, Any], options: list[Any] | None = None) -> dict[str, Any]:
     question_type = _text(submission.get("question_type"))
     student_answer = _text(submission.get("student_answer"))
     standard_answer = _text(submission.get("standard_answer"))
@@ -125,15 +158,15 @@ def _objective_grading_payload(submission: dict[str, Any]) -> dict[str, Any]:
         ))
     point_text = "、".join(kp_names)
     if question_type in {"multiple_choice", "多选题", "多项选择题"}:
-        selected = _choice_tokens(student_answer)
-        correct = _choice_tokens(standard_answer)
+        selected = _choice_tokens_mapped(student_answer, options)
+        correct = _choice_tokens_mapped(standard_answer, options)
         wrong = selected - correct
         is_correct = bool(correct) and selected == correct
         score = 0 if wrong or not correct else (100 if is_correct else round(100 * len(selected & correct) / len(correct)))
         rule_note = "多选题含错误选项，按规则计 0 分。" if wrong else "多选题按正确选项覆盖情况计分。"
     elif question_type in {"single_choice", "单选题", "单项选择题"}:
-        selected = _choice_tokens(student_answer)
-        correct = _choice_tokens(standard_answer)
+        selected = _choice_tokens_mapped(student_answer, options)
+        correct = _choice_tokens_mapped(standard_answer, options)
         is_correct = len(selected) == 1 and selected == correct
         score = 100 if is_correct else 0
         rule_note = "单选题由系统按标准选项精确判分。"
@@ -274,7 +307,7 @@ def grade_practice_submission(
         "single_choice", "multiple_choice", "fill_blank", "true_false",
         "单选题", "单项选择题", "多选题", "多项选择题", "填空题", "判断题",
     }:
-        return _objective_grading_payload(submission)
+        return _objective_grading_payload(submission, options=submission.get("options"))
     from APP.backend.agent_contracts import DiagnosisReport, EvidenceItem, EvidencePack, LearnerContextBrief
     from APP.backend.expert_agent_service import grade_submission
 

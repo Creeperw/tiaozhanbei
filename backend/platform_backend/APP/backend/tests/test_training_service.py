@@ -88,6 +88,43 @@ class TrainingServicePhase4Tests(unittest.TestCase):
         self.assertEqual(payload["grading"]["score"], 100)
         self.assertIsNone(payload["mistake_record"])
 
+    def test_single_choice_maps_option_text_answer_via_options(self):
+        """学生提交选项文本（如“春善病鼽衄”）时，应通过 options 映射回标签再判分。"""
+        service = self._service()
+        options = ["冬善病寒中", "长夏善病胸胁", "春善病鼽衄", "仲夏善病洞泄"]
+
+        correct = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-text-answer",
+                "question_type": "single_choice",
+                "stem": "题目",
+                "student_answer": "春善病鼽衄",
+                "standard_answer": '["C"]',
+                "knowledge_points": ["KP_1"],
+                "options": options,
+            },
+        )
+        wrong = service.grade_practice_submission(
+            profile={},
+            memories=[],
+            submission={
+                "question_id": "q-text-answer-wrong",
+                "question_type": "single_choice",
+                "stem": "题目",
+                "student_answer": "冬善病寒中",
+                "standard_answer": '["C"]',
+                "knowledge_points": ["KP_1"],
+                "options": options,
+            },
+        )
+
+        self.assertTrue(correct["grading"]["is_correct"])
+        self.assertEqual(correct["grading"]["score"], 100)
+        self.assertFalse(wrong["grading"]["is_correct"])
+        self.assertEqual(wrong["grading"]["score"], 0)
+
     def test_choice_grading_accepts_ui_option_labels_with_text(self):
         service = self._service()
 

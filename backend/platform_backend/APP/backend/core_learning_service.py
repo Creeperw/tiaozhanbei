@@ -35,6 +35,16 @@ def _string_list(value: Any) -> list[str]:
     return list(dict.fromkeys(str(item) for item in value if str(item).strip()))
 
 
+def _decode_question_options(value: Any) -> list[Any]:
+    try:
+        decoded = json.loads(value or "[]")
+    except (TypeError, ValueError):
+        return []
+    if isinstance(decoded, dict):
+        return [{"key": str(key), "value": item} for key, item in decoded.items()]
+    return decoded if isinstance(decoded, list) else []
+
+
 def _submitted_answer(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item) for item in value]
@@ -100,6 +110,7 @@ def resolve_controlled_practice_submission(db: Session, submission: dict[str, An
         "rubric": question.analysis,
         "question_type": question.question_type,
         "knowledge_points": kp_ids,
+        "options": _decode_question_options(core_question.options_json) if core_question is not None else [],
     }
 
 
