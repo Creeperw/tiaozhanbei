@@ -7,11 +7,13 @@ import {
   DEFAULT_TRAINING_OVERVIEW_STATS,
   buildTrainingOverviewStats,
   normalizeTaskIntent,
+  normalizeWeakKnowledgePoints,
 } from './practice/taskRegistry';
 
 export default function PracticePage({
   navigationContext = {},
   overviewStats,
+  weakKnowledgePoints,
   onNavigate,
 }) {
   // 受控组件：当前模块/视图完全由 navigationContext（即 App 的 pageIntent）派生，
@@ -21,6 +23,7 @@ export default function PracticePage({
   const initialMode = navigationContext.initialMode || taskType;
   const showWorkspace = Boolean(rawTaskType) || navigationContext.view === 'workspace';
   const [loadedOverviewStats, setLoadedOverviewStats] = useState(DEFAULT_TRAINING_OVERVIEW_STATS);
+  const [loadedWeakKnowledgePoints, setLoadedWeakKnowledgePoints] = useState([]);
 
   useEffect(() => {
     if (overviewStats !== undefined) return undefined;
@@ -39,12 +42,29 @@ export default function PracticePage({
     Promise.all([
       requestOverview('/v1/learning-statistics/overview?days=30'),
       requestOverview('/v1/learning-activity/summary?days=7&recent_limit=100'),
-    ]).then(([statistics, activitySummary]) => {
-      if (active) setLoadedOverviewStats(buildTrainingOverviewStats(statistics, activitySummary));
+      requestOverview('/v1/checkin'),
+    ]).then(([statistics, activitySummary, checkin]) => {
+      if (active) setLoadedOverviewStats(buildTrainingOverviewStats(statistics, activitySummary, checkin));
     });
 
     return () => { active = false; };
   }, [overviewStats]);
+
+  useEffect(() => {
+    if (weakKnowledgePoints !== undefined) return undefined;
+
+    let active = true;
+    fetchJsonWithAuthFallback({
+      paths: ['/v1/learning-insights?days=30&run_automation=false'],
+      fallback: { weak_points: [] },
+    }).then((result) => {
+      if (active) setLoadedWeakKnowledgePoints(normalizeWeakKnowledgePoints(result.data));
+    }).catch(() => {
+      if (active) setLoadedWeakKnowledgePoints([]);
+    });
+
+    return () => { active = false; };
+  }, [weakKnowledgePoints]);
 
   useEffect(() => {
     const request = async (path, body) => {
@@ -67,7 +87,7 @@ export default function PracticePage({
     return () => { tracker.stop().catch(() => {}); };
   }, []);
 
-  const openWorkshopModule = ({ key, initialMode }) => {
+  const openWorkshopModule = ({ key, initialMode, kpId, kpName }) => {
     // 模块切换通过 App 导航完成：更新 pageIntent 并同步 URL（/practice/<slug>），
     // App 端会递增 navigationRevision 触发本组件重挂载，用新 navigationContext 初始化。
     onNavigate?.({
@@ -76,6 +96,7 @@ export default function PracticePage({
         view: 'workspace',
         taskType: key,
         initialMode: initialMode || key,
+        ...(kpId && kpName ? { kpId, kpName } : {}),
       },
     });
   };
@@ -85,6 +106,7 @@ export default function PracticePage({
       <TrainingOverview
         onOpenModule={openWorkshopModule}
         overviewStats={overviewStats ?? loadedOverviewStats}
+        weakKnowledgePoints={normalizeWeakKnowledgePoints(weakKnowledgePoints ?? loadedWeakKnowledgePoints)}
       />
     );
   }

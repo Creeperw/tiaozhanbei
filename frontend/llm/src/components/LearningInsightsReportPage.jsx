@@ -216,40 +216,45 @@ function CapabilityCard({ dimensions }) {
 
 function WeakPointsCard({ weakPoints, onNavigate }) {
   const items = weakPoints.slice(0, 3);
+  const openKnowledgePointTraining = (item) => {
+    const kpId = item?.kp_id || item?.kpId;
+    const kpName = item?.kp_name || item?.kpName || item?.name || '未命名知识点';
+    onNavigate?.({
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType: 'topic_training',
+        ...(kpId ? { kpId, kpName } : {}),
+        returnTo: { page: 'personalization', params: { view: 'reports' } },
+      },
+    });
+  };
+
   return (
     <section className="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-sm shadow-slate-200/45 sm:p-6" aria-label="薄弱知识点">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-950">薄弱知识点</h2>
-          <p className="mt-2 text-base text-slate-500">优先巩固以下 {items.length || 3} 个知识点</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            const first = items[0];
-            onNavigate?.({
-              page: 'practice',
-              params: {
-                view: 'workspace',
-                taskType: 'topic_training',
-                ...(first?.kp_id ? { kpId: first.kp_id, kpName: first.kp_name } : {}),
-                returnTo: { page: 'personalization', params: { view: 'reports' } },
-              },
-            });
-          }}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-[#C8E6C9] to-[#A8E6CF] px-5 text-base font-semibold text-emerald-900 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-        >
-          去专项巩固 <span aria-hidden="true" className="text-xl leading-none">›</span>
-        </button>
+      <div>
+        <h2 className="text-xl font-bold text-slate-950">薄弱知识点</h2>
+        <p className="mt-2 text-base text-slate-500">优先巩固以下 {items.length || 3} 个知识点</p>
       </div>
       {items.length > 0 ? (
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {items.map((item, index) => {
             const score = item.mastery_score ?? item.score;
+            const kpName = item.kp_name || item.kpName || item.name || '未命名知识点';
             return (
               <article key={item.kp_id || item.kp_name || index} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-xl font-bold text-emerald-600">{index + 1}</div>
-                <h3 className="mt-4 min-h-12 text-lg font-bold leading-6 text-slate-950">{item.kp_name || item.name || '未命名知识点'}</h3>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-50 text-xl font-bold text-emerald-600">{index + 1}</div>
+                  <button
+                    type="button"
+                    onClick={() => openKnowledgePointTraining(item)}
+                    aria-label={`去专项巩固：${kpName}`}
+                    className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md bg-gradient-to-r from-[#C8E6C9] to-[#A8E6CF] px-2 text-[11px] font-semibold leading-none text-emerald-900 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                  >
+                    去专项巩固 <span aria-hidden="true" className="text-sm leading-none">›</span>
+                  </button>
+                </div>
+                <h3 className="mt-4 min-h-12 text-lg font-bold leading-6 text-slate-950">{kpName}</h3>
                 <p className="mt-3 flex items-start gap-2 text-sm leading-6 text-slate-600">
                   <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
                   <span>{item.reason || '当前掌握度较低，建议优先巩固。'}</span>

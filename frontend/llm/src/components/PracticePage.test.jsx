@@ -176,14 +176,14 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('tablist', { name: '练习工坊模块' })).not.toBeInTheDocument();
   });
 
-  it('moves the learning summary into the hero and removes upload from training tools', () => {
+  it('keeps the learning overview in the side rail and only two learning tools', () => {
     render(<PracticePage />);
 
     const trainingModules = screen.getByRole('region', { name: '练习模块' });
     expect(within(trainingModules).queryByRole('region', { name: '学习概览' })).not.toBeInTheDocument();
-    expect(screen.getByRole('region', { name: '学习概览' })).toBeInTheDocument();
-
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
+    expect(within(learningTools).getByRole('region', { name: '学习概览' })).toBeInTheDocument();
+    expect(within(learningTools).getByRole('heading', { name: '学习数据' })).toBeInTheDocument();
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
     ).toEqual(['历史记录', '我的题单']);
@@ -251,6 +251,25 @@ describe('PracticePage training modules', () => {
       if (path === '/v1/checkin') {
         return Promise.resolve({ data: { streak: 5 } });
       }
+      if (path.startsWith('/v1/learning-insights')) {
+        return Promise.resolve({
+          data: {
+            weak_points: [
+              {
+                kp_id: 'KP_YINYANG',
+                kp_name: '阴阳学说',
+                mastery_score: 0.42,
+                reason: '近期练习中相关题目失分较多。',
+              },
+              {
+                kp_id: 'KP_ZANGXIANG',
+                kp_name: '藏象学说',
+                mastery_score: 58,
+              },
+            ],
+          },
+        });
+      }
       return Promise.resolve({ data: {} });
     });
 
@@ -263,6 +282,11 @@ describe('PracticePage training modules', () => {
     expect(within(learningOverview).getByText('84%')).toBeInTheDocument();
     expect(within(learningOverview).getByText('2.1 小时')).toBeInTheDocument();
     expect(within(learningOverview).getByText('累计练习 42 题')).toBeInTheDocument();
+    const weakPoints = await screen.findByRole('region', { name: '最近练习薄弱知识点' });
+    expect(within(weakPoints).getByText('阴阳学说')).toBeInTheDocument();
+    expect(within(weakPoints).getByText('42%')).toBeInTheDocument();
+    expect(within(weakPoints).getByText('藏象学说')).toBeInTheDocument();
+    expect(within(weakPoints).getByText('58%')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /继续上次练习/ }));
     expect(await screen.findByTestId('question-favorites-panel')).toBeInTheDocument();
@@ -274,6 +298,18 @@ describe('PracticePage training modules', () => {
     fireEvent.click(screen.getByRole('button', { name: /继续上次练习/ }));
 
     expect(await screen.findByTestId('question-favorites-panel')).toBeInTheDocument();
+  });
+
+  it('opens targeted knowledge-point training from every weak-point action', async () => {
+    renderPracticePage({ weakKnowledgePoints: [
+      { kpId: 'KP_YINYANG', kpName: '阴阳学说', masteryScore: 42 },
+      { kpId: 'KP_ZANGXIANG', kpName: '藏象学说', masteryScore: 58 },
+    ] });
+
+    expect(screen.getAllByRole('button', { name: /去专项巩固/ })).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: '去专项巩固：藏象学说' }));
+
+    expect(await screen.findByTestId('knowledge-point-training-hub')).toHaveTextContent('KP_ZANGXIANG:藏象学说:');
   });
 
   it('opens training history from the workshop tools and returns to the workshop overview', async () => {

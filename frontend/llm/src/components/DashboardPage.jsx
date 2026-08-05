@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, BookOpenCheck, Clock3, Route, Sparkles } from 'lucide-react';
+import { ArrowRight, BookMarked, BookOpenCheck, Clock3, Route, Sparkles } from 'lucide-react';
 import { MAIN_API_BASE, fetchWithAuth, readJsonResponse } from '../utils/api';
 import DashboardDailyWorkspace from './dashboard/DashboardDailyWorkspace';
 import {
@@ -756,7 +756,24 @@ export default function DashboardPage({
                   {!hidePlan && <section className="workshop-plan" aria-label="当前学习计划">
                     <div className="workshop-plan__summary">
                       <span><Route aria-hidden="true" size={15} />Learning plan</span>
-                      <h1>学习计划</h1>
+                      <div className="workshop-plan__summary-heading">
+                        <div><h1>学习计划</h1></div>
+                        <button
+                          type="button"
+                          className="workshop-plan__knowledge-favorites"
+                          aria-label="打开知识点收藏"
+                          onClick={() => onNavigate?.({
+                            page: 'practice',
+                            params: {
+                              view: 'workspace',
+                              taskType: 'knowledge_favorites',
+                              returnTo: { page: 'practice', params: {} },
+                            },
+                          })}
+                        >
+                          <BookMarked aria-hidden="true" size={18} />知识点收藏
+                        </button>
+                      </div>
                       <p>{currentStage?.description || plannedPath?.message || '结合你的长期目标，按计划教材循序推进学习。'}</p>
                       <div className="workshop-plan__meta">
                         <article className={learningMetrics.loading ? 'is-loading' : ''}>

@@ -142,15 +142,15 @@ describe('LearningInsightsReportPage', () => {
     expect(screen.getByRole('region', { name: '学习活跃度' })).toBeInTheDocument();
     expect(screen.getAllByText('方剂组成与功效')).not.toHaveLength(0);
     expect(screen.getAllByText('中诊辨证要点')).not.toHaveLength(0);
-    expect(screen.getByRole('button', { name: '去专项巩固' })).toBeInTheDocument();
-    screen.getByRole('button', { name: '去专项巩固' }).click();
+    expect(screen.getAllByRole('button', { name: /去专项巩固：/ })).toHaveLength(3);
+    screen.getByRole('button', { name: '去专项巩固：中诊辨证要点' }).click();
     expect(onNavigate).toHaveBeenCalledWith({
       page: 'practice',
       params: {
         view: 'workspace',
         taskType: 'topic_training',
-        kpId: 'KP_1',
-        kpName: '方剂组成与功效',
+        kpId: 'KP_2',
+        kpName: '中诊辨证要点',
         returnTo: { page: 'personalization', params: { view: 'reports' } },
       },
     });

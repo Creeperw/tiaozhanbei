@@ -14,11 +14,14 @@ const WORKSHOP_SLUGS = {
   'special-training': { taskType: 'special_training', initialMode: 'case_training' },
   'topic-training': { taskType: 'topic_training' },
   'mistake-redo': { taskType: 'mistake_redo' },
+  'mistake-variation': { taskType: 'mistake_variation' },
   'comprehensive': { taskType: 'question_training' },
   'smart-paper': { taskType: 'paper_workspace' },
   'patient-simulation': { taskType: 'ai_patient_simulation' },
   'history': { taskType: 'training_history' },
   'favorites': { taskType: 'question_favorites' },
+  'knowledge-favorites': { taskType: 'knowledge_favorites' },
+  'study-notes': { taskType: 'study_notes' },
 };
 
 const SLUG_TO_TASK_TYPE = Object.fromEntries(

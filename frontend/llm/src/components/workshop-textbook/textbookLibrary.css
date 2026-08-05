@@ -228,6 +228,11 @@
 .workshop-library-page .textbook-library { height:auto; overflow:visible; }
 .workshop-plan { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin:10px 26px 6px; }
 .workshop-plan__summary { display:flex; min-width:0; min-height:176px; flex-direction:column; padding:14px 18px; border:1px solid #dceae3; border-radius:16px; background:linear-gradient(120deg,#fff 0%,#f8fcfa 100%); box-shadow:0 10px 24px rgba(34,95,67,.07); }
+.workshop-plan__summary-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.workshop-plan__summary-heading h1 { margin:3px 0 6px; }
+.workshop-plan__knowledge-favorites { display:inline-flex; flex:0 0 auto; min-height:36px; align-items:center; gap:7px; border:1px solid #cfe1d7; border-radius:10px; padding:0 12px; color:#376a54; background:#fff; font-size:12px; font-weight:800; cursor:pointer; transition:border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease; }
+.workshop-plan__knowledge-favorites:hover,.workshop-plan__knowledge-favorites:focus-visible { border-color:#80b99b; color:#176e50; background:#eff9f3; transform:translateY(-1px); }
+.workshop-plan__knowledge-favorites:focus-visible { outline:2px solid #9ad1b2; outline-offset:2px; }
 .workshop-plan__summary>span,.workshop-plan__focus>span { display:flex; align-items:center; gap:6px; color:#188159; font-size:9px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
 .workshop-plan__summary h1 { margin:3px 0 6px; color:#153e2e; font-size:22px; }
 .workshop-plan__summary p { max-width:720px; margin:0; color:#668075; font-size:12px; line-height:1.6; }

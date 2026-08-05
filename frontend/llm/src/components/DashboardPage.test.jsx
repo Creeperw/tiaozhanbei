@@ -163,6 +163,23 @@ describe('DashboardPage replacement learning workshop', () => {
     expect(onNavigate).toHaveBeenLastCalledWith({ page: 'learning-path', params: {} });
   });
 
+  it('opens knowledge favorites with teaching resources as the return target', async () => {
+    const onNavigate = vi.fn();
+    render(<DashboardPage onNavigate={onNavigate} />);
+    const plan = await screen.findByRole('region', { name: '当前学习计划' });
+
+    fireEvent.click(within(plan).getByRole('button', { name: '打开知识点收藏' }));
+
+    expect(onNavigate).toHaveBeenLastCalledWith({
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType: 'knowledge_favorites',
+        returnTo: { page: 'practice', params: {} },
+      },
+    });
+  });
+
   it('shows a terminal error instead of leaving the catalogue loading forever', async () => {
     loadAtlasNodes.mockRejectedValueOnce(new Error('章节目录不可用'));
 

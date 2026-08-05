@@ -326,7 +326,7 @@ describe('AppShell', () => {
       await user.click(screen.getByRole('menuitem', { name: new RegExp(name) }));
     };
 
-    await clickShortcut('收藏夹');
+    await clickShortcut('我的题单');
     expect(onNavigate).toHaveBeenLastCalledWith({
       page: 'practice',
       params: { view: 'workspace', taskType: 'question_favorites', returnTo: currentIntent },

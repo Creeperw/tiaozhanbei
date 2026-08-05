@@ -269,10 +269,24 @@ function QualificationTargetSection({
 const profileMenuItems = [
   {
     key: 'question_favorites',
-    label: '收藏夹',
+    label: '我的题单',
     description: '题目收藏',
     icon: BookMarked,
     intent: { page: 'practice', params: { view: 'workspace', taskType: 'question_favorites' } },
+  },
+  {
+    key: 'knowledge_favorites',
+    label: '知识点收藏',
+    description: '教学资源收藏',
+    icon: BookMarked,
+    intent: {
+      page: 'practice',
+      params: {
+        view: 'workspace',
+        taskType: 'knowledge_favorites',
+        returnTo: { page: 'practice', params: {} },
+      },
+    },
   },
   {
     key: 'study_notes',

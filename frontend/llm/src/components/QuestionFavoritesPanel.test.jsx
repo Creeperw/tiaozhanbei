@@ -56,23 +56,16 @@ describe('QuestionFavoritesPanel', () => {
     await waitFor(() => expect(api.deleteFavorite).toHaveBeenCalledWith('V1'));
   });
 
-  it('opens a textbook page favorite in teaching resources', async () => {
-    const onNavigate = vi.fn();
+  it('does not show a textbook page favorite in my question list', async () => {
     api.loadFavorites.mockResolvedValue({ items: [{
       favorite_id: 'PDF1', folder_id: 'F1', resource_type: 'textbook_pdf_page',
       title: '《方剂学》第 10 页', source: '教学资源', updated_at: '2026-07-29T08:00:00Z',
       content: { book_title: '方剂学', edition: '十四五', route: 'textbook_14_5', pdf_page: 10 },
     }] });
-    render(<QuestionFavoritesPanel onNavigate={onNavigate} />);
+    render(<QuestionFavoritesPanel />);
 
-    fireEvent.click((await screen.findByText('《方剂学》第 10 页')).closest('button'));
-    expect(onNavigate).toHaveBeenCalledWith({
-      page: 'practice',
-      params: {
-        view: 'textbook-chapters', route: 'textbook_14_5', lv1: '方剂学',
-        openPdf: true, pdfPage: 10, source: 'favorite',
-      },
-    });
+    await screen.findByText('我的题单还没有内容。');
+    expect(screen.queryByText('《方剂学》第 10 页')).not.toBeInTheDocument();
   });
 
   it('creates a named collection folder', async () => {
