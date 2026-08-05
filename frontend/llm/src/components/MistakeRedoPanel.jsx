@@ -52,6 +52,7 @@ function deriveSource(m) {
   if (qid.includes('generated')) return '专项特训';
   if (qid.startsWith('Q_TCM')) return '知识点特训';
   if (qid.startsWith('paper_')) return '智能组卷';
+  if (qid.startsWith('WEBQ_')) return '知识点特训'; // 网络搜题补充题：随每日任务/知识点特训下发
   return '练习';
 }
 
@@ -391,7 +392,7 @@ export default function MistakeRedoPanel() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-slate-400">来源:</span>
-              {[{k:'all',l:'全部'},{k:'真题模拟',l:'真题模拟'},{k:'知识点特训',l:'知识点特训'},{k:'专项特训',l:'专项特训'},{k:'智能组卷',l:'智能组卷'}].map(({k,l}) => (
+              {[{k:'all',l:'全部'},{k:'真题模拟',l:'真题模拟'},{k:'知识点特训',l:'知识点特训'},{k:'专项特训',l:'专项特训'},{k:'智能组卷',l:'智能组卷'},{k:'练习',l:'练习'}].map(({k,l}) => (
                 <button key={k} onClick={() => setLibSourceFilter(k)} className={`rounded-md px-2 py-1 text-xs font-medium transition ${libSourceFilter === k ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>{l}</button>
               ))}
             </div>
