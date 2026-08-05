@@ -56,7 +56,7 @@ describe('AgentTimeline six-agent task desk', () => {
     expect(screen.queryByText('running')).not.toBeInTheDocument();
   });
 
-  it('reveals internal nodes and tool payload only after expanding technical details', async () => {
+  it('reveals internal nodes and tool names only after expanding technical details', async () => {
     const user = userEvent.setup();
     render(<AgentTimeline nodes={nodes} refs={[]} onClose={vi.fn()} />);
 
@@ -66,10 +66,11 @@ describe('AgentTimeline six-agent task desk', () => {
 
     await user.click(screen.getByRole('button', { name: /展开知识库管理技术详情/ }));
     expect(screen.getByText('get_kp_with_content')).toBeInTheDocument();
-    expect(screen.getByText(/四君子汤/)).toBeInTheDocument();
+    // 工具参数与结果属于内部输入输出，不再向用户展示。
+    expect(screen.queryByText(/四君子汤/)).not.toBeInTheDocument();
   });
 
-  it('reveals model input/output payloads under the owning agent details', async () => {
+  it('never reveals model input/output payloads under the owning agent details', async () => {
     const user = userEvent.setup();
     render(<AgentTimeline nodes={[{
       id: 'expert',
@@ -101,10 +102,10 @@ describe('AgentTimeline six-agent task desk', () => {
 
     expect(screen.queryByText('模型调用详情')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /展开专家技术详情/ }));
-    expect(screen.getByText('模型调用详情')).toBeInTheDocument();
-    expect(screen.getByText('模型输入')).toBeInTheDocument();
-    expect(screen.getByText('模型输出')).toBeInTheDocument();
-    expect(screen.getByText(/knowledge_explanation/)).toBeInTheDocument();
-    expect(screen.getByText(/气血是人体基本物质/)).toBeInTheDocument();
+    expect(screen.queryByText('模型调用详情')).not.toBeInTheDocument();
+    expect(screen.queryByText('模型输入')).not.toBeInTheDocument();
+    expect(screen.queryByText('模型输出')).not.toBeInTheDocument();
+    expect(screen.queryByText(/knowledge_explanation/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/气血是人体基本物质/)).not.toBeInTheDocument();
   });
 });

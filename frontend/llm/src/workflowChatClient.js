@@ -54,39 +54,10 @@ export function runtimeEventToTrace(event) {
       text: event.message || '',
     };
   }
-  if (name === 'model_input') {
-    return {
-      type: 'model_call',
-      kind: 'input',
-      text: `${event.agent || 'model'} 模型输入`,
-      agent: event.agent || '',
-      stepId: event.step_id || '',
-      callId: event.call_id || '',
-      input: event.raw_input,
-    };
-  }
-  if (name === 'model_output') {
-    return {
-      type: 'model_call',
-      kind: 'output',
-      text: `${event.agent || 'model'} 模型输出`,
-      agent: event.agent || '',
-      stepId: event.step_id || '',
-      callId: event.call_id || '',
-      output: event.raw_output,
-    };
-  }
-  if (name === 'model_transport') {
-    return {
-      type: 'model_call',
-      kind: 'transport',
-      text: `${event.agent || 'model'} 模型传输`,
-      agent: event.agent || '',
-      stepId: event.step_id || '',
-      callId: event.call_id || '',
-      requestPayload: event.request_payload,
-      responseText: event.response_text,
-    };
+  // 模型输入/输出/传输属于内部技术细节，不向用户展示任何输入输出内容；
+  // 实时进度只报告“哪个智能体正在工作”（见 step_started / step_completed）。
+  if (name === 'model_input' || name === 'model_output' || name === 'model_transport') {
+    return null;
   }
   return null;
 }

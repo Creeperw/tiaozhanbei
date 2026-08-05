@@ -85,8 +85,8 @@ describe('six-agent presentation model', () => {
     const knowledge = roles.find((item) => item.key === 'knowledge');
 
     expect(knowledge.details).toEqual(['开始查找教材、题目与相关资料。', '教材检索完成']);
-    expect(knowledge.tools).toHaveLength(1);
-    expect(knowledge.tools[0].name).toBe('get_kp_with_content');
+    expect(knowledge.tools).toHaveLength(2);
+    expect(knowledge.tools.map((item) => item.name)).toEqual(['web_search', 'get_kp_with_content']);
     expect(knowledge.summary).toBe('教材检索完成');
   });
 

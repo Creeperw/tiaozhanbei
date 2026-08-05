@@ -7107,11 +7107,8 @@ textarea:focus-visible {
 .agent-task__technical code { border-radius: 5px; padding: 2px 5px; color: #255f4d; background: #eaf4ef; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .58rem; }
 .agent-task__event-list { display: grid; gap: 5px; margin: 0; padding-left: 17px; line-height: 1.5; }
 .agent-task__tools { display: grid; gap: 6px; }
-.agent-task__tools details { border: 1px solid #dce9e3; border-radius: 9px; background: rgba(255,255,255,.74); }
-.agent-task__tools summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 8px; cursor: pointer; }
-.agent-task__tools summary span { color: #71847d; font-size: .56rem; }
-.agent-task__tools pre { max-height: 150px; margin: 0 7px 7px; overflow: auto; border-radius: 7px; padding: 8px; color: #415f55; background: #f5f8f7; font-size: .58rem; white-space: pre-wrap; }
-.agent-task__tools p { margin: 0 8px 8px; line-height: 1.55; }
+.agent-task__tool-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #dce9e3; border-radius: 9px; background: rgba(255,255,255,.74); padding: 7px 8px; }
+.agent-task__tool-row span { color: #71847d; font-size: .56rem; }
 .agent-desk__sources { display: flex; width: 100%; min-height: 38px; align-items: center; justify-content: center; gap: 7px; margin-top: 11px; border: 1px solid #c7e2d7; border-radius: 11px; color: #176f52; background: #f1faf6; font-size: .68rem; font-weight: 700; cursor: pointer; }
 .agent-desk__sources:hover { background: #e8f7f0; }
 
@@ -14564,6 +14561,8 @@ textarea:focus-visible {
 }
 .home-portal__planning-progress > span { margin-top: 18px; color: #159364; font-size: .74rem; font-weight: 800; letter-spacing: .08em; }
 .home-portal__planning-progress h2 { margin: 7px 0 0; color: #143c2e; font-size: 1.35rem; }
+.home-portal__planning-bar { position: relative; width: 100%; height: 8px; margin-top: 18px; overflow: hidden; border-radius: 999px; background: rgb(21 147 100 / 14%); }
+.home-portal__planning-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #37c894, #0f9f68); transition: width .45s ease; }
 .home-portal__planning-progress p { width: 100%; max-height: 150px; overflow: auto; margin: 13px 0 0; color: #60786f; font-size: .86rem; line-height: 1.7; white-space: pre-wrap; }
 .home-portal__planning-progress p.is-error { color: #a44343; }
 .home-portal__planning-answer { display: grid; width: 100%; gap: 8px; margin-top: 18px; text-align: left; }

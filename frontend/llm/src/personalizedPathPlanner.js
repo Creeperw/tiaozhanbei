@@ -58,7 +58,8 @@ export async function buildPersonalizedLearningPath({
 
   for (let stageIndex = startStageIndex; stageIndex < PLANNING_STAGES.length; stageIndex += 1) {
     const stage = PLANNING_STAGES[stageIndex];
-    onStage?.(stage);
+    const progress = Math.round(((stageIndex + 1) / PLANNING_STAGES.length) * 100);
+    onStage?.(stage, progress);
     const stageAnswer = stageIndex === startStageIndex && continuation
       ? String(clarificationAnswer || '').trim()
       : '';

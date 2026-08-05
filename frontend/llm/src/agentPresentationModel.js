@@ -110,8 +110,8 @@ function hasMeaningfulValue(value) {
 function meaningfulTools(tools = []) {
   const seen = new Set();
   return tools.filter((tool) => {
-    if (!hasMeaningfulValue(tool?.args) && !hasMeaningfulValue(tool?.resultSnippet)) return false;
-    const signature = JSON.stringify([tool?.name || '', tool?.args || {}, tool?.resultSnippet || '']);
+    if (!String(tool?.name || '').trim()) return false;
+    const signature = tool?.name || '';
     if (seen.has(signature)) return false;
     seen.add(signature);
     return true;

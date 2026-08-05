@@ -843,6 +843,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     sessionId: '',
     runId: '',
     stageIndex: 0,
+    progress: 0,
     interrupt: null,
     clarificationRequired: false,
     answerDraft: '',
@@ -984,6 +985,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
       sessionId: continuation?.sessionId || '',
       runId: continuation?.runId || '',
       stageIndex: continuation?.stageIndex || 0,
+      progress: continuation?.stageIndex ? Math.round(((Number(continuation.stageIndex) + 1) / 3) * 100) : 0,
       interrupt: null,
       clarificationRequired: false,
       answerDraft: '',
@@ -996,9 +998,10 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         customRequirements: customRequirementsOverride ?? customRequirementsDraft,
         continuation,
         clarificationAnswer,
-        onStage: (stage) => setPathPlanning((current) => ({
+        onStage: (stage, progress) => setPathPlanning((current) => ({
           ...current,
           stage: stage.label,
+          progress: Number.isFinite(progress) ? progress : current.progress,
           detail: '',
         })),
         onUpdate: (detail) => setPathPlanning((current) => ({ ...current, detail })),
@@ -1014,6 +1017,7 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         sessionId: result.sessionId,
         runId: '',
         stageIndex: 0,
+        progress: 100,
         interrupt: null,
         clarificationRequired: false,
         answerDraft: '',
@@ -1376,6 +1380,11 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             </div>
             <span>个性化学习路径</span>
             <h2>{pathPlanning.error ? '规划需要你补充信息' : pathPlanning.stage}</h2>
+            {!pathPlanning.error && !pathPlanning.complete && (
+              <div className="home-portal__planning-bar" role="progressbar" aria-label="学习路径规划进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow={pathPlanning.progress}>
+                <i style={{ width: `${Math.min(100, Math.max(0, pathPlanning.progress))}%` }} />
+              </div>
+            )}
             <p className={pathPlanning.error ? 'is-error' : ''}>
               {pathPlanning.error || pathPlanning.detail || '智能助教正在调用多智能体协作完成规划，请稍候。'}
             </p>
