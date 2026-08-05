@@ -993,6 +993,21 @@ class BackendHandoffRuntime:
         finally:
             db.close()
 
+    def load_learning_report(
+        self,
+        external_user_id: str,
+    ) -> dict[str, Any]:
+        """Return the persisted learning report incl. per-difficulty accuracy."""
+
+        database = importlib.import_module("APP.backend.database")
+        diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
+        db = database.SessionLocal()
+        try:
+            user = self._workshop_user(db, external_user_id)
+            return diagnosis.build_report_summary(db, user.id)
+        finally:
+            db.close()
+
     def load_resource_match_report(
         self,
         external_user_id: str,

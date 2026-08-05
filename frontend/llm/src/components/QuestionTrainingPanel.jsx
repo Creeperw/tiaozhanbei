@@ -5,7 +5,7 @@ import MistakeVariationPanel from './MistakeVariationPanel';
 
 const modes = [
   ['objective', '客观题'],
-  ['case', '案例解答'],
+  ['case', '案例简答'],
 ];
 
 function normalizeInitialMode(value) {
@@ -28,17 +28,17 @@ export default function QuestionTrainingPanel({
     setMode(normalizeInitialMode(initialMode));
   }, [initialMode]);
 
-  if (!enabled) return <p className="mt-5 text-[15px] text-slate-600">题目训练暂未开放。</p>;
+  if (!enabled) return <p className="mt-5 text-[15px] text-slate-600">题目练习暂未开放。</p>;
 
   return (
     <div className="question-training-panel">
       {taskItemId ? (
-        <div className="question-training-mode-tabs" aria-label="今日任务训练模式">
+        <div className="question-training-mode-tabs" aria-label="今日任务练习模式">
           <strong>今日任务题目</strong>
           <span>题型以当前任务冻结的正式题目为准</span>
         </div>
       ) : (
-        <div className="question-training-mode-tabs" role="tablist" aria-label="题目训练模式">
+        <div className="question-training-mode-tabs" role="tablist" aria-label="题目练习模式">
           {modes.map(([key, label]) => (
             <button
               key={key}
@@ -57,7 +57,7 @@ export default function QuestionTrainingPanel({
       {(mode === 'objective' || mode === 'case') && (
         <div className="question-training-content">
           <AtlasPracticePanel
-            key={`${mode}:${selectedKnowledgePoint?.kpId || selectedKnowledgePoint?.kp_id || 'all'}`}
+            key={`${taskItemId || 'free'}:${mode}:${selectedKnowledgePoint?.kpId || selectedKnowledgePoint?.kp_id || 'all'}`}
             knowledgePoint={selectedKnowledgePoint}
             scope="public"
             mode={mode}

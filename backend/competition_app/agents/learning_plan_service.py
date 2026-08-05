@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from competition_app.agents.common import envelope
@@ -12,6 +13,8 @@ from competition_app.services.default_route import DefaultRouteRepository
 from competition_app.services.learning_plan import LearningPlanService
 from competition_app.repositories.learning_plan import PlanWriteConflictError
 from competition_app.services.plan_audit import plan_audit_subject_digest
+
+_WEB_BACKFILL_MAX_KNOWLEDGE_POINTS = 2
 
 
 class LearningPlanServiceAdapter:
@@ -241,13 +244,9 @@ class LearningPlanServiceAdapter:
                         current_long_term_plan=context.get("current_long_term_plan") or {},
                     )
                 elif plan_scope == "daily_task":
-                    result = self.service.materialize_daily_task(
-                        learner_id=learner_id,
-                        proposal=diagnosis.learning_plan_proposal,
-                        now=context.get("now"),
-                        current_short_term_plan=context.get("current_short_term_plan") or {},
-                        current_long_term_plan=context.get("current_long_term_plan"),
-                        current_learning_task=context.get("current_learning_task"),
+                    result = await self._materialize_daily_task_with_backfill(
+                        context=context,
+                        diagnosis=diagnosis,
                         recommended_minutes=(
                             context.get("task_load_policy", {}).get("recommended_minutes")
                             if isinstance(context.get("task_load_policy"), dict)
@@ -266,6 +265,84 @@ class LearningPlanServiceAdapter:
         except PlanWriteConflictError as exc:
             return concurrent_change_result(str(exc))
         return envelope(context, "learning_plan_service", "learning_plan_result", result)
+
+    async def _materialize_daily_task_with_backfill(
+        self,
+        *,
+        context: dict[str, Any],
+        diagnosis: Any,
+        recommended_minutes: int | None,
+    ) -> LearningPlanResult:
+        """物化当日任务；知识库缺失/题量不足的知识点先走网络搜索补充。
+
+        ``materialize_daily_task`` 本身持有 mutation_lock。这里先探测解析失败
+        的当日知识点（只读、无锁），在锁外做网络搜索→LLM 清洗→去重→入库，
+        入库成功后重新物化一次，让新入库的题目立即进入当日任务；网络补充
+        不可用或失败时按原路径降级，绝不阻塞计划生成。
+        """
+        learner_id = str(context["learner_id"])
+        focus_points = [
+            str(name).strip()
+            for name in diagnosis.learning_plan_proposal.task_proposal.focus_knowledge_points
+            if str(name).strip()
+        ]
+        ingest = getattr(self.service, "web_question_ingest", None)
+        unresolved: list[str] = []
+        if ingest is not None and self.service.knowledge_point_resolver is not None:
+            for name in focus_points:
+                try:
+                    resolved = self.service.knowledge_point_resolver(
+                        name,
+                        str(
+                            diagnosis.learning_plan_proposal.task_proposal.learning_chapter
+                            or ""
+                        ),
+                    )
+                except Exception:
+                    resolved = None
+                if resolved is None:
+                    unresolved.append(name)
+
+        backfill_results: list[dict[str, Any]] = []
+        for name in unresolved[:_WEB_BACKFILL_MAX_KNOWLEDGE_POINTS]:
+            try:
+                backfill = await ingest.backfill_knowledge_point(
+                    name,
+                    learning_chapter=(
+                        diagnosis.learning_plan_proposal.task_proposal.learning_chapter
+                        or ""
+                    ),
+                )
+            except Exception as exc:
+                backfill_results.append(
+                    {
+                        "knowledge_point_name": name,
+                        "status": "error",
+                        "detail": type(exc).__name__,
+                    }
+                )
+                continue
+            backfill_results.append(
+                {
+                    "knowledge_point_name": backfill.knowledge_point_name,
+                    "status": backfill.status,
+                    "searched": backfill.searched,
+                    "extracted": backfill.extracted,
+                    "ingested": backfill.ingested,
+                }
+            )
+        if any(item.get("ingested", 0) > 0 for item in backfill_results):
+            context["web_backfill_results"] = backfill_results
+
+        return self.service.materialize_daily_task(
+            learner_id=learner_id,
+            proposal=diagnosis.learning_plan_proposal,
+            now=context.get("now"),
+            current_short_term_plan=context.get("current_short_term_plan") or {},
+            current_long_term_plan=context.get("current_long_term_plan"),
+            current_learning_task=context.get("current_learning_task"),
+            recommended_minutes=recommended_minutes,
+        )
 
     @staticmethod
     def _parent_plan_constraints(

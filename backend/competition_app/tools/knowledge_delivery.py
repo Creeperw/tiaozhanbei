@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import ast
+import hashlib
 import importlib
 import json
 import math
@@ -14,6 +15,7 @@ import threading
 import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Literal
 from uuid import uuid4
@@ -122,12 +124,18 @@ class DeliveryKnowledgeMapStore:
         self._questions_ready = False
         self._chunks_ready = False
         self._videos_ready = False
+        self._web_questions_ready = False
         self.kps: dict[str, dict[str, Any]] = {}
         self.tree: dict[str, dict[str, list[dict[str, Any]]]] = {}
         self._kp_search_entries_cache: list[tuple[dict[str, Any], str, list[str], set[str]]] | None = None
         self.questions_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.chunk_offsets: dict[str, int] = {}
         self.videos_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        # 网络搜索补充题库：以归一化知识点名为键，持久化于 runtime 目录；
+        # 供知识库缺失/题量不足的知识点在物化时兜底，并作为复习测验的题源。
+        self.web_questions_by_kp: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self._web_stem_signatures: set[str] = set()
+        self._public_stem_signatures: set[str] = set()
         self.route_definitions = self._load_route_definitions()
 
     def _load_route_definitions(self) -> list[dict[str, Any]]:
@@ -400,7 +408,171 @@ class DeliveryKnowledgeMapStore:
                 for kp_id in row.get("kp_ids") or []:
                     index[str(kp_id)].append(row)
             self.questions_by_kp = index
+            self._public_stem_signatures = {
+                signature
+                for row in records
+                for signature in (self._normalized_stem(row.get("question_content") or row.get("题目内容") or row.get("stem") or ""),)
+                if signature
+            }
             self._questions_ready = True
+
+    @property
+    def web_question_runtime(self) -> Path:
+        """Runtime path for web-ingested questions (shared, not owner-scoped)."""
+        return self.paths.question_runtime / "web_ingested" / "questions.jsonl"
+
+    @staticmethod
+    def _normalized_stem(stem: Any) -> str:
+        """Normalize a question stem for duplicate detection."""
+        return unicodedata.normalize(
+            "NFKC", str(stem or "").casefold().replace("\n", "").replace(" ", "")
+        ).strip()
+
+    def ensure_web_questions(self) -> None:
+        if self._web_questions_ready:
+            return
+        with self._lock:
+            if self._web_questions_ready:
+                return
+            index: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            signatures: set[str] = set()
+            for row in _iter_jsonl(self.web_question_runtime):
+                if not isinstance(row, dict):
+                    continue
+                kp_name = str(row.get("kp_name") or "").strip()
+                question = row.get("question")
+                if not kp_name or not isinstance(question, dict):
+                    continue
+                key = self._normalized_learning_label(kp_name)
+                if not key:
+                    continue
+                index[key].append(question)
+                stem = question.get("stem") or question.get("题干") or ""
+                signature = self._normalized_stem(stem)
+                if signature:
+                    signatures.add(signature)
+            self.web_questions_by_kp = index
+            self._web_stem_signatures = signatures
+            self._web_questions_ready = True
+
+    def register_web_questions(
+        self,
+        knowledge_point_name: str,
+        questions: list[dict[str, Any]],
+    ) -> int:
+        """Persist cleaned web questions for one knowledge point and refresh the
+        in-memory index. Duplicates against the public bank and previously
+        ingested web questions are skipped; the number of new questions is
+        returned.
+        """
+        kp_name = str(knowledge_point_name or "").strip()
+        if not kp_name or not questions:
+            return 0
+        self.ensure_questions()
+        self.ensure_web_questions()
+        with self._lock:
+            key = self._normalized_learning_label(kp_name)
+            if not key:
+                return 0
+            deduplicated: list[dict[str, Any]] = []
+            for question in questions:
+                if not isinstance(question, dict):
+                    continue
+                stem = question.get("stem") or question.get("题干") or ""
+                if not str(stem).strip():
+                    continue
+                signature = self._normalized_stem(stem)
+                if not signature or signature in self._public_stem_signatures:
+                    continue
+                if signature in self._web_stem_signatures:
+                    continue
+                self._web_stem_signatures.add(signature)
+                deduplicated.append(dict(question))
+            if not deduplicated:
+                return 0
+            self.web_question_runtime.parent.mkdir(parents=True, exist_ok=True)
+            with self.web_question_runtime.open("a", encoding="utf-8") as handle:
+                for question in deduplicated:
+                    handle.write(
+                        json.dumps(
+                            {
+                                "kp_name": kp_name,
+                                "question": question,
+                                "ingested_at": datetime.now(timezone.utc).isoformat(),
+                                "origin": "web_search",
+                            },
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
+            self.web_questions_by_kp[key].extend(
+                dict(question) for question in deduplicated
+            )
+            return len(deduplicated)
+
+    def resolve_web_question_bundle(
+        self,
+        knowledge_point_name: str,
+        *,
+        required_question_count: int = 3,
+    ) -> dict[str, Any] | None:
+        """Bind a knowledge point that is missing from the public atlas to the
+        cleaned web-ingested question bank. The returned bundle uses the same
+        trusted-atlas shape as :meth:`resolve_executable_bundle` so callers can
+        register it through the executable task store (stable ``WEBQ_`` question
+        ids keep the registration idempotent).
+        """
+        name = str(knowledge_point_name or "").strip()
+        if not name or required_question_count <= 0:
+            return None
+        self.ensure_web_questions()
+        key = self._normalized_learning_label(name)
+        if not key:
+            return None
+        questions = self.web_questions_by_kp.get(key, [])
+        if len(questions) < required_question_count:
+            return None
+        kp_id = f"WEB_{hashlib.sha1(key.encode('utf-8')).hexdigest()[:12]}"
+        normalized_questions: list[dict[str, Any]] = []
+        for row in questions[:required_question_count]:
+            stem = str(row.get("stem") or row.get("题干") or "").strip()
+            if not stem:
+                continue
+            question_id = (
+                f"WEBQ_{hashlib.sha1(f'{key}|{stem}'.encode('utf-8')).hexdigest()[:16]}"
+            )
+            normalized_questions.append(
+                {
+                    "question_id": question_id,
+                    "question_content": stem,
+                    "question_type": str(
+                        row.get("question_type") or row.get("题型") or "未分类"
+                    ),
+                    "options": row.get("options") or [],
+                    "answer": row.get("answer") or row.get("答案") or "",
+                    "explanation": row.get("analysis") or row.get("解析") or "",
+                    "kp_ids": [kp_id],
+                    "source_ref": str(row.get("source_ref") or f"web://{name}"),
+                    "source_urls": list(row.get("source_urls") or []),
+                    "origin": "web_search",
+                }
+            )
+        if len(normalized_questions) < required_question_count:
+            return None
+        return {
+            "source": "knowledge_atlas",
+            "kp": {
+                "kp_id": kp_id,
+                "kp_lv3": name,
+                "kp_lv2": "",
+                "kp_lv1": "",
+            },
+            "kp_id": kp_id,
+            "knowledge_point_name": name,
+            "questions": normalized_questions,
+            "question_count": len(questions),
+            "video_count": 0,
+        }
 
     @staticmethod
     def _normalized_learning_label(value: Any, *, simplified: bool = False) -> str:

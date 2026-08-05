@@ -440,7 +440,7 @@ export default function QuestionWorkspacePage() {
         {!loading && activeQuestions.length === 0 && (
           <EmptyState
             title="还没有已激活的个人题目"
-            description="上传资料并逐题确认后，题目会出现在这里，并可通过训练工坊的个人题目范围练习。"
+            description="上传资料并逐题确认后，题目会出现在这里，并可通过练习工坊的个人题目范围练习。"
           />
         )}
         {!loading && activeQuestions.length > 0 && (

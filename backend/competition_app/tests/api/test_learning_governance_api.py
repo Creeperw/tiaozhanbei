@@ -1,5 +1,4 @@
 from pathlib import Path
-import time
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -153,7 +152,7 @@ def test_learning_insights_rejects_unsupported_window(tmp_path: Path) -> None:
     assert client.get("/api/v1/learning-insights?days=14").status_code == 422
 
 
-def test_learning_insights_triggers_due_resource_push(tmp_path: Path) -> None:
+def test_learning_insights_does_not_create_assistant_review_card_task(tmp_path: Path) -> None:
     client, _, learner_id, container = _client(tmp_path)
     container.review_service.ingest_knowledge_states(
         learner_id=learner_id,
@@ -183,20 +182,14 @@ def test_learning_insights_triggers_due_resource_push(tmp_path: Path) -> None:
         mode="json"
     )
     assert initial_queue["awaiting_resource_count"] == 1
-    queue = None
     with client:
         response = client.get("/api/v1/learning-insights?days=30")
         assert response.status_code == 200
-        for _ in range(40):
-            queue = container.review_service.get_queue(learner_id).model_dump(
-                mode="json"
-            )
-            if queue["active_task_count"] == 1:
-                break
-            time.sleep(0.05)
+        queue = container.review_service.get_queue(learner_id).model_dump(
+            mode="json"
+        )
         push_status = client.get("/api/v1/learning-automation/status").json()
 
-    assert queue is not None
-    assert queue["active_task_count"] == 1
-    assert queue["awaiting_resource_count"] == 0
-    assert push_status["review_resource_push"]["status"] == "pushed"
+    assert queue["active_task_count"] == 0
+    assert queue["awaiting_resource_count"] == 1
+    assert push_status["review_resource_push"]["status"] == "idle"

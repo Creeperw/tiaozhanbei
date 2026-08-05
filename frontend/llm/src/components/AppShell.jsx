@@ -434,8 +434,8 @@ function DesktopTopbar({
             : <NavigationMenu key={item.key} item={item} currentPage={shell.currentPage} navigationContext={navigationContext} onNavigate={onNavigate} menuState={menuStateFor(item.key)} onOpen={openNavMenu} onRequestClose={requestNavMenuClose} onCloseNow={closeNavMenuNow} authenticated={authenticated} onLoginRequested={onLoginRequested} />)}
         </nav>
         <div className="app-shell__topbar-actions">
-          <button type="button" className="app-shell__assistant-entry app-shell__assistant-entry--featured" aria-label="AI 智能助教" onClick={() => { if (!authenticated) { onLoginRequested?.(); return; } onNavigate({ page: 'assistant', params: {} }); }}>
-            <MessageSquareMore aria-hidden="true" size={18} /><span>AI 智能助教</span>
+          <button type="button" className="app-shell__assistant-entry app-shell__assistant-entry--featured" aria-label="AI 智能助手" onClick={() => { if (!authenticated) { onLoginRequested?.(); return; } onNavigate({ page: 'assistant', params: { newConversation: true } }); }}>
+            <MessageSquareMore aria-hidden="true" size={18} /><span>AI 智能助手</span>
           </button>
           <button type="button" data-notification-trigger className="app-shell__topbar-icon" aria-label={'通知，' + unreadNotifications + ' 条未读'} aria-haspopup="dialog" aria-expanded={notificationOpen} onClick={() => { closeProfileMenu(); onToggleNotifications(); }}>
             <Bell aria-hidden="true" size={19} />

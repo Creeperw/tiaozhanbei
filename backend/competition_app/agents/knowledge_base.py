@@ -25,6 +25,9 @@ from competition_app.llm.schemas import (
     validate_training_style_output,
 )
 from competition_app.runtime.event_stream import emit_runtime_event
+from competition_app.services.conversation_history import (
+    sanitize_compressed_dialogue_summary,
+)
 
 
 class KnowledgeBaseAgent:
@@ -56,7 +59,11 @@ class KnowledgeBaseAgent:
         memory_output = context.get("dependency_outputs", {}).get("memory")
         memory_payload = getattr(memory_output, "payload", None)
         context_summary = getattr(memory_payload, "context_summary", None)
-        compressed_summary = str(getattr(context_summary, "summary", "") or "").strip()
+        compressed_summary = sanitize_compressed_dialogue_summary(
+            getattr(context_summary, "summary", "")
+            or context.get("compressed_conversation_summary")
+            or ""
+        )
         conversation_messages = list(context.get("messages", []))
         recent_messages = conversation_messages[-1:] if compressed_summary else conversation_messages[-8:]
         repair_instruction = dict(context.get("repair_instruction") or {})

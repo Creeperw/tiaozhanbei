@@ -249,7 +249,7 @@ export default function StudyNotesPanel({
           title: draft.title.trim(),
           content: draft.content,
           note_type: bookContext ? '教材页笔记' : '笔记本',
-          source: bookContext ? '教学资源' : '训练工坊',
+          source: bookContext ? '教学资源' : '练习工坊',
           resource_type: bookContext && initialPage ? 'textbook_pdf_page' : null,
           resource_id: bookContext && initialPage ? `${bookContext.book_id}:page:${initialPage}` : null,
           context: bookContext ? {

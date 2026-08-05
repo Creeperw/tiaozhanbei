@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from competition_app.agents.audit import AuditAgent
 from competition_app.agents.diagnosis import DiagnosisAgent
@@ -100,6 +102,70 @@ from competition_app.integrations.backend_handoff import (
     BackendHandoffRuntime,
     load_backend_handoff,
 )
+
+
+class _EnvScopedQuestionCleaner:
+    """包装 question_pipeline 的 LLM 抽取器，调用时临时注入知识库 Chat Key。
+
+    与 knowledge_delivery 的题目导入管线保持一致：抽取器按环境变量名读取
+    Key，调用前后恢复原环境，避免并发污染其他 LLM 调用。
+    """
+
+    def __init__(self, backend: Any, api_key: str) -> None:
+        self.backend = backend
+        self.api_key = api_key
+        markdown_module = backend._module("question_pipeline.markdown_ingest")
+        llm_module = backend._module("question_pipeline.llm")
+        client = llm_module.OpenAICompatibleChatClient(
+            backend.chat_base_url,
+            backend.chat_model,
+            "COMPETITION_KB_CHAT_KEY",
+        )
+        self.inner = markdown_module.LLMMarkdownExtractor(client)
+
+    def extract(
+        self,
+        markdown: str,
+        source_ref: str,
+        source_type: str,
+        owner_id: str | None,
+    ) -> list[dict[str, Any]]:
+        previous = os.environ.get("COMPETITION_KB_CHAT_KEY")
+        os.environ["COMPETITION_KB_CHAT_KEY"] = self.api_key
+        try:
+            return self.inner.extract(markdown, source_ref, source_type, owner_id)
+        finally:
+            if previous is None:
+                os.environ.pop("COMPETITION_KB_CHAT_KEY", None)
+            else:
+                os.environ["COMPETITION_KB_CHAT_KEY"] = previous
+
+
+def _build_web_question_ingest(
+    knowledge_backend: Any,
+    exa_retriever: ExaVideoRetriever,
+) -> Any:
+    """组装网络搜索题目补充服务（live 环境）。
+
+    仅当知识库后端与 Exa 均可用时启用；清洗器复用 question_pipeline 的
+    LLM 抽取器，不补造原文没有的题目。
+    """
+    from competition_app.tools.web_question_ingest import WebQuestionIngestService
+
+    chat_api_key = (
+        knowledge_backend.chat_api_key
+        if getattr(knowledge_backend, "chat_api_key", None)
+        else None
+    )
+    if not chat_api_key:
+        return None
+    cleaner = _EnvScopedQuestionCleaner(knowledge_backend, chat_api_key)
+    return WebQuestionIngestService(
+        searcher=exa_retriever,
+        cleaner=cleaner,
+        store=knowledge_backend.map,
+        runtime_dir=knowledge_backend.paths.question_runtime,
+    )
 
 
 @dataclass
@@ -329,6 +395,13 @@ class ApplicationContainer:
                     preferred_scope=learning_chapter,
                 )
                 if bundle is None:
+                    # 知识库缺失/题量不足时，兜底查询网络搜索补充题库
+                    # （已清洗去重入库的知识点直接复用，不再重复搜索）。
+                    bundle = knowledge_backend.map.resolve_web_question_bundle(
+                        name,
+                        required_question_count=3,
+                    )
+                if bundle is None:
                     return None
                 return backend_handoff_runtime.ensure_executable_knowledge_bundle(
                     bundle,
@@ -341,11 +414,43 @@ class ApplicationContainer:
             if knowledge_backend is not None
             else None
         )
+        exa_retriever = (
+            ExaVideoRetriever(settings.exa_api_key)
+            if settings.mode == "live" and settings.exa_api_key
+            else None
+        )
+        web_question_ingest = None
+        if knowledge_backend is not None and exa_retriever is not None:
+            web_question_ingest = _build_web_question_ingest(
+                knowledge_backend, exa_retriever
+            )
+
+        def load_review_knowledge_points(learner_id: str) -> list[str]:
+            """Due-for-review knowledge point names, for the daily quiz pool."""
+            try:
+                queue = review_service.get_queue(learner_id, limit=100)
+            except Exception:
+                return []
+            names: list[str] = []
+            for entry in queue.entries:
+                if not (entry.is_due or entry.retention_estimate < 0.85):
+                    continue
+                name = str(entry.memory_unit.prompt_abstract or "").strip()
+                if not name or name == "知识点名称待补充":
+                    continue
+                if name not in names:
+                    names.append(name)
+                if len(names) >= 5:
+                    break
+            return names
+
         learning_plan_service = LearningPlanService(
             default_route_repository,
             plan_repository,
             knowledge_point_resolver=knowledge_point_resolver,
             video_resource_resolver=video_resource_resolver,
+            review_knowledge_point_loader=load_review_knowledge_points,
+            web_question_ingest=web_question_ingest,
         )
         task_load_policy_loader = None
         if backend_handoff_runtime is not None:
@@ -374,11 +479,7 @@ class ApplicationContainer:
             knowledge_point_resolver=knowledge_point_resolver,
             video_resource_resolver=video_resource_resolver,
             task_load_policy_loader=task_load_policy_loader,
-        )
-        exa_retriever = (
-            ExaVideoRetriever(settings.exa_api_key)
-            if settings.mode == "live" and settings.exa_api_key
-            else None
+            review_knowledge_point_loader=load_review_knowledge_points,
         )
         knowledge_tool = KnowledgeRetrievalTool(
             repository,

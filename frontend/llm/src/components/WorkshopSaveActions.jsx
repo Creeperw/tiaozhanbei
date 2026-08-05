@@ -10,7 +10,7 @@ import {
   saveFavorite,
 } from './workshopLibraryApi';
 
-export function FavoriteQuestionButton({ question, source = '训练工坊' }) {
+export function FavoriteQuestionButton({ question, source = '练习工坊' }) {
   const [open, setOpen] = useState(false);
   const [folders, setFolders] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState('');
@@ -102,7 +102,7 @@ export function FavoriteQuestionButton({ question, source = '训练工坊' }) {
   </>;
 }
 
-export function FavoriteQuestionIconButton({ question, source = '训练工坊' }) {
+export function FavoriteQuestionIconButton({ question, source = '练习工坊' }) {
   const [favoriteId, setFavoriteId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -176,7 +176,7 @@ export function FavoriteQuestionIconButton({ question, source = '训练工坊' }
   );
 }
 
-export function NoteQuestionButton({ question, source = '训练工坊' }) {
+export function NoteQuestionButton({ question, source = '练习工坊' }) {
   const [open, setOpen] = useState(false);
   const [notebooks, setNotebooks] = useState([]);
   const [selectedNotebook, setSelectedNotebook] = useState('');

@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from competition_app.agents.memory import MemoryAgent
@@ -100,7 +102,7 @@ class CountingMemoryModel:
                 "resolution": "none",
             }
         return {
-            "summary": "已压缩长对话。",
+            "summary": "user：短消息也可以由系统明确要求压缩。\nassistant：已压缩长对话。",
             "preserved_facts": [],
             "unresolved_questions": [],
             "temporary_constraints": [],
@@ -163,7 +165,9 @@ class OmittedOptionalMemoryFieldsModel:
                 "governance_notes": "本轮没有可持久化信息或记忆冲突。",
                 "resolution": "none",
             }
-        return {"summary": "本轮只有需要压缩的对话摘要。"}
+        return {
+            "summary": "user：请总结本轮对话内容。\nassistant：本轮只有需要压缩的对话摘要。"
+        }
 
 
 @pytest.mark.asyncio
@@ -245,3 +249,109 @@ async def test_memory_agent_interrupts_on_conflict_and_accepts_confirmed_resolut
 
     assert resumed.payload.requires_clarification is False
     assert resumed.payload.governance.resolution == "replace_existing"
+
+
+class IncrementalCompressionModel:
+    """Records the messages handed to the compression sub-step."""
+
+    def __init__(self) -> None:
+        self.compression_input_messages: list[dict[str, str]] = []
+
+    async def complete_json(self, role, payload, on_delta=None):
+        business_payload = payload.get("payload", payload)
+        if "current_user_request" in business_payload:
+            return {
+                "governance_notes": "没有发现相关记忆冲突。",
+                "memory_candidates": [],
+                "conflicts": [],
+                "requires_clarification": False,
+                "clarification_questions": [],
+                "resolution": "none",
+            }
+        self.compression_input_messages = list(business_payload.get("messages") or [])
+        return {
+            "summary": (
+                "user：用户今天提出增加方剂背诵侧重。\n"
+                "assistant：已纳入后续学习安排。"
+            ),
+            "preserved_facts": [],
+            "unresolved_questions": [],
+            "temporary_constraints": [],
+            "memory_candidates": [],
+        }
+
+
+@pytest.mark.asyncio
+async def test_memory_agent_incremental_compression_uses_existing_summary_and_only_new_messages() -> None:
+    model = IncrementalCompressionModel()
+    context = build_context()
+    context.update(
+        {
+            "memory_required": True,
+            # The durable summary from a previous run, plus the message ids it
+            # already covered.  Only the newest message must be compressed.
+            "compressed_conversation_summary": (
+                "user：用户偏好晚间学习。\nassistant：已确认每天最多60分钟。"
+            ),
+            "compressed_conversation_covered_message_ids": ["MSG_OLD_1", "MSG_OLD_2"],
+            "messages": [
+                {"message_id": "MSG_OLD_1", "role": "user", "content": "旧消息一"},
+                {"message_id": "MSG_OLD_2", "role": "assistant", "content": "旧回复一"},
+                {"message_id": "MSG_NEW_1", "role": "user", "content": "今天增加方剂背诵侧重。"},
+            ],
+        }
+    )
+
+    envelope = await MemoryAgent(model, compression_threshold_chars=1).run(context)
+
+    assert envelope.payload.context_summary is not None
+    # The compression sub-step received the previous digest parsed back into
+    # pure user/assistant dialogue, plus only the uncovered message.  No
+    # system prefixes, no synthetic roles, no covered history.
+    assert model.compression_input_messages == [
+        {"role": "user", "content": "用户偏好晚间学习。"},
+        {"role": "assistant", "content": "已确认每天最多60分钟。"},
+        {"role": "user", "content": "今天增加方剂背诵侧重。"},
+    ]
+    assert "此前" not in json.dumps(model.compression_input_messages, ensure_ascii=False)
+    assert "MSG_OLD_1" not in json.dumps(model.compression_input_messages, ensure_ascii=False)
+    assert "旧消息一" not in json.dumps(model.compression_input_messages, ensure_ascii=False)
+    # The regenerated summary still carries source refs for the full history
+    # so the next run knows exactly which messages are already covered.
+    assert [ref.ref_id for ref in envelope.payload.context_summary.source_refs] == [
+        "MSG_OLD_1",
+        "MSG_OLD_2",
+        "MSG_NEW_1",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_memory_agent_compression_drops_non_dialogue_summary_text() -> None:
+    """A legacy/prose summary without user：/assistant： lines is never
+    disguised as a formal answer; compression then re-reads full history."""
+    model = IncrementalCompressionModel()
+    context = build_context()
+    context.update(
+        {
+            "memory_required": True,
+            "compressed_conversation_summary": (
+                "此前已压缩：用户偏好晚间学习，每天最多60分钟。"
+            ),
+            "compressed_conversation_covered_message_ids": ["MSG_OLD_1", "MSG_OLD_2"],
+            "messages": [
+                {"message_id": "MSG_OLD_1", "role": "user", "content": "旧消息一"},
+                {"message_id": "MSG_OLD_2", "role": "assistant", "content": "旧回复一"},
+                {"message_id": "MSG_NEW_1", "role": "user", "content": "今天增加方剂背诵侧重。"},
+            ],
+        }
+    )
+
+    await MemoryAgent(model, compression_threshold_chars=1).run(context)
+
+    # The prose-only digest is not dialogue history, so the compression input
+    # falls back to the full formal conversation only.
+    assert model.compression_input_messages == [
+        {"role": "user", "content": "旧消息一"},
+        {"role": "assistant", "content": "旧回复一"},
+        {"role": "user", "content": "今天增加方剂背诵侧重。"},
+    ]

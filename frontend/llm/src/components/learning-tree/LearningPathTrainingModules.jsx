@@ -19,8 +19,8 @@ export default function LearningPathTrainingModules({ trackId, onNavigate }) {
   if (modules.length === 0) return null;
 
   return (
-    <nav data-testid="learning-path-training-modules" className="learning-path-training-modules" aria-label="训练工坊模块">
-      <span>训练工坊</span>
+    <nav data-testid="learning-path-training-modules" className="learning-path-training-modules" aria-label="练习工坊模块">
+      <span>练习工坊</span>
       <div>
         {modules.map((module) => (
           <button

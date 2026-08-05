@@ -841,6 +841,12 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     detail: '',
     error: '',
     sessionId: '',
+    runId: '',
+    stageIndex: 0,
+    interrupt: null,
+    clarificationRequired: false,
+    answerDraft: '',
+    submittingAnswer: false,
     complete: false,
   });
   const [routeRevision, setRouteRevision] = useState(0);
@@ -968,20 +974,28 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
     }
   };
 
-  const startPersonalizedPathPlanning = async (customRequirementsOverride) => {
+  const startPersonalizedPathPlanning = async (customRequirementsOverride, continuation = null, clarificationAnswer = '') => {
     setSurveyOpen(false);
-    setPathPlanning({
+    setPathPlanning((current) => ({
       active: true,
-      stage: '正在为您规划学习路径',
-      detail: '正在准备用户画像与学情调研结果…',
+      stage: continuation ? current.stage : '正在为您规划学习路径',
+      detail: continuation ? '已收到补充信息，正在继续规划…' : '正在准备用户画像与学情调研结果…',
       error: '',
-      sessionId: '',
+      sessionId: continuation?.sessionId || '',
+      runId: continuation?.runId || '',
+      stageIndex: continuation?.stageIndex || 0,
+      interrupt: null,
+      clarificationRequired: false,
+      answerDraft: '',
+      submittingAnswer: Boolean(continuation),
       complete: false,
-    });
+    }));
     try {
       const result = await buildPersonalizedLearningPath({
         target: learningTarget,
         customRequirements: customRequirementsOverride ?? customRequirementsDraft,
+        continuation,
+        clarificationAnswer,
         onStage: (stage) => setPathPlanning((current) => ({
           ...current,
           stage: stage.label,
@@ -998,6 +1012,12 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         detail: '长期规划、短期计划和今日任务均已完成。',
         error: '',
         sessionId: result.sessionId,
+        runId: '',
+        stageIndex: 0,
+        interrupt: null,
+        clarificationRequired: false,
+        answerDraft: '',
+        submittingAnswer: false,
         complete: true,
       });
     } catch (reason) {
@@ -1006,9 +1026,29 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
         active: true,
         error: reason.visible || reason.message || '学习路径规划未完成',
         sessionId: reason.sessionId || current.sessionId,
+        runId: reason.runId || current.runId,
+        stageIndex: Number.isInteger(reason.stageIndex) ? reason.stageIndex : current.stageIndex,
+        interrupt: reason.interrupt || null,
+        clarificationRequired: reason.code === 'interrupted',
+        answerDraft: '',
+        submittingAnswer: false,
         complete: false,
       }));
     }
+  };
+
+  const continuePersonalizedPathPlanning = () => {
+    const answer = pathPlanning.answerDraft.trim();
+    if (!answer || pathPlanning.submittingAnswer) return;
+    void startPersonalizedPathPlanning(
+      customRequirementsDraft,
+      {
+        sessionId: pathPlanning.sessionId,
+        runId: pathPlanning.runId,
+        stageIndex: pathPlanning.stageIndex,
+      },
+      answer,
+    );
   };
 
   const progressFallback = payload?.status_cards
@@ -1339,11 +1379,31 @@ export default function QualificationRoutePage({ currentUser, onNavigate }) {
             <p className={pathPlanning.error ? 'is-error' : ''}>
               {pathPlanning.error || pathPlanning.detail || '智能助教正在调用多智能体协作完成规划，请稍候。'}
             </p>
+            {pathPlanning.clarificationRequired && pathPlanning.runId && (
+              <div className="home-portal__planning-answer">
+                <label htmlFor="personalized-planning-answer">直接补充信息</label>
+                <textarea
+                  id="personalized-planning-answer"
+                  rows={3}
+                  value={pathPlanning.answerDraft}
+                  disabled={pathPlanning.submittingAnswer}
+                  placeholder="在这里回答上面的追问，提交后将继续当前规划…"
+                  onChange={(event) => setPathPlanning((current) => ({
+                    ...current,
+                    answerDraft: event.target.value,
+                  }))}
+                />
+              </div>
+            )}
             {(pathPlanning.complete || pathPlanning.error) && (
               <div className="home-portal__planning-actions">
-                {pathPlanning.error && pathPlanning.sessionId && (
-                  <button type="button" onClick={() => onNavigate?.({ page: 'assistant', params: { sessionId: pathPlanning.sessionId } })}>
-                    打开智能助教继续
+                {pathPlanning.clarificationRequired && pathPlanning.runId && (
+                  <button
+                    type="button"
+                    disabled={!pathPlanning.answerDraft.trim() || pathPlanning.submittingAnswer}
+                    onClick={continuePersonalizedPathPlanning}
+                  >
+                    {pathPlanning.submittingAnswer ? '正在继续…' : '继续规划'}
                   </button>
                 )}
                 <button type="button" className="is-secondary" onClick={() => setPathPlanning((current) => ({ ...current, active: false }))}>

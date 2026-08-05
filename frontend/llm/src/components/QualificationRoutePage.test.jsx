@@ -130,6 +130,8 @@ describe('QualificationRoutePage', () => {
   beforeEach(() => {
     clearQualificationRoutePageCache();
     loadAtlasDetail.mockReset();
+    buildPersonalizedLearningPath.mockReset();
+    buildPersonalizedLearningPath.mockResolvedValue({ sessionId: 'CONV_TEST' });
   });
   afterEach(() => vi.unstubAllGlobals());
 
@@ -410,6 +412,43 @@ describe('QualificationRoutePage', () => {
     await waitFor(() => expect(buildPersonalizedLearningPath).toHaveBeenCalledTimes(1));
     const callArgs = buildPersonalizedLearningPath.mock.calls[0][0];
     expect(callArgs.customRequirements).toBe('CUSTOM_TEST_0829：希望侧重方剂背诵。');
+  });
+
+  it('answers a planning clarification inside the progress dialog and resumes the same stage', async () => {
+    installHomeFetch({}, {
+      learningPathPayload: { ...routePayload, nodes: [], availability: 'requires_long_term_plan' },
+    });
+    buildPersonalizedLearningPath
+      .mockRejectedValueOnce(Object.assign(new Error('请说明计划跨度和当前学习进度'), {
+        code: 'interrupted',
+        visible: '请说明计划跨度和当前学习进度',
+        sessionId: 'CONV_INTERRUPTED',
+        runId: 'THREAD_INTERRUPTED',
+        stageIndex: 1,
+        interrupt: { questions: ['请说明计划跨度和当前学习进度'] },
+      }))
+      .mockResolvedValueOnce({ sessionId: 'CONV_INTERRUPTED' });
+    render(<QualificationRoutePage currentUser={{ username: 'alice' }} onNavigate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '个性化路径' }));
+    fireEvent.click(await screen.findByRole('button', { name: '去制定个性化路径' }));
+    fireEvent.click(screen.getByRole('button', { name: '模拟保存调研' }));
+
+    expect(await screen.findByText('请说明计划跨度和当前学习进度')).toBeInTheDocument();
+    const answer = screen.getByRole('textbox', { name: '直接补充信息' });
+    fireEvent.change(answer, { target: { value: '计划六周，已学完《中医学基础》。' } });
+    fireEvent.click(screen.getByRole('button', { name: '继续规划' }));
+
+    await waitFor(() => expect(buildPersonalizedLearningPath).toHaveBeenCalledTimes(2));
+    expect(buildPersonalizedLearningPath.mock.calls[1][0]).toEqual(expect.objectContaining({
+      clarificationAnswer: '计划六周，已学完《中医学基础》。',
+      continuation: {
+        sessionId: 'CONV_INTERRUPTED',
+        runId: 'THREAD_INTERRUPTED',
+        stageIndex: 1,
+      },
+    }));
+    expect(await screen.findByText('个性化学习路径已生成')).toBeInTheDocument();
   });
 
   it('does not reuse another qualification target personalized plan', async () => {

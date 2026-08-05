@@ -56,9 +56,12 @@ vi.mock('./components/learning-stage/StagePageTransition', () => ({
   ) : null,
 }));
 vi.mock('./components/ChatInterface', () => ({
-  default: ({ embedded, forceNewConversation }) => (
+  default: ({ embedded, forceNewConversation, onNewConversationConsumed }) => (
     <div data-testid="assistant-page" data-force-new={String(forceNewConversation)}>
       Assistant page {String(embedded)}
+      {forceNewConversation && (
+        <button type="button" onClick={onNewConversationConsumed}>Consume new conversation</button>
+      )}
     </div>
   ),
 }));
@@ -250,6 +253,24 @@ describe('authenticated application shell', () => {
     expect(JSON.parse(sessionStorage.getItem('competition.current-page-intent'))).toEqual({
       page: 'assistant',
       params: { sessionId: 'session-existing' },
+    });
+  });
+
+  it('clears new-conversation immediately after the assistant consumes it', async () => {
+    sessionStorage.setItem('competition.pending-navigation', JSON.stringify({
+      page: 'assistant',
+      params: { newConversation: true },
+    }));
+    render(<App />);
+
+    expect(await screen.findByTestId('assistant-page')).toHaveAttribute('data-force-new', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Consume new conversation' }));
+
+    await waitFor(() => expect(screen.getByTestId('assistant-page')).toHaveAttribute('data-force-new', 'false'));
+    expect(JSON.parse(sessionStorage.getItem('competition.current-page-intent'))).toEqual({
+      page: 'assistant',
+      params: {},
     });
   });
 

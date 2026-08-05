@@ -76,9 +76,9 @@ def _compact_value(
     value: Any,
     *,
     depth: int = 0,
-    max_depth: int = 4,
-    max_items: int = 12,
-    max_text: int = 1_200,
+    max_depth: int = 5,
+    max_items: int = 18,
+    max_text: int = 3_000,
 ) -> Any:
     """Bound shared context without losing the facts an agent needs.
 
@@ -157,7 +157,7 @@ def _plan_brief(value: Any) -> dict[str, Any]:
         or plan.get("task_content")
     )
     if content:
-        brief["content_summary"] = _compact_value(content, max_text=1_200)
+        brief["content_summary"] = _compact_value(content, max_text=3_000)
     stages = plan.get("stages") or plan.get("long_term_plan_stages")
     if isinstance(stages, list) and stages:
         current = next(

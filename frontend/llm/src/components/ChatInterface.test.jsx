@@ -194,6 +194,71 @@ describe('ChatInterface session workspace', () => {
     expect(localStorage.getItem('lastSessionId')).toBe('session-newest');
   });
 
+  it('consumes a forced new-conversation command after creating exactly one session', async () => {
+    const onNewConversationConsumed = vi.fn();
+    let created = 0;
+    fetchWithAuth.mockImplementation((url, options = {}) => {
+      if (url.endsWith('/conversations') && options.method === 'POST') {
+        created += 1;
+        return Promise.resolve(jsonResponse({ id: 'session-created', title: '新对话' }));
+      }
+      if (url.endsWith('/conversations')) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith('/conversations/session-created/messages')) return Promise.resolve(jsonResponse([]));
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    const { rerender } = render(
+      <ChatInterface
+        currentUser="alice"
+        embedded
+        forceNewConversation
+        onNewConversationConsumed={onNewConversationConsumed}
+      />,
+    );
+
+    await waitFor(() => expect(onNewConversationConsumed).toHaveBeenCalledOnce());
+    expect(created).toBe(1);
+    rerender(
+      <ChatInterface
+        currentUser="alice"
+        embedded
+        onNewConversationConsumed={onNewConversationConsumed}
+      />,
+    );
+    await Promise.resolve();
+    expect(created).toBe(1);
+  });
+
+  it('reloads sessions from the selected exam workspace after the target changes', async () => {
+    let listCalls = 0;
+    fetchWithAuth.mockImplementation((url) => {
+      if (url.endsWith('/conversations')) {
+        listCalls += 1;
+        return Promise.resolve(jsonResponse(listCalls === 1
+          ? [{ id: 'session-old-exam', title: '旧证会话' }]
+          : [{ id: 'session-new-exam', title: '新证会话' }]));
+      }
+      if (url.endsWith('/conversations/session-old-exam/messages')) {
+        return Promise.resolve(jsonResponse([{ id: 1, role: 'assistant', content: '旧证内容' }]));
+      }
+      if (url.endsWith('/conversations/session-new-exam/messages')) {
+        return Promise.resolve(jsonResponse([{ id: 2, role: 'assistant', content: '新证内容' }]));
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    render(<ChatInterface currentUser="alice" embedded />);
+    expect(await screen.findByText('旧证内容')).toBeInTheDocument();
+
+    window.dispatchEvent(new CustomEvent('shizhen:learning-target-changed', {
+      detail: { exam_track_id: 'track-new' },
+    }));
+
+    expect(await screen.findByText('新证内容')).toBeInTheDocument();
+    expect(screen.queryByText('旧证内容')).not.toBeInTheDocument();
+    expect(listCalls).toBe(2);
+  });
+
   it('restores the collaboration receipt for a still-running task after refresh', async () => {
     // 模拟刷新前的本地 pending run 记录（localStorage 持久化）。
     localStorage.setItem('assistantPendingWorkflowRuns', JSON.stringify({

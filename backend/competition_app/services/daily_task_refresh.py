@@ -7,10 +7,11 @@ from uuid import uuid4
 
 from competition_app.contracts.learning_plan import LearningTask
 from competition_app.repositories.learning_plan import LearningPlanRepository
-from competition_app.services.learning_plan import materialize_daily_task_items
 from competition_app.services.learning_plan import (
+    DAILY_QUIZ_TARGET_COUNT,
     KnowledgePointResolver,
     VideoResourceResolver,
+    materialize_daily_task_items,
 )
 
 
@@ -26,11 +27,14 @@ class DailyTaskRefreshService:
         knowledge_point_resolver: KnowledgePointResolver | None = None,
         video_resource_resolver: VideoResourceResolver | None = None,
         task_load_policy_loader: Callable[..., dict[str, Any]] | None = None,
+        review_knowledge_point_loader: Callable[[str], list[str]] | None = None,
     ) -> None:
         self.repository = repository
         self.knowledge_point_resolver = knowledge_point_resolver
         self.video_resource_resolver = video_resource_resolver
         self.task_load_policy_loader = task_load_policy_loader
+        # 到期复习知识点名称列表；用于把复习知识点纳入 24h 滚动任务的每日测验。
+        self.review_knowledge_point_loader = review_knowledge_point_loader
         self._lock = RLock()
 
     @staticmethod
@@ -199,6 +203,8 @@ class DailyTaskRefreshService:
                 task_blocks=[selected_block] if selected_block is not None else [],
                 knowledge_point_resolver=self.knowledge_point_resolver,
                 video_resource_resolver=self.video_resource_resolver,
+                quiz_target_count=DAILY_QUIZ_TARGET_COUNT,
+                review_knowledge_points=self._review_knowledge_points(task.learner_id),
             )
         except ValueError:
             # Preserve the last executable budget if an unusually dense legacy
@@ -212,6 +218,8 @@ class DailyTaskRefreshService:
                 task_blocks=[selected_block] if selected_block is not None else [],
                 knowledge_point_resolver=self.knowledge_point_resolver,
                 video_resource_resolver=self.video_resource_resolver,
+                quiz_target_count=DAILY_QUIZ_TARGET_COUNT,
+                review_knowledge_points=self._review_knowledge_points(task.learner_id),
             )
         return LearningTask(
             task_id=f"TASK_{uuid4().hex}",
@@ -267,3 +275,26 @@ class DailyTaskRefreshService:
             "reason": reason,
             "task_load_policy": task_load_policy or None,
         }
+
+    def _review_knowledge_points(self, learner_id: str) -> list[str]:
+        """Load the learner's due-for-review knowledge point names.
+
+        A loader outage must never block the 24-hour refresh, so any failure
+        degrades to an empty list.
+        """
+        if self.review_knowledge_point_loader is None:
+            return []
+        try:
+            loaded = self.review_knowledge_point_loader(learner_id)
+        except Exception:
+            return []
+        if not isinstance(loaded, list):
+            return []
+        names: list[str] = []
+        for name in loaded:
+            value = str(name or "").strip()
+            if not value or value == "知识点名称待补充":
+                continue
+            if value not in names:
+                names.append(value)
+        return names[:5]

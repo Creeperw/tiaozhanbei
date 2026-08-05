@@ -54,10 +54,15 @@ from competition_app.services.plan_scope import (
 )
 from competition_app.services.learning_monitoring import LearningMonitoringService
 from competition_app.services.conversation_history import (
+    sanitize_compressed_dialogue_summary,
     sanitize_conversation_content,
     sanitize_conversation_messages,
 )
-from competition_app.exam_scope import bind_exam_workspace, current_exam_workspace
+from competition_app.exam_scope import (
+    bind_exam_workspace,
+    bind_exam_workspace_context,
+    current_exam_workspace,
+)
 from competition_app.application.workflow_presentation import workflow_result_to_markdown
 
 
@@ -288,6 +293,7 @@ class PersonalizedReviewCardUseCase:
         execution_id: str,
         case_id: str,
     ) -> ReviewCardResult | WorkflowInterruptedResult | WorkflowHumanReviewResult:
+        request_exam_workspace = current_exam_workspace(request.learner_id)
         existing_messages = self.conversation_repository.get_messages(
             conversation_id, request.learner_id
         )
@@ -325,19 +331,62 @@ class PersonalizedReviewCardUseCase:
             or persisted_messages[-1].get("content") != clean_user_request
         ):
             persisted_messages.append({"role": "user", "content": clean_user_request})
+        # The latest persisted dialogue summary is loaded once per run and
+        # injected into the shared model context.  Agents then read the
+        # compressed history instead of the entire conversation; when a
+        # summary exists the knowledge/expert agents only attach the most
+        # recent message on top of it.  The summary is refreshed by Memory
+        # Agent only for messages that the previous summary did not cover.
+        persisted_summary = self.conversation_repository.get_latest_context_summary(
+            conversation_id, request.learner_id
+        )
+        covered_message_ids = set(
+            str(item.get("ref_id", ""))
+            for item in (persisted_summary or {}).get("source_refs", []) or []
+            if isinstance(item, dict) and str(item.get("ref_id", "")).strip()
+        )
+        if persisted_summary and not covered_message_ids:
+            covered_message_ids = {
+                str(item.get("message_id", ""))
+                for item in (persisted_summary.get("covered_messages") or [])
+                if isinstance(item, dict) and str(item.get("message_id", "")).strip()
+            }
+        uncovered_messages = [
+            item
+            for item in persisted_messages
+            if str(item.get("message_id", "")) not in covered_message_ids
+        ]
         _FAILURE_STEP_CONTEXT.set("behavior_context")
         behavior_context = await self._load_behavior_context(request.learner_id)
         # Freeze the server-owned exam workspace before persisting any
         # conversation rows or reading mutable learning state.  Later browser
         # target switches cannot redirect this running workflow into another
         # certificate's plan hierarchy.
-        bind_exam_workspace(
-            request.learner_id,
-            behavior_context.get("learning_target"),
-        )
+        if request_exam_workspace is not None:
+            bind_exam_workspace_context(request_exam_workspace)
+        else:
+            bind_exam_workspace(
+                request.learner_id,
+                behavior_context.get("learning_target"),
+            )
         _FAILURE_STEP_CONTEXT.set("conversation")
+        # Persist the user's in-flight turn before orchestration.  Message ids
+        # are assigned with the same rule the workflow uses for agent context
+        # (``{conversation_id}:message:{index+1}``) so the Memory Agent's
+        # summary source refs always match the durable rows; the repository
+        # honors a supplied id instead of falling back to a fingerprint.
+        persisted_for_save = [
+            {
+                **item,
+                "message_id": (
+                    item.get("message_id")
+                    or f"{conversation_id}:message:{index + 1}"
+                ),
+            }
+            for index, item in enumerate(persisted_messages)
+        ]
         self.conversation_repository.save_messages(
-            conversation_id, request.learner_id, persisted_messages
+            conversation_id, request.learner_id, persisted_for_save
         )
         if not existing_messages:
             _FAILURE_STEP_CONTEXT.set("persistence")
@@ -669,10 +718,28 @@ class PersonalizedReviewCardUseCase:
                 total_message_chars > self.conversation_compression_threshold_chars
             ),
             # This is a system-owned fact. Planner only receives it; the
-            # threshold itself is never inferred from user wording.
+            # threshold itself is never inferred from user wording.  When a
+            # durable summary already exists, compression only needs to cover
+            # the messages that the previous summary did not include, so the
+            # threshold is evaluated against that uncovered slice instead of
+            # the whole history.
             "memory_required": (
-                total_message_chars > self.conversation_compression_threshold_chars
+                sum(
+                    len(str(item.get("content", ""))) for item in uncovered_messages
+                )
+                > self.conversation_compression_threshold_chars
+                if persisted_summary
+                else (
+                    total_message_chars > self.conversation_compression_threshold_chars
+                )
             ),
+            # Durable summary loaded from the conversation store.  Only the
+            # formal ``user：`` / ``assistant：`` dialogue lines count as
+            # history; anything else is never injected as conversation.
+            "compressed_conversation_summary": sanitize_compressed_dialogue_summary(
+                (persisted_summary or {}).get("summary", "")
+            ),
+            "compressed_conversation_covered_message_ids": sorted(covered_message_ids),
             "profile": {
                 "confirmed_preferences": effective_preferences,
             },
@@ -1059,6 +1126,28 @@ class PersonalizedReviewCardUseCase:
             for index, item in enumerate(persisted_messages)
             if isinstance(item, dict)
         ]
+        # Refresh the durable summary on resume as well: the interrupted run
+        # may have persisted a new digest while this thread waited, and the
+        # resumed nodes must read compressed history instead of the full
+        # conversation.
+        resumed_summary = self.conversation_repository.get_latest_context_summary(
+            conversation_id, continuation.request.learner_id
+        )
+        if resumed_summary:
+            continuation.context["compressed_conversation_summary"] = (
+                sanitize_compressed_dialogue_summary(
+                    (resumed_summary or {}).get("summary", "")
+                )
+            )
+            covered_ids = set(
+                str(item.get("ref_id", ""))
+                for item in (resumed_summary or {}).get("source_refs", []) or []
+                if isinstance(item, dict) and str(item.get("ref_id", "")).strip()
+            )
+            if covered_ids:
+                continuation.context["compressed_conversation_covered_message_ids"] = (
+                    sorted(covered_ids)
+                )
         continuation.context["latest_resume_answer"] = request.answer.strip()
         if request.current_page:
             continuation.context["current_page_context"] = (
@@ -1693,7 +1782,11 @@ class PersonalizedReviewCardUseCase:
         conversation_id: str,
         learner_id: str,
         messages: list[dict[str, Any]],
-        result: ReviewCardResult | WorkflowInterruptedResult,
+        result: (
+            ReviewCardResult
+            | WorkflowInterruptedResult
+            | WorkflowHumanReviewResult
+        ),
     ) -> None:
         content = sanitize_conversation_content(workflow_result_to_markdown(result))
         actions = [
@@ -1708,11 +1801,51 @@ class PersonalizedReviewCardUseCase:
         trace_events = [*runtime_events, *durable_receipt]
         if trace_events:
             assistant_message["trace_events"] = trace_events
+        # Assign message ids with the exact same rule the workflow uses for
+        # agent context (``{conversation_id}:message:{index+1}``).  The
+        # repository honors a supplied id, so the persisted rows carry the
+        # same ids the Memory Agent recorded in the summary source refs.
+        # Without this, in-flight messages fall back to fingerprint ids and
+        # the next run can never match them against the covered set, which
+        # silently disables incremental compression.
+        saved_messages = [
+            {
+                **item,
+                "message_id": (
+                    item.get("message_id")
+                    or f"{conversation_id}:message:{index + 1}"
+                ),
+            }
+            for index, item in enumerate([*messages, assistant_message])
+        ]
         self.conversation_repository.save_messages(
             conversation_id,
             learner_id,
-            [*messages, assistant_message],
+            saved_messages,
         )
+        # Persist the freshest dialogue summary produced by this run so the
+        # next turn loads the compressed history instead of the full
+        # conversation.  Memory Agent only refreshes the summary when new
+        # uncovered messages exceed the compression threshold, so this write
+        # is skipped on turns where no compression ran.
+        memory_output = next(
+            (
+                item
+                for item in getattr(result, "agent_outputs", []) or []
+                if getattr(item, "producer", "") == "memory_agent"
+            ),
+            None,
+        )
+        context_summary = getattr(
+            getattr(memory_output, "payload", None), "context_summary", None
+        )
+        if context_summary is not None:
+            self.conversation_repository.save_context_summary(
+                conversation_id,
+                learner_id,
+                str(getattr(result, "execution_id", "") or ""),
+                context_summary.model_dump(mode="json"),
+            )
 
     @staticmethod
     def _persisted_trace_events(result: ReviewCardResult | WorkflowInterruptedResult) -> list[dict[str, Any]]:
@@ -1877,11 +2010,44 @@ class PersonalizedReviewCardUseCase:
                         "sequence": item.sequence,
                         "agent": item.agent,
                         "error_type": item.error_type,
+                        **(
+                            {"output_summary": self._failure_model_output_summary(item)}
+                            if self._failure_model_output_summary(item)
+                            else {}
+                        ),
                     }
                     for item in self._model_trace()
                 ][-12:]
             },
         )
+
+    @staticmethod
+    def _failure_model_output_summary(item: ModelCallTrace) -> dict[str, object]:
+        """Keep actionable compiler diagnostics without persisting full prompts."""
+
+        if item.agent != "plan_contract_compiler" or not isinstance(item.raw_output, dict):
+            return {}
+        output = item.raw_output
+        summary: dict[str, object] = {
+            "status": str(output.get("status") or "unknown"),
+        }
+        issues = output.get("issues")
+        if isinstance(issues, list):
+            summary["issues"] = [
+                {
+                    "code": str(issue.get("code") or "unknown"),
+                    "field_path": str(issue.get("field_path") or "/"),
+                }
+                for issue in issues
+                if isinstance(issue, dict)
+            ][:12]
+        contract = output.get("contract")
+        if isinstance(contract, dict):
+            summary["scope"] = str(contract.get("scope") or "unknown")
+            summary["contract_fields"] = sorted(
+                str(key) for key in contract if key != "field_anchors"
+            )
+        return summary
 
     @staticmethod
     def _failure_code(exc: BaseException) -> str:
@@ -2825,7 +2991,29 @@ class PersonalizedReviewCardUseCase:
                 long_term_plan=LongTermPlan.model_validate(current_long_term_plan),
                 **common,
             )
-        raise ValueError("the requested current learning-plan layer is unavailable")
+        # Defensive fallback: reuse must never surface as a hard workflow
+        # failure when the requested layer has no persisted version.  The
+        # planner already guards against this, but a restored checkpoint or a
+        # concurrent invalidation can still make the layer disappear between
+        # planning and execution; answer with a clarification instead.
+        labels = {
+            "long_term": "长期规划",
+            "short_term": "短期计划",
+            "daily_task": "当日任务",
+        }
+        return LearningPlanResult(
+            requires_clarification=True,
+            clarification_questions=[
+                f"当前还没有可沿用的{labels.get(plan_scope, '学习计划')}。"
+                "请确认是否要重新制定，我会在确认后立即生成。"
+            ],
+            reason=(
+                "你请求沿用的计划层级当前没有有效版本，"
+                "需要先确认目标后再生成。"
+            ),
+            generated_scope=plan_scope or "unspecified",
+            replan_review=review,
+        )
 
     @classmethod
     def _merge_context_dict(

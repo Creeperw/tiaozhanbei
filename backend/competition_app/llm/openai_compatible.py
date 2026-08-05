@@ -221,6 +221,9 @@ _LABELS = {
     "task_type": "任务类型",
     "topic": "学习主题",
     "existing_plan_state": "已有计划状态",
+    "has_long_term_plan": "当前是否存在长期规划（有当前有效版本才为True）",
+    "has_short_term_plan": "当前是否存在短期计划（有当前有效版本才为True）",
+    "has_daily_task": "当前是否存在当日任务（有当前有效版本才为True）",
     "conversation_context": "会话概况",
     "agent_capability_catalog": "智能体能力目录",
     "hard_routing_rules": "强制路由规则",
@@ -670,7 +673,7 @@ class OpenAICompatibleChatModel(ChatModel):
                 content = await self._request(
                     messages,
                     on_delta=attempt_deltas.append if on_delta is not None else None,
-                    json_mode=True,
+                    json_mode=False,
                 )
             except ModelResponseError as exc:
                 # The transport layer already performs the single allowed
@@ -698,6 +701,8 @@ class OpenAICompatibleChatModel(ChatModel):
         on_delta: Callable[[str], None] | None = None,
         _retry_count: int = 0,
         json_mode: bool = True,
+        *,
+        _disable_thinking: bool = False,
     ) -> str:
         try:
             async with httpx.AsyncClient(
@@ -714,13 +719,15 @@ class OpenAICompatibleChatModel(ChatModel):
                 # accepts an explicit per-request toggle; keep thinking
                 # enabled so multi-agent reasoning benefits from the model's
                 # CoT budget instead of emitting shallow first-pass answers.
-                if self.model.lower().startswith("deepseek-v4"):
+                # Empty-response retries disable thinking so the provider
+                # emits content directly instead of reasoning-only output.
+                if self.model.lower().startswith("deepseek-v4") and not _disable_thinking:
                     request_payload["thinking"] = {"type": "enabled"}
                 # Qwen 3 variants expose different thinking capabilities.  The
                 # 2026-05-17 max endpoint rejects requests unless thinking is
                 # enabled; other currently supported variants stay in
                 # non-thinking mode so their JSON contract remains stable.
-                if self.model.lower().startswith("qwen3"):
+                if self.model.lower().startswith("qwen3") and not _disable_thinking:
                     request_payload["enable_thinking"] = (
                         self.model.lower() == "qwen3.7-max-2026-05-17"
                     )
@@ -821,6 +828,7 @@ class OpenAICompatibleChatModel(ChatModel):
                     on_delta=on_delta,
                     _retry_count=_retry_count + 1,
                     json_mode=json_mode,
+                    _disable_thinking=_disable_thinking,
                 )
             reason = (
                 "quota_exhausted"
@@ -852,7 +860,10 @@ class OpenAICompatibleChatModel(ChatModel):
             # emitted through model_output even though there are no deltas.
             # Live DeepSeek-compatible endpoints have occasionally returned
             # two consecutive empty successes, so allow at most three total
-            # attempts for this one failure class only.
+            # attempts for this one failure class only.  The retries also
+            # disable thinking: a thinking model that exhausted its CoT
+            # budget without emitting content produces the same empty reply
+            # again, while a direct (non-thinking) call returns content.
             if exc.reason in {"empty_stream", "empty_response"} and _retry_count < 2:
                 await asyncio.sleep(0.5 * (_retry_count + 1))
                 return await self._request(
@@ -860,6 +871,7 @@ class OpenAICompatibleChatModel(ChatModel):
                     on_delta=None,
                     _retry_count=_retry_count + 1,
                     json_mode=json_mode,
+                    _disable_thinking=True,
                 )
             raise
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:

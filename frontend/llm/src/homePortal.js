@@ -73,7 +73,7 @@ const EMPTY_CONTINUE_LEARNING = {
 
 const EMPTY_PENDING_TASKS = {
   count: 0,
-  duration: '打开训练工坊查看安排',
+  duration: '打开练习工坊查看安排',
 };
 
 function asArray(value) {

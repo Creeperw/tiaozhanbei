@@ -401,6 +401,74 @@ class DiagnosisAgentServiceTests(unittest.TestCase):
         )
         self.assertEqual(result["evidence_status"], "limited")
 
+    def test_build_difficulty_accuracy_groups_by_real_annotation_only(self):
+        service = self._service()
+        db = self.Session()
+        try:
+            db.add(database.UserModel(id=1, username="learner", email="learner@example.com", hashed_password="x"))
+            db.add(database.LearningQuestion(
+                question_id="ACC_Q1", question_type="single_choice",
+                question_content="难度1", options_json="[]", answer_json='["A"]',
+                explanation="", difficulty=1.0, kp_ids_json="[]",
+                key_points="k", scoring_rubric="r",
+            ))
+            db.add(database.LearningQuestion(
+                question_id="ACC_Q3", question_type="single_choice",
+                question_content="难度3", options_json="[]", answer_json='["A"]',
+                explanation="", difficulty=3.0, kp_ids_json="[]",
+                key_points="k", scoring_rubric="r",
+            ))
+            db.add(database.LearningQuestion(
+                question_id="ACC_UL", question_type="single_choice",
+                question_content="未标注", options_json="[]", answer_json='["A"]',
+                explanation="", difficulty=None, kp_ids_json="[]",
+                key_points="k", scoring_rubric="r",
+            ))
+            db.flush()
+            # 难度1：2 对 0 错；难度3：1 对 1 错；未标注：1 对。
+            for index, (qid, correct) in enumerate(
+                [
+                    ("ACC_Q1", True), ("ACC_Q1", True),
+                    ("ACC_Q3", True), ("ACC_Q3", False),
+                    ("ACC_UL", True),
+                ]
+            ):
+                db.add(database.LearningQuestionAttempt(
+                    attempt_id=f"ACC_ATT_{index}", user_id=1, question_id=qid,
+                    submitted_answer_json="[]", is_correct=correct,
+                ))
+            db.commit()
+
+            result = service.build_difficulty_accuracy(db, 1)
+
+            self.assertEqual(result["overall"]["attempts"], 5)
+            self.assertEqual(result["overall"]["correct"], 4)
+            self.assertEqual(result["overall"]["accuracy"], 0.8)
+            self.assertEqual(result["by_difficulty"]["1"]["accuracy"], 1.0)
+            self.assertEqual(result["by_difficulty"]["3"]["accuracy"], 0.5)
+            self.assertEqual(result["by_difficulty"]["2"]["attempts"], 0)
+            self.assertEqual(result["by_difficulty"]["unlabeled"]["attempts"], 1)
+            self.assertEqual(result["by_difficulty"]["unlabeled"]["accuracy"], 1.0)
+        finally:
+            db.close()
+
+    def test_report_summary_includes_difficulty_accuracy(self):
+        service = self._service()
+        db = self.Session()
+        try:
+            db.add(database.UserModel(id=1, username="learner", email="learner@example.com", hashed_password="x"))
+            db.commit()
+            summary = service.build_report_summary(db, 1)
+            self.assertIn("difficulty_accuracy", summary)
+            self.assertIn("overall", summary["difficulty_accuracy"])
+            self.assertIn("by_difficulty", summary["difficulty_accuracy"])
+            self.assertIn("unlabeled", summary["difficulty_accuracy"]["by_difficulty"])
+            self.assertIsNone(summary["difficulty_accuracy"]["overall"]["accuracy"])
+            legacy = summary.get("learner_overview")
+            self.assertIsNotNone(legacy)
+        finally:
+            db.close()
+
 
 if __name__ == "__main__":
     unittest.main()

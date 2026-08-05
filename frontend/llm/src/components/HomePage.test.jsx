@@ -188,7 +188,7 @@ describe('HomePage', () => {
   it.each([
     ['多智能体协同', 'multi-agent'],
     ['个性化学习路径', 'learning-path'],
-    ['专项训练', 'knowledge-graph'],
+    ['专项练习', 'knowledge-graph'],
     ['人机协同', 'human-collaboration'],
   ])('routes the %s capability card', (name, intent) => {
     const onNavigate = vi.fn();
@@ -207,7 +207,7 @@ describe('HomePage', () => {
     [
       '学情诊断、学习规划、专家等六大智能体协同处理学习任务，按需分工，每项建议都关联证据、约束与审核结果，贯穿学习全流程完成诊断、答疑与学习支持。',
       '结合考试目标、阶段计划与近期答题表现，在前置知识、复习到期和可用时间等约束下，生成可解释、可调整的学习路径。',
-      '围绕薄弱点提供章节练习、错题变式、病例训练与试卷生成，把诊断结论转化为可完成的训练任务。',
+      '围绕薄弱点提供章节练习、错题变式、病例练习与试卷生成，把诊断结论转化为可完成的练习任务。',
       '学生可确认目标与时间、调整难度或更换资源，并查看推荐依据；任务反馈与完成效果共同进入下一轮路径和资源匹配。',
     ].forEach((description) => {
       expect(screen.getByText(description)).toBeInTheDocument();

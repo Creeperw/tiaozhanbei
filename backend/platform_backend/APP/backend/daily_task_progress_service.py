@@ -17,6 +17,9 @@ from APP.backend.database import (
     KnowledgePoint,
     LearningKnowledgePoint,
     LearningQuestion,
+    LearningQuestionAttempt,
+    LearningUserProfile,
+    QuestionAttempt,
     QuestionBankItem,
     QuestionKPLinkRecord,
     QuestionVersionRecord,
@@ -38,6 +41,36 @@ _QUESTION_TYPES = {
     "简答题": "short_answer",
     "案例分析/实验报告": "case_quiz",
     "临床病例问答": "case_quiz",
+}
+
+# --- 每日测验（Daily Quiz） ---
+# 每日任务在固定知识点练习之外追加一小段“今日测验”：按用户当前学习
+# 情况（答题准确率）与用户画像选择 10-15 道跨知识点题目，并按真实标注
+# 难度（standard_difficulty 1-5）分层。难度数据缺失时保持无标注（不推断）。
+QUIZ_DEFAULT_TARGET_COUNT = 12
+QUIZ_MIN_TARGET_COUNT = 10
+QUIZ_MAX_TARGET_COUNT = 15
+
+# 难度画像：difficulty -> 期望题数。总和为目标题数。
+# advanced   准确率高（>=0.8）：难题为主，检验拔高。
+# balanced   中等：各难度均衡。
+# foundation 基础/无证据：基础为主，先建立信心。
+QUIZ_DIFFICULTY_PROFILES: dict[str, dict[int, int]] = {
+    "advanced": {1: 1, 2: 2, 3: 3, 4: 4, 5: 2},
+    "balanced": {1: 2, 2: 3, 3: 4, 4: 2, 5: 1},
+    "foundation": {1: 3, 2: 4, 3: 3, 4: 1, 5: 1},
+}
+
+# 用户画像（user_profile.user_group_json / constitution）中出现的分组关键词
+# 到基础难度倾向的映射，仅在没有任何答题记录时兜底使用。
+_QUIZ_GROUP_PROFILE_HINTS: dict[str, str] = {
+    "大众兴趣": "foundation",
+    "入门": "foundation",
+    "科普": "foundation",
+    "跨专业": "balanced",
+    "学历教育": "balanced",
+    "进阶": "advanced",
+    "应试": "advanced",
 }
 
 
@@ -181,6 +214,142 @@ def _question_row_candidates(db: Session, kp_id: str):
         .scalars()
         .all()
     )
+
+
+def _quiz_question_candidates(db: Session, kp_ids: list[str]) -> list[QuestionVersionRecord]:
+    """Collect deduplicated formal question versions across quiz KPs."""
+
+    seen: set[str] = set()
+    collected: list[QuestionVersionRecord] = []
+    for kp_id in kp_ids:
+        for row in _question_row_candidates(db, kp_id):
+            # 同一题目只保留一个活跃版本，避免同一道题以多个版本重复出现。
+            if row.question_version_id in seen:
+                continue
+            seen.add(row.question_version_id)
+            collected.append(row)
+    return collected
+
+
+def quiz_learner_profile(db: Session, user_id: int) -> str:
+    """Determine the daily-quiz difficulty profile from real learner signals.
+
+    Real answered-question accuracy is the primary evidence; the persisted
+    user profile (learner group) is only a fallback when no attempt exists.
+    Never infers a difficulty for individual questions - this only selects a
+    target distribution for question sampling.
+    """
+
+    attempts = (
+        db.query(LearningQuestionAttempt)
+        .filter(LearningQuestionAttempt.user_id == user_id)
+        .all()
+    )
+    if attempts:
+        correct = sum(1 for attempt in attempts if attempt.is_correct)
+        accuracy = correct / len(attempts)
+        if accuracy >= 0.8:
+            return "advanced"
+        if accuracy >= 0.55:
+            return "balanced"
+        return "foundation"
+
+    public_attempts = (
+        db.query(QuestionAttempt)
+        .filter(QuestionAttempt.user_id == user_id)
+        .all()
+    )
+    if public_attempts:
+        correct = sum(1 for attempt in public_attempts if attempt.is_correct)
+        accuracy = correct / len(public_attempts)
+        if accuracy >= 0.8:
+            return "advanced"
+        if accuracy >= 0.55:
+            return "balanced"
+        return "foundation"
+
+    profile = db.query(LearningUserProfile).filter_by(user_id=user_id).one_or_none()
+    if profile is not None:
+        group_text = " ".join(
+            str(profile.user_group_json or ""),
+        )
+        for keyword, profile_name in _QUIZ_GROUP_PROFILE_HINTS.items():
+            if keyword in group_text:
+                return profile_name
+    return "balanced"
+
+
+def select_quiz_questions(
+    db: Session,
+    kp_ids: list[str],
+    profile: str,
+    target_count: int,
+) -> list[QuestionVersionRecord]:
+    """Select a difficulty-stratified quiz question set across KPs.
+
+    Only real annotated difficulties (standard_difficulty 1-5) are used for
+    stratification; unlabelled questions are treated as a neutral overflow
+    pool, never as a manufactured difficulty. When a difficulty tier is
+    under-supplied, the shortfall is filled from the unlabelled pool first,
+    then from lower tiers, then from whatever remains - the quiz never blocks
+    the daily task because of a shortage.
+    """
+
+    profile = profile if profile in QUIZ_DIFFICULTY_PROFILES else "balanced"
+    target = max(QUIZ_MIN_TARGET_COUNT, min(QUIZ_MAX_TARGET_COUNT, int(target_count)))
+    candidates = _quiz_question_candidates(db, kp_ids)
+    if not candidates:
+        return []
+
+    by_difficulty: dict[int | None, list[QuestionVersionRecord]] = {}
+    for row in candidates:
+        key = (
+            int(row.standard_difficulty)
+            if row.standard_difficulty is not None
+            and int(row.standard_difficulty) in {1, 2, 3, 4, 5}
+            else None
+        )
+        by_difficulty.setdefault(key, []).append(row)
+
+    wanted = dict(QUIZ_DIFFICULTY_PROFILES[profile])
+    selected: list[QuestionVersionRecord] = []
+    selected_ids: set[str] = set()
+    shortfall = 0
+
+    for level in (1, 2, 3, 4, 5):
+        pool = by_difficulty.get(level, [])
+        take = min(wanted.get(level, 0), len(pool))
+        for row in pool[:take]:
+            selected.append(row)
+            selected_ids.add(row.question_version_id)
+        shortfall += wanted.get(level, 0) - take
+
+    if shortfall > 0:
+        unlabeled_pool = by_difficulty.get(None, [])
+        for row in unlabeled_pool:
+            if shortfall <= 0:
+                break
+            if row.question_version_id in selected_ids:
+                continue
+            selected.append(row)
+            selected_ids.add(row.question_version_id)
+            shortfall -= 1
+
+    if shortfall > 0:
+        for level in (1, 2, 3, 4, 5):
+            if shortfall <= 0:
+                break
+            for row in by_difficulty.get(level, []):
+                if shortfall <= 0:
+                    break
+                if row.question_version_id in selected_ids:
+                    continue
+                selected.append(row)
+                selected_ids.add(row.question_version_id)
+                shortfall -= 1
+
+    # 数量仍不足目标时，不阻塞任务：有多少冻结多少。
+    return selected[:target]
 
 
 def _normalized_knowledge_point_label(value: Any) -> str:
@@ -638,14 +807,41 @@ def upsert_daily_task_snapshot(db: Session, user_id: int, payload: dict[str, Any
             persisted_items.append(_public_item_snapshot(item, []))
             continue
 
-        candidates = _question_row_candidates(db, kp_id)
-        if len(candidates) < required_question_count:
-            raise DailyTaskProgressError(
-                f"insufficient frozen question candidates for kp {kp_id}: need {required_question_count}, have {len(candidates)}",
-                409,
+        is_quiz = bool(completion_policy.get("quiz")) if isinstance(completion_policy, dict) else False
+        if is_quiz:
+            # 每日测验：跨同一 host task 的全部知识点选题，按用户学习情况
+            # 与画像决定难度分层；候选不足时不阻塞任务，有多少冻结多少。
+            quiz_kp_ids = [
+                str(row.kp_id or "")
+                for row in (
+                    db.query(DailyTaskItemRecord)
+                    .filter_by(user_id=user_id, host_task_id=host_task_id, host_task_version=host_task_version)
+                    .all()
+                )
+                if str(row.kp_id or "") and not str(row.kp_id or "").startswith("__task_item__:")
+            ]
+            if not quiz_kp_ids:
+                quiz_kp_ids = [kp_id]
+            profile = quiz_learner_profile(db, user_id)
+            quiz_target = int(
+                completion_policy.get("quiz_target_count")
+                or required_question_count
+                or QUIZ_DEFAULT_TARGET_COUNT
             )
+            selected_rows = select_quiz_questions(db, quiz_kp_ids, profile, quiz_target)
+            if not selected_rows:
+                _refresh_item_completion(db, item)
+                persisted_items.append(_public_item_snapshot(item, []))
+                continue
+        else:
+            candidates = _question_row_candidates(db, kp_id)
+            if len(candidates) < required_question_count:
+                raise DailyTaskProgressError(
+                    f"insufficient frozen question candidates for kp {kp_id}: need {required_question_count}, have {len(candidates)}",
+                    409,
+                )
 
-        selected_rows = candidates[:required_question_count]
+            selected_rows = candidates[:required_question_count]
         snapshot_rows: list[DailyTaskQuestionSnapshotRecord] = []
         for row in selected_rows:
             options = _question_options(db, row.question_id)

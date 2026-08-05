@@ -16,7 +16,7 @@ from competition_app.contracts.review import (
     ReviewTask,
     UserKnowledgeState,
 )
-from competition_app.repositories.review import ReviewRepository
+from competition_app.repositories.review import ReviewDelivery, ReviewRepository
 from competition_app.review.math import retention_estimate
 
 
@@ -413,6 +413,16 @@ class ReviewService:
             ),
             None,
         )
+
+    def list_active_deliveries(self, learner_id: str) -> list[ReviewDelivery]:
+        """Return the learner's actionable review tasks (pending/bound/overdue).
+
+        These are exactly the tasks ``submit_attempt`` accepts, so callers that
+        expose tasks to clients (e.g. the review dashboard) must source them
+        from here to keep submission consistent.
+        """
+
+        return self.repository.list_active_deliveries(learner_id)
 
     def submit_attempt(
         self,

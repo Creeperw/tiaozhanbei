@@ -63,7 +63,7 @@ export default function HomePage({ currentUser, onNavigate, onLoginRequested }) 
             <p className="platform-home__eyebrow">面向中医药资格证书考试的智能备考平台</p>
             <ScrollTextReveal id="platform-home-title" className="platform-home__title-reveal" />
             <p className="platform-home__description">
-              围绕考试大纲与个人学习进度，提供学情诊断、学习规划、专项训练和实时答疑，
+              围绕考试大纲与个人学习进度，提供学情诊断、学习规划、专项练习和实时答疑，
               帮助你查漏补缺，稳步提升备考效率。
             </p>
           </div>

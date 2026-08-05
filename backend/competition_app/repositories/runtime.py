@@ -6,6 +6,7 @@ from datetime import date, datetime
 from pathlib import Path
 from threading import RLock
 from typing import Any, Protocol
+from uuid import uuid4
 
 from pydantic import BaseModel
 from sqlalchemy import Engine, text
@@ -220,10 +221,23 @@ class ConversationRepository(Protocol):
         messages: list[dict[str, Any]],
     ) -> None: ...
 
+    def get_latest_context_summary(
+        self, session_id: str, learner_id: str
+    ) -> dict[str, Any] | None: ...
+
+    def save_context_summary(
+        self,
+        session_id: str,
+        learner_id: str,
+        execution_id: str,
+        summary: dict[str, Any],
+    ) -> None: ...
+
 
 class InMemoryConversationRepository:
     def __init__(self) -> None:
         self.sessions: dict[str, dict[str, Any]] = {}
+        self._summaries: dict[str, dict[str, Any]] = {}
         self._lock = RLock()
 
     def create_session(self, session_id: str, learner_id: str, title: str) -> None:
@@ -326,6 +340,30 @@ class InMemoryConversationRepository:
             for index, message in enumerate(sanitize_conversation_messages(messages)):
                 message_id = _message_id(session_id, index, message)
                 session["messages"][message_id] = _copy_json(message)
+
+    def get_latest_context_summary(
+        self, session_id: str, learner_id: str
+    ) -> dict[str, Any] | None:
+        with self._lock:
+            summary = self._summaries.get(session_id)
+            if summary is None or summary.get("learner_id") != learner_id:
+                return None
+            return _copy_json(summary.get("payload"))
+
+    def save_context_summary(
+        self,
+        session_id: str,
+        learner_id: str,
+        execution_id: str,
+        summary: dict[str, Any],
+    ) -> None:
+        with self._lock:
+            self._summaries[session_id] = {
+                "learner_id": learner_id,
+                "execution_id": execution_id,
+                "payload": _copy_json(summary),
+                "created_at": datetime.utcnow().isoformat(),
+            }
 
 
 class SqlConversationRepository:
@@ -526,6 +564,84 @@ class SqlConversationRepository:
                     },
                 )
                 next_sequence += 1
+
+    def get_latest_context_summary(
+        self, session_id: str, learner_id: str
+    ) -> dict[str, Any] | None:
+        scope = current_exam_scope(learner_id)
+        with self.engine.connect() as connection:
+            owner = self._session_owner(connection, session_id, scope)
+            if (
+                owner is None
+                or owner["learner_id"] != learner_id
+                or not self._scope_matches(owner.get("exam_track_id"), scope)
+            ):
+                return None
+            row = connection.execute(
+                text(
+                    "SELECT summary_id, execution_id, payload_json, created_at "
+                    "FROM context_summaries "
+                    "WHERE session_id=:session_id "
+                    "ORDER BY created_at DESC, summary_id DESC LIMIT 1"
+                ),
+                {"session_id": session_id},
+            ).mappings().first()
+        if row is None:
+            return None
+        payload = row.get("payload_json")
+        if isinstance(payload, (bytes, bytearray)):
+            payload = payload.decode("utf-8")
+        if isinstance(payload, str):
+            try:
+                summary = json.loads(payload)
+            except json.JSONDecodeError:
+                return None
+        elif isinstance(payload, dict):
+            summary = dict(payload)
+        else:
+            return None
+        return {
+            "summary_id": row["summary_id"],
+            "execution_id": row["execution_id"],
+            "created_at": row["created_at"],
+            **summary,
+        }
+
+    def save_context_summary(
+        self,
+        session_id: str,
+        learner_id: str,
+        execution_id: str,
+        summary: dict[str, Any],
+    ) -> None:
+        scope = current_exam_scope(learner_id)
+        with self.engine.begin() as connection:
+            owner = self._session_owner(connection, session_id, scope)
+            if (
+                owner is None
+                or owner["learner_id"] != learner_id
+                or not self._scope_matches(owner.get("exam_track_id"), scope)
+            ):
+                return
+            summary_id = f"SUM_{uuid4().hex}"
+            connection.execute(
+                text(
+                    "INSERT INTO context_summaries "
+                    "(summary_id, session_id, execution_id, payload_json, created_at) "
+                    "VALUES (:summary_id, :session_id, :execution_id, :payload_json, :created_at)"
+                ),
+                {
+                    "summary_id": summary_id,
+                    "session_id": session_id,
+                    "execution_id": execution_id,
+                    "payload_json": json.dumps(summary, ensure_ascii=False, default=str),
+                    # Explicit microsecond timestamp: the column default is
+                    # second-precision CURRENT_TIMESTAMP, so two summaries
+                    # saved within the same second would tie and "latest" would
+                    # fall back to the random summary_id ordering.
+                    "created_at": datetime.utcnow().isoformat(timespec="microseconds"),
+                },
+            )
 
     @staticmethod
     def _scope_matches(stored_scope: str | None, requested_scope: str) -> bool:

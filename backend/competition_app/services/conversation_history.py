@@ -74,7 +74,12 @@ def format_dialogue_history(messages: Iterable[dict[str, Any]] | None) -> str:
 
 
 def sanitize_compressed_dialogue_summary(summary: Any) -> str:
-    """Keep Memory Agent compression in formal dialogue-only format."""
+    """Keep Memory Agent compression in formal dialogue-only format.
+
+    Only ``user：`` / ``assistant：`` dialogue lines are dialogue history.
+    Anything else (evidence, tool output, system notes, raw model prose) is
+    never disguised as a formal answer, so it is dropped entirely.
+    """
     text = sanitize_conversation_content(summary)
     if not text:
         return ""
@@ -85,6 +90,27 @@ def sanitize_compressed_dialogue_summary(summary: Any) -> str:
     ]
     if dialogue_lines:
         return "\n".join(dialogue_lines)[:2_000]
-    # Compatibility for older summaries: retain prose as assistant content,
-    # never as evidence or tool output.
-    return f"assistant：{text}"[:2_000]
+    # Compatibility for older summaries: only dialogue-format text is kept.
+    return ""
+
+
+def parse_compressed_dialogue_summary(summary: Any) -> list[dict[str, str]]:
+    """Turn a compressed dialogue summary back into pure user/assistant messages.
+
+    The digest persisted by Memory Agent uses the same ``user：`` /
+    ``assistant：`` line format as formal history.  Parsing it back into
+    messages keeps incremental compression input strictly limited to user
+    questions and formal assistant answers — no prefixes, no system notes,
+    no other roles.  Non-dialogue lines are dropped.
+    """
+    cleaned = sanitize_compressed_dialogue_summary(summary)
+    messages: list[dict[str, str]] = []
+    for line in cleaned.splitlines():
+        line = line.strip()
+        if line.startswith("user："):
+            messages.append({"role": "user", "content": line[len("user：") :].strip()})
+        elif line.startswith("assistant："):
+            messages.append(
+                {"role": "assistant", "content": line[len("assistant：") :].strip()}
+            )
+    return messages

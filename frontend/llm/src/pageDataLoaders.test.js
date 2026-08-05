@@ -1032,7 +1032,7 @@ test('loadTrainingWorkspaceTask encodes task IDs and rejects an empty ID locally
   assert.deepEqual(loadedResult.taskResult, validTrainingTaskResult);
   assert.equal(loadedResult.error, '');
   assert.deepEqual(emptyIdResult.taskResult, emptyTrainingTaskResult);
-  assert.equal(emptyIdResult.error, '训练任务 ID 不能为空');
+  assert.equal(emptyIdResult.error, '练习任务 ID 不能为空');
   assert.equal(emptyIdResult.source, null);
 });
 

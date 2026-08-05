@@ -287,8 +287,18 @@ class StubChatModel:
             user_text = " ".join(
                 str(item.get("content", "")) for item in messages if item.get("role") == "user"
             )
+            # The compression digest must keep the pure ``user：`` /
+            # ``assistant：`` dialogue line format, exactly like the live
+            # model contract.  Anything else would be dropped as non-formal
+            # content by the sanitizer.
+            dialogue_lines = [
+                f"{item['role']}：{str(item.get('content', '')).strip()}"
+                for item in messages
+                if str(item.get("content", "")).strip()
+            ]
             result = {
-                "summary": user_text or "当前会话暂无需要压缩的用户内容。",
+                "summary": "\n".join(dialogue_lines)
+                or "user：当前会话暂无需要压缩的用户内容。",
                 "preserved_facts": ["本次任务主题为四君子汤"] if "四君子汤" in user_text else [],
                 "unresolved_questions": [],
                 "temporary_constraints": [],
@@ -423,9 +433,19 @@ class StubChatModel:
             # layer.  Keep this boundary inside the stub rather than making it
             # an application router; live mode remains model-led.
             normalized_request = "".join(request_text.split())
+            # Production Planner receives the recent dialogue once via
+            # shared_context.recent_conversation (a duplicated
+            # conversation_context block was removed).  The offline stub
+            # mirrors the same source so scope-continuation behaviour stays
+            # identical between modes.
+            shared = (
+                business_payload.get("shared_context")
+                if isinstance(business_payload.get("shared_context"), dict)
+                else {}
+            )
             recent_turns = (
-                business_payload.get("conversation_context", {}).get("recent_turns", [])
-                if isinstance(business_payload.get("conversation_context"), dict)
+                shared.get("recent_conversation", [])
+                if isinstance(shared.get("recent_conversation"), list)
                 else []
             )
             recent_text = "".join(

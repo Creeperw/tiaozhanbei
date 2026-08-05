@@ -36,7 +36,11 @@ from competition_app.services.profile_readiness import ProfileReadinessService
 from competition_app.services.planning_readiness import PlanningReadinessService
 from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.learning_monitoring import LearningMonitoringService
-from competition_app.exam_scope import bind_exam_workspace
+from competition_app.exam_scope import (
+    bind_exam_workspace,
+    bind_exam_workspace_context,
+    current_exam_workspace,
+)
 from competition_app.services.workshop import WorkshopKnowledgeService
 from competition_app.services.textbook_import import (
     TextbookImportError,
@@ -663,14 +667,11 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     run_automation=True,
                     review_projection=canonical_review_projection(review_queue),
                 )
-                if int(getattr(review_queue, "awaiting_resource_count", 0) or 0):
-                    schedule_due_review_resource(
-                        current_user.user_id,
-                        available_minutes=15,
-                    )
             except Exception:
                 # The authoritative answer has already been committed. A later
-                # context/queue read retries this idempotent projection.
+                # context/queue read retries this idempotent projection. Due
+                # review resources are opened as practice tasks by the learner;
+                # this background path must not create assistant conversations.
                 pass
         if path.startswith("/auth"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
@@ -2070,7 +2071,15 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     async def list_conversations(request: Request) -> list[dict]:
         user = current_user(request)
         repository = container.review_card_use_case.conversation_repository
-        return repository.list_sessions(user.user_id)
+        sessions = repository.list_sessions(user.user_id)
+        internal_due_review_prefix = "请为以下已到期知识点生成一张可立即学习的复习卡："
+        return [
+            session
+            for session in sessions
+            if not str(session.get("title") or "").startswith(
+                internal_due_review_prefix
+            )
+        ]
 
     @app.post("/api/v1/conversations", status_code=201)
     async def create_conversation(
@@ -3037,11 +3046,6 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "status": "authoritative_due_projection",
                 }
             )
-        if queue.awaiting_resource_count:
-            schedule_due_review_resource(
-                user.user_id,
-                available_minutes=15,
-            )
         return {
             **result,
             "overview": overview,
@@ -3132,6 +3136,24 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             user.user_id,
             plan_context=current_plan_context(user.user_id),
             limit=limit,
+        )
+
+    @app.get("/api/v1/learning-report")
+    async def learning_report(request: Request) -> dict:
+        """学习报告：画像总览、掌握度、薄弱点与各难度答题准确率。
+
+        ``difficulty_accuracy.by_difficulty`` 按真实标注难度 1-5 聚合答题
+        准确率；未标注难度的题目归入 ``unlabeled``，不推断难度。
+        """
+
+        user = current_user(request)
+        if user is None:
+            raise HTTPException(status_code=401, detail="请先登录后继续")
+        if backend_handoff is None:
+            raise HTTPException(status_code=503, detail="学习报告服务未启用")
+        return await asyncio.to_thread(
+            backend_handoff.load_learning_report,
+            user.user_id,
         )
 
     @app.get("/api/v1/task-load-policy")
@@ -4743,8 +4765,29 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             for item in mastery
             if isinstance(item, dict) and isinstance(item.get("mastery_score"), (int, float))
         ]
+        # ``review_tasks`` must be sourced from review_service (the same store
+        # ``submit_attempt`` validates against); platform_backend's side-channel
+        # ReviewTaskRecord rows are not submittable and previously caused 404.
+        kp_names = {
+            str(item.get("kp_id") or ""): str(item.get("kp_name") or "")
+            for item in mastery
+            if isinstance(item, dict) and str(item.get("kp_id") or "").strip()
+        }
+        review_tasks = []
+        for delivery in container.review_service.list_active_deliveries(user.user_id):
+            task = delivery.task
+            review_tasks.append({
+                "review_task_id": task.review_task_id,
+                "kp_id": task.primary_kp_id,
+                "kp_name": kp_names.get(task.primary_kp_id, task.primary_kp_id),
+                "review_type": task.review_type,
+                "status": task.status,
+                "scheduled_at": None,
+                "created_at": None,
+            })
         return {
             **details,
+            "review_tasks": review_tasks,
             "queue": queue.model_dump(mode="json"),
             "summary": {
                 "knowledge_point_count": len(mastery),
@@ -4796,6 +4839,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         resumed: bool = False,
     ) -> StreamingResponse:
         queue: asyncio.Queue[dict[str, object] | None] = asyncio.Queue()
+        request_exam_workspace = current_exam_workspace()
 
         def failure_event(exc: Exception) -> dict[str, object]:
             run_state = container.review_card_use_case.get_run_state(thread_id) or {}
@@ -4899,6 +4943,8 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             # page/conversation switch.  Model payloads stay out of message
             # metadata and therefore cannot overflow persistence columns.
             token = bind_recording_sink(publish, _NON_TRACE_EVENT_TYPES)
+            if request_exam_workspace is not None:
+                bind_exam_workspace_context(request_exam_workspace)
             try:
                 await queue.put(
                     {

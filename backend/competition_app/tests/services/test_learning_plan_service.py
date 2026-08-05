@@ -29,7 +29,10 @@ from competition_app.contracts.learning_plan import (
     ShortTermLearningPackage,
 )
 from competition_app.services.default_route import DefaultRouteRepository
-from competition_app.services.learning_plan import LearningPlanService
+from competition_app.services.learning_plan import (
+    LearningPlanService,
+    materialize_daily_task_items,
+)
 from competition_app.services.plan_progress import build_plan_progress
 from competition_app.services.textbook_route import TextbookRouteRepository
 
@@ -1406,3 +1409,266 @@ def test_container_injects_same_production_resolvers_into_plan_and_refresh(
     assert adapter.service.knowledge_point_resolver("四君子汤") == "KP_FORMAL"
     assert adapter.service.video_resource_resolver is None
     assert container.daily_task_refresh_service.video_resource_resolver is None
+
+
+def test_materialize_daily_task_items_appends_quiz_atom_when_target_count() -> None:
+    items = materialize_daily_task_items(
+        task_content="完成今日学习。",
+        learning_chapter="《方剂学》补益剂·补气",
+        estimated_minutes=20,
+        focus_knowledge_points=["四君子汤"],
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else None
+        ),
+        video_resource_resolver=None,
+        quiz_target_count=12,
+    )
+
+    quiz_items = [
+        item for item in items
+        if item.item_type == "knowledge_practice" and item.completion_policy.get("quiz")
+    ]
+    assert len(quiz_items) == 1
+    quiz = quiz_items[0]
+    assert quiz.title == "完成今日测验（10-15题）"
+    assert quiz.kp_id == "KP_FORMAL_1"
+    assert quiz.required_question_count == 12
+    assert quiz.completion_policy["quiz"] is True
+    assert quiz.completion_policy["quiz_target_count"] == 12
+    assert quiz.completion_policy["policy"] == "frozen_question_set"
+
+
+def test_materialize_daily_task_items_without_quiz_target_keeps_legacy_shape() -> None:
+    items = materialize_daily_task_items(
+        task_content="完成今日学习。",
+        estimated_minutes=10,
+        focus_knowledge_points=["四君子汤"],
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else None
+        ),
+    )
+
+    assert all(
+        not item.completion_policy.get("quiz")
+        for item in items
+    )
+
+
+def test_materialize_daily_task_items_no_quiz_without_resolved_kp() -> None:
+    items = materialize_daily_task_items(
+        task_content="完成今日学习。",
+        estimated_minutes=10,
+        focus_knowledge_points=["四君子汤"],
+        knowledge_point_resolver=lambda name: None,
+        quiz_target_count=12,
+    )
+
+    assert all(
+        item.item_type != "knowledge_practice" or not item.completion_policy.get("quiz")
+        for item in items
+    )
+
+
+def test_materialize_daily_task_items_quiz_falls_back_to_review_kp() -> None:
+    """当日知识点全部解析失败时，复习知识点仍能保住每日测验。"""
+    items = materialize_daily_task_items(
+        task_content="完成今日学习。",
+        estimated_minutes=10,
+        focus_knowledge_points=["今日知识点"],
+        knowledge_point_resolver=lambda name: (
+            "KP_REVIEW_1" if name == "复习知识点一" else None
+        ),
+        quiz_target_count=12,
+        review_knowledge_points=["复习知识点一", "复习知识点二"],
+    )
+
+    quiz_items = [
+        item
+        for item in items
+        if item.completion_policy.get("quiz")
+    ]
+    assert len(quiz_items) == 1
+    quiz = quiz_items[0]
+    assert quiz.title == "完成今日测验（10-15题）"
+    assert quiz.kp_id == "KP_REVIEW_1"
+    assert quiz.required_question_count == 12
+    assert quiz.completion_policy["quiz_target_count"] == 12
+    # 复习知识点不单独生成练习原子，避免任务膨胀
+    assert all(
+        item.kp_id != "KP_REVIEW_1" or item.completion_policy.get("quiz")
+        for item in items
+    )
+
+
+def test_materialize_daily_task_items_quiz_prefers_focus_over_review_kp() -> None:
+    """当日与复习知识点都解析成功时，测验锚定当日知识点。"""
+    items = materialize_daily_task_items(
+        task_content="完成今日学习。",
+        estimated_minutes=10,
+        focus_knowledge_points=["四君子汤"],
+        knowledge_point_resolver=lambda name: (
+            "KP_FOCUS_1" if name == "四君子汤" else "KP_REVIEW_1"
+        ),
+        quiz_target_count=12,
+        review_knowledge_points=["复习知识点一"],
+    )
+
+    quiz_items = [
+        item
+        for item in items
+        if item.completion_policy.get("quiz")
+    ]
+    assert len(quiz_items) == 1
+    assert quiz_items[0].kp_id == "KP_FOCUS_1"
+
+
+def test_materialize_daily_task_appends_daily_quiz_atom(
+    repository: DefaultRouteRepository,
+) -> None:
+    """初次生成今日任务必须带上“今日测验（10-15题）”原子项。"""
+    service = LearningPlanService(
+        repository,
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else None
+        ),
+        video_resource_resolver=lambda resource_ref: None,
+    )
+    value = structured_proposal(repository)
+    value.task_proposal.learning_chapter = "《方剂学》补益剂·补气"
+    value.task_proposal.focus_knowledge_points = ["四君子汤"]
+
+    result = service.materialize_daily_task(
+        "LEARNER_QUIZ_ATOM",
+        value,
+        current_short_term_plan={
+            "plan_id": "LP_SHORT_EXISTING",
+            "short_term_learning_package": None,
+        },
+    )
+
+    quiz_items = [
+        item
+        for item in result.learning_task.items
+        if item.completion_policy.get("quiz")
+    ]
+    assert len(quiz_items) == 1
+    quiz = quiz_items[0]
+    assert quiz.title == "完成今日测验（10-15题）"
+    assert quiz.item_type == "knowledge_practice"
+    assert quiz.kp_id == "KP_FORMAL_1"
+    assert quiz.required_question_count == 12
+    assert quiz.completion_policy["quiz"] is True
+    assert quiz.completion_policy["quiz_target_count"] == 12
+    assert quiz.completion_policy["policy"] == "frozen_question_set"
+
+
+def test_materialize_daily_task_uses_review_kp_loader_for_quiz(
+    repository: DefaultRouteRepository,
+) -> None:
+    """review_knowledge_point_loader 的复习知识点进入每日测验题源池。"""
+    service = LearningPlanService(
+        repository,
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else "KP_REVIEW_1"
+        ),
+        video_resource_resolver=lambda resource_ref: None,
+        review_knowledge_point_loader=lambda learner_id: [
+            "复习知识点一",
+            "知识点名称待补充",  # 应被过滤
+        ],
+    )
+    value = structured_proposal(repository)
+    value.task_proposal.learning_chapter = "《方剂学》补益剂·补气"
+    value.task_proposal.focus_knowledge_points = ["四君子汤"]
+
+    result = service.materialize_daily_task(
+        "LEARNER_REVIEW_QUIZ",
+        value,
+        current_short_term_plan={
+            "plan_id": "LP_SHORT_EXISTING",
+            "short_term_learning_package": None,
+        },
+    )
+
+    quiz_items = [
+        item
+        for item in result.learning_task.items
+        if item.completion_policy.get("quiz")
+    ]
+    assert len(quiz_items) == 1
+    # 当日知识点解析成功，测验仍锚定当日知识点
+    assert quiz_items[0].kp_id == "KP_FORMAL_1"
+
+
+def test_materialize_daily_task_keeps_quiz_with_only_review_kp(
+    repository: DefaultRouteRepository,
+) -> None:
+    """当日知识点在知识库中缺失（解析失败）时，复习知识点保住测验。"""
+    service = LearningPlanService(
+        repository,
+        knowledge_point_resolver=lambda name: (
+            "KP_REVIEW_1" if name == "复习知识点一" else None
+        ),
+        video_resource_resolver=lambda resource_ref: None,
+        review_knowledge_point_loader=lambda learner_id: ["复习知识点一"],
+    )
+    value = structured_proposal(repository)
+    value.task_proposal.learning_chapter = "《方剂学》补益剂·补气"
+    value.task_proposal.focus_knowledge_points = ["知识库缺失的知识点"]
+
+    result = service.materialize_daily_task(
+        "LEARNER_REVIEW_QUIZ_ONLY",
+        value,
+        current_short_term_plan={
+            "plan_id": "LP_SHORT_EXISTING",
+            "short_term_learning_package": None,
+        },
+    )
+
+    quiz_items = [
+        item
+        for item in result.learning_task.items
+        if item.completion_policy.get("quiz")
+    ]
+    assert len(quiz_items) == 1
+    assert quiz_items[0].kp_id == "KP_REVIEW_1"
+    assert quiz_items[0].completion_policy["quiz"] is True
+
+
+def test_ensure_executable_daily_resources_keeps_quiz_policy(
+    repository: DefaultRouteRepository,
+) -> None:
+    service = LearningPlanService(
+        repository,
+        knowledge_point_resolver=lambda name: (
+            "KP_FORMAL_1" if name == "四君子汤" else None
+        ),
+        video_resource_resolver=lambda resource_ref: None,
+    )
+    # 含 recall 原子项的任务在 ensure 时会被重新物化并追加每日测验。
+    value = structured_proposal(
+        repository,
+        task_content="对照纠错",
+        task_blocks=[
+            {
+                "content": "对照纠错",
+                "estimated_minutes": 5,
+                "item_type": "recall",
+            }
+        ],
+    )
+    value.task_proposal.learning_chapter = "《方剂学》补益剂·补气"
+    value.task_proposal.estimated_minutes = 20
+    value.task_proposal.focus_knowledge_points = ["四君子汤"]
+    service.materialize("LEARNER_QUIZ_RESOURCES", value)
+
+    normalized = service.ensure_executable_daily_resources("LEARNER_QUIZ_RESOURCES")
+
+    assert normalized is not None
+    quiz_items = [
+        item for item in normalized.items
+        if item.item_type == "knowledge_practice" and item.completion_policy.get("quiz")
+    ]
+    assert len(quiz_items) == 1
+    assert quiz_items[0].required_question_count == 12
+    assert quiz_items[0].completion_policy["quiz_target_count"] == 12

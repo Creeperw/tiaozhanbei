@@ -20,6 +20,9 @@ from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.schemas import KnowledgeExplanationModelOutput
 from competition_app.llm.stub import StubChatModel
+from competition_app.services.conversation_history import (
+    sanitize_compressed_dialogue_summary,
+)
 
 
 class KnowledgeExplanationAgent:
@@ -78,7 +81,11 @@ class KnowledgeExplanationAgent:
         memory_output = context.get("dependency_outputs", {}).get("memory")
         memory_payload = getattr(memory_output, "payload", None)
         context_summary = getattr(memory_payload, "context_summary", None)
-        compressed_summary = str(getattr(context_summary, "summary", "") or "").strip()
+        compressed_summary = sanitize_compressed_dialogue_summary(
+            getattr(context_summary, "summary", "")
+            or context.get("compressed_conversation_summary")
+            or ""
+        )
         conversation_messages = list(context.get("messages", []))
         recent_messages = conversation_messages[-1:] if compressed_summary else conversation_messages[-8:]
         model_payload = build_model_context(

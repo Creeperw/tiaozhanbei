@@ -2,6 +2,7 @@ import {
   createAssistantSession,
   streamAssistantMessageOutcome,
 } from './chatSessionClient';
+import { getWorkflowRun } from './workflowChatClient';
 
 const PLANNING_STAGES = [
   {
@@ -27,25 +28,70 @@ function targetDescription(target = {}) {
   return `${name}${examTrackId ? `（考试标识：${examTrackId}）` : ''}`;
 }
 
-export async function buildPersonalizedLearningPath({ target, onStage, onUpdate, customRequirements = '' } = {}) {
+function clarificationMessage(interrupt, fallback = '') {
+  const questions = Array.isArray(interrupt?.questions)
+    ? interrupt.questions.map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
+  return questions.join('\n') || String(interrupt?.reason || fallback || '请补充规划所需信息').trim();
+}
+
+export async function buildPersonalizedLearningPath({
+  target,
+  onStage,
+  onUpdate,
+  customRequirements = '',
+  continuation = null,
+  clarificationAnswer = '',
+} = {}) {
   const targetText = targetDescription(target);
-  const created = await createAssistantSession(`${targetText}个性化学习路径`);
-  const sessionId = created?.conversation_id || created?.session_id || created?.id;
+  const created = continuation?.sessionId
+    ? null
+    : await createAssistantSession(`${targetText}个性化学习路径`);
+  const sessionId = continuation?.sessionId
+    || created?.conversation_id
+    || created?.session_id
+    || created?.id;
   if (!sessionId) throw new Error('无法创建学习规划会话');
   const requirementsText = String(customRequirements || '').trim();
   const requirementsBlock = requirementsText ? `\n【自定义需求】${requirementsText}` : '';
+  const startStageIndex = Math.max(0, Number(continuation?.stageIndex) || 0);
 
-  for (const stage of PLANNING_STAGES) {
+  for (let stageIndex = startStageIndex; stageIndex < PLANNING_STAGES.length; stageIndex += 1) {
+    const stage = PLANNING_STAGES[stageIndex];
     onStage?.(stage);
+    const stageAnswer = stageIndex === startStageIndex && continuation
+      ? String(clarificationAnswer || '').trim()
+      : '';
     const outcome = await streamAssistantMessageOutcome(
       sessionId,
-      `【当前考试】${targetText}\n【当前任务】${stage.request}\n【执行要求】优先使用刚完成的学情调研、用户画像和自定义需求；不得改为其他考试。如果仍缺少会导致计划无法可靠制定的必要信息，请明确追问，不要臆造。${requirementsBlock}`,
+      stageAnswer || `【当前考试】${targetText}\n【当前任务】${stage.request}\n【执行要求】优先使用刚完成的学情调研、用户画像和自定义需求；不得改为其他考试。如果仍缺少会导致计划无法可靠制定的必要信息，请明确追问，不要臆造。${requirementsBlock}`,
       { onUpdate },
     );
+    if (outcome.status === 'interrupted') {
+      let run = null;
+      try {
+        run = outcome.runId ? await getWorkflowRun(outcome.runId) : null;
+      } catch {
+        // The streamed message remains a usable fallback if status polling is unavailable.
+      }
+      const interrupt = run?.interrupt || outcome.result?.interrupt || outcome.interrupt || null;
+      const error = new Error(clarificationMessage(interrupt, outcome.visible));
+      error.code = 'interrupted';
+      error.sessionId = sessionId;
+      error.runId = outcome.runId;
+      error.stageIndex = stageIndex;
+      error.stageKey = stage.key;
+      error.interrupt = interrupt;
+      error.visible = error.message;
+      throw error;
+    }
     if (outcome.status !== 'completed') {
       const error = new Error(outcome.visible || '学习路径规划需要补充信息');
       error.code = outcome.status || 'planning_incomplete';
       error.sessionId = sessionId;
+      error.runId = outcome.runId;
+      error.stageIndex = stageIndex;
+      error.stageKey = stage.key;
       error.visible = outcome.visible;
       throw error;
     }

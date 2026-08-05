@@ -70,6 +70,9 @@ _LONG_TERM_CONTENT_SECTIONS = (
 
 _DAILY_TASK_REFRESH_INTERVAL = timedelta(hours=24)
 
+# 每日测验题数（10-15 之间），与 platform 侧 quiz 冻结逻辑配合使用。
+DAILY_QUIZ_TARGET_COUNT = 12
+
 KnowledgePointResolver = Callable[..., str | None]
 VideoResourceResolver = Callable[[dict[str, Any]], dict[str, Any] | None]
 
@@ -83,12 +86,23 @@ def materialize_daily_task_items(
     task_blocks: list[Any] | None = None,
     knowledge_point_resolver: KnowledgePointResolver | None = None,
     video_resource_resolver: VideoResourceResolver | None = None,
+    quiz_target_count: int | None = None,
+    review_knowledge_points: list[str] | None = None,
 ) -> list[DailyTaskItemSpec]:
     """Resolve model semantics at the boundary and create executable atoms.
 
     Model-produced knowledge-point names and resource strings are never treated as
     formal IDs or verified video references. A caller-owned resolver must validate
     either value before an executable practice/video atom can be emitted.
+
+    ``quiz_target_count`` (optional) appends a cross-KP daily quiz atom when at
+    least one knowledge point resolved. The quiz uses the frozen-question-set
+    policy so the platform side can stratify the questions by the learner's
+    real difficulty annotations. ``review_knowledge_points`` (optional) widens
+    the quiz pool to knowledge points that are due for review: the quiz is kept
+    even when no focus point resolves, and the quiz's anchor knowledge point
+    prefers a resolved focus point, falling back to a resolved review point.
+    Callers that do not want a quiz omit both arguments.
     """
 
     semantics: list[dict[str, Any]] = []
@@ -222,6 +236,44 @@ def materialize_daily_task_items(
                 "resource_ref": {},
             }
         )
+    # 复习知识点：到期复习的知识点不单独生成练习原子（避免任务膨胀），
+    # 只扩充每日测验的题源池，保证“今日学习 + 复习巩固”都在测验中覆盖。
+    resolved_review_kp_ids: list[str] = []
+    for raw_knowledge_point in review_knowledge_points or []:
+        knowledge_point_name = str(raw_knowledge_point).strip()
+        if not knowledge_point_name:
+            continue
+        kp_id = _resolve_knowledge_point(
+            knowledge_point_name,
+            knowledge_point_resolver,
+            learning_chapter=learning_chapter,
+        )
+        if kp_id is None:
+            continue
+        if kp_id not in resolved_review_kp_ids:
+            resolved_review_kp_ids.append(kp_id)
+    # 每日测验：跨当日知识点 + 复习知识点选题 10-15 道，由 platform 侧按
+    # 用户学习情况与画像分层。quiz 在至少解析出一个知识点（当日或复习）
+    # 后追加，锚定知识点优先当日、其次复习。
+    if quiz_target_count is not None and (
+        resolved_focus_kp_ids or resolved_review_kp_ids
+    ):
+        quiz_kp_id = (
+            resolved_focus_kp_ids[0]
+            if resolved_focus_kp_ids
+            else resolved_review_kp_ids[0]
+        )
+        semantics.append(
+            {
+                "item_type": "knowledge_practice",
+                "title": "完成今日测验（10-15题）",
+                "knowledge_point_name": None,
+                "kp_id": quiz_kp_id,
+                "required_question_count": quiz_target_count,
+                "resource_ref": {},
+                "quiz": True,
+            }
+        )
     if estimated_minutes < len(semantics):
         raise ValueError("parent task budget cannot allocate one minute per atomic item")
 
@@ -259,6 +311,11 @@ def materialize_daily_task_items(
         resource_ref = semantic["resource_ref"]
         if item_type == "knowledge_practice":
             completion_policy = {"policy": "frozen_question_set"}
+            if semantic.get("quiz"):
+                completion_policy["quiz"] = True
+                completion_policy["quiz_target_count"] = int(
+                    semantic["required_question_count"] or DAILY_QUIZ_TARGET_COUNT
+                )
         elif item_type == "video_section":
             source_text = " ".join(
                 str(resource_ref.get(key) or "")
@@ -562,11 +619,18 @@ class LearningPlanService:
         plan_repository: LearningPlanRepository | None = None,
         knowledge_point_resolver: KnowledgePointResolver | None = None,
         video_resource_resolver: VideoResourceResolver | None = None,
+        review_knowledge_point_loader: Callable[[str], list[str]] | None = None,
+        web_question_ingest: Any | None = None,
     ) -> None:
         self.route_repository = route_repository
         self.plan_repository = plan_repository or InMemoryLearningPlanRepository()
         self.knowledge_point_resolver = knowledge_point_resolver
         self.video_resource_resolver = video_resource_resolver
+        # 返回该学习者到期复习的知识点名称列表；用于把复习知识点纳入每日测验。
+        self.review_knowledge_point_loader = review_knowledge_point_loader
+        # 网络搜索题目补充服务（live 环境可选）；当日知识点在知识库缺失或
+        # 题量不足时，由调用方触发搜索→清洗→去重→入库。
+        self.web_question_ingest = web_question_ingest
 
     def mutation_lock(self, learner_id: str):
         """Serialize plan publications without locking unrelated AI conversations."""
@@ -623,6 +687,7 @@ class LearningPlanService:
                 task_blocks=[],
                 knowledge_point_resolver=self.knowledge_point_resolver,
                 video_resource_resolver=self.video_resource_resolver,
+                quiz_target_count=DAILY_QUIZ_TARGET_COUNT,
             )
         )
         if not items or any(
@@ -634,11 +699,13 @@ class LearningPlanService:
             item for item in items if item.item_type == "knowledge_practice"
         ]
         video_count = sum(item.item_type == "video_section" for item in items)
-        focus_points = [
-            str(item.knowledge_point_name or item.kp_id or "").strip()
-            for item in practice_items
-            if str(item.knowledge_point_name or item.kp_id or "").strip()
-        ]
+        focus_points = list(
+            dict.fromkeys(
+                str(item.knowledge_point_name or item.kp_id or "").strip()
+                for item in practice_items
+                if str(item.knowledge_point_name or item.kp_id or "").strip()
+            )
+        )
         question_count = sum(
             int(item.required_question_count or 0) for item in practice_items
         )
@@ -1376,6 +1443,8 @@ class LearningPlanService:
                 task_blocks=list(self._field(package, "task_blocks") or []),
                 knowledge_point_resolver=self.knowledge_point_resolver,
                 video_resource_resolver=self.video_resource_resolver,
+                quiz_target_count=DAILY_QUIZ_TARGET_COUNT,
+                review_knowledge_points=self._review_knowledge_points(learner_id),
             ),
         )
         if previous is not None:
@@ -1406,6 +1475,30 @@ class LearningPlanService:
             generated_scope="daily_task",
             invalidated_layers=[],
         )
+
+    def _review_knowledge_points(self, learner_id: str) -> list[str]:
+        """Load the learner's due-for-review knowledge point names.
+
+        The loader is injected by the application container and is backed by
+        the canonical review queue. A loader outage must never block daily
+        task generation, so any failure degrades to an empty list.
+        """
+        if self.review_knowledge_point_loader is None:
+            return []
+        try:
+            loaded = self.review_knowledge_point_loader(learner_id)
+        except Exception:
+            return []
+        if not isinstance(loaded, list):
+            return []
+        names: list[str] = []
+        for name in loaded:
+            value = str(name or "").strip()
+            if not value or value == "知识点名称待补充":
+                continue
+            if value not in names:
+                names.append(value)
+        return names[:5]
 
     def record_completed_task_stage_evidence(
         self,

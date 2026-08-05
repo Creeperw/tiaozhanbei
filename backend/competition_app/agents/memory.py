@@ -9,6 +9,7 @@ from pydantic import Field
 from competition_app.contracts.base import AgentEnvelope, ArtifactReference, ContractModel
 from competition_app.contracts.agent_context import build_model_context
 from competition_app.services.conversation_history import (
+    parse_compressed_dialogue_summary,
     sanitize_compressed_dialogue_summary,
     sanitize_conversation_messages,
 )
@@ -94,7 +95,6 @@ class MemoryAgent:
             if should_compress
             else None
         )
-
         governance_skill = prompt_skill_registry.load(
             "memory_agent", "learning_memory_governance"
         )
@@ -162,7 +162,21 @@ class MemoryAgent:
                 context["terminal_trace"].validation("memory_agent", valid=False, detail=str(exc))
             raise
         if compression_task is not None:
-            summary, compression_candidates = await compression_task
+            try:
+                summary, compression_candidates = await compression_task
+            except BaseException as exc:
+                # Compression is an optional side-channel: a model digest that
+                # does not keep the pure user/assistant dialogue format (or any
+                # other transient failure) must never fail the whole workflow.
+                # Degrade to no summary for this turn.
+                summary = None
+                compression_candidates = []
+                if context.get("terminal_trace"):
+                    context["terminal_trace"].validation(
+                        "memory_agent",
+                        valid=False,
+                        detail=f"conversation compression degraded: {exc}",
+                    )
         if context.get("terminal_trace"):
             context["terminal_trace"].validation(
                 "memory_agent", valid=True, detail="MemoryGovernanceModelOutput"
@@ -254,6 +268,37 @@ class MemoryAgent:
             "memory_agent", "conversation_compression"
         )
         try:
+            # Incremental compression: when a durable summary already exists,
+            # only the messages that it did not cover need to be compressed.
+            # The previous digest is parsed back into pure user/assistant
+            # messages so the model folds the new dialogue into the existing
+            # digest instead of re-reading the entire history.  Historical
+            # dialogue never carries system prefixes, evidence or any other
+            # non-formal content.
+            covered_message_ids = set(
+                str(item)
+                for item in context.get(
+                    "compressed_conversation_covered_message_ids"
+                ) or []
+                if str(item).strip()
+            )
+            existing_summary = sanitize_compressed_dialogue_summary(
+                context.get("compressed_conversation_summary")
+            )
+            if existing_summary and covered_message_ids:
+                compression_input = [
+                    *parse_compressed_dialogue_summary(existing_summary),
+                    *[
+                        {"role": item["role"], "content": item.get("content", "")}
+                        for item in messages
+                        if str(item.get("message_id", "")) not in covered_message_ids
+                    ],
+                ]
+            else:
+                compression_input = [
+                    {"role": item["role"], "content": item.get("content", "")}
+                    for item in messages
+                ]
             raw_output = await self.chat_model.complete_json(
                 "memory_agent",
                 build_model_context(
@@ -266,10 +311,7 @@ class MemoryAgent:
                                 "confirmed_preferences", {}
                             )
                         },
-                        "messages": [
-                            {"role": item["role"], "content": item.get("content", "")}
-                            for item in messages
-                        ],
+                        "messages": compression_input,
                         "temporary_constraints": context.get("temporary_constraints", []),
                         "expected_uncertainty": [],
                         "output_schema": MemoryModelOutput.model_json_schema(),

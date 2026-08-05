@@ -1,6 +1,7 @@
 import pytest
 
 from competition_app.agents.plan_contract_compiler import PlanContractCompilerAgent
+from competition_app.llm.openai_compatible import ModelResponseError
 from competition_app.llm.stub import StubChatModel
 
 
@@ -288,6 +289,94 @@ async def test_document_compiler_does_not_invent_missing_semantics() -> None:
     assert envelope.result.issues
 
 
+class SchemaInvalidCompilerModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        return {
+            "status": "compiled",
+            "contract_version": "1.0",
+            "contract": {"scope": "short_term"},
+        }
+
+
+class EmptyCompilerModel:
+    async def complete_json(self, role, payload, on_delta=None):
+        raise ModelResponseError(
+            "Chat model returned empty content",
+            reason="empty_response",
+            failover_eligible=True,
+        )
+
+
+@pytest.mark.asyncio
+async def test_short_term_prose_fallback_compiles_chinese_business_document() -> None:
+    document = """【当前主目标】
+未来14天属于“中西医共同基础”阶段，使用《中医学基础》和《生理学》完成基础概念对照学习。
+
+【具体任务块】
+- 第一个节点：完成《中医学基础》的阴阳五行与藏象范围，产出概念卡。
+- 第二个节点：完成《生理学》的细胞与循环基础，并完成一次闭卷对照练习。
+
+【预期产出】
+一份中西医基础概念对照表和一份闭卷练习记录。
+
+【完成标准】
+两个节点均完成，概念对照无关键遗漏，闭卷练习正确率达到80%以上。
+
+【反馈指标】
+记录完成率、正确率、遗漏项、错因和实际耗时。"""
+    envelope = await PlanContractCompilerAgent(
+        SchemaInvalidCompilerModel()
+    ).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={"current_stage_duration_days": 70},
+    )
+
+    assert envelope.result.status == "compiled"
+    contract = envelope.result.contract
+    assert contract.duration_days == 14
+    assert len(contract.progression_nodes) == 2
+    assert contract.selected_books == ["《中医学基础》", "《生理学》"]
+    assert contract.expected_output.startswith("一份中西医基础概念对照表")
+    assert contract.completion_criteria.startswith("两个节点均完成")
+
+
+@pytest.mark.asyncio
+async def test_short_term_prose_fallback_compiles_when_model_returns_empty() -> None:
+    document = """【当前主目标】
+未来14天属于“中西医共同基础”阶段，使用《中医学基础》和《生理学》完成基础概念对照学习。
+
+【具体任务块】
+- 第一个节点：完成《中医学基础》的阴阳五行与藏象范围，产出概念卡。
+- 第二个节点：完成《生理学》的细胞与循环基础，并完成一次闭卷对照练习。
+
+【预期产出】
+一份中西医基础概念对照表和一份闭卷练习记录。
+
+【完成标准】
+两个节点均完成，概念对照无关键遗漏，闭卷练习正确率达到80%以上。
+
+【反馈指标】
+记录完成率、正确率、遗漏项、错因和实际耗时。"""
+    envelope = await PlanContractCompilerAgent(
+        EmptyCompilerModel()
+    ).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={"current_stage_duration_days": 70},
+    )
+
+    assert envelope.result.status == "compiled"
+    contract = envelope.result.contract
+    assert contract.duration_days == 14
+    assert len(contract.progression_nodes) == 2
+    assert contract.selected_books == ["《中医学基础》", "《生理学》"]
+
+
 class LongTermCompilerModel:
     def __init__(self, *, anchor_indexes: tuple[int, ...]) -> None:
         self.anchor_indexes = anchor_indexes
@@ -338,6 +427,18 @@ class LongTermCompilerModel:
                 "field_anchors": anchors,
             },
         }
+
+
+@pytest.mark.asyncio
+async def test_empty_compiler_response_without_document_still_raises() -> None:
+    with pytest.raises(ModelResponseError):
+        await PlanContractCompilerAgent(EmptyCompilerModel()).compile(
+            compiler_context(),
+            plan_scope="short_term",
+            diagnosis_output={"plan_document": "只说学习方剂。"},
+            trusted_route={},
+            parent_plan_constraints={},
+        )
 
 
 @pytest.mark.asyncio
@@ -406,3 +507,188 @@ async def test_long_term_document_fallback_never_invents_stage_fields() -> None:
 
     assert envelope.result.status == "needs_revision"
     assert envelope.result.issues[0].field_path == "/stages"
+
+
+DAILY_TASK_DOCUMENT = """【今日任务】
+今日学习《中医学基础》第一章绪论第1节“中医学的学科属性”。
+
+【学习章节】
+《中医学基础》第一章 绪论
+
+【重点知识点】
+中医学的学科属性；中医学理论体系形成的标志
+
+【预计用时（分钟）】
+56
+
+【预期产出】
+完成该小节讲义学习与配套章节练习。
+
+【完成标准】
+章节练习已提交并留档，系统可见训练记录。"""
+
+
+@pytest.mark.asyncio
+async def test_empty_compiler_with_daily_task_document_compiles() -> None:
+    envelope = await PlanContractCompilerAgent(EmptyCompilerModel()).compile(
+        compiler_context(),
+        plan_scope="daily_task",
+        diagnosis_output={"plan_document": DAILY_TASK_DOCUMENT},
+        trusted_route={},
+        parent_plan_constraints={},
+    )
+
+    assert envelope.result.status == "compiled"
+    contract = envelope.result.contract
+    assert contract.learning_chapter == "《中医学基础》第一章 绪论"
+    assert contract.estimated_minutes == 56
+    assert len(contract.focus_knowledge_points) == 2
+
+
+@pytest.mark.asyncio
+async def test_empty_compiler_with_long_term_document_still_raises() -> None:
+    # Long-term documents deliberately have no deterministic fallback: a
+    # stage has six independent semantic fields and the old parser invented
+    # ``duration_days=1``.  The model compiler (and Diagnosis revision) must
+    # stay authoritative, so an empty model response is not silently patched.
+    document = (
+        "共30天。阶段一使用《中医基础理论》；阶段二使用《中医内科学》。"
+    )
+    with pytest.raises(ModelResponseError):
+        await PlanContractCompilerAgent(EmptyCompilerModel()).compile(
+            compiler_context(),
+            plan_scope="long_term",
+            diagnosis_output={"plan_document": document},
+            trusted_route={},
+            parent_plan_constraints={},
+        )
+
+
+@pytest.mark.asyncio
+async def test_empty_compiler_with_blank_document_raises() -> None:
+    with pytest.raises(ModelResponseError):
+        await PlanContractCompilerAgent(EmptyCompilerModel()).compile(
+            compiler_context(),
+            plan_scope="short_term",
+            diagnosis_output={"plan_document": "   \n  "},
+            trusted_route={},
+            parent_plan_constraints={},
+        )
+
+
+SHORT_TERM_EDGE_DOCUMENT = """【当前主目标】
+未来{day_count}天使用《{book}》完成{subject}学习。
+
+【具体任务块】
+- 第一个节点：完成{subject}基础范围，产出笔记。
+- 第二个节点：完成{subject}巩固练习，并完成一次闭卷验收。
+
+【预期产出】
+一份学习笔记和一份闭卷练习记录。
+
+【完成标准】
+两个节点均完成，练习记录留档。"""
+
+
+@pytest.mark.asyncio
+async def test_fallback_rejects_duration_exceeding_parent_stage_cap() -> None:
+    document = SHORT_TERM_EDGE_DOCUMENT.format(
+        day_count="14", book="《中医学基础》", subject="绪论"
+    )
+    envelope = await PlanContractCompilerAgent(RejectingCompilerModel()).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={"current_stage_duration_days": 7},
+    )
+
+    assert envelope.result.status == "needs_revision"
+
+
+@pytest.mark.asyncio
+async def test_fallback_rejects_single_progression_node() -> None:
+    document = """【当前主目标】
+未来7天使用《中医学基础》完成绪论学习。
+
+【具体任务块】
+- 第一个节点：完成绪论基础范围，产出笔记。
+
+【预期产出】
+一份学习笔记。
+
+【完成标准】
+节点完成，练习记录留档。"""
+    envelope = await PlanContractCompilerAgent(RejectingCompilerModel()).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={"current_stage_duration_days": 30},
+    )
+
+    assert envelope.result.status == "needs_revision"
+
+
+@pytest.mark.asyncio
+async def test_fallback_rejects_three_books() -> None:
+    document = """【当前主目标】
+未来7天使用《中医学基础》《方剂学》《中药学》完成综合学习。
+
+【具体任务块】
+- 第一个节点：完成《中医学基础》绪论范围，产出笔记。
+- 第二个节点：完成《方剂学》与《中药学》基础对照练习。
+
+【预期产出】
+一份对照笔记。
+
+【完成标准】
+两个节点均完成，记录留档。"""
+    envelope = await PlanContractCompilerAgent(RejectingCompilerModel()).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={"current_stage_duration_days": 30},
+    )
+
+    assert envelope.result.status == "needs_revision"
+
+
+@pytest.mark.asyncio
+async def test_fallback_rejects_missing_completion_criteria() -> None:
+    document = """【当前主目标】
+未来7天使用《中医学基础》完成绪论学习。
+
+【具体任务块】
+- 第一个节点：完成绪论基础范围，产出笔记。
+- 第二个节点：完成绪论巩固练习。
+
+【预期产出】
+一份学习笔记。"""
+    envelope = await PlanContractCompilerAgent(RejectingCompilerModel()).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={"current_stage_duration_days": 30},
+    )
+
+    assert envelope.result.status == "needs_revision"
+
+
+@pytest.mark.asyncio
+async def test_chinese_week_duration_compiles_to_days() -> None:
+    document = SHORT_TERM_EDGE_DOCUMENT.format(
+        day_count="两周", book="《中医学基础》", subject="绪论"
+    )
+    envelope = await PlanContractCompilerAgent(RejectingCompilerModel()).compile(
+        compiler_context(),
+        plan_scope="short_term",
+        diagnosis_output={"plan_document": document},
+        trusted_route={},
+        parent_plan_constraints={"current_stage_duration_days": 30},
+    )
+
+    assert envelope.result.status == "compiled"
+    assert envelope.result.contract.duration_days == 14

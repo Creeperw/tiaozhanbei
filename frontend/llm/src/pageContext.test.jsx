@@ -15,7 +15,7 @@ describe('readCurrentPage', () => {
       </main>
     `;
 
-    const result = readCurrentPage({ pageType: 'practice', pageTitle: '训练工坊' });
+    const result = readCurrentPage({ pageType: 'practice', pageTitle: '练习工坊' });
 
     expect(result.visible_text).toContain('四君子汤专项练习');
     expect(result.visible_text).toContain('四君子汤由哪些药物组成？');

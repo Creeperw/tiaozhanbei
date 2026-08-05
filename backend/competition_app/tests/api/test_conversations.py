@@ -47,6 +47,23 @@ def test_conversation_crud_is_owned_by_authenticated_user(tmp_path: Path) -> Non
     assert alice.delete(f"/api/v1/conversations/{conversation_id}").status_code == 200
 
 
+def test_conversation_list_hides_internal_due_review_dispatches(tmp_path: Path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    client = TestClient(create_app(container))
+    user = register(client, "conversation-internal-review")
+    repository = container.review_card_use_case.conversation_repository
+    repository.create_session(
+        "THREAD_DUE_REVIEW_INTERNAL_1",
+        user["user_id"],
+        "请为以下已到期知识点生成一张可立即学习的复习卡：四君子汤",
+    )
+    visible = client.post("/api/v1/conversations", json={"title": "方剂问答"}).json()
+
+    sessions = client.get("/api/v1/conversations").json()
+
+    assert [session["id"] for session in sessions] == [visible["id"]]
+
+
 def test_workflow_messages_are_persisted_under_conversation_not_run(tmp_path: Path) -> None:
     client = client_for(tmp_path)
     register(client, "conversation-flow")

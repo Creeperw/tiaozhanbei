@@ -84,7 +84,7 @@ class PlannerModelOutput(BaseModel):
     )
     routing_reason: str = Field(
         min_length=1,
-        max_length=500,
+        max_length=1500,
         description="说明用户交付目标、所选Agent的必要性、未选资源Agent的原因以及审核需求。",
     )
     risk_level: Literal["low", "medium", "high"] = Field(

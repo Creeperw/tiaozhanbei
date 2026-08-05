@@ -93,7 +93,7 @@ export default function QuestionFavoritesPanel({ onNavigate }) {
         resource_id: item.resource_id || item.favorite_id,
         title: item.title,
         content: item.content || {},
-        source: item.source || '训练工坊',
+        source: item.source || '练习工坊',
       });
       await deleteFavorite(item.favorite_id);
       setPendingMove(null);

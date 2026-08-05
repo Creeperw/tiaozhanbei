@@ -41,7 +41,7 @@ const TOP_MODULES = [
   { icon: Target, label: '学习目标', meta: '选择资格考试与学习方向' },
   { icon: BookOpen, label: '学习路径', meta: '查看个性化阶段学习路线' },
   { icon: Bot, label: '学习工坊', meta: '使用助教、图谱和知识库' },
-  { icon: ClipboardCheck, label: '训练工坊', meta: '完成专项题与模拟训练' },
+  { icon: ClipboardCheck, label: '练习工坊', meta: '完成专项题与模拟练习' },
   { icon: BarChart3, label: '个性数据', meta: '查看学习趋势与成长记录' },
 ];
 
@@ -66,7 +66,7 @@ const LEGACY_GUIDE_STEPS = [
     key: 'home', label: '平台首页', className: 'home-guide-target--home', pointer: { x: '34.38%', y: '4.87%' },
     scenes: [
       { title: '定位平台首页', description: '点击顶部“平台首页”，可以随时从其他功能返回统一的学习入口。', details: ['快速回到学习工作台', '重新查看当前任务与平台能力'], view: 'source' },
-      { title: '认识六大顶部模块', description: '顶部导航集中连接平台首页、学习目标、学习路径、学习工坊、训练工坊和个性数据。', details: ['六个模块覆盖完整学习流程', '在任意页面都能快速切换'], view: 'home-nav' },
+      { title: '认识六大顶部模块', description: '顶部导航集中连接平台首页、学习目标、学习路径、学习工坊、练习工坊和个性数据。', details: ['六个模块覆盖完整学习流程', '在任意页面都能快速切换'], view: 'home-nav' },
       { title: '认识四大核心功能', description: '首页下方展示多智能体协同、个性化学习路径、知识图谱驱动和数据驱动成长。', details: ['点击卡片查看能力详情', '四项能力共同形成学习闭环'], view: 'home-capabilities' },
     ],
   },
@@ -94,9 +94,9 @@ const LEGACY_GUIDE_STEPS = [
     ],
   },
   {
-    key: 'training', label: '训练工坊', className: 'home-guide-target--training', pointer: { x: '59.26%', y: '4.70%' },
+    key: 'training', label: '练习工坊', className: 'home-guide-target--training', pointer: { x: '59.26%', y: '4.70%' },
     scenes: [
-      { title: '打开训练工坊', description: '点击“训练工坊”选择题目训练、模拟患者、错题变式或试卷生成。', details: ['四种训练模式统一入口', '训练记录自动归入学习数据'], view: 'source' },
+      { title: '打开练习工坊', description: '点击“练习工坊”选择题目练习、模拟患者、错题变式或试卷生成。', details: ['四种练习模式统一入口', '练习记录自动归入学习数据'], view: 'source' },
       { title: '模拟问诊演练', description: '进入系统真实的模拟问诊界面，医生会围绕主诉、病程和伴随症状连续提问，患者根据病例逐步作答。', details: ['动态演示一次连续问诊', '问诊内容与轮次同步更新'], view: 'consultation-live' },
       { title: '使用智能组卷', description: '进入系统真实的智能组卷界面，向下浏览出题范围、题型题量、作答模式和组卷预览。', details: ['动态向下浏览完整组卷配置', '支持按目标自动组织题目内容'], view: 'paper-scroll' },
     ],
@@ -138,10 +138,10 @@ const GUIDE_STEPS = [
     ],
   },
   {
-    key: 'result-overview', label: '训练工坊', className: 'home-guide-target--training', sourceTargetClass: 'home-guide-target--training-nav', pointer: { x: '51.3%', y: '4.2%' },
-    title: '四、检验学习成果', description: '训练工坊中不仅包含知识点专项训练，综合真题，错题集等基础功能，还有错题变式，智能组卷和AI模拟病患等创新性功能，辅助您全面掌握重难点模块',
+    key: 'result-overview', label: '练习工坊', className: 'home-guide-target--training', sourceTargetClass: 'home-guide-target--training-nav', pointer: { x: '51.3%', y: '4.2%' },
+    title: '四、检验学习成果', description: '练习工坊中不仅包含知识点专项练习、综合真题、错题集等基础功能，还有错题变式、智能组卷和AI模拟病患等创新性功能，辅助您全面掌握重难点模块',
     scenes: [
-      { title: '进入训练工坊', description: '', details: [], view: 'source' },
+      { title: '进入练习工坊', description: '', details: [], view: 'source' },
       { title: '浏览综合套题与历年真题', description: '', details: [], view: 'comprehensive-paper' },
       { title: '模拟问诊演练', description: '', details: [], view: 'consultation-live' },
       { title: '使用智能组卷', description: '', details: [], view: 'paper-scroll' },
@@ -169,7 +169,7 @@ const DESCRIPTION_HIGHLIGHTS = [
   ['目标证书'],
   ['具体学习情况', '个性化', '长短期学习路径规划', '学习资源'],
   ['学习路径', '个性化需求', '海量学习教材', '视频辅助学习'],
-  ['训练工坊', '综合真题', '错题变式', '智能组卷', 'AI模拟病患'],
+  ['练习工坊', '综合真题', '错题变式', '智能组卷', 'AI模拟病患'],
   ['基础知识点遗忘', '难题解决不了', '时诊智训助教'],
   ['实时保存', '实时更新', '“个性数据”'],
 ];
@@ -234,7 +234,7 @@ const PRACTICE_ITEMS = [
 ];
 
 const TRAINING_ITEMS = [
-  { icon: ClipboardCheck, label: '题目训练', meta: '按知识点专项练习', selected: true },
+  { icon: ClipboardCheck, label: '题目练习', meta: '按知识点专项练习', selected: true },
   { icon: UserRound, label: 'AI 病患模拟', meta: '练习临床问诊思路' },
   { icon: BookOpen, label: '错题变式', meta: '针对错误举一反三' },
   { icon: GraduationCap, label: '试卷生成', meta: '创建综合模拟试卷' },
@@ -406,7 +406,7 @@ function SmartPaperScrollDemo() {
     <div className="home-guide__paper-demo" data-testid="smart-paper-scroll-demo">
       <div className="home-guide__paper-scale">
         <div className="home-guide__paper-track">
-          <DemoPageHeader title="训练工坊 · 智能组卷" />
+          <DemoPageHeader title="练习工坊 · 智能组卷" />
           <SmartPaperPanel guideDemo />
         </div>
       </div>
@@ -475,7 +475,7 @@ function ClinicalImageDemo() {
 function ComprehensivePaperDemo() {
   return (
     <div className="home-guide__comprehensive-demo" data-testid="comprehensive-paper-demo">
-      <DemoPageHeader title="训练工坊 · 综合套题" />
+      <DemoPageHeader title="练习工坊 · 综合套题" />
       <div className="home-guide__comprehensive-viewport"><div className="home-guide__comprehensive-track">
         <section className="home-guide__paper-selector"><h3>选择职业资格考试</h3><button type="button">中医执业药师职业资格考试</button><button type="button">中医执业医师资格考试</button></section>
         <section className="home-guide__paper-years"><h3>历年真题</h3><p>按年份查看完整试卷与解析</p>{['2025 年真题','2024 年真题','2023 年真题','2022 年真题'].map((item) => <div key={item}>{item}<span>查看试卷 ��</span></div>)}</section>
@@ -490,7 +490,7 @@ function getPreview(scene) {
   if (scene.view === 'certificates') return { eyebrow: '目标设置', heading: '选择你的资格考试目标', summary: '左侧说明目标作用，右侧列出平台支持的五类证书。', items: CERTIFICATES, layout: 'certificates' };
   if (scene.view.startsWith('path')) return { eyebrow: '个性化路径', heading: '中医执业医师学习路线', summary: '按照掌握情况动态安排阶段与任务。', items: PATH_ITEMS, layout: 'list' };
   if (scene.view.startsWith('practice')) return { eyebrow: '学习工具', heading: '选择适合当前问题的工具', summary: '携带当前学习上下文进入工具，无需重复说明。', items: PRACTICE_ITEMS, layout: 'grid' };
-  if (scene.view.startsWith('training')) return { eyebrow: '训练中心', heading: '选择本次训练模式', summary: '训练结果会同步更新错题记录和能力数据。', items: TRAINING_ITEMS, layout: 'grid' };
+  if (scene.view.startsWith('training')) return { eyebrow: '练习中心', heading: '选择本次练习模式', summary: '练习结果会同步更新错题记录和能力数据。', items: TRAINING_ITEMS, layout: 'grid' };
   if (scene.view.startsWith('profile')) return { eyebrow: '学习数据', heading: '本周学习表现', summary: '专注 6.4 小时 · 任务完成率 86% · 掌握度 74%', items: [{ icon: BarChart3, label: '成长趋势', meta: '较上周提升 8%', selected: true }, { icon: Target, label: '薄弱知识点', meta: '5 个待加强' }], layout: 'list' };
   return { eyebrow: '平台能力', heading: '四项能力贯穿学习过程', summary: '从规划到反馈，各能力模块相互协同。', items: CORE_CAPABILITIES, layout: 'grid' };
 }

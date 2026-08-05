@@ -577,9 +577,13 @@ async def test_diagnosis_sends_natural_language_draft_schema_to_the_model(
     schema = payload["output_schema"]
 
     assert payload["plan_scope"] == scope
-    assert set(schema["properties"]) == {
-        "plan_document",
-        "selected_path_candidate_id",
-    }
+    # daily_task stays inside the current short-term plan and never selects
+    # a route candidate, so its schema omits selected_path_candidate_id.
+    expected_properties = (
+        {"plan_document"}
+        if scope == "daily_task"
+        else {"plan_document", "selected_path_candidate_id"}
+    )
+    assert set(schema["properties"]) == expected_properties
     assert schema["required"] == ["plan_document"]
     assert schema["additionalProperties"] is False

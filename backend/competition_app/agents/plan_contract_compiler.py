@@ -20,6 +20,7 @@ from competition_app.contracts.plan_compilation import (
     PlanContractNeedsRevision,
 )
 from competition_app.llm.base import ChatModel
+from competition_app.llm.openai_compatible import ModelResponseError
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.stub import StubChatModel
 
@@ -196,19 +197,48 @@ class PlanContractCompilerAgent:
             ),
             "output_schema": self._model_output_schema(include_managed_text=False),
         }
-        raw = await self.chat_model.complete_json(
-            "plan_contract_compiler",
-            build_model_context(
-                context,
-                target_agent="plan_contract_compiler",
-                prompt_skill=skill,
-                payload=payload,
-                permission_note=(
-                    "内部编译器只可提取当前层规划并引用原文；不得创作、补写、"
-                    "改写计划，不得生成系统ID、路线事实或持久化字段。"
+        try:
+            raw = await self.chat_model.complete_json(
+                "plan_contract_compiler",
+                build_model_context(
+                    context,
+                    target_agent="plan_contract_compiler",
+                    prompt_skill=skill,
+                    payload=payload,
+                    permission_note=(
+                        "内部编译器只可提取当前层规划并引用原文；不得创作、补写、"
+                        "改写计划，不得生成系统ID、路线事实或持久化字段。"
+                    ),
                 ),
-            ),
-        )
+            )
+        except ModelResponseError as exc:
+            # The provider returned no content at all (for example the
+            # thinking model emitted only reasoning).  A complete prose
+            # document must still be compilable deterministically; treat
+            # this exactly like a ``needs_revision`` model result and run
+            # the same plan_document fallback instead of failing the whole
+            # planning run.
+            if (
+                isinstance(diagnosis_output.get("plan_document"), str)
+                and diagnosis_output["plan_document"].strip()
+            ):
+                doc_result = self._compile_from_plan_document(
+                    diagnosis_output["plan_document"],
+                    plan_scope,
+                    parent_plan_constraints,
+                )
+                if doc_result is not None:
+                    doc_issues = self._source_issues(
+                        doc_result,
+                        diagnosis_output,
+                        plan_scope,
+                    )
+                    if not doc_issues:
+                        return PlanCompilationEnvelope(
+                            result=doc_result,
+                            source_digest=source_digest,
+                        )
+            raise
         normalized_raw = self._normalize_model_output(raw, diagnosis_output)
         # The compiler model may return extracted field values but omit the
         # corresponding field_anchors entries (unstable extraction).  Backfill
@@ -831,37 +861,101 @@ class PlanContractCompilerAgent:
     def _parse_plan_document_sections(
         plan_document: str,
     ) -> dict[str, list[str]]:
-        """Split the natural-language document into ``label: lines`` buckets.
+        """Split a plan document into canonical semantic sections.
 
-        The Diagnosis document uses explicit English tags such as
-        ``duration_days：7``, ``progression_nodes：`` or ``selected_books：``
-        followed by ``- `` list items.  This deterministic parser extracts each
-        section verbatim so the backend can recompile a contract without
-        relying on the compiler model when the model gives up.
+        Older drafts used English compiler tags while production Diagnosis
+        writes natural-language Chinese headings.  Both are accepted here so
+        a complete business document does not become unpublished solely
+        because the extraction model returned an invalid schema.
         """
 
         import re
 
-        tag_re = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*)：")
+        aliases = {
+            "当前主目标": "current_goal",
+            "长期目标保温": "maintenance",
+            "具体任务块": "task_blocks",
+            "推进节点": "progression_nodes",
+            "周期节点": "progression_nodes",
+            "复习任务": "review_tasks",
+            "反馈指标": "feedback_metrics",
+            "预期产出": "expected_output",
+            "可观察产出": "expected_output",
+            "完成标准": "completion_criteria",
+            "验收标准": "completion_criteria",
+            "当前教材": "selected_books",
+            "选用教材": "selected_books",
+            "具体教材": "selected_books",
+            "所属长期阶段": "selected_stage_id",
+            "当前长期阶段": "selected_stage_id",
+            "当前阶段": "selected_stage_id",
+            "周期天数": "duration_days",
+            "计划周期": "duration_days",
+            "短期周期": "duration_days",
+            "今日任务": "daily_task_content",
+            "当日任务正文": "daily_task_content",
+            "学习章节": "learning_chapter",
+            "今日章节": "learning_chapter",
+            "教材章节": "learning_chapter",
+            "重点知识点": "focus_knowledge_points",
+            "聚焦知识点": "focus_knowledge_points",
+            "今日知识点": "focus_knowledge_points",
+            "预计用时": "estimated_minutes",
+            "预计时长": "estimated_minutes",
+            "预计分钟数": "estimated_minutes",
+        }
+        english_tag_re = re.compile(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*[：:]")
+        heading_re = re.compile(r"^#{1,6}\s*(.+?)\s*$")
+        bracket_heading_re = re.compile(r"^【([^】]+)】\s*(.*)$")
+        label_re = re.compile(r"^([^：:]{1,24})\s*[：:]\s*(.*)$")
         sections: dict[str, list[str]] = {}
         current: str | None = None
         current_lines: list[str] = []
+
+        def canonical_label(value: str) -> str | None:
+            compact = re.sub(r"[\s·（(].*$", "", value.strip())
+            if compact in aliases:
+                return aliases[compact]
+            for label, canonical in aliases.items():
+                if label in value:
+                    return canonical
+            return None
+
+        def start_section(name: str, rest: str = "") -> None:
+            nonlocal current, current_lines
+            if current is not None:
+                sections.setdefault(current, []).extend(current_lines)
+            current = name
+            current_lines = [rest.strip()] if rest.strip() else []
+
         for raw_line in plan_document.split("\n"):
-            match = tag_re.match(raw_line)
+            line = raw_line.strip()
+            match = english_tag_re.match(line)
             if match:
-                if current is not None:
-                    sections[current] = current_lines
-                current = match.group(1)
-                current_lines = []
-                rest = raw_line[match.end():].strip()
-                if rest:
-                    current_lines.append(rest)
-            elif current is not None:
-                stripped = raw_line.strip()
-                if stripped:
-                    current_lines.append(stripped)
+                start_section(match.group(1), line[match.end():])
+                continue
+            heading = heading_re.match(line)
+            if heading:
+                canonical = canonical_label(heading.group(1))
+                if canonical:
+                    start_section(canonical)
+                    continue
+            bracket = bracket_heading_re.match(line)
+            if bracket:
+                canonical = canonical_label(bracket.group(1))
+                if canonical:
+                    start_section(canonical, bracket.group(2))
+                    continue
+            labeled = label_re.match(line)
+            if labeled:
+                canonical = canonical_label(labeled.group(1))
+                if canonical:
+                    start_section(canonical, labeled.group(2))
+                    continue
+            if current is not None and line:
+                current_lines.append(line)
         if current is not None:
-            sections[current] = current_lines
+            sections.setdefault(current, []).extend(current_lines)
         return sections
 
     @classmethod
@@ -915,12 +1009,21 @@ class PlanContractCompilerAgent:
         return values
 
     @classmethod
-    def _extract_books(cls, lines: list[str]) -> list[str]:
+    def _extract_books(
+        cls,
+        lines: list[str],
+        *,
+        allow_bare: bool = False,
+    ) -> list[str]:
         """Extract clean book names from list items or inline ``《A》、《B》``.
 
         The Diagnosis document writes books either as ``- 《中医学基础》`` list
         items or as an inline ``selected_books：《中医学基础》、《方剂学》``
         line.  Both forms must yield separate book entries.
+
+        Bare names (without book-mark quotes) are only accepted when
+        ``allow_bare`` is set (the dedicated book-selection section).  Free-form
+        prose lines such as task blocks must never become book names.
         """
 
         import re
@@ -939,6 +1042,8 @@ class PlanContractCompilerAgent:
                     book = f"《{name}》".strip()
                     if book and book not in books:
                         books.append(book)
+                continue
+            if not allow_bare:
                 continue
             # Bare names separated by commas / slashes (no book-mark quotes).
             if text and any(sep in text for sep in ("、", "，", ",", "/", "；", ";")):
@@ -977,6 +1082,8 @@ class PlanContractCompilerAgent:
         parent_plan_constraints: dict[str, Any],
     ) -> CompiledPlanContractResult | None:
         duration = cls._section_int(sections, "duration_days")
+        if duration is None:
+            duration = cls._extract_short_term_duration(plan_document)
         if duration is None or duration <= 0:
             return None
         limit = parent_plan_constraints.get("current_stage_duration_days")
@@ -984,12 +1091,24 @@ class PlanContractCompilerAgent:
             return None
         nodes = cls._strip_list_prefix(sections.get("progression_nodes") or [])
         if len(nodes) < 2:
+            nodes = cls._extract_progression_nodes(
+                sections.get("task_blocks") or []
+            )
+        if len(nodes) < 2:
             return None
         expected_output = cls._section_value(sections, "expected_output")
         completion_criteria = cls._section_value(sections, "completion_criteria")
         if not expected_output or not completion_criteria:
             return None
-        books = cls._extract_books(sections.get("selected_books") or [])
+        books = cls._extract_books(
+            sections.get("selected_books") or [],
+            allow_bare=True,
+        )
+        if not books:
+            books = cls._extract_books(
+                (sections.get("current_goal") or [])
+                + (sections.get("task_blocks") or [])
+            )
         if not books or len(books) > 2:
             return None
         stage_id = cls._section_value(sections, "selected_stage_id") or None
@@ -1003,7 +1122,11 @@ class PlanContractCompilerAgent:
                 {"source_field": "plan_document", "source_quote": content}
             ],
             "/duration_days": [
-                {"source_field": "plan_document", "source_quote": str(duration)}
+                {
+                    "source_field": "plan_document",
+                    "source_quote": cls._duration_source_quote(plan_document)
+                    or str(duration),
+                }
             ],
             "/progression_nodes": [
                 {"source_field": "plan_document", "source_quote": node}
@@ -1042,6 +1165,89 @@ class PlanContractCompilerAgent:
             field_anchors=field_anchors,
         )
         return CompiledPlanContractResult(status="compiled", contract=contract)
+
+    @staticmethod
+    @staticmethod
+    def _duration_source_quote(plan_document: str) -> str | None:
+        """Return the verbatim duration phrase actually written in the document.
+
+        A derived duration (for example ``两周`` → 14) cannot be anchored by
+        the numeric value because the number is not verbatim in the prose.
+        Anchor the original phrase instead so strict source validation still
+        passes only when the duration genuinely appears in the document.
+        """
+
+        import re
+
+        day_match = re.search(r"\d{1,3}\s*天", plan_document)
+        if day_match:
+            return day_match.group(0)
+        week_match = re.search(
+            r"(?:[一两二三四五六七八九十]{1,3})\s*(?:个)?\s*(?:完整)?周|"
+            r"(?:\d{1,2})\s*(?:个)?\s*(?:完整)?周",
+            plan_document,
+        )
+        if week_match:
+            return week_match.group(0)
+        return None
+
+    @staticmethod
+    def _extract_short_term_duration(plan_document: str) -> int | None:
+        patterns = (
+            r"(?:本|当前|整个)?(?:短期)?(?:计划|周期)[^。；;\n]{0,16}?(\d{1,3})\s*天",
+            r"未来\s*(\d{1,3})\s*天",
+            r"(?:共|为期)\s*(\d{1,3})\s*天",
+            r"(\d{1,3})\s*天(?:内|周期|计划)",
+        )
+        for pattern in patterns:
+            match = re.search(pattern, plan_document)
+            if match:
+                return int(match.group(1))
+        week_match = re.search(
+            r"(?:本|未来|为期|共)?\s*(\d{1,2})\s*(?:个)?(?:完整)?周",
+            plan_document,
+        )
+        if week_match:
+            return int(week_match.group(1)) * 7
+        week_cn_match = re.search(
+            r"([一两二三四五六七八九十]{1,3})\s*(?:个)?\s*(?:完整)?周",
+            plan_document,
+        )
+        if week_cn_match:
+            token = week_cn_match.group(1)
+            cn_digits = {
+                "一": 1, "两": 2, "二": 2, "三": 3, "四": 4,
+                "五": 5, "六": 6, "七": 7, "八": 8, "九": 9,
+            }
+            if token in cn_digits:
+                return cn_digits[token] * 7
+            if token == "十":
+                return 10 * 7
+            if token.startswith("十"):
+                tail = cn_digits.get(token[1:], 0)
+                return (10 + tail) * 7
+            if token.endswith("十"):
+                head = cn_digits.get(token[0], 0)
+                return head * 10 * 7
+        if "一周" in plan_document or "本周" in plan_document:
+            return 7
+        return None
+
+    @classmethod
+    def _extract_progression_nodes(cls, lines: list[str]) -> list[str]:
+        nodes: list[str] = []
+        for value in cls._strip_list_prefix(lines):
+            for part in re.split(r"[；;]", value):
+                text = part.strip()
+                if not text:
+                    continue
+                if re.match(
+                    r"^(?:第[一二三四五六七八九十\d]+(?:个)?(?:节点|阶段|步)|"
+                    r"节点[一二三四五六七八九十\d]+|先|随后|然后|最后)",
+                    text,
+                ):
+                    nodes.append(text)
+        return nodes[:12]
 
     @classmethod
     def _compile_long_term_from_plan_document(
@@ -1105,7 +1311,14 @@ class PlanContractCompilerAgent:
     ) -> CompiledPlanContractResult | None:
         content = plan_document.strip()
         chapter = cls._section_value(sections, "learning_chapter")
-        points = cls._strip_list_prefix(sections.get("focus_knowledge_points") or [])
+        points = [
+            part.strip()
+            for value in cls._strip_list_prefix(
+                sections.get("focus_knowledge_points") or []
+            )
+            for part in re.split(r"[；;、，,]", value)
+            if part.strip()
+        ]
         minutes = cls._section_int(sections, "estimated_minutes")
         expected_output = cls._section_value(sections, "expected_output")
         completion_criteria = cls._section_value(sections, "completion_criteria")

@@ -153,6 +153,17 @@ export default function App() {
     }
   };
 
+  const consumeAssistantNewConversation = useCallback(() => {
+    setPageIntent((current) => {
+      if (getIntentPage(current) !== 'assistant' || !current.params?.newConversation) {
+        return current;
+      }
+      const params = { ...current.params };
+      delete params.newConversation;
+      return createPageIntent({ ...current, params });
+    });
+  }, []);
+
   const shellConfig = getAppShellConfig({ currentUser, currentPage: shellPage, selectedSessionId });
   const readAssistantPageContext = useCallback(() => readCurrentPage({
     pageType: shellConfig.currentPage,
@@ -293,6 +304,7 @@ export default function App() {
             preferredSessionId={selectedSessionId}
             initialContext={pageIntent.params.context || ''}
             forceNewConversation={Boolean(pageIntent.params.newConversation)}
+            onNewConversationConsumed={consumeAssistantNewConversation}
           />
         );
       case 'practice':

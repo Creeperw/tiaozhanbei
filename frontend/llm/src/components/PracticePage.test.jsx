@@ -137,38 +137,39 @@ describe('PracticePage training modules', () => {
   it('shows the training workshop overview before a learner selects a module', () => {
     render(<PracticePage />);
 
-    expect(screen.getByRole('heading', { name: '训练工坊' })).toBeInTheDocument();
-    expect(screen.getByText('准备开始今天的训练')).toBeInTheDocument();
-    const trainingModules = screen.getByRole('region', { name: '训练模块' });
+    expect(screen.getByRole('heading', { name: '练习工坊' })).toBeInTheDocument();
+    expect(screen.getByText('准备开始今天的练习')).toBeInTheDocument();
+    const trainingModules = screen.getByRole('region', { name: '练习模块' });
     const trainingButtons = within(trainingModules).getAllByRole('button')
       .filter((button) => button.querySelector('strong'));
     expect(trainingButtons.map((button) => button.querySelector('strong')?.textContent)).toEqual([
       '专项特训',
       '知识点特训',
-      '智能组卷',
-      '真题模拟',
-      '模拟病患',
       '错题重做',
+      '综合套题',
+      '智能组卷',
+      '模拟病患',
     ]);
     expect(trainingButtons.every((button) => Boolean(button.querySelector('small')?.textContent?.trim()))).toBe(true);
-    expect(screen.getByRole('button', { name: /错题库/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /收藏夹/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /笔记本/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '其他功能' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /历史记录/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /我的题单/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /笔记本/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /错题变式/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '练习工坊模块' })).not.toBeInTheDocument();
   });
 
   it('moves the learning summary into the hero and removes upload from training tools', () => {
     render(<PracticePage />);
 
-    const trainingModules = screen.getByRole('region', { name: '训练模块' });
+    const trainingModules = screen.getByRole('region', { name: '练习模块' });
     expect(within(trainingModules).queryByRole('region', { name: '学习概览' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: '学习概览' })).toBeInTheDocument();
 
     const learningTools = screen.getByRole('complementary', { name: '学习工具' });
     expect(
       within(learningTools).getAllByRole('button').map((button) => button.querySelector('strong')?.textContent),
-    ).toEqual(['错题库', '收藏夹', '笔记本']);
+    ).toEqual(['历史记录', '我的题单']);
     expect(within(learningTools).queryByText('上传资源')).not.toBeInTheDocument();
   });
 
@@ -261,18 +262,18 @@ describe('PracticePage training modules', () => {
   it('opens training history from the workshop tools and returns to the workshop overview', async () => {
     render(<PracticePage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /错题库/ }));
+    fireEvent.click(screen.getByRole('button', { name: /历史记录/ }));
 
-    expect(await screen.findByRole('heading', { name: '错题库' })).toBeInTheDocument();
-    expect(screen.getByTestId('mistake-variation-panel')).toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '历史记录' })).toBeInTheDocument();
+    expect(screen.getByTestId('training-history-panel')).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '练习工坊模块' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '返回训练工坊' }));
-    expect(screen.getByRole('heading', { name: '训练工坊' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '返回练习工坊' }));
+    expect(screen.getByRole('heading', { name: '练习工坊' })).toBeInTheDocument();
   });
 
   it.each([
-    ['真题模拟', 'atlas-practice-scope'],
+    ['综合套题', 'atlas-practice-scope'],
     ['智能组卷', 'paper-generation-panel'],
     ['知识点特训', 'knowledge-point-training-hub'],
     ['模拟病患', 'simulated-patient-chat'],
@@ -285,12 +286,11 @@ describe('PracticePage training modules', () => {
       expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
     }
     expect(screen.getByTestId(panelTestId)).toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '练习工坊模块' })).not.toBeInTheDocument();
   });
 
   it.each([
-    ['收藏夹', 'question-favorites-panel'],
-    ['笔记本', 'study-notes-panel'],
+    ['我的题单', 'question-favorites-panel'],
   ])('opens the %s personal library', async (title, panelTestId) => {
     render(<PracticePage />);
 
@@ -306,7 +306,7 @@ describe('PracticePage training modules', () => {
     fireEvent.click(screen.getByRole('button', { name: /专项特训/ }));
 
     expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '客观题' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '案例简答' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('returns a deep-linked daily task to its caller instead of the generic workshop overview', () => {
@@ -343,7 +343,7 @@ describe('PracticePage training modules', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '返回训练工坊' }));
+    fireEvent.click(screen.getByRole('button', { name: '返回学习路径' }));
     expect(onNavigate).toHaveBeenCalledWith(returnTo);
   });
 
@@ -376,28 +376,6 @@ describe('PracticePage training modules', () => {
     expect(await screen.findByTestId('knowledge-point-training-hub')).toHaveTextContent('KP_SIJUNZI:四君子汤:ITEM_1');
   });
 
-  it('keeps the standalone video fallback for unresolved daily video tasks', () => {
-    render(
-      <PracticePage
-        navigationContext={{
-          view: 'workspace',
-          taskType: 'video_learning',
-          taskItemId: 'ITEM_VIDEO',
-          directVideo: { title: '章节精讲', url: 'https://example.test/video.mp4' },
-        }}
-      />,
-    );
-
-    expect(screen.getByTestId('video-learning-panel')).toHaveAttribute(
-      'data-video-title',
-      '章节精讲',
-    );
-    expect(screen.getByTestId('video-learning-panel')).toHaveAttribute(
-      'data-task-item-id',
-      'ITEM_VIDEO',
-    );
-  });
-
   it('opens a single training page without the shared module tabs', async () => {
     render(<PracticePage navigationContext={{
       trackId: 'TRACK_1',
@@ -408,12 +386,12 @@ describe('PracticePage training modules', () => {
     }} />);
 
     expect(await screen.findByTestId('atlas-practice-scope')).toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: '练习工坊模块' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '题目训练' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'AI 病患模拟' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '错题变式' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: '试卷生成' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '真题模拟' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '综合套题' })).toBeInTheDocument();
     expect(screen.queryByText('循证训练台')).not.toBeInTheDocument();
     expect(screen.queryByText('当前目标：')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Knowledge cards/ })).not.toBeInTheDocument();
@@ -440,17 +418,6 @@ describe('PracticePage training modules', () => {
     expect(screen.queryByRole('button', { name: '提交模拟答案' })).not.toBeInTheDocument();
   });
 
-  it('keeps old upload links functional after moving the entry to personal data', async () => {
-    render(<PracticePage navigationContext={{ taskType: 'resource_upload' }} />);
-
-    fireEvent.click(screen.getByRole('button', { name: /\u4e0a\u4f20\u9898\u5e93/ }));
-
-    expect(await screen.findByTestId('question-workspace-page')).toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: '训练工坊模块' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: '移动端训练视图' })).not.toBeInTheDocument();
-    expect(screen.queryByTestId('practice-result-panel')).not.toBeInTheDocument();
-  });
-
   it.each([
     ['practice_grading', 'atlas-practice-scope'],
     ['case_training', 'simulated-patient-chat'],
@@ -463,9 +430,9 @@ describe('PracticePage training modules', () => {
   });
 
   it('opens the training history module directly from its page intent', async () => {
-    render(<PracticePage navigationContext={{ taskType: 'mistake_variation' }} />);
+    render(<PracticePage navigationContext={{ taskType: 'training_history' }} />);
 
-    expect(await screen.findByTestId('mistake-variation-panel')).toBeInTheDocument();
+    expect(await screen.findByTestId('training-history-panel')).toBeInTheDocument();
   });
 
   it('opens the AI patient simulation directly from its page intent', async () => {

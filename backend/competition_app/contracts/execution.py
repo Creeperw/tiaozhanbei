@@ -22,7 +22,7 @@ class ExecutionStep(ContractModel):
     ] | None = None
     depends_on: list[str] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list)
-    timeout_seconds: float = Field(default=60.0, gt=0)
+    timeout_seconds: float = Field(default=600.0, gt=0)
     max_retries: int = Field(default=1, ge=0, le=1)
 
 

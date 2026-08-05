@@ -30,7 +30,7 @@ async def test_chat_client_uses_openai_compatible_request_shape() -> None:
     assert result == {"decision": "pass"}
     assert requests[0].url == "https://example.test/v1/chat/completions"
     assert requests[0].headers["authorization"] == "Bearer secret-value"
-    assert b'"response_format":{"type":"json_object"}' in requests[0].content
+    assert b'"response_format"' not in requests[0].content
     assert client.last_request_payload["body"]["messages"][0]["role"] == "system"
     assert client.last_request_payload["body"]["messages"][1]["role"] == "user"
     assert client.last_response_text == '{"decision":"pass"}'
@@ -57,6 +57,7 @@ async def test_deepseek_chat_client_uses_standard_structured_output_shape() -> N
 
     assert await client.complete_json("audit_agent", {}) == {"decision": "pass"}
     request_body = json.loads(requests[0].content)
+    assert "response_format" not in request_body
     assert "enable_thinking" not in request_body
     assert request_body["thinking"] == {"type": "enabled"}
 
@@ -453,7 +454,7 @@ async def test_chat_client_describes_nullable_numbers_and_anchor_maps() -> None:
                 "hard_routing_rules": ["讲解任务需要知识、专家和审核智能体。"],
             },
             ["【用户画像】", "【压缩历史对话】", "【近期历史对话】", "【外部信息】"],
-            ["请讲解四君子汤", "has_long_term_plan：True"],
+            ["请讲解四君子汤", "当前是否存在长期规划（有当前有效版本才为True）：True"],
         ),
         (
             "knowledge_base_agent",

@@ -1,5 +1,7 @@
 from competition_app.services.conversation_history import (
     format_dialogue_history,
+    parse_compressed_dialogue_summary,
+    sanitize_compressed_dialogue_summary,
     sanitize_conversation_content,
     sanitize_conversation_messages,
 )
@@ -56,3 +58,41 @@ def test_conversation_history_keeps_navigation_metadata_but_drops_trace_metadata
         "content": "试卷已经生成。",
         "actions": [{"label": "开始答题", "destination": "workshop.paper"}],
     }]
+
+
+def test_compressed_summary_keeps_only_dialogue_lines() -> None:
+    summary = (
+        "<think>内部推理</think>"
+        "user：用户想复习感冒辨证。<think>过程</think>\n"
+        "assistant：已整理风寒风热鉴别要点。"
+        '<<REFS:[{"source":"教材"}]>>\n'
+        "【检索证据】教材第3章片段\n"
+        "system：内部注记\n"
+    )
+    assert sanitize_compressed_dialogue_summary(summary) == (
+        "user：用户想复习感冒辨证。\n"
+        "assistant：已整理风寒风热鉴别要点。"
+    )
+
+
+def test_compressed_summary_prose_is_never_disguised_as_dialogue() -> None:
+    # A legacy/prose digest (no user：/assistant： lines) must not be wrapped
+    # into a fake formal answer; it is dropped entirely.
+    assert sanitize_compressed_dialogue_summary("用户偏好晚间学习。") == ""
+    assert sanitize_compressed_dialogue_summary("") == ""
+
+
+def test_parse_compressed_dialogue_summary_returns_pure_user_assistant_messages() -> None:
+    summary = (
+        "user：用户想复习感冒辨证。\n"
+        "assistant：已整理风寒风热鉴别要点。\n"
+        "【检索证据】教材片段\n"
+        "assistant：补充了方剂配伍。\n"
+    )
+    assert parse_compressed_dialogue_summary(summary) == [
+        {"role": "user", "content": "用户想复习感冒辨证。"},
+        {"role": "assistant", "content": "已整理风寒风热鉴别要点。"},
+        {"role": "assistant", "content": "补充了方剂配伍。"},
+    ]
+    assert parse_compressed_dialogue_summary("无对话行摘要") == []
+    assert parse_compressed_dialogue_summary("") == []

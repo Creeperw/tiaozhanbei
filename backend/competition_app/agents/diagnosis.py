@@ -432,9 +432,6 @@ class DiagnosisAgent:
             return envelope(context, "diagnosis_agent", "diagnosis_result", result)
 
         model_textbook_context = self._model_textbook_context(route_context)
-        memory_output = context.get("dependency_outputs", {}).get("memory")
-        memory_payload = getattr(memory_output, "payload", None)
-        memory_context_summary = getattr(memory_payload, "context_summary", None)
         audit_feedback = context.get("audit_feedback")
         audit_payload = getattr(audit_feedback, "payload", audit_feedback)
         repair_instruction = context.get("repair_instruction")
@@ -462,9 +459,8 @@ class DiagnosisAgent:
         planning_payload = {
             "plan_scope": plan_scope,
             "user_request": str(context.get("user_request", "")),
-            "compressed_conversation_summary": str(
-                getattr(memory_context_summary, "summary", "") or ""
-            ),
+            # 压缩历史由 shared_context.compressed_conversation 统一提供，
+            # 这里不再重复下发，避免同一摘要以两种形态同时进入提示词。
             "goals": learning_goals,
             "learner_context": {
                 "learning_goal": user_profile.get("learning_goal"),
@@ -504,46 +500,8 @@ class DiagnosisAgent:
                     unmet_prerequisite_courses
                 ),
             },
-            "prerequisite_training_policy": (
-                "当 unmet_prerequisite_courses 或其他未确认完成的前置课程非空，"
-                "且本规划覆盖到其 before_stage_id 及之后的阶段时："
-                "长期规划正文必须在到达该阶段之前为前置课程安排具体训练——"
-                "写明训练范围、安排所在阶段或过渡期、大致时长或节奏、"
-                "使用的教材或练习资源、以及可验收的完成标准。"
-                "禁止使用“另行确认”“后续计划”“后续安排”“待确认”等推迟措辞，"
-                "也不得只声明前置条件而不给出训练安排。"
-            ),
             "learning_state": self._model_learning_state(
                 context.get("multi_scale_learning_state")
-            ),
-            "learning_path_progress": self._model_learning_path_progress(
-                context.get("learning_path_progress")
-            ),
-            "learning_path_progress_instruction": (
-                "当 plan_scope=daily_task 且 learning_path_progress 可用时，"
-                "当日任务正文必须具体到当前应学的小节："
-                "写明“观看《教材》第X章第X节视频《视频标题》”并绑定该小节的题目训练；"
-                "小节、章节和视频必须来自 learning_path_progress，不得虚构章节或链接。"
-                "没有已验证视频的小节只描述章节学习，不虚构视频。"
-            ),
-            "task_load_policy": {
-                key: value
-                for key, value in dict(context.get("task_load_policy") or {}).items()
-                if key
-                in {
-                    "policy_id",
-                    "baseline_minutes",
-                    "recommended_minutes",
-                    "direction",
-                    "allocation",
-                    "evidence",
-                    "reasons",
-                    "constraints",
-                }
-            },
-            "task_load_policy_instruction": (
-                "当 plan_scope=daily_task 时，estimated_minutes 应采用系统给出的 "
-                "task_load_policy.recommended_minutes；自然语言只解释原因，不重新计算指标。"
             ),
             "path_candidates": self._model_path_candidates(
                 context.get("path_candidates")
@@ -584,6 +542,98 @@ class DiagnosisAgent:
             ),
             "output_schema": self._planning_draft_schema(plan_scope),
         }
+        # Scope-only context stays out of every planning call.  Each layer
+        # receives exactly the material it can act on: long-term alone needs
+        # the prerequisite-training policy, daily_task alone needs the
+        # video-path hierarchy and load policy.  Short-term planning must not
+        # carry daily-task video sections or long-term training policy text.
+        if plan_scope == "long_term":
+            planning_payload["prerequisite_training_policy"] = (
+                "当 unmet_prerequisite_courses 或其他未确认完成的前置课程非空，"
+                "且本规划覆盖到其 before_stage_id 及之后的阶段时："
+                "长期规划正文必须在到达该阶段之前为前置课程安排具体训练——"
+                "写明训练范围、安排所在阶段或过渡期、大致时长或节奏、"
+                "使用的教材或练习资源、以及可验收的完成标准。"
+                "禁止使用“另行确认”“后续计划”“后续安排”“待确认”等推迟措辞，"
+                "也不得只声明前置条件而不给出训练安排。"
+            )
+        if plan_scope == "daily_task":
+            # 今日任务不做路径候选选择：候选与选择策略是长期/短期规划专属。
+            planning_payload.pop("path_candidates", None)
+            planning_payload.pop("path_candidate_policy", None)
+            # 前置课程是长期规划专属，今日任务不需要确认/未确认清单。
+            learning_evidence = planning_payload.get("learning_evidence") or {}
+            if isinstance(learning_evidence, dict):
+                learning_evidence.pop("confirmed_prerequisite_courses", None)
+                learning_evidence.pop("unmet_prerequisite_courses", None)
+            # 今日任务只依赖短期计划：长期规划仅保留保温目标正文摘要，
+            # 不放全部阶段、里程碑和教材选择明细。
+            existing_plans = planning_payload.get("existing_plans") or {}
+            if isinstance(existing_plans, dict) and isinstance(
+                existing_plans.get("long_term"), dict
+            ):
+                long_term = existing_plans["long_term"]
+                existing_plans["long_term"] = {
+                    key: long_term[key]
+                    for key in ("content",)
+                    if long_term.get(key)
+                }
+            # 路线树只保留当前阶段，去掉全部阶段、前置课程与等价教材规则。
+            default_route = planning_payload.get("default_route") or {}
+            if isinstance(default_route, dict):
+                phases = default_route.get("phases") or []
+                current_phase = None
+                if isinstance(phases, list):
+                    current_phase = next(
+                        (
+                            phase
+                            for phase in phases
+                            if isinstance(phase, dict)
+                            and phase.get("status") in {"current", "active"}
+                        ),
+                        phases[0] if phases else None,
+                    )
+                if isinstance(current_phase, dict):
+                    default_route["current_phase"] = {
+                        key: current_phase.get(key)
+                        for key in ("name", "objective", "books", "exit_evidence")
+                        if current_phase.get(key) not in (None, "", [], {})
+                    }
+                default_route.pop("phases", None)
+                default_route.pop("textbook_route", None)
+                default_route.pop("assumptions", None)
+                default_route.pop("unknowns_to_confirm", None)
+            planning_payload["learning_path_progress"] = (
+                self._model_learning_path_progress(
+                    context.get("learning_path_progress")
+                )
+            )
+            planning_payload["learning_path_progress_instruction"] = (
+                "当 plan_scope=daily_task 且 learning_path_progress 可用时，"
+                "当日任务正文必须具体到当前应学的小节："
+                "写明“观看《教材》第X章第X节视频《视频标题》”并绑定该小节的题目训练；"
+                "小节、章节和视频必须来自 learning_path_progress，不得虚构章节或链接。"
+                "没有已验证视频的小节只描述章节学习，不虚构视频。"
+            )
+            planning_payload["task_load_policy"] = {
+                key: value
+                for key, value in dict(context.get("task_load_policy") or {}).items()
+                if key
+                in {
+                    "policy_id",
+                    "baseline_minutes",
+                    "recommended_minutes",
+                    "direction",
+                    "allocation",
+                    "evidence",
+                    "reasons",
+                    "constraints",
+                }
+            }
+            planning_payload["task_load_policy_instruction"] = (
+                "当 plan_scope=daily_task 时，estimated_minutes 应采用系统给出的 "
+                "task_load_policy.recommended_minutes；自然语言只解释原因，不重新计算指标。"
+            )
         try:
             raw_dict = await self._complete_plan_draft(
                 context,
@@ -602,7 +652,9 @@ class DiagnosisAgent:
                     context,
                     plan_scope=plan_scope,
                     diagnosis_output=raw_dict,
-                    trusted_route=self._compiler_route_context(route_context),
+                    trusted_route=self._compiler_route_context(
+                        route_context, plan_scope
+                    ),
                     parent_plan_constraints=self._parent_plan_constraints(
                         context, plan_scope
                     ),
@@ -636,7 +688,9 @@ class DiagnosisAgent:
                         context,
                         plan_scope=plan_scope,
                         diagnosis_output=raw_dict,
-                        trusted_route=self._compiler_route_context(route_context),
+                        trusted_route=self._compiler_route_context(
+                            route_context, plan_scope
+                        ),
                         parent_plan_constraints=self._parent_plan_constraints(
                             context, plan_scope
                         ),
@@ -719,7 +773,9 @@ class DiagnosisAgent:
                                 context,
                                 plan_scope=plan_scope,
                                 diagnosis_output=revised_raw,
-                                trusted_route=self._compiler_route_context(route_context),
+                                trusted_route=self._compiler_route_context(
+                                    route_context, plan_scope
+                                ),
                                 parent_plan_constraints=self._parent_plan_constraints(
                                     context, plan_scope
                                 ),
@@ -851,7 +907,9 @@ class DiagnosisAgent:
                         context,
                         plan_scope=plan_scope,
                         diagnosis_output=final_scoped_output,
-                        trusted_route=self._compiler_route_context(route_context),
+                        trusted_route=self._compiler_route_context(
+                            route_context, plan_scope
+                        ),
                         parent_plan_constraints=self._parent_plan_constraints(
                             context, plan_scope
                         ),
@@ -1691,23 +1749,28 @@ class DiagnosisAgent:
     def _planning_draft_schema(plan_scope: Any) -> dict[str, Any]:
         """Tiny business-agent envelope: prose is the only planning source."""
 
+        # selected_path_candidate_id is only meaningful when the model may
+        # pick among route candidates (long-term/short-term).  daily_task
+        # stays inside the current short-term plan and never selects a path.
+        properties: dict[str, Any] = {
+            "plan_document": {
+                "type": "string",
+                "minLength": 1,
+                "description": (
+                    "详细自然语言计划文档。必须把当前层的期限、阶段/节点、教材、"
+                    "章节、知识点、预期产出和完成标准写在正文中，供 Compiler 提取。"
+                ),
+            },
+        }
+        if plan_scope in {"long_term", "short_term"}:
+            properties["selected_path_candidate_id"] = {
+                "type": ["string", "null"],
+                "description": "仅在需要从系统候选中选择路径时填写；不得生成新ID。",
+            }
         return {
             "type": "object",
             "required": ["plan_document"],
-            "properties": {
-                "plan_document": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": (
-                        "详细自然语言计划文档。必须把当前层的期限、阶段/节点、教材、"
-                        "章节、知识点、预期产出和完成标准写在正文中，供 Compiler 提取。"
-                    ),
-                },
-                "selected_path_candidate_id": {
-                    "type": ["string", "null"],
-                    "description": "仅在需要从系统候选中选择路径时填写；不得生成新ID。",
-                },
-            },
+            "properties": properties,
             "additionalProperties": False,
         }
 
@@ -1794,7 +1857,9 @@ class DiagnosisAgent:
         return {field: value[field] for field in fields if value.get(field) is not None}
 
     @classmethod
-    def _compiler_route_context(cls, route_context: dict[str, Any]) -> dict[str, Any]:
+    def _compiler_route_context(
+        cls, route_context: dict[str, Any], plan_scope: str | None = None
+    ) -> dict[str, Any]:
         textbook_resolution = route_context.get("textbook_route") or {}
         textbook_route = (
             textbook_resolution.get("route")
@@ -1804,18 +1869,45 @@ class DiagnosisAgent:
         stages = list(textbook_route.get("stages") or [])
         if not stages:
             stages = cls._planning_phases(route_context)
+        stage_briefs = [
+            {
+                "stage_id": stage.get("stage_id") or stage.get("phase_id"),
+                "name": stage.get("name"),
+                "books": cls._string_list(stage.get("books")),
+                "goal": stage.get("objective"),
+                "exit_evidence": cls._string_list(stage.get("exit_evidence")),
+            }
+            for stage in stages
+        ]
+        # daily_task 编译只受当前阶段边界约束：只给当前阶段，不给全部路线。
+        if plan_scope == "daily_task" and stage_briefs:
+            current_stage = next(
+                (
+                    stage
+                    for stage in stages
+                    if str(
+                        stage.get("status")
+                        or stage.get("current", False)
+                    ).lower()
+                    in {"current", "active", "true", "1"}
+                ),
+                stages[0],
+            )
+            stage_briefs = [
+                {
+                    "stage_id": current_stage.get("stage_id")
+                    or current_stage.get("phase_id"),
+                    "name": current_stage.get("name"),
+                    "books": cls._string_list(current_stage.get("books")),
+                    "goal": current_stage.get("objective"),
+                    "exit_evidence": cls._string_list(
+                        current_stage.get("exit_evidence")
+                    ),
+                }
+            ]
         return {
             "planning_status": route_context.get("planning_status"),
-            "stages": [
-                {
-                    "stage_id": stage.get("stage_id") or stage.get("phase_id"),
-                    "name": stage.get("name"),
-                    "books": cls._string_list(stage.get("books")),
-                    "goal": stage.get("objective"),
-                    "exit_evidence": cls._string_list(stage.get("exit_evidence")),
-                }
-                for stage in stages
-            ],
+            "stages": stage_briefs,
         }
 
     @staticmethod

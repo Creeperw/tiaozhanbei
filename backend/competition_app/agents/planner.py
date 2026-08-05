@@ -150,16 +150,9 @@ class PlannerAgent:
                             context.get("current_learning_task", {}).get("task_content")
                         ),
                     },
-                    "conversation_context": {
-                        "recent_turns": [
-                            {
-                                "role": str(item.get("role", "")),
-                                "content": str(item.get("content", ""))[:1200],
-                            }
-                            for item in context.get("messages", [])[-8:]
-                            if isinstance(item, dict)
-                        ],
-                    },
+                    # 近期对话由 shared_context.recent_conversation 统一提供
+                    # （planner 上限 6 轮 / 3500 字），此处不再重复下发整段
+                    # 消息，避免同一份对话以两种形态同时进入提示词。
                     "agent_capability_catalog": AGENT_CAPABILITIES,
                     "hard_routing_rules": [
                         "只选择完成当前任务所必需的Agent，不要求所有Agent参与。",
@@ -170,6 +163,7 @@ class PlannerAgent:
                         "continued_plan_scope 表示当前话语是上一轮规划调研的补充或纠正；有值时必须延续 learning_plan 和该层级。",
                         "制定或修改计划时必须输出 long_term、short_term、daily_task 或 unspecified 之一；纯学情查询可返回 null。",
                         "已有对应层级的当前有效计划时，用户只是查看、沿用或泛化询问计划情况时plan_action为reuse，不得重新生成；但用户明确要求强制修改、重新制定、调整、更新、表达不满意，或表达“结合我的学习状态/最新学情/最近学习情况”重新评估后制定时，必须进入重评估路径，不得直接复用。",
+                        "existing_plan_state中的has_long_term_plan/has_short_term_plan/has_daily_task标记各层是否存在当前有效版本（True=有，False=无）；某层为False时该层不存在可复用的计划，plan_action不得为reuse，必须走create_or_update或clarify，即使该层的父层（如短期计划）存在。",
                         "用户泛化地说“制定学习计划”且已有任一有效计划、但没有明确长期/短期/当日层级时，必须先说明当前已有计划并追问本次要制定或调整哪一层；不得自行选择长期规划、短期计划或当日任务，也不得在层级确认前进入Diagnosis重规划、Compiler或Audit。用户确认层级后，再由对应层级的前置条件检查追问缺失的基本信息。",
                         "判定为纯复用（用户查看/沿用已有计划）时不选择Diagnosis和Audit，只由LearningPlanService读取正式版本；判定为需重评估的“制定”请求时，必须选择Diagnosis并结合其结论决定复用或更新，长期或短期重制定仍需audit_agent。",
                         "是否需要追问由Planner结合本轮语义和最近对话判断；只有无法判断规划层级时才使用unspecified，并给出一条自然、可直接回答的clarification_question。",
@@ -515,7 +509,26 @@ class PlannerAgent:
             elif semantic_routing_mode and model_plan_action in {
                 "reuse", "create_or_update", "clarify"
             }:
-                plan_action = model_plan_action
+                # Deterministic safety boundary, not a model preference: the
+                # reuse fast path can only serve a layer that actually has a
+                # current version.  The model receives existing_plan_state but
+                # may still answer "reuse" for a layer with no persisted
+                # content (e.g. “请根据短期计划安排今天的每日学习任务” before
+                # any daily task exists), which would later crash plan_reuse
+                # with “requested current learning-plan layer is unavailable”.
+                # Downgrade such a request to the creation path instead of
+                # trusting the model verbatim.
+                if (
+                    model_plan_action == "reuse"
+                    and plan_scope in {"long_term", "short_term", "daily_task"}
+                    and not existing_state[plan_scope]
+                ):
+                    # complete_required_selection later closes the creation
+                    # path over default_route_resolver/diagnosis_agent, so no
+                    # manual agent repair is needed here.
+                    plan_action = "create_or_update"
+                else:
+                    plan_action = model_plan_action
             elif semantic_routing_mode:
                 # No semantic decision means no safe mutation.  Reuse an
                 # existing requested layer; otherwise leave the request for
@@ -1253,14 +1266,30 @@ class PlannerAgent:
         if decision.task_type == "learner_data_query":
             steps = []
             if "memory_agent" in selected:
-                steps.append(ExecutionStep(step_id="memory", agent="memory_agent"))
+                steps.append(
+                    ExecutionStep(
+                        step_id="memory",
+                        agent="memory_agent",
+                        # Memory Agent runs conversation compression as a
+                        # parallel side-channel; under thinking-enabled models
+                        # a single compression call can exceed the generic
+                        # 60-second step default, and the orchestrator's
+                        # wait_for cancellation would then cascade-cancel the
+                        # compression task (Task.cancel() cancels the awaited
+                        # child task) so the summary is never refreshed.
+                        timeout_seconds=600.0,
+                    )
+                )
             steps.append(
                 ExecutionStep(
                     step_id="diagnosis",
                     agent="diagnosis_agent",
                     action="query_learner_data",
                     depends_on=memory_barrier,
-                    timeout_seconds=300.0,
+                    # Unified budget: thinking-mode model calls can exceed
+                    # the old 60s default; wait_for would cascade-cancel the
+                    # running agent silently.
+                    timeout_seconds=600.0,
                 )
             )
             return ExecutionPlan(
@@ -1271,7 +1300,15 @@ class PlannerAgent:
         if decision.task_type == "paper_generation":
             steps = []
             if "memory_agent" in selected:
-                steps.append(ExecutionStep(step_id="memory", agent="memory_agent"))
+                steps.append(
+                    ExecutionStep(
+                        step_id="memory",
+                        agent="memory_agent",
+                        # See the learner_data_query branch: compression
+                        # side-channel must fit inside the step budget.
+                        timeout_seconds=600.0,
+                    )
+                )
             steps.extend(
                 [
                     ExecutionStep(
@@ -1281,7 +1318,7 @@ class PlannerAgent:
                         depends_on=memory_barrier,
                         # The business author and compiler each make a bounded
                         # model request; the step budget must cover both.
-                        timeout_seconds=420.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="question_pool",
@@ -1307,7 +1344,7 @@ class PlannerAgent:
                         agent="audit_agent",
                         action="review_exam_paper",
                         depends_on=["paper_blueprint", "question_pool", "paper_assembly"],
-                        timeout_seconds=420.0,
+                        timeout_seconds=600.0,
                     ),
                 ]
             )
@@ -1323,13 +1360,15 @@ class PlannerAgent:
                 plan_id="PLAN_DYNAMIC_LEARNING_PLAN_REUSE",
                 task_type=decision.task_type,
                 steps=[
-                    ExecutionStep(step_id="memory", agent="memory_agent", timeout_seconds=300.0),
+                    # 600s budget: the compression side-channel runs inside
+                    # this step and must not be cascade-cancelled by wait_for.
+                    ExecutionStep(step_id="memory", agent="memory_agent", timeout_seconds=600.0),
                     ExecutionStep(
                         step_id="learning_plan",
                         agent="learning_plan_service",
                         action="reuse_plan",
                         depends_on=memory_barrier,
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                 ],
             )
@@ -1339,26 +1378,36 @@ class PlannerAgent:
         }:
             steps = []
             if "memory_agent" in selected:
-                steps.append(ExecutionStep(step_id="memory", agent="memory_agent"))
+                steps.append(
+                    ExecutionStep(
+                        step_id="memory",
+                        agent="memory_agent",
+                        # See the learner_data_query branch: compression
+                        # side-channel must fit inside the step budget.
+                        timeout_seconds=600.0,
+                    )
+                )
             steps.extend(
                 [
                     ExecutionStep(
                         step_id="knowledge",
                         agent="knowledge_base_agent",
                         depends_on=memory_barrier,
-                        timeout_seconds=300.0,
+                        # Knowledge runs retrieval planning plus evidence
+                        # processing: give it the unified 600s budget.
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="expert",
                         agent="knowledge_explanation_agent",
                         depends_on=[*memory_barrier, "knowledge"],
-                        timeout_seconds=360.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="audit",
                         agent="audit_agent",
                         depends_on=["knowledge", "expert"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                 ]
             )
@@ -1376,7 +1425,15 @@ class PlannerAgent:
                 memory_dependencies = memory_barrier
                 steps = []
                 if "memory_agent" in selected:
-                    steps.append(ExecutionStep(step_id="memory", agent="memory_agent"))
+                    steps.append(
+                        ExecutionStep(
+                            step_id="memory",
+                            agent="memory_agent",
+                            # See the learner_data_query branch: compression
+                            # side-channel must fit inside the step budget.
+                            timeout_seconds=600.0,
+                        )
+                    )
                 steps.extend([
                     ExecutionStep(
                         step_id="knowledge", agent="knowledge_base_agent",
@@ -1386,12 +1443,12 @@ class PlannerAgent:
                         # The default 60s deadline caused the whole Agent to be
                         # cancelled and repeated after its retrieval had
                         # already completed.
-                        timeout_seconds=420.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="route_resolution", agent="default_route_resolver",
                         depends_on=memory_dependencies,
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="diagnosis_long", agent="diagnosis_agent",
@@ -1403,7 +1460,7 @@ class PlannerAgent:
                         step_id="audit_long", agent="audit_agent",
                         action="review_learning_plan", plan_scope="long_term",
                         audit_subject="long_term_plan", depends_on=["diagnosis_long"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="diagnosis_short", agent="diagnosis_agent",
@@ -1415,29 +1472,29 @@ class PlannerAgent:
                         step_id="audit_short", agent="audit_agent",
                         action="review_learning_plan", plan_scope="short_term",
                         audit_subject="short_term_plan", depends_on=["diagnosis_short", "audit_long"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="learning_plan", agent="learning_plan_service",
                         action="materialize_combined_plan",
                         depends_on=["diagnosis_long", "audit_long", "diagnosis_short", "audit_short"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="schedule", agent="review_scheduler",
                         depends_on=["knowledge", "diagnosis_short"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="expert", agent="expert_agent",
                         depends_on=["knowledge", "diagnosis_short", "learning_plan", "schedule"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                     ExecutionStep(
                         step_id="audit", agent="audit_agent",
                         audit_subject="resource",
                         depends_on=["knowledge", "diagnosis_short", "schedule", "expert", "audit_long", "audit_short"],
-                        timeout_seconds=300.0,
+                        timeout_seconds=600.0,
                     ),
                 ])
                 return ExecutionPlan(
@@ -1476,14 +1533,21 @@ class PlannerAgent:
                     timeout_seconds={
                         # Knowledge performs two sequential model boundaries;
                         # other model-led Agents perform one bounded call.
-                        "knowledge_base_agent": 420.0,
-                        "memory_agent": 300.0,
-                        "default_route_resolver": 300.0,
-                        "diagnosis_agent": 300.0,
-                        "learning_plan_service": 300.0,
-                        "review_scheduler": 300.0,
-                        "expert_agent": 300.0,
-                        "audit_agent": 300.0,
+                        # All agents share the unified 600s budget so
+                        # thinking-mode responses are never cascade-cancelled
+                        # by the orchestrator's wait_for deadline.
+                        "knowledge_base_agent": 600.0,
+                        # Memory runs governance plus the compression
+                        # side-channel; thinking-mode responses can exceed a
+                        # 60s default and wait_for would cascade-cancel the
+                        # compression task (summary never refreshed).
+                        "memory_agent": 600.0,
+                        "default_route_resolver": 600.0,
+                        "diagnosis_agent": 600.0,
+                        "learning_plan_service": 600.0,
+                        "review_scheduler": 600.0,
+                        "expert_agent": 600.0,
+                        "audit_agent": 600.0,
                     }[agent],
                     depends_on=(
                         ([] if agent == "memory_agent" else memory_barrier)
@@ -1535,7 +1599,13 @@ class PlannerAgent:
                 # validator-guided revision.  Each model request has its own
                 # bounded timeout, so the generic 60-second step deadline would
                 # otherwise cancel a valid failover/revision transaction early.
-                timeout_seconds=720.0 if agent == "diagnosis_agent" else 300.0,
+                # Memory also gets a larger budget: the compression
+                # side-channel must not be cascade-cancelled by wait_for.
+                timeout_seconds=(
+                    720.0
+                    if agent == "diagnosis_agent"
+                    else 600.0
+                ),
                 depends_on=(
                     ([] if agent == "memory_agent" else memory_barrier)
                     + (

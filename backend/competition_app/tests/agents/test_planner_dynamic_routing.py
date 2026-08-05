@@ -312,6 +312,21 @@ class DailyTaskSemanticPlannerModel:
         }
 
 
+class ReuseMisjudgmentPlannerModel:
+    """模型看到层级状态后仍误判为复用（实际该层没有当前版本）。"""
+
+    async def complete_json(self, role, payload, on_delta=None):
+        return {
+            "task_type": "learning_plan",
+            "plan_scope": "daily_task",
+            "plan_action": "reuse",
+            "selected_agents": ["learning_plan_service"],
+            "routing_reason": "模型误以为已有当日任务，直接复用。",
+            "risk_level": "low",
+            "requires_audit": False,
+        }
+
+
 class LearnerDataPlannerModel:
     async def complete_json(self, role, payload, on_delta=None):
         request = str(payload["payload"].get("user_request") or "")
@@ -729,6 +744,79 @@ def test_explicit_force_change_cannot_be_downgraded_to_plan_reuse() -> None:
 
 
 @pytest.mark.asyncio
+async def test_semantic_reuse_downgraded_to_create_when_layer_missing() -> None:
+    """模型输出 reuse 但目标层没有当前版本时，必须降级为创建路径。
+
+    回归场景：“请根据我的短期计划安排今天的每日学习任务”，当日任务层尚不存在，
+    模型却判定 reuse，导致 reuse 快路径直接抛 ValueError 使整个工作流失败。
+    """
+    request = "请根据我的短期学习计划，为我安排今天的每日学习任务。"
+    result = await PlannerAgent(ReuseMisjudgmentPlannerModel()).run(
+        {
+            "case_id": "C_REUSE_MISSING",
+            "trace_id": "T_REUSE_MISSING",
+            "request_id": "R_REUSE_MISSING",
+            "execution_id": "E_REUSE_MISSING",
+            "step_id": "planner",
+            "learner_id": "L_REUSE_MISSING",
+            "user_request": request,
+            "plan_scope": None,
+            "plan_scope_hint": None,
+            "continued_plan_scope": None,
+            "messages": [{"role": "user", "content": request}],
+            "current_long_term_plan": {
+                "content": "已有长期规划",
+                "status": "active",
+            },
+            "current_short_term_plan": {
+                "content": "已有短期计划",
+                "status": "active",
+            },
+            # 注意：没有 current_learning_task，当日任务层尚不存在
+            "conversation_requires_compression": False,
+        }
+    )
+
+    assert result.payload.plan_scope == "daily_task"
+    assert result.payload.plan_action == "create_or_update"
+    assert "diagnosis_agent" in result.payload.selected_agents
+    assert "learning_plan_service" in result.payload.selected_agents
+
+
+@pytest.mark.asyncio
+async def test_semantic_reuse_kept_when_layer_has_current_version() -> None:
+    """目标层已有当前版本时，模型 reuse 判定必须保持原样不被误伤。"""
+    request = "今天有哪些学习任务？"
+    result = await PlannerAgent(ReuseMisjudgmentPlannerModel()).run(
+        {
+            "case_id": "C_REUSE_EXISTS",
+            "trace_id": "T_REUSE_EXISTS",
+            "request_id": "R_REUSE_EXISTS",
+            "execution_id": "E_REUSE_EXISTS",
+            "step_id": "planner",
+            "learner_id": "L_REUSE_EXISTS",
+            "user_request": request,
+            "plan_scope": None,
+            "plan_scope_hint": None,
+            "continued_plan_scope": None,
+            "messages": [{"role": "user", "content": request}],
+            "current_learning_task": {
+                "task_content": "今天阅读《伤寒论》太阳病篇。",
+                "status": "active",
+            },
+            "conversation_requires_compression": False,
+        }
+    )
+
+    assert result.payload.plan_scope == "daily_task"
+    assert result.payload.plan_action == "reuse"
+    assert result.payload.selected_agents == [
+        "memory_agent",
+        "learning_plan_service",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_planner_receives_routing_skills_and_does_not_output_knowledge_query() -> None:
     model = CapturingPlannerModel()
     context = {
@@ -750,13 +838,13 @@ async def test_planner_receives_routing_skills_and_does_not_output_knowledge_que
         "learner_data_query", "learning_plan",
         "personalized_review_card", "paper_generation"
     }
-    assert payload["conversation_context"]["recent_turns"] == [
-        {"role": "user", "content": "制定计划"}
-    ]
+    # Recent dialogue is delivered once via shared_context.recent_conversation;
+    # a duplicate conversation_context block must not be sent to the model.
+    assert "conversation_context" not in payload
     assert "multi_scale_learning_state" not in payload
     assert "plan_scope_hint" not in payload
-    assert "requires_compression" not in payload["conversation_context"]
-    assert "memory_required" not in payload["conversation_context"]
+    assert "requires_compression" not in payload
+    assert "memory_required" not in payload
 
 
 @pytest.mark.asyncio
@@ -934,12 +1022,12 @@ def test_paper_generation_uses_minimal_evidence_expert_audit_chain() -> None:
     ]
     question_pool_step = next(step for step in plan.steps if step.step_id == "question_pool")
     blueprint_step = next(step for step in plan.steps if step.step_id == "paper_blueprint")
-    assert blueprint_step.timeout_seconds == 420.0
+    assert blueprint_step.timeout_seconds == 600.0
     assert question_pool_step.timeout_seconds == 600.0
     paper_assembly_step = next(step for step in plan.steps if step.step_id == "paper_assembly")
     assert paper_assembly_step.timeout_seconds == 900.0
     audit_step = next(step for step in plan.steps if step.step_id == "audit")
-    assert audit_step.timeout_seconds == 420.0
+    assert audit_step.timeout_seconds == 600.0
 
 
 def test_knowledge_explanation_does_not_include_planning_or_review_services() -> None:

@@ -740,7 +740,7 @@ async function requestTrainingTask({ fetcher, paths, options }) {
   } catch (error) {
     return {
       taskResult: createEmptyTrainingTaskResult(),
-      error: error.message || '训练任务请求失败',
+      error: error.message || '练习任务请求失败',
       source: null,
     };
   }
@@ -765,7 +765,7 @@ export async function loadTrainingWorkspaceModules({ fetcher }) {
   } catch (error) {
     return {
       workspace: createEmptyTrainingWorkspace(),
-      error: error.message || '训练工坊模块加载失败',
+      error: error.message || '练习工坊模块加载失败',
       source: null,
     };
   }
@@ -900,7 +900,7 @@ export async function loadTrainingWorkspaceTask({ fetcher, taskId }) {
   if (!hasNonEmptyText(taskId)) {
     return {
       taskResult: createEmptyTrainingTaskResult(),
-      error: '训练任务 ID 不能为空',
+      error: '练习任务 ID 不能为空',
       source: null,
     };
   }

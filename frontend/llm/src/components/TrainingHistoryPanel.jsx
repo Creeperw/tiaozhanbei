@@ -13,8 +13,8 @@ import {
 import { fetchJsonWithAuthFallback } from '../utils/api';
 
 const historyGroups = [
-  { key: 'special_training', title: '专项训练', description: '核心知识点巩固记录', icon: Target, tone: 'cyan' },
-  { key: 'topic_training', title: '专题训练', description: '章节与知识点训练记录', icon: Stethoscope, tone: 'teal' },
+  { key: 'special_training', title: '专项特训', description: '核心知识点巩固记录', icon: Target, tone: 'cyan' },
+  { key: 'topic_training', title: '知识点特训', description: '章节与知识点练习记录', icon: Stethoscope, tone: 'teal' },
   { key: 'paper_workspace', title: '智能组卷', description: 'AI 生成试卷作答记录', icon: FileCheck2, tone: 'green' },
   { key: 'question_training', title: '综合套题', description: '综合题与案例练习记录', icon: CheckCircle2, tone: 'emerald' },
   {
@@ -116,7 +116,7 @@ function HistoryGroup({ group, activities, onViewAll }) {
           {activities.length > 2 && <p className="pt-1 text-center text-[11px] text-slate-500">已展示最新两条记录</p>}
         </div>
       ) : (
-        <div className="mt-4 rounded-xl border border-dashed border-white/90 bg-white/55 px-3 py-5 text-center text-xs leading-5 text-slate-500">完成该类型训练后，记录会显示在这里。</div>
+        <div className="mt-4 rounded-xl border border-dashed border-white/90 bg-white/55 px-3 py-5 text-center text-xs leading-5 text-slate-500">完成该类型练习后，记录会显示在这里。</div>
       )}
     </article>
   );
@@ -217,23 +217,23 @@ export default function TrainingHistoryPanel({ enabled = true }) {
 
   return (
     <section className="training-history-panel space-y-5" aria-label="历史记录" aria-busy={loading}>
-      {loading && <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500"><Loader2 className="animate-spin" size={17} />正在加载训练记录…</div>}
+      {loading && <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500"><Loader2 className="animate-spin" size={17} />正在加载练习记录…</div>}
       {error && !loading && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {!loading && (
         <>
           <div className="training-history__summary grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
-              <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700"><ListChecks size={15} />训练记录</span>
+              <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700"><ListChecks size={15} />练习记录</span>
               <strong className="mt-1 block text-2xl font-bold text-slate-950">{activities.length}</strong>
               <span className="text-xs text-slate-500">近 90 天累计</span>
             </div>
             <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3">
               <span className="inline-flex items-center gap-2 text-xs font-semibold text-cyan-700"><CheckCircle2 size={15} />已完成</span>
               <strong className="mt-1 block text-2xl font-bold text-slate-950">{completedCount}</strong>
-              <span className="text-xs text-slate-500">已完成的训练活动</span>
+              <span className="text-xs text-slate-500">已完成的练习活动</span>
             </div>
             <div className="rounded-2xl border border-violet-100 bg-violet-50/70 px-4 py-3">
-              <span className="inline-flex items-center gap-2 text-xs font-semibold text-violet-700"><CalendarDays size={15} />最近训练</span>
+              <span className="inline-flex items-center gap-2 text-xs font-semibold text-violet-700"><CalendarDays size={15} />最近练习</span>
               <strong className="mt-1 block truncate text-base font-bold text-slate-950">{latestActivity ? formatActivityDate(latestActivity.created_at || latestActivity.timestamp) : '暂无记录'}</strong>
               <span className="text-xs text-slate-500">持续记录学习进度</span>
             </div>
@@ -253,7 +253,7 @@ export default function TrainingHistoryPanel({ enabled = true }) {
                 const status = activityStatus(activity);
                 const category = categoryForActivity(activity);
                 const group = historyGroups.find((item) => item.key === category);
-                return <div key={activity.activity_id || `all-${index}`} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-slate-900">{activity.title || group?.title || '训练记录'}</p><p className="mt-1 text-xs text-slate-500">{group?.title || '其他训练'} · {formatActivityDate(activity.created_at || activity.timestamp)}</p></div><span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${status.className}`}>{status.label}</span></div></div>;
+                return <div key={activity.activity_id || `all-${index}`} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-slate-900">{activity.title || group?.title || '练习记录'}</p><p className="mt-1 text-xs text-slate-500">{group?.title || '其他练习'} · {formatActivityDate(activity.created_at || activity.timestamp)}</p></div><span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold ${status.className}`}>{status.label}</span></div></div>;
               }) : <p className="py-12 text-center text-sm text-slate-500">暂无已做练习记录</p>}
             </div>
           </section>

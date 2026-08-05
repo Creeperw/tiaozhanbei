@@ -11,7 +11,7 @@ describe('CapabilityDetailPage', () => {
   it.each([
     ['multi-agent', '多智能体协同', '进入智能助教', 6],
     ['learning-path', '个性化学习路径', '查看我的学习路径', 3],
-    ['knowledge-graph', '专项训练', '进入训练工坊', 3],
+    ['knowledge-graph', '专项练习', '进入练习工坊', 3],
     ['human-collaboration', '人机协同', '参与路径调整', 3],
   ])('renders the %s capability content', (key, title, actionLabel, featureCount) => {
     render(<CapabilityDetailPage capabilityKey={key} onNavigate={vi.fn()} />);

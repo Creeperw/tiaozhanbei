@@ -3,6 +3,7 @@ import pytest
 from competition_app.application.container import ApplicationContainer
 from competition_app.application.personalized_review_card import ReviewCardRequest
 from competition_app.config import Settings
+from competition_app.exam_scope import bind_exam_workspace, reset_exam_workspace
 
 
 def request(*, message: str, workflow: str = "auto") -> ReviewCardRequest:
@@ -139,6 +140,37 @@ async def test_empty_server_attempts_reject_client_forged_queue_admission(tmp_pa
     )
 
     assert container.review_service.get_queue("BEHAVIOR_USER_2").entries == []
+
+
+@pytest.mark.asyncio
+async def test_workflow_keeps_request_exam_scope_when_behavior_target_is_stale(tmp_path) -> None:
+    container = ApplicationContainer.build(Settings(mode="stub"), snapshot_root=tmp_path)
+    learner_id = "EXAM_SWITCH_USER_1"
+    conversation_id = "CONV_NEW_EXAM_WORKSPACE"
+    container.review_card_use_case.behavior_context_loader = lambda _: {
+        "source": "frontend_backend",
+        "learning_target": {
+            "exam_track_id": "EXAM_OLD",
+            "exam_name": "旧证书",
+        },
+        "question_attempt": [],
+    }
+    token = bind_exam_workspace(
+        learner_id,
+        {"exam_track_id": "EXAM_NEW", "exam_name": "新证书"},
+    )
+    try:
+        await container.review_card_use_case.execute(
+            ReviewCardRequest(
+                learner_id=learner_id,
+                conversation_id=conversation_id,
+                user_request="请讲解四君子汤",
+            )
+        )
+        owner = container.review_card_use_case.conversation_repository.sessions[conversation_id]
+        assert owner["exam_track_id"] == "EXAM_NEW"
+    finally:
+        reset_exam_workspace(token)
 
 
 @pytest.mark.asyncio

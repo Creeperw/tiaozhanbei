@@ -707,22 +707,18 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
     assert model.payload["source_agent"] == "orchestrator"
     assert model.payload["permission_note"]
     diagnosis_payload = model.payload["payload"]
+    # Scope-only context must stay out of unscoped calls: no daily-task video
+    # path, no load policy, no long-term prerequisite-training policy.
     assert set(diagnosis_payload) == {
-        "compressed_conversation_summary",
         "user_request",
         "goals",
         "learner_context",
         "time_constraints",
         "learning_evidence",
-        "prerequisite_training_policy",
-            "learning_state",
-            "learning_path_progress",
-            "learning_path_progress_instruction",
-            "task_load_policy",
-            "task_load_policy_instruction",
-            "path_candidates",
-            "path_candidate_policy",
-            "default_route",
+        "learning_state",
+        "path_candidates",
+        "path_candidate_policy",
+        "default_route",
         "existing_plans",
         "plan_actions",
         "plan_scope",
@@ -731,12 +727,16 @@ async def test_diagnosis_maps_only_semantic_model_content_into_plan_proposal() -
         "request_context",
         "shared_context",
     }
+    assert "compressed_conversation_summary" not in diagnosis_payload
+    assert "prerequisite_training_policy" not in diagnosis_payload
+    assert "learning_path_progress" not in diagnosis_payload
+    assert "learning_path_progress_instruction" not in diagnosis_payload
+    assert "task_load_policy" not in diagnosis_payload
+    assert "task_load_policy_instruction" not in diagnosis_payload
     assert diagnosis_payload["shared_context"]["external_information"] == []
     assert "learning_monitoring" not in diagnosis_payload["shared_context"]
     assert "current_long_term_plan" not in diagnosis_payload["shared_context"]
     assert diagnosis_payload["learning_state"] == {}
-    assert diagnosis_payload["learning_path_progress"] == {}
-    assert diagnosis_payload["learning_path_progress_instruction"]
     assert diagnosis_payload["path_candidates"] == {
         "eligible": [],
         "blocked": [],

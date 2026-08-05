@@ -3,7 +3,7 @@ const PRIMARY_NAV = [
   { key: 'learning-target', label: '考试类别', kind: 'learning-target' },
   { key: 'learning-path', label: '学习路径', intent: intent('learning-path') },
   { key: 'practice', label: '教学资源', intent: intent('practice') },
-  { key: 'training-workshop', label: '训练工坊', children: [{ label: '题目训练', intent: intent('training-workshop', { taskType: 'topic_training' }) }, { label: 'AI 病患模拟', intent: intent('training-workshop', { taskType: 'ai_patient_simulation' }) }, { label: '历史记录', intent: intent('training-workshop', { taskType: 'training_history' }) }, { label: '错题变式', intent: intent('training-workshop', { taskType: 'mistake_variation' }) }, { label: '试卷生成', intent: intent('training-workshop', { taskType: 'paper_generation' }) }] },
+  { key: 'training-workshop', label: '练习工坊', intent: intent('training-workshop') },
   {
     key: 'personalization',
     label: '个人数据',
@@ -28,7 +28,7 @@ export const PAGE_TITLES = {
   'learning-path-tasks': '学习与复习任务',
   assistant: '智能助教',
   practice: '教学资源',
-  'training-workshop': '训练工坊',
+  'training-workshop': '练习工坊',
   knowledge: '知识库',
   personalization: '学情报告',
   settings: '用户设置',

@@ -756,7 +756,7 @@ const readPendingRuns = () => {
   }
 };
 
-const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBackHome, onOpenKnowledge, onOpenPersonalization, onOpenAdminFeedback, onNavigate, preferredSessionId = null, initialContext = '', embedded = false, forceNewConversation = false }) => {
+const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBackHome, onOpenKnowledge, onOpenPersonalization, onOpenAdminFeedback, onNavigate, preferredSessionId = null, initialContext = '', embedded = false, forceNewConversation = false, onNewConversationConsumed }) => {
   const shellConfig = getAppShellConfig({
     currentPage: 'assistant',
     selectedSessionId: preferredSessionId,
@@ -858,10 +858,33 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
         await fetchSessions({ skipRestore: forceNewConversation });
         if (forceNewConversation && !newConversationStartedRef.current) {
           newConversationStartedRef.current = true;
-          await createSession();
+          try {
+            await createSession();
+          } finally {
+            onNewConversationConsumed?.();
+          }
         }
     };
     loadSessions();
+  }, []);
+
+  useEffect(() => {
+    const reloadExamWorkspace = async () => {
+      Object.values(workflowControllersRef.current).forEach(controller => controller?.abort());
+      workflowControllersRef.current = {};
+      abortControllerRef.current?.abort();
+      liveSessionCacheRef.current = {};
+      sessionMessageCacheRef.current = {};
+      currentSessionIdRef.current = null;
+      resetSessionScopedView();
+      setActiveSessionRuns({});
+      setCurrentSessionId(null);
+      setMessages([]);
+      setUploadedFiles([]);
+      await fetchSessions();
+    };
+    window.addEventListener('shizhen:learning-target-changed', reloadExamWorkspace);
+    return () => window.removeEventListener('shizhen:learning-target-changed', reloadExamWorkspace);
   }, []);
 
   useEffect(() => {

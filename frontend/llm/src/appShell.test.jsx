@@ -14,7 +14,7 @@ test('defaults authenticated users to dashboard and exposes top-level training n
     { key: 'learning-target', label: '考试类别' },
     { key: 'learning-path', label: '学习路径' },
     { key: 'practice', label: '教学资源' },
-    { key: 'training-workshop', label: '训练工坊' },
+    { key: 'training-workshop', label: '练习工坊' },
     { key: 'personalization', label: '个人数据' },
   ]);
   assert.equal(config.currentPage, 'dashboard');
@@ -89,22 +89,15 @@ test('keeps admin entry out of standard learner navigation and returns it for ad
   assert.deepEqual(config.homeAction, { key: 'dashboard', label: '返回主页' });
 });
 
-test('defines dropdown destinations as explicit navigation intents', () => {
+test('exposes the practice workshop as a direct navigation intent', () => {
   const config = getAppShellConfig({
     currentUser: { username: 'alice', role: 'user' },
     currentPage: 'dashboard',
   });
 
-  assert.deepEqual(
-    config.primaryNav.find((item) => item.key === 'training-workshop').children,
-    [
-      { label: '题目训练', intent: { page: 'training-workshop', params: { taskType: 'topic_training' } } },
-      { label: 'AI 病患模拟', intent: { page: 'training-workshop', params: { taskType: 'ai_patient_simulation' } } },
-      { label: '历史记录', intent: { page: 'training-workshop', params: { taskType: 'training_history' } } },
-      { label: '错题变式', intent: { page: 'training-workshop', params: { taskType: 'mistake_variation' } } },
-      { label: '试卷生成', intent: { page: 'training-workshop', params: { taskType: 'paper_generation' } } },
-    ],
-  );
+  const workshop = config.primaryNav.find((item) => item.key === 'training-workshop');
+  assert.deepEqual(workshop.intent, { page: 'training-workshop', params: {} });
+  assert.equal('children' in workshop, false);
   assert.deepEqual(config.primaryNav.find((item) => item.key === 'practice').intent, { page: 'practice', params: {} });
   assert.equal('children' in config.primaryNav.find((item) => item.key === 'practice'), false);
   assert.equal(config.primaryNav.some((item) => item.key === 'settings'), false);
@@ -163,9 +156,9 @@ test('creates assistant navigation state that preserves a selected continue-lear
   assert.equal(config.selectedSessionId, 'session-42');
 });
 
-test('uses separate learning and training workshop labels and page titles', () => {
+test('uses separate learning and practice workshop labels and page titles', () => {
   assert.equal(PAGE_TITLES.practice, '教学资源');
-  assert.equal(PAGE_TITLES['training-workshop'], '训练工坊');
+  assert.equal(PAGE_TITLES['training-workshop'], '练习工坊');
 });
 
 test('redirects retired question and governance entries into knowledge workspace tabs', () => {

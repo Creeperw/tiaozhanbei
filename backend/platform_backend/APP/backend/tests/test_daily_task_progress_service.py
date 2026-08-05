@@ -12,9 +12,11 @@ from APP.backend.daily_task_progress_service import (
     confirm_iframe_video,
     daily_task_progress,
     ensure_executable_knowledge_bundle,
+    quiz_learner_profile,
     record_reviewed_question,
     record_video_evidence,
     resolve_executable_knowledge_point,
+    select_quiz_questions,
     upsert_daily_task_snapshot,
 )
 
@@ -407,6 +409,134 @@ class DailyTaskProgressServiceTests(unittest.TestCase):
                 "task_item_id": item_id,
             })
             self.assertEqual(confirmed["code"], 409)
+
+    def test_quiz_selection_stratifies_by_real_annotated_difficulty(self):
+        with self.session_factory() as db:
+            # KP_2 提供 5 个难度各 2 题 + 2 道未标注题，共 12 题。
+            db.add(database.KnowledgePoint(
+                kp_id="KP_2", name="五行", aliases_json="[]",
+                source="formal-content:test", status="active",
+            ))
+            for index in range(12):
+                difficulty = index // 2 + 1 if index < 10 else None
+                qid = f"QUIZ_Q_{index}"
+                db.add(database.LearningQuestion(
+                    question_id=qid, question_type="single_choice",
+                    question_content=f"测验题{index}", options_json="[]",
+                    answer_json='["A"]', explanation="解析",
+                    difficulty=float(difficulty) if difficulty else None,
+                    kp_ids_json='["KP_2"]', key_points="k", scoring_rubric="r",
+                ))
+                db.add(database.QuestionVersionRecord(
+                    question_version_id=f"QUIZ_QV_{index}", question_id=qid,
+                    version=1, question_type="single_choice", stem=f"测验题{index}",
+                    answer="A", analysis="解析",
+                    standard_difficulty=difficulty,
+                    source_kind="formal-content:test", status="active",
+                ))
+                db.add(database.QuestionKPLinkRecord(
+                    question_version_id=f"QUIZ_QV_{index}", kp_id="KP_2",
+                    is_primary=True, status="active",
+                ))
+            db.flush()
+
+            advanced = select_quiz_questions(db, ["KP_2"], "advanced", 12)
+            self.assertEqual(len(advanced), 12)
+            levels = sorted(
+                int(row.standard_difficulty)
+                for row in advanced
+                if row.standard_difficulty is not None
+            )
+            # advanced 画像 5 难度期望 2 题：难度 4/5 每题各取 2。
+            self.assertEqual(levels.count(4), 2)
+            self.assertEqual(levels.count(5), 2)
+
+            foundation = select_quiz_questions(db, ["KP_2"], "foundation", 12)
+            foundation_levels = [
+                int(row.standard_difficulty)
+                for row in foundation
+                if row.standard_difficulty is not None
+            ]
+            # foundation 需要 3 道难度 1，但候选池仅 2 道：缺口由无标注题补足。
+            self.assertEqual(foundation_levels.count(1), 2)
+            self.assertEqual(foundation_levels.count(2), 2)
+            self.assertEqual(len(foundation), 12)
+
+    def test_quiz_selection_crosses_kps_and_never_blocks_on_shortage(self):
+        with self.session_factory() as db:
+            # KP_1 已有 Q_1/Q_2（无难度），KP_2 提供 4 题（难度 5）。
+            db.add(database.KnowledgePoint(
+                kp_id="KP_2", name="五行", aliases_json="[]",
+                source="formal-content:test", status="active",
+            ))
+            for index in range(4):
+                qid = f"SHORT_Q_{index}"
+                db.add(database.LearningQuestion(
+                    question_id=qid, question_type="single_choice",
+                    question_content=f"短缺题{index}", options_json="[]",
+                    answer_json='["A"]', explanation="解析",
+                    difficulty=5.0, kp_ids_json='["KP_2"]',
+                    key_points="k", scoring_rubric="r",
+                ))
+                db.add(database.QuestionVersionRecord(
+                    question_version_id=f"SHORT_QV_{index}", question_id=qid,
+                    version=1, question_type="single_choice", stem=f"短缺题{index}",
+                    answer="A", analysis="解析", standard_difficulty=5,
+                    source_kind="formal-content:test", status="active",
+                ))
+                db.add(database.QuestionKPLinkRecord(
+                    question_version_id=f"SHORT_QV_{index}", kp_id="KP_2",
+                    is_primary=True, status="active",
+                ))
+            db.flush()
+
+            # 候选共 6 题（KP_1 的 Q_1/Q_2 + KP_2 的 4 题），不足 10 不抛错。
+            result = upsert_daily_task_snapshot(
+                db, user_id=1, payload={
+                    "host_task_id": "TASK_QUIZ",
+                    "host_task_version": 1,
+                    "items": [
+                        {"task_item_id": "ITEM_QUIZ_MAIN", "kp_id": "KP_1", "required_question_count": 1},
+                        {
+                            "task_item_id": "ITEM_QUIZ",
+                            "kp_id": "KP_2",
+                            "required_question_count": 12,
+                            "completion_policy": {
+                                "policy": "frozen_question_set",
+                                "quiz": True,
+                                "quiz_target_count": 12,
+                            },
+                        },
+                    ],
+                },
+            )
+            quiz_item = next(
+                item for item in result["items"]
+                if item["task_item_id"] == "ITEM_QUIZ"
+            )
+            # 候选 6 题全部冻结，不阻塞任务。
+            self.assertEqual(len(quiz_item["questions"]), 6)
+            self.assertEqual(quiz_item["status"], "pending")
+
+    def test_quiz_learner_profile_uses_accuracy_then_balanced_fallback(self):
+        with self.session_factory() as db:
+            self.assertEqual(quiz_learner_profile(db, 1), "balanced")
+            db.add(database.LearningQuestion(
+                question_id="PROF_Q", question_type="single_choice",
+                question_content="画像题", options_json="[]",
+                answer_json='["A"]', explanation="", difficulty=3.0,
+                kp_ids_json='[]', key_points="k", scoring_rubric="r",
+            ))
+            db.flush()
+            for index, correct in enumerate((True, True, True, True)):
+                db.add(database.LearningQuestionAttempt(
+                    attempt_id=f"PA_{index}",
+                    user_id=1, question_id="PROF_Q", task_id=None,
+                    request_id=f"PA_REQ_{index}",
+                    submitted_answer_json='[]', is_correct=correct,
+                ))
+            db.commit()
+            self.assertEqual(quiz_learner_profile(db, 1), "advanced")
 
 
 if __name__ == "__main__":

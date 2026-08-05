@@ -81,6 +81,10 @@ def build_engine():
             "CREATE TABLE conversation_messages (message_id TEXT PRIMARY KEY, session_id TEXT, "
             "role TEXT, content TEXT, metadata_json TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
         ))
+        connection.execute(text(
+            "CREATE TABLE context_summaries (summary_id TEXT PRIMARY KEY, session_id TEXT, "
+            "execution_id TEXT, payload_json TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+        ))
     return engine
 
 
@@ -404,6 +408,64 @@ def test_sql_conversation_repository_sanitizes_legacy_polluted_rows_on_read() ->
     assistant_row = next(row for row in rows if row["role"] == "assistant")
     assert assistant_row["actions"] == [{"label": "查看详情"}]
     assert "raw_model_input" not in assistant_row
+
+
+def test_context_summary_persists_and_loads_latest_across_repositories() -> None:
+    summary = {
+        "summary": "用户偏好晚间学习，每天最多60分钟。",
+        "source_refs": [
+            {"ref_type": "conversation_message", "ref_id": "MSG_1"},
+            {"ref_type": "conversation_message", "ref_id": "MSG_2"},
+        ],
+        "preserved_facts": ["晚间学习"],
+        "unresolved_questions": [],
+        "temporary_constraints": ["每天最多60分钟"],
+        "compression_version": "1.0.0",
+    }
+
+    in_memory = InMemoryConversationRepository()
+    in_memory.create_session("CONV_SUM", "L1", "会话")
+    in_memory.save_messages("CONV_SUM", "L1", [
+        {"message_id": "MSG_1", "role": "user", "content": "我偏好晚间学习"},
+        {"message_id": "MSG_2", "role": "assistant", "content": "已记录"},
+    ])
+    assert in_memory.get_latest_context_summary("CONV_SUM", "L1") is None
+    in_memory.save_context_summary("CONV_SUM", "L1", "EXE_1", summary)
+    loaded = in_memory.get_latest_context_summary("CONV_SUM", "L1")
+    assert loaded["summary"] == summary["summary"]
+    assert [ref["ref_id"] for ref in loaded["source_refs"]] == ["MSG_1", "MSG_2"]
+    # A newer summary replaces the older one.
+    in_memory.save_context_summary("CONV_SUM", "L1", "EXE_2", {
+        **summary,
+        "summary": "新增方剂背诵侧重。",
+    })
+    assert in_memory.get_latest_context_summary("CONV_SUM", "L1")["summary"] == (
+        "新增方剂背诵侧重。"
+    )
+    # Cross-learner access is rejected.
+    assert in_memory.get_latest_context_summary("CONV_SUM", "OTHER") is None
+
+    engine = build_engine()
+    sql = SqlConversationRepository(engine)
+    sql.create_session("CONV_SUM_SQL", "L1", "会话")
+    sql.save_messages("CONV_SUM_SQL", "L1", [
+        {"message_id": "MSG_1", "role": "user", "content": "我偏好晚间学习"},
+        {"message_id": "MSG_2", "role": "assistant", "content": "已记录"},
+    ])
+    assert sql.get_latest_context_summary("CONV_SUM_SQL", "L1") is None
+    sql.save_context_summary("CONV_SUM_SQL", "L1", "EXE_1", summary)
+    loaded_sql = sql.get_latest_context_summary("CONV_SUM_SQL", "L1")
+    assert loaded_sql["summary"] == summary["summary"]
+    assert loaded_sql["execution_id"] == "EXE_1"
+    assert [ref["ref_id"] for ref in loaded_sql["source_refs"]] == ["MSG_1", "MSG_2"]
+    sql.save_context_summary("CONV_SUM_SQL", "L1", "EXE_2", {
+        **summary,
+        "summary": "第二版摘要",
+    })
+    assert sql.get_latest_context_summary("CONV_SUM_SQL", "L1")["summary"] == "第二版摘要"
+    # A summary without a session owner row is not written.
+    sql.save_context_summary("CONV_UNKNOWN", "OTHER", "EXE_3", summary)
+    assert sql.get_latest_context_summary("CONV_UNKNOWN", "OTHER") is None
 
 
 def test_formal_sqlite_database_preserves_runtime_repositories(tmp_path: Path) -> None:

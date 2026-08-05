@@ -21,7 +21,7 @@ test('keeps honest fallbacks for sparse dashboard data', () => {
 
   assert.equal(state.continueLearning.progress, null);
   assert.equal(state.pendingTasks.count, 0);
-  assert.equal(state.pendingTasks.duration, '打开训练工坊查看安排');
+  assert.equal(state.pendingTasks.duration, '打开练习工坊查看安排');
 });
 
 test('maps home feature actions to existing first- and second-level pages', () => {

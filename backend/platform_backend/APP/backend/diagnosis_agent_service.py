@@ -25,6 +25,8 @@ from APP.backend.database import (
     AgentEvent,
     LearnerKnowledgeMastery,
     LearningActivityRecord,
+    LearningQuestion,
+    LearningQuestionAttempt,
     MistakeRecord,
     PersonalizationMemory,
     QuestionAttempt,
@@ -69,6 +71,25 @@ def _json_dict(value: str | None) -> dict[str, Any]:
 
 def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _difficulty_key(value: Any) -> int | None:
+    """Real annotated difficulty 1-5 only; anything else stays unlabelled.
+
+    Mirrors the shared difficulty contract: no inference, no default, and
+    ``0``/``6``/``2.5``/strings all count as missing.
+    """
+
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not number.is_integer():
+        return None
+    rating = int(number)
+    return rating if 1 <= rating <= 5 else None
 
 
 def _parse_daily_minutes(value: Any) -> int:
@@ -855,6 +876,7 @@ def _legacy_report_payload(db: Session, user_id: int, diagnosis: DiagnosisReport
             "goal": goal,
             "current_focus": str(focus or goal),
         },
+        "difficulty_accuracy": build_difficulty_accuracy(db, user_id),
         "mastery_radar": mastery_radar,
         "weak_points": weak_points,
         "mistake_summary": {
@@ -870,6 +892,89 @@ def _legacy_report_payload(db: Session, user_id: int, diagnosis: DiagnosisReport
 
 
 # Backward compatible report payload for ReportsPage while exposing task 9 diagnosis data.
+def build_difficulty_accuracy(db: Session, user_id: int) -> dict[str, Any]:
+    """Per-difficulty answer accuracy across all graded attempts.
+
+    Difficulty comes exclusively from real annotations on the question itself
+    (``question.difficulty``); attempts never infer a difficulty. Questions
+    without a valid 1-5 annotation are aggregated under ``unlabeled`` so the
+    report distinguishes real data from missing data.
+    """
+
+    task_attempts = (
+        db.query(LearningQuestionAttempt)
+        .filter(LearningQuestionAttempt.user_id == user_id)
+        .all()
+    )
+    public_attempts = (
+        db.query(QuestionAttempt)
+        .filter(QuestionAttempt.user_id == user_id)
+        .all()
+    )
+    question_ids = sorted(
+        {
+            str(row.question_id or "")
+            for row in [*task_attempts, *public_attempts]
+            if str(row.question_id or "")
+        }
+    )
+    difficulty_by_question: dict[str, int | None] = {}
+    if question_ids:
+        for question in db.query(LearningQuestion).filter(
+            LearningQuestion.question_id.in_(question_ids)
+        ).all():
+            difficulty_by_question[str(question.question_id)] = _difficulty_key(
+                question.difficulty
+            )
+
+    buckets: dict[str, dict[str, int]] = {
+        str(level): {"attempts": 0, "correct": 0} for level in range(1, 6)
+    }
+    buckets["unlabeled"] = {"attempts": 0, "correct": 0}
+    for row in [*task_attempts, *public_attempts]:
+        level = difficulty_by_question.get(str(row.question_id or ""))
+        key = str(level) if level is not None else "unlabeled"
+        buckets[key]["attempts"] += 1
+        if row.is_correct:
+            buckets[key]["correct"] += 1
+
+    total = sum(info["attempts"] for info in buckets.values())
+    correct = sum(info["correct"] for info in buckets.values())
+    by_difficulty: dict[str, Any] = {}
+    for level in range(1, 6):
+        info = buckets[str(level)]
+        by_difficulty[str(level)] = {
+            "attempts": info["attempts"],
+            "correct": info["correct"],
+            "accuracy": (
+                round(info["correct"] / info["attempts"], 4)
+                if info["attempts"]
+                else None
+            ),
+        }
+    by_difficulty["unlabeled"] = {
+        "attempts": buckets["unlabeled"]["attempts"],
+        "correct": buckets["unlabeled"]["correct"],
+        "accuracy": (
+            round(
+                buckets["unlabeled"]["correct"]
+                / buckets["unlabeled"]["attempts"],
+                4,
+            )
+            if buckets["unlabeled"]["attempts"]
+            else None
+        ),
+    }
+    return {
+        "overall": {
+            "attempts": total,
+            "correct": correct,
+            "accuracy": round(correct / total, 4) if total else None,
+        },
+        "by_difficulty": by_difficulty,
+    }
+
+
 def build_report_summary(db: Session, user_id: int) -> dict[str, Any]:
     onboarding_status = get_onboarding_status(db, user_id)
     learning_profile = build_learning_profile(db, user_id)
@@ -887,6 +992,7 @@ def build_report_summary(db: Session, user_id: int) -> dict[str, Any]:
         "onboarding_status": onboarding_status,
         "learning_profile": learning_profile,
         "diagnosis": diagnosis.model_dump(),
+        "difficulty_accuracy": build_difficulty_accuracy(db, user_id),
         "agent_trace": [
             {
                 "agent_name": row.agent_name,
