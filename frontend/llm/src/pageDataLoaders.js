@@ -577,7 +577,7 @@ export async function loadPlanningData({ fetcher }) {
 export async function loadReportsData({ fetcher }) {
   try {
     const { data, source } = await fetcher({
-      paths: ['/v1/learning-insights?days=30'],
+      paths: ['/v1/learning-insights?days=30&run_automation=false'],
       fallback: emptyReport,
       validator: isLearningInsightsPayloadValid,
     });

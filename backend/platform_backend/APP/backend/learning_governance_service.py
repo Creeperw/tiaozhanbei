@@ -11,6 +11,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from APP.backend import (
+    config,
     diagnosis_agent_service,
     learning_statistics_service,
     system_data_service,
@@ -33,11 +34,139 @@ from APP.backend.database import (
     TeachingResource,
     UserProfile,
 )
+from APP.backend.health_llm import build_llm_client
+from APP.backend.health_utils import extract_json_object
 from APP.backend.time_utils import utc_now
 
 
 SCHEMA_VERSION = "1.0"
 METHODOLOGY_VERSION = "learning-monitoring-v4-auditable-window"
+
+# --- 学习治理智能体决策（规则初筛 + LLM 决策） ---
+# 规则引擎负责信号检测（阶段判定、数据充分性、冷却期、去重）；
+# 触发后由 LLM 智能体决定「改不改、如何改」，并生成有依据的自然语言文案。
+# LLM 不可用/超时/输出非法时一律回退规则模板，绝不阻断通知。
+
+_AGENT_DECISION_SYSTEM_PROMPT = (
+    "你是学习规划智能体，负责基于学员学习监控快照决定是否需要调整学习计划。\n"
+    "规则引擎已经完成信号初筛并给出候选建议（rule_candidate），你的职责是：\n"
+    "1. 判断证据是否真正支持调整：只在监控数据明确、反复出现的问题上建议调整；\n"
+    "2. 决定「改不改」：decide=adjust 表示需要调整；decide=keep 表示维持现状、暂不打扰；\n"
+    "3. 决定「如何改」：adjust 时给出具体调整操作、面向用户的自然语言建议文案；\n"
+    "4. 不臆造数据：只基于快照中给出的维度值、趋势、错题、到期复习数、连续低完成天数作判断；\n"
+    "5. 文案用简体中文，口语自然、有依据、可执行，避免空话套话。\n"
+    "必须只输出合法 JSON 对象，结构如下：\n"
+    '{"decide": "adjust"|"keep",\n'
+    ' "reason": "判断理由（给用户看的自然语言，说明依据了哪些监控证据）",\n'
+    ' "adjustment": {\n'
+    '   "target_layer": "daily_task"|"short_term"|"long_term",\n'
+    '   "operation": "reduce_load"|"add_review_window"|"replan_for_low_completion"|"slow_progress"|"keep_current",\n'
+    '   "summary": "给用户的调整建议文案",\n'
+    '   "user_request": "需要智能体重规划时的用户请求（keep 时可为空）"\n'
+    " }}"
+)
+
+
+def _build_agent_snapshot(
+    insights: dict[str, Any],
+    *,
+    stage_id: str,
+    rule_candidate: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """把监控快照压缩成 LLM 可读的紧凑 JSON，避免把全量 insights 塞进 prompt。"""
+    overview = insights.get("overview") or {}
+    dimensions = []
+    for item in insights.get("dimensions", []):
+        if not isinstance(item, dict):
+            continue
+        dimensions.append(
+            {
+                "key": item.get("key"),
+                "label": item.get("label"),
+                "value": item.get("value"),
+                "trend": item.get("trend"),
+            }
+        )
+    series = (
+        insights.get("activity_trends", {}).get("series", [])
+        if isinstance(insights.get("activity_trends"), dict)
+        else []
+    )
+    weak_points = [
+        item.get("kp_name") or item.get("kp_id")
+        for item in insights.get("weak_points", [])
+        if isinstance(item, dict)
+    ][:5]
+    return {
+        "stage_id": stage_id,
+        "stage_name": overview.get("stage_name") or "",
+        "dimensions": dimensions,
+        "recent_daily_activity": series[-7:],
+        "weak_points": weak_points,
+        "due_review_count": int(overview.get("due_review_count") or 0),
+        "data_quality": insights.get("data_quality") or {},
+        "rule_candidate": rule_candidate,
+    }
+
+
+def _normalize_agent_decision(payload: Any) -> dict[str, Any] | None:
+    """强校验 LLM 输出；任何不符合契约的输入都视为无法决策（返回 None 触发规则回退）。"""
+    if not isinstance(payload, dict):
+        return None
+    decide = str(payload.get("decide") or "").strip().lower()
+    if decide not in {"adjust", "keep"}:
+        return None
+    reason = str(payload.get("reason") or "").strip()
+    if not reason:
+        return None
+    adjustment = payload.get("adjustment")
+    adjustment = adjustment if isinstance(adjustment, dict) else {}
+    target_layer = str(adjustment.get("target_layer") or "daily_task").strip()
+    if target_layer not in {"daily_task", "short_term", "long_term"}:
+        target_layer = "daily_task"
+    operation = str(adjustment.get("operation") or "").strip() or None
+    summary = str(adjustment.get("summary") or "").strip() or reason
+    user_request = str(adjustment.get("user_request") or "").strip() or None
+    return {
+        "decide": decide,
+        "reason": reason,
+        "target_layer": target_layer,
+        "operation": operation,
+        "summary": summary,
+        "user_request": user_request,
+    }
+
+
+def _llm_decide_adjustment(snapshot: dict[str, Any]) -> dict[str, Any] | None:
+    """调用 LLM 智能体做治理决策。任何异常都返回 None，由调用方回退规则模板。"""
+    if not config.GOVERNANCE_AGENT_DECISION_ENABLED:
+        return None
+    try:
+        client = build_llm_client("planner")
+        raw_text = client.chat(
+            [
+                {"role": "system", "content": _AGENT_DECISION_SYSTEM_PROMPT},
+                {"role": "user", "content": json.dumps(snapshot, ensure_ascii=False)},
+            ],
+            temperature=0.2,
+            max_tokens=800,
+            extra_body={"response_format": {"type": "json_object"}},
+        )
+        return _normalize_agent_decision(extract_json_object(raw_text))
+    except Exception:
+        return None
+
+
+def build_governance_agent_decider() -> Any:
+    """生产用决策器工厂：规则初筛后由 LLM 决定改不改、如何改。
+
+    返回 None 表示未启用（纯规则路径）。决策器本身保证失败降级。
+    """
+    if not config.GOVERNANCE_AGENT_DECISION_ENABLED:
+        return None
+    return _llm_decide_adjustment
+
+
 REFERENCE_LINKS = [
     {
         "reference_id": "caliper-1edtech-1.2",
@@ -1390,7 +1519,19 @@ def update_notification_status(db: Session, user_id: int, notification_id: str, 
     return serialize_notification(row)
 
 
-def evaluate_intervention(db: Session, user_id: int, insights: dict[str, Any]) -> dict[str, Any] | None:
+def evaluate_intervention(
+    db: Session,
+    user_id: int,
+    insights: dict[str, Any],
+    *,
+    agent_decider: Any = None,
+) -> dict[str, Any] | None:
+    """规则初筛 + 智能体决策的学习节奏调整建议。
+
+    agent_decider 为 None 时走纯规则模板（历史行为）；传入决策器时，规则初筛
+    通过后由决策器决定改不改、如何改；决策器返回 keep 时静默跳过（记录痕迹
+    使冷却生效但不推送），返回 adjust 时使用智能体文案，失败/非法时回退规则。
+    """
     overview = insights.get("overview") or {}
     stage_id = str(overview.get("stage_id") or "T0")
     if stage_id == "T0" or not insights.get("data_quality", {}).get("is_sufficient_for_intervention"):
@@ -1408,6 +1549,31 @@ def evaluate_intervention(db: Session, user_id: int, insights: dict[str, Any]) -
     if recent is not None:
         return serialize_intervention(db, recent)
     action, message = _ACTION_BY_STAGE.get(stage_id, ("保持当前计划", "继续按当前节奏学习并积累数据。"))
+    agent_decision = None
+    if agent_decider is not None:
+        try:
+            agent_decision = _normalize_agent_decision(
+                agent_decider(
+                    _build_agent_snapshot(
+                        insights,
+                        stage_id=stage_id,
+                        rule_candidate={"action": action, "message": message},
+                    )
+                )
+            )
+        except Exception:
+            # 决策器异常不阻断推送，回退规则模板。
+            agent_decision = None
+    suppressed = False
+    if agent_decision is not None and agent_decision.get("decide") == "keep":
+        # 智能体判定暂不需要干预：保留冷却痕迹，不推送通知。
+        suppressed = True
+        action = "保持当前计划"
+        message = agent_decision.get("reason")
+    elif agent_decision is not None:
+        # 智能体判定需要调整：采用其具体操作与自然语言文案。
+        action = agent_decision.get("operation") or action
+        message = agent_decision.get("summary") or agent_decision.get("reason") or message
     period = now.date().isoformat()
     intervention_key = hashlib.sha1(f"{user_id}:{stage_id}:{period}".encode()).hexdigest()[:24]
     legacy = LearningInterventionRecord(
@@ -1424,26 +1590,34 @@ def evaluate_intervention(db: Session, user_id: int, insights: dict[str, Any]) -
         intervention_record_id=legacy.id,
         user_id=user_id,
         intervention_key=intervention_key,
-        status="delivered",
-        trigger_snapshot_json=json.dumps({"overview": overview, "data_quality": insights.get("data_quality", {})}, ensure_ascii=False),
+        status="suppressed" if suppressed else "delivered",
+        trigger_snapshot_json=json.dumps(
+            {
+                "overview": overview,
+                "data_quality": insights.get("data_quality", {}),
+                "agent_decision": agent_decision,
+            },
+            ensure_ascii=False,
+        ),
         baseline_json=json.dumps({item["key"]: item["value"] for item in insights.get("dimensions", [])}, ensure_ascii=False),
         delivered_at=now,
         evaluate_after=now + timedelta(hours=72),
     )
     db.add(lifecycle)
     db.flush()
-    create_notification(
-        db,
-        user_id,
-        category="intervention",
-        title="学习节奏调整建议",
-        message=legacy.reason,
-        dedupe_key=f"intervention:{intervention_key}",
-        severity="warning",
-        source_type="learning_intervention",
-        source_id=str(legacy.id),
-        action={"type": "open_intervention", "intervention_id": legacy.id},
-    )
+    if not suppressed:
+        create_notification(
+            db,
+            user_id,
+            category="intervention",
+            title="学习节奏调整建议",
+            message=legacy.reason,
+            dedupe_key=f"intervention:{intervention_key}",
+            severity="warning",
+            source_type="learning_intervention",
+            source_id=str(legacy.id),
+            action={"type": "open_intervention", "intervention_id": legacy.id},
+        )
     return serialize_intervention(db, lifecycle)
 
 
@@ -1578,7 +1752,14 @@ def run_plan_review(
     insights: dict[str, Any],
     plan_context: dict[str, Any],
     trigger_type: str = "weekly",
+    agent_decider: Any = None,
 ) -> dict[str, Any]:
+    """规则初筛 + 智能体决策的学习规划复盘。
+
+    agent_decider 为 None 时走纯规则模板（历史行为）；传入决策器时，规则产出
+    候选 outcome/summary/proposal 后由决策器复核：keep 时收敛为 on_track 且不
+    推送；adjust 时采用智能体的文案与调整操作；失败/非法时回退规则文案。
+    """
     now = utc_now()
     iso_year, iso_week, _ = now.isocalendar()
     period_key = f"{iso_year}-W{iso_week:02d}" if trigger_type == "weekly" else now.date().isoformat()
@@ -1685,6 +1866,57 @@ def run_plan_review(
             else "当前学习证据不足，暂不自动调整现有计划。"
         )
         proposal = {}
+    # 智能体决策：规则已产出候选，由 LLM 决定「改不改、如何改」。
+    # keep 收敛为 on_track（不推送）；adjust 采用智能体文案与操作；失败回退规则。
+    agent_decision = None
+    if agent_decider is not None and outcome != "on_track":
+        try:
+            agent_decision = _normalize_agent_decision(
+                agent_decider(
+                    _build_agent_snapshot(
+                        insights,
+                        stage_id=str((insights.get("overview") or {}).get("stage_id") or "T0"),
+                        rule_candidate={
+                            "outcome": outcome,
+                            "summary": summary,
+                            "proposal": proposal,
+                            "low_completion_streak_days": low_completion_streak_days,
+                            "due_review_count": due,
+                        },
+                    )
+                )
+            )
+        except Exception:
+            # 决策器异常不阻断推送，回退规则文案。
+            agent_decision = None
+    if agent_decision is not None:
+        if agent_decision.get("decide") == "keep":
+            outcome = "on_track"
+            summary = agent_decision.get("reason") or "智能体评估后认为当前无需调整学习计划。"
+            proposal = {}
+        else:
+            summary = agent_decision.get("summary") or summary
+            proposal = proposal if isinstance(proposal, dict) else {}
+            target_layer = agent_decision.get("target_layer") or proposal.get("target_layer", "daily_task")
+            operation = agent_decision.get("operation") or proposal.get("operation", "reduce_load")
+            requires_confirmation = bool(
+                proposal.get(
+                    "requires_confirmation",
+                    operation in {"replan_for_low_completion", "add_review_window", "slow_progress"},
+                )
+            )
+            proposal = {
+                "target_layer": target_layer,
+                "operation": operation,
+                "requires_confirmation": requires_confirmation,
+            }
+            user_request = agent_decision.get("user_request")
+            if user_request:
+                proposal["workflow_request"] = {
+                    "task_type": "learning_plan",
+                    "plan_scope": target_layer,
+                    "user_request": user_request,
+                }
     refs = {
         key: value.get("plan_id") or value.get("task_id")
         for key, value in plan_context.items()
@@ -1695,6 +1927,7 @@ def run_plan_review(
         "data_quality": insights.get("data_quality", {}),
         "policy_conditions": policy_conditions,
         "low_completion_streak_days": low_completion_streak_days,
+        "agent_decision": agent_decision,
     }
     if existing is not None:
         previous = serialize_plan_review(existing)
@@ -1707,6 +1940,9 @@ def run_plan_review(
         previous_priority = priority.get(previous["outcome"], 1)
         current_priority = priority.get(outcome, 1)
         already_decided = existing.status in {"accepted", "rejected"}
+        agent_override = (
+            agent_decision is not None and not already_decided
+        )
         no_stronger_evidence = (
             current_priority < previous_priority
             or (
@@ -1717,7 +1953,7 @@ def run_plan_review(
                     >= low_completion_streak_days
                 )
             )
-        )
+        ) and not agent_override
         if no_stronger_evidence:
             return previous
         review = existing
@@ -1753,7 +1989,7 @@ def run_plan_review(
             message=summary,
             dedupe_key=(
                 f"plan-review:{proposal.get('target_layer', 'general')}:"
-                f"{now.date().isoformat()}"
+                f"{iso_year}-W{iso_week:02d}"
             ),
             severity="warning",
             source_type="plan_review",
@@ -1777,7 +2013,7 @@ def run_plan_review(
                 },
                 ensure_ascii=False,
             )
-            if notification.status in {"read", "dismissed"}:
+            if notification.status not in {"read", "dismissed"}:
                 notification.status = "unread"
                 notification.read_at = None
             notification.delivered_at = utc_now()
@@ -1856,6 +2092,7 @@ def run_automation_cycle(
     plan_context: dict[str, Any] | None = None,
     days: int = 30,
     review_projection: dict[str, Any] | None = None,
+    agent_decider: Any = None,
 ) -> dict[str, Any]:
     insights = build_learning_insights(
         db,
@@ -1865,13 +2102,19 @@ def run_automation_cycle(
     )
     enqueue_due_review_notification(db, user_id, insights)
     evaluated_interventions = evaluate_due_interventions(db, user_id, insights)
-    intervention = evaluate_intervention(db, user_id, insights)
+    intervention = evaluate_intervention(
+        db,
+        user_id,
+        insights,
+        agent_decider=agent_decider,
+    )
     plan_review = run_plan_review(
         db,
         user_id,
         insights=insights,
         plan_context=plan_context or {},
         trigger_type="weekly",
+        agent_decider=agent_decider,
     )
     return {
         "insights": insights,

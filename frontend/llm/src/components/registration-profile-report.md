@@ -119,7 +119,7 @@ frontend/llm/src/
 
 ## 学情报告与复习统计
 
-- 学情报告通过 `/api/v1/learning-insights?days=30` 获取能力维度、趋势和薄弱点；
+- 学情报告通过 `/api/v1/learning-insights?days=30&run_automation=false` 获取能力维度、趋势和薄弱点（报告页只读，不触发自动化推送，自动化由答题提交等真实学习事件触发）；
 - 累计学习时长、完成练习和活跃天数补充读取 `/api/v1/learning-activity/summary?days=30&recent_limit=100`；
 - 学习趋势使用 `focus_minutes` 和 `task_completion_rate`，双坐标轴根据真实数据动态缩放；
 - 雷达图和薄弱点没有可靠证据时显示数据不足，不生成预览成绩；

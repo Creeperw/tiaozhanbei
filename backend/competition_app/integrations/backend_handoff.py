@@ -972,6 +972,7 @@ class BackendHandoffRuntime:
                     plan_context=plan_context or {},
                     days=days,
                     review_projection=review_projection,
+                    agent_decider=governance.build_governance_agent_decider(),
                 )
                 result = cycle["insights"]
                 result["automation"] = {

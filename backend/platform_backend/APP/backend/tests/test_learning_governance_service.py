@@ -12,11 +12,13 @@ from APP.backend.learning_governance_service import (
     build_resource_effectiveness_report,
     build_task_load_policy,
     decide_plan_review,
+    evaluate_intervention,
     list_notifications,
     record_intervention_feedback,
     record_plan_progression_event,
     record_resource_recommendation_event,
     run_automation_cycle,
+    run_plan_review,
     update_notification_preferences,
 )
 
@@ -603,6 +605,238 @@ class LearningGovernanceServiceTests(unittest.TestCase):
             ).count(),
             1,
         )
+
+    # --- 智能体决策：规则初筛 + LLM 决定改不改、如何改 ---
+
+    @staticmethod
+    def _intervention_ready_insights() -> dict:
+        """满足干预初筛（非 T0、数据充分）的监控快照。"""
+        return {
+            "overview": {"stage_id": "T5", "stage_name": "错题积压"},
+            "dimensions": [
+                {"key": "execution", "label": "执行", "value": 0.6, "trend": "down"},
+                {"key": "mastery", "label": "掌握", "value": 0.5, "trend": "down"},
+            ],
+            "activity_trends": {"series": []},
+            "weak_points": [{"kp_id": "KP_FJ_001", "kp_name": "四君子汤"}],
+            "data_quality": {
+                "is_sufficient_for_intervention": True,
+                "sample_count": 10,
+            },
+        }
+
+    @staticmethod
+    def _low_completion_insights(streak: int, mastery: float = 0.6) -> dict:
+        """构造连续低完成率的监控快照，用于 run_plan_review 决策测试。"""
+        now = datetime.utcnow()
+        return {
+            "overview": {
+                "stage_id": "T1",
+                "stage_name": "高耗低效",
+                "due_review_count": 0,
+            },
+            "dimensions": [
+                {"key": "execution", "label": "执行", "value": 0.3, "trend": "down"},
+                {"key": "mastery", "label": "掌握", "value": mastery, "trend": "flat"},
+            ],
+            "activity_trends": {
+                "series": [
+                    {
+                        "date": (now - timedelta(days=offset)).date().isoformat(),
+                        "daily_atomic_task_completion_rate": 0.3,
+                    }
+                    for offset in range(streak)
+                ]
+            },
+            "weak_points": [],
+            "data_quality": {"sample_count": 10},
+        }
+
+    def test_agent_keep_suppresses_intervention_notification(self):
+        result = evaluate_intervention(
+            self.db,
+            1,
+            self._intervention_ready_insights(),
+            agent_decider=lambda snapshot: {
+                "decide": "keep",
+                "reason": "虽有错题积压，但掌握度已连续回升，暂不需要调整节奏。",
+                "adjustment": {},
+            },
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["lifecycle_status"], "suppressed")
+        self.assertEqual(result["action"], "保持当前计划")
+        categories = [
+            item["category"] for item in list_notifications(self.db, 1)["items"]
+        ]
+        self.assertNotIn("intervention", categories)
+
+    def test_agent_adjust_overrides_intervention_reason(self):
+        result = evaluate_intervention(
+            self.db,
+            1,
+            self._intervention_ready_insights(),
+            agent_decider=lambda snapshot: {
+                "decide": "adjust",
+                "reason": "错题集中且掌握度连续下降。",
+                "adjustment": {
+                    "target_layer": "daily_task",
+                    "operation": "reduce_load",
+                    "summary": "近三天错题复盘未完成，建议今天先完成四君子汤的错题复盘，再继续新内容。",
+                },
+            },
+        )
+        self.assertEqual(result["lifecycle_status"], "delivered")
+        self.assertEqual(result["action"], "reduce_load")
+        self.assertIn("先完成四君子汤的错题复盘", result["reason"])
+        notification = next(
+            item
+            for item in list_notifications(self.db, 1)["items"]
+            if item["category"] == "intervention"
+        )
+        self.assertIn("先完成四君子汤的错题复盘", notification["message"])
+        # 智能体决策写入审计痕迹
+        self.assertEqual(
+            result["trigger_snapshot"]["agent_decision"]["decide"],
+            "adjust",
+        )
+
+    def test_agent_decider_failure_falls_back_to_rule_templates(self):
+        def failing_decider(snapshot):
+            raise RuntimeError("llm unavailable")
+
+        result = evaluate_intervention(
+            self.db,
+            1,
+            self._intervention_ready_insights(),
+            agent_decider=failing_decider,
+        )
+        self.assertEqual(result["lifecycle_status"], "delivered")
+        self.assertEqual(result["action"], "安排错题复盘")
+        notification = next(
+            item
+            for item in list_notifications(self.db, 1)["items"]
+            if item["category"] == "intervention"
+        )
+        self.assertIn("错题积压", notification["message"])
+
+    def test_agent_invalid_output_falls_back_to_rule_templates(self):
+        result = evaluate_intervention(
+            self.db,
+            1,
+            self._intervention_ready_insights(),
+            agent_decider=lambda snapshot: {"decide": "hijack", "reason": "非法输出"},
+        )
+        self.assertEqual(result["lifecycle_status"], "delivered")
+        self.assertEqual(result["action"], "安排错题复盘")
+
+    def test_plan_review_agent_keep_does_not_notify(self):
+        review = run_plan_review(
+            self.db,
+            1,
+            insights=self._low_completion_insights(streak=2),
+            plan_context={},
+            agent_decider=lambda snapshot: {
+                "decide": "keep",
+                "reason": "今日完成率偏低但连续天数不足，维持现有计划即可。",
+                "adjustment": {},
+            },
+        )
+        self.assertEqual(review["outcome"], "on_track")
+        self.assertEqual(review["status"], "completed")
+        categories = [
+            item["category"] for item in list_notifications(self.db, 1)["items"]
+        ]
+        self.assertNotIn("plan_review", categories)
+
+    def test_plan_review_agent_adjust_uses_agent_wording(self):
+        review = run_plan_review(
+            self.db,
+            1,
+            insights=self._low_completion_insights(streak=2),
+            plan_context={},
+            agent_decider=lambda snapshot: {
+                "decide": "adjust",
+                "reason": "连续两天未完成任务，需要减轻今日负担。",
+                "adjustment": {
+                    "target_layer": "daily_task",
+                    "operation": "reduce_load",
+                    "summary": "今天先完成两个核心知识点，其余任务顺延，避免再次积压。",
+                    "user_request": "",
+                },
+            },
+        )
+        self.assertEqual(review["summary"], "今天先完成两个核心知识点，其余任务顺延，避免再次积压。")
+        self.assertEqual(review["proposal"]["operation"], "reduce_load")
+        self.assertEqual(review["proposal"]["target_layer"], "daily_task")
+        notification = next(
+            item
+            for item in list_notifications(self.db, 1)["items"]
+            if item["category"] == "plan_review"
+        )
+        self.assertEqual(
+            notification["message"],
+            "今天先完成两个核心知识点，其余任务顺延，避免再次积压。",
+        )
+
+    def test_plan_review_read_notification_is_not_resurrected(self):
+        first = run_plan_review(
+            self.db,
+            1,
+            insights=self._low_completion_insights(streak=3),
+            plan_context={},
+        )
+        notification = next(
+            item
+            for item in list_notifications(self.db, 1)["items"]
+            if item["category"] == "plan_review"
+        )
+        self.assertEqual(notification["status"], "unread")
+        row = (
+            self.db.query(database.NotificationRecord)
+            .filter_by(notification_id=notification["notification_id"])
+            .one()
+        )
+        row.status = "read"
+        row.read_at = datetime.utcnow()
+        self.db.flush()
+
+        # 证据增强（连续 4 天）：同周再次触发，通知内容更新但已读状态不复活
+        second = run_plan_review(
+            self.db,
+            1,
+            insights=self._low_completion_insights(streak=4),
+            plan_context={},
+        )
+        self.assertEqual(second["review_id"], first["review_id"])
+        self.assertEqual(second["low_completion_streak_days"], 4)
+        refreshed = (
+            self.db.query(database.NotificationRecord)
+            .filter_by(notification_id=notification["notification_id"])
+            .one()
+        )
+        self.assertEqual(refreshed.status, "read")
+        self.assertIsNotNone(refreshed.read_at)
+
+    def test_plan_review_notification_deduplicated_within_week(self):
+        run_plan_review(
+            self.db,
+            1,
+            insights=self._low_completion_insights(streak=2),
+            plan_context={},
+        )
+        run_plan_review(
+            self.db,
+            1,
+            insights=self._low_completion_insights(streak=2),
+            plan_context={},
+        )
+        plan_review_notifications = [
+            item
+            for item in list_notifications(self.db, 1)["items"]
+            if item["category"] == "plan_review"
+        ]
+        self.assertEqual(len(plan_review_notifications), 1)
 
 
 if __name__ == "__main__":

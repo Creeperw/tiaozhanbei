@@ -75,6 +75,12 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") or (
 # 切换方式：export LLM_MODE=local 即可回到本地 vLLM，不影响业务代码。
 LLM_MODE = os.getenv("LLM_MODE", "api")
 
+# 学习治理智能体决策开关：规则初筛触发后，是否调用 LLM 智能体决定「改不改、如何改」。
+# 关闭时保持纯规则模板路径；LLM 调用失败/超时/输出非法时自动回退规则路径，不影响推送。
+GOVERNANCE_AGENT_DECISION_ENABLED = os.getenv(
+    "GOVERNANCE_AGENT_DECISION_ENABLED", "true"
+).lower() in {"1", "true", "yes", "on"}
+
 # --- API 模式配置（Anthropic 兼容端点） ---
 # 远程 LLM API Key。生产环境建议通过环境变量注入，不要硬编码到仓库。
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
