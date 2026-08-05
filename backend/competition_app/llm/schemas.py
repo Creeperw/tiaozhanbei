@@ -1028,6 +1028,13 @@ class AuditModelOutput(StrictModelOutput):
         max_length=8_000,
         description="面向业务人员的详细自然语言审核报告。",
     )
+    contract_check: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "可选：模型回显的已核验合同摘要（如 scope、total_duration_days、stages），"
+            "仅用于审核留痕与追溯，不参与审核决定。"
+        ),
+    )
 
 
 FORBIDDEN_OBJECTIVE_FIELDS = {

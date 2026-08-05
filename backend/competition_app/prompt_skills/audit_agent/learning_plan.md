@@ -50,7 +50,11 @@ task_type: learning_plan
 
 # 输出
 
-- `audit_report`：详细自然语言审核报告，说明审核依据、逐项结论和最终理由。
+你的输出必须是**且只能是**以下字段的 JSON 对象：
+
+- `decision`：最小审核决定，取值仅限 `pass` / `revise` / `reject` / `needs_human_review`。
 - `findings`：`pass` 时保持空列表；`revise`、`reject` 或 `needs_human_review` 时仅保留可执行的问题。每条问题必须先写明具体位置（阶段、推进节点、正文部分或合同字段），再说明影响和修改要求；无法细分时明确写“当前规划全文”。
-- `decision`：最小审核决定。
-- 不生成或重写规划，不输出系统摘要、ID、依赖关系或数据库字段。
+- `audit_report`：详细自然语言审核报告，说明审核依据、逐项结论和最终理由。
+- `contract_check`（可选）：如需回显已核验的合同摘要（scope、total_duration_days、stages），请放入此字段；该字段仅用于留痕与追溯，不参与审核决定。
+
+除上述四个字段外，**严禁输出任何其他字段**（例如 summary、result、plan、evidence、contract、decision_reason 等均不允许）。系统对输出做严格字段校验，多出的任何字段都会导致本次审核被判定为“输出不符合协议”并转人工复核。如无特别必要，建议只输出 `decision`、`findings`、`audit_report` 三个字段。不生成或重写规划，不输出系统摘要、ID、依赖关系或数据库字段。

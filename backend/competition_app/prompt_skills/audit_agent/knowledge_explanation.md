@@ -29,3 +29,14 @@ task_type: knowledge_explanation
 全部关键项通过才 `pass`；可修正缺项使用 `revise`；核心事实错误或越界使用 `reject`；无法可靠判断时使用 `needs_human_review`。
 
 需要修订时，每条 findings 先指出正文中的具体部分或栏目，再说明问题、影响和修改要求；无法细分时明确写“当前知识讲解全文”。
+
+# 输出
+
+你的输出必须是**且只能是**以下字段的 JSON 对象：
+
+- `decision`：取值仅限 `pass` / `revise` / `reject` / `needs_human_review`。
+- `findings`：问题列表，`pass` 时为空；每条先指位置再说明影响和修改要求。
+- `audit_report`：详细自然语言审核报告。
+- `contract_check`（可选）：仅用于审核留痕与追溯，不参与审核决定。
+
+除上述字段外，**严禁输出任何其他字段**；多出的任何字段都会导致本次审核被判定为“输出不符合协议”并转人工复核。建议只输出 `decision`、`findings`、`audit_report` 三个字段。

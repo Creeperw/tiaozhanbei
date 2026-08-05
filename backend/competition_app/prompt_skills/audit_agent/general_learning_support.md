@@ -16,3 +16,14 @@ task_type: general_learning_support
 - 检查是否包含现实诊断、个体化处方或剂量建议。
 - 核心事实正确且相关、安全时 `pass`；可修正事实错误时 `revise`；
   严重事实冲突或安全越界时 `reject`；证据确实无法判断时 `needs_human_review`。
+
+# 输出
+
+你的输出必须是**且只能是**以下字段的 JSON 对象：
+
+- `decision`：取值仅限 `pass` / `revise` / `reject` / `needs_human_review`。
+- `findings`：问题列表，`pass` 时为空；每条先指位置再说明影响和修改要求。
+- `audit_report`：详细自然语言审核报告。
+- `contract_check`（可选）：仅用于审核留痕与追溯，不参与审核决定。
+
+除上述字段外，**严禁输出任何其他字段**；多出的任何字段都会导致本次审核被判定为“输出不符合协议”并转人工复核。建议只输出 `decision`、`findings`、`audit_report` 三个字段。

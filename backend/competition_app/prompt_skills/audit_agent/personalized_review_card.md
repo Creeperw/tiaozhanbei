@@ -28,3 +28,14 @@ task_type: personalized_review_card
 - 本次证据和主流教材均无法可靠判定核心事实时 `needs_human_review`；不能仅因教学扩展超出本次 EvidencePack 逐字内容而转人工。
 - findings 先指出资源正文部分、目标知识点字段或预计时长字段，再说明依据、影响和修改要求；无法细分时明确写“当前教学资源”。通过时概括已核验维度。
 - 如果决定为 `pass`，不得在 `audit_report` 中使用“必须修订、不能发布、不可发布、阻断性问题”等相反措辞；findings 只能是明确的非阻断建议。
+
+# 输出
+
+你的输出必须是**且只能是**以下字段的 JSON 对象：
+
+- `decision`：取值仅限 `pass` / `revise` / `reject` / `needs_human_review`。
+- `findings`：问题列表，`pass` 时为空；每条先指位置再说明影响和修改要求。
+- `audit_report`：详细自然语言审核报告。
+- `contract_check`（可选）：仅用于审核留痕与追溯，不参与审核决定。
+
+除上述字段外，**严禁输出任何其他字段**；多出的任何字段都会导致本次审核被判定为“输出不符合协议”并转人工复核。建议只输出 `decision`、`findings`、`audit_report` 三个字段。
