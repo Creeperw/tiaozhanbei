@@ -161,6 +161,41 @@ async def test_backfill_searches_cleans_and_persists_web_questions(
 
 
 @pytest.mark.asyncio
+async def test_backfill_duplicate_count_excludes_blank_rows(tmp_path: Path) -> None:
+    """含脏数据（无题干）时，重复入库统计不应被累计 blank 数污染。"""
+    store = _make_store(tmp_path)
+    cleaner = FakeCleaner(
+        rows=[
+            {
+                "question_type": "单选题",
+                "stem": "网络新题：四君子汤的君药是？",
+                "answer": "人参",
+                "analysis": "君药为君，主证主药。",
+            },
+            {"question_type": "单选题", "answer": "A"},  # 脏数据：无题干
+        ]
+    )
+    service = WebQuestionIngestService(
+        searcher=FakeSearcher(
+            [_hit("题目", "题目内容", "https://example.com/a")]
+        ),
+        cleaner=cleaner,
+        store=store,
+        runtime_dir=store.paths.question_runtime,
+    )
+    first = await service.backfill_knowledge_point("四君子汤")
+    assert first.ingested == 1
+    assert first.skipped_blank == 1
+    assert first.skipped_duplicates == 0
+
+    # 同内容再来一次：有效题全部重复，统计应为 1（旧公式会误算为 0）
+    second = await service.backfill_knowledge_point("四君子汤")
+    assert second.ingested == 0
+    assert second.skipped_blank == 1  # 每次调用独立计数
+    assert second.skipped_duplicates == 1  # 只统计有效清洗题
+
+
+@pytest.mark.asyncio
 async def test_backfill_deduplicates_against_public_bank_and_previous_runs(
     tmp_path: Path,
 ) -> None:

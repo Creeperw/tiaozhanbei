@@ -225,7 +225,8 @@ class WebQuestionIngestService:
             )
             return result
         result.ingested = ingested
-        result.skipped_duplicates = max(0, len(normalized) - ingested - result.skipped_blank)
+        # normalized 已剔除无题干脏行，重复数 = 有效清洗题 - 实际入库数。
+        result.skipped_duplicates = max(0, len(normalized) - ingested)
         result.status = "ok" if ingested else "skipped"
         result.detail = (
             "ingested web questions" if ingested else "all questions already in bank"
