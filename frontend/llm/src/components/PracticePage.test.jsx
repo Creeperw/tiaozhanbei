@@ -134,6 +134,23 @@ vi.mock('../utils/api', () => ({
 describe('PracticePage training modules', () => {
   afterEach(() => vi.clearAllMocks());
 
+  // PracticePage 是受控组件：模块切换通过 onNavigate 通知 App 更新 pageIntent
+  // 并重挂载。此辅助函数模拟 App 的导航闭环，使测试覆盖真实的点击进入流程。
+  function renderPracticePage(initialProps = {}) {
+    let view;
+    const navigate = (destination) => {
+      view.rerender(
+        <PracticePage
+          {...initialProps}
+          navigationContext={destination.params}
+          onNavigate={navigate}
+        />,
+      );
+    };
+    view = render(<PracticePage {...initialProps} onNavigate={navigate} />);
+    return view;
+  }
+
   it('shows the training workshop overview before a learner selects a module', () => {
     render(<PracticePage />);
 
@@ -237,7 +254,7 @@ describe('PracticePage training modules', () => {
       return Promise.resolve({ data: {} });
     });
 
-    render(<PracticePage />);
+    renderPracticePage();
 
     await screen.findByText('7 题');
     const learningOverview = screen.getByRole('region', { name: '学习概览' });
@@ -252,7 +269,7 @@ describe('PracticePage training modules', () => {
   });
 
   it('continues the main-backed module selected by the local overview contract', async () => {
-    render(<PracticePage overviewStats={{ recentTaskKey: 'question_favorites' }} />);
+    renderPracticePage({ overviewStats: { recentTaskKey: 'question_favorites' } });
 
     fireEvent.click(screen.getByRole('button', { name: /继续上次练习/ }));
 
@@ -260,7 +277,7 @@ describe('PracticePage training modules', () => {
   });
 
   it('opens training history from the workshop tools and returns to the workshop overview', async () => {
-    render(<PracticePage />);
+    renderPracticePage();
 
     fireEvent.click(screen.getByRole('button', { name: /历史记录/ }));
 
@@ -278,7 +295,7 @@ describe('PracticePage training modules', () => {
     ['知识点特训', 'knowledge-point-training-hub'],
     ['模拟病患', 'simulated-patient-chat'],
   ])('opens %s from the overview as a single page', async (title, panelTestId) => {
-    render(<PracticePage />);
+    renderPracticePage();
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(title) }));
 
@@ -292,7 +309,7 @@ describe('PracticePage training modules', () => {
   it.each([
     ['我的题单', 'question-favorites-panel'],
   ])('opens the %s personal library', async (title, panelTestId) => {
-    render(<PracticePage />);
+    renderPracticePage();
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(title) }));
 
@@ -301,7 +318,7 @@ describe('PracticePage training modules', () => {
   });
 
   it('opens specialized training in the existing case-answer mode', async () => {
-    render(<PracticePage />);
+    renderPracticePage();
 
     fireEvent.click(screen.getByRole('button', { name: /专项特训/ }));
 
