@@ -185,6 +185,18 @@ class TextbookPdfService:
         self.annotations = annotations
         self.uploaded_root = uploaded_root.resolve() if uploaded_root else None
         self._catalog = self._load_catalog()
+        # 平台内置教材的 PDF 可用性预计算结果（懒构建一次，避免每次
+        # catalog 请求对每本书做跨文件系统 stat —— NTFS 挂载盘上单次
+        # stat 可达 5~30ms，94 本累计约 3 秒）。
+        self._catalog_available_ids: set[str] | None = None
+        # 启动后立即在后台预热，让首个 catalog 请求也能命中缓存。
+        import threading
+
+        threading.Thread(
+            target=self._available_catalog_ids,
+            name="textbook-catalog-availability-warmup",
+            daemon=True,
+        ).start()
 
     def _load_catalog(self) -> list[dict[str, Any]]:
         if not self.catalog_path.is_file():
@@ -196,6 +208,32 @@ class TextbookPdfService:
             if isinstance(item, dict):
                 item.setdefault("category", default_category)
         return books
+
+    def _catalog_file_available(self, item: dict[str, Any]) -> bool:
+        path = self._item_path(item, "relative_path")
+        return bool(path and path.is_file())
+
+    def _available_catalog_ids(self) -> set[str]:
+        """Return the cached set of catalog book ids whose PDF file exists.
+
+        The first call performs one pass over the catalog (a few seconds on
+        slow cross-filesystem mounts); subsequent calls are O(1) per book.
+        Rebuild by calling :meth:`invalidate_availability`.
+        """
+        cached = self._catalog_available_ids
+        if cached is not None:
+            return cached
+        available = {
+            str(item.get("book_id"))
+            for item in self._catalog
+            if self._catalog_file_available(item)
+        }
+        self._catalog_available_ids = available
+        return available
+
+    def invalidate_availability(self) -> None:
+        """Drop the cached availability set (e.g. after catalog edits)."""
+        self._catalog_available_ids = None
 
     def _uploaded_books(self, owner_id: str | None) -> list[dict[str, Any]]:
         if not owner_id or self.uploaded_root is None:
@@ -319,9 +357,15 @@ class TextbookPdfService:
         }
         payload.setdefault("category", "中医药")
         upload_dir = item.get("_upload_dir")
-        path = self._item_path(item, "relative_path")
-        payload["available"] = bool(path and path.is_file())
-        payload["file_url"] = f"/api/v1/textbooks/pdfs/{item['book_id']}/file" if payload["available"] else None
+        if upload_dir:
+            # 用户上传教材数量少，实时检查即可
+            path = self._item_path(item, "relative_path")
+            available = bool(path and path.is_file())
+        else:
+            # 平台内置教材走预计算缓存，避免每次请求跨文件系统 stat
+            available = str(item.get("book_id")) in self._available_catalog_ids()
+        payload["available"] = available
+        payload["file_url"] = f"/api/v1/textbooks/pdfs/{item['book_id']}/file" if available else None
         if upload_dir and item.get("cover_relative_path"):
             payload["cover_url"] = f"/api/v1/textbooks/pdfs/{item['book_id']}/cover"
         return payload

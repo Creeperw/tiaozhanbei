@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import threading
+import time
 from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -22,6 +23,12 @@ from competition_app.config import Settings
 
 
 _IMPORT_LOCK = threading.RLock()
+
+#: TTL for the in-process learning-context cache. 行为上下文聚合涉及
+#: 系统数据重建、诊断快照、学习统计等多张表的全量聚合，单次约 200ms+，
+#: 而它会被 /dashboard/home、/learning-context、/learning-path 等高频读
+#: 接口反复调用。TTL 缓存让聚合结果在窗口内复用。
+_LEARNING_CONTEXT_TTL_SECONDS = 30.0
 
 
 def _normalize_profile_memory_value(field: str, value: Any) -> Any:
@@ -245,6 +252,55 @@ class BackendHandoffRuntime:
     database_backend: str
     _started: bool = False
     _lifespan: object | None = field(default=None, init=False, repr=False)
+    _learning_context_cache: dict[tuple[str, int], tuple[float, dict[str, Any]]] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _learning_context_lock: threading.RLock = field(
+        default_factory=threading.RLock, init=False, repr=False
+    )
+
+    def _cache_learning_context(
+        self, external_user_id: str, days: int, payload: dict[str, Any]
+    ) -> None:
+        with self._learning_context_lock:
+            self._learning_context_cache[(str(external_user_id), int(days))] = (
+                time.monotonic(),
+                payload,
+            )
+
+    def _cached_learning_context(
+        self, external_user_id: str, days: int
+    ) -> dict[str, Any] | None:
+        with self._learning_context_lock:
+            hit = self._learning_context_cache.get(
+                (str(external_user_id), int(days))
+            )
+        if hit is None:
+            return None
+        cached_at, payload = hit
+        if time.monotonic() - cached_at >= _LEARNING_CONTEXT_TTL_SECONDS:
+            return None
+        return payload
+
+    def invalidate_learning_context(
+        self, external_user_id: str | None = None
+    ) -> None:
+        """Drop cached learning contexts after behavior-data writes.
+
+        Pass a user id to invalidate one user; omit it to clear all users.
+        """
+        with self._learning_context_lock:
+            if external_user_id is None:
+                self._learning_context_cache.clear()
+                return
+            user_key = str(external_user_id)
+            stale = [
+                key
+                for key in self._learning_context_cache
+                if key[0] == user_key
+            ]
+            for key in stale:
+                self._learning_context_cache.pop(key, None)
 
     @property
     def route_count(self) -> int:
@@ -284,6 +340,7 @@ class BackendHandoffRuntime:
             user = self._workshop_user(db, external_user_id)
             snapshot = system_data.record_login_activity(db, user_id=user.id)
             db.commit()
+            self.invalidate_learning_context(external_user_id)
             return system_data.system_data_payload(snapshot)
         except Exception:
             db.rollback()
@@ -364,6 +421,7 @@ class BackendHandoffRuntime:
             result = checkin.record_daily_checkin(db, user.id)
             snapshot = system_data.rebuild_system_data(db, user_id=user.id)
             db.commit()
+            self.invalidate_learning_context(external_user_id)
             return {**result, "system_data": system_data.system_data_payload(snapshot)}
         except Exception:
             db.rollback()
@@ -381,7 +439,9 @@ class BackendHandoffRuntime:
         db = database.SessionLocal()
         try:
             user = self._workshop_user(db, external_user_id)
-            return service.upsert_daily_task_snapshot(db, user.id, payload)
+            result = service.upsert_daily_task_snapshot(db, user.id, payload)
+            self.invalidate_learning_context(external_user_id)
+            return result
         except Exception:
             db.rollback()
             raise
@@ -412,6 +472,9 @@ class BackendHandoffRuntime:
 
         if days not in {7, 30, 90}:
             raise ValueError("days must be one of: 7, 30, 90")
+        cached = self._cached_learning_context(external_user_id, days)
+        if cached is not None:
+            return cached
         database = importlib.import_module("APP.backend.database")
         auth = importlib.import_module("APP.backend.auth")
         diagnosis = importlib.import_module("APP.backend.diagnosis_agent_service")
@@ -611,7 +674,7 @@ class BackendHandoffRuntime:
                     }
             report_payload = diagnosis_report.model_dump(mode="json")
             db.commit()
-            return {
+            result = {
                 "source": "frontend_backend",
                 "calculated_at": system_payload.get("calculated_at"),
                 "user_profile": user_profile,
@@ -653,6 +716,8 @@ class BackendHandoffRuntime:
                 "learning_trends": trends,
                 "diagnosis": report_payload,
             }
+            self._cache_learning_context(external_user_id, days, result)
+            return result
         except Exception:
             db.rollback()
             raise

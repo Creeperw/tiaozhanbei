@@ -4,6 +4,8 @@ from pathlib import Path
 import asyncio
 import json
 import re
+import threading
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -536,47 +538,69 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
     app.include_router(treekg_router)
     mount_treekg(app)
 
+    # 请求边界：考试工作区推断结果按用户 TTL 缓存。该推断在未命中时
+    # 需要查询 handoff 数据库或计划表（20~200ms），而 scope 变更频率极低
+    # （规划/切考才会变），30s 内复用避免每个请求重复付费。
+    exam_scope_cache: dict[str, tuple[float, dict[str, Any]]] = {}
+    exam_scope_cache_lock = threading.Lock()
+    EXAM_SCOPE_CACHE_TTL_SECONDS = 30.0
+
+    async def resolve_exam_scope(learner_id: str) -> dict[str, Any]:
+        cached = None
+        with exam_scope_cache_lock:
+            hit = exam_scope_cache.get(learner_id)
+            if hit is not None:
+                cached_at, cached_value = hit
+                if time.monotonic() - cached_at < EXAM_SCOPE_CACHE_TTL_SECONDS:
+                    cached = cached_value
+        if cached is not None:
+            return cached
+        active_exam: dict[str, Any] = {}
+        if (
+            backend_handoff is not None
+            and hasattr(backend_handoff, "load_active_exam_scope")
+        ):
+            try:
+                active_exam = await asyncio.to_thread(
+                    backend_handoff.load_active_exam_scope,
+                    learner_id,
+                )
+            except Exception:
+                active_exam = {}
+        if not active_exam:
+            # Fallback for handoffs without an active-exam lookup: infer the
+            # learner's most recently used exam scope from the plan store so
+            # pure read APIs resolve the same scoped tables that planning
+            # workflows publish into.
+            plan_repository = getattr(
+                container, "learning_plan_service", None
+            )
+            plan_repository = (
+                plan_repository.plan_repository
+                if plan_repository is not None
+                else None
+            )
+            infer = getattr(plan_repository, "infer_active_scope", None)
+            if callable(infer):
+                try:
+                    scope = await asyncio.to_thread(
+                        infer, learner_id
+                    )
+                except Exception:
+                    scope = None
+                if scope:
+                    active_exam = {"exam_track_id": scope}
+        with exam_scope_cache_lock:
+            exam_scope_cache[learner_id] = (time.monotonic(), active_exam)
+        return active_exam
+
     @app.middleware("http")
     async def authentication_boundary(request: Request, call_next):
         raw_token = request.cookies.get(SESSION_COOKIE)
         current_user = container.authentication_service.authenticate(raw_token)
         request.state.current_user = current_user
         if current_user is not None:
-            active_exam: dict[str, Any] = {}
-            if (
-                backend_handoff is not None
-                and hasattr(backend_handoff, "load_active_exam_scope")
-            ):
-                try:
-                    active_exam = await asyncio.to_thread(
-                        backend_handoff.load_active_exam_scope,
-                        current_user.user_id,
-                    )
-                except Exception:
-                    active_exam = {}
-            if not active_exam:
-                # Fallback for handoffs without an active-exam lookup: infer the
-                # learner's most recently used exam scope from the plan store so
-                # pure read APIs resolve the same scoped tables that planning
-                # workflows publish into.
-                plan_repository = getattr(
-                    container, "learning_plan_service", None
-                )
-                plan_repository = (
-                    plan_repository.plan_repository
-                    if plan_repository is not None
-                    else None
-                )
-                infer = getattr(plan_repository, "infer_active_scope", None)
-                if callable(infer):
-                    try:
-                        scope = await asyncio.to_thread(
-                            infer, current_user.user_id
-                        )
-                    except Exception:
-                        scope = None
-                    if scope:
-                        active_exam = {"exam_track_id": scope}
+            active_exam = await resolve_exam_scope(current_user.user_id)
             bind_exam_workspace(current_user.user_id, active_exam)
         path = request.url.path
         retired_ui_paths = {
@@ -659,6 +683,10 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
             try:
                 # Release practice claim so next request gets a fresh question
                 backend_handoff.release_practice_claim(current_user.user_id)
+
+                # 答题刚提交，行为数据已变化：让下一个 load_learning_context
+                # 重建（跳过 TTL 缓存），保证复习队列拿到最新作答。
+                backend_handoff.invalidate_learning_context(current_user.user_id)
 
                 behavior = await asyncio.to_thread(
                     backend_handoff.load_learning_context, current_user.user_id
@@ -3962,35 +3990,52 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
         user = current_user(request)
         behavior = {}
         learning_activity = {"recent_activities": []}
+        checkin_status = {
+            "checked_in_today": False,
+            "streak": 0,
+            "total_checkins": 0,
+            "calendar_days": [],
+        }
+
+        # 第一批：互不依赖的读取/刷新并行执行（原实现为串行 await，
+        # 每步叠加约 1s；load_learning_context 本身已有 TTL 缓存）。
+        batch: dict[str, asyncio.Task] = {}
         if backend_handoff is not None:
-            try:
-                behavior = await asyncio.to_thread(
-                    backend_handoff.load_learning_context, user.user_id
-                )
-            except Exception:
-                # The home portal remains usable while optional behavior metrics recover.
-                behavior = {}
-            try:
-                learning_activity = await asyncio.to_thread(
-                    backend_handoff.load_learning_activity_summary,
-                    user.user_id,
-                    days=30,
-                    recent_limit=20,
-                )
-            except Exception:
-                # Recent workshop history is supplemental to the dashboard response.
-                learning_activity = {"recent_activities": []}
-        daily_task_timer = await asyncio.to_thread(
+            batch["behavior"] = asyncio.create_task(asyncio.to_thread(
+                backend_handoff.load_learning_context, user.user_id
+            ))
+            batch["learning_activity"] = asyncio.create_task(asyncio.to_thread(
+                backend_handoff.load_learning_activity_summary,
+                user.user_id, days=30, recent_limit=20,
+            ))
+            batch["checkin_status"] = asyncio.create_task(asyncio.to_thread(
+                backend_handoff.get_checkin_status, user.user_id, days=7
+            ))
+        batch["daily_task_timer"] = asyncio.create_task(asyncio.to_thread(
             container.daily_task_refresh_service.ensure_current, user.user_id
+        ))
+        batch["ensure_resources"] = asyncio.create_task(asyncio.to_thread(
+            container.learning_plan_service.ensure_executable_daily_resources,
+            user.user_id,
+        ))
+        batch_results = await asyncio.gather(*batch.values(), return_exceptions=True)
+
+        def _first_ok(key: str, default):
+            if key not in batch:
+                return default
+            result = batch_results[list(batch.keys()).index(key)]
+            return default if isinstance(result, BaseException) else result
+
+        behavior = _first_ok("behavior", {})
+        learning_activity = _first_ok("learning_activity", {"recent_activities": []})
+        checkin_status = _first_ok(
+            "checkin_status",
+            {"checked_in_today": False, "streak": 0, "total_checkins": 0, "calendar_days": []},
         )
-        try:
-            await asyncio.to_thread(
-                container.learning_plan_service.ensure_executable_daily_resources,
-                user.user_id,
-            )
-        except Exception:
-            # Legacy-task repair must not make the home portal unavailable.
-            pass
+        daily_task_timer = _first_ok("daily_task_timer", {})
+        # Legacy-task repair must not make the home portal unavailable.
+        _first_ok("ensure_resources", None)
+
         coordinator = container.daily_task_execution_coordinator
         if coordinator is not None:
             try:
@@ -4055,13 +4100,23 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                 normalized_task_chapter = re.sub(r"[《》\s]", "", task_chapter_text)
                 if container.knowledge_backend is not None:
                     queries = list(task.focus_knowledge_points) or [task.task_content]
-                    for query in queries[:5]:
+                    scoped_queries = queries[:5]
+
+                    def _resolve(query: str):
                         try:
-                            matches = container.knowledge_backend.map.resolve_topic(
+                            return container.knowledge_backend.map.resolve_topic(
                                 str(query), limit=10
                             )
                         except Exception:
-                            matches = []
+                            return []
+
+                    matches_by_query = await asyncio.gather(
+                        *[
+                            asyncio.to_thread(_resolve, query)
+                            for query in scoped_queries
+                        ]
+                    )
+                    for query, matches in zip(scoped_queries, matches_by_query):
                         def contextual_rank(match: dict) -> tuple[int, int, int, float]:
                             kp = dict(match.get("kp") or {})
                             book = re.sub(r"[《》\s]", "", str(kp.get("kp_lv1") or ""))
@@ -4253,14 +4308,7 @@ def create_app(container: ApplicationContainer, *, auth_required: bool = True) -
                     "source": "review_queue",
                 }
             )
-        checkin_status = {"checked_in_today": False, "streak": 0, "total_checkins": 0, "calendar_days": []}
-        if backend_handoff is not None:
-            try:
-                checkin_status = await asyncio.to_thread(
-                    backend_handoff.get_checkin_status, user.user_id, days=7
-                )
-            except Exception:
-                pass
+        # checkin_status 已在函数开头与行为数据并行拉取。
         learning_profile = behavior.get("learning_profile") or {}
         accuracy = learning_profile.get("question_accuracy", 0)
         completion = (
