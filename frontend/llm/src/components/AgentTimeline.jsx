@@ -66,6 +66,73 @@ function durationLabel(role) {
   return `${(duration / 1000).toFixed(1)} 秒`;
 }
 
+function formatModelPayload(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+const MODEL_CALL_LABELS = { input: '模型输入', output: '模型输出', transport: '模型传输' };
+function hasValue(value) {
+  if (value == null) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+}
+
+function extractRequestMessages(requestPayload) {
+  if (Array.isArray(requestPayload)) return requestPayload;
+  if (requestPayload == null || typeof requestPayload !== 'object') return null;
+  const body = requestPayload.body;
+  if (body && Array.isArray(body.messages)) return body.messages;
+  if (Array.isArray(requestPayload.messages)) return requestPayload.messages;
+  return null;
+}
+
+/** Real natural-language request/reply captured at the model boundary. */
+function TransportDetails({ call }) {
+  const messages = extractRequestMessages(call.requestPayload);
+  const structured = (call.structuredInput != null || call.structuredOutput != null);
+  return (
+    <>
+      {messages && messages.length > 0 && (
+        <div className="agent-task__transport">
+          <div className="agent-task__technical-title">发送给模型的自然语言请求</div>
+          {messages.map((message, index) => (
+            <div className="agent-task__transport-message" key={`${message.role || 'msg'}-${index}`}>
+              <code>{message.role || 'message'}</code>
+              <pre>{formatModelPayload(message.content)}</pre>
+            </div>
+          ))}
+        </div>
+      )}
+      {hasValue(call.responseText) && (
+        <div className="agent-task__transport">
+          <div className="agent-task__technical-title">模型原始输出</div>
+          <pre>{String(call.responseText)}</pre>
+        </div>
+      )}
+      {structured && (
+        <details className="agent-task__transport-structured">
+          <summary>查看结构化数据</summary>
+          {call.structuredInput != null && (
+            <pre>{formatModelPayload(call.structuredInput)}</pre>
+          )}
+          {call.structuredOutput != null && (
+            <pre>{formatModelPayload(call.structuredOutput)}</pre>
+          )}
+        </details>
+      )}
+    </>
+  );
+}
+
+
 function TechnicalDetails({ role }) {
   const internalAgents = [...new Set(role.nodes.map((node) => node.agent || node.name).filter(Boolean))];
   return (
@@ -83,12 +150,32 @@ function TechnicalDetails({ role }) {
       )}
       {role.tools.length > 0 && (
         <div className="agent-task__tools">
-          <div className="agent-task__technical-title"><Wrench size={13} aria-hidden="true" />工具调用</div>
+          <div className="agent-task__technical-title"><Wrench size={13} aria-hidden="true" />工具调用详情</div>
           {role.tools.map((tool) => (
-            <div className="agent-task__tool-row" key={tool.id}>
-              <code>{tool.name}</code>
-              <span>{tool.status === 'running' ? '调用中' : '已返回'}</span>
-            </div>
+            <details key={tool.id}>
+              <summary>
+                <code>{tool.name}</code>
+                <span>{tool.status === 'running' ? '调用中' : '已返回'}</span>
+              </summary>
+              <pre>{JSON.stringify(tool.args || {}, null, 2)}</pre>
+              {tool.resultSnippet && <p>{tool.resultSnippet}</p>}
+            </details>
+          ))}
+        </div>
+      )}
+      {role.modelCalls.length > 0 && (
+        <div className="agent-task__tools">
+          <div className="agent-task__technical-title"><Sparkles size={13} aria-hidden="true" />模型调用详情</div>
+          {role.modelCalls.map((call) => (
+            <details key={call.id}>
+              <summary>
+                <code>{call.agent || 'model'}</code>
+                <span>{MODEL_CALL_LABELS[call.kind] || call.kind}</span>
+              </summary>
+              {call.kind === 'input' && <pre>{formatModelPayload(call.input)}</pre>}
+              {call.kind === 'output' && <pre>{formatModelPayload(call.output)}</pre>}
+              {call.kind === 'transport' && <TransportDetails call={call} />}
+            </details>
           ))}
         </div>
       )}

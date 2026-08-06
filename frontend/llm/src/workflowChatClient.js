@@ -54,10 +54,39 @@ export function runtimeEventToTrace(event) {
       text: event.message || '',
     };
   }
-  // 模型输入/输出/传输属于内部技术细节，不向用户展示任何输入输出内容；
-  // 实时进度只报告“哪个智能体正在工作”（见 step_started / step_completed）。
-  if (name === 'model_input' || name === 'model_output' || name === 'model_transport') {
-    return null;
+  if (name === 'model_input') {
+    return {
+      type: 'model_call',
+      kind: 'input',
+      text: `${event.agent || 'model'} 模型输入`,
+      agent: event.agent || '',
+      stepId: event.step_id || '',
+      callId: event.call_id || '',
+      input: event.raw_input,
+    };
+  }
+  if (name === 'model_output') {
+    return {
+      type: 'model_call',
+      kind: 'output',
+      text: `${event.agent || 'model'} 模型输出`,
+      agent: event.agent || '',
+      stepId: event.step_id || '',
+      callId: event.call_id || '',
+      output: event.raw_output,
+    };
+  }
+  if (name === 'model_transport') {
+    return {
+      type: 'model_call',
+      kind: 'transport',
+      text: `${event.agent || 'model'} 模型传输`,
+      agent: event.agent || '',
+      stepId: event.step_id || '',
+      callId: event.call_id || '',
+      requestPayload: event.request_payload,
+      responseText: event.response_text,
+    };
   }
   return null;
 }
@@ -79,7 +108,15 @@ export function compactWorkflowHistoryContent(role, content = '') {
   if (lastRollback) text = text.slice((lastRollback.index || 0) + lastRollback[0].length);
   text = text.replace(/<think>[\s\S]*?<\/think>/g, '');
   text = text.replace(/<think>[\s\S]*$/g, '');
-  text = text.replace(/<<(?:STATUS|EV|REFS|VIDEOS|PLAN|EXEC):[\s\S]*?>>/g, '');
+  // EV tags embed JSON.stringify(traceEvent) which may itself contain `>>`
+  // inside model payloads. A tag always ends with its JSON structure closing
+  // brace (`}>>` for objects, `]>>` for arrays), so match to that instead of
+  // the first bare `>>` — otherwise a stray `>>` inside JSON would truncate
+  // the strip and leak raw JSON into the formal history.
+  text = text.replace(
+    /<<(?:STATUS|EV|REFS|VIDEOS|PLAN|EXEC):(?:(?!<<(?:STATUS|EV|REFS|VIDEOS|PLAN|EXEC):)[\s\S])*?(?:}>>|]>>)/g,
+    '',
+  );
   return text.trim();
 }
 

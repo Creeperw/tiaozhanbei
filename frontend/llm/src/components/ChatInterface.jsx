@@ -281,6 +281,23 @@ const MarkdownRenderer = React.memo(({ content, className }) => {
   );
 });
 
+const mergeTraceEvents = (inlineEvents, persistedEvents) => {
+  const all = [...(Array.isArray(inlineEvents) ? inlineEvents : []), ...(Array.isArray(persistedEvents) ? persistedEvents : [])];
+  // 去重：同一 callId 的 model_input/output/transport 是同一个模型边界的三条
+  // 事件，kind 不同必须都保留，交给 mergeModelCalls 按 callId 合并展示。
+  // 运行时 inline 只有轻量 step/tool 事件，两者合并后节点完整。
+  const seen = new Set();
+  const merged = [];
+  for (const event of all) {
+    if (!event) continue;
+    const key = `${event.type || ''}|${event.kind || ''}|${event.stepId || event.step_id || ''}|${event.callId || event.call_id || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(event);
+  }
+  return merged;
+};
+
 const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, messageId, feedbackStatus, branch, actions, traceEvents: persistedTraceEvents, onAction, onInspectRefs, onFeedback, onRegenerate, onOpenTrace, onSwitchBranch, isGenerating, isReviewing }) => {
   const isUser = role === 'user';
   const [isCopied, setIsCopied] = useState(false);
@@ -289,9 +306,7 @@ const ChatBubble = React.memo(({ role, content, files, timestamp, searchQuery, m
   let references = [];
   let videos = [];
   const inlineTraceEvents = extractTraceEventsFromContent(rawContent);
-  const traceEvents = inlineTraceEvents.length > 0
-    ? inlineTraceEvents
-    : (Array.isArray(persistedTraceEvents) ? persistedTraceEvents : []);
+  const traceEvents = mergeTraceEvents(inlineTraceEvents, persistedTraceEvents);
   if (inlineTraceEvents.length > 0) {
     rawContent = rawContent.replace(/<<EV:(.*?)>>/gs, '').trim();
   }
@@ -1719,6 +1734,11 @@ const ChatInterface = ({ currentUser, currentUserRole = 'user', onLogout, onBack
         onEvent: (_event, traceEvent) => {
           if (!traceEvent) return;
           if (currentSessionIdRef.current === sessionId) dispatchGraphEvent(traceEvent);
+          // Model transport payloads (raw request messages / response text)
+          // are UI-only protocol data handled by the execution timeline.
+          // Never inline them into the placeholder chat message: they can be
+          // hundreds of kilobytes and would leak raw JSON into history.
+          if (traceEvent.type === 'model_call') return;
           const tag = `<<EV:${JSON.stringify(traceEvent)}>>`;
           traceTags.push(tag);
           updateAssistant(traceTags.join(''), true);

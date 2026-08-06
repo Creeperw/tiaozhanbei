@@ -111,6 +111,9 @@ function meaningfulTools(tools = []) {
   const seen = new Set();
   return tools.filter((tool) => {
     if (!String(tool?.name || '').trim()) return false;
+    // Blank repeated tool calls carry no information; keep only calls with a
+    // meaningful argument or a returned snippet.
+    if (!hasMeaningfulValue(tool.args) && !hasMeaningfulValue(tool.resultSnippet)) return false;
     const signature = tool?.name || '';
     if (seen.has(signature)) return false;
     seen.add(signature);
@@ -124,6 +127,41 @@ function meaningfulModelCalls(modelCalls = []) {
     if (call?.kind === 'output') return hasMeaningfulValue(call.output);
     return hasMeaningfulValue(call.requestPayload) || hasMeaningfulValue(call.responseText);
   });
+}
+
+/**
+ * A single model boundary produces three runtime events sharing one callId:
+ * model_input (structured agent context), model_transport (the real HTTP
+ * messages sent to the provider plus the raw response text) and model_output
+ * (the parsed result).  Merge them per callId so the sidebar can prefer the
+ * real natural-language request/response over the structured payload.
+ */
+export function mergeModelCalls(modelCalls = []) {
+  const grouped = new Map();
+  for (const call of meaningfulModelCalls(modelCalls)) {
+    const key = call.callId || call.id || `${call.agent || 'model'}:${call.ts || 0}`;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(call);
+  }
+  const merged = [];
+  for (const group of grouped.values()) {
+    const transport = group.find(
+      (call) => call.kind === 'transport'
+        && (hasMeaningfulValue(call.requestPayload) || hasMeaningfulValue(call.responseText))
+    );
+    if (transport) {
+      const input = group.find((call) => call.kind === 'input');
+      const output = group.find((call) => call.kind === 'output');
+      merged.push({
+        ...transport,
+        structuredInput: input?.input,
+        structuredOutput: output?.output,
+      });
+    } else {
+      merged.push(...group);
+    }
+  }
+  return merged;
 }
 
 function displayStatus(nodes) {
@@ -151,7 +189,7 @@ export function buildAgentPresentation(nodes = []) {
       node.logs || []
     )).map(sanitizeAgentLog));
     const tools = meaningfulTools(roleNodes.flatMap((node) => node.tools || []));
-    const modelCalls = meaningfulModelCalls(roleNodes.flatMap((node) => node.modelCalls || []));
+    const modelCalls = mergeModelCalls(roleNodes.flatMap((node) => node.modelCalls || []));
     const startedAt = roleNodes.length
       ? Math.min(...roleNodes.map((node) => node.startTime || Number.MAX_SAFE_INTEGER))
       : null;
