@@ -241,6 +241,94 @@ _LABELS = {
     "acceptance_criteria": "验收约束",
     "audit_feedback": "上轮审核意见",
     "output_contract": "本任务输出要求",
+    # 用户画像常用字段（自然语言渲染）
+    "display_name": "姓名",
+    "gender": "性别",
+    "region": "地区",
+    "professional_background": "专业背景",
+    "onboarding_status": "注册状态",
+    "learning_goal": "学习目标",
+    "learning_goals": "学习目标",
+    "preferred_style": "偏好学习方式",
+    "weak_areas": "薄弱点",
+    "weak_area": "薄弱点",
+    "pace": "学习节奏",
+    "exam_target": "备考目标",
+    "current_phase": "当前阶段",
+    "mastery_avg": "平均掌握度",
+    "mastery": "掌握度",
+    "recent_kps": "近期知识点",
+    "kp_name": "知识点",
+    "evidence_status": "证据状态",
+    "freshness_status": "新鲜度状态",
+    "content_summary": "计划概要",
+    "current_stage": "当前阶段",
+    "stage_count": "阶段数",
+    "duration_days": "计划天数",
+    "total_duration_days": "总计划天数",
+    "goal_name": "目标名称",
+    "long_term": "长期规划",
+    "short_term": "短期计划",
+    "daily_task": "当日任务",
+    "title": "名称",
+    "status": "状态",
+    # 真实画像高频字段（学习监控 / 行为指标 / 学习状态 / 计划结构）
+    "learner_group": "用户群体",
+    "learning_background": "学习背景",
+    "daily_available_minutes": "每日可用时长",
+    "goals": "目标详情",
+    "goal_type": "目标类型",
+    "textbook_route_version": "教材路线版本",
+    "l0_baseline": "起点基线",
+    "preferred_time_slot": "偏好时段",
+    "default_daily_tasks": "默认每日任务数",
+    "case_reasoning_level": "案例推理水平",
+    "question_accuracy": "答题正确率",
+    "review_stability": "复习稳定性",
+    "sample_counts": "样本统计",
+    "question_attempts": "答题次数",
+    "mastery_records": "掌握记录数",
+    "active_mistakes": "薄弱点数量",
+    "status_code": "状态代码",
+    "status_name": "状态名称",
+    "behavior_metrics": "行为指标",
+    "task_completion_rate": "任务完成率",
+    "login_weekly_change": "周登录变化",
+    "focus_time_change": "专注时长变化",
+    "retry_count": "重试次数",
+    "path_deviation": "路径偏离度",
+    "observed_samples": "观测样本数",
+    "activities_current_window": "本窗口活动数",
+    "activities_previous_window": "上窗口活动数",
+    "question_attempts_current_window": "本窗口答题数",
+    "question_attempts_previous_window": "上窗口答题数",
+    "daily_task_items_current_window": "本窗口日任务数",
+    "focus_sessions_current_window": "本窗口专注次数",
+    "distinct_login_days_current_window": "本窗口登录天数",
+    "data_source": "数据来源",
+    "due_review_count": "待复习数",
+    "data_quality": "数据质量",
+    "window_start": "窗口开始",
+    "window_end": "窗口结束",
+    "coverage": "覆盖率",
+    "tasks": "任务数",
+    "mastery_points": "掌握点数",
+    "review_states": "复习状态数",
+    "mistakes": "错题数",
+    "focus_sessions": "专注次数",
+    "available_metrics": "可用指标数",
+    "unavailable_metrics": "不可用指标数",
+    "allow_cautious_path_adjustment": "允许谨慎调整路径",
+    "limitations": "限制说明",
+    "hard_constraint_summary": "硬约束摘要",
+    "key": "约束项",
+    "passed": "是否通过",
+    "reason": "原因",
+    "stage": "阶段序号",
+    "stage_name": "阶段名称",
+    "book": "教材",
+    "goal": "阶段目标",
+    "schedule_summary": "推进安排",
 }
 
 _TOP_LEVEL_SECTIONS = {
@@ -288,6 +376,85 @@ _TOP_LEVEL_SECTIONS = {
     "revision_instruction": "修订要求",
 }
 
+# 用户画像渲染时的元数据噪音键：不影响模型判断的字段，自然语言化时省略。
+_PROFILE_NOISE_KEYS = {
+    "exists",
+    "version",
+    "schema_version",
+    "updated_at",
+    "profile_updated_at",
+    "calculated_at",
+    "learning_state_calculated_at",
+    "window_days",
+    "kp_id",
+    "kp_refs",
+    "id",
+    "ids",
+    "confidence",
+    "user_id",
+    "stage_id",
+    "metric_availability",
+}
+
+# 状态类字段的英文值 → 自然语言。
+_PROFILE_STATUS_LABELS = {
+    "active": "进行中",
+    "current": "进行中",
+    "draft": "草稿",
+    "completed": "已完成",
+    "archived": "已归档",
+    "paused": "已暂停",
+    "on_track": "总体在轨",
+    "at_risk": "存在风险",
+    "off_track": "偏离轨道",
+    "not_started": "未开始",
+    "none": "无",
+    "male": "男",
+    "female": "女",
+    "unspecified": "未设置",
+    "sufficient": "充分",
+    "insufficient": "不足",
+    "fresh": "新鲜",
+    "stale": "已过期",
+    "pending": "待处理",
+    "emerging": "起步",
+    "evolving": "发展中",
+    "established": "稳定",
+    "learning": "学习型",
+    "canonical_learning_monitoring": "标准学习监控",
+    "approved_route_available": "已批准路线可用",
+    "approved_route_present": "已批准路线存在",
+    "low_data_protection": "低数据保护",
+    "insufficient_data_for_high_risk_adjustment": "高风险调整数据不足",
+}
+
+# 画像渲染时的比率类字段：0-1 浮点值渲染为百分数。
+_PROFILE_RATIO_KEYS = {
+    "mastery", "mastery_avg", "coverage", "question_accuracy",
+    "review_stability", "task_completion_rate", "login_weekly_change",
+    "focus_time_change", "path_deviation",
+}
+
+# 值需要查 _PROFILE_STATUS_LABELS 翻译的字段。
+_PROFILE_VALUE_TRANSLATED_KEYS = {
+    "status", "current_status", "gender", "evidence_status",
+    "freshness_status", "onboarding_status", "case_reasoning_level",
+    "goal_type", "data_source", "key", "reason",
+}
+
+# 时间戳字段：只保留日期部分。
+_PROFILE_DATE_KEYS = {"window_start", "window_end"}
+
+# 画像注入提示词时的固定段落顺序（按阅读重要性排列）。
+_PROFILE_SECTION_LABELS = [
+    ("basic_profile", "基础画像"),
+    ("learning_profile", "学习画像"),
+    ("learning_state", "学习状态"),
+    ("learning_monitoring", "学习监控"),
+    ("current_plans", "当前计划"),
+    ("snapshot", "画像快照"),
+]
+
 _EXTERNAL_CONTEXT_KEYS = {
     "retrieval_context", "available_tools", "retrieval_plan", "retrieval_summary",
     "kp", "evidence", "semantic_evidence", "candidate_questions", "candidate_pool",
@@ -309,6 +476,131 @@ def _scalar_text(value: Any) -> str | None:
     ):
         return "、".join(str(item) for item in value)
     return None
+
+
+def _profile_scalar_text(key: str, value: Any) -> str:
+    """Render one scalar portrait value as readable Chinese text."""
+    if isinstance(value, bool):
+        return "是" if value else "否"
+    text = str(value)
+    if key in _PROFILE_VALUE_TRANSLATED_KEYS:
+        text = _PROFILE_STATUS_LABELS.get(text, text)
+    if key in _PROFILE_RATIO_KEYS and isinstance(value, (int, float)):
+        text = f"{value * 100:.0f}%"
+    if key in _PROFILE_DATE_KEYS and isinstance(value, str) and len(value) >= 10:
+        text = text[:10]
+    return text
+
+
+def _profile_clause(key: str, value: Any) -> str | None:
+    """Render one portrait branch as a natural-language clause.
+
+    画像只用于辅助模型理解学习者，不是机器契约：这里把嵌套字典压平成
+    通顺的中文短句（如「性别为男，地区为广东」），跳过元数据噪音键，
+    而不是输出一长串键值树。
+    """
+    if key in _INTERNAL_KEYS or key in _PROFILE_NOISE_KEYS or _is_empty(value):
+        return None
+    if isinstance(value, str) and value.strip() == "未填写":
+        return None
+    label = _LABELS.get(key, key)
+    if isinstance(value, (str, int, float, bool)):
+        return f"{label}为{_profile_scalar_text(key, value)}"
+    if isinstance(value, (list, tuple)):
+        flat = [
+            str(item)
+            for item in value
+            if not _is_empty(item) and isinstance(item, (str, int, float, bool))
+        ]
+        if flat:
+            joiner = "；" if any(len(str(item)) > 20 for item in flat) else "、"
+            return f"{label}为{joiner.join(flat)}"
+        named = []
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name") or item.get("title") or item.get("kp_name")
+            extras = []
+            for extra_key, extra_value in item.items():
+                if (
+                    extra_key in _INTERNAL_KEYS
+                    or extra_key in _PROFILE_NOISE_KEYS
+                    or extra_key in {"name", "title", "kp_name"}
+                    or not isinstance(extra_value, (str, int, float, bool))
+                    or _is_empty(extra_value)
+                ):
+                    continue
+                extras.append(
+                    f"{_LABELS.get(extra_key, extra_key)}为"
+                    f"{_profile_scalar_text(extra_key, extra_value)}"
+                )
+            if name is None:
+                named.append("、".join(extras) or str(item))
+            elif extras:
+                named.append(f"{name}（{'，'.join(extras)}）")
+            else:
+                named.append(str(name))
+        if named:
+            return f"{label}：{'、'.join(named)}"
+        return None
+    if isinstance(value, dict):
+        if key == "snapshot":
+            updated = value.get("profile_updated_at") or value.get("updated_at")
+            if updated:
+                return f"画像更新于{updated}"
+            return None
+        if key in {"long_term", "short_term", "daily_task"} and value.get("exists") is False:
+            return f"暂无{label}"
+        clauses = [
+            clause
+            for clause in (
+                _profile_clause(child_key, child_value)
+                for child_key, child_value in value.items()
+            )
+            if clause
+        ]
+        if not clauses:
+            return None
+        if len(clauses) == 1:
+            return f"{label}：{clauses[0]}"
+        return f"{label}：{'，'.join(clauses)}"
+    return None
+
+
+def _render_portrait(profile: Any) -> list[str]:
+    """Render the shared learner portrait as readable natural-language lines."""
+    if not isinstance(profile, dict):
+        return []
+    known = {key for key, _ in _PROFILE_SECTION_LABELS}
+    lines: list[str] = []
+    for key, _section_label in _PROFILE_SECTION_LABELS:
+        value = profile.get(key)
+        if _is_empty(value):
+            continue
+        if key == "current_plans" and isinstance(value, dict):
+            clauses = [
+                clause
+                for clause in (_profile_clause(k, v) for k, v in value.items())
+                if clause
+            ]
+            if clauses:
+                lines.append("当前计划：" + "；".join(clauses) + "。")
+            continue
+        if key == "snapshot" and isinstance(value, dict):
+            updated = value.get("profile_updated_at") or value.get("updated_at")
+            if updated:
+                lines.append(f"画像更新于{updated}。")
+            continue
+        clause = _profile_clause(_section_label, value)
+        if clause:
+            lines.append(clause + "。")
+    for key, value in profile.items():
+        if key in known or _is_empty(value):
+            continue
+        clause = _profile_clause(key, value)
+        if clause:
+            lines.append(clause + "。")
+    return lines
 
 
 def _fact_lines(value: Any, *, depth: int = 0) -> list[str]:
@@ -394,7 +686,7 @@ def _format_user_data(value: Any) -> str:
             "不提供。当前角色只处理【外部信息】中的来源文档。"
         ]
     else:
-        profile_lines = _fact_lines(profile) or ["暂无已确认画像；不得自行推测。"]
+        profile_lines = _render_portrait(profile) or ["暂无已确认画像；不得自行推测。"]
         compressed_lines = [compressed or "暂无更早对话摘要。"]
 
     rendered = ["【用户画像】", *profile_lines]
