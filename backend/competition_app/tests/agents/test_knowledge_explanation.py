@@ -128,7 +128,12 @@ async def test_knowledge_explanation_keeps_heuristic_thinking_questions() -> Non
         "如果患者发热重、恶寒轻，你会优先考虑哪个证型？",
         "风寒与风热感冒的鉴别关键点是什么？",
     ]
-    assert result.payload.content["知识讲解"].startswith("【结合学情定位】")
+    assert result.payload.content["知识讲解"] == (
+        "【结合学情定位】感冒证型是辨证论治的基础，常考且容易混淆。"
+        "【讲解核心】教材优先，网络与模型知识作标注补充。"
+        "【启发式思考问题】试着用教材分型对比风寒与风热感冒。"
+        "【自然收尾】先说说你的判断，再继续引导。"
+    )
 
 
 @pytest.mark.asyncio
@@ -245,9 +250,14 @@ async def test_question_explanation_uses_direct_explanation_skill() -> None:
     assert model.payload["prompt_skill_id"] == "expert.explain_question"
     assert model.payload["payload"]["phase"] == "question_explanation"
     assert model.payload["payload"]["question_explanation_request"] is True
-    assert "直接讲题结构" in model.payload["payload"]["output_contract"]["content"]
+    assert "小节标题自由拟定" in model.payload["payload"]["output_contract"]["content"]
+    assert "直接给出答案/思路与依据" in model.payload["payload"]["output_contract"]["content"]
     assert result.payload.title == "感冒辨证题目讲解"
-    assert result.payload.content["题目讲解"].startswith("【考查要点】")
+    assert result.payload.content["题目讲解"].startswith(
+        "【考查要点】这道题考风寒与风热感冒的证候鉴别。"
+    )
+    assert "【易错提示】注意恶寒与发热的轻重对比，避免证候错辨。" in result.payload.content["题目讲解"]
+    assert "这道题你主要卡在哪一步" in result.payload.content["题目讲解"]
 
 
 @pytest.mark.asyncio
@@ -275,8 +285,14 @@ async def test_knowledge_explanation_keeps_heuristic_skill_for_plain_requests() 
 
     assert model.payload["prompt_skill_id"] == "expert.explain_domain_knowledge"
     assert model.payload["payload"]["phase"] == "knowledge_explanation"
-    assert "启发式引导式结构" in model.payload["payload"]["output_contract"]["content"]
-    assert result.payload.content["知识讲解"].startswith("【结合学情定位】")
+    assert "小节标题自由拟定" in model.payload["payload"]["output_contract"]["content"]
+    assert "末尾提出 2-3 个开放式思考问题" in model.payload["payload"]["output_contract"]["content"]
+    assert result.payload.content["知识讲解"] == (
+        "【结合学情定位】感冒证型是辨证论治的基础。"
+        "【讲解核心】风寒与风热感冒的主要区别在于恶寒与发热的轻重。"
+        "【启发式思考问题】试着用教材分型对比风寒与风热感冒。"
+        "【自然收尾】先说说你的判断，再继续引导。"
+    )
 
 
 @pytest.mark.asyncio
