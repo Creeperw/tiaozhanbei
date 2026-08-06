@@ -398,6 +398,7 @@ class PlanContractCompilerAgent:
             "goal": ("目标", "阶段目标"),
             "duration_days": ("阶段天数", "周期天数"),
             "schedule_summary": ("阶段安排", "学习安排", "安排摘要"),
+            "acceptance": ("验收标准", "晋级条件", "通过条件", "完成标准", "验收条款"),
         }
         normalized: dict[str, Any] = {}
         for key, value in stage.items():
@@ -523,6 +524,14 @@ class PlanContractCompilerAgent:
             books = stage.get("books")
             if isinstance(books, str):
                 books = [books]
+            acceptance = stage.get("acceptance")
+            if isinstance(acceptance, str):
+                acceptance = [acceptance]
+            acceptance = (
+                [str(item).strip() for item in acceptance if str(item).strip()]
+                if isinstance(acceptance, list)
+                else []
+            )
             compiled_stages.append(
                 CompiledLongTermStage(
                     stage=int(stage.get("stage") or position),
@@ -531,6 +540,7 @@ class PlanContractCompilerAgent:
                     goal=str(stage.get("goal") or ""),
                     duration_days=int(stage.get("duration_days") or 0),
                     schedule_summary=str(stage.get("schedule_summary") or ""),
+                    acceptance=acceptance,
                 )
             )
         if not isinstance(total, int) or total <= 0:

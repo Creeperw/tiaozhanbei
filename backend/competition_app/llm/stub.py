@@ -1339,6 +1339,12 @@ class StubChatModel:
                         + "以上为网络检索到的当前信息；考试日期、天气等内容可能变化，建议以相关官方发布页面为最终依据。",
                         "uncertainty": [],
                     }, on_delta)
+                evidence_items = business_payload.get("semantic_evidence") or []
+                evidence_refs = (
+                    [str(evidence_items[0]["evidence_id"])]
+                    if evidence_items and str(evidence_items[0].get("evidence_id") or "").strip()
+                    else []
+                )
                 return self._emit({
                     "title": f"{topic}知识讲解",
                     "explanation_content": (
@@ -1350,6 +1356,26 @@ class StubChatModel:
                         "【小结】先记核心定义，再理解机制和辨析要点。"
                     ),
                     "uncertainty": [],
+                    "evidence_refs": evidence_refs,
+                }, on_delta)
+            if phase == "question_explanation":
+                topic = str(business_payload.get("topic", "当前题目"))
+                evidence_items = business_payload.get("semantic_evidence") or []
+                evidence_refs = (
+                    [str(evidence_items[0]["evidence_id"])]
+                    if evidence_items and str(evidence_items[0].get("evidence_id") or "").strip()
+                    else []
+                )
+                return self._emit({
+                    "title": f"{topic}题目讲解",
+                    "explanation_content": (
+                        f"【考查要点】这道题主要考查{topic}相关的辨识与运用。"
+                        "【直接作答】正确答案是 A，依据教材证据：……。"
+                        "【选项辨析】B 选项与题干要点不符；C 选项偷换概念。"
+                        "【易错提示】注意区分相近证候，避免张冠李戴。"
+                    ),
+                    "uncertainty": [],
+                    "evidence_refs": evidence_refs,
                 }, on_delta)
             if phase == "paper_blueprint":
                 constraints = business_payload.get("exam_constraints", {})

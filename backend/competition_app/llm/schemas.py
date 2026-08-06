@@ -844,17 +844,26 @@ class KnowledgeExplanationModelOutput(StrictModelOutput):
         min_length=1,
         max_length=8_000,
         description=(
-            "面向学习者的完整自然语言知识讲解；采用启发式引导式结构，"
-            "先结合用户学情定位，再讲解核心，末尾提出开放式思考问题；"
-            "不得生成学习计划或复习任务。"
+            "面向学习者的完整自然语言内容：知识讲解采用启发式引导式结构（先结合学情定位，"
+            "再讲解核心，末尾提出开放式思考问题）；题目讲解采用直接讲题结构（考查要点→"
+            "直接作答→选项/要点辨析→易错提示）。不得生成学习计划或复习任务。"
         ),
     )
     thinking_questions: list[str] = Field(
         default_factory=list,
         max_length=8_000,
-        description="启发式引导的开放式思考问题（2-3 个，只提问不含答案），与配套练习题目不重复。",
+        description="启发式引导的开放式思考问题（2-3 个，只提问不含答案），题目讲解可为空，与配套练习题目不重复。",
     )
     uncertainty: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(
+        default_factory=list,
+        max_length=32,
+        description=(
+            "本次回答实际引用的证据 id 列表，只能从输入 semantic_evidence 给出的 evidence_id 中选取，"
+            "不得自创、不得编造，可留空。正文中不要书写具体出处（书名、章节、URL、页码），"
+            "来源由系统按 evidence_id 自动标注。"
+        ),
+    )
 
     @field_validator("thinking_questions", mode="before")
     @classmethod
@@ -869,6 +878,17 @@ class KnowledgeExplanationModelOutput(StrictModelOutput):
                 for item in value
                 if str(item).strip(" -·\t")
             ]
+        return value
+
+    @field_validator("evidence_refs", mode="before")
+    @classmethod
+    def normalize_evidence_refs(cls, value: object) -> object:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [part.strip() for part in value.replace("，", ",").split(",") if part.strip()]
+        if isinstance(value, (list, tuple)):
+            return [str(item).strip() for item in value if str(item).strip()]
         return value
 
 

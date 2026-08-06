@@ -50,6 +50,7 @@ class KnowledgeRetrievalTool:
                     bridge_layer="external",
                     source_url=item.url,
                     resource_type=item.resource_type,
+                    source_label=str(item.title).strip() or None,
                 )
                 for index, item in enumerate(web_items, start=1)
             ]
@@ -72,6 +73,7 @@ class KnowledgeRetrievalTool:
                     authority_level="textbook",
                     confidence=max(0.0, min(1.0, hit.score)),
                     bridge_layer="vector",
+                    source_label=self.repository.chunk_label_for_uid(hit.source_id),
                 )
                 for index, hit in enumerate(hits, start=1)
             ]
@@ -85,6 +87,7 @@ class KnowledgeRetrievalTool:
                     bridge_layer="external",
                     source_url=item.url,
                     resource_type=item.resource_type,
+                    source_label=str(item.title).strip() or None,
                 )
                 for index, item in enumerate(web_items, start=1)
             )

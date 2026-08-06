@@ -1571,31 +1571,52 @@ class LearningPlanService:
 
     @classmethod
     def _stage_requirements(cls, plan: LongTermPlan, stage: int) -> list[str]:
+        """阶段晋级条款 = 路线验收证据（基线）+ 用户长期计划该阶段验收条款 + 里程碑证据。
+
+        与 daily_task_execution 的判定保持一致：合并去重（保序），
+        手动记录证据 API 的白名单同样接受用户化验收条款。
+        """
         route = plan.planning_route
+        requirements: list[str] = []
         textbook_route = route.textbook_route if route is not None else None
         if (
             textbook_route is not None
             and textbook_route.route is not None
             and 1 <= stage <= len(textbook_route.route.stages)
         ):
-            return [
+            requirements.extend(
                 str(value).strip()
                 for value in textbook_route.route.stages[stage - 1].exit_evidence
                 if str(value).strip()
-            ]
-        if route is not None and 1 <= stage <= len(route.phases):
-            return [
+            )
+        elif route is not None and 1 <= stage <= len(route.phases):
+            requirements.extend(
                 str(value).strip()
                 for value in route.phases[stage - 1].exit_evidence
                 if str(value).strip()
-            ]
-        if 1 <= stage <= len(plan.milestones):
-            return [
+            )
+        user_stages = list(plan.stages or [])
+        if 1 <= stage <= len(user_stages):
+            acceptance = getattr(user_stages[stage - 1], "acceptance", None) or []
+            requirements.extend(
                 str(value).strip()
-                for value in plan.milestones[stage - 1].evidence_required
+                for value in acceptance
                 if str(value).strip()
-            ]
-        raise ValueError("unknown long-term plan stage")
+            )
+        milestones = list(plan.milestones or [])
+        if 1 <= stage <= len(milestones):
+            requirements.extend(
+                str(value).strip()
+                for value in milestones[stage - 1].evidence_required
+                if str(value).strip()
+            )
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for item in requirements:
+            if item and item not in seen:
+                seen.add(item)
+                deduped.append(item)
+        return deduped
 
     @staticmethod
     def _normalize_evidence_text(value: str) -> str:

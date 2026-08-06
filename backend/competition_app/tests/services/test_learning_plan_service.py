@@ -457,7 +457,9 @@ def test_completed_task_evidence_drives_the_stage_pass_gate(
 ) -> None:
     service = LearningPlanService(repository)
     plans = service.materialize("LEARNER_STAGE_GATE", structured_proposal(repository))
-    requirements = plans.long_term_plan.planning_route.phases[0].exit_evidence
+    requirements = service._stage_requirements(
+        plans.long_term_plan, stage=1
+    )
     task = plans.learning_task.model_copy(
         update={
             "status": "completed",
@@ -525,8 +527,16 @@ def test_stage_progress_projects_the_approved_textbook_route_as_authoritative(
     assert first_stage["name"] == trusted_stage.name
     assert first_stage["books"] == trusted_stage.books
     assert first_stage["goal"] == trusted_stage.objective
+    expected_indicators = [
+        *trusted_stage.exit_evidence,
+        *[
+            str(item)
+            for item in plans.long_term_plan.milestones[0].evidence_required
+            if str(item).strip() not in trusted_stage.exit_evidence
+        ],
+    ]
     assert [item["description"] for item in first_stage["indicators"]] == (
-        trusted_stage.exit_evidence
+        expected_indicators
     )
 
 

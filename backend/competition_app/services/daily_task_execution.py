@@ -385,22 +385,42 @@ class DailyTaskExecutionCoordinator:
 
     @staticmethod
     def _stage_requirements(plan: Any, stage: int) -> list[str]:
+        """阶段晋级条款 = 路线验收证据（基线）+ 用户长期计划该阶段验收条款 + 里程碑证据。
+
+        三者合并去重（保序），让用户长期规划的个性化验收参与晋级门禁。
+        存量计划中里程碑条款与路线条款逐字一致，合并后不改变既有判定。
+        """
         if plan is None or plan.planning_route is None:
             return []
+        requirements: list[str] = []
         textbook_route = plan.planning_route.textbook_route
         if textbook_route is not None and textbook_route.route is not None:
             for item in textbook_route.route.stages:
                 if int(item.order) == stage:
-                    return [str(value) for value in item.exit_evidence]
-        phases = list(plan.planning_route.phases)
-        if 1 <= stage <= len(phases):
-            return [str(value) for value in phases[stage - 1].exit_evidence]
-        if 1 <= stage <= len(plan.milestones):
-            return [
-                str(value)
-                for value in plan.milestones[stage - 1].evidence_required
-            ]
-        return []
+                    requirements.extend(str(value) for value in item.exit_evidence)
+                    break
+        else:
+            phases = list(plan.planning_route.phases)
+            if 1 <= stage <= len(phases):
+                requirements.extend(
+                    str(value) for value in phases[stage - 1].exit_evidence
+                )
+        user_stages = list(plan.stages or [])
+        if 1 <= stage <= len(user_stages):
+            acceptance = getattr(user_stages[stage - 1], "acceptance", None) or []
+            requirements.extend(str(value) for value in acceptance)
+        milestones = list(plan.milestones or [])
+        if 1 <= stage <= len(milestones):
+            requirements.extend(
+                str(value) for value in milestones[stage - 1].evidence_required
+            )
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for item in requirements:
+            if item and item not in seen:
+                seen.add(item)
+                deduped.append(item)
+        return deduped
 
     @staticmethod
     def _next_textbook_selection(plan: Any, stage: int) -> Any | None:

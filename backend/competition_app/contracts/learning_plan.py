@@ -33,6 +33,10 @@ class LongTermPlanStage(ContractModel):
     goal: str = Field(min_length=1)
     duration_days: int = Field(default=0, ge=0, le=3_650)
     schedule_summary: str = ""
+    acceptance: list[str] = Field(
+        default_factory=list,
+        description="该阶段的用户化验收条款（可为空，空时仅要求路线验收证据）。",
+    )
 
 
 class StageEvidenceRecord(ContractModel):

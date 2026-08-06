@@ -209,6 +209,7 @@ def test_current_learning_plan_api_returns_prose_and_structured_stages(
             "schedule_summary": (
                 "使用《中医学基础》建立理论框架，形成笔记并闭卷验收。"
             ),
+            "acceptance": [],
         }
     ]
     assert body["long_term"]["stage_progress"][0]["pass_rule"] == (

@@ -81,9 +81,29 @@ class KnowledgeAssetRepository:
                     authority_level="textbook",
                     confidence=confidence,
                     bridge_layer=bridge_layer,
+                    source_label=self.chunk_source_label(chunk),
                 )
             )
         return evidence
+
+    def chunk_source_label(self, chunk: dict[str, object]) -> str:
+        """Deterministic display label (book · section) for a source chunk."""
+        from competition_app.tools.knowledge_delivery import format_source_label
+
+        metadata = chunk.get("metadata") if isinstance(chunk.get("metadata"), dict) else {}
+        book = str(chunk.get("book") or "")
+        return format_source_label(
+            book,
+            chapter=str(chunk.get("kp_Lv2") or chunk.get("kp_lv2") or chunk.get("kp_Lv1") or ""),
+            heading=str(metadata.get("heading_path") or ""),
+        )
+
+    def chunk_label_for_uid(self, chunk_uid: str) -> str | None:
+        """Return the display label for a chunk uid, or None when unknown."""
+        chunk = self._load_chunks().get(str(chunk_uid))
+        if not chunk:
+            return None
+        return self.chunk_source_label(chunk)
 
     def kp_ids_for_chunks(self, chunk_uids: list[str]) -> list[str]:
         if self._kp_ids_by_chunk is None:

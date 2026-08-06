@@ -335,3 +335,41 @@ async def test_repaired_plan_model_rejection_becomes_non_blocking_advice() -> No
     assert result.payload.decision == "pass"
     assert result.payload.structured_findings == []
     assert result.payload.findings == ["非阻断建议：还可以进一步优化学习节奏。"]
+
+
+@pytest.mark.asyncio
+async def test_audit_revises_when_reference_card_cites_unknown_evidence() -> None:
+    context = _resource_context()
+    context["dependency_outputs"]["expert"].payload.content = {
+        "知识讲解": (
+            "四君子汤以益气健脾为主要功用。"
+            "\n\n<<REFS:["
+            '{"type":"rag","title":"《方剂学》· 第一章","evidence_id":"EVIDENCE_1"},'
+            '{"type":"web","title":"伪造来源","evidence_id":"MADE_UP_SOURCE"}'
+            "]>>"
+        )
+    }
+
+    result = await AuditAgent(EmptyRevisionAuditModel()).run(context)
+
+    assert result.payload.decision == "revise"
+    assert any("引用卡片" in finding for finding in result.payload.findings)
+    assert "MADE_UP_SOURCE" in "\n".join(result.payload.findings)
+
+
+@pytest.mark.asyncio
+async def test_audit_passes_when_reference_card_cites_only_retrieved_evidence() -> None:
+    context = _resource_context()
+    context["dependency_outputs"]["expert"].payload.content = {
+        "知识讲解": (
+            "四君子汤以益气健脾为主要功用。"
+            "\n\n<<REFS:["
+            '{"type":"rag","title":"教材来源","evidence_id":"EVIDENCE_1"}'
+            "]>>"
+        )
+    }
+
+    result = await AuditAgent(EmptyRevisionAuditModel()).run(context)
+
+    assert result.payload.decision == "pass"
+    assert result.payload.findings == []

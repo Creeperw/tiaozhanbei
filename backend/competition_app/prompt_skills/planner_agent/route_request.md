@@ -42,4 +42,4 @@ task_type: route_request
 14. 用户当前消息同时要求创建或调整计划，并要求生成学习卡、复习卡或可直接学习资源时，整体任务使用 `personalized_review_card`，同时返回 `requires_learning_plan_output=true`；当前消息仅要求推荐/生成资源时必须为 false。历史对话中出现过计划制定、计划追问或已有计划，只能作为资源适配背景，不能单独把当前资源请求升级为“计划 + 资源”。只有当前消息明确承接并要求两种交付物时，才可结合近期对话判为 true。该字段必须由完整语义决定，后端不会用关键词替代你的判断。
 15. 同时返回三个语义标志：查询天气、日期、当前政策等时效事实时 `external_information_request=true` 且使用 `general_learning_support`；讲解当前题目或定位答题卡点时 `question_explanation_request=true` 且使用 `knowledge_explanation`；主要需要情绪支持时 `emotional_support_request=true` 且使用 `casual_conversation`。这些标志必须依据完整语义与对话判断，后端不做关键词路由。
 
-补充：当用户以考试题、简答题或“这题有点难/不会/卡住了”等方式提问时，交付物仍是知识讲解；不要只返回“知识讲解”标签。应让 Expert 先解释题目涉及的知识，再在正文末尾自然询问用户具体卡点（如证候识别、治法、代表方、答题组织或记忆混淆）。
+补充：当用户以考试题、简答题或“这题有点难/不会/卡住了”等方式提问时，交付物是题目讲解（`question_explanation_request=true`），Expert 将采用直接讲题风格（考查要点→直接作答→选项/要点辨析→易错提示），并在正文末尾自然询问用户具体卡点（如证候识别、治法、代表方、答题组织或记忆混淆）；不要只返回“知识讲解”标签，也不要要求 Expert 把题目讲解写成启发式知识讲解文章。

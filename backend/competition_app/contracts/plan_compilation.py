@@ -52,6 +52,10 @@ class CompiledLongTermStage(ContractModel):
     goal: str = Field(min_length=1)
     duration_days: int = Field(gt=0, le=3_650)
     schedule_summary: str = Field(min_length=1)
+    acceptance: list[str] = Field(
+        default_factory=list,
+        description="该阶段的用户化验收条款，取自正文晋级条件，可为空。",
+    )
 
 
 class CompiledLongTermContract(ContractModel):

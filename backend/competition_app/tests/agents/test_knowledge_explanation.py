@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from competition_app.agents.knowledge_explanation import KnowledgeExplanationAgent
@@ -211,7 +213,70 @@ async def test_question_explanation_invites_the_learner_to_identify_the_sticking
 
     result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(context)
 
-    assert "这道题你主要卡在哪一步" in result.payload.content["知识讲解"]
+    assert "这道题你主要卡在哪一步" in result.payload.content["题目讲解"]
+
+
+@pytest.mark.asyncio
+async def test_question_explanation_uses_direct_explanation_skill() -> None:
+    class QuestionExplanationModel:
+        def __init__(self) -> None:
+            self.payload = None
+
+        async def complete_json(self, role, payload, on_delta=None):
+            self.payload = payload
+            return {
+                "title": "感冒辨证题目讲解",
+                "explanation_content": (
+                    "【考查要点】这道题考风寒与风热感冒的证候鉴别。"
+                    "【直接作答】正确答案是 A：辛温解表。依据教材：风寒感冒恶寒重、发热轻。"
+                    "【选项辨析】B 选项益气健脾适用于气虚，与本题证候不符。"
+                    "【易错提示】注意恶寒与发热的轻重对比，避免证候错辨。"
+                ),
+                "thinking_questions": [],
+                "uncertainty": [],
+            }
+
+    context = _context()
+    context["user_request"] = "这道题我不会，应该怎么答？"
+
+    model = QuestionExplanationModel()
+    result = await KnowledgeExplanationAgent(model).run(context)
+
+    assert model.payload["prompt_skill_id"] == "expert.explain_question"
+    assert model.payload["payload"]["phase"] == "question_explanation"
+    assert model.payload["payload"]["question_explanation_request"] is True
+    assert "直接讲题结构" in model.payload["payload"]["output_contract"]["content"]
+    assert result.payload.title == "感冒辨证题目讲解"
+    assert result.payload.content["题目讲解"].startswith("【考查要点】")
+
+
+@pytest.mark.asyncio
+async def test_knowledge_explanation_keeps_heuristic_skill_for_plain_requests() -> None:
+    class CapturingModel:
+        def __init__(self) -> None:
+            self.payload = None
+
+        async def complete_json(self, role, payload, on_delta=None):
+            self.payload = payload
+            return {
+                "title": "感冒证型讲解",
+                "explanation_content": (
+                    "【结合学情定位】感冒证型是辨证论治的基础。"
+                    "【讲解核心】风寒与风热感冒的主要区别在于恶寒与发热的轻重。"
+                    "【启发式思考问题】试着用教材分型对比风寒与风热感冒。"
+                    "【自然收尾】先说说你的判断，再继续引导。"
+                ),
+                "thinking_questions": ["风寒与风热感冒的鉴别关键点是什么？"],
+                "uncertainty": [],
+            }
+
+    model = CapturingModel()
+    result = await KnowledgeExplanationAgent(model).run(_context())
+
+    assert model.payload["prompt_skill_id"] == "expert.explain_domain_knowledge"
+    assert model.payload["payload"]["phase"] == "knowledge_explanation"
+    assert "启发式引导式结构" in model.payload["payload"]["output_contract"]["content"]
+    assert result.payload.content["知识讲解"].startswith("【结合学情定位】")
 
 
 @pytest.mark.asyncio
@@ -288,3 +353,123 @@ async def test_knowledge_explanation_rejects_off_topic_question_candidate() -> N
     assert result.payload.question_consumption.use_question_candidates is False
     assert result.payload.question_consumption.selected_question_ids == []
     assert "配套练习" not in result.payload.content
+
+
+class RefsModel:
+    """Emits evidence_refs for the two evidence items in _context()."""
+
+    def __init__(self) -> None:
+        self.payload = None
+
+    async def complete_json(self, role, payload, on_delta=None):
+        self.payload = payload
+        return {
+            "title": "感冒证型讲解",
+            "explanation_content": "风寒与风热感冒的鉴别要点。",
+            "thinking_questions": [],
+            "uncertainty": [],
+            "evidence_refs": ["E1", "E2"],
+        }
+
+
+@pytest.mark.asyncio
+async def test_knowledge_explanation_sends_evidence_ids_to_the_model() -> None:
+    model = RefsModel()
+
+    await KnowledgeExplanationAgent(model).run(_context())
+
+    evidence = model.payload["payload"]["semantic_evidence"]
+    assert evidence[0]["evidence_id"] == "E1"
+    assert evidence[1]["evidence_id"] == "E2"
+
+
+@pytest.mark.asyncio
+async def test_reference_card_marks_textbook_and_web_sources() -> None:
+    result = await KnowledgeExplanationAgent(RefsModel()).run(_context())
+
+    markup = result.payload.content["知识讲解"]
+    assert markup.startswith("风寒与风热感冒的鉴别要点。")
+    assert "<<REFS:" in markup
+    refs = json.loads(markup.split("<<REFS:", 1)[1].rsplit(">>", 1)[0])
+    assert refs[0]["type"] == "rag"
+    assert refs[0]["title"] == "教材来源"
+    assert refs[0]["evidence_id"] == "E1"
+    assert refs[1]["type"] == "web"
+    assert refs[1]["title"] == "reference来源"
+    assert refs[1]["url"] == "https://example.test/guide"
+    assert refs[1]["evidence_id"] == "E2"
+
+
+@pytest.mark.asyncio
+async def test_reference_card_uses_source_label_when_present() -> None:
+    class LabeledModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            return {
+                "title": "护理讲解",
+                "explanation_content": "护理辨证要点。",
+                "evidence_refs": ["E_BOOK"],
+            }
+
+    evidence = EvidencePack(
+        evidence_pack_id="EP2",
+        query="护理",
+        evidence_items=[
+            EvidenceItem(
+                evidence_id="E_BOOK",
+                source_id="中医临床护理学_clean:00042",
+                content_summary="辨证护理与辨病护理的要点。",
+                authority_level="textbook",
+                confidence=0.9,
+                source_label="《中医临床护理学》· 第一节 中医临床护理的病证特点",
+            )
+        ],
+    )
+    context = _context()
+    context["dependency_outputs"]["knowledge"].payload = evidence
+
+    result = await KnowledgeExplanationAgent(LabeledModel()).run(context)
+
+    markup = result.payload.content["知识讲解"]
+    refs = json.loads(markup.split("<<REFS:", 1)[1].rsplit(">>", 1)[0])
+    assert refs[0]["type"] == "rag"
+    assert refs[0]["title"] == "《中医临床护理学》· 第一节 中医临床护理的病证特点"
+
+
+@pytest.mark.asyncio
+async def test_reference_card_drops_fabricated_evidence_ids() -> None:
+    class FabricatingModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            return {
+                "title": "感冒证型讲解",
+                "explanation_content": "风寒与风热感冒的鉴别要点。",
+                "evidence_refs": ["E1", "MADE_UP_BOOK", "E2", "MADE_UP_URL"],
+            }
+
+    result = await KnowledgeExplanationAgent(FabricatingModel()).run(_context())
+
+    markup = result.payload.content["知识讲解"]
+    refs = json.loads(markup.split("<<REFS:", 1)[1].rsplit(">>", 1)[0])
+    assert [ref["evidence_id"] for ref in refs] == ["E1", "E2"]
+
+
+@pytest.mark.asyncio
+async def test_no_reference_card_when_evidence_refs_empty() -> None:
+    class EmptyRefsModel:
+        async def complete_json(self, role, payload, on_delta=None):
+            return {
+                "title": "感冒证型讲解",
+                "explanation_content": "风寒与风热感冒的鉴别要点。",
+                "evidence_refs": [],
+            }
+
+    result = await KnowledgeExplanationAgent(EmptyRefsModel()).run(_context())
+
+    assert result.payload.content["知识讲解"] == "风寒与风热感冒的鉴别要点。"
+    assert "<<REFS:" not in result.payload.content["知识讲解"]
+
+
+@pytest.mark.asyncio
+async def test_legacy_model_without_evidence_refs_stays_compatible() -> None:
+    result = await KnowledgeExplanationAgent(CapturingExplanationModel()).run(_context())
+
+    assert "<<REFS:" not in result.payload.content["知识讲解"]

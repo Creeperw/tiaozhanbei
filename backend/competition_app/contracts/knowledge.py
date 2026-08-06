@@ -15,6 +15,9 @@ class EvidenceItem(ContractModel):
     bridge_layer: str | None = None
     source_url: str | None = None
     resource_type: Literal["textbook", "question", "video", "reference", "web"] = "textbook"
+    # 展示用确定性来源标签（如《中医临床护理学》· 第一节…），由检索层填充；
+    # 引用卡片据此生成，模型不得自行编造出处。
+    source_label: str | None = None
 
 
 class EvidencePack(ContractModel):

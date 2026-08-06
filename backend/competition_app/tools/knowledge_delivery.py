@@ -102,6 +102,33 @@ def _iter_jsonl(path: Path) -> Iterable[dict[str, Any]]:
                     yield row
 
 
+def clean_book_name(book: str) -> str:
+    """Return the display name of a textbook, stripping pipeline suffixes.
+
+    Source chunks carry ``book`` values such as ``中医临床护理学_clean``;
+    the display label should read ``中医临床护理学``.
+    """
+    name = str(book or "").strip()
+    for suffix in ("_clean", "_cleaned", "_v2", "_final"):
+        if name.endswith(suffix):
+            name = name[: -len(suffix)].rstrip("_").strip()
+            break
+    return name
+
+
+def format_source_label(book: str, chapter: str = "", heading: str = "") -> str:
+    """Build the deterministic citation label for a textbook chunk.
+
+    Prefers the finest granularity available: heading path > section > book
+    alone.  The label is display-only; it never embeds a chunk id.
+    """
+    book_name = clean_book_name(book)
+    detail = str(chapter or "").strip() or str(heading or "").strip()
+    if detail:
+        return f"《{book_name}》· {detail}"
+    return f"《{book_name}》"
+
+
 def _unwrap_kp(record: dict[str, Any]) -> dict[str, Any]:
     value = record.get("kp", record)
     return dict(value) if isinstance(value, dict) else {}
@@ -1038,20 +1065,27 @@ class KnowledgeDeliveryBackend:
                         confidence=max(0.0, min(1.0, float(match["score"]))),
                         bridge_layer="strict",
                         resource_type="textbook",
+                        source_label=format_source_label(
+                            str(chunk.get("book") or ""),
+                            chapter=str(chunk.get("kp_lv2") or chunk.get("kp_lv1") or ""),
+                            heading=str(chunk.get("heading") or ""),
+                        ),
                     )
                 )
             for video in detail["videos"][:2]:
                 page = int(video.get("page") or 1)
                 start = int(float(video.get("start_seconds") or 0))
                 bvid = str(video.get("bvid") or "")
+                video_title = str(video.get("video_title") or "").strip()
+                part_title = str(video.get("part_title") or "").strip()
                 evidence.append(
                     EvidenceItem(
                         evidence_id=f"E_VIDEO_{bvid}_{page}_{start}",
                         source_id=f"{bvid}:p{page}:{start}",
                         content_summary="\n".join(
                             value for value in (
-                                str(video.get("video_title") or ""),
-                                str(video.get("part_title") or ""),
+                                video_title,
+                                part_title,
                                 str(video.get("topic") or ""),
                                 str(video.get("transcript") or "")[:900],
                             ) if value
@@ -1061,6 +1095,13 @@ class KnowledgeDeliveryBackend:
                         bridge_layer="video_kp_match",
                         source_url=f"https://www.bilibili.com/video/{bvid}?p={page}&t={start}",
                         resource_type="video",
+                        source_label=(
+                            f"视频《{video_title}》· {part_title}"
+                            if video_title and part_title and part_title != video_title
+                            else f"视频《{video_title}》"
+                            if video_title
+                            else "视频来源"
+                        ),
                     )
                 )
         if not evidence:

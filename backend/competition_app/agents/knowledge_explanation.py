@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from datetime import date
 from typing import Any
@@ -16,6 +17,7 @@ from competition_app.contracts.resource import (
     ResourceDraft,
 )
 from competition_app.contracts.audit_policy import ResourceProvenance
+from competition_app.contracts.knowledge import EvidenceItem
 from competition_app.llm.base import ChatModel
 from competition_app.llm.prompt_skills import prompt_skill_registry
 from competition_app.llm.schemas import KnowledgeExplanationModelOutput
@@ -23,6 +25,47 @@ from competition_app.llm.stub import StubChatModel
 from competition_app.services.conversation_history import (
     sanitize_compressed_dialogue_summary,
 )
+
+
+def build_reference_card_markup(
+    evidence_items: list[EvidenceItem],
+    evidence_refs: list[str],
+) -> str:
+    """Deterministically build the trailing ``<<REFS:JSON>>`` citation card.
+
+    Only evidence ids present in ``evidence_items`` are honored (order
+    preserved, deduplicated); unknown ids are dropped silently so a model can
+    never inject a fabricated source.  Textbook evidence maps to the ``rag``
+    badge (book · section label), web/video evidence to ``web`` with a clickable
+    url.  Returns an empty string when nothing can be cited.
+    """
+    by_id = {item.evidence_id: item for item in evidence_items}
+    references: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for ref_id in evidence_refs:
+        ref_id = str(ref_id).strip()
+        if not ref_id or ref_id in seen or ref_id not in by_id:
+            continue
+        seen.add(ref_id)
+        item = by_id[ref_id]
+        is_textbook = (
+            item.resource_type == "textbook"
+            or item.authority_level == "textbook"
+        )
+        title = (item.source_label or "").strip() or (
+            "教材来源" if is_textbook else f"{item.resource_type}来源"
+        )
+        references.append(
+            {
+                "type": "rag" if is_textbook else "web",
+                "title": title,
+                "url": item.source_url or "",
+                "evidence_id": item.evidence_id,
+            }
+        )
+    if not references:
+        return ""
+    return f"<<REFS:{json.dumps(references, ensure_ascii=False)}>>"
 
 
 class KnowledgeExplanationAgent:
@@ -63,17 +106,36 @@ class KnowledgeExplanationAgent:
         skill_name = (
             "general_learning_support"
             if task_type == "general_learning_support"
+            else "question_explanation"
+            if question_explanation_request
             else "knowledge_explanation"
         )
         skill = prompt_skill_registry.load("expert_agent", skill_name)
         flexible_support = task_type == "general_learning_support"
         preferences = context.get("user_profile", {}).get("user_preference", {})
+        # Full evidence bodies when no summary exists; otherwise the summary
+        # carries the retrieval content and only a compact citation manifest
+        # (id + short label) is offered so the model can still declare
+        # evidence_refs for the trailing reference card without duplicating
+        # the whole evidence set in the prompt.
         semantic_evidence = [
             {
+                "evidence_id": item.evidence_id,
                 "text": item.content_summary,
                 "authority": item.authority_level,
                 "resource_type": item.resource_type,
                 "source_url": item.source_url,
+            }
+            for item in evidence_pack.evidence_items
+        ]
+        citation_manifest = [
+            {
+                "evidence_id": item.evidence_id,
+                "label": (
+                    item.source_label
+                    or item.resource_type
+                    or item.evidence_id
+                ),
             }
             for item in evidence_pack.evidence_items
         ]
@@ -95,6 +157,9 @@ class KnowledgeExplanationAgent:
                         payload={
                             "phase": skill_name,
                             "user_request": context.get("user_request", ""),
+                            "question_explanation_request": bool(
+                                question_explanation_request
+                            ),
                             "external_information_request": bool(
                                 external_information_request
                             ),
@@ -111,7 +176,11 @@ class KnowledgeExplanationAgent:
                             "user_preference": preferences,
                             "topic": evidence_pack.query,
                             "retrieval_summary": retrieval_summary,
-                            "semantic_evidence": semantic_evidence if not retrieval_summary else [],
+                            "semantic_evidence": (
+                                semantic_evidence
+                                if not retrieval_summary
+                                else citation_manifest
+                            ),
                             "audit_feedback": list(
                                 getattr(
                                     getattr(
@@ -129,15 +198,24 @@ class KnowledgeExplanationAgent:
                                     "不要求固定标题或固定段落。"
                                     if flexible_support
                                     else (
-                                        "直接输出完整自然语言讲解正文；采用启发式引导式结构："
-                                        "先结合用户学情定位说明为什么讲这个点，再讲解核心内容，"
-                                        "末尾提出 2-3 个开放式思考问题引导用户先自行思考。"
+                                        "直接输出完整自然语言题目讲解正文；采用直接讲题结构："
+                                        "先一句话说明考查要点，再直接给出答案/思路与依据，"
+                                        "逐项辨析选项或展开答题要点，末尾点出易错提示。"
+                                        "不要套用知识讲解的启发式引导结构，不要弯弯绕绕，"
+                                        "不要写成一篇知识讲解文章。"
+                                        if question_explanation_request
+                                        else (
+                                            "直接输出完整自然语言讲解正文；采用启发式引导式结构："
+                                            "先结合用户学情定位说明为什么讲这个点，再讲解核心内容，"
+                                            "末尾提出 2-3 个开放式思考问题引导用户先自行思考。"
+                                        )
                                     )
                                 ),
                                 "title": "可选标题。",
-                                "thinking_questions": "可选：启发式思考问题列表（2-3 个，只提问不含答案）。",
+                                "thinking_questions": "可选：启发式思考问题列表（2-3 个，只提问不含答案）；题目讲解可不含。",
                                 "uncertainty": "可选待确认内容。",
                             },
+                            "output_schema": KnowledgeExplanationModelOutput.model_json_schema(),
                         },
                         permission_note=(
                             "结合最近对话解析当前问题中的指代，优先依据教材和网络来源生成教学讲解；覆盖不足时允许使用明确标注的"
@@ -145,16 +223,18 @@ class KnowledgeExplanationAgent:
                         ),
                     )
         try:
-            # Knowledge explanation is a prose-producing business agent. Keep
-            # a JSON fallback for test doubles and older model adapters.
-            if callable(getattr(self.chat_model, "complete_text", None)):
-                text_output = await self.chat_model.complete_text("expert_agent", model_payload)
-                raw_output = {"content": text_output}
-            else:
+            # Structured output is required so the model can declare
+            # evidence_refs for the trailing citation card.  Keep a
+            # plain-text fallback for legacy adapters that only implement
+            # complete_text (references are then left empty by design).
+            if callable(getattr(self.chat_model, "complete_json", None)):
                 raw_output = await self.chat_model.complete_json(
                     "expert_agent",
                     model_payload,
                 )
+            else:
+                text_output = await self.chat_model.complete_text("expert_agent", model_payload)
+                raw_output = {"content": text_output}
             if not isinstance(raw_output, dict):
                 raw_output = {}
             uncertainty = self._normalize_uncertainty(
@@ -177,6 +257,15 @@ class KnowledgeExplanationAgent:
                     str(body).rstrip()
                     + "\n\n这道题你主要卡在哪一步：证候识别、治法选择、代表方对应，还是答题组织？"
                 )
+            evidence_refs = [
+                str(item).strip()
+                for item in (
+                    raw_output.get("evidence_refs")
+                    or raw_output.get("references")
+                    or []
+                )
+                if str(item).strip()
+            ]
             output = KnowledgeExplanationModelOutput.model_validate(
                 {
                     "title": raw_output.get("title") or (
@@ -187,6 +276,7 @@ class KnowledgeExplanationAgent:
                     "explanation_content": body,
                     "thinking_questions": thinking_questions,
                     "uncertainty": uncertainty,
+                    "evidence_refs": evidence_refs,
                 }
             )
         except ValidationError as exc:
@@ -203,9 +293,22 @@ class KnowledgeExplanationAgent:
                 uncertainty=["模型讲解格式不可用，系统展示检索总结。"],
             )
         primary = evidence_pack.evidence_items[0]
+        content_key = (
+            "学习支持"
+            if flexible_support
+            else "题目讲解"
+            if question_explanation_request
+            else "知识讲解"
+        )
+        body_text = str(output.explanation_content)
+        reference_markup = build_reference_card_markup(
+            evidence_pack.evidence_items,
+            output.evidence_refs,
+        )
+        if reference_markup:
+            body_text = f"{body_text.rstrip()}\n\n{reference_markup}"
         content: dict[str, object] = {
-            "学习支持" if flexible_support else "知识讲解":
-                output.explanation_content
+            content_key: body_text
         }
         # The prose-producing Expert does not own a structured resource
         # selection contract.  Do not append a question after generation: an

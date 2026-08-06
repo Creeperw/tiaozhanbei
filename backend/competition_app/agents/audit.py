@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 from uuid import uuid4
 
@@ -42,9 +44,22 @@ class AuditAgent:
         self.audit_issue_resolver = AuditIssueResolver()
 
     async def run(self, context: dict[str, Any]) -> AgentEnvelope[AuditResult]:
-        prompt_skill = prompt_skill_registry.load(
-            "audit_agent", str(context.get("task_type", "personalized_review_card"))
+        question_explanation_request = bool(
+            context.get("question_explanation_request")
+            or any(
+                marker in "".join(str(context.get("user_request") or "").split())
+                for marker in (
+                    "试述", "简述", "论述", "分析题", "这题", "这道题", "题目",
+                    "难", "不会", "不懂", "卡住", "看不懂", "怎么答", "答不出来",
+                )
+            )
         )
+        audit_task_type = (
+            "question_explanation"
+            if question_explanation_request
+            else str(context.get("task_type", "personalized_review_card"))
+        )
+        prompt_skill = prompt_skill_registry.load("audit_agent", audit_task_type)
         if (
             context.get("audit_subject") in {"long_term_plan", "short_term_plan"}
             or (
@@ -146,6 +161,16 @@ class AuditAgent:
             preflight_findings.append(
                 "资源包含无法在本次证据中验证来源的视频或参考资料。"
             )
+        # 引用卡片硬门禁：正文中出现的 <<REFS>> 只能引用本次检索证据，
+        # 伪造或越权的 evidence_id 一律视为未验证来源。
+        unknown_ref_evidence_ids = self._unknown_reference_evidence_ids(
+            expert, evidence_ids
+        )
+        if unknown_ref_evidence_ids:
+            preflight_findings.append(
+                "资源引用卡片包含无法在本次证据中验证的来源："
+                + ", ".join(sorted(unknown_ref_evidence_ids))
+            )
         selected_task = getattr(schedule, "selected_task", None)
         if not external_information_request:
             if selected_task and expert.target_kp_id != selected_task.primary_kp_id:
@@ -196,6 +221,7 @@ class AuditAgent:
                     "task_specific_flags": {
                         "paper_generation": paper_generation,
                         "knowledge_explanation": knowledge_explanation,
+                        "question_explanation": question_explanation_request,
                         "external_information_request": bool(external_information_request),
                         "must_stay_within_user_syllabus": bool(context.get("user_syllabus")),
                     },
@@ -445,6 +471,39 @@ class AuditAgent:
                     )
                 )
         return locations
+
+    @staticmethod
+    def _unknown_reference_evidence_ids(
+        expert: Any, evidence_ids: set[str]
+    ) -> set[str]:
+        """Collect evidence ids cited in ``<<REFS:...>>`` cards that are not
+        part of this retrieval's evidence set.
+
+        The reference card is system-generated from the expert's
+        ``evidence_refs`` declaration; this gate keeps the card deterministic
+        and prevents any injected citation from reaching the learner.
+        """
+        unknown: set[str] = set()
+        content = getattr(expert, "content", None)
+        if not isinstance(content, dict):
+            return unknown
+        for value in content.values():
+            if not isinstance(value, str):
+                continue
+            for match in re.finditer(r"<<REFS:(.*?)>>", value, flags=re.DOTALL):
+                try:
+                    references = json.loads(match.group(1))
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if not isinstance(references, list):
+                    continue
+                for ref in references:
+                    if not isinstance(ref, dict):
+                        continue
+                    ref_id = str(ref.get("evidence_id") or "").strip()
+                    if ref_id and ref_id not in evidence_ids:
+                        unknown.add(ref_id)
+        return unknown
 
     async def _compile_model_issues(
         self,

@@ -1976,6 +1976,7 @@ class DiagnosisAgent:
                         "goal": stage.goal,
                         "duration_days": stage.duration_days,
                         "schedule_summary": stage.schedule_summary,
+                        "acceptance": stage.acceptance,
                     }
                     for stage in contract.stages
                 ],

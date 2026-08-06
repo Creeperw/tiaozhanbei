@@ -114,17 +114,34 @@ def _long_term_progress(plan: Any) -> dict[str, Any] | None:
             else None
         )
         stage_number = stage.stage if stage is not None else index
-        requirements = (
-            [str(item) for item in textbook_stage.exit_evidence]
-            if textbook_stage is not None
-            else [str(item) for item in phase.exit_evidence]
-            if phase is not None
-            else (
-                [str(item) for item in plan.milestones[index - 1].evidence_required]
-                if index <= len(plan.milestones)
-                else []
+        requirement_sources: list[tuple[str, str]] = []
+        if textbook_stage is not None:
+            requirement_sources.extend(
+                (str(item), "route")
+                for item in textbook_stage.exit_evidence
             )
-        )
+        elif phase is not None:
+            requirement_sources.extend(
+                (str(item), "route")
+                for item in phase.exit_evidence
+            )
+        if stage is not None and getattr(stage, "acceptance", None):
+            requirement_sources.extend(
+                (str(item), "plan_stage")
+                for item in stage.acceptance
+            )
+        if index <= len(plan.milestones):
+            requirement_sources.extend(
+                (str(item), "milestone")
+                for item in plan.milestones[index - 1].evidence_required
+            )
+        seen_sources: set[str] = set()
+        deduped_sources: list[tuple[str, str]] = []
+        for requirement, source in requirement_sources:
+            if requirement and requirement not in seen_sources:
+                seen_sources.add(requirement)
+                deduped_sources.append((requirement, source))
+        requirements = [item[0] for item in deduped_sources]
         verified = {
             item.requirement
             for item in evidence
@@ -134,6 +151,7 @@ def _long_term_progress(plan: Any) -> dict[str, Any] | None:
             {
                 "indicator_id": f"stage-{stage_number}-evidence-{position}",
                 "description": requirement,
+                "source": source,
                 "status": "satisfied" if requirement in verified else "pending",
                 "evidence_refs": [
                     {
